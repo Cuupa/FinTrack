@@ -7,7 +7,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
+import { useCatalog } from "@/lib/catalog/catalog-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
+import { quoteItemFor } from "@/lib/finance/prices";
+import { useHistory } from "@/lib/history/use-history";
 import {
   estimatePortfolioModel,
   portfolioOrBenchmarkStats,
@@ -57,21 +60,44 @@ export function MonteCarloPanel() {
     [holdings],
   );
 
-  // Aggregate portfolio statistics (single μ/σ) for the custom mode default.
-  const stats = useMemo(() => portfolioOrBenchmarkStats(holdings), [holdings]);
-  // Per-asset model (each asset's μ/σ + correlation) for the portfolio mode.
-  const model = useMemo(() => estimatePortfolioModel(holdings), [holdings]);
-  const hasPortfolio = model !== null && model.assets.length > 0;
-
   // Default to simulating the real portfolio when there is one.
   const [mode, setMode] = useState<SimMode>("portfolio");
-  const effectiveMode: SimMode = hasPortfolio ? mode : "custom";
 
   const [form, setForm] = useState({
     monthlyContribution: 500,
     years: 30,
     runs: 1000,
   });
+
+  // The estimation history window matches the investment horizon: a 30-year
+  // horizon estimates returns/volatility from (up to) the last 30 years.
+  const lookbackYears = Math.max(1, Math.round(form.years));
+
+  // Fetch REAL historical prices for the holdings (longest available), used to
+  // estimate returns/volatility; falls back to the synthetic series per asset.
+  const { version } = useCatalog();
+  const histItems = useMemo(
+    () =>
+      holdings
+        .map((h) => quoteItemFor(h.asset))
+        .filter((x): x is NonNullable<typeof x> => x !== null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [holdings, version],
+  );
+  const { histories } = useHistory(histItems, "MAX", currency);
+
+  // Aggregate portfolio statistics (single μ/σ) for the custom mode default.
+  const stats = useMemo(
+    () => portfolioOrBenchmarkStats(holdings, lookbackYears, histories),
+    [holdings, lookbackYears, histories],
+  );
+  // Per-asset model (each asset's μ/σ + correlation) for the portfolio mode.
+  const model = useMemo(
+    () => estimatePortfolioModel(holdings, lookbackYears, histories),
+    [holdings, lookbackYears, histories],
+  );
+  const hasPortfolio = model !== null && model.assets.length > 0;
+  const effectiveMode: SimMode = hasPortfolio ? mode : "custom";
   // Estimated parameters are the defaults; overrides (if the user edits a
   // field) take precedence. Derived rather than synced via an effect.
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
@@ -338,7 +364,8 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
   return (
     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
       <div className="font-medium text-indigo-900 dark:text-indigo-200">
-        Per-asset model · {model.sampleYears.toFixed(1)} yrs of history
+        Per-asset model · {model.sampleYears.toFixed(1)} yrs of{" "}
+        {model.real ? "real market" : "modelled"} history
       </div>
       <ul className="mt-2 space-y-0.5 text-zinc-600 dark:text-zinc-400">
         {model.assets.map((a) => (
@@ -373,7 +400,8 @@ function EstimateNote({
     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
       <div className="flex items-center justify-between">
         <span className="font-medium text-indigo-900 dark:text-indigo-200">
-          Estimated from {stats.sampleYears.toFixed(1)} yrs of history
+          Estimated from {stats.sampleYears.toFixed(1)} yrs of{" "}
+          {stats.real ? "real market" : "modelled"} history
         </span>
         {!usingEstimates && (
           <button

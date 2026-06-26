@@ -60,7 +60,9 @@ function normalize(s: string): string {
   return s.trim().toUpperCase();
 }
 
-const HISTORY_START = "2014-01-01";
+// Far enough back that long Monte Carlo horizons (e.g. 30y) have a matching
+// history window to estimate from.
+const HISTORY_START = "1988-01-01";
 const seriesCache = new Map<string, number[]>();
 
 /** Synthetic parameters for a price key: from the catalog, else from its hash. */
