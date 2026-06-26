@@ -119,6 +119,34 @@ export function isISIN(s: string): boolean {
   return ISIN_RE.test(s);
 }
 
+export interface AssetMatch {
+  symbol: string;
+  name: string;
+  quoteType: string;
+}
+
+/** Search for an asset by ISIN or symbol (Yahoo doesn't index German WKNs). */
+export async function searchAssets(query: string): Promise<AssetMatch[]> {
+  const data = (await getJSON(
+    `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0`,
+  )) as
+    | { quotes?: Array<{ symbol?: string; longname?: string; shortname?: string; quoteType?: string }> }
+    | null;
+  return (data?.quotes ?? [])
+    .filter((q) => q.symbol)
+    .map((q) => ({
+      symbol: q.symbol as string,
+      name: q.longname || q.shortname || (q.symbol as string),
+      quoteType: q.quoteType || "",
+    }));
+}
+
+/** Trading currency for a symbol, or null. */
+export async function currencyOf(symbol: string): Promise<string | null> {
+  const m = await meta(symbol);
+  return m ? m.currency : null;
+}
+
 /** Current price (native currency) for a resolved symbol. */
 export async function price(symbol: string): Promise<number | null> {
   const m = await meta(symbol);

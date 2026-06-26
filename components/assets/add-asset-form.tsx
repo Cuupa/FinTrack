@@ -67,15 +67,42 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
     setPrice(String(round(currentPrice(keyOf(match), match.type))));
   }
 
+  interface ApiMatch {
+    found: boolean;
+    name?: string;
+    symbol?: string | null;
+    type?: AssetType;
+    currency?: string | null;
+    isin?: string | null;
+  }
+
+  function applyApiMatch(d: ApiMatch) {
+    setName(d.name ?? "");
+    setIsin(d.isin ?? "");
+    setSymbol(d.symbol ?? "");
+    setType(d.type ?? "ETF");
+    setAssetCurrency(d.currency ?? base);
+  }
+
   async function handleImport() {
     const q = query.trim();
     if (!q) return;
     setImporting(true);
     setError(null);
     try {
+      // 1. Local catalog (DB).
       const match = lookupInstrumentByQuery(q);
       if (match) {
         applyMatch(match);
+        setImportStatus("found");
+        setManual(false);
+        return;
+      }
+      // 2. Live lookup API (resolves any ISIN/symbol via Yahoo).
+      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`);
+      const data = (res.ok ? await res.json() : { found: false }) as ApiMatch;
+      if (data.found) {
+        applyApiMatch(data);
         setImportStatus("found");
         setManual(false);
       } else {
@@ -184,13 +211,15 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
           </div>
           {importStatus === "notfound" && (
             <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-              Not found in the catalog.{" "}
+              {/^[A-Z0-9]{6}$/.test(query.trim()) && !/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(query.trim())
+                ? "Not found. WKN lookup isn’t supported by the data source — try the ISIN instead, or "
+                : "Not found. "}
               <button
                 type="button"
                 onClick={startManual}
                 className="font-medium underline underline-offset-2"
               >
-                Enter details manually
+                enter details manually
               </button>
               .
             </p>

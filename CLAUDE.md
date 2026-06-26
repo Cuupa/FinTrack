@@ -87,6 +87,19 @@ prices rescale the synthetic series so charts stay continuous (factor =
 live/synthetic). Yahoo's endpoint is unofficial/keyless (can rate-limit), hence
 the Stooq + synthetic fallbacks.
 
+### Real prices, history & lookup (shared `lib/server/yahoo.ts`)
+
+- `/api/quotes` — current prices. `/api/history` — **real** historical series
+  (the chart's synthetic walk is only a fallback). `/api/lookup` — auto-import
+  metadata by ISIN/symbol. All resolve a listing via Yahoo, picking the one
+  whose currency matches and whose exchange has deep data (Xetra over a thin
+  regional line). History falls back to any listing with data and FX-converts.
+- Because the catalog/quote symbols live in the DB, **equities still price &
+  chart by ISIN even with no Supabase** (the catalog just adds the exact
+  listing hint + crypto ids). Crypto needs the catalog (CoinGecko id).
+- **German WKNs are not resolvable** by Yahoo/free sources — auto-import works
+  by ISIN or symbol; WKN-only queries fall to manual entry.
+
 ### Analysis features
 
 - `lib/finance/xray.ts` — ETF look-through: decomposes funds into constituent
