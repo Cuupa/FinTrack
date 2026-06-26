@@ -352,6 +352,13 @@ values
 on conflict (etf_symbol, constituent_name) do nothing;
 
 -- Sector + geographic region classifications (look-through). --------------------
+-- Guard the columns so re-running schema.sql on a database created before these
+-- columns existed adds them (create table if not exists is a no-op there).
+alter table public.instruments add column if not exists sector text;
+alter table public.instruments add column if not exists region text;
+alter table public.instrument_constituents add column if not exists sector text;
+alter table public.instrument_constituents add column if not exists region text;
+
 update public.instruments set sector = 'Information Technology', region = 'North America'
   where symbol in ('AAPL', 'MSFT', 'NVDA');
 update public.instruments set sector = 'Consumer Discretionary', region = 'North America'
