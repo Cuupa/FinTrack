@@ -8,7 +8,7 @@ import { Button } from "./ui/primitives";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/analysis", label: "Analysis" },
-  { href: "/xray", label: "X-ray" },
+  { href: "/xray", label: "X-Ray" },
   { href: "/planning", label: "Planning" },
 ];
 
