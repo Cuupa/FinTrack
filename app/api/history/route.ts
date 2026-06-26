@@ -1,9 +1,10 @@
 // Historical price series proxy. Returns REAL daily history per asset (not the
 // synthetic walk), keyed by the asset's price key, in native currency.
-//   - Equities: Yahoo Finance chart endpoint, resolved by ISIN (currency-aware)
-//     or the Yahoo symbol hint.
+//   - Equities: Yahoo Finance, resolved by ISIN (currency + exchange aware).
 //   - Crypto:   CoinGecko market_chart in the base currency.
 // Missing series are omitted; the chart falls back to the synthetic series.
+
+import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,16 +21,6 @@ interface RequestBody {
   items?: HistItem[];
 }
 
-interface Point {
-  date: string;
-  close: number;
-}
-
-const TIMEOUT = 10_000;
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
-const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
-
 // timeframe -> Yahoo {range, interval} and CoinGecko days.
 const RANGE: Record<string, { yRange: string; yInterval: string; days: string }> = {
   "1W": { yRange: "5d", yInterval: "1d", days: "7" },
@@ -42,73 +33,48 @@ const RANGE: Record<string, { yRange: string; yInterval: string; days: string }>
   MAX: { yRange: "max", yInterval: "1mo", days: "max" },
 };
 
-const symbolCache = new Map<string, string>();
-
-async function getJSON(url: string, headers?: Record<string, string>): Promise<unknown | null> {
-  try {
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT) });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-function toISO(seconds: number): string {
-  return new Date(seconds * 1000).toISOString().slice(0, 10);
-}
-
-async function yahooResolve(item: HistItem): Promise<string | null> {
-  if (item.source === "yahoo" && item.id) return item.id;
-  const query = ISIN_RE.test(item.key) ? item.key : item.id || item.key;
-  const want = (item.currency || "").toUpperCase();
-  const ck = `${query}|${want}`;
-  const cached = symbolCache.get(ck);
+// 1 unit of `from` in `to`, via Frankfurter (ECB). 1 when equal/unknown.
+const fxCache = new Map<string, number>();
+async function fxRate(from: string, to: string): Promise<number> {
+  if (!from || !to || from === to) return 1;
+  const ck = `${from}|${to}`;
+  const cached = fxCache.get(ck);
   if (cached) return cached;
+  try {
+    const res = await fetch(
+      `https://api.frankfurter.app/latest?from=${from}&to=${to}`,
+      { signal: AbortSignal.timeout(8000) },
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { rates?: Record<string, number> };
+      const rate = data.rates?.[to];
+      if (typeof rate === "number" && rate > 0) {
+        fxCache.set(ck, rate);
+        return rate;
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  return 1;
+}
 
-  const data = (await getJSON(
-    `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=6&newsCount=0`,
-    { "User-Agent": UA },
-  )) as { quotes?: Array<{ symbol?: string }> } | null;
-  const symbols = (data?.quotes ?? []).map((q) => q.symbol).filter((s): s is string => !!s);
-  if (symbols.length === 0) return null;
+async function yahooHistory(item: HistItem, range: string): Promise<YahooPoint[] | null> {
+  const query = isISIN(item.key) ? item.key : item.id || item.key;
+  const hint = item.source === "yahoo" && item.id ? item.id : undefined;
+  const cfg = RANGE[range] ?? RANGE["1Y"];
+  const result = await historyByQuery(query, item.currency, hint, cfg.yRange, cfg.yInterval);
+  if (!result) return null;
 
-  // Pick the listing whose currency matches the asset (via chart meta).
-  for (const s of symbols.slice(0, 5)) {
-    const meta = (await getJSON(
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?range=1d&interval=1d`,
-      { "User-Agent": UA },
-    )) as { chart?: { result?: Array<{ meta?: { currency?: string } }> } } | null;
-    const cur = (meta?.chart?.result?.[0]?.meta?.currency ?? "").toUpperCase();
-    if (!want || cur === want) {
-      symbolCache.set(ck, s);
-      return s;
+  const want = (item.currency || "").toUpperCase();
+  // Fell back to a different-currency listing → convert to the asset currency.
+  if (want && result.currency && result.currency !== want) {
+    const rate = await fxRate(result.currency, want);
+    if (rate !== 1) {
+      return result.points.map((p) => ({ date: p.date, close: p.close * rate }));
     }
   }
-  symbolCache.set(ck, symbols[0]);
-  return symbols[0];
-}
-
-async function yahooHistory(item: HistItem, range: string): Promise<Point[] | null> {
-  const symbol = await yahooResolve(item);
-  if (!symbol) return null;
-  const { yRange, yInterval } = RANGE[range] ?? RANGE["1Y"];
-  const data = (await getJSON(
-    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${yRange}&interval=${yInterval}`,
-    { "User-Agent": UA },
-  )) as
-    | { chart?: { result?: Array<{ timestamp?: number[]; indicators?: { quote?: Array<{ close?: (number | null)[] }> } }> } }
-    | null;
-  const result = data?.chart?.result?.[0];
-  const ts = result?.timestamp;
-  const close = result?.indicators?.quote?.[0]?.close;
-  if (!ts || !close) return null;
-  const points: Point[] = [];
-  for (let i = 0; i < ts.length; i++) {
-    const c = close[i];
-    if (typeof c === "number" && c > 0) points.push({ date: toISO(ts[i]), close: c });
-  }
-  return points.length > 0 ? points : null;
+  return result.points;
 }
 
 function ytdDays(): number {
@@ -121,24 +87,30 @@ async function coingeckoHistory(
   item: HistItem,
   base: string,
   range: string,
-): Promise<Point[] | null> {
+): Promise<YahooPoint[] | null> {
   const cfg = RANGE[range] ?? RANGE["1Y"];
   const days = cfg.days === "ytd" ? String(ytdDays()) : cfg.days;
-  const data = (await getJSON(
-    `https://api.coingecko.com/api/v3/coins/${item.id}/market_chart?vs_currency=${base.toLowerCase()}&days=${days}`,
-  )) as { prices?: [number, number][] } | null;
-  const prices = data?.prices;
-  if (!prices || prices.length === 0) return null;
-  // Reduce to one point per day.
-  const byDay = new Map<string, number>();
-  for (const [ms, price] of prices) {
-    if (typeof price === "number" && price > 0) {
-      byDay.set(new Date(ms).toISOString().slice(0, 10), price);
+  try {
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${item.id}/market_chart?vs_currency=${base.toLowerCase()}&days=${days}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { prices?: [number, number][] };
+    const prices = data.prices;
+    if (!prices || prices.length === 0) return null;
+    const byDay = new Map<string, number>();
+    for (const [ms, p] of prices) {
+      if (typeof p === "number" && p > 0) {
+        byDay.set(new Date(ms).toISOString().slice(0, 10), p);
+      }
     }
+    return Array.from(byDay, ([date, close]) => ({ date, close })).sort((a, b) =>
+      a.date < b.date ? -1 : 1,
+    );
+  } catch {
+    return null;
   }
-  return Array.from(byDay, ([date, close]) => ({ date, close })).sort((a, b) =>
-    a.date < b.date ? -1 : 1,
-  );
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -152,7 +124,7 @@ export async function POST(req: Request): Promise<Response> {
   const base = (body.base || "EUR").toUpperCase();
   const range = body.range || "1Y";
   const items = Array.isArray(body.items) ? body.items : [];
-  const histories: Record<string, Point[]> = {};
+  const histories: Record<string, YahooPoint[]> = {};
 
   await Promise.all(
     items.map(async (item) => {
