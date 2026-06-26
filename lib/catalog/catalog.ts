@@ -17,6 +17,10 @@ export interface Instrument {
   currency: string | null;
   /** Country / region (for allocation breakdowns). */
   country: string | null;
+  /** GICS-style sector (e.g. "Information Technology"). */
+  sector: string | null;
+  /** Geographic region (e.g. "North America", "Europe", "Crypto"). */
+  region: string | null;
   quoteSource: QuoteSource | null;
   quoteId: string | null;
   // Synthetic-price fallback parameters.
@@ -38,6 +42,8 @@ export interface Constituent {
   isin: string | null;
   /** Fraction of the fund (0..1). */
   weight: number;
+  sector: string | null;
+  region: string | null;
 }
 
 let catalog: Instrument[] = [];

@@ -16,6 +16,8 @@ interface InstrumentRow {
   type: string;
   currency: string | null;
   country: string | null;
+  sector: string | null;
+  region: string | null;
   quote_source: string | null;
   quote_id: string | null;
   base_price: number | string;
@@ -32,6 +34,8 @@ interface ConstituentRow {
   constituent_symbol: string | null;
   constituent_isin: string | null;
   weight: number | string;
+  sector: string | null;
+  region: string | null;
 }
 
 export async function GET(): Promise<Response> {
@@ -47,11 +51,13 @@ export async function GET(): Promise<Response> {
       supabase
         .from("instruments")
         .select(
-          "isin, wkn, symbol, name, type, currency, country, quote_source, quote_id, base_price, drift, vol, dividend_yield, last_price, price_synced_at",
+          "isin, wkn, symbol, name, type, currency, country, sector, region, quote_source, quote_id, base_price, drift, vol, dividend_yield, last_price, price_synced_at",
         ),
       supabase
         .from("instrument_constituents")
-        .select("etf_symbol, constituent_name, constituent_symbol, constituent_isin, weight"),
+        .select(
+          "etf_symbol, constituent_name, constituent_symbol, constituent_isin, weight, sector, region",
+        ),
       supabase.from("fx_rates").select("currency, rate"),
     ]);
     if (instRes.error) throw instRes.error;
@@ -64,6 +70,8 @@ export async function GET(): Promise<Response> {
       type: r.type,
       currency: r.currency,
       country: r.country,
+      sector: r.sector,
+      region: r.region,
       quoteSource: r.quote_source,
       quoteId: r.quote_id,
       basePrice: Number(r.base_price),
@@ -80,6 +88,8 @@ export async function GET(): Promise<Response> {
       symbol: r.constituent_symbol,
       isin: r.constituent_isin,
       weight: Number(r.weight),
+      sector: r.sector,
+      region: r.region,
     }));
 
     const fxRates: Record<string, number> = {};
