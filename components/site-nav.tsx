@@ -14,7 +14,7 @@ const LINKS = [
 
 export function SiteNav() {
   const pathname = usePathname();
-  const { user, mode, authAvailable, signOut } = useAuth();
+  const { user, mode, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
@@ -51,11 +51,14 @@ export function SiteNav() {
               </Button>
             </>
           ) : (
-            authAvailable && (
+            <>
               <Link href="/login">
-                <Button variant="primary">Sign in</Button>
+                <Button variant="secondary">Log in</Button>
               </Link>
-            )
+              <Link href="/login?tab=signup">
+                <Button variant="primary">Register</Button>
+              </Link>
+            </>
           )}
         </div>
       </nav>

@@ -1,15 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Button, Card } from "@/components/ui/primitives";
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-md py-8">
+          <div className="h-80 animate-pulse rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, authAvailable, signInWithPassword, signUp, signInWithOAuth } =
     useAuth();
-  const [tab, setTab] = useState<"signin" | "signup">("signin");
+  // Open the register tab when arriving via /login?tab=signup.
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<"signin" | "signup">(
+    initialTab === "signup" || initialTab === "register" ? "signup" : "signin",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
