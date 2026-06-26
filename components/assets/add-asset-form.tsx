@@ -164,6 +164,15 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         fee: Number(fee) || 0,
         date: executedAt,
       });
+      // First-time global constituent fetch for funds (no-ops if already
+      // cached). Fire-and-forget — doesn't block adding the asset.
+      if (asset.type === "ETF" && asset.symbol) {
+        fetch("/api/constituents/ensure", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symbol: asset.symbol, isin: asset.isin }),
+        }).catch(() => {});
+      }
       onDone?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add asset.");
