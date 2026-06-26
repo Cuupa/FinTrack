@@ -8,6 +8,11 @@
 //
 // Caches:  equities (Yahoo, native currency), crypto (CoinGecko, USD),
 //          FX rates (Frankfurter, EUR-anchored).
+//
+// Equities/ETFs are synced even when they have no preset quote listing — the
+// job resolves one by ISIN/WKN/symbol via Yahoo and persists the resolved
+// quote_source/quote_id, so auto-imported assets (created without a listing)
+// start pricing without any manual catalog seeding.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { price, resolveSymbol } from "@/lib/server/yahoo";
@@ -56,10 +61,25 @@ async function syncEquities(
       try {
         const symbol = await resolveSymbol(query, r.currency || "", hint);
         const p = symbol ? await price(symbol) : null;
-        if (p == null || !changed(r.last_price, p)) return;
+        if (p == null) return;
+        // Auto-imported instruments are created without a quote listing, so the
+        // cron resolves one (by ISIN/WKN/symbol — never hardcoded) and persists
+        // it. Future syncs then short-circuit on the hint, and the runtime
+        // live-quote path picks up the same quote_id from the catalog.
+        const learnsListing =
+          !!symbol && r.quote_source !== "yahoo" && r.quote_source !== "stooq";
+        if (!learnsListing && !changed(r.last_price, p)) return;
+        const patch: Record<string, unknown> = {
+          last_price: p,
+          price_synced_at: syncedAt,
+        };
+        if (learnsListing) {
+          patch.quote_source = "yahoo";
+          patch.quote_id = symbol;
+        }
         const { error } = await supabase
           .from("instruments")
-          .update({ last_price: p, price_synced_at: syncedAt })
+          .update(patch)
           .eq("id", r.id);
         if (!error) updated += 1;
       } catch {
@@ -136,10 +156,12 @@ async function handle(req: Request): Promise<Response> {
   }
 
   const supabase = createClient(url, serviceKey);
+  // All instruments — including user-added ones that have no quote listing yet.
+  // Equities/ETFs are resolved by identifier (ISIN/WKN/symbol); crypto needs a
+  // CoinGecko id, so only rows that already carry one are synced.
   const { data, error } = await supabase
     .from("instruments")
-    .select("id, isin, wkn, symbol, currency, type, quote_source, quote_id, last_price")
-    .not("quote_source", "is", null);
+    .select("id, isin, wkn, symbol, currency, type, quote_source, quote_id, last_price");
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const rows = (data ?? []) as InstrumentRow[];
@@ -148,12 +170,15 @@ async function handle(req: Request): Promise<Response> {
   const [equities, crypto, fx] = await Promise.all([
     syncEquities(
       supabase,
-      rows.filter((r) => r.quote_source === "yahoo" || r.quote_source === "stooq"),
+      rows.filter(
+        (r) =>
+          (r.type === "STOCK" || r.type === "ETF") && r.quote_source !== "coingecko",
+      ),
       syncedAt,
     ),
     syncCrypto(
       supabase,
-      rows.filter((r) => r.quote_source === "coingecko"),
+      rows.filter((r) => r.quote_source === "coingecko" && r.quote_id),
       syncedAt,
     ),
     syncFx(supabase, syncedAt),
