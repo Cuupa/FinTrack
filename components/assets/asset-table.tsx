@@ -108,7 +108,45 @@ export function AssetTable() {
       {rows.length === 0 ? (
         <p className="p-6 text-sm text-zinc-500">No holdings match your filter.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Mobile: stacked cards (the wide table is hidden below md). */}
+        <ul className="divide-y divide-zinc-100 md:hidden dark:divide-zinc-800/60">
+          {rows.map(({ h, allocation, entry }) => {
+            const nativeCur = h.currency || currency;
+            const gain = h.price - entry;
+            return (
+              <li key={h.asset.id}>
+                <Link
+                  href={`/assets/${h.asset.id}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 active:bg-zinc-50 dark:active:bg-zinc-800/40"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{h.asset.name}</div>
+                    <div className="mt-0.5 text-xs text-zinc-500">
+                      {assetIdentifier(h.asset)} · {formatCurrency(h.price, nativeCur)}
+                      {entry > 0 && (
+                        <span className={`ml-1 ${plColor(gain)}`}>
+                          {formatPercent(gain / entry)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-medium tabular-nums">
+                      {formatCurrency(h.marketValue, currency)}
+                    </div>
+                    <div className="mt-0.5 text-xs text-zinc-500 tabular-nums">
+                      {formatNumber(allocation * 100, 1)}%
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Desktop: full sortable table. */}
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
@@ -165,6 +203,7 @@ export function AssetTable() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

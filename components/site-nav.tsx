@@ -22,7 +22,8 @@ export function SiteNav() {
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
         </Link>
-        <div className="flex items-center gap-1">
+        {/* Inline links are hidden on mobile; MobileNav renders a bottom tab bar instead. */}
+        <div className="hidden items-center gap-1 md:flex">
           {LINKS.map((l) => {
             const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
             return (

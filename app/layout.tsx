@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteNav } from "@/components/site-nav";
+import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +20,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FinTrack",
   description: "Financial planning and asset tracking.",
+  applicationName: "FinTrack",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "FinTrack",
+  },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({
@@ -34,8 +53,13 @@ export default function RootLayout({
         <Providers>
           <GuestBanner />
           <SiteNav />
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+          {/* pb leaves room for the fixed mobile tab bar (MobileNav). */}
+          <main className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:py-8 md:pb-8">
+            {children}
+          </main>
+          <MobileNav />
         </Providers>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
