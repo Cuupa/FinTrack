@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="FinTrack">
+  <rect width="512" height="512" rx="112" fill="#059669"/>
+  <!-- safe zone kept within the central ~80% for maskable icons -->
+  <polyline points="112,336 208,256 288,304 400,168"
+            fill="none" stroke="#ffffff" stroke-width="34"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="400" cy="168" r="26" fill="#ffffff"/>
+  <polyline points="112,392 400,392" fill="none" stroke="#a7f3d0" stroke-width="22" stroke-linecap="round"/>
+</svg>
