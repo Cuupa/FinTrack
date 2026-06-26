@@ -1,0 +1,700 @@
+openapi: 3.1.0
+info:
+  title: FinTrack API
+  version: 0.1.0
+  description: >
+    HTTP API for FinTrack — the Next.js route handlers under `app/api`.
+
+    These are thin, keyless proxies in front of public market-data providers
+    (Yahoo Finance, Stooq, CoinGecko, Frankfurter) plus the world-readable
+    instruments catalog stored in Supabase. They exist because the browser
+    cannot call the providers directly (CORS) and to centralise rate limits.
+
+    Every data-fetching route degrades gracefully: a provider failure or an
+    unresolvable identifier yields an empty/`found:false` result with HTTP 200,
+    and the client falls back to synthetic pricing. The only routes that return
+    non-2xx are the service-role-backed ones (`/api/constituents/ensure`,
+    `/api/cron/*`), which surface 401/500.
+
+    The asset price key is the asset's ISIN, else WKN, else symbol, else name
+    (`assetPriceKey`). All prices are in each instrument's native currency
+    unless noted; FX→base conversion is handled separately via `/api/fx`.
+servers:
+  - url: http://localhost:3000
+    description: Local dev server
+  - url: /
+    description: Same-origin (relative)
+
+tags:
+  - name: Catalog
+    description: World-readable instruments reference data.
+  - name: Market data
+    description: Live quotes, historical series, FX.
+  - name: Lookup
+    description: Identifier/metadata resolution for auto-import.
+  - name: Cron
+    description: Scheduled, service-role jobs (Bearer-secured).
+
+paths:
+  /api/catalog:
+    get:
+      tags: [Catalog]
+      operationId: getCatalog
+      summary: Instruments catalog, constituents and cached FX rates
+      description: >
+        Returns the full instruments catalog, ETF/fund constituents and any
+        cached FX rates from Supabase. When Supabase is not configured (or on
+        any error) returns empty collections with HTTP 200, so the app still
+        runs in Guest Mode.
+      responses:
+        "200":
+          description: Catalog payload (possibly empty).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogResponse"
+
+  /api/quotes:
+    post:
+      tags: [Market data]
+      operationId: getQuotes
+      summary: Current prices for a batch of assets
+      description: >
+        Fetches current prices for the given items in each item's native
+        currency. Equities are priced via Yahoo (resolved by ISIN), falling
+        back to Stooq; crypto via CoinGecko in `base`. Unpriceable items are
+        simply omitted from `prices`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteRequest"
+      responses:
+        "200":
+          description: Map of price key → current price, plus the fetch timestamp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+
+  /api/history:
+    post:
+      tags: [Market data]
+      operationId: getHistory
+      summary: Historical daily price series for a batch of assets
+      description: >
+        Returns real daily history per asset (keyed by price key) in native
+        currency over the requested timeframe. Equities via Yahoo (resolved by
+        ISIN, FX-converted if a different-currency listing is used), crypto via
+        CoinGecko in `base`. Missing series are omitted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HistoryRequest"
+      responses:
+        "200":
+          description: Map of price key → ordered array of daily points.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+
+  /api/fx:
+    get:
+      tags: [Market data]
+      operationId: getFx
+      summary: FX rates from each source currency to the base currency
+      description: >
+        Returns `{ [currency]: rateToBase }` via Frankfurter (ECB). The base
+        currency itself and any failed currencies are omitted (the client
+        treats a missing rate as 1).
+      parameters:
+        - name: base
+          in: query
+          required: false
+          description: Base/target currency. Defaults to EUR.
+          schema:
+            type: string
+            default: EUR
+            example: EUR
+        - name: symbols
+          in: query
+          required: false
+          description: >
+            Comma-separated source currencies to convert into `base`. Entries
+            equal to `base` are ignored. Empty → empty `rates`.
+          schema:
+            type: string
+            example: USD,GBP,CHF
+      responses:
+        "200":
+          description: Source-currency → rate-to-base map.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FxResponse"
+
+  /api/lookup:
+    get:
+      tags: [Lookup]
+      operationId: lookupAsset
+      summary: Resolve asset metadata by ISIN or symbol (auto-import)
+      description: >
+        Looks up name, type, currency and ISIN/symbol via Yahoo Finance for
+        auto-import. German WKNs are not resolvable by free sources — the client
+        should fall back to manual entry. Returns `{ found: false }` when
+        nothing matches or `q` is missing.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: ISIN or symbol (e.g. `IE00BK5BQT80`, `AAPL`, `BTC`).
+          schema:
+            type: string
+            example: IE00BK5BQT80
+      responses:
+        "200":
+          description: Match (or `found:false`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LookupResponse"
+
+  /api/classify:
+    get:
+      tags: [Lookup]
+      operationId: classifyAsset
+      summary: Resolve sector + geographic region by ISIN or symbol
+      description: >
+        Online classification (GICS-style sector + region) via Yahoo's
+        assetProfile, used to fill look-through classifications the catalog
+        doesn't have. Returns `{ found: false }` when unresolved or `q` missing.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: ISIN or symbol.
+          schema:
+            type: string
+            example: US0378331005
+      responses:
+        "200":
+          description: Classification (or `found:false`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassifyResponse"
+
+  /api/constituents/ensure:
+    post:
+      tags: [Catalog]
+      operationId: ensureConstituents
+      summary: First-time global fetch of an ETF's constituents
+      description: >
+        Called when an asset is created. If the ETF has no constituents cached
+        globally (keyed by `etf_symbol`), fetch and cache them; otherwise
+        no-op. Requires `SUPABASE_SERVICE_ROLE_KEY`; returns
+        `{ ok:false, reason }` when not configured.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnsureConstituentsRequest"
+      responses:
+        "200":
+          description: Outcome (cached / fetched / skipped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnsureConstituentsResponse"
+        "500":
+          description: Database write failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cron/sync-prices:
+    get:
+      tags: [Cron]
+      operationId: syncPricesGet
+      summary: Cache live prices + FX onto the reference tables
+      description: >
+        Fetches live equity (Yahoo), crypto (CoinGecko, USD) and FX
+        (Frankfurter, EUR-anchored) prices and caches them on `instruments` /
+        `fx_rates`. Secured by `CRON_SECRET` (Bearer header or `?secret=`); if
+        no secret is configured the route is open (local dev). Requires the
+        service role key.
+      security:
+        - cronBearer: []
+        - cronSecretQuery: []
+      parameters:
+        - $ref: "#/components/parameters/CronSecretQuery"
+      responses:
+        "200":
+          description: Counts of updated rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncPricesResponse"
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Service role not configured, or a DB error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Cron]
+      operationId: syncPricesPost
+      summary: Cache live prices + FX (POST alias)
+      description: Identical to `GET /api/cron/sync-prices`.
+      security:
+        - cronBearer: []
+        - cronSecretQuery: []
+      parameters:
+        - $ref: "#/components/parameters/CronSecretQuery"
+      responses:
+        "200":
+          description: Counts of updated rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncPricesResponse"
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Service role not configured, or a DB error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/cron/sync-constituents:
+    get:
+      tags: [Cron]
+      operationId: syncConstituentsGet
+      summary: Refresh cached constituents for every fetchable catalog ETF
+      description: >
+        Re-fetches holdings for each catalog ETF that has a fetchable source and
+        replaces the cached rows. Funds without a source keep their seeded data.
+        Same `CRON_SECRET` and service-role requirements as `sync-prices`.
+      security:
+        - cronBearer: []
+        - cronSecretQuery: []
+      parameters:
+        - $ref: "#/components/parameters/CronSecretQuery"
+      responses:
+        "200":
+          description: Per-ETF refresh summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncConstituentsResponse"
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Service role not configured, or a DB error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Cron]
+      operationId: syncConstituentsPost
+      summary: Refresh cached constituents (POST alias)
+      description: Identical to `GET /api/cron/sync-constituents`.
+      security:
+        - cronBearer: []
+        - cronSecretQuery: []
+      parameters:
+        - $ref: "#/components/parameters/CronSecretQuery"
+      responses:
+        "200":
+          description: Per-ETF refresh summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncConstituentsResponse"
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Service role not configured, or a DB error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    cronBearer:
+      type: http
+      scheme: bearer
+      description: >
+        `Authorization: Bearer $CRON_SECRET`. Only enforced when `CRON_SECRET`
+        is set in the environment.
+    cronSecretQuery:
+      type: apiKey
+      in: query
+      name: secret
+      description: Alternative to the Bearer header — `?secret=$CRON_SECRET`.
+
+  parameters:
+    CronSecretQuery:
+      name: secret
+      in: query
+      required: false
+      description: Cron secret, as an alternative to the Bearer header.
+      schema:
+        type: string
+
+  schemas:
+    AssetType:
+      type: string
+      enum: [ETF, STOCK, CRYPTO, CASH]
+
+    QuoteSource:
+      type: string
+      description: Which provider/identifier scheme to price the item with.
+      enum: [yahoo, stooq, coingecko]
+
+    QuoteItem:
+      type: object
+      required: [key, source, id, currency]
+      properties:
+        key:
+          type: string
+          description: Asset price key (ISIN/WKN/symbol/name); the result map key.
+          example: IE00BK5BQT80
+        source:
+          $ref: "#/components/schemas/QuoteSource"
+        id:
+          type: string
+          description: >
+            Provider symbol/id — Stooq symbol, CoinGecko id, or a Yahoo listing
+            hint. May be empty for pure ISIN resolution.
+          example: bitcoin
+        currency:
+          type: string
+          description: Native currency of the asset (ISO 4217).
+          example: EUR
+
+    QuoteRequest:
+      type: object
+      properties:
+        base:
+          type: string
+          description: Base currency for crypto pricing. Defaults to EUR.
+          default: EUR
+          example: EUR
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItem"
+
+    QuoteResponse:
+      type: object
+      required: [prices]
+      properties:
+        prices:
+          type: object
+          description: Map of price key → current price in native currency.
+          additionalProperties:
+            type: number
+          example:
+            IE00BK5BQT80: 112.34
+            bitcoin: 58210.5
+        syncedAt:
+          type: string
+          format: date-time
+          description: When the prices were fetched (absent on a malformed body).
+
+    HistoryRequest:
+      type: object
+      properties:
+        base:
+          type: string
+          default: EUR
+          example: EUR
+        range:
+          $ref: "#/components/schemas/Timeframe"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItem"
+
+    Timeframe:
+      type: string
+      description: Requested history window. Unknown values fall back to 1Y.
+      default: "1Y"
+      enum: ["1W", "1M", "3M", "YTD", "1Y", "5Y", "10Y", "MAX"]
+
+    HistoryPoint:
+      type: object
+      required: [date, close]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Day in YYYY-MM-DD.
+          example: "2026-06-27"
+        close:
+          type: number
+          description: Closing price in native currency.
+          example: 112.34
+
+    HistoryResponse:
+      type: object
+      required: [histories]
+      properties:
+        histories:
+          type: object
+          description: Map of price key → ascending array of daily points.
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/HistoryPoint"
+
+    FxResponse:
+      type: object
+      required: [rates]
+      properties:
+        rates:
+          type: object
+          description: Map of source currency → multiplier into the base currency.
+          additionalProperties:
+            type: number
+          example:
+            USD: 0.92
+            GBP: 1.17
+
+    LookupResponse:
+      oneOf:
+        - $ref: "#/components/schemas/LookupMatch"
+        - $ref: "#/components/schemas/NotFound"
+
+    LookupMatch:
+      type: object
+      required: [found, name, type]
+      properties:
+        found:
+          const: true
+        name:
+          type: string
+          example: iShares Core MSCI World
+        symbol:
+          type: [string, "null"]
+          description: Null for ISIN-identified securities (priced by ISIN).
+          example: null
+        type:
+          $ref: "#/components/schemas/AssetType"
+        currency:
+          type: [string, "null"]
+          example: EUR
+        isin:
+          type: [string, "null"]
+          example: IE00BK5BQT80
+
+    ClassifyResponse:
+      oneOf:
+        - $ref: "#/components/schemas/ClassifyMatch"
+        - $ref: "#/components/schemas/NotFound"
+
+    ClassifyMatch:
+      type: object
+      required: [found]
+      properties:
+        found:
+          const: true
+        sector:
+          type: [string, "null"]
+          description: GICS-style sector.
+          example: Information Technology
+        region:
+          type: [string, "null"]
+          example: North America
+        country:
+          type: [string, "null"]
+          example: United States
+
+    NotFound:
+      type: object
+      required: [found]
+      properties:
+        found:
+          const: false
+
+    Instrument:
+      type: object
+      properties:
+        isin:
+          type: [string, "null"]
+        wkn:
+          type: [string, "null"]
+        symbol:
+          type: [string, "null"]
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/AssetType"
+        currency:
+          type: [string, "null"]
+        country:
+          type: [string, "null"]
+        sector:
+          type: [string, "null"]
+        region:
+          type: [string, "null"]
+        quoteSource:
+          oneOf:
+            - $ref: "#/components/schemas/QuoteSource"
+            - type: "null"
+        quoteId:
+          type: [string, "null"]
+        basePrice:
+          type: number
+        drift:
+          type: number
+        vol:
+          type: number
+        dividendYield:
+          type: number
+        lastPrice:
+          type: [number, "null"]
+        priceSyncedAt:
+          type: [string, "null"]
+          format: date-time
+
+    Constituent:
+      type: object
+      properties:
+        etfSymbol:
+          type: string
+        name:
+          type: string
+        symbol:
+          type: [string, "null"]
+        isin:
+          type: [string, "null"]
+        weight:
+          type: number
+          description: Fraction of the fund (0..1).
+        sector:
+          type: [string, "null"]
+        region:
+          type: [string, "null"]
+
+    CatalogResponse:
+      type: object
+      required: [instruments, constituents, fxRates]
+      properties:
+        instruments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Instrument"
+        constituents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Constituent"
+        fxRates:
+          type: object
+          additionalProperties:
+            type: number
+
+    EnsureConstituentsRequest:
+      type: object
+      required: [symbol]
+      properties:
+        symbol:
+          type: string
+          description: ETF symbol (upper-cased server-side).
+          example: SPY
+        isin:
+          type: string
+          example: US78462F1030
+
+    EnsureConstituentsResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        cached:
+          type: boolean
+          description: True when constituents already existed (no-op).
+        fetched:
+          type: integer
+          description: Number of constituent rows written.
+        reason:
+          type: string
+          description: Present when skipped (e.g. service role not configured).
+        error:
+          type: string
+
+    SyncPricesResponse:
+      type: object
+      required: [ok, syncedAt, equities, crypto, fxRates]
+      properties:
+        ok:
+          type: boolean
+        syncedAt:
+          type: string
+          format: date-time
+        equities:
+          type: integer
+          description: Equity rows updated.
+        crypto:
+          type: integer
+          description: Crypto rows updated.
+        fxRates:
+          type: integer
+          description: FX rows upserted.
+
+    SyncConstituentsResponse:
+      type: object
+      required: [ok, etfs, refreshed, details]
+      properties:
+        ok:
+          type: boolean
+        etfs:
+          type: integer
+          description: Catalog ETFs considered.
+        refreshed:
+          type: integer
+          description: ETFs whose constituents were replaced.
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+              updated:
+                type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
