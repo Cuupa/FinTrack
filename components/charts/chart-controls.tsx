@@ -14,6 +14,8 @@ interface Props {
   onScale: (s: ChartScale) => void;
   mode: ChartMode;
   onMode: (m: ChartMode) => void;
+  /** Show the Currency/Percent toggle (hidden on the asset detail chart). */
+  showMode?: boolean;
 }
 
 export function ChartControls({
@@ -23,6 +25,7 @@ export function ChartControls({
   onScale,
   mode,
   onMode,
+  showMode = true,
 }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -42,15 +45,17 @@ export function ChartControls({
             { label: "Log", value: "log" },
           ]}
         />
-        <SegmentedControl<ChartMode>
-          size="sm"
-          value={mode}
-          onChange={onMode}
-          options={[
-            { label: "Currency", value: "currency" },
-            { label: "Percent", value: "percent" },
-          ]}
-        />
+        {showMode && (
+          <SegmentedControl<ChartMode>
+            size="sm"
+            value={mode}
+            onChange={onMode}
+            options={[
+              { label: "Currency", value: "currency" },
+              { label: "Percent", value: "percent" },
+            ]}
+          />
+        )}
       </div>
     </div>
   );

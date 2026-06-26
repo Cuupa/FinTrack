@@ -23,14 +23,13 @@ import {
   formatPercent,
   plColor,
 } from "@/lib/format";
-import { assetIdentifier } from "@/lib/types";
+import { assetIdentifier, type Transaction } from "@/lib/types";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor } from "@/lib/catalog/catalog";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { Button, Card, Stat } from "@/components/ui/primitives";
-import { SyncStatus } from "@/components/sync-status";
 import { ChartControls } from "@/components/charts/chart-controls";
 import {
   PerformanceChart,
@@ -150,7 +149,6 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <SyncStatus />
           <Button variant="danger" onClick={handleDelete}>
             Delete
           </Button>
@@ -166,6 +164,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           onScale={setScale}
           mode={mode}
           onMode={setMode}
+          showMode={false}
         />
         <div className="mt-4">
           <PerformanceChart
@@ -249,104 +248,192 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Master data + dividends */}
-        <Card className="lg:col-span-1">
-          <h2 className="text-lg font-semibold">Details</h2>
-          <dl className="mt-3 space-y-2 text-sm">
-            <Row label="Name" value={asset.name} />
-            <Row label="ISIN" value={asset.isin ?? "—"} />
-            <Row label="WKN" value={asset.wkn ?? "—"} />
-            {asset.symbol && <Row label="Symbol" value={asset.symbol} />}
-            <Row label="Currency" value={nativeCur} />
-            <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} />
-            <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} />
-            <Row label="Current price" value={formatCurrency(summary.price, nativeCur)} />
-            <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} />
-            <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} />
-            <Row
-              label="Dividend yield"
-              value={yld > 0 ? formatPercent(yld) : "—"}
-            />
-            <Row
-              label="Dividends received"
-              value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
-            />
-          </dl>
-        </Card>
+      {/* Details — full width, directly under the metrics */}
+      <Card>
+        <h2 className="text-lg font-semibold">Details</h2>
+        <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <Row label="Name" value={asset.name} />
+          <Row label="ISIN" value={asset.isin ?? "—"} />
+          <Row label="WKN" value={asset.wkn ?? "—"} />
+          {asset.symbol && <Row label="Symbol" value={asset.symbol} />}
+          <Row label="Currency" value={nativeCur} />
+          <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} />
+          <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} />
+          <Row label="Current price" value={formatCurrency(summary.price, nativeCur)} />
+          <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} />
+          <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} />
+          <Row label="Dividend yield" value={yld > 0 ? formatPercent(yld) : "—"} />
+          <Row
+            label="Dividends received"
+            value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
+          />
+        </dl>
+      </Card>
 
-        {/* Transactions */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Transactions</h2>
-          </div>
-          {txs.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">No transactions yet.</p>
-          ) : (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Type</th>
-                    <th className="py-2 pr-3 text-right">Qty</th>
-                    <th className="py-2 pr-3 text-right">Price</th>
-                    <th className="py-2 pr-3 text-right">Fee</th>
-                    <th className="py-2 pr-3 text-right">Total</th>
-                    <th className="py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...txs]
-                    .sort((a, b) => (a.date < b.date ? 1 : -1))
-                    .map((t) => (
-                      <tr key={t.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                        <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(t.date)}</td>
-                        <td className="py-2 pr-3">
-                          <span
-                            className={
-                              t.type === "BUY"
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-red-600 dark:text-red-400"
-                            }
-                          >
-                            {t.type}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">
-                          {formatNumber(t.quantity, 4)}
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">
-                          {formatCurrency(t.price, currency)}
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">
-                          {formatCurrency(t.fee, currency)}
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">
-                          {formatCurrency(t.quantity * t.price, currency)}
-                        </td>
-                        <td className="py-2 text-right">
-                          <button
-                            onClick={() => void deleteTransaction(t.id)}
-                            className="text-xs text-zinc-400 hover:text-red-500"
-                            aria-label="Delete transaction"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* Transactions — full width, add form above the table */}
+      <Card>
+        <h2 className="text-lg font-semibold">Transactions</h2>
 
-          <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-            <h3 className="mb-3 text-sm font-semibold">Add transaction</h3>
-            <TransactionForm asset={asset} />
+        <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <h3 className="mb-3 text-sm font-semibold">Add transaction</h3>
+          <TransactionForm asset={asset} />
+        </div>
+
+        {txs.length === 0 ? (
+          <p className="mt-4 text-sm text-zinc-500">No transactions yet.</p>
+        ) : (
+          <div className="mt-4">
+            <TransactionsTable
+              txs={txs}
+              currency={nativeCur}
+              onDelete={(t) => {
+                if (
+                  confirm(
+                    `Delete this ${t.type} of ${formatNumber(t.quantity, 4)} on ${formatDateTime(t.date)}?`,
+                  )
+                ) {
+                  void deleteTransaction(t.id);
+                }
+              }}
+            />
           </div>
-        </Card>
-      </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+type TxSortKey = "date" | "type" | "quantity" | "price" | "fee" | "total";
+
+function TxTh({
+  label,
+  k,
+  align = "left",
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: TxSortKey;
+  align?: "left" | "right";
+  sort: { key: TxSortKey; dir: 1 | -1 };
+  onSort: (k: TxSortKey) => void;
+}) {
+  return (
+    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
+      <button
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        {label}
+        <span className="text-[10px]">
+          {sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+function txCompare(a: Transaction, b: Transaction, key: TxSortKey): number {
+  switch (key) {
+    case "date":
+      return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    case "type":
+      return a.type.localeCompare(b.type);
+    case "quantity":
+      return a.quantity - b.quantity;
+    case "price":
+      return a.price - b.price;
+    case "fee":
+      return a.fee - b.fee;
+    case "total":
+      return a.quantity * a.price - b.quantity * b.price;
+  }
+}
+
+function TransactionsTable({
+  txs,
+  currency,
+  onDelete,
+}: {
+  txs: Transaction[];
+  currency: string;
+  onDelete: (t: Transaction) => void;
+}) {
+  const [sort, setSort] = useState<{ key: TxSortKey; dir: 1 | -1 }>({
+    key: "date",
+    dir: -1,
+  });
+
+  const rows = useMemo(
+    () => [...txs].sort((a, b) => txCompare(a, b, sort.key) * sort.dir),
+    [txs, sort],
+  );
+
+  function toggle(key: TxSortKey) {
+    setSort((s) =>
+      s.key === key
+        ? { key, dir: (s.dir * -1) as 1 | -1 }
+        : { key, dir: key === "date" ? -1 : 1 },
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+            <TxTh label="Date" k="date" sort={sort} onSort={toggle} />
+            <TxTh label="Type" k="type" sort={sort} onSort={toggle} />
+            <TxTh label="Qty" k="quantity" align="right" sort={sort} onSort={toggle} />
+            <TxTh label="Price" k="price" align="right" sort={sort} onSort={toggle} />
+            <TxTh label="Fee" k="fee" align="right" sort={sort} onSort={toggle} />
+            <TxTh label="Total" k="total" align="right" sort={sort} onSort={toggle} />
+            <th className="py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t) => (
+            <tr
+              key={t.id}
+              className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+            >
+              <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(t.date)}</td>
+              <td className="py-2 pr-3">
+                <span
+                  className={
+                    t.type === "BUY"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
+                  }
+                >
+                  {t.type}
+                </span>
+              </td>
+              <td className="py-2 pr-3 text-right tabular-nums">
+                {formatNumber(t.quantity, 4)}
+              </td>
+              <td className="py-2 pr-3 text-right tabular-nums">
+                {formatCurrency(t.price, currency)}
+              </td>
+              <td className="py-2 pr-3 text-right tabular-nums">
+                {formatCurrency(t.fee, currency)}
+              </td>
+              <td className="py-2 pr-3 text-right tabular-nums">
+                {formatCurrency(t.quantity * t.price, currency)}
+              </td>
+              <td className="py-2 text-right">
+                <button
+                  onClick={() => onDelete(t)}
+                  className="text-xs text-zinc-400 hover:text-red-500"
+                  aria-label="Delete transaction"
+                >
+                  ✕
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

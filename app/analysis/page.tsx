@@ -2,7 +2,7 @@
 
 import { AllocationView } from "@/components/allocation/allocation-view";
 
-export default function AllocationPage() {
+export default function AnalysisPage() {
   return (
     <div className="space-y-6">
       <div>

@@ -65,8 +65,13 @@ export function PerformanceChart({
         : p.value,
   }));
 
-  // Log scale is only meaningful for positive absolute values.
+  // Log scale is only meaningful for positive absolute values. Recharts needs
+  // an explicit positive domain — "auto" (plus any leading zero values in the
+  // net-worth series) makes it fall back to a near-linear axis.
   const useLog = scale === "log" && mode === "currency";
+  const positives = data.map((d) => d.value).filter((v) => v > 0);
+  const logLo = positives.length ? Math.min(...positives) : 1;
+  const logHi = positives.length ? Math.max(...positives) : 1;
 
   // Snap each marker to the nearest sampled date so ReferenceLine aligns with
   // the categorical x-axis.
@@ -92,7 +97,7 @@ export function PerformanceChart({
         />
         <YAxis
           scale={useLog ? "log" : "linear"}
-          domain={useLog ? ["auto", "auto"] : ["auto", "auto"]}
+          domain={useLog ? [logLo, logHi] : ["auto", "auto"]}
           allowDataOverflow={useLog}
           tickFormatter={formatY}
           width={72}

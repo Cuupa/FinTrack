@@ -25,6 +25,9 @@ export interface Instrument {
   vol: number;
   /** Annual dividend yield (fraction); sourced from the DB, not code. */
   dividendYield: number;
+  /** Live price cached by the cron job (native currency), or null. */
+  lastPrice: number | null;
+  priceSyncedAt: string | null;
 }
 
 /** A stock held inside an ETF/fund, for look-through analysis. */
@@ -41,6 +44,8 @@ let catalog: Instrument[] = [];
 const index = new Map<string, Instrument>();
 let constituents: Constituent[] = [];
 const constituentsByEtf = new Map<string, Constituent[]>();
+// FX rates anchored to EUR: units of `currency` per 1 EUR (cron-cached).
+let fxRates: Record<string, number> = {};
 
 function norm(s: string | null | undefined): string | null {
   if (!s) return null;
@@ -94,4 +99,23 @@ export function constituentsFor(symbol: string | null | undefined): Constituent[
 
 export function hasConstituents(): boolean {
   return constituents.length > 0;
+}
+
+/** Replace the cached EUR-anchored FX rates (units of currency per 1 EUR). */
+export function setFxRates(rates: Record<string, number>): void {
+  fxRates = rates;
+}
+
+/**
+ * Conversion rates to `base`: 1 unit of currency C in `base` = perEur[base] /
+ * perEur[C]. Returns {} when rates aren't loaded.
+ */
+export function fxToBase(base: string): Record<string, number> {
+  const perEurBase = fxRates[base.toUpperCase()];
+  if (!perEurBase) return {};
+  const out: Record<string, number> = {};
+  for (const [cur, perEur] of Object.entries(fxRates)) {
+    if (perEur > 0) out[cur] = perEurBase / perEur;
+  }
+  return out;
 }
