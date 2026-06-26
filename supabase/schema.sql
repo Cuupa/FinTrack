@@ -34,6 +34,9 @@ create table if not exists public.instruments (
   vol numeric not null default 0.2,
   dividend_yield numeric not null default 0,
   dividend_synced_at timestamptz,
+  -- Live price cached by the price-sync cron (see /api/cron/sync-prices).
+  last_price numeric,
+  price_synced_at timestamptz,
   created_at timestamptz not null default now()
 );
 -- Symbol uniqueness applies to the global catalog only.
@@ -56,6 +59,13 @@ create index if not exists constituents_etf_idx
   on public.instrument_constituents (etf_symbol);
 create unique index if not exists constituents_unique
   on public.instrument_constituents (etf_symbol, constituent_name);
+
+-- FX rates anchored to EUR (units of `currency` per 1 EUR), cached by the cron.
+create table if not exists public.fx_rates (
+  currency text primary key,
+  rate numeric not null,
+  synced_at timestamptz not null default now()
+);
 
 -- Assets ---------------------------------------------------------------------
 -- A user's holding: a link to an instrument (master data) plus user notes.
@@ -80,8 +90,9 @@ create table if not exists public.transactions (
   quantity numeric not null check (quantity > 0),
   price numeric not null check (price >= 0),
   fee numeric not null default 0 check (fee >= 0),
-  -- Full timestamp of the trade (date + time of day).
-  executed_at timestamptz not null,
+  -- Trade date + time of day as a floating wall-clock (no time zone) — what
+  -- the user picked, shown verbatim; avoids UTC reinterpretation/shifting.
+  executed_at timestamp not null,
   created_at timestamptz not null default now()
 );
 create index if not exists transactions_asset_id_idx on public.transactions (asset_id);
@@ -92,6 +103,7 @@ alter table public.assets enable row level security;
 alter table public.transactions enable row level security;
 alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
+alter table public.fx_rates enable row level security;
 
 -- Catalog: the global rows (owner is null) are world-readable; a user can also
 -- read and write their own custom instruments (owner = them).
@@ -104,6 +116,8 @@ create policy "own instruments write" on public.instruments
 drop policy if exists "constituents readable" on public.instrument_constituents;
 create policy "constituents readable"
   on public.instrument_constituents for select using (true);
+drop policy if exists "fx readable" on public.fx_rates;
+create policy "fx readable" on public.fx_rates for select using (true);
 
 -- `create policy` has no IF NOT EXISTS, so drop-then-create stays idempotent.
 drop policy if exists "own profile" on public.profiles;
@@ -150,10 +164,16 @@ values
   ('US78462F1030', 'A0AET0', 'SPY',  'SPDR S&P 500 ETF',         'ETF',    'USD', 'United States', 'yahoo',     'SPY',     600,   0.09, 0.17, 0.013),
   ('IE00BK5BQT80', 'A2PKXG', 'VWCE', 'Vanguard FTSE All-World',  'ETF',    'EUR', 'Global',        'yahoo',     'VWCE.DE', 150,   0.08, 0.16, 0.018),
   ('IE00B4L5Y983', 'A0RPWH', 'IWDA', 'iShares Core MSCI World',  'ETF',    'EUR', 'Global',        'yahoo',     'IWDA.AS', 110,   0.08, 0.15, 0.017),
-  (null,           null,     'BTC',  'Bitcoin',                  'CRYPTO', null,  'Crypto',        'coingecko', 'bitcoin', 64000, 0.35, 0.7, 0),
-  (null,           null,     'ETH',  'Ethereum',                 'CRYPTO', null,  'Crypto',        'coingecko', 'ethereum', 3400, 0.30, 0.8, 0),
-  (null,           null,     'SOL',  'Solana',                   'CRYPTO', null,  'Crypto',        'coingecko', 'solana',  150,   0.40, 1.0, 0)
+  (null,           null,     'BTC',  'Bitcoin',                  'CRYPTO', 'USD', 'Crypto',        'coingecko', 'bitcoin', 64000, 0.35, 0.7, 0),
+  (null,           null,     'ETH',  'Ethereum',                 'CRYPTO', 'USD', 'Crypto',        'coingecko', 'ethereum', 3400, 0.30, 0.8, 0),
+  (null,           null,     'SOL',  'Solana',                   'CRYPTO', 'USD', 'Crypto',        'coingecko', 'solana',  150,   0.40, 1.0, 0)
 on conflict (symbol) where symbol is not null and owner is null do nothing;
+
+-- Seed approximate FX rates (units per 1 EUR); the cron refreshes them.
+insert into public.fx_rates (currency, rate) values
+  ('EUR', 1), ('USD', 1.08), ('GBP', 0.85), ('CHF', 0.95),
+  ('JPY', 170), ('CAD', 1.47), ('AUD', 1.63)
+on conflict (currency) do nothing;
 
 -- Seed ETF constituents (approximate top holdings) ---------------------------
 insert into public.instrument_constituents

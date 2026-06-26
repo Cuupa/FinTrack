@@ -14,6 +14,7 @@ import {
 import {
   setCatalog,
   setConstituents,
+  setFxRates,
   type Constituent,
   type Instrument,
 } from "./catalog";
@@ -34,13 +35,20 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     let active = true;
     fetch("/api/catalog")
       .then((res) => (res.ok ? res.json() : { instruments: [] }))
-      .then((json: { instruments?: Instrument[]; constituents?: Constituent[] }) => {
-        if (!active) return;
-        setCatalog(json.instruments ?? []);
-        setConstituents(json.constituents ?? []);
-        resetPriceCache();
-        setVersion((v) => v + 1);
-      })
+      .then(
+        (json: {
+          instruments?: Instrument[];
+          constituents?: Constituent[];
+          fxRates?: Record<string, number>;
+        }) => {
+          if (!active) return;
+          setCatalog(json.instruments ?? []);
+          setConstituents(json.constituents ?? []);
+          setFxRates(json.fxRates ?? {});
+          resetPriceCache();
+          setVersion((v) => v + 1);
+        },
+      )
       .catch(() => {
         if (active) setVersion((v) => v + 1);
       });

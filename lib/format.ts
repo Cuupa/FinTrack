@@ -41,16 +41,31 @@ export function formatDate(iso: string): string {
   }).format(new Date(day + "T00:00:00"));
 }
 
-/** Date + time of day (transactions carry a full timestamp). */
+/**
+ * Date + time of day for a transaction. The time is treated as a floating
+ * wall-clock — the literal Y/M/D H:M from the stored value are displayed
+ * verbatim, with NO timezone conversion — so it always matches what the user
+ * picked, regardless of the viewer's timezone or how it was persisted
+ * (naive string, `...Z`, or `...+00:00` from a timestamptz column).
+ */
 export function formatDateTime(iso: string): string {
-  const d = iso.includes("T") ? new Date(iso) : new Date(iso + "T00:00:00");
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (!m) return iso;
+  const [, y, mo, d, hh = "00", mm = "00"] = m;
+  const local = new Date(
+    Number(y),
+    Number(mo) - 1,
+    Number(d),
+    Number(hh),
+    Number(mm),
+  );
   return new Intl.DateTimeFormat(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(d);
+  }).format(local);
 }
 
 /** Tailwind text color class for a signed value. */

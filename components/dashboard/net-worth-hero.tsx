@@ -17,7 +17,6 @@ import {
 } from "@/lib/finance/portfolio";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
-import { SyncStatus } from "@/components/sync-status";
 import { ChartControls } from "@/components/charts/chart-controls";
 import {
   PerformanceChart,
@@ -87,7 +86,6 @@ export function NetWorthHero() {
             valueClassName={plColor(totals.realizedPL)}
           />
         </div>
-        <SyncStatus />
       </div>
 
       <div className="mt-6">

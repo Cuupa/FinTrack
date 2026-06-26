@@ -22,6 +22,8 @@ interface InstrumentRow {
   drift: number | string;
   vol: number | string;
   dividend_yield: number | string;
+  last_price: number | string | null;
+  price_synced_at: string | null;
 }
 
 interface ConstituentRow {
@@ -35,19 +37,22 @@ interface ConstituentRow {
 export async function GET(): Promise<Response> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return Response.json({ instruments: [] });
+  if (!url || !key) {
+    return Response.json({ instruments: [], constituents: [], fxRates: {} });
+  }
 
   try {
     const supabase = createClient(url, key);
-    const [instRes, consRes] = await Promise.all([
+    const [instRes, consRes, fxRes] = await Promise.all([
       supabase
         .from("instruments")
         .select(
-          "isin, wkn, symbol, name, type, currency, country, quote_source, quote_id, base_price, drift, vol, dividend_yield",
+          "isin, wkn, symbol, name, type, currency, country, quote_source, quote_id, base_price, drift, vol, dividend_yield, last_price, price_synced_at",
         ),
       supabase
         .from("instrument_constituents")
         .select("etf_symbol, constituent_name, constituent_symbol, constituent_isin, weight"),
+      supabase.from("fx_rates").select("currency, rate"),
     ]);
     if (instRes.error) throw instRes.error;
 
@@ -65,6 +70,8 @@ export async function GET(): Promise<Response> {
       drift: Number(r.drift),
       vol: Number(r.vol),
       dividendYield: Number(r.dividend_yield),
+      lastPrice: r.last_price != null ? Number(r.last_price) : null,
+      priceSyncedAt: r.price_synced_at,
     }));
 
     const constituents = (consRes.data ?? []).map((r: ConstituentRow) => ({
@@ -75,8 +82,13 @@ export async function GET(): Promise<Response> {
       weight: Number(r.weight),
     }));
 
-    return Response.json({ instruments, constituents });
+    const fxRates: Record<string, number> = {};
+    for (const r of (fxRes.data ?? []) as { currency: string; rate: number | string }[]) {
+      fxRates[r.currency.toUpperCase()] = Number(r.rate);
+    }
+
+    return Response.json({ instruments, constituents, fxRates });
   } catch {
-    return Response.json({ instruments: [], constituents: [] });
+    return Response.json({ instruments: [], constituents: [], fxRates: {} });
   }
 }
