@@ -3,13 +3,16 @@
 // are in the base currency (so cross-currency holdings are comparable).
 
 import { assetPriceKey } from "../types";
-import { lookupInstrument } from "../catalog/catalog";
+import { constituentsFor, lookupInstrument } from "../catalog/catalog";
 import type { HoldingSummary } from "./portfolio";
 
 export interface Slice {
   label: string;
   value: number;
 }
+
+/** Online-fetched classifications keyed by assetPriceKey (for custom stocks). */
+export type ClassMap = Record<string, { sector?: string | null; region?: string | null }>;
 
 function group(
   holdings: HoldingSummary[],
@@ -51,6 +54,63 @@ function volForAsset(h: HoldingSummary): number {
   const inst = lookupInstrument(assetPriceKey(h.asset));
   if (inst) return inst.vol;
   return h.asset.type === "CRYPTO" ? 0.7 : h.asset.type === "ETF" ? 0.16 : 0.3;
+}
+
+/**
+ * Look-through allocation by a classification field (sector or region): ETFs
+ * are decomposed into their constituent stocks (each carrying a classification),
+ * direct stocks use the instrument's (or online-fetched) classification, and
+ * the uncovered remainder of each ETF becomes "Other".
+ */
+function lookThrough(
+  holdings: HoldingSummary[],
+  field: "sector" | "region",
+  overrides?: ClassMap,
+): Slice[] {
+  const map = new Map<string, number>();
+  let other = 0;
+  const add = (label: string, v: number) => map.set(label, (map.get(label) ?? 0) + v);
+
+  for (const h of holdings) {
+    if (h.marketValue <= 0) continue;
+    const type = h.asset.type;
+
+    if (type === "ETF") {
+      const cons = constituentsFor(h.asset.symbol);
+      if (cons.length === 0) {
+        other += h.marketValue;
+        continue;
+      }
+      let covered = 0;
+      for (const c of cons) {
+        covered += c.weight;
+        add(c[field] || "Unknown", h.marketValue * c.weight);
+      }
+      other += h.marketValue * Math.max(0, 1 - covered);
+    } else if (type === "STOCK") {
+      const key = assetPriceKey(h.asset);
+      const inst = lookupInstrument(key);
+      const label = inst?.[field] || overrides?.[key]?.[field] || "Unknown";
+      add(label, h.marketValue);
+    } else if (type === "CRYPTO") {
+      add(field === "region" ? "Crypto" : "Digital Assets", h.marketValue);
+    } else {
+      add("Cash", h.marketValue);
+    }
+  }
+
+  if (other > 0) add("Other", other);
+  return Array.from(map, ([label, value]) => ({ label, value })).sort(
+    (a, b) => b.value - a.value,
+  );
+}
+
+export function byRegion(holdings: HoldingSummary[], overrides?: ClassMap): Slice[] {
+  return lookThrough(holdings, "region", overrides);
+}
+
+export function bySector(holdings: HoldingSummary[], overrides?: ClassMap): Slice[] {
+  return lookThrough(holdings, "sector", overrides);
 }
 
 export function byVolatility(holdings: HoldingSummary[]): Slice[] {

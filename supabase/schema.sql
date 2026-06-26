@@ -27,6 +27,8 @@ create table if not exists public.instruments (
   type text not null check (type in ('ETF', 'STOCK', 'CRYPTO', 'CASH')),
   currency text,
   country text,
+  sector text,
+  region text,
   quote_source text check (quote_source in ('yahoo', 'stooq', 'coingecko')),
   quote_id text,
   base_price numeric not null default 100,
@@ -50,6 +52,8 @@ create table if not exists public.instrument_constituents (
   constituent_symbol text,
   constituent_isin text,
   weight numeric not null check (weight >= 0 and weight <= 1),
+  sector text,
+  region text,
   created_at timestamptz not null default now()
 );
 create index if not exists constituents_etf_idx
@@ -180,3 +184,17 @@ values
   ('VWCE', 'Meta Platforms Inc.', 'META', 'US30303M1027', 0.014),
   ('VWCE', 'Alphabet Inc. A',     'GOOGL','US02079K3059', 0.013)
 on conflict (etf_symbol, constituent_name) do nothing;
+
+-- Sector + geographic region classifications (look-through). --------------------
+update public.instruments set sector = 'Information Technology', region = 'North America'
+  where symbol in ('AAPL', 'MSFT', 'NVDA');
+update public.instruments set sector = 'Consumer Discretionary', region = 'North America'
+  where symbol in ('AMZN', 'TSLA');
+update public.instruments set sector = 'Digital Assets', region = 'Crypto'
+  where type = 'CRYPTO';
+update public.instrument_constituents set sector = 'Information Technology', region = 'North America'
+  where constituent_symbol in ('AAPL', 'MSFT', 'NVDA', 'AVGO');
+update public.instrument_constituents set sector = 'Consumer Discretionary', region = 'North America'
+  where constituent_symbol in ('AMZN', 'TSLA');
+update public.instrument_constituents set sector = 'Communication Services', region = 'North America'
+  where constituent_symbol in ('META', 'GOOGL');
