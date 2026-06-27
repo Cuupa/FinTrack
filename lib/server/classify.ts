@@ -170,6 +170,48 @@ export async function fetchEtfSectorWeights(query: string): Promise<SectorWeight
   }
 }
 
+export interface RegionWeight {
+  region: string;
+  weight: number;
+}
+
+/**
+ * An ETF's geographic breakdown, mapped country→region. Yahoo doesn't expose
+ * fund country weightings, so this uses Financial Modeling Prep's
+ * `etf-country-weightings` when FMP_API_KEY is set; null otherwise (the caller
+ * falls back to looking through the fund's constituents' regions).
+ */
+export async function fetchEtfRegionWeights(query: string): Promise<RegionWeight[] | null> {
+  const key = process.env.FMP_API_KEY;
+  if (!key) return null;
+  const q = query.trim();
+  if (!q) return null;
+  const symbol = isISIN(q) ? await resolveSymbol(q, "") : q;
+  if (!symbol) return null;
+  // FMP keys ETFs by their plain ticker (no exchange suffix).
+  const ticker = symbol.split(".")[0];
+  try {
+    const res = await fetch(
+      `https://financialmodelingprep.com/api/v3/etf-country-weightings/${encodeURIComponent(ticker)}?apikey=${key}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ country?: string; weightPercentage?: string }>;
+    if (!Array.isArray(data) || data.length === 0) return null;
+
+    const byRegion = new Map<string, number>();
+    for (const d of data) {
+      const weight = parseFloat(String(d.weightPercentage ?? "").replace("%", "")) / 100;
+      if (!d.country || !Number.isFinite(weight) || weight <= 0) continue;
+      const region = REGION_BY_COUNTRY[d.country] ?? "Other";
+      byRegion.set(region, (byRegion.get(region) ?? 0) + weight);
+    }
+    return byRegion.size ? Array.from(byRegion, ([region, weight]) => ({ region, weight })) : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface Classification {
   sector: string | null;
   region: string | null;

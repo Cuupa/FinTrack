@@ -17,6 +17,9 @@ export type ClassMap = Record<string, { sector?: string | null; region?: string 
 /** Online-fetched ETF sector weightings keyed by assetPriceKey. */
 export type SectorWeightsMap = Record<string, { sector: string; weight: number }[]>;
 
+/** Online-fetched ETF region (geographic) weightings keyed by assetPriceKey. */
+export type RegionWeightsMap = Record<string, { region: string; weight: number }[]>;
+
 function group(
   holdings: HoldingSummary[],
   keyFn: (h: HoldingSummary) => string,
@@ -132,7 +135,11 @@ function lookThrough(
  * (no "Other"/"Crypto") — normalised across what IS classified. Region data is
  * filled by the classification sync; without it this is empty.
  */
-export function byRegion(holdings: HoldingSummary[], overrides?: ClassMap): Slice[] {
+export function byRegion(
+  holdings: HoldingSummary[],
+  overrides?: ClassMap,
+  etfRegions?: RegionWeightsMap,
+): Slice[] {
   const map = new Map<string, number>();
   const add = (label: string | null | undefined, v: number) => {
     if (label) map.set(label, (map.get(label) ?? 0) + v);
@@ -140,7 +147,14 @@ export function byRegion(holdings: HoldingSummary[], overrides?: ClassMap): Slic
   for (const h of holdings) {
     if (h.marketValue <= 0) continue;
     if (h.asset.type === "ETF") {
-      for (const c of constituentsFor(h.asset.symbol)) add(c.region, h.marketValue * c.weight);
+      // Prefer the fund's published country/region weightings; fall back to the
+      // constituent look-through when unavailable.
+      const weights = etfRegions?.[assetPriceKey(h.asset)];
+      if (weights && weights.length > 0) {
+        for (const w of weights) add(w.region, h.marketValue * w.weight);
+      } else {
+        for (const c of constituentsFor(h.asset.symbol)) add(c.region, h.marketValue * c.weight);
+      }
     } else if (h.asset.type === "STOCK") {
       const key = assetPriceKey(h.asset);
       add(lookupInstrument(key)?.region || overrides?.[key]?.region, h.marketValue);

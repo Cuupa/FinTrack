@@ -19,6 +19,7 @@ import {
 } from "@/lib/finance/allocation";
 import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
+import { useEtfRegions } from "@/lib/finance/use-etf-regions";
 import { Card } from "@/components/ui/primitives";
 import { AllocationPie } from "./allocation-pie";
 
@@ -51,20 +52,21 @@ export function AllocationView() {
 
   // Online-fetched classifications for custom stocks the catalog doesn't know.
   const classMap = useClassifications(holdings, version);
-  // Online-fetched per-ETF sector weightings (full fund sector breakdown).
+  // Online-fetched per-ETF sector + region weightings (full fund breakdowns).
   const etfSectors = useEtfSectors(holdings, version);
+  const etfRegions = useEtfRegions(holdings, version);
 
   const charts = useMemo<Record<TabKey, Slice[]>>(
     () => ({
       investment: byInvestment(holdings),
       assetClass: byAssetClass(holdings),
       sector: bySector(holdings, classMap, etfSectors),
-      region: byRegion(holdings, classMap),
+      region: byRegion(holdings, classMap, etfRegions),
       currency: byCurrency(holdings, base),
       volatility: byVolatility(holdings),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holdings, base, version, classMap, etfSectors],
+    [holdings, base, version, classMap, etfSectors, etfRegions],
   );
 
   if (holdings.length === 0) {
