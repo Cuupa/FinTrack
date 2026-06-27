@@ -33,7 +33,9 @@ export async function GET(req: Request): Promise<Response> {
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !(service || anon)) return Response.json({ benchmarks: {} });
 
-  const idsParam = new URL(req.url).searchParams.get("ids");
+  const params = new URL(req.url).searchParams;
+  const idsParam = params.get("ids");
+  const force = params.get("force") != null; // refresh regardless of staleness
   const wanted = idsParam ? idsParam.split(",") : BENCHMARKS.map((b) => b.id);
   const chosen = BENCHMARKS.filter((b) => wanted.includes(b.id));
 
@@ -44,7 +46,7 @@ export async function GET(req: Request): Promise<Response> {
   for (const b of chosen) {
     if (canWrite) {
       const last = await latestDate(supabase, b.id);
-      if (!last || daysSince(last) > STALE_DAYS) {
+      if (force || !last || daysSince(last) > STALE_DAYS) {
         const query = isISIN(b.item.key) ? b.item.key : b.item.id || b.item.key;
         const hint = b.item.id || undefined;
         const r = await historyByQuery(query, b.item.currency, hint, RANGE, INTERVAL).catch(
