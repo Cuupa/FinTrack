@@ -365,9 +365,9 @@ paths:
       operationId: getEtfRegions
       summary: An ETF's geographic (region) weightings
       description: >
-        Country weightings mapped to regions, from Financial Modeling Prep
-        (requires `FMP_API_KEY`). `found:false` when unavailable — the client
-        then falls back to the constituent look-through.
+        Country weightings mapped to regions, sourced keyless from onvista's
+        fund country breakdown. `found:false` when the ISIN isn't found there —
+        the client then falls back to the constituent look-through.
       parameters:
         - name: q
           in: query

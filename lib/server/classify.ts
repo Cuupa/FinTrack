@@ -175,36 +175,74 @@ export interface RegionWeight {
   weight: number;
 }
 
+// onvista returns country names in German; map them to regions.
+const ONVISTA_COUNTRY_REGION: Record<string, string> = {
+  USA: "North America",
+  Kanada: "North America",
+  Mexiko: "Latin America",
+  Brasilien: "Latin America",
+  Großbritannien: "Europe",
+  Deutschland: "Europe",
+  Frankreich: "Europe",
+  Schweiz: "Europe",
+  Niederlande: "Europe",
+  Irland: "Europe",
+  Spanien: "Europe",
+  Schweden: "Europe",
+  Italien: "Europe",
+  Dänemark: "Europe",
+  Finnland: "Europe",
+  Belgien: "Europe",
+  Luxemburg: "Europe",
+  Norwegen: "Europe",
+  Österreich: "Europe",
+  Portugal: "Europe",
+  Japan: "Asia-Pacific",
+  Taiwan: "Asia-Pacific",
+  Südkorea: "Asia-Pacific",
+  China: "Asia-Pacific",
+  Indien: "Asia-Pacific",
+  Australien: "Asia-Pacific",
+  Hongkong: "Asia-Pacific",
+  Singapur: "Asia-Pacific",
+  Malaysia: "Asia-Pacific",
+  Thailand: "Asia-Pacific",
+  Neuseeland: "Asia-Pacific",
+  Indonesien: "Asia-Pacific",
+  Israel: "Middle East & Africa",
+  "Saudi-Arabien": "Middle East & Africa",
+  Südafrika: "Middle East & Africa",
+  "Vereinigte Arabische Emirate": "Middle East & Africa",
+  Katar: "Middle East & Africa",
+  "Barmittel und sonst. VM": "Cash & other",
+};
+
 /**
- * An ETF's geographic breakdown, mapped country→region. Yahoo doesn't expose
- * fund country weightings, so this uses Financial Modeling Prep's
- * `etf-country-weightings` when FMP_API_KEY is set; null otherwise (the caller
- * falls back to looking through the fund's constituents' regions).
+ * An ETF's geographic breakdown, mapped country→region. Keyless: uses onvista's
+ * fund country breakdown (`/funds/ISIN:.../breakdowns`). Null when the ISIN
+ * isn't found there (the caller falls back to the constituent look-through).
  */
 export async function fetchEtfRegionWeights(query: string): Promise<RegionWeight[] | null> {
-  const key = process.env.FMP_API_KEY;
-  if (!key) return null;
-  const q = query.trim();
-  if (!q) return null;
-  const symbol = isISIN(q) ? await resolveSymbol(q, "") : q;
-  if (!symbol) return null;
-  // FMP keys ETFs by their plain ticker (no exchange suffix).
-  const ticker = symbol.split(".")[0];
+  const q = query.trim().toUpperCase();
+  if (!isISIN(q)) return null; // onvista is keyed by ISIN
   try {
     const res = await fetch(
-      `https://financialmodelingprep.com/api/v3/etf-country-weightings/${encodeURIComponent(ticker)}?apikey=${key}`,
-      { signal: AbortSignal.timeout(10_000) },
+      `https://api.onvista.de/api/v1/funds/ISIN:${encodeURIComponent(q)}/breakdowns`,
+      { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10_000) },
     );
     if (!res.ok) return null;
-    const data = (await res.json()) as Array<{ country?: string; weightPercentage?: string }>;
-    if (!Array.isArray(data) || data.length === 0) return null;
+    const data = (await res.json()) as {
+      countryBreakdown?: { list?: Array<{ nameBreakdown?: string; investmentPct?: number }> };
+    };
+    const list = data.countryBreakdown?.list;
+    if (!Array.isArray(list) || list.length === 0) return null;
 
     const byRegion = new Map<string, number>();
-    for (const d of data) {
-      const weight = parseFloat(String(d.weightPercentage ?? "").replace("%", "")) / 100;
-      if (!d.country || !Number.isFinite(weight) || weight <= 0) continue;
-      const region = REGION_BY_COUNTRY[d.country] ?? "Other";
-      byRegion.set(region, (byRegion.get(region) ?? 0) + weight);
+    for (const item of list) {
+      const pct = Number(item.investmentPct);
+      if (!item.nameBreakdown || !Number.isFinite(pct) || pct <= 0) continue;
+      const region = ONVISTA_COUNTRY_REGION[item.nameBreakdown] ?? "Other";
+      byRegion.set(region, (byRegion.get(region) ?? 0) + pct / 100);
     }
     return byRegion.size ? Array.from(byRegion, ([region, weight]) => ({ region, weight })) : null;
   } catch {

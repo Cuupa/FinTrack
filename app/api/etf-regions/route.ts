@@ -1,7 +1,7 @@
-// An ETF's geographic (region) breakdown by ISIN or symbol. Used by the
-// Analysis "Region" pie so a fund contributes its real geographic spread.
-// Requires FMP_API_KEY; otherwise the client falls back to the constituent
-// look-through.
+// An ETF's geographic (region) breakdown by ISIN. Used by the Analysis "Region"
+// pie so a fund contributes its real geographic spread. Keyless — sourced from
+// onvista's fund country breakdown; the client falls back to the constituent
+// look-through when a fund isn't found there.
 
 import { fetchEtfRegionWeights } from "@/lib/server/classify";
 
