@@ -194,7 +194,9 @@ export function AssetTable() {
                             style={{ width: `${Math.min(100, allocation * 100)}%` }}
                           />
                         </div>
-                        {formatNumber(allocation * 100, 1)}%
+                        <span className="w-12 text-right tabular-nums">
+                          {formatNumber(allocation * 100, 1)}%
+                        </span>
                       </div>
                     </td>
                   </tr>

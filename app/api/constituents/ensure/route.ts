@@ -9,7 +9,19 @@ import { fetchConstituents } from "@/lib/server/constituents";
 
 export const dynamic = "force-dynamic";
 
+// Writes global reference data, so it's secured like the crons: only callers
+// with the secret (Bearer header) may trigger it. Open only when no secret is
+// configured (local dev).
+function authorized(req: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return true;
+  return req.headers.get("authorization") === `Bearer ${secret}`;
+}
+
 export async function POST(req: Request): Promise<Response> {
+  if (!authorized(req)) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
   let symbol: string | undefined;
   let isin: string | null = null;
   try {

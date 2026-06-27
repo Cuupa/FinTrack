@@ -26,12 +26,21 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
   const base = data.profile.currency;
 
   const valuation = useMemo<ValuationContext>(() => {
+    const fx = fxToBase(base);
+    const toBase = (cur: string) => (!cur || cur === base ? 1 : (fx[cur] ?? 1));
     const live: Record<string, number> = {};
     for (const asset of data.assets) {
-      const inst = lookupInstrument(assetPriceKey(asset));
-      if (inst?.lastPrice != null) live[assetPriceKey(asset)] = inst.lastPrice;
+      const key = assetPriceKey(asset);
+      const inst = lookupInstrument(key);
+      if (inst?.lastPrice == null) continue;
+      // The instrument's cached price is in the instrument's currency; convert
+      // it into THIS holding's currency so a EUR holding of a USD stock is
+      // valued from the EUR price (the shared instrument is left untouched).
+      const from = inst.currency ?? base;
+      const to = asset.currency ?? from;
+      live[key] = from === to ? inst.lastPrice : (inst.lastPrice * toBase(from)) / toBase(to);
     }
-    return { base, live, fx: fxToBase(base) };
+    return { base, live, fx };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.assets, base, version]);
 

@@ -29,6 +29,7 @@ interface InstrumentEmbed {
 interface AssetRow {
   id: string;
   notes: string | null;
+  currency: string | null;
   instrument: InstrumentEmbed | InstrumentEmbed[] | null;
 }
 
@@ -65,7 +66,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("assets")
         .select(
-          "id, notes, instrument:instruments (isin, wkn, symbol, name, type, currency)",
+          "id, notes, currency, instrument:instruments (isin, wkn, symbol, name, type, currency)",
         )
         .eq("user_id", this.userId),
       // RLS scopes transactions to the user's assets — no user_id column.
@@ -90,7 +91,8 @@ export class SupabaseStore implements DataStore {
         symbol: inst?.symbol ?? null,
         name: inst?.name ?? "",
         type: inst?.type ?? "STOCK",
-        currency: inst?.currency ?? null,
+        // The user's own trading currency wins; fall back to the instrument's.
+        currency: r.currency ?? inst?.currency ?? null,
         notes: r.notes,
       };
     });
@@ -157,6 +159,7 @@ export class SupabaseStore implements DataStore {
       .insert({
         user_id: this.userId,
         instrument_id: instrumentId,
+        currency: input.currency, // the user's per-holding trading currency
         notes: input.notes,
       })
       .select("id")

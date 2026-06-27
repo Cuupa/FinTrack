@@ -55,9 +55,10 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
   const [fetchingPrice, setFetchingPrice] = useState(false);
 
   /**
-   * Prefill the opening price from the live listing in `currency`, and snap
-   * `assetCurrency` to the currency actually found — so a US stock bought on a
-   * EUR exchange is recorded in EUR at the EUR price, not the USD number.
+   * Prefill the opening price in the user's chosen `currency` (the API converts
+   * if only a different-currency listing exists). The chosen currency is the
+   * holding's currency and is never overridden here — a US stock bought on a EUR
+   * exchange stays EUR at the EUR price.
    */
   async function fetchPrice(q: string, currency: string, t: AssetType) {
     const query = q.trim();
@@ -68,10 +69,9 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         `/api/price?q=${encodeURIComponent(query)}&currency=${encodeURIComponent(currency)}`,
       );
       if (res.ok) {
-        const d = (await res.json()) as { found?: boolean; price?: number; currency?: string };
+        const d = (await res.json()) as { found?: boolean; price?: number };
         if (d.found && typeof d.price === "number" && d.price > 0) {
           setPrice(String(round(d.price)));
-          if (d.currency) setAssetCurrency(d.currency.toUpperCase());
         }
       }
     } catch {
@@ -124,7 +124,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         applyMatch(match);
         setImportStatus("found");
         setManual(false);
-        // Prefer the user's base-currency listing for the price.
+        // Default to the user's base currency; price is prefilled to match.
+        if (match.type !== "CASH") setAssetCurrency(base);
         void fetchPrice(match.isin || match.symbol || q, base, match.type);
         return;
       }
@@ -135,6 +136,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         applyApiMatch(data);
         setImportStatus("found");
         setManual(false);
+        if ((data.type ?? "ETF") !== "CASH") setAssetCurrency(base);
         void fetchPrice(data.isin || data.symbol || q, base, data.type ?? "ETF");
       } else {
         setImportStatus("notfound");
@@ -195,15 +197,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         fee: Number(fee) || 0,
         date: executedAt,
       });
-      // First-time global constituent fetch for funds (no-ops if already
-      // cached). Fire-and-forget — doesn't block adding the asset.
-      if (asset.type === "ETF" && asset.symbol) {
-        fetch("/api/constituents/ensure", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ symbol: asset.symbol, isin: asset.isin }),
-        }).catch(() => {});
-      }
+      // Constituents are populated server-side by the sync-constituents cron
+      // (the ensure endpoint is now secret-gated), so nothing to trigger here.
       onDone?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add asset.");

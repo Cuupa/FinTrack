@@ -76,9 +76,14 @@ create table if not exists public.assets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   instrument_id uuid not null references public.instruments (id),
+  -- The currency THIS user trades the instrument in (e.g. the EUR Xetra line of
+  -- a USD-listed stock). Per-holding; null falls back to the instrument's. The
+  -- shared instrument is never mutated by a user's currency choice.
+  currency text,
   notes text,
   created_at timestamptz not null default now()
 );
+alter table public.assets add column if not exists currency text;
 create index if not exists assets_user_id_idx on public.assets (user_id);
 create index if not exists assets_instrument_id_idx on public.assets (instrument_id);
 
