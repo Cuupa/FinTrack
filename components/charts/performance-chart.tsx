@@ -50,6 +50,8 @@ interface Props {
   compare?: CompareSeries[];
   /** Legend label for the main line when comparing. */
   mainLabel?: string;
+  /** Emphasise markers of this type (others dim); null = all normal. */
+  highlightType?: ChartMarker["type"] | null;
 }
 
 function shortDate(iso: string): string {
@@ -88,6 +90,7 @@ export function PerformanceChart({
   color = "#10b981",
   compare = [],
   mainLabel = "Value",
+  highlightType = null,
 }: Props) {
   const comparing = compare.length > 0;
   // Comparison is only meaningful as relative performance.
@@ -165,15 +168,21 @@ export function PerformanceChart({
               return [pctMode ? formatPercent(v) : formatCurrency(v, currency), name as string];
             }}
           />
-          {snappedMarkers.map((m, i) => (
-            <ReferenceLine
-              key={`${m.date}-${i}`}
-              x={m.date}
-              stroke={MARKER_COLOR[m.type]}
-              strokeDasharray={m.type === "DIV" ? "2 3" : "4 2"}
-              strokeOpacity={m.type === "DIV" ? 0.5 : 0.7}
-            />
-          ))}
+          {snappedMarkers.map((m, i) => {
+            const dimmed = highlightType != null && m.type !== highlightType;
+            const active = highlightType != null && m.type === highlightType;
+            const baseOpacity = m.type === "DIV" ? 0.5 : 0.7;
+            return (
+              <ReferenceLine
+                key={`${m.date}-${i}`}
+                x={m.date}
+                stroke={MARKER_COLOR[m.type]}
+                strokeDasharray={m.type === "DIV" ? "2 3" : "4 2"}
+                strokeWidth={active ? 2 : 1}
+                strokeOpacity={dimmed ? 0.1 : active ? 1 : baseOpacity}
+              />
+            );
+          })}
           <Line
             type="monotone"
             dataKey="value"

@@ -53,7 +53,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
-  const compare = useBenchmarkCompare(benchmarks, timeframe, data.profile.currency);
+  const [highlight, setHighlight] = useState<ChartMarker["type"] | null>(null);
+  const compare = useBenchmarkCompare(benchmarks);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
 
@@ -197,13 +198,34 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             color="#6366f1"
             compare={compare}
             mainLabel={asset.name}
+            highlightType={highlight}
           />
         </div>
-        <p className="mt-2 text-xs text-zinc-500">
-          <span className="text-emerald-500">▮</span> buy &nbsp;
-          <span className="text-red-500">▮</span> sell &nbsp;
-          <span className="text-amber-500">▮</span> dividend
-        </p>
+        <div
+          className="mt-2 flex flex-wrap gap-4 text-xs text-zinc-500"
+          onMouseLeave={() => setHighlight(null)}
+        >
+          {(
+            [
+              ["BUY", "buy", "text-emerald-500"],
+              ["SELL", "sell", "text-red-500"],
+              ["DIV", "dividend", "text-amber-500"],
+            ] as const
+          ).map(([type, label, color]) => (
+            <button
+              key={type}
+              type="button"
+              onMouseEnter={() => setHighlight(type)}
+              onFocus={() => setHighlight(type)}
+              onBlur={() => setHighlight(null)}
+              className={`inline-flex items-center gap-1 transition-opacity hover:text-zinc-800 dark:hover:text-zinc-200 ${
+                highlight && highlight !== type ? "opacity-40" : ""
+              }`}
+            >
+              <span className={color}>▮</span> {label}
+            </button>
+          ))}
+        </div>
       </Card>
 
       {/* ETF look-through */}
@@ -247,7 +269,11 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       {/* Advanced metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <Stat label="Market value" value={formatCurrency(summary.marketValue, currency)} />
+          <Stat
+            label="Market value"
+            value={formatCurrency(summary.marketValue, currency)}
+            info="Current value of this holding (shares held × current price), in your base currency."
+          />
         </Card>
         <Card>
           <Stat
@@ -255,6 +281,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             value={formatCurrency(summary.unrealizedPL, currency)}
             sub={formatPercent(summary.unrealizedPLPercent)}
             valueClassName={plColor(summary.unrealizedPL)}
+            info="Paper gain/loss on shares still held: current value minus average cost paid."
           />
         </Card>
         <Card>
@@ -262,6 +289,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             label="Realized P&L"
             value={formatCurrency(summary.realizedPL, currency)}
             valueClassName={plColor(summary.realizedPL)}
+            info="Locked-in gain/loss from shares of this asset you have already sold."
           />
         </Card>
         <Card>
@@ -269,6 +297,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             label="IRR (annualized)"
             value={irr === null ? "—" : formatPercent(irr)}
             valueClassName={irr === null ? "" : plColor(irr)}
+            info="Money-weighted annual return for this position, accounting for the timing and size of each buy and sell."
           />
         </Card>
       </div>
