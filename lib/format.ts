@@ -1,5 +1,15 @@
 // Display formatting helpers.
 
+/** Decode the few HTML entities that appear in seeded/fetched asset names. */
+export function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;|&#x27;/g, "'");
+}
+
 /**
  * Parse a user-entered number tolerant of a decimal comma (de-DE) and spaces —
  * e.g. "0,25" → 0.25. Returns NaN for blank/invalid input.

@@ -182,15 +182,24 @@ export function PerformanceChart({
           {snappedMarkers.map((m, i) => {
             const dimmed = highlightType != null && m.type !== highlightType;
             const active = highlightType != null && m.type === highlightType;
-            const baseOpacity = m.type === "DIV" ? 0.5 : 0.7;
+            const glyph = m.type === "BUY" ? "▲" : m.type === "SELL" ? "▼" : "●";
+            const baseWidth = m.type === "DIV" ? 1.5 : 2;
+            const baseOpacity = m.type === "DIV" ? 0.7 : 0.9;
             return (
               <ReferenceLine
                 key={`${m.date}-${i}`}
                 x={m.date}
                 stroke={MARKER_COLOR[m.type]}
-                strokeDasharray={m.type === "DIV" ? "2 3" : "4 2"}
-                strokeWidth={active ? 2 : 1}
-                strokeOpacity={dimmed ? 0.1 : active ? 1 : baseOpacity}
+                strokeDasharray={m.type === "DIV" ? "2 3" : "5 3"}
+                strokeWidth={active ? baseWidth + 1.5 : dimmed ? 1 : baseWidth}
+                strokeOpacity={dimmed ? 0.12 : active ? 1 : baseOpacity}
+                label={{
+                  value: glyph,
+                  position: "top",
+                  fill: MARKER_COLOR[m.type],
+                  fontSize: active ? 13 : 10,
+                  opacity: dimmed ? 0.2 : 1,
+                }}
               />
             );
           })}

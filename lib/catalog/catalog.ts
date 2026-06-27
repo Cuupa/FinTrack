@@ -4,6 +4,7 @@
 // pricing — the app never blocks on it.
 
 import type { AssetType } from "../types";
+import { decodeEntities } from "../format";
 
 export type QuoteSource = "yahoo" | "stooq" | "coingecko";
 
@@ -61,9 +62,9 @@ function norm(s: string | null | undefined): string | null {
 
 /** Replace the catalog and rebuild the lookup index. */
 export function setCatalog(items: Instrument[]): void {
-  catalog = items;
+  catalog = items.map((i) => ({ ...i, name: decodeEntities(i.name) }));
   index.clear();
-  for (const inst of items) {
+  for (const inst of catalog) {
     for (const k of [norm(inst.isin), norm(inst.wkn), norm(inst.symbol)]) {
       if (k && !index.has(k)) index.set(k, inst);
     }
@@ -86,9 +87,9 @@ export function catalogSize(): number {
 
 /** Replace the ETF constituents and rebuild the per-ETF index. */
 export function setConstituents(items: Constituent[]): void {
-  constituents = items;
+  constituents = items.map((c) => ({ ...c, name: decodeEntities(c.name) }));
   constituentsByEtf.clear();
-  for (const c of items) {
+  for (const c of constituents) {
     const k = norm(c.etfSymbol);
     if (!k) continue;
     const list = constituentsByEtf.get(k);

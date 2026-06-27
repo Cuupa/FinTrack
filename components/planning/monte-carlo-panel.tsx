@@ -130,7 +130,8 @@ export function MonteCarloPanel() {
 
   function run() {
     const years = Math.max(1, Math.round(form.years));
-    const runs = Math.max(1000, Math.round(form.runs));
+    // Clamp to [1,000, 10,000] paths.
+    const runs = Math.min(10000, Math.max(1000, Math.round(form.runs)));
 
     // Portfolio mode simulates each holding with its own μ/σ and the
     // correlation structure; custom mode uses a single μ/σ.
@@ -283,14 +284,17 @@ export function MonteCarloPanel() {
             value={form.runs}
             onChange={(v) => update("runs", v)}
             min={1000}
+            max={10000}
             step="500"
           />
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
             {running ? "Simulating…" : "Run simulation"}
           </Button>
           <p className="text-xs text-zinc-500">
-            Runs ≥ 1,000 Monte Carlo paths in the background using monthly
-            compounding with normally-distributed returns.
+            Runs 1,000–10,000 Monte Carlo paths in the background using monthly
+            compounding with normally-distributed returns. A long horizon assumes
+            a ~7% p.a. baseline (σ ≈ 16%) for broad equity unless the history of
+            your holdings says otherwise.
           </p>
         </div>
       </Card>
@@ -568,6 +572,7 @@ function Field({
   suffix,
   step = "1",
   min = 0,
+  max,
 }: {
   label: string;
   value: number;
@@ -575,6 +580,7 @@ function Field({
   suffix?: string;
   step?: string;
   min?: number;
+  max?: number;
 }) {
   return (
     <div>
@@ -585,6 +591,7 @@ function Field({
           inputMode="decimal"
           step={step}
           min={min}
+          max={max}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           // Hide the native spinner (it overlapped the suffix) and leave room
