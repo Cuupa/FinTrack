@@ -15,6 +15,9 @@ const DAILY_PPY = 365; // synthetic series is calendar-daily
 const MONTHLY_PPY = 12;
 // Real history is used for an asset only with at least this many months.
 const MIN_REAL_MONTHS = 24;
+// Below this much real history an estimate is a rough guess (too short to
+// annualise reliably), and the UI labels it as such.
+const MIN_CONFIDENT_YEARS = 3;
 
 export interface AssetStat {
   name: string;
@@ -149,13 +152,22 @@ export interface AssetModel {
   weight: number;
   mean: number; // annualised, fraction
   vol: number; // annualised, fraction
+  /** Years of return history backing this asset's estimate. */
+  years: number;
+  /** True when this asset's figures are a rough guess (synthetic or < MIN_CONFIDENT_YEARS). */
+  estimated: boolean;
 }
 
 export interface PortfolioModel {
   assets: AssetModel[];
   corr: number[][];
+  /** Longest per-asset history used for the μ/σ estimates (years). */
   sampleYears: number;
+  /** Overlapping window the correlations are estimated from (years). */
+  corrYears: number;
   real: boolean;
+  /** True when any holding's figures are a rough guess (limited/synthetic data). */
+  estimated: boolean;
 }
 
 interface AssetReturns {
@@ -204,12 +216,18 @@ export function estimatePortfolioModel(
   const L = Math.min(...lengths);
 
   // Per-asset μ/σ from each asset's full series; correlation from last L.
-  const assets: AssetModel[] = valued.map((h, i) => ({
-    name: h.asset.name,
-    weight: h.marketValue / total,
-    mean: annualizeReturn(series[i].rets, ppy),
-    vol: annualizeVol(series[i].rets, ppy),
-  }));
+  const assets: AssetModel[] = valued.map((h, i) => {
+    const years = series[i].rets.length / ppy;
+    return {
+      name: h.asset.name,
+      weight: h.marketValue / total,
+      mean: annualizeReturn(series[i].rets, ppy),
+      vol: annualizeVol(series[i].rets, ppy),
+      years,
+      // A guess when there's no real history, or too little to annualise well.
+      estimated: !series[i].real || years < MIN_CONFIDENT_YEARS,
+    };
+  });
   const aligned = series.map((r) =>
     r.rets.length >= L ? r.rets.slice(r.rets.length - L) : new Array<number>(L).fill(0),
   );
@@ -228,8 +246,12 @@ export function estimatePortfolioModel(
   return {
     assets,
     corr,
-    sampleYears: L / ppy,
+    // Headline = the longest history actually backing a μ/σ estimate (each
+    // asset uses its own full series); correlations use only the overlap.
+    sampleYears: Math.max(...assets.map((a) => a.years)),
+    corrYears: L / ppy,
     real: series.some((r) => r.real),
+    estimated: assets.some((a) => a.estimated),
   };
 }
 

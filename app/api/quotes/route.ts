@@ -11,7 +11,7 @@
 // Every source degrades gracefully: an unpriceable item is omitted and the
 // client falls back to its synthetic price.
 
-import { isISIN, price, resolveSymbol } from "@/lib/server/yahoo";
+import { isISIN, resolveQuote } from "@/lib/server/yahoo";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +53,8 @@ async function getText(url: string): Promise<string | null> {
 async function priceViaYahoo(item: QuoteItem): Promise<number | null> {
   const query = isISIN(item.key) ? item.key : item.id || item.key;
   const hint = item.source === "yahoo" && item.id ? item.id : undefined;
-  const symbol = await resolveSymbol(query, item.currency, hint);
-  if (!symbol) return null;
-  return price(symbol);
+  const r = await resolveQuote(query, item.currency, hint);
+  return r ? r.price : null;
 }
 
 async function fetchStooq(

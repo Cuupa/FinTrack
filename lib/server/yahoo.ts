@@ -119,6 +119,40 @@ export function isISIN(s: string): boolean {
   return ISIN_RE.test(s);
 }
 
+/**
+ * Resolve a query to a tradeable listing **and** its current price, requiring
+ * the listing to have real recent history — not just a stale `regularMarketPrice`
+ * (thin/illiquid lines expose a price but no trading). This keeps /api/quotes
+ * and the cron consistent with /api/history: both settle on the same listing,
+ * so the net-worth chart and the holdings table can never disagree. Prefers a
+ * listing in `wantCurrency`; falls back to any listing with data (the caller
+ * FX-converts). `hint` (a stored Yahoo symbol) is tried first.
+ */
+export async function resolveQuote(
+  query: string,
+  wantCurrency: string,
+  hint?: string,
+): Promise<{ symbol: string; currency: string; price: number } | null> {
+  const want = (wantCurrency || "").toUpperCase();
+  const candidates: string[] = [];
+  if (hint) candidates.push(hint);
+  for (const s of await searchCandidates(query)) {
+    if (!candidates.includes(s)) candidates.push(s);
+  }
+
+  let fallback: { symbol: string; currency: string; price: number } | null = null;
+  for (const s of candidates.slice(0, 6)) {
+    // 5-day daily candles: a live listing yields recent closes; a thin/dead one
+    // yields none and is skipped (this is what rejected the bogus 97.82 line).
+    const c = await chart(s, "5d", "1d");
+    if (!c || c.points.length === 0) continue;
+    const hit = { symbol: s, currency: c.currency, price: c.points[c.points.length - 1].close };
+    if (!want || c.currency === want) return hit;
+    if (!fallback) fallback = hit;
+  }
+  return fallback;
+}
+
 export interface AssetMatch {
   symbol: string;
   name: string;

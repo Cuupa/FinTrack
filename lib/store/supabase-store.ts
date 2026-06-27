@@ -116,8 +116,8 @@ export class SupabaseStore implements DataStore {
   }
 
   /**
-   * Find a catalog (or own) instrument matching the input's identifiers, or
-   * create a user-owned one. Keeps assets referencing shared master data.
+   * Find the (global) instrument matching the input's identifiers, or create
+   * one. Instruments are shared reference data — assets just link to them.
    */
   private async resolveInstrument(input: AssetInput): Promise<string> {
     const ors: string[] = [];
@@ -128,9 +128,8 @@ export class SupabaseStore implements DataStore {
     if (ors.length > 0) {
       const { data } = await this.supabase
         .from("instruments")
-        .select("id, owner")
+        .select("id")
         .or(ors.join(","))
-        .order("owner", { nullsFirst: true }) // prefer the global catalog row
         .limit(1);
       if (data && data.length > 0) return (data[0] as { id: string }).id;
     }
@@ -138,7 +137,6 @@ export class SupabaseStore implements DataStore {
     const { data, error } = await this.supabase
       .from("instruments")
       .insert({
-        owner: this.userId,
         isin: input.isin,
         wkn: input.wkn,
         symbol: input.symbol,

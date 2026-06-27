@@ -18,8 +18,6 @@ create table if not exists public.profiles (
 -- truth for auto-import and live-quote lookups; seeded in instruments_seed.sql.
 create table if not exists public.instruments (
   id uuid primary key default gen_random_uuid(),
-  -- null = global catalog; set = a user's custom (non-catalog) instrument.
-  owner uuid references auth.users (id) on delete cascade,
   isin text,
   wkn text,
   symbol text,
@@ -41,9 +39,9 @@ create table if not exists public.instruments (
   price_synced_at timestamptz,
   created_at timestamptz not null default now()
 );
--- Symbol uniqueness applies to the global catalog only.
+-- Symbol uniqueness across the (global) instruments catalog.
 create unique index if not exists instruments_symbol_key
-  on public.instruments (symbol) where symbol is not null and owner is null;
+  on public.instruments (symbol) where symbol is not null;
 create index if not exists instruments_isin_idx on public.instruments (isin);
 create index if not exists instruments_wkn_idx on public.instruments (wkn);
 
@@ -109,14 +107,17 @@ alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
 alter table public.fx_rates enable row level security;
 
--- Catalog: the global rows (owner is null) are world-readable; a user can also
--- read and write their own custom instruments (owner = them).
+-- Catalog: instruments are global reference data — world-readable, and any
+-- authenticated user may add a new one (the catalog grows as people import
+-- assets). Updates/deletes are service-role only (the price-sync cron), which
+-- bypasses RLS; clients never mutate shared rows.
 drop policy if exists "instruments readable" on public.instruments;
 create policy "instruments readable" on public.instruments
-  for select using (owner is null or owner = auth.uid());
+  for select using (true);
 drop policy if exists "own instruments write" on public.instruments;
-create policy "own instruments write" on public.instruments
-  for all using (owner = auth.uid()) with check (owner = auth.uid());
+drop policy if exists "instruments insertable" on public.instruments;
+create policy "instruments insertable" on public.instruments
+  for insert to authenticated with check (true);
 drop policy if exists "constituents readable" on public.instrument_constituents;
 create policy "constituents readable"
   on public.instrument_constituents for select using (true);
@@ -171,7 +172,7 @@ values
   (null,           null,     'BTC',  'Bitcoin',                  'CRYPTO', 'USD', 'Crypto',        'coingecko', 'bitcoin', 64000, 0.35, 0.7, 0),
   (null,           null,     'ETH',  'Ethereum',                 'CRYPTO', 'USD', 'Crypto',        'coingecko', 'ethereum', 3400, 0.30, 0.8, 0),
   (null,           null,     'SOL',  'Solana',                   'CRYPTO', 'USD', 'Crypto',        'coingecko', 'solana',  150,   0.40, 1.0, 0)
-on conflict (symbol) where symbol is not null and owner is null do nothing;
+on conflict (symbol) where symbol is not null do nothing;
 
 -- Seed approximate FX rates (units per 1 EUR); the cron refreshes them.
 insert into public.fx_rates (currency, rate) values

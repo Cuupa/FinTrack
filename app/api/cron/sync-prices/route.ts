@@ -15,7 +15,7 @@
 // start pricing without any manual catalog seeding.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { price, resolveSymbol } from "@/lib/server/yahoo";
+import { resolveQuote } from "@/lib/server/yahoo";
 
 export const dynamic = "force-dynamic";
 
@@ -59,15 +59,17 @@ async function syncEquities(
       if (!query) return;
       const hint = r.quote_source === "yahoo" && r.quote_id ? r.quote_id : undefined;
       try {
-        const symbol = await resolveSymbol(query, r.currency || "", hint);
-        const p = symbol ? await price(symbol) : null;
+        const resolved = await resolveQuote(query, r.currency || "", hint);
+        const p = resolved ? resolved.price : null;
+        const symbol = resolved?.symbol;
         if (p == null) return;
         // Auto-imported instruments are created without a quote listing, so the
         // cron resolves one (by ISIN/WKN/symbol — never hardcoded) and persists
-        // it. Future syncs then short-circuit on the hint, and the runtime
-        // live-quote path picks up the same quote_id from the catalog.
+        // it. Also re-persists when the resolved listing differs from the stored
+        // one, so a previously mis-resolved quote_id self-corrects. Future syncs
+        // short-circuit on the hint, and runtime live quotes reuse the quote_id.
         const learnsListing =
-          !!symbol && r.quote_source !== "yahoo" && r.quote_source !== "stooq";
+          !!symbol && (r.quote_source !== "yahoo" || r.quote_id !== symbol);
         if (!learnsListing && !changed(r.last_price, p)) return;
         const patch: Record<string, unknown> = {
           last_price: p,

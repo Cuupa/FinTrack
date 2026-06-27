@@ -27,6 +27,7 @@ import {
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { DistributionChart } from "@/components/charts/distribution-chart";
+import type { ChartMode, ChartScale } from "@/components/charts/performance-chart";
 
 type SimMode = "portfolio" | "custom";
 
@@ -38,9 +39,6 @@ function round1(n: number): number {
 function pct(fraction: number, digits = 1): string {
   return `${(fraction * 100).toFixed(digits)}%`;
 }
-
-const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function MonteCarloPanel() {
   const { data } = usePortfolio();
@@ -111,6 +109,8 @@ export function MonteCarloPanel() {
   const usingEstimates = returnOverride === null && volOverride === null;
 
   const [result, setResult] = useState<MonteCarloResult | null>(null);
+  const [scale, setScale] = useState<ChartScale>("linear");
+  const [chartMode, setChartMode] = useState<ChartMode>("currency");
   const [running, setRunning] = useState(false);
   const workerRef = useRef<Worker | null>(null);
 
@@ -321,14 +321,39 @@ export function MonteCarloPanel() {
               </Card>
             </div>
             <Card>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">Projected wealth</h2>
-                <span className="text-xs text-zinc-500">
-                  {result.params.runs.toLocaleString()} runs
-                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <SegmentedControl<ChartScale>
+                    size="sm"
+                    value={scale}
+                    onChange={setScale}
+                    options={[
+                      { label: "Linear", value: "linear" },
+                      { label: "Log", value: "log" },
+                    ]}
+                  />
+                  <SegmentedControl<ChartMode>
+                    size="sm"
+                    value={chartMode}
+                    onChange={setChartMode}
+                    options={[
+                      { label: "Currency", value: "currency" },
+                      { label: "Percent", value: "percent" },
+                    ]}
+                  />
+                  <span className="text-xs text-zinc-500">
+                    {result.params.runs.toLocaleString()} runs
+                  </span>
+                </div>
               </div>
               <div className="mt-4">
-                <DistributionChart result={result} currency={currency} />
+                <DistributionChart
+                  result={result}
+                  currency={currency}
+                  scale={scale}
+                  mode={chartMode}
+                />
               </div>
               <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
                 <Legend color="#6366f1" opacity={0.24} label="25–75th pct" />
@@ -361,27 +386,75 @@ export function MonteCarloPanel() {
 }
 
 function PortfolioModelNote({ model }: { model: PortfolioModel }) {
+  const guess = model.estimated;
+  const theme = guess
+    ? {
+        box: "border-amber-300/70 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20",
+        head: "text-amber-900 dark:text-amber-200",
+        badge:
+          "border-amber-400/60 bg-amber-100 text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/40 dark:text-amber-200",
+        bar: "bg-amber-400 dark:bg-amber-500",
+      }
+    : {
+        box: "border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/30",
+        head: "text-indigo-900 dark:text-indigo-200",
+        badge:
+          "border-indigo-300/60 bg-indigo-100 text-indigo-800 dark:border-indigo-700/60 dark:bg-indigo-900/40 dark:text-indigo-200",
+        bar: "bg-indigo-400 dark:bg-indigo-500",
+      };
+
   return (
-    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
-      <div className="font-medium text-indigo-900 dark:text-indigo-200">
-        Per-asset model · {model.sampleYears.toFixed(1)} yrs of{" "}
-        {model.real ? "real market" : "modelled"} history
+    <div className={`rounded-xl border p-3.5 text-xs ${theme.box}`}>
+      <div className={`flex items-center justify-between gap-2 ${theme.head}`}>
+        <span className="font-semibold">Per-asset model</span>
+        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${theme.badge}`}>
+          {guess ? "Estimate" : `${model.sampleYears.toFixed(1)} yrs history`}
+        </span>
       </div>
-      <ul className="mt-2 space-y-0.5 text-zinc-600 dark:text-zinc-400">
+
+      {guess && (
+        <p className="mt-2 text-amber-800/90 dark:text-amber-200/80">
+          Some holdings have too little price history to measure reliably, so
+          their return and risk below are a rough <strong>guess</strong>. The
+          projection will sharpen as more market data accrues.
+        </p>
+      )}
+
+      <ul className="mt-3 space-y-2.5">
         {model.assets.map((a) => (
-          <li key={a.name} className="flex justify-between gap-2 tabular-nums">
-            <span className="truncate">
-              {a.name} ({pct(a.weight, 0)})
-            </span>
-            <span>
-              {formatPercent(a.mean)} / σ {pct(a.vol)}
-            </span>
+          <li key={a.name}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-medium text-zinc-700 dark:text-zinc-200">
+                {a.name}
+              </span>
+              <span className="shrink-0 tabular-nums text-zinc-700 dark:text-zinc-200">
+                {formatPercent(a.mean)}{" "}
+                <span className="text-zinc-400">/ σ {pct(a.vol)}</span>
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
+                <div
+                  className={`h-full rounded-full ${theme.bar}`}
+                  style={{ width: `${Math.min(100, a.weight * 100)}%` }}
+                />
+              </div>
+              <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
+                {pct(a.weight, 0)}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] text-zinc-500">
+              {a.estimated
+                ? `guess · only ${a.years.toFixed(1)} yr of data`
+                : `${a.years.toFixed(1)} yr of history`}
+            </div>
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-zinc-500">
-        Each holding is simulated with its own volatility and their historical
-        correlations.
+
+      <p className="mt-3 border-t border-current/10 pt-2 text-zinc-500">
+        Each holding is simulated with its own volatility; correlations come from
+        the {model.corrYears.toFixed(1)} yr the holdings overlap.
       </p>
     </div>
   );
@@ -419,6 +492,11 @@ function EstimateNote({
           : "Based on the value-weighted historical returns of your holdings."}{" "}
         μ&nbsp;{formatPercent(stats.expectedReturn)} · σ&nbsp;{pct(stats.volatility)}.
       </p>
+      {(!stats.real || stats.sampleYears < 3) && (
+        <p className="mt-1 text-amber-700 dark:text-amber-300">
+          Limited price history — treat these as a rough guess.
+        </p>
+      )}
       {!stats.fromBenchmark && stats.perAsset.length > 1 && (
         <ul className="mt-2 space-y-0.5 text-zinc-500">
           {stats.perAsset.map((a) => (
@@ -487,17 +565,22 @@ function Field({
   return (
     <div>
       <label className="text-sm font-medium">{label}</label>
-      <div className="relative">
+      <div className="group relative mt-1">
         <input
           type="number"
+          inputMode="decimal"
           step={step}
           min={min}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className={inputCls}
+          // Hide the native spinner (it overlapped the suffix) and leave room
+          // for the unit label on the right.
+          className={`w-full rounded-lg border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+            suffix ? "pr-12" : "pr-3"
+          }`}
         />
         {suffix && (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-400">
             {suffix}
           </span>
         )}
