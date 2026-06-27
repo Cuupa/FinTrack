@@ -23,6 +23,8 @@ import { netWorthSeries, summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { netFlows, periodReturns, type Period } from "@/lib/finance/returns";
+import { assetPriceKey } from "@/lib/types";
+import { dateKey, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -45,6 +47,8 @@ export function ReturnsView() {
   // Each chart has its own period toggle.
   const [heatPeriod, setHeatPeriod] = useState<Period>("quarter");
   const [barPeriod, setBarPeriod] = useState<Period>("quarter");
+  // The performance map can be scoped to a timeframe.
+  const [mapTf, setMapTf] = useState<Timeframe>("MAX");
 
   const holdings = useMemo(
     () =>
@@ -95,17 +99,34 @@ export function ReturnsView() {
     [heatReturns],
   );
 
-  const tree = useMemo(
-    () =>
-      holdings
-        .map((h) => ({
-          name: h.asset.symbol || h.asset.name,
-          size: Math.max(0, h.marketValue),
-          ret: h.unrealizedPLPercent,
-        }))
-        .filter((d) => d.size > 0),
-    [holdings],
-  );
+  // Earliest transaction, so the MAX/YTD window can be bounded sensibly.
+  const earliest = useMemo(() => {
+    const ds = data.transactions.map((t) => dateKey(t.date)).sort();
+    return ds[0] ?? null;
+  }, [data.transactions]);
+
+  // Treemap: holdings sized by value, coloured by return over the selected
+  // timeframe. "MAX" keeps the all-time unrealised return (vs. cost basis);
+  // shorter windows use the price return from each asset's history.
+  const tree = useMemo(() => {
+    const end = today();
+    const start = timeframeStart(mapTf, end, earliest);
+    return holdings
+      .map((h) => {
+        let ret = h.unrealizedPLPercent;
+        if (mapTf !== "MAX") {
+          const hist = histories[assetPriceKey(h.asset)];
+          if (hist && hist.length > 1) {
+            const inWin = hist.filter((p) => p.date >= start);
+            const first = (inWin[0] ?? hist[0]).close;
+            const last = hist[hist.length - 1].close;
+            if (first > 0) ret = last / first - 1;
+          }
+        }
+        return { name: h.asset.symbol || h.asset.name, size: Math.max(0, h.marketValue), ret };
+      })
+      .filter((d) => d.size > 0);
+  }, [holdings, histories, mapTf, earliest]);
 
   if (holdings.length === 0) {
     return (
@@ -227,10 +248,28 @@ export function ReturnsView() {
       </Card>
 
       <Card>
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          Performance map
-          <InfoTip text="Each holding sized by its current value and coloured by its unrealised return (green = up, red = down)." />
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            Performance map
+            <InfoTip text="Each holding sized by its current value and coloured by its return over the selected timeframe (green = up, red = down). MAX shows the all-time return vs. your cost basis." />
+          </h3>
+          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+            {(["1M", "3M", "YTD", "1Y", "5Y", "MAX"] as Timeframe[]).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setMapTf(tf)}
+                aria-pressed={mapTf === tf}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  mapTf === tf
+                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="mt-3">
           <ResponsiveContainer width="100%" height={320}>
             <Treemap data={tree} dataKey="size" stroke="#fff" isAnimationActive={false} content={<PerfCell />}>

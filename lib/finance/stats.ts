@@ -240,22 +240,34 @@ function generalFor(asset: Asset): { mean: number; vol: number } {
  * window (the caller passes a window matching the investment horizon, so the
  * figures change with it). Only when there's no usable real history does it
  * fall back to the general long-run assumption.
+ *
+ * `horizonYears` enables **regression to the mean**: a recent high (or low)
+ * return isn't sustainable over a long projection, so the measured mean is
+ * shrunk toward the asset type's long-run baseline. We trust the data more with
+ * more history and less over longer horizons — w = years / (years + τ), where
+ * τ grows with the horizon. `horizonYears <= 0` disables it (pure measurement,
+ * e.g. for a historical Sharpe ratio).
  */
 function assetMeanVol(
   asset: Asset,
   rets: number[],
   real: boolean,
   ppy: number,
+  horizonYears = 0,
 ): { mean: number; vol: number; years: number; real: boolean; estimated: boolean } {
   const years = rets.length / ppy;
   if (real && rets.length >= 2) {
-    return {
-      mean: annualizeReturn(rets, ppy),
-      vol: annualizeVol(rets, ppy),
-      years,
-      real: true,
-      estimated: false,
-    };
+    const measured = annualizeReturn(rets, ppy);
+    const vol = annualizeVol(rets, ppy);
+    if (horizonYears <= 0) {
+      return { mean: measured, vol, years, real: true, estimated: false };
+    }
+    const prior = generalFor(asset).mean;
+    const tau = Math.max(1, horizonYears / 3);
+    const w = years / (years + tau);
+    const mean = w * measured + (1 - w) * prior;
+    // Flag as a blended estimate once the long-run prior carries real weight.
+    return { mean, vol, years, real: true, estimated: w < 0.85 };
   }
   const g = generalFor(asset);
   return { mean: g.mean, vol: g.vol, years, real: false, estimated: true };
@@ -285,7 +297,9 @@ export function estimatePortfolioModel(
   const assets: AssetModel[] = valued.map((h, i) => ({
     name: h.asset.name,
     weight: h.marketValue / total,
-    ...assetMeanVol(h.asset, series[i].rets, series[i].real, ppy),
+    // `years` is both the lookback window and the projection horizon (the panel
+    // couples them), so it drives the regression-to-mean shrinkage.
+    ...assetMeanVol(h.asset, series[i].rets, series[i].real, ppy, years),
   }));
   const aligned = series.map((r) =>
     r.rets.length >= L ? r.rets.slice(r.rets.length - L) : new Array<number>(L).fill(0),

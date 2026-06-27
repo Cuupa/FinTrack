@@ -290,12 +290,29 @@ export function MonteCarloPanel() {
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
             {running ? "Simulating…" : "Run simulation"}
           </Button>
-          <p className="text-xs text-zinc-500">
-            Runs 1,000–10,000 Monte Carlo paths in the background using monthly
-            compounding with normally-distributed returns. A long horizon assumes
-            a ~7% p.a. baseline (σ ≈ 16%) for broad equity unless the history of
-            your holdings says otherwise.
-          </p>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
+            <p className="font-medium text-zinc-700 dark:text-zinc-300">Default guidelines</p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-4">
+              <li>
+                <strong>7% p.a.</strong> is the baseline real-world expectation for
+                broad equity over a standard <strong>30-year</strong> horizon
+                (≈ the long-run global-equity premium).
+              </li>
+              <li>
+                <strong>σ ≈ 16%</strong> is the research-backed annual volatility
+                for a diversified world-equity index.
+              </li>
+              <li>
+                Measured figures from your holdings override these; over long
+                horizons they regress toward the baseline, since a recent streak
+                isn&apos;t sustainable for decades.
+              </li>
+            </ul>
+            <p className="mt-1.5">
+              Runs 1,000–10,000 paths with monthly compounding and
+              normally-distributed returns.
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -431,8 +448,9 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
         </p>
       ) : blended ? (
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Figures use each holding&apos;s own history; short windows are tempered
-          toward long-run market assumptions.
+          Figures use each holding&apos;s own history, regressed toward long-run
+          market assumptions for longer horizons (a recent streak isn&apos;t
+          sustainable for decades).
         </p>
       ) : null}
 
