@@ -31,6 +31,7 @@ import { constituentsFor } from "@/lib/catalog/catalog";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { Button, Card, Stat } from "@/components/ui/primitives";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -54,6 +55,12 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   const [mode, setMode] = useState<ChartMode>("currency");
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
   const [highlight, setHighlight] = useState<ChartMarker["type"] | null>(null);
+  const [pending, setPending] = useState<{
+    title: string;
+    message?: string;
+    confirmLabel?: string;
+    action: () => void;
+  } | null>(null);
   const compare = useBenchmarkCompare(benchmarks);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
@@ -135,11 +142,16 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   // (market value, P&L) are in the base currency.
   const nativeCur = summary.currency || currency;
 
-  async function handleDelete() {
-    if (confirm(`Delete ${asset!.name} and all its transactions?`)) {
-      await deleteAsset(asset!.id);
-      router.push("/");
-    }
+  function handleDelete() {
+    setPending({
+      title: `Delete ${asset!.name}?`,
+      message: "This removes the asset and all its transactions. This can't be undone.",
+      confirmLabel: "Delete asset",
+      action: async () => {
+        await deleteAsset(asset!.id);
+        router.push("/");
+      },
+    });
   }
 
   return (
@@ -340,19 +352,29 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             <TransactionsTable
               txs={txs}
               currency={nativeCur}
-              onDelete={(t) => {
-                if (
-                  confirm(
-                    `Delete this ${t.type} of ${formatNumber(t.quantity, 4)} on ${formatDateTime(t.date)}?`,
-                  )
-                ) {
-                  void deleteTransaction(t.id);
-                }
-              }}
+              onDelete={(t) =>
+                setPending({
+                  title: "Delete transaction?",
+                  message: `This ${t.type} of ${formatNumber(t.quantity, 4)} on ${formatDateTime(t.date)} will be removed.`,
+                  action: () => void deleteTransaction(t.id),
+                })
+              }
             />
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ""}
+        message={pending?.message}
+        confirmLabel={pending?.confirmLabel}
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          pending?.action();
+          setPending(null);
+        }}
+      />
     </div>
   );
 }
