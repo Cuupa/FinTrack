@@ -18,7 +18,7 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
-import { netFlows } from "@/lib/finance/returns";
+import { netFlows, cumulativeReturnSeries } from "@/lib/finance/returns";
 import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
@@ -59,6 +59,11 @@ export function NetWorthHero() {
   const series = useMemo(
     () => netWorthSeries(data.assets, data.transactions, timeframe, valuation, histories),
     [data.assets, data.transactions, timeframe, valuation, histories],
+  );
+  // Contribution-adjusted cumulative return over the window, for "Return" mode.
+  const returnSeries = useMemo(
+    () => cumulativeReturnSeries(series, netFlows(data.assets, data.transactions, valuation)),
+    [series, data.assets, data.transactions, valuation],
   );
 
   const totals = useMemo(
@@ -169,6 +174,7 @@ export function NetWorthHero() {
             currency={currency}
             compare={compare}
             mainLabel="Net worth"
+            returnSeries={returnSeries}
           />
         )}
       </div>

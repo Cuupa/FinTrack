@@ -50,6 +50,9 @@ interface Props {
   compare?: CompareSeries[];
   /** Legend label for the main line when comparing. */
   mainLabel?: string;
+  /** Cumulative-return fractions (aligned to `series` by index) used as the main
+   *  line in percent mode instead of normalising the value series. */
+  returnSeries?: SeriesPoint[];
   /** Emphasise markers of this type (others dim); null = all normal. */
   highlightType?: ChartMarker["type"] | null;
 }
@@ -91,6 +94,7 @@ export function PerformanceChart({
   compare = [],
   mainLabel = "Value",
   highlightType = null,
+  returnSeries,
 }: Props) {
   const comparing = compare.length > 0;
   // Comparison is only meaningful as relative performance.
@@ -105,10 +109,17 @@ export function PerformanceChart({
     return at && at > 0 ? at : (c.points.find((p) => p.value > 0)?.value ?? 0);
   });
 
-  const data = series.map((p) => {
+  const data = series.map((p, i) => {
+    // In percent mode prefer a precomputed cumulative-return series (deposits
+    // excluded); otherwise normalise the value against the window start.
+    const pctValue = returnSeries
+      ? (returnSeries[i]?.value ?? 0)
+      : baseMain > 0
+        ? p.value / baseMain - 1
+        : 0;
     const row: Record<string, number | string | null> = {
       date: p.date,
-      value: pctMode ? (baseMain > 0 ? p.value / baseMain - 1 : 0) : p.value,
+      value: pctMode ? pctValue : p.value,
     };
     compare.forEach((c, i) => {
       const v = valueAt(c.points, p.date);

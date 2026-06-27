@@ -34,6 +34,28 @@ export function netFlows(assets: Asset[], txs: Transaction[], v?: ValuationConte
   return flows;
 }
 
+/**
+ * Cumulative time-weighted return over a net-worth series, as a fraction from
+ * the window start (0 at the first point). Each day's return excludes that day's
+ * external cash flow (r = (V − V_prev − F) / V_prev) and is chained, so deposits
+ * don't masquerade as performance. This is what the chart shows in "Return" mode.
+ */
+export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): SeriesPoint[] {
+  if (series.length === 0) return [];
+  const flowByDay = new Map<string, number>();
+  for (const f of flows) flowByDay.set(f.date, (flowByDay.get(f.date) ?? 0) + f.amount);
+
+  const out: SeriesPoint[] = [{ date: series[0].date, value: 0 }];
+  let cum = 1;
+  for (let i = 1; i < series.length; i++) {
+    const prev = series[i - 1].value;
+    const F = flowByDay.get(series[i].date) ?? 0;
+    if (prev > 0) cum *= 1 + (series[i].value - prev - F) / prev;
+    out.push({ date: series[i].date, value: cum - 1 });
+  }
+  return out;
+}
+
 export interface PeriodReturn {
   /** Sort/identity key, e.g. "2025-Q1" or "2025". */
   key: string;
