@@ -55,8 +55,8 @@ export function ChartControls({
             value={mode}
             onChange={onMode}
             options={[
-              { label: "Currency", value: "currency" },
-              { label: "Percent", value: "percent" },
+              { label: "Wealth", value: "currency" },
+              { label: "Return", value: "percent" },
             ]}
           />
         )}

@@ -188,16 +188,16 @@ export function AssetDetail({ assetId }: { assetId: string }) {
 
       {/* Price chart */}
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <ChartControls
-            timeframe={timeframe}
-            onTimeframe={setTimeframe}
-            scale={scale}
-            onScale={setScale}
-            mode={mode}
-            onMode={setMode}
-            showMode={false}
-          />
+        <ChartControls
+          timeframe={timeframe}
+          onTimeframe={setTimeframe}
+          scale={scale}
+          onScale={setScale}
+          mode={mode}
+          onMode={setMode}
+          showMode={false}
+        />
+        <div className="mt-3 flex justify-end">
           <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
         </div>
         <div className="mt-4">

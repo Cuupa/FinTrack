@@ -144,7 +144,7 @@ export function NetWorthHero() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-6">
         <ChartControls
           timeframe={timeframe}
           onTimeframe={setTimeframe}
@@ -153,6 +153,8 @@ export function NetWorthHero() {
           mode={mode}
           onMode={setMode}
         />
+      </div>
+      <div className="mt-3 flex justify-end">
         <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
       </div>
 
