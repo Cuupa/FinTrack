@@ -324,15 +324,18 @@ export function MonteCarloPanel() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">Projected wealth</h2>
                 <div className="flex flex-wrap items-center gap-3">
-                  <SegmentedControl<ChartScale>
-                    size="sm"
-                    value={scale}
-                    onChange={setScale}
-                    options={[
-                      { label: "Linear", value: "linear" },
-                      { label: "Log", value: "log" },
-                    ]}
-                  />
+                  {/* Log scale is undefined for percentages — hide in percent mode. */}
+                  {chartMode === "currency" && (
+                    <SegmentedControl<ChartScale>
+                      size="sm"
+                      value={scale}
+                      onChange={setScale}
+                      options={[
+                        { label: "Linear", value: "linear" },
+                        { label: "Logarithmic", value: "log" },
+                      ]}
+                    />
+                  )}
                   <SegmentedControl<ChartMode>
                     size="sm"
                     value={chartMode}
@@ -492,9 +495,9 @@ function EstimateNote({
           : "Based on the value-weighted historical returns of your holdings."}{" "}
         μ&nbsp;{formatPercent(stats.expectedReturn)} · σ&nbsp;{pct(stats.volatility)}.
       </p>
-      {(!stats.real || stats.sampleYears < 3) && (
+      {stats.estimated && (
         <p className="mt-1 text-amber-700 dark:text-amber-300">
-          Limited price history — treat these as a rough guess.
+          Limited price history — based on general long-run assumptions.
         </p>
       )}
       {!stats.fromBenchmark && stats.perAsset.length > 1 && (

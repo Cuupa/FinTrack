@@ -25,7 +25,6 @@ servers:
   - url: /
     description: Same-origin (relative)
 
-
 tags:
   - name: Catalog
     description: World-readable instruments reference data.
@@ -220,42 +219,16 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /api/cron/sync-prices:
-    get:
+    post:
       tags: [Cron]
-      operationId: syncPricesGet
+      operationId: syncPrices
       summary: Cache live prices + FX onto the reference tables
       description: >
         Fetches live equity (Yahoo), crypto (CoinGecko, USD) and FX
         (Frankfurter, EUR-anchored) prices and caches them on `instruments` /
-        `fx_rates`. Secured by `CRON_SECRET` (Bearer header); if
-        no secret is configured the route is open (local dev). Requires the
-        service role key.
-      security:
-        - cronBearer: []
-      responses:
-        "200":
-          description: Counts of updated rows.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SyncPricesResponse"
-        "401":
-          description: Missing/incorrect cron secret.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Service role not configured, or a DB error.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-    post:
-      tags: [Cron]
-      operationId: syncPricesPost
-      summary: Cache live prices + FX (POST alias)
-      description: Identical to `GET /api/cron/sync-prices`.
+        `fx_rates`. POST because it mutates the catalog. Secured by `CRON_SECRET`
+        (Bearer header); if no secret is configured the route is open (local
+        dev). Requires the service role key.
       security:
         - cronBearer: []
       responses:
@@ -279,40 +252,15 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /api/cron/sync-constituents:
-    get:
+    post:
       tags: [Cron]
-      operationId: syncConstituentsGet
+      operationId: syncConstituents
       summary: Refresh cached constituents for every fetchable catalog ETF
       description: >
         Re-fetches holdings for each catalog ETF that has a fetchable source and
         replaces the cached rows. Funds without a source keep their seeded data.
-        Same `CRON_SECRET` and service-role requirements as `sync-prices`.
-      security:
-        - cronBearer: []
-      responses:
-        "200":
-          description: Per-ETF refresh summary.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SyncConstituentsResponse"
-        "401":
-          description: Missing/incorrect cron secret.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Service role not configured, or a DB error.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-    post:
-      tags: [Cron]
-      operationId: syncConstituentsPost
-      summary: Refresh cached constituents (POST alias)
-      description: Identical to `GET /api/cron/sync-constituents`.
+        POST because it mutates the catalog. Same `CRON_SECRET` and service-role
+        requirements as `sync-prices`.
       security:
         - cronBearer: []
       responses:

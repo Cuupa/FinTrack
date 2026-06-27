@@ -3,7 +3,7 @@
 // catalog cache instead of each client polling the providers (rate limits).
 //
 // Schedule this (Vercel Cron, Supabase scheduled function, or any scheduler) to
-// hit GET/POST /api/cron/sync-prices with `Authorization: Bearer $CRON_SECRET`.
+// POST /api/cron/sync-prices with `Authorization: Bearer $CRON_SECRET`.
 // Requires SUPABASE_SERVICE_ROLE_KEY to write the public reference tables.
 //
 // Caches:  equities (Yahoo, native currency), crypto (CoinGecko, USD),
@@ -189,5 +189,6 @@ async function handle(req: Request): Promise<Response> {
   return Response.json({ ok: true, syncedAt, equities, crypto, fxRates: fx });
 }
 
-export const GET = handle;
+// POST only: this mutates the catalog (prices/FX), so it must not be a safe
+// GET (Zalando REST guidelines — GET must be side-effect-free).
 export const POST = handle;

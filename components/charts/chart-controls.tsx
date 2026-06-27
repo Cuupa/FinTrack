@@ -36,15 +36,19 @@ export function ChartControls({
         options={TIMEFRAMES.map((tf) => ({ label: tf, value: tf }))}
       />
       <div className="ml-auto flex flex-wrap gap-3">
-        <SegmentedControl<ChartScale>
-          size="sm"
-          value={scale}
-          onChange={onScale}
-          options={[
-            { label: "Linear", value: "linear" },
-            { label: "Log", value: "log" },
-          ]}
-        />
+        {/* Log scale is undefined for percentages, so the toggle is hidden in
+            percent mode. */}
+        {mode === "currency" && (
+          <SegmentedControl<ChartScale>
+            size="sm"
+            value={scale}
+            onChange={onScale}
+            options={[
+              { label: "Linear", value: "linear" },
+              { label: "Logarithmic", value: "log" },
+            ]}
+          />
+        )}
         {showMode && (
           <SegmentedControl<ChartMode>
             size="sm"

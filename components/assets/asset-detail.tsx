@@ -186,7 +186,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       {constituents.length > 0 && (
         <Card>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">Top holdings</h2>
+            <h2 className="text-lg font-semibold">Top 10 holdings</h2>
             <p className="text-xs text-zinc-500">
               Representative constituents · your exposure shown per stock
             </p>
@@ -195,6 +195,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             {constituents
               .slice()
               .sort((a, b) => b.weight - a.weight)
+              .slice(0, 10)
               .map((c) => (
                 <div key={c.name} className="flex items-center gap-3 text-sm">
                   <span className="w-44 shrink-0 truncate">

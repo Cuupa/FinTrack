@@ -7,7 +7,7 @@
 // and falls back to the synthetic series otherwise. Without real history it
 // runs on the synthetic DAILY series. Annualisation is resolution-aware.
 
-import { assetPriceKey, type Asset } from "../types";
+import { assetPriceKey, type Asset, type AssetType } from "../types";
 import { dailyPrices } from "./prices";
 import type { HistoryMap, HistoryPoint } from "../history/history";
 
@@ -15,9 +15,20 @@ const DAILY_PPY = 365; // synthetic series is calendar-daily
 const MONTHLY_PPY = 12;
 // Real history is used for an asset only with at least this many months.
 const MIN_REAL_MONTHS = 24;
-// Below this much real history an estimate is a rough guess (too short to
-// annualise reliably), and the UI labels it as such.
-const MIN_CONFIDENT_YEARS = 3;
+// A measured return/volatility is only trusted with at least this many years of
+// real history. A few recent (often bull-market) years annualise to wildly
+// optimistic figures that don't hold over a multi-decade horizon, so below this
+// we fall back to a general long-run assumption and flag it as a guess.
+const RELIABLE_YEARS = 15;
+
+// General long-run capital-market assumptions per asset type (annualised
+// fractions), used as the guesstimate when an asset lacks enough real history.
+const GENERAL: Record<AssetType, { mean: number; vol: number }> = {
+  ETF: { mean: 0.07, vol: 0.16 },
+  STOCK: { mean: 0.07, vol: 0.2 },
+  CRYPTO: { mean: 0.1, vol: 0.7 },
+  CASH: { mean: 0.02, vol: 0.005 },
+};
 
 export interface AssetStat {
   name: string;
@@ -38,6 +49,8 @@ export interface PortfolioStats {
   fromBenchmark: boolean;
   /** True when (some) real market history was used rather than synthetic. */
   real: boolean;
+  /** True when any figure is a general guesstimate (insufficient real history). */
+  estimated: boolean;
 }
 
 export interface StatHolding {
@@ -197,6 +210,25 @@ function gatherReturns(
 }
 
 /**
+ * Annualised mean/vol for one asset: its measured figures when backed by enough
+ * real history, otherwise the general long-run assumption for its type (a
+ * guesstimate). `estimated` is true whenever the general fallback was used.
+ */
+function assetMeanVol(
+  asset: Asset,
+  rets: number[],
+  real: boolean,
+  ppy: number,
+): { mean: number; vol: number; years: number; estimated: boolean } {
+  const years = rets.length / ppy;
+  if (real && years >= RELIABLE_YEARS) {
+    return { mean: annualizeReturn(rets, ppy), vol: annualizeVol(rets, ppy), years, estimated: false };
+  }
+  const g = GENERAL[asset.type] ?? GENERAL.ETF;
+  return { mean: g.mean, vol: g.vol, years, estimated: true };
+}
+
+/**
  * Per-asset model for the portfolio-aware Monte Carlo: each asset's annualised
  * mean/volatility/weight (from its own history) plus the correlation matrix
  * (from the common overlapping window).
@@ -215,19 +247,13 @@ export function estimatePortfolioModel(
   if (lengths.length === 0) return null;
   const L = Math.min(...lengths);
 
-  // Per-asset μ/σ from each asset's full series; correlation from last L.
-  const assets: AssetModel[] = valued.map((h, i) => {
-    const years = series[i].rets.length / ppy;
-    return {
-      name: h.asset.name,
-      weight: h.marketValue / total,
-      mean: annualizeReturn(series[i].rets, ppy),
-      vol: annualizeVol(series[i].rets, ppy),
-      years,
-      // A guess when there's no real history, or too little to annualise well.
-      estimated: !series[i].real || years < MIN_CONFIDENT_YEARS,
-    };
-  });
+  // Per-asset μ/σ (measured when enough real history, else a general guess);
+  // correlation from the last L overlapping points.
+  const assets: AssetModel[] = valued.map((h, i) => ({
+    name: h.asset.name,
+    weight: h.marketValue / total,
+    ...assetMeanVol(h.asset, series[i].rets, series[i].real, ppy),
+  }));
   const aligned = series.map((r) =>
     r.rets.length >= L ? r.rets.slice(r.rets.length - L) : new Array<number>(L).fill(0),
   );
@@ -264,38 +290,33 @@ export function estimatePortfolioStats(
   years = 5,
   history?: HistoryMap,
 ): PortfolioStats | null {
-  const valued = holdings.filter((h) => h.marketValue > 0);
-  if (valued.length === 0) return null;
-  const total = valued.reduce((s, h) => s + h.marketValue, 0);
+  const model = estimatePortfolioModel(holdings, years, history);
+  if (!model) return null;
 
-  const { series, ppy } = gatherReturns(valued, years, history);
-  const lengths = series.filter((r) => r.rets.length).map((r) => r.rets.length);
-  if (lengths.length === 0) return null;
-  const L = Math.min(...lengths);
-
-  const portfolio = new Array<number>(L).fill(0);
-  const perAsset: AssetStat[] = [];
-  for (let i = 0; i < valued.length; i++) {
-    const weight = valued[i].marketValue / total;
-    const rets = series[i].rets;
-    const aligned =
-      rets.length >= L ? rets.slice(rets.length - L) : new Array<number>(L).fill(0);
-    for (let t = 0; t < L; t++) portfolio[t] += weight * aligned[t];
-    perAsset.push({
-      name: valued[i].asset.name,
-      weight,
-      annualReturn: annualizeReturn(rets, ppy),
-      annualVol: annualizeVol(rets, ppy),
-    });
+  // Aggregate from the per-asset (measured-or-general) μ/σ + the measured
+  // correlations, so the blended figures match the per-asset model exactly.
+  const { assets, corr } = model;
+  const expectedReturn = assets.reduce((s, a) => s + a.weight * a.mean, 0);
+  let variance = 0;
+  for (let i = 0; i < assets.length; i++) {
+    for (let j = 0; j < assets.length; j++) {
+      variance += assets[i].weight * assets[j].weight * assets[i].vol * assets[j].vol * corr[i][j];
+    }
   }
 
   return {
-    expectedReturn: annualizeReturn(portfolio, ppy),
-    volatility: annualizeVol(portfolio, ppy),
-    sampleYears: L / ppy,
-    perAsset,
+    expectedReturn,
+    volatility: Math.sqrt(Math.max(0, variance)),
+    sampleYears: model.sampleYears,
+    perAsset: assets.map((a) => ({
+      name: a.name,
+      weight: a.weight,
+      annualReturn: a.mean,
+      annualVol: a.vol,
+    })),
     fromBenchmark: false,
-    real: series.some((r) => r.real),
+    real: model.real,
+    estimated: model.estimated,
   };
 }
 
@@ -316,6 +337,7 @@ export function benchmarkStats(years = 5): PortfolioStats {
     perAsset: [{ name: BENCHMARK_NAME, weight: 1, annualReturn: expectedReturn, annualVol: volatility }],
     fromBenchmark: true,
     real: false,
+    estimated: true,
   };
 }
 

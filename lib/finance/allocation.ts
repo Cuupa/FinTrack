@@ -59,8 +59,10 @@ function volForAsset(h: HoldingSummary): number {
 /**
  * Look-through allocation by a classification field (sector or region): ETFs
  * are decomposed into their constituent stocks (each carrying a classification),
- * direct stocks use the instrument's (or online-fetched) classification, and
- * the uncovered remainder of each ETF becomes "Other".
+ * direct stocks use the instrument's (or online-fetched) classification. Both
+ * the uncovered remainder of each ETF and any unclassified holding fall into a
+ * single "Other" bucket (there's no separate "Unknown" — they're the same to a
+ * reader).
  */
 function lookThrough(
   holdings: HoldingSummary[],
@@ -69,7 +71,10 @@ function lookThrough(
 ): Slice[] {
   const map = new Map<string, number>();
   let other = 0;
-  const add = (label: string, v: number) => map.set(label, (map.get(label) ?? 0) + v);
+  const add = (label: string | null | undefined, v: number) => {
+    if (label) map.set(label, (map.get(label) ?? 0) + v);
+    else other += v; // unclassified → "Other"
+  };
 
   for (const h of holdings) {
     if (h.marketValue <= 0) continue;
@@ -84,14 +89,13 @@ function lookThrough(
       let covered = 0;
       for (const c of cons) {
         covered += c.weight;
-        add(c[field] || "Unknown", h.marketValue * c.weight);
+        add(c[field], h.marketValue * c.weight);
       }
       other += h.marketValue * Math.max(0, 1 - covered);
     } else if (type === "STOCK") {
       const key = assetPriceKey(h.asset);
       const inst = lookupInstrument(key);
-      const label = inst?.[field] || overrides?.[key]?.[field] || "Unknown";
-      add(label, h.marketValue);
+      add(inst?.[field] || overrides?.[key]?.[field], h.marketValue);
     } else if (type === "CRYPTO") {
       add(field === "region" ? "Crypto" : "Digital Assets", h.marketValue);
     } else {

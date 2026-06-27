@@ -81,5 +81,6 @@ async function handle(req: Request): Promise<Response> {
   });
 }
 
-export const GET = handle;
+// POST only: replaces cached constituents, so it must not be a safe GET
+// (Zalando REST guidelines — GET must be side-effect-free).
 export const POST = handle;
