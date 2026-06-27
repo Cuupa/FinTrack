@@ -13,16 +13,12 @@ import type { HistoryMap, HistoryPoint } from "../history/history";
 
 const DAILY_PPY = 365; // synthetic series is calendar-daily
 const MONTHLY_PPY = 12;
-// Real history is used for an asset only with at least this many months.
-const MIN_REAL_MONTHS = 24;
-// A measured return/volatility is only trusted with at least this many years of
-// real history. A few recent (often bull-market) years annualise to wildly
-// optimistic figures that don't hold over a multi-decade horizon, so below this
-// we fall back to a general long-run assumption and flag it as a guess.
-const RELIABLE_YEARS = 15;
+// Real history is used for an asset only when at least this much total history
+// exists; the window is then sliced to the requested (horizon) length.
+const MIN_REAL_MONTHS = 6;
 
 // General long-run capital-market assumptions per asset type (annualised
-// fractions), used as the guesstimate when an asset lacks enough real history.
+// fractions), used only when an asset has no usable real history.
 const GENERAL: Record<AssetType, { mean: number; vol: number }> = {
   ETF: { mean: 0.07, vol: 0.16 },
   STOCK: { mean: 0.07, vol: 0.2 },
@@ -240,11 +236,10 @@ function generalFor(asset: Asset): { mean: number; vol: number } {
 }
 
 /**
- * Annualised mean/vol for one asset. With no/short real history it leans on the
- * general assumption; with a lot of history it uses the measured figures. In
- * between, a credibility-weighted blend (w = years / RELIABLE_YEARS) USES the
- * data while tempering a short, possibly unrepresentative window toward the
- * long-run prior — so e.g. 5 years of data counts, it isn't dismissed.
+ * Annualised mean/vol for one asset: the measured average over the requested
+ * window (the caller passes a window matching the investment horizon, so the
+ * figures change with it). Only when there's no usable real history does it
+ * fall back to the general long-run assumption.
  */
 function assetMeanVol(
   asset: Asset,
@@ -253,18 +248,17 @@ function assetMeanVol(
   ppy: number,
 ): { mean: number; vol: number; years: number; real: boolean; estimated: boolean } {
   const years = rets.length / ppy;
-  const g = generalFor(asset);
-  if (!real || years <= 0) {
-    return { mean: g.mean, vol: g.vol, years, real: false, estimated: true };
+  if (real && rets.length >= 2) {
+    return {
+      mean: annualizeReturn(rets, ppy),
+      vol: annualizeVol(rets, ppy),
+      years,
+      real: true,
+      estimated: false,
+    };
   }
-  const w = Math.min(1, years / RELIABLE_YEARS);
-  return {
-    mean: w * annualizeReturn(rets, ppy) + (1 - w) * g.mean,
-    vol: w * annualizeVol(rets, ppy) + (1 - w) * g.vol,
-    years,
-    real: true,
-    estimated: w < 1,
-  };
+  const g = generalFor(asset);
+  return { mean: g.mean, vol: g.vol, years, real: false, estimated: true };
 }
 
 /**

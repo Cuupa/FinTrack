@@ -67,10 +67,10 @@ export function MonteCarloPanel() {
     runs: 1000,
   });
 
-  // Estimate returns/volatility from ALL available history (up to 20y),
-  // independent of the investment horizon — a short horizon shouldn't throw
-  // away years of data and force a guess.
-  const lookbackYears = 20;
+  // Estimate returns/volatility from the last `horizon` years of history, so the
+  // figures are the average over the selected period and change with it (capped
+  // by how much real history exists).
+  const lookbackYears = Math.max(1, Math.round(form.years));
 
   // Fetch REAL historical prices for the holdings (longest available), used to
   // estimate returns/volatility; falls back to the synthetic series per asset.
