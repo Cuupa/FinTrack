@@ -103,6 +103,73 @@ async function assetProfile(
   }
 }
 
+// Yahoo ETF sector key → GICS-style sector label.
+const ETF_SECTOR_MAP: Record<string, string> = {
+  realestate: "Real Estate",
+  consumer_cyclical: "Consumer Discretionary",
+  basic_materials: "Materials",
+  consumer_defensive: "Consumer Staples",
+  technology: "Information Technology",
+  communication_services: "Communication Services",
+  financial_services: "Financials",
+  utilities: "Utilities",
+  industrials: "Industrials",
+  energy: "Energy",
+  healthcare: "Health Care",
+};
+
+export interface SectorWeight {
+  sector: string;
+  weight: number;
+}
+
+/**
+ * An ETF's full sector breakdown (the fund's published sector weightings), so a
+ * fund shows ALL its sectors rather than a single bogus classification. Via
+ * Yahoo's `topHoldings` module; null when unavailable (caller falls back to the
+ * constituent look-through).
+ */
+export async function fetchEtfSectorWeights(query: string): Promise<SectorWeight[] | null> {
+  const q = query.trim();
+  if (!q) return null;
+  const symbol = isISIN(q) ? await resolveSymbol(q, "") : q;
+  if (!symbol) return null;
+
+  const c = await getCrumb();
+  if (!c) return null;
+  try {
+    const res = await fetch(
+      `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=topHoldings&crumb=${encodeURIComponent(c.crumb)}`,
+      { headers: { "User-Agent": UA, Cookie: c.cookie }, signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) {
+      crumbCache = null;
+      return null;
+    }
+    const data = (await res.json()) as {
+      quoteSummary?: {
+        result?: Array<{
+          topHoldings?: { sectorWeightings?: Array<Record<string, number | { raw?: number }>> };
+        }>;
+      };
+    };
+    const weightings = data.quoteSummary?.result?.[0]?.topHoldings?.sectorWeightings;
+    if (!weightings || weightings.length === 0) return null;
+
+    const out: SectorWeight[] = [];
+    for (const entry of weightings) {
+      for (const [key, val] of Object.entries(entry)) {
+        const weight = typeof val === "number" ? val : (val?.raw ?? 0);
+        const sector = ETF_SECTOR_MAP[key];
+        if (sector && weight > 0) out.push({ sector, weight });
+      }
+    }
+    return out.length ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface Classification {
   sector: string | null;
   region: string | null;

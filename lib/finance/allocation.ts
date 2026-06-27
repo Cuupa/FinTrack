@@ -14,6 +14,9 @@ export interface Slice {
 /** Online-fetched classifications keyed by assetPriceKey (for custom stocks). */
 export type ClassMap = Record<string, { sector?: string | null; region?: string | null }>;
 
+/** Online-fetched ETF sector weightings keyed by assetPriceKey. */
+export type SectorWeightsMap = Record<string, { sector: string; weight: number }[]>;
+
 function group(
   holdings: HoldingSummary[],
   keyFn: (h: HoldingSummary) => string,
@@ -68,6 +71,7 @@ function lookThrough(
   holdings: HoldingSummary[],
   field: "sector" | "region",
   overrides?: ClassMap,
+  etfSectors?: SectorWeightsMap,
 ): Slice[] {
   const map = new Map<string, number>();
   let other = 0;
@@ -81,6 +85,18 @@ function lookThrough(
     const type = h.asset.type;
 
     if (type === "ETF") {
+      // Prefer the fund's published sector weightings (full breakdown); fall
+      // back to the constituent look-through when unavailable.
+      const weights = field === "sector" ? etfSectors?.[assetPriceKey(h.asset)] : undefined;
+      if (weights && weights.length > 0) {
+        let covered = 0;
+        for (const w of weights) {
+          covered += w.weight;
+          add(w.sector, h.marketValue * w.weight);
+        }
+        other += h.marketValue * Math.max(0, 1 - covered);
+        continue;
+      }
       const cons = constituentsFor(h.asset.symbol);
       if (cons.length === 0) {
         other += h.marketValue;
@@ -113,8 +129,12 @@ export function byRegion(holdings: HoldingSummary[], overrides?: ClassMap): Slic
   return lookThrough(holdings, "region", overrides);
 }
 
-export function bySector(holdings: HoldingSummary[], overrides?: ClassMap): Slice[] {
-  return lookThrough(holdings, "sector", overrides);
+export function bySector(
+  holdings: HoldingSummary[],
+  overrides?: ClassMap,
+  etfSectors?: SectorWeightsMap,
+): Slice[] {
+  return lookThrough(holdings, "sector", overrides, etfSectors);
 }
 
 export function byVolatility(holdings: HoldingSummary[]): Slice[] {
