@@ -32,6 +32,8 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { ChartControls } from "@/components/charts/chart-controls";
+import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
+import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import {
   PerformanceChart,
   type ChartMode,
@@ -50,6 +52,10 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
+  const [benchmarks, setBenchmarks] = useState<string[]>([]);
+  const compare = useBenchmarkCompare(benchmarks, timeframe, data.profile.currency);
+  const toggleBenchmark = (id: string) =>
+    setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
 
   const asset = data.assets.find((a) => a.id === assetId);
   const txs = useMemo(
@@ -169,15 +175,18 @@ export function AssetDetail({ assetId }: { assetId: string }) {
 
       {/* Price chart */}
       <Card>
-        <ChartControls
-          timeframe={timeframe}
-          onTimeframe={setTimeframe}
-          scale={scale}
-          onScale={setScale}
-          mode={mode}
-          onMode={setMode}
-          showMode={false}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ChartControls
+            timeframe={timeframe}
+            onTimeframe={setTimeframe}
+            scale={scale}
+            onScale={setScale}
+            mode={mode}
+            onMode={setMode}
+            showMode={false}
+          />
+          <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
+        </div>
         <div className="mt-4">
           <PerformanceChart
             series={series}
@@ -186,6 +195,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             currency={nativeCur}
             markers={markers}
             color="#6366f1"
+            compare={compare}
+            mainLabel={asset.name}
           />
         </div>
         <p className="mt-2 text-xs text-zinc-500">

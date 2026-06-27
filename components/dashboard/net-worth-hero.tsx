@@ -24,6 +24,8 @@ import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { ChartControls } from "@/components/charts/chart-controls";
+import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
+import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import {
   PerformanceChart,
   type ChartMode,
@@ -37,8 +39,12 @@ export function NetWorthHero() {
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
+  const [benchmarks, setBenchmarks] = useState<string[]>([]);
 
   const currency = data.profile.currency;
+  const compare = useBenchmarkCompare(benchmarks, timeframe, currency);
+  const toggleBenchmark = (id: string) =>
+    setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
 
   const histItems = useMemo(
     () =>
@@ -138,7 +144,7 @@ export function NetWorthHero() {
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <ChartControls
           timeframe={timeframe}
           onTimeframe={setTimeframe}
@@ -147,6 +153,7 @@ export function NetWorthHero() {
           mode={mode}
           onMode={setMode}
         />
+        <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
       </div>
 
       <div className="mt-4">
@@ -158,6 +165,8 @@ export function NetWorthHero() {
             scale={scale}
             mode={mode}
             currency={currency}
+            compare={compare}
+            mainLabel="Net worth"
           />
         )}
       </div>
