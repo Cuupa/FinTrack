@@ -12,38 +12,43 @@ import type { CompareSeries } from "./performance-chart";
 
 type Hist = Record<string, { date: string; close: number }[]>;
 
-export function useBenchmarkCompare(selected: string[]): CompareSeries[] {
-  const [hist, setHist] = useState<Hist>({});
+export function useBenchmarkCompare(selected: string[], base: string): CompareSeries[] {
+  // Keyed by base currency so switching base refetches in the new currency.
+  const [hist, setHist] = useState<Record<string, Hist>>({});
+  const byBase = useMemo(() => hist[base] ?? {}, [hist, base]);
 
-  // Only fetch ids we don't already have.
+  // Only fetch ids we don't already have for this base currency.
   const missing = useMemo(
-    () => selected.filter((id) => !(id in hist)),
-    [selected, hist],
+    () => selected.filter((id) => !(id in byBase)),
+    [selected, byBase],
   );
   const missingKey = useMemo(() => [...missing].sort().join(","), [missing]);
 
   useEffect(() => {
     if (missing.length === 0) return;
     let cancelled = false;
-    apiFetch(`/api/benchmarks?ids=${encodeURIComponent(missing.join(","))}`)
+    apiFetch(
+      `/api/benchmarks?ids=${encodeURIComponent(missing.join(","))}&base=${encodeURIComponent(base)}`,
+    )
       .then((r) => (r.ok ? r.json() : { benchmarks: {} }))
       .then((d: { benchmarks?: Hist }) => {
-        if (!cancelled && d.benchmarks) setHist((prev) => ({ ...prev, ...d.benchmarks }));
+        if (!cancelled && d.benchmarks)
+          setHist((prev) => ({ ...prev, [base]: { ...prev[base], ...d.benchmarks } }));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [missingKey]);
+  }, [missingKey, base]);
 
   return useMemo(
     () =>
       BENCHMARKS.filter((b) => selected.includes(b.id)).map((b) => ({
         label: b.label,
         color: b.color,
-        points: (hist[b.id] ?? []).map((p) => ({ date: p.date, value: p.close })),
+        points: (byBase[b.id] ?? []).map((p) => ({ date: p.date, value: p.close })),
       })),
-    [selected, hist],
+    [selected, byBase],
   );
 }

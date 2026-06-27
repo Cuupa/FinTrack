@@ -76,11 +76,14 @@ create table if not exists public.benchmark_history (
   benchmark_id text not null,
   date date not null,
   close numeric not null,
-  -- Currency the close is stored in (converted to the app base via historic FX).
-  currency text,
-  primary key (benchmark_id, date)
+  -- The native series plus a copy pre-converted (via historic FX) into each
+  -- common base currency; one row per (benchmark, date, currency).
+  currency text not null default 'EUR',
+  primary key (benchmark_id, date, currency)
 );
 alter table public.benchmark_history add column if not exists currency text;
+create index if not exists benchmark_history_id_currency_date_idx
+  on public.benchmark_history (benchmark_id, currency, date desc);
 
 -- Cached ETF sector/region weightings, so Analysis reads from the DB instead of
 -- hitting Yahoo/onvista on every view. Refreshed by /api/cron/sync-etf-breakdowns.

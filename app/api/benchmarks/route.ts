@@ -14,10 +14,27 @@ const STALE_DAYS = 4; // markets close weekends; refresh when older than this
 // covering long timeframes (1000 weekly points ≈ 19 years).
 const RANGE = "max";
 const INTERVAL = "1wk";
-const HOME = "EUR"; // base currency benchmark history is normalised to
+const DEFAULT_BASE = "EUR";
+// Base currencies we pre-convert and persist on every sync, so a chart view is
+// a plain DB read (no FX call). EUR is always included so the on-the-fly
+// fallback for any other base always has a source series to convert from.
+const PERSIST_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
 function daysSince(isoDate: string): number {
   return (Date.now() - new Date(isoDate + "T00:00:00Z").getTime()) / 86_400_000;
+}
+
+// Module-level cache for historic FX series so converting benchmark history to a
+// user's base currency doesn't hit Frankfurter on every chart view.
+const fxSeriesCache = new Map<string, { at: number; series: [string, number][] }>();
+const FX_TTL_MS = 12 * 60 * 60 * 1000;
+async function fxSeriesCached(from: string, to: string, start: string): Promise<[string, number][]> {
+  const key = `${from}|${to}`;
+  const hit = fxSeriesCache.get(key);
+  if (hit && Date.now() - hit.at < FX_TTL_MS) return hit.series;
+  const series = await fxSeries(from, to, start);
+  if (series.length > 0) fxSeriesCache.set(key, { at: Date.now(), series });
+  return series;
 }
 
 /**
@@ -40,6 +57,20 @@ async function fxSeries(from: string, to: string, start: string): Promise<[strin
   } catch {
     return [];
   }
+}
+
+type Point = { date: string; close: number };
+
+/** Convert a native price series into `to` via historic FX. null if no FX. */
+async function convertPoints(points: Point[], from: string, to: string): Promise<Point[] | null> {
+  if (from === to) return points;
+  if (points.length === 0) return points;
+  const fx = await fxSeriesCached(from, to, points[0].date);
+  if (fx.length === 0) return null;
+  return points.map((p) => {
+    const rate = rateAt(fx, p.date);
+    return rate ? { date: p.date, close: p.close * rate } : p;
+  });
 }
 
 /** Rate on/just before `date` from an ascending [date, rate] series. */
@@ -76,6 +107,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const params = new URL(req.url).searchParams;
   const idsParam = params.get("ids");
+  const base = (params.get("base") || DEFAULT_BASE).toUpperCase(); // user's base currency
   const force = params.get("force") != null; // refresh regardless of staleness
   const wanted = idsParam ? idsParam.split(",") : BENCHMARKS.map((b) => b.id);
   const chosen = BENCHMARKS.filter((b) => wanted.includes(b.id));
@@ -94,47 +126,65 @@ export async function GET(req: Request): Promise<Response> {
           () => null,
         );
         if (r && r.points.length > 0) {
-          let points = r.points;
-          // Convert the native price history into the home currency via historic
-          // FX, so a USD-listed benchmark is comparable to a EUR holding.
-          const native = (r.currency || "").toUpperCase();
-          if (native && native !== HOME) {
-            const fx = await fxSeries(native, HOME, points[0].date);
-            if (fx.length > 0) {
-              points = points.map((p) => {
-                const rate = rateAt(fx, p.date);
-                return rate ? { date: p.date, close: p.close * rate } : p;
-              });
-            }
-          }
-          // Replace existing rows so a currency/resolution change doesn't leave
-          // stale native-currency points mixed in.
+          // The cache is shared across users with different base currencies, so
+          // we persist the native series PLUS a pre-converted copy in each
+          // common base currency. A chart view is then a plain DB read.
+          const native = (r.currency || b.item.currency || DEFAULT_BASE).toUpperCase();
+          const targets = Array.from(new Set([native, ...PERSIST_CURRENCIES]));
+          // Replace existing rows so a resolution/currency change doesn't mix.
           await supabase.from("benchmark_history").delete().eq("benchmark_id", b.id);
-          await supabase.from("benchmark_history").insert(
-            points.map((p) => ({
-              benchmark_id: b.id,
-              date: p.date,
-              close: p.close,
-              currency: HOME,
-            })),
-          );
+          for (const cur of targets) {
+            const pts = cur === native ? r.points : await convertPoints(r.points, native, cur);
+            if (!pts || pts.length === 0) continue;
+            await supabase.from("benchmark_history").insert(
+              pts.map((p) => ({
+                benchmark_id: b.id,
+                date: p.date,
+                close: p.close,
+                currency: cur,
+              })),
+            );
+          }
         }
       }
     }
 
-    // Read the MOST RECENT rows (PostgREST caps at ~1000): descending + limit,
-    // then reverse to ascending — otherwise we'd return the oldest rows, years
-    // before the chart window, and every benchmark would flat-line at 0%.
-    const { data } = await supabase
-      .from("benchmark_history")
-      .select("date, close")
-      .eq("benchmark_id", b.id)
-      .order("date", { ascending: false })
-      .limit(1000);
-    out[b.id] = ((data ?? []) as { date: string; close: number | string }[])
-      .map((r) => ({ date: r.date, close: Number(r.close) }))
-      .reverse();
+    // Read the MOST RECENT rows for the user's base currency (PostgREST caps at
+    // ~1000): descending + limit, then reverse to ascending — otherwise we'd
+    // return the oldest rows, years before the chart window, and every
+    // benchmark would flat-line at 0%.
+    out[b.id] = await readSeries(supabase, b.id, base);
   }
 
   return Response.json({ benchmarks: out });
+}
+
+/** Read a benchmark's series in `base`; if not pre-persisted, convert from EUR. */
+async function readSeries(supabase: SupabaseClient, id: string, base: string): Promise<Point[]> {
+  const fetchCurrency = async (cur: string): Promise<Point[]> => {
+    const { data } = await supabase
+      .from("benchmark_history")
+      .select("date, close")
+      .eq("benchmark_id", id)
+      .eq("currency", cur)
+      .order("date", { ascending: false })
+      .limit(1000);
+    return ((data ?? []) as { date: string; close: number | string }[])
+      .map((r) => ({ date: r.date, close: Number(r.close) }))
+      .reverse();
+  };
+
+  const direct = await fetchCurrency(base);
+  if (direct.length > 0) return direct;
+
+  // Base not pre-persisted (or rows predate the multi-currency migration):
+  // fall back to converting the always-present EUR series on the fly.
+  if (base !== DEFAULT_BASE) {
+    const eur = await fetchCurrency(DEFAULT_BASE);
+    if (eur.length > 0) {
+      const converted = await convertPoints(eur, DEFAULT_BASE, base);
+      if (converted) return converted;
+    }
+  }
+  return direct; // empty
 }

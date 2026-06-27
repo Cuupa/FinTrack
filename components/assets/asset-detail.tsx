@@ -61,7 +61,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     confirmLabel?: string;
     action: () => void;
   } | null>(null);
-  const compare = useBenchmarkCompare(benchmarks);
+  const compare = useBenchmarkCompare(benchmarks, currency);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
 

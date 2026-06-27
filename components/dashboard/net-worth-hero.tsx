@@ -43,7 +43,7 @@ export function NetWorthHero() {
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
 
   const currency = data.profile.currency;
-  const compare = useBenchmarkCompare(benchmarks);
+  const compare = useBenchmarkCompare(benchmarks, currency);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
 
