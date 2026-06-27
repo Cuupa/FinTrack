@@ -34,6 +34,8 @@ tags:
     description: Identifier/metadata resolution for auto-import.
   - name: Cron
     description: Scheduled, service-role jobs (Bearer-secured).
+  - name: System
+    description: Operational/system information.
 
 paths:
   /api/catalog:
@@ -194,10 +196,11 @@ paths:
       operationId: ensureConstituents
       summary: First-time global fetch of an ETF's constituents
       description: >
-        Called when an asset is created. If the ETF has no constituents cached
-        globally (keyed by `etf_symbol`), fetch and cache them; otherwise
-        no-op. Requires `SUPABASE_SERVICE_ROLE_KEY`; returns
-        `{ ok:false, reason }` when not configured.
+        Fetch and cache an ETF's constituents (keyed by `etf_symbol`) if not
+        already cached. Writes global reference data, so it's secret-gated like
+        the crons (Bearer header). Requires `SUPABASE_SERVICE_ROLE_KEY`.
+      security:
+        - cronBearer: []
       requestBody:
         required: true
         content:
@@ -211,6 +214,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EnsureConstituentsResponse"
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Database write failed.
           content:
@@ -282,6 +291,271 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /api/price:
+    get:
+      tags: [Market data]
+      operationId: getPrice
+      summary: Current price for one asset in a requested currency
+      description: >
+        Resolves the listing whose currency matches (e.g. the EUR Xetra line of
+        a US stock) and returns its price; if only a different-currency listing
+        exists, converts via FX. Used by the add-asset form's price prefill.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: ISIN or symbol.
+          schema: { type: string, example: US02079K3059 }
+        - name: currency
+          in: query
+          required: false
+          description: Desired currency (ISO 4217). Defaults to the listing's own.
+          schema: { type: string, example: EUR }
+      responses:
+        "200":
+          description: Price (or `found:false`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [found, price, currency]
+                    properties:
+                      found: { const: true }
+                      price: { type: number, example: 258.4 }
+                      currency: { type: string, example: EUR }
+                  - $ref: "#/components/schemas/NotFound"
+
+  /api/etf-sectors:
+    get:
+      tags: [Market data]
+      operationId: getEtfSectors
+      summary: An ETF's published sector weightings
+      description: Sector breakdown (GICS-mapped) from Yahoo `topHoldings`, for the Sectors pie.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: ISIN or symbol of the fund.
+          schema: { type: string, example: IE00BK5BQT80 }
+      responses:
+        "200":
+          description: Sector weightings (or `found:false`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [found, sectors]
+                    properties:
+                      found: { const: true }
+                      sectors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            sector: { type: string }
+                            weight: { type: number, description: "fraction 0..1" }
+                  - $ref: "#/components/schemas/NotFound"
+
+  /api/etf-regions:
+    get:
+      tags: [Market data]
+      operationId: getEtfRegions
+      summary: An ETF's geographic (region) weightings
+      description: >
+        Country weightings mapped to regions, from Financial Modeling Prep
+        (requires `FMP_API_KEY`). `found:false` when unavailable — the client
+        then falls back to the constituent look-through.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: ISIN or symbol of the fund.
+          schema: { type: string, example: IE00BK5BQT80 }
+      responses:
+        "200":
+          description: Region weightings (or `found:false`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [found, regions]
+                    properties:
+                      found: { const: true }
+                      regions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            region: { type: string }
+                            weight: { type: number, description: "fraction 0..1" }
+                  - $ref: "#/components/schemas/NotFound"
+
+  /api/dividends:
+    post:
+      tags: [Market data]
+      operationId: getDividends
+      summary: Real dividend events for a batch of assets
+      description: >
+        Real dividend payouts (per share, in each item's currency) from Yahoo.
+        Accumulating funds return an empty list. Crypto/cash are ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                range: { type: string, default: "10y" }
+                items:
+                  type: array
+                  items: { $ref: "#/components/schemas/QuoteItem" }
+      responses:
+        "200":
+          description: Map of price key → dividend events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dividends]
+                properties:
+                  dividends:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          date: { type: string, format: date }
+                          amount: { type: number }
+
+  /api/benchmarks:
+    get:
+      tags: [Market data]
+      operationId: getBenchmarks
+      summary: Cached benchmark price history (for chart comparison)
+      description: >
+        Daily close history for the well-known benchmarks, served from the
+        `benchmark_history` DB cache. A benchmark is refetched from Yahoo
+        server-side only when its cache is missing/stale (>4 days) or `force` is
+        set, and only if the service role is available to write.
+      parameters:
+        - name: ids
+          in: query
+          required: false
+          description: Comma-separated benchmark ids; defaults to all.
+          schema: { type: string, example: "msci-world,sp500" }
+        - name: force
+          in: query
+          required: false
+          description: Refresh from Yahoo regardless of cache staleness.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Map of benchmark id → daily close history.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [benchmarks]
+                properties:
+                  benchmarks:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          date: { type: string, format: date }
+                          close: { type: number }
+
+  /api/migrations:
+    get:
+      tags: [System]
+      operationId: getMigrations
+      summary: Applied database migrations
+      description: Lists rows from `schema_migrations` (empty when Supabase isn't configured).
+      responses:
+        "200":
+          description: Applied migrations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [migrations]
+                properties:
+                  migrations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        version: { type: string }
+                        applied_at: { type: string, format: date-time }
+
+  /api/cron/sync-classifications:
+    post:
+      tags: [Cron]
+      operationId: syncClassifications
+      summary: Backfill sector + region for instruments and constituents
+      description: >
+        Resolves sector/region online (Yahoo assetProfile) for any non-cash
+        instrument and ETF constituent missing them, persisting to the catalog.
+        Processes a capped batch; `remaining` indicates whether to re-run.
+        Secret-gated (Bearer header); requires the service role key.
+      security:
+        - cronBearer: []
+      responses:
+        "200":
+          description: Counts updated, plus whether more remain.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  constituents: { type: integer }
+                  instruments: { type: integer }
+                  remaining: { type: boolean }
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Service role not configured, or a DB error.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/cron/sync-all:
+    post:
+      tags: [Cron]
+      operationId: syncAll
+      summary: Refresh everything (prices, constituents, classifications, benchmarks)
+      description: >
+        Triggers all the data-refresh jobs in one secret-gated call, forwarding
+        the secret to each. Can be slow (runs sequentially); call the individual
+        endpoints if it times out.
+      security:
+        - cronBearer: []
+      responses:
+        "200":
+          description: Per-job results.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  results: { type: object, additionalProperties: true }
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
 
 components:
   securitySchemes:
