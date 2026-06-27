@@ -14,7 +14,11 @@ import {
   netWorthSeries,
   portfolioTotals,
   summarizeAll,
+  transactionsByAsset,
 } from "@/lib/finance/portfolio";
+import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
+import { useDividends } from "@/lib/history/use-dividends";
+import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { ChartControls } from "@/components/charts/chart-controls";
@@ -54,6 +58,22 @@ export function NetWorthHero() {
     [data.assets, data.transactions, valuation],
   );
 
+  // Real dividends received across all holdings, converted to the base currency.
+  const divMap = useDividends(histItems);
+  const dividendsReceived = useMemo(() => {
+    const fx = valuation.fx ?? {};
+    let total = 0;
+    for (const asset of data.assets) {
+      const events = divMap[assetPriceKey(asset)];
+      if (!events || events.length === 0) continue;
+      const txs = transactionsByAsset(asset.id, data.transactions);
+      const received = totalDividends(dividendsFromEvents(events, txs)); // asset currency
+      const cur = asset.currency ?? currency;
+      total += received * (cur === currency ? 1 : (fx[cur] ?? 1));
+    }
+    return total;
+  }, [divMap, data.assets, data.transactions, currency, valuation]);
+
   // Period change derived from the visible series.
   const periodChange = useMemo(() => {
     const start = series.find((p) => p.value > 0)?.value ?? 0;
@@ -66,7 +86,7 @@ export function NetWorthHero() {
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid grid-cols-2 gap-x-10 gap-y-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-10 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
           <Stat label="Net worth" value={formatCurrency(totals.marketValue, currency)} />
           <Stat
             label={`Change (${timeframe})`}
@@ -84,6 +104,11 @@ export function NetWorthHero() {
             label="Realized P&L"
             value={formatCurrency(totals.realizedPL, currency)}
             valueClassName={plColor(totals.realizedPL)}
+          />
+          <Stat
+            label="Dividends received"
+            value={formatCurrency(dividendsReceived, currency)}
+            valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
           />
         </div>
       </div>

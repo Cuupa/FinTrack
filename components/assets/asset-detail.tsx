@@ -8,14 +8,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import type { Timeframe } from "@/lib/finance/dates";
+import { addDays, today, type Timeframe } from "@/lib/finance/dates";
 import {
   assetPriceSeries,
   summarizeHolding,
   transactionsByAsset,
 } from "@/lib/finance/portfolio";
 import { positionIRR } from "@/lib/finance/irr";
-import { annualYield, dividendHistory, totalDividends } from "@/lib/finance/dividends";
+import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
+import { useDividends } from "@/lib/history/use-dividends";
 import {
   formatCurrency,
   formatDateTime,
@@ -83,10 +84,12 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     [txs, summary],
   );
 
-  const dividends = useMemo(
-    () => (asset ? dividendHistory(asset, txs) : []),
-    [asset, txs],
-  );
+  // Real dividend events (accumulating funds return none → no phantom payouts).
+  const divMap = useDividends(histItems);
+  const dividends = useMemo(() => {
+    const key = histItems[0]?.key;
+    return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
+  }, [divMap, histItems, txs]);
 
   // ETF look-through: the fund's constituent stocks (depends on the catalog).
   const constituents = useMemo(
@@ -111,7 +114,12 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   }
 
   const divTotal = totalDividends(dividends);
-  const yld = annualYield(asset);
+  // Trailing-12-month yield from real payouts (0 for accumulating funds).
+  const cutoff = addDays(today(), -365);
+  const ttmPerShare = dividends
+    .filter((d) => d.date >= cutoff)
+    .reduce((s, d) => s + d.perShare, 0);
+  const yld = summary.price > 0 ? ttmPerShare / summary.price : 0;
   // Per-asset figures are in the native trading currency; portfolio figures
   // (market value, P&L) are in the base currency.
   const nativeCur = summary.currency || currency;

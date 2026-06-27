@@ -257,3 +257,71 @@ export async function historyByQuery(
   }
   return fallback;
 }
+
+export interface DividendEvent {
+  date: string;
+  amount: number;
+}
+
+/** Dividend events for a symbol + the listing currency (empty array when the
+ *  listing pays none, e.g. an accumulating ETF). null if the symbol has no data. */
+async function dividendChart(
+  symbol: string,
+  range: string,
+): Promise<{ events: DividendEvent[]; currency: string } | null> {
+  const data = (await getJSON(
+    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1d&events=div`,
+  )) as
+    | {
+        chart?: {
+          result?: Array<{
+            meta?: { currency?: string };
+            events?: { dividends?: Record<string, { amount?: number; date?: number }> };
+          }>;
+        };
+      }
+    | null;
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+  const currency = (result.meta?.currency ?? "").toUpperCase();
+  const divs = result.events?.dividends ?? {};
+  const events: DividendEvent[] = [];
+  for (const d of Object.values(divs)) {
+    if (typeof d.amount === "number" && d.amount > 0 && typeof d.date === "number") {
+      events.push({ date: new Date(d.date * 1000).toISOString().slice(0, 10), amount: d.amount });
+    }
+  }
+  events.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return { events, currency };
+}
+
+/**
+ * Dividend events for a query (ISIN/symbol), preferring a listing in
+ * `wantCurrency`. An accumulating fund resolves to a listing with an empty
+ * event list (no payouts) — distinct from "no listing found" (null). The caller
+ * FX-converts when the listing currency differs.
+ */
+export async function dividendsByQuery(
+  query: string,
+  wantCurrency: string,
+  hint: string | undefined,
+  range: string,
+): Promise<{ events: DividendEvent[]; currency: string } | null> {
+  const want = (wantCurrency || "").toUpperCase();
+  const candidates: string[] = [];
+  if (hint) candidates.push(hint);
+  for (const s of await searchCandidates(query)) {
+    if (!candidates.includes(s)) candidates.push(s);
+  }
+
+  let fallback: { events: DividendEvent[]; currency: string } | null = null;
+  for (const s of candidates.slice(0, 5)) {
+    const c = await dividendChart(s, range);
+    if (!c) continue;
+    // Prefer a currency-matching listing that actually has events; otherwise
+    // remember it (covers accumulating funds, which legitimately have none).
+    if ((!want || c.currency === want) && c.events.length > 0) return c;
+    if (!fallback) fallback = c;
+  }
+  return fallback;
+}
