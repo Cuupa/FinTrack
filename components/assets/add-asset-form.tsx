@@ -52,6 +52,34 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+
+  /**
+   * Prefill the opening price from the live listing in `currency`, and snap
+   * `assetCurrency` to the currency actually found — so a US stock bought on a
+   * EUR exchange is recorded in EUR at the EUR price, not the USD number.
+   */
+  async function fetchPrice(q: string, currency: string, t: AssetType) {
+    const query = q.trim();
+    if (!query || t === "CASH" || t === "CRYPTO") return; // crypto needs a catalog id
+    setFetchingPrice(true);
+    try {
+      const res = await fetch(
+        `/api/price?q=${encodeURIComponent(query)}&currency=${encodeURIComponent(currency)}`,
+      );
+      if (res.ok) {
+        const d = (await res.json()) as { found?: boolean; price?: number; currency?: string };
+        if (d.found && typeof d.price === "number" && d.price > 0) {
+          setPrice(String(round(d.price)));
+          if (d.currency) setAssetCurrency(d.currency.toUpperCase());
+        }
+      }
+    } catch {
+      /* ignore — the user can type the price */
+    } finally {
+      setFetchingPrice(false);
+    }
+  }
 
   const isCash = type === "CASH";
   // A resolved import (or chosen manual type) reveals the rest of the form.
@@ -96,6 +124,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         applyMatch(match);
         setImportStatus("found");
         setManual(false);
+        // Prefer the user's base-currency listing for the price.
+        void fetchPrice(match.isin || match.symbol || q, base, match.type);
         return;
       }
       // 2. Live lookup API (resolves any ISIN/symbol via Yahoo).
@@ -105,6 +135,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         applyApiMatch(data);
         setImportStatus("found");
         setManual(false);
+        void fetchPrice(data.isin || data.symbol || q, base, data.type ?? "ETF");
       } else {
         setImportStatus("notfound");
       }
@@ -300,26 +331,6 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
             />
           </div>
 
-          {!isCash && (
-            <div>
-              <label className="text-sm font-medium" htmlFor="currency">
-                Trading currency
-              </label>
-              <select
-                id="currency"
-                value={assetCurrency}
-                onChange={(e) => setAssetCurrency(e.target.value)}
-                className={inputCls}
-              >
-                {Array.from(new Set([base, ...CURRENCIES])).map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {!isCash &&
             (type === "CRYPTO" ? (
               <div>
@@ -363,6 +374,35 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         </div>
       )}
 
+      {/* Trading currency — drives which listing the price comes from. */}
+      {ready && !isCash && (
+        <div className="mt-4">
+          <label className="text-sm font-medium" htmlFor="currency">
+            Trading currency
+          </label>
+          <select
+            id="currency"
+            value={assetCurrency}
+            onChange={(e) => {
+              const c = e.target.value;
+              setAssetCurrency(c);
+              void fetchPrice(isin || symbol, c, type);
+            }}
+            className={inputCls}
+          >
+            {Array.from(new Set([base, ...CURRENCIES])).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-zinc-500">
+            Prices use the listing in this currency — pick {base} if you trade on
+            your home exchange.
+          </p>
+        </div>
+      )}
+
       {/* Opening transaction */}
       {ready && (
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
@@ -384,9 +424,21 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
             </div>
             {!isCash && (
               <div>
-                <label className="text-sm font-medium" htmlFor="price">
-                  Price
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium" htmlFor="price">
+                    Price ({assetCurrency})
+                  </label>
+                  {(type === "STOCK" || type === "ETF") && (isin || symbol) && (
+                    <button
+                      type="button"
+                      onClick={() => void fetchPrice(isin || symbol, assetCurrency, type)}
+                      disabled={fetchingPrice}
+                      className="text-xs text-zinc-500 underline underline-offset-2 disabled:opacity-50"
+                    >
+                      {fetchingPrice ? "…" : "↻ live"}
+                    </button>
+                  )}
+                </div>
                 <input
                   id="price"
                   type="number"

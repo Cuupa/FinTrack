@@ -95,7 +95,7 @@ export function TransactionForm({
         </div>
         {!isCash && (
           <div>
-            <label className="text-sm font-medium">Price</label>
+            <label className="text-sm font-medium">Price ({asset.currency})</label>
             <input
               type="number"
               step="any"
