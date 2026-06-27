@@ -114,14 +114,14 @@ export function NetWorthHero() {
             value={formatCurrency(periodChange.abs, currency)}
             sub={formatPercent(periodChange.pct)}
             valueClassName={plColor(periodChange.abs)}
-            info="How much your net worth moved over the selected timeframe (value at the end vs. the start)."
+            info="How much your net worth moved over the selected timeframe ."
           />
           <Stat
             label="Unrealized P&L"
             value={formatCurrency(totals.unrealizedPL, currency)}
             sub={formatPercent(totals.totalPLPercent)}
             valueClassName={plColor(totals.unrealizedPL)}
-            info="Paper gain/loss on shares you still hold: current value minus what you paid (average cost)."
+            info="Paper gain/loss on shares you still hold."
           />
           <Stat
             label="Realized P&L"
@@ -139,7 +139,7 @@ export function NetWorthHero() {
             label="IRR (p.a.)"
             value={irr != null ? formatPercent(irr) : "—"}
             valueClassName={irr != null ? plColor(irr) : ""}
-            info="Internal rate of return (interner Zinsfuß): the annualised, money-weighted return that accounts for the timing and size of every buy and sell."
+            info="Annualised, money-weighted return that accounts for the timing and size of every buy and sell."
           />
         </div>
       </div>

@@ -284,7 +284,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           <Stat
             label="Market value"
             value={formatCurrency(summary.marketValue, currency)}
-            info="Current value of this holding (shares held × current price), in your base currency."
+            info="Current value of this holding."
           />
         </Card>
         <Card>
@@ -293,7 +293,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             value={formatCurrency(summary.unrealizedPL, currency)}
             sub={formatPercent(summary.unrealizedPLPercent)}
             valueClassName={plColor(summary.unrealizedPL)}
-            info="Paper gain/loss on shares still held: current value minus average cost paid."
+            info="Paper gain/loss on shares still held."
           />
         </Card>
         <Card>
@@ -309,7 +309,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             label="IRR (annualized)"
             value={irr === null ? "—" : formatPercent(irr)}
             valueClassName={irr === null ? "" : plColor(irr)}
-            info="Money-weighted annual return for this position, accounting for the timing and size of each buy and sell."
+            info="Money-weighted annual return for this position."
           />
         </Card>
       </div>
