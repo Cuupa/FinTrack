@@ -74,11 +74,6 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     [asset, timeframe, valuation, histories],
   );
 
-  const markers: ChartMarker[] = useMemo(
-    () => txs.map((t) => ({ date: t.date, type: t.type })),
-    [txs],
-  );
-
   const irr = useMemo(
     () => (summary ? positionIRR(txs, summary.marketValue) : null),
     [txs, summary],
@@ -90,6 +85,15 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     const key = histItems[0]?.key;
     return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
   }, [divMap, histItems, txs]);
+
+  // Chart markers: buys/sells plus a marker on each dividend pay date.
+  const markers: ChartMarker[] = useMemo(
+    () => [
+      ...txs.map((t) => ({ date: t.date, type: t.type as ChartMarker["type"] })),
+      ...dividends.map((d) => ({ date: d.date, type: "DIV" as const })),
+    ],
+    [txs, dividends],
+  );
 
   // ETF look-through: the fund's constituent stocks (depends on the catalog).
   const constituents = useMemo(
@@ -186,7 +190,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </div>
         <p className="mt-2 text-xs text-zinc-500">
           <span className="text-emerald-500">▮</span> buy &nbsp;
-          <span className="text-red-500">▮</span> sell
+          <span className="text-red-500">▮</span> sell &nbsp;
+          <span className="text-amber-500">▮</span> dividend
         </p>
       </Card>
 

@@ -72,11 +72,11 @@ async function handle(req: Request): Promise<Response> {
     return !error;
   });
 
-  // Directly-held stocks missing a sector.
+  // Any directly-held instrument missing a sector (stocks, ETFs, crypto).
   const { data: instRows, error: instErr } = await supabase
     .from("instruments")
     .select("id, isin, symbol")
-    .eq("type", "STOCK")
+    .neq("type", "CASH")
     .is("sector", null)
     .limit(BATCH);
   if (instErr) return Response.json({ error: instErr.message }, { status: 500 });

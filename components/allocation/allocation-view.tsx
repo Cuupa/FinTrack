@@ -80,16 +80,18 @@ export function AllocationView() {
 
   return (
     <Card>
-      <div className="flex flex-wrap gap-2">
+      {/* Breakdown selector: a contained pill group, distinct from the page's
+          primary underline tabs. */}
+      <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             aria-pressed={tab === t.key}
-            className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
               tab === t.key
-                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
             }`}
           >
             {t.label}

@@ -1,5 +1,14 @@
 // Display formatting helpers.
 
+/**
+ * Parse a user-entered number tolerant of a decimal comma (de-DE) and spaces —
+ * e.g. "0,25" → 0.25. Returns NaN for blank/invalid input.
+ */
+export function parseDecimal(s: string): number {
+  const cleaned = String(s).trim().replace(/\s/g, "").replace(",", ".");
+  return cleaned === "" ? NaN : Number(cleaned);
+}
+
 export function formatCurrency(value: number, currency = "EUR"): string {
   return new Intl.NumberFormat(undefined, {
     style: "currency",

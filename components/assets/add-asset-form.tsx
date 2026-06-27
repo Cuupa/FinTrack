@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { lookupInstrumentByQuery, currentPrice } from "@/lib/finance/prices";
+import { parseDecimal } from "@/lib/format";
 import type { Instrument } from "@/lib/catalog/catalog";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
@@ -162,8 +163,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
     e.preventDefault();
     setError(null);
 
-    const qty = Number(quantity);
-    const px = isCash ? 1 : Number(price);
+    const qty = parseDecimal(quantity);
+    const px = isCash ? 1 : parseDecimal(price);
     if (!Number.isFinite(qty) || qty <= 0) {
       setError(isCash ? "Enter a positive amount." : "Enter a positive quantity.");
       return;
@@ -194,7 +195,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         type: "BUY",
         quantity: qty,
         price: px,
-        fee: Number(fee) || 0,
+        fee: parseDecimal(fee) || 0,
         date: executedAt,
       });
       // Constituents are populated server-side by the sync-constituents cron
@@ -409,9 +410,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
               </label>
               <input
                 id="quantity"
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 className={inputCls}
@@ -436,9 +436,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
                 </div>
                 <input
                   id="price"
-                  type="number"
-                  step="any"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className={inputCls}
@@ -451,9 +450,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
               </label>
               <input
                 id="fee"
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={fee}
                 onChange={(e) => setFee(e.target.value)}
                 className={inputCls}

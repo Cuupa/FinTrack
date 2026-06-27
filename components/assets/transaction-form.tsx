@@ -6,6 +6,7 @@ import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { currentPrice } from "@/lib/finance/prices";
+import { parseDecimal } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
 
@@ -35,10 +36,14 @@ export function TransactionForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const qty = Number(quantity);
-    const px = isCash ? 1 : Number(price);
+    const qty = parseDecimal(quantity);
+    const px = isCash ? 1 : parseDecimal(price);
     if (!Number.isFinite(qty) || qty <= 0) {
       setError("Enter a positive quantity.");
+      return;
+    }
+    if (!isCash && (!Number.isFinite(px) || px < 0)) {
+      setError("Enter a valid price.");
       return;
     }
     setBusy(true);
@@ -48,7 +53,7 @@ export function TransactionForm({
         type,
         quantity: qty,
         price: px,
-        fee: Number(fee) || 0,
+        fee: parseDecimal(fee) || 0,
         date: executedAt,
       });
       setQuantity("");
@@ -85,9 +90,8 @@ export function TransactionForm({
         <div>
           <label className="text-sm font-medium">{isCash ? "Amount" : "Quantity"}</label>
           <input
-            type="number"
-            step="any"
-            min="0"
+            type="text"
+            inputMode="decimal"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             className={inputCls}
@@ -97,9 +101,8 @@ export function TransactionForm({
           <div>
             <label className="text-sm font-medium">Price ({asset.currency})</label>
             <input
-              type="number"
-              step="any"
-              min="0"
+              type="text"
+              inputMode="decimal"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className={inputCls}
@@ -109,9 +112,8 @@ export function TransactionForm({
         <div>
           <label className="text-sm font-medium">Fee</label>
           <input
-            type="number"
-            step="any"
-            min="0"
+            type="text"
+            inputMode="decimal"
             value={fee}
             onChange={(e) => setFee(e.target.value)}
             className={inputCls}

@@ -88,3 +88,13 @@ export function positionIRR(
   if (currentValue > 0) flows.push({ amount: currentValue, date: today() });
   return xirr(flows);
 }
+
+/**
+ * Money-weighted IRR for the whole portfolio. `flows` are external cash flows
+ * in the base currency from the investor's perspective (buys negative, sells
+ * positive); the current total market value is added as the final inflow.
+ */
+export function portfolioIRR(flows: CashFlow[], marketValue: number): number | null {
+  if (marketValue <= 0 || flows.length === 0) return null;
+  return xirr([...flows, { amount: marketValue, date: today() }]);
+}

@@ -18,6 +18,8 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
+import { netFlows } from "@/lib/finance/returns";
+import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
@@ -58,6 +60,15 @@ export function NetWorthHero() {
     [data.assets, data.transactions, valuation],
   );
 
+  // Money-weighted return (IRR / interner Zinsfuß) across all cash flows.
+  const irr = useMemo(() => {
+    const flows = netFlows(data.assets, data.transactions, valuation).map((f) => ({
+      date: f.date,
+      amount: -f.amount, // investor view: buys out (−), sells in (+)
+    }));
+    return portfolioIRR(flows, totals.marketValue);
+  }, [data.assets, data.transactions, valuation, totals.marketValue]);
+
   // Real dividends received across all holdings, converted to the base currency.
   const divMap = useDividends(histItems);
   const dividendsReceived = useMemo(() => {
@@ -86,7 +97,7 @@ export function NetWorthHero() {
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid grid-cols-2 gap-x-10 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
           <Stat
             label="Net worth"
             value={formatCurrency(totals.marketValue, currency)}
@@ -117,6 +128,12 @@ export function NetWorthHero() {
             value={formatCurrency(dividendsReceived, currency)}
             valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
             info="Sum of actual dividend payouts received, scaled by the shares held on each pay date."
+          />
+          <Stat
+            label="IRR (p.a.)"
+            value={irr != null ? formatPercent(irr) : "—"}
+            valueClassName={irr != null ? plColor(irr) : ""}
+            info="Internal rate of return (interner Zinsfuß): the annualised, money-weighted return that accounts for the timing and size of every buy and sell."
           />
         </div>
       </div>

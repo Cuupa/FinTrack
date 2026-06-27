@@ -22,8 +22,14 @@ export type ChartMode = "currency" | "percent";
 
 export interface ChartMarker {
   date: string;
-  type: "BUY" | "SELL";
+  type: "BUY" | "SELL" | "DIV";
 }
+
+const MARKER_COLOR: Record<ChartMarker["type"], string> = {
+  BUY: "#10b981",
+  SELL: "#ef4444",
+  DIV: "#f59e0b",
+};
 
 interface Props {
   series: SeriesPoint[];
@@ -124,9 +130,9 @@ export function PerformanceChart({
           <ReferenceLine
             key={`${m.date}-${i}`}
             x={m.date}
-            stroke={m.type === "BUY" ? "#10b981" : "#ef4444"}
-            strokeDasharray="4 2"
-            strokeOpacity={0.7}
+            stroke={MARKER_COLOR[m.type]}
+            strokeDasharray={m.type === "DIV" ? "2 3" : "4 2"}
+            strokeOpacity={m.type === "DIV" ? 0.5 : 0.7}
           />
         ))}
         <Line

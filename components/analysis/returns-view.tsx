@@ -230,18 +230,26 @@ interface CellProps {
 
 function PerfCell({ x = 0, y = 0, width = 0, height = 0, name = "", ret = 0 }: CellProps) {
   if (width <= 0 || height <= 0) return null;
+  // Truncate the label to what fits the cell width (SVG text doesn't wrap/clip).
+  const maxChars = Math.max(0, Math.floor((width - 10) / 6.5));
+  const label = name.length > maxChars ? `${name.slice(0, Math.max(1, maxChars - 1))}…` : name;
   return (
     <g>
-      <rect x={x} y={y} width={width} height={height} style={{ fill: heatColor(ret), strokeOpacity: 0.4 }} />
-      {width > 54 && height > 28 && (
-        <>
-          <text x={x + 5} y={y + 16} fontSize={11} fontWeight={600} fill="#f4f4f5">
-            {name}
-          </text>
-          <text x={x + 5} y={y + 30} fontSize={10} fill="#f4f4f5" opacity={0.8}>
+      <rect x={x} y={y} width={width} height={height} style={{ fill: heatColor(ret), stroke: "#0a0a0a", strokeOpacity: 0.25 }} />
+      {width > 56 && height > 32 && maxChars >= 3 && (
+        <text
+          x={x + 6}
+          y={y + 17}
+          fontSize={11}
+          fontWeight={600}
+          fill="#ffffff"
+          style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.35)", strokeWidth: 2 }}
+        >
+          {label}
+          <tspan x={x + 6} dy={15} fontSize={10} fontWeight={400} fillOpacity={0.9}>
             {formatPercent(ret, 1)}
-          </text>
-        </>
+          </tspan>
+        </text>
       )}
     </g>
   );

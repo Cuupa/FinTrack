@@ -29,21 +29,25 @@ export default function AnalysisPage() {
         <p className="text-sm text-zinc-500">{BLURB[tab]}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            aria-pressed={tab === t.key}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === t.key
-                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                : "border border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Primary tabs: underline style, visually distinct from the in-card
+          breakdown pills. */}
+      <div className="border-b border-zinc-200 dark:border-zinc-800">
+        <div className="-mb-px flex gap-6">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              aria-pressed={tab === t.key}
+              className={`border-b-2 pb-2.5 text-sm font-medium transition-colors ${
+                tab === t.key
+                  ? "border-emerald-500 text-zinc-900 dark:text-white"
+                  : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "distributions" && <AllocationView />}
