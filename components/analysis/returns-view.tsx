@@ -23,7 +23,7 @@ import { netWorthSeries, summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { netFlows, periodReturns, type Period } from "@/lib/finance/returns";
-import { formatPercent } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 
@@ -164,11 +164,13 @@ export function ReturnsView() {
               {[...returns].reverse().map((r) => (
                 <div
                   key={r.key}
-                  className="min-w-[5rem] rounded-lg px-3 py-2 text-center"
+                  className="min-w-[5.5rem] rounded-lg px-4 py-3 text-center"
                   style={{ backgroundColor: heatColor(r.ret) }}
                 >
-                  <div className="text-xs font-medium text-zinc-500">{r.year}</div>
-                  <div className="text-sm font-semibold tabular-nums">{formatPercent(r.ret, 1)}</div>
+                  <div className="text-xs font-semibold text-zinc-100">{r.year}</div>
+                  <div className="mt-0.5 text-base font-semibold tabular-nums text-white">
+                    {formatPercent(r.ret, 1)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -177,7 +179,18 @@ export function ReturnsView() {
       </Card>
 
       <Card>
-        <h3 className="text-sm font-semibold">Return by {period}</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">Return by {period}</h3>
+          <SegmentedControl<Period>
+            size="sm"
+            value={period}
+            onChange={setPeriod}
+            options={[
+              { label: "Quarter", value: "quarter" },
+              { label: "Year", value: "year" },
+            ]}
+          />
+        </div>
         <div className="mt-3">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
@@ -210,8 +223,10 @@ export function ReturnsView() {
           <InfoTip text="Each holding sized by its current value and coloured by its unrealised return (green = up, red = down)." />
         </h3>
         <div className="mt-3">
-          <ResponsiveContainer width="100%" height={300}>
-            <Treemap data={tree} dataKey="size" stroke="#fff" isAnimationActive={false} content={<PerfCell />} />
+          <ResponsiveContainer width="100%" height={320}>
+            <Treemap data={tree} dataKey="size" stroke="#fff" isAnimationActive={false} content={<PerfCell />}>
+              <Tooltip content={<MapTooltip currency={base} />} />
+            </Treemap>
           </ResponsiveContainer>
         </div>
       </Card>
@@ -230,27 +245,49 @@ interface CellProps {
 
 function PerfCell({ x = 0, y = 0, width = 0, height = 0, name = "", ret = 0 }: CellProps) {
   if (width <= 0 || height <= 0) return null;
-  // Truncate the label to what fits the cell width (SVG text doesn't wrap/clip).
-  const maxChars = Math.max(0, Math.floor((width - 10) / 6.5));
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  // Font scales with the tile; SVG text doesn't wrap, so truncate to fit width.
+  const base = Math.max(9, Math.min(22, Math.floor(Math.min(width / 4.5, height / 3.5))));
+  const maxChars = Math.max(2, Math.floor(width / (base * 0.62)));
   const label = name.length > maxChars ? `${name.slice(0, Math.max(1, maxChars - 1))}…` : name;
+  const showPct = height > base * 2.6;
+  const textStyle = { paintOrder: "stroke", stroke: "rgba(0,0,0,0.4)", strokeWidth: 2.5 } as const;
   return (
     <g>
-      <rect x={x} y={y} width={width} height={height} style={{ fill: heatColor(ret), stroke: "#0a0a0a", strokeOpacity: 0.25 }} />
-      {width > 56 && height > 32 && maxChars >= 3 && (
-        <text
-          x={x + 6}
-          y={y + 17}
-          fontSize={11}
-          fontWeight={600}
-          fill="#ffffff"
-          style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.35)", strokeWidth: 2 }}
-        >
-          {label}
-          <tspan x={x + 6} dy={15} fontSize={10} fontWeight={400} fillOpacity={0.9}>
-            {formatPercent(ret, 1)}
+      <rect x={x} y={y} width={width} height={height} style={{ fill: heatColor(ret), stroke: "#0a0a0a", strokeOpacity: 0.3 }} />
+      {width >= 24 && height >= 18 && (
+        <text x={cx} textAnchor="middle" fill="#ffffff" style={textStyle}>
+          <tspan x={cx} y={showPct ? cy - base * 0.15 : cy + base * 0.35} fontSize={base} fontWeight={700}>
+            {label}
           </tspan>
+          {showPct && (
+            <tspan x={cx} dy={base * 1.05} fontSize={base * 0.78} fontWeight={500} fillOpacity={0.92}>
+              {formatPercent(ret, 1)}
+            </tspan>
+          )}
         </text>
       )}
     </g>
+  );
+}
+
+interface MapTooltipProps {
+  currency: string;
+  active?: boolean;
+  payload?: Array<{ payload?: { name?: string; size?: number; ret?: number } }>;
+}
+
+function MapTooltip({ currency, active, payload }: MapTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0].payload;
+  if (!p) return null;
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.name}</div>
+      <div className="mt-0.5 text-zinc-500">
+        {formatCurrency(p.size ?? 0, currency)} · {formatPercent(p.ret ?? 0)}
+      </div>
+    </div>
   );
 }
