@@ -1,13 +1,21 @@
 "use client";
 
-// Valuation context (prices + FX), derived entirely from the catalog cache —
-// which is populated server-side by the price-sync cron (/api/cron/sync-prices)
-// and delivered in one /api/catalog call. The client makes NO external price or
-// FX calls; refreshing is the cron's job. Anything the cron hasn't cached
-// (custom assets, or when no cron has run) falls back to the synthetic price /
-// seeded FX rates.
+// Valuation context (prices + FX). Ongoing prices come from the catalog cache,
+// populated server-side by the price-sync cron (/api/cron/sync-prices) — the
+// client does NOT poll. The one exception: a freshly added asset the cron
+// hasn't cached yet is priced with a single on-demand fetch (/api/price, in the
+// holding's own currency) so it shows a real value immediately instead of the
+// synthetic fallback. That fetch happens once per uncached holding, not on a
+// timer.
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePortfolio } from "../portfolio/portfolio-context";
 import { useCatalog } from "../catalog/catalog-context";
 import { fxToBase, lookupInstrument } from "../catalog/catalog";
@@ -25,6 +33,60 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
   const { version } = useCatalog();
   const base = data.profile.currency;
 
+  // On-demand prices for holdings the cron hasn't cached yet, keyed by price key
+  // and already in the holding's own currency.
+  const [fetched, setFetched] = useState<Record<string, number>>({});
+
+  // Holdings with no cached price that we can resolve on demand (equities).
+  const uncached = useMemo(() => {
+    const out: { key: string; q: string; currency: string }[] = [];
+    for (const asset of data.assets) {
+      if (asset.type !== "STOCK" && asset.type !== "ETF") continue;
+      const key = assetPriceKey(asset);
+      if (lookupInstrument(key)?.lastPrice != null) continue; // cron has it
+      if (fetched[key] != null) continue; // already fetched this session
+      const q = asset.isin || asset.symbol;
+      if (q) out.push({ key, q, currency: asset.currency ?? base });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.assets, base, version, fetched]);
+
+  const sig = useMemo(() => uncached.map((u) => `${u.key}:${u.currency}`).join(","), [uncached]);
+
+  useEffect(() => {
+    if (uncached.length === 0) return;
+    let cancelled = false;
+    const run = async () => {
+      const results = await Promise.all(
+        uncached.map(async (u) => {
+          try {
+            const res = await fetch(
+              `/api/price?q=${encodeURIComponent(u.q)}&currency=${encodeURIComponent(u.currency)}`,
+            );
+            if (!res.ok) return null;
+            const d = (await res.json()) as { found?: boolean; price?: number };
+            if (d.found && typeof d.price === "number" && d.price > 0) {
+              return [u.key, d.price] as const;
+            }
+          } catch {
+            /* ignore — falls back to the synthetic price */
+          }
+          return null;
+        }),
+      );
+      if (cancelled) return;
+      const add: Record<string, number> = {};
+      for (const r of results) if (r) add[r[0]] = r[1];
+      if (Object.keys(add).length > 0) setFetched((prev) => ({ ...prev, ...add }));
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig]);
+
   const valuation = useMemo<ValuationContext>(() => {
     const fx = fxToBase(base);
     const toBase = (cur: string) => (!cur || cur === base ? 1 : (fx[cur] ?? 1));
@@ -32,22 +94,23 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
     for (const asset of data.assets) {
       const key = assetPriceKey(asset);
       const inst = lookupInstrument(key);
-      if (inst?.lastPrice == null) continue;
-      // The instrument's cached price is in the instrument's currency; convert
-      // it into THIS holding's currency so a EUR holding of a USD stock is
-      // valued from the EUR price (the shared instrument is left untouched).
-      const from = inst.currency ?? base;
-      const to = asset.currency ?? from;
-      live[key] = from === to ? inst.lastPrice : (inst.lastPrice * toBase(from)) / toBase(to);
+      if (inst?.lastPrice != null) {
+        // Convert the instrument's cached price (its currency) into THIS
+        // holding's currency; the shared instrument is left untouched.
+        const from = inst.currency ?? base;
+        const to = asset.currency ?? from;
+        live[key] = from === to ? inst.lastPrice : (inst.lastPrice * toBase(from)) / toBase(to);
+      } else if (fetched[key] != null) {
+        // On-demand price (already in the holding's currency).
+        live[key] = fetched[key];
+      }
     }
     return { base, live, fx };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.assets, base, version]);
+  }, [data.assets, base, version, fetched]);
 
   return (
-    <LivePricesContext.Provider value={{ valuation }}>
-      {children}
-    </LivePricesContext.Provider>
+    <LivePricesContext.Provider value={{ valuation }}>{children}</LivePricesContext.Provider>
   );
 }
 
