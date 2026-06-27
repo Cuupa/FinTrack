@@ -42,14 +42,22 @@ export function netFlows(assets: Asset[], txs: Transaction[], v?: ValuationConte
  */
 export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): SeriesPoint[] {
   if (series.length === 0) return [];
-  const flowByDay = new Map<string, number>();
-  for (const f of flows) flowByDay.set(f.date, (flowByDay.get(f.date) ?? 0) + f.amount);
+  const sorted = [...flows].sort((a, b) => (a.date < b.date ? -1 : 1));
+  // Skip flows on/before the window start (already baked into the first value).
+  let fi = 0;
+  while (fi < sorted.length && sorted[fi].date <= series[0].date) fi += 1;
 
   const out: SeriesPoint[] = [{ date: series[0].date, value: 0 }];
   let cum = 1;
   for (let i = 1; i < series.length; i++) {
+    // Sum every flow that falls in this step (prev < date <= current) — robust
+    // to the series not sampling the exact flow date.
+    let F = 0;
+    while (fi < sorted.length && sorted[fi].date <= series[i].date) {
+      F += sorted[fi].amount;
+      fi += 1;
+    }
     const prev = series[i - 1].value;
-    const F = flowByDay.get(series[i].date) ?? 0;
     if (prev > 0) cum *= 1 + (series[i].value - prev - F) / prev;
     out.push({ date: series[i].date, value: cum - 1 });
   }

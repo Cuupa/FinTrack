@@ -79,6 +79,16 @@ create table if not exists public.benchmark_history (
   primary key (benchmark_id, date)
 );
 
+-- Cached ETF sector/region weightings, so Analysis reads from the DB instead of
+-- hitting Yahoo/onvista on every view. Refreshed by /api/cron/sync-etf-breakdowns.
+create table if not exists public.etf_breakdowns (
+  etf_key text not null,
+  kind text not null check (kind in ('sector', 'region')),
+  data jsonb not null,
+  synced_at timestamptz not null default now(),
+  primary key (etf_key, kind)
+);
+
 -- Assets ---------------------------------------------------------------------
 -- A user's holding: a link to an instrument (master data) plus user notes.
 -- Master data (isin/wkn/symbol/name/type/currency) lives on the instrument.
@@ -135,7 +145,8 @@ insert into public.schema_migrations (version) values
   ('0010_drop_instrument_owner'),
   ('0011_asset_currency'),
   ('0012_schema_migrations'),
-  ('0013_benchmark_history')
+  ('0013_benchmark_history'),
+  ('0014_etf_breakdowns')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -147,6 +158,7 @@ alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
 alter table public.fx_rates enable row level security;
 alter table public.benchmark_history enable row level security;
+alter table public.etf_breakdowns enable row level security;
 
 -- Catalog: instruments are global reference data — world-readable, and any
 -- authenticated user may add a new one (the catalog grows as people import
@@ -166,6 +178,8 @@ drop policy if exists "fx readable" on public.fx_rates;
 create policy "fx readable" on public.fx_rates for select using (true);
 drop policy if exists "benchmark history readable" on public.benchmark_history;
 create policy "benchmark history readable" on public.benchmark_history for select using (true);
+drop policy if exists "etf breakdowns readable" on public.etf_breakdowns;
+create policy "etf breakdowns readable" on public.etf_breakdowns for select using (true);
 drop policy if exists "migrations readable" on public.schema_migrations;
 create policy "migrations readable" on public.schema_migrations for select using (true);
 

@@ -38,18 +38,12 @@ async function handle(req: Request): Promise<Response> {
     }
   };
 
-  // DB-writing syncs (each is secret-gated; the secret is forwarded).
-  await post("/api/cron/sync-prices");
-  await post("/api/cron/sync-constituents");
-  await post("/api/cron/sync-classifications");
-
-  // Benchmarks: force a full refresh of every benchmark's history.
-  try {
-    const r = await fetch(`${origin}/api/benchmarks?force=1`, { headers });
-    results["/api/benchmarks?force=1"] = r.ok ? { ok: true } : { error: r.status };
-  } catch (e) {
-    results["/api/benchmarks?force=1"] = { error: e instanceof Error ? e.message : String(e) };
-  }
+  // Each resource sync is secret-gated; the secret is forwarded.
+  await post("/api/cron/sync/prices");
+  await post("/api/cron/sync/constituents");
+  await post("/api/cron/sync/classifications");
+  await post("/api/cron/sync/etf-breakdowns");
+  await post("/api/cron/sync/benchmarks");
 
   return Response.json({ ok: true, results });
 }

@@ -227,7 +227,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/cron/sync-prices:
+  /api/cron/sync/prices:
     post:
       tags: [Cron]
       operationId: syncPrices
@@ -260,7 +260,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/cron/sync-constituents:
+  /api/cron/sync/constituents:
     post:
       tags: [Cron]
       operationId: syncConstituents
@@ -327,15 +327,34 @@ paths:
                       currency: { type: string, example: EUR }
                   - $ref: "#/components/schemas/NotFound"
 
-  /api/etf-sectors:
+  /api/fund/sector:
     get:
       tags: [Market data]
-      operationId: getEtfSectors
-      summary: An ETF's published sector weightings
-      description: Sector breakdown (GICS-mapped) from Yahoo `topHoldings`, for the Sectors pie.
+      operationId: getFundSectors
+      summary: All cached fund sector breakdowns
+      description: Sector weightings per fund (keyed by ISIN/symbol), from the etf_breakdowns cache.
+      responses:
+        "200":
+          description: Map of fund key → sector weightings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sectors]
+                properties:
+                  sectors: { type: object, additionalProperties: true }
+
+  /api/fund/sector/{symbol}:
+    get:
+      tags: [Market data]
+      operationId: getFundSector
+      summary: One fund's sector weightings
+      description: >
+        Sector breakdown (GICS-mapped) for a fund. Served from the etf_breakdowns
+        cache; falls back to a live Yahoo `topHoldings` fetch when not cached.
       parameters:
-        - name: q
-          in: query
+        - name: symbol
+          in: path
           required: true
           description: ISIN or symbol of the fund.
           schema: { type: string, example: IE00BK5BQT80 }
@@ -359,20 +378,37 @@ paths:
                             weight: { type: number, description: "fraction 0..1" }
                   - $ref: "#/components/schemas/NotFound"
 
-  /api/etf-regions:
+  /api/fund/region:
     get:
       tags: [Market data]
-      operationId: getEtfRegions
-      summary: An ETF's geographic (region) weightings
+      operationId: getFundRegions
+      summary: All cached fund region breakdowns
+      description: Region weightings per fund (keyed by ISIN/symbol), from the etf_breakdowns cache.
+      responses:
+        "200":
+          description: Map of fund key → region weightings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [regions]
+                properties:
+                  regions: { type: object, additionalProperties: true }
+
+  /api/fund/region/{symbol}:
+    get:
+      tags: [Market data]
+      operationId: getFundRegion
+      summary: One fund's geographic (region) weightings
       description: >
-        Country weightings mapped to regions, sourced keyless from onvista's
-        fund country breakdown. `found:false` when the ISIN isn't found there —
-        the client then falls back to the constituent look-through.
+        Country weightings mapped to regions, keyless from onvista. Served from
+        the etf_breakdowns cache; falls back to a live onvista fetch when not
+        cached. `found:false` when unavailable (client falls back to constituents).
       parameters:
-        - name: q
-          in: query
+        - name: symbol
+          in: path
           required: true
-          description: ISIN or symbol of the fund.
+          description: ISIN of the fund.
           schema: { type: string, example: IE00BK5BQT80 }
       responses:
         "200":
@@ -495,7 +531,7 @@ paths:
                         version: { type: string }
                         applied_at: { type: string, format: date-time }
 
-  /api/cron/sync-classifications:
+  /api/cron/sync/classifications:
     post:
       tags: [Cron]
       operationId: syncClassifications
@@ -530,7 +566,64 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
 
-  /api/cron/sync-all:
+  /api/cron/sync/etf-breakdowns:
+    post:
+      tags: [Cron]
+      operationId: syncEtfBreakdowns
+      summary: Cache each catalog ETF's sector + region weightings
+      description: >
+        Fetches sector (Yahoo) and region (onvista) weightings for every catalog
+        ETF and stores them in `etf_breakdowns`, so the Analysis pies read from
+        the DB instead of hitting those sources per view. Secret-gated; requires
+        the service role key.
+      security:
+        - cronBearer: []
+      responses:
+        "200":
+          description: Counts of ETFs and cached breakdowns.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  etfs: { type: integer }
+                  cached: { type: integer }
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Service role not configured, or a DB error.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/cron/sync/benchmarks:
+    post:
+      tags: [Cron]
+      operationId: syncBenchmarks
+      summary: Force-refresh all cached benchmark history
+      description: Re-fetches every benchmark's history from Yahoo into the cache. Secret-gated.
+      security:
+        - cronBearer: []
+      responses:
+        "200":
+          description: Result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "401":
+          description: Missing/incorrect cron secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/cron/sync:
     post:
       tags: [Cron]
       operationId: syncAll
