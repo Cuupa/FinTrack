@@ -67,9 +67,10 @@ export function MonteCarloPanel() {
     runs: 1000,
   });
 
-  // The estimation history window matches the investment horizon: a 30-year
-  // horizon estimates returns/volatility from (up to) the last 30 years.
-  const lookbackYears = Math.max(1, Math.round(form.years));
+  // Estimate returns/volatility from ALL available history (up to 20y),
+  // independent of the investment horizon — a short horizon shouldn't throw
+  // away years of data and force a guess.
+  const lookbackYears = 20;
 
   // Fetch REAL historical prices for the holdings (longest available), used to
   // estimate returns/volatility; falls back to the synthetic series per asset.
@@ -389,8 +390,11 @@ export function MonteCarloPanel() {
 }
 
 function PortfolioModelNote({ model }: { model: PortfolioModel }) {
-  const guess = model.estimated;
-  const theme = guess
+  // Pure guess = at least one holding has NO real history; otherwise figures are
+  // data-backed (possibly blended toward the long-run prior for short windows).
+  const pureGuess = model.assets.some((a) => !a.real);
+  const blended = model.assets.some((a) => a.real && a.estimated);
+  const theme = pureGuess
     ? {
         box: "border-amber-300/70 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20",
         head: "text-amber-900 dark:text-amber-200",
@@ -411,17 +415,22 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
       <div className={`flex items-center justify-between gap-2 ${theme.head}`}>
         <span className="font-semibold">Per-asset model</span>
         <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${theme.badge}`}>
-          {guess ? "Estimate" : `${model.sampleYears.toFixed(1)} yrs history`}
+          {pureGuess ? "Estimate" : blended ? "Blended" : `${model.sampleYears.toFixed(1)} yrs history`}
         </span>
       </div>
 
-      {guess && (
+      {pureGuess ? (
         <p className="mt-2 text-amber-800/90 dark:text-amber-200/80">
-          Some holdings have too little price history to measure reliably, so
-          their return and risk below are a rough <strong>guess</strong>. The
-          projection will sharpen as more market data accrues.
+          Some holdings have no usable price history, so their return and risk
+          below are a long-run <strong>assumption</strong>. The projection
+          sharpens as market data accrues.
         </p>
-      )}
+      ) : blended ? (
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          Figures use each holding&apos;s own history; short windows are tempered
+          toward long-run market assumptions.
+        </p>
+      ) : null}
 
       <ul className="mt-3 space-y-2.5">
         {model.assets.map((a) => (
@@ -447,9 +456,11 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
               </span>
             </div>
             <div className="mt-0.5 text-[11px] text-zinc-500">
-              {a.estimated
-                ? `guess · only ${a.years.toFixed(1)} yr of data`
-                : `${a.years.toFixed(1)} yr of history`}
+              {!a.real
+                ? "long-run assumption · no price history"
+                : a.estimated
+                  ? `${a.years.toFixed(1)} yr history · blended to long-run`
+                  : `${a.years.toFixed(1)} yr history`}
             </div>
           </li>
         ))}

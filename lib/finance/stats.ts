@@ -165,9 +165,11 @@ export interface AssetModel {
   weight: number;
   mean: number; // annualised, fraction
   vol: number; // annualised, fraction
-  /** Years of return history backing this asset's estimate. */
+  /** Years of real return history backing this asset's estimate. */
   years: number;
-  /** True when this asset's figures are a rough guess (synthetic or < MIN_CONFIDENT_YEARS). */
+  /** True when real market history backed the estimate (vs. a pure assumption). */
+  real: boolean;
+  /** True when the figures lean on the long-run assumption (no/short history). */
   estimated: boolean;
 }
 
@@ -227,30 +229,41 @@ function leverageFactor(name: string): number {
 }
 
 /**
- * Annualised mean/vol for one asset: its measured figures when backed by enough
- * real history, otherwise the general long-run assumption for its type (a
- * guesstimate). For leveraged/inverse funds the guesstimate scales the
- * assumption: vol ≈ |L|·σ and drift ≈ L·μ − ½·L·(L−1)·σ² (daily-rebalance
- * volatility drag). `estimated` is true whenever the general fallback was used.
+ * General long-run assumption for an asset's type, scaled for leverage/inverse
+ * funds: vol ≈ |L|·σ and drift ≈ L·μ − ½·L·(L−1)·σ² (daily-rebalance vol drag).
+ */
+function generalFor(asset: Asset): { mean: number; vol: number } {
+  const g = GENERAL[asset.type] ?? GENERAL.ETF;
+  const L = leverageFactor(asset.name);
+  if (L === 1) return { mean: g.mean, vol: g.vol };
+  return { mean: L * g.mean - 0.5 * L * (L - 1) * g.vol * g.vol, vol: Math.abs(L) * g.vol };
+}
+
+/**
+ * Annualised mean/vol for one asset. With no/short real history it leans on the
+ * general assumption; with a lot of history it uses the measured figures. In
+ * between, a credibility-weighted blend (w = years / RELIABLE_YEARS) USES the
+ * data while tempering a short, possibly unrepresentative window toward the
+ * long-run prior — so e.g. 5 years of data counts, it isn't dismissed.
  */
 function assetMeanVol(
   asset: Asset,
   rets: number[],
   real: boolean,
   ppy: number,
-): { mean: number; vol: number; years: number; estimated: boolean } {
+): { mean: number; vol: number; years: number; real: boolean; estimated: boolean } {
   const years = rets.length / ppy;
-  if (real && years >= RELIABLE_YEARS) {
-    return { mean: annualizeReturn(rets, ppy), vol: annualizeVol(rets, ppy), years, estimated: false };
+  const g = generalFor(asset);
+  if (!real || years <= 0) {
+    return { mean: g.mean, vol: g.vol, years, real: false, estimated: true };
   }
-  const g = GENERAL[asset.type] ?? GENERAL.ETF;
-  const L = leverageFactor(asset.name);
-  if (L === 1) return { mean: g.mean, vol: g.vol, years, estimated: true };
+  const w = Math.min(1, years / RELIABLE_YEARS);
   return {
-    mean: L * g.mean - 0.5 * L * (L - 1) * g.vol * g.vol,
-    vol: Math.abs(L) * g.vol,
+    mean: w * annualizeReturn(rets, ppy) + (1 - w) * g.mean,
+    vol: w * annualizeVol(rets, ppy) + (1 - w) * g.vol,
     years,
-    estimated: true,
+    real: true,
+    estimated: w < 1,
   };
 }
 
