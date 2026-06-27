@@ -87,28 +87,36 @@ export function NetWorthHero() {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid grid-cols-2 gap-x-10 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
-          <Stat label="Net worth" value={formatCurrency(totals.marketValue, currency)} />
+          <Stat
+            label="Net worth"
+            value={formatCurrency(totals.marketValue, currency)}
+            info="Total current value of all your holdings, converted to your base currency."
+          />
           <Stat
             label={`Change (${timeframe})`}
             value={formatCurrency(periodChange.abs, currency)}
             sub={formatPercent(periodChange.pct)}
             valueClassName={plColor(periodChange.abs)}
+            info="How much your net worth moved over the selected timeframe (value at the end vs. the start)."
           />
           <Stat
             label="Unrealized P&L"
             value={formatCurrency(totals.unrealizedPL, currency)}
             sub={formatPercent(totals.totalPLPercent)}
             valueClassName={plColor(totals.unrealizedPL)}
+            info="Paper gain/loss on shares you still hold: current value minus what you paid (average cost)."
           />
           <Stat
             label="Realized P&L"
             value={formatCurrency(totals.realizedPL, currency)}
             valueClassName={plColor(totals.realizedPL)}
+            info="Locked-in gain/loss from shares you have sold."
           />
           <Stat
             label="Dividends received"
             value={formatCurrency(dividendsReceived, currency)}
             valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
+            info="Sum of actual dividend payouts received, scaled by the shares held on each pay date."
           />
         </div>
       </div>

@@ -1,6 +1,7 @@
 // Small Tailwind UI primitives shared across the app.
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { InfoTip } from "./info-tip";
 
 export function Card({
   children,
@@ -23,15 +24,21 @@ export function Stat({
   value,
   sub,
   valueClassName = "",
+  info,
 }: {
   label: string;
   value: string;
   sub?: string;
   valueClassName?: string;
+  /** Optional short explanation shown via an ⓘ tooltip next to the label. */
+  info?: string;
 }) {
   return (
     <div>
-      <div className="text-sm text-zinc-500">{label}</div>
+      <div className="flex items-center gap-1 text-sm text-zinc-500">
+        {label}
+        {info && <InfoTip text={info} />}
+      </div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}>
         {value}
       </div>
