@@ -98,8 +98,10 @@ export function AllocationPie({
         </div>
       </div>
 
-      {/* Interactive inline legend (compact — sits next to the donut) */}
-      <ul className="w-full max-w-md space-y-0.5 text-sm">
+      {/* Interactive legend. Capped to the donut height (scrolls when there are
+          many slices) so the donut stays prominent. Exact € value is shown in
+          the donut centre on hover, so it's omitted here to avoid redundancy. */}
+      <ul className="max-h-72 w-full max-w-md space-y-0.5 overflow-y-auto pr-1 text-sm">
         {slices.map((s, i) => {
           const isActive = active === i;
           const dim = active !== null && !isActive;
@@ -108,7 +110,7 @@ export function AllocationPie({
               key={s.label}
               onMouseEnter={() => setActive(i)}
               onMouseLeave={() => setActive(null)}
-              className={`flex cursor-default items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+              className={`flex cursor-default items-center gap-3 rounded-lg px-3 py-1.5 transition-colors ${
                 isActive ? "bg-zinc-100 dark:bg-zinc-800" : ""
               } ${dim ? "opacity-50" : ""}`}
             >
@@ -127,9 +129,6 @@ export function AllocationPie({
                 }`}
               >
                 {s.label}
-              </span>
-              <span className="shrink-0 text-xs tabular-nums text-zinc-400">
-                {formatCurrency(s.value, currency)}
               </span>
               <span className="w-14 shrink-0 text-right font-semibold tabular-nums">
                 {formatNumber((s.value / total) * 100, 1)}%
