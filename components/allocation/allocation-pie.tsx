@@ -98,10 +98,14 @@ export function AllocationPie({
         </div>
       </div>
 
-      {/* Interactive legend. Capped to the donut height (scrolls when there are
-          many slices) so the donut stays prominent. Exact € value is shown in
-          the donut centre on hover, so it's omitted here to avoid redundancy. */}
-      <ul className="max-h-72 w-full max-w-md space-y-0.5 overflow-y-auto pr-1 text-sm">
+      {/* Interactive legend — no forced scroll; flows into two columns when
+          there are many slices so the donut stays prominent and everything is
+          visible. Exact € is shown in the donut centre on hover (not repeated). */}
+      <ul
+        className={`grid w-full gap-x-8 gap-y-0.5 text-sm ${
+          slices.length > 8 ? "sm:max-w-2xl sm:grid-cols-2" : "max-w-md"
+        }`}
+      >
         {slices.map((s, i) => {
           const isActive = active === i;
           const dim = active !== null && !isActive;
