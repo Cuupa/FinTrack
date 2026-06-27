@@ -10,7 +10,6 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import {
   byAssetClass,
-  byCountry,
   byCurrency,
   byInvestment,
   byRegion,
@@ -29,7 +28,6 @@ const TABS = [
   { key: "sector", label: "Sectors" },
   { key: "region", label: "Region" },
   { key: "currency", label: "Currencies" },
-  { key: "country", label: "Countries" },
   { key: "volatility", label: "Volatility" },
 ] as const;
 
@@ -63,7 +61,6 @@ export function AllocationView() {
       sector: bySector(holdings, classMap, etfSectors),
       region: byRegion(holdings, classMap),
       currency: byCurrency(holdings, base),
-      country: byCountry(holdings),
       volatility: byVolatility(holdings),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,7 +97,15 @@ export function AllocationView() {
       </div>
 
       <div className="mt-8">
-        <AllocationPie slices={charts[tab]} currency={base} />
+        {charts[tab].length === 0 ? (
+          <p className="py-12 text-center text-sm text-zinc-500">
+            {tab === "region"
+              ? "No region data yet — run the classification sync to fetch each holding's region."
+              : "No data for this breakdown yet."}
+          </p>
+        ) : (
+          <AllocationPie slices={charts[tab]} currency={base} />
+        )}
       </div>
     </Card>
   );

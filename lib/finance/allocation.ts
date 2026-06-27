@@ -125,8 +125,28 @@ function lookThrough(
   );
 }
 
+/**
+ * Geographic region breakdown. ETFs are looked through to their constituents'
+ * regions; direct stocks use their own. Crypto/cash (no geography) and any
+ * still-unclassified holding are excluded, so the chart shows only real regions
+ * (no "Other"/"Crypto") — normalised across what IS classified. Region data is
+ * filled by the classification sync; without it this is empty.
+ */
 export function byRegion(holdings: HoldingSummary[], overrides?: ClassMap): Slice[] {
-  return lookThrough(holdings, "region", overrides);
+  const map = new Map<string, number>();
+  const add = (label: string | null | undefined, v: number) => {
+    if (label) map.set(label, (map.get(label) ?? 0) + v);
+  };
+  for (const h of holdings) {
+    if (h.marketValue <= 0) continue;
+    if (h.asset.type === "ETF") {
+      for (const c of constituentsFor(h.asset.symbol)) add(c.region, h.marketValue * c.weight);
+    } else if (h.asset.type === "STOCK") {
+      const key = assetPriceKey(h.asset);
+      add(lookupInstrument(key)?.region || overrides?.[key]?.region, h.marketValue);
+    }
+  }
+  return Array.from(map, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 }
 
 export function bySector(
