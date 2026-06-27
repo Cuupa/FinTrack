@@ -210,9 +210,28 @@ function gatherReturns(
 }
 
 /**
+ * Leverage multiplier parsed from a fund's name — e.g. "2x Leveraged" → 2,
+ * "Daily Short" / "-1x" → -1. Defaults to 1. Used to scale the guesstimate so a
+ * leveraged fund isn't modelled like a plain index.
+ */
+function leverageFactor(name: string): number {
+  const s = (name || "").toLowerCase();
+  const inverse = /\b(inverse|short|bear)\b/.test(s) || /-\s*\d+\s*x/.test(s);
+  let mag = 1;
+  const m = s.match(/(\d+(?:[.,]\d+)?)\s*x\b/);
+  if (m) mag = parseFloat(m[1].replace(",", "."));
+  else if (/ultrapro/.test(s)) mag = 3;
+  else if (/\b(leverage|leveraged|ultra)\b/.test(s)) mag = 2;
+  if (!Number.isFinite(mag) || mag <= 0) mag = 1;
+  return inverse ? -mag : mag;
+}
+
+/**
  * Annualised mean/vol for one asset: its measured figures when backed by enough
  * real history, otherwise the general long-run assumption for its type (a
- * guesstimate). `estimated` is true whenever the general fallback was used.
+ * guesstimate). For leveraged/inverse funds the guesstimate scales the
+ * assumption: vol ≈ |L|·σ and drift ≈ L·μ − ½·L·(L−1)·σ² (daily-rebalance
+ * volatility drag). `estimated` is true whenever the general fallback was used.
  */
 function assetMeanVol(
   asset: Asset,
@@ -225,7 +244,14 @@ function assetMeanVol(
     return { mean: annualizeReturn(rets, ppy), vol: annualizeVol(rets, ppy), years, estimated: false };
   }
   const g = GENERAL[asset.type] ?? GENERAL.ETF;
-  return { mean: g.mean, vol: g.vol, years, estimated: true };
+  const L = leverageFactor(asset.name);
+  if (L === 1) return { mean: g.mean, vol: g.vol, years, estimated: true };
+  return {
+    mean: L * g.mean - 0.5 * L * (L - 1) * g.vol * g.vol,
+    vol: Math.abs(L) * g.vol,
+    years,
+    estimated: true,
+  };
 }
 
 /**
