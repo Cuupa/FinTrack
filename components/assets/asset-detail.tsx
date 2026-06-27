@@ -29,6 +29,7 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor } from "@/lib/catalog/catalog";
 import { quoteItemFor } from "@/lib/finance/prices";
+import { assetAnnualStats } from "@/lib/finance/stats";
 import { useHistory } from "@/lib/history/use-history";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -91,6 +92,12 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   const irr = useMemo(
     () => (summary ? positionIRR(txs, summary.marketValue) : null),
     [txs, summary],
+  );
+
+  // Risk-adjusted return from this asset's price history over the timeframe.
+  const annual = useMemo(
+    () => (asset ? assetAnnualStats(asset, histories, 100) : null),
+    [asset, histories],
   );
 
   // Real dividend events (accumulating funds return none → no phantom payouts).
@@ -175,7 +182,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               {formatCurrency(summary.price, nativeCur)}
             </span>
             <span className="text-zinc-500">
-              Holding value {formatCurrency(summary.marketValue, currency)}
+              Holding value <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
             </span>
           </div>
         </div>
@@ -270,7 +277,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
                   </div>
                   <span className="w-28 shrink-0 text-right tabular-nums text-zinc-500">
                     {formatNumber(c.weight * 100, 1)}% ·{" "}
-                    {formatCurrency(summary.marketValue * c.weight, currency)}
+                    <span data-private>{formatCurrency(summary.marketValue * c.weight, currency)}</span>
                   </span>
                 </div>
               ))}
@@ -279,12 +286,13 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       )}
 
       {/* Advanced metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <Stat
             label="Market value"
             value={formatCurrency(summary.marketValue, currency)}
             info="Current value of this holding."
+            isPrivate
           />
         </Card>
         <Card>
@@ -294,6 +302,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             sub={formatPercent(summary.unrealizedPLPercent)}
             valueClassName={plColor(summary.unrealizedPL)}
             info="Paper gain/loss on shares still held."
+            isPrivate
           />
         </Card>
         <Card>
@@ -302,6 +311,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             value={formatCurrency(summary.realizedPL, currency)}
             valueClassName={plColor(summary.realizedPL)}
             info="Locked-in gain/loss from shares of this asset you have already sold."
+            isPrivate
           />
         </Card>
         <Card>
@@ -310,6 +320,14 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             value={irr === null ? "—" : formatPercent(irr)}
             valueClassName={irr === null ? "" : plColor(irr)}
             info="Money-weighted annual return for this position."
+          />
+        </Card>
+        <Card>
+          <Stat
+            label="Sharpe ratio"
+            value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
+            valueClassName={annual?.sharpe != null ? plColor(annual.sharpe) : ""}
+            info="Risk-adjusted return: annualised excess return (over a 2% risk-free rate) per unit of volatility, measured from this asset's price history."
           />
         </Card>
       </div>
@@ -332,6 +350,14 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           <Row
             label="Dividends received"
             value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
+          />
+          <Row
+            label="Volatility (p.a.)"
+            value={annual && annual.vol > 0 ? `${formatNumber(annual.vol * 100, 1)}%` : "—"}
+          />
+          <Row
+            label="Sharpe ratio"
+            value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
           />
         </dl>
       </Card>

@@ -5,13 +5,16 @@ import { AuthProvider } from "@/lib/auth/auth-context";
 import { PortfolioProvider } from "@/lib/portfolio/portfolio-context";
 import { CatalogProvider } from "@/lib/catalog/catalog-context";
 import { LivePricesProvider } from "@/lib/live/live-prices-context";
+import { PrivacyProvider } from "@/lib/privacy/privacy-context";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <CatalogProvider>
         <PortfolioProvider>
-          <LivePricesProvider>{children}</LivePricesProvider>
+          <LivePricesProvider>
+            <PrivacyProvider>{children}</PrivacyProvider>
+          </LivePricesProvider>
         </PortfolioProvider>
       </CatalogProvider>
     </AuthProvider>

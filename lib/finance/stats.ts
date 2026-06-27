@@ -353,6 +353,42 @@ export function estimatePortfolioStats(
   };
 }
 
+// Long-run risk-free proxy (annualised) used for risk-adjusted metrics.
+export const RISK_FREE_RATE = 0.02;
+
+/**
+ * Annualised Sharpe ratio: excess return per unit of volatility. null when
+ * volatility is zero/undefined (ratio is meaningless).
+ */
+export function sharpeRatio(
+  annualReturn: number,
+  annualVol: number,
+  riskFree = RISK_FREE_RATE,
+): number | null {
+  if (!(annualVol > 0)) return null;
+  return (annualReturn - riskFree) / annualVol;
+}
+
+/**
+ * Annualised return/volatility (and Sharpe) for a single asset, measured from
+ * its real history when available (>= MIN_REAL_MONTHS) and falling back to the
+ * general long-run assumption. For the per-asset detail view.
+ */
+export function assetAnnualStats(
+  asset: Asset,
+  history: HistoryMap | undefined,
+  years = 5,
+): { mean: number; vol: number; sharpe: number | null; years: number; real: boolean } {
+  if (history && Object.keys(history).length > 0) {
+    const { rets, real } = assetMonthlyReturns(asset, history, years);
+    const mv = assetMeanVol(asset, rets, real, MONTHLY_PPY);
+    return { mean: mv.mean, vol: mv.vol, sharpe: sharpeRatio(mv.mean, mv.vol), years: mv.years, real: mv.real };
+  }
+  const rets = assetDailyReturns(asset, years);
+  const mv = assetMeanVol(asset, rets, false, DAILY_PPY);
+  return { mean: mv.mean, vol: mv.vol, sharpe: sharpeRatio(mv.mean, mv.vol), years: mv.years, real: false };
+}
+
 // FTSE All-World — diversified default used when the user has no holdings yet.
 const BENCHMARK_KEY = "IE00BK5BQT80";
 const BENCHMARK_NAME = "FTSE All-World (benchmark)";

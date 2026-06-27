@@ -116,6 +116,7 @@ export function NetWorthHero() {
             label="Net worth"
             value={formatCurrency(totals.marketValue, currency)}
             info="Total current value of all your holdings, converted to your base currency."
+            isPrivate
           />
           <Stat
             label={`Change (${timeframe})`}
@@ -123,6 +124,7 @@ export function NetWorthHero() {
             sub={formatPercent(periodChange.pct)}
             valueClassName={plColor(periodChange.abs)}
             info="How much your net worth moved over the selected timeframe ."
+            isPrivate
           />
           <Stat
             label="Unrealized P&L"
@@ -130,18 +132,21 @@ export function NetWorthHero() {
             sub={formatPercent(totals.totalPLPercent)}
             valueClassName={plColor(totals.unrealizedPL)}
             info="Paper gain/loss on shares you still hold."
+            isPrivate
           />
           <Stat
             label="Realized P&L"
             value={formatCurrency(totals.realizedPL, currency)}
             valueClassName={plColor(totals.realizedPL)}
             info="Locked-in gain/loss from shares you have sold."
+            isPrivate
           />
           <Stat
             label="Dividends received"
             value={formatCurrency(dividendsReceived, currency)}
             valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
             info="Sum of actual dividend payouts received, scaled by the shares held on each pay date."
+            isPrivate
           />
           <Stat
             label="IRR (p.a.)"

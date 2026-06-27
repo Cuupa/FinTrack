@@ -25,6 +25,7 @@ export function Stat({
   sub,
   valueClassName = "",
   info,
+  isPrivate = false,
 }: {
   label: string;
   value: string;
@@ -32,6 +33,8 @@ export function Stat({
   valueClassName?: string;
   /** Optional short explanation shown via an ⓘ tooltip next to the label. */
   info?: string;
+  /** Mark the figure as an absolute amount, blurred in Incognito mode. */
+  isPrivate?: boolean;
 }) {
   return (
     <div>
@@ -39,7 +42,10 @@ export function Stat({
         {label}
         {info && <InfoTip text={info} />}
       </div>
-      <div className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}>
+      <div
+        className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}
+        {...(isPrivate ? { "data-private": "" } : {})}
+      >
         {value}
       </div>
       {sub && <div className="mt-0.5 text-sm text-zinc-500 tabular-nums">{sub}</div>}

@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Incognito mode: blur absolute financial figures marked with [data-private].
+   PrivacyProvider toggles the `.incognito` class on <html>. The blur is
+   non-interactive and unselectable so masked values can't be read or copied. */
+.incognito [data-private] {
+  filter: blur(0.5rem);
+  user-select: none;
+  pointer-events: none;
+  transition: filter 0.15s ease;
+}

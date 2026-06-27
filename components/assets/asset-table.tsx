@@ -132,7 +132,7 @@ export function AssetTable() {
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="font-medium tabular-nums">
+                    <div className="font-medium tabular-nums" data-private>
                       {formatCurrency(h.marketValue, currency)}
                     </div>
                     <div className="mt-0.5 text-xs text-zinc-500 tabular-nums">
@@ -183,7 +183,7 @@ export function AssetTable() {
                     <td className="px-4 py-3 text-right tabular-nums text-zinc-500">
                       {formatCurrency(entry, nativeCur)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                    <td className="px-4 py-3 text-right font-medium tabular-nums" data-private>
                       {formatCurrency(h.marketValue, currency)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">

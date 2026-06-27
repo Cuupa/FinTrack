@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Button } from "./ui/primitives";
+import { PrivacyToggle } from "./privacy-toggle";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
@@ -42,6 +43,7 @@ export function SiteNav() {
           })}
         </div>
         <div className="ml-auto flex items-center gap-3">
+          <PrivacyToggle />
           {mode === "registered" ? (
             <>
               <span className="hidden text-sm text-zinc-500 sm:inline">
