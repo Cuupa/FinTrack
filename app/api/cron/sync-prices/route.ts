@@ -36,9 +36,9 @@ const FX_CURRENCIES = ["USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return true; // no secret configured → allow (e.g. local dev)
-  const auth = req.headers.get("authorization") || "";
-  const url = new URL(req.url);
-  return auth === `Bearer ${secret}` || url.searchParams.get("secret") === secret;
+  // Header only — never accept the secret as a query param (it leaks via logs,
+  // referrers and browser history). Matches Vercel Cron's Authorization header.
+  return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 const changed = (prev: number | string | null, next: number): boolean => {

@@ -25,6 +25,7 @@ servers:
   - url: /
     description: Same-origin (relative)
 
+
 tags:
   - name: Catalog
     description: World-readable instruments reference data.
@@ -226,14 +227,11 @@ paths:
       description: >
         Fetches live equity (Yahoo), crypto (CoinGecko, USD) and FX
         (Frankfurter, EUR-anchored) prices and caches them on `instruments` /
-        `fx_rates`. Secured by `CRON_SECRET` (Bearer header or `?secret=`); if
+        `fx_rates`. Secured by `CRON_SECRET` (Bearer header); if
         no secret is configured the route is open (local dev). Requires the
         service role key.
       security:
         - cronBearer: []
-        - cronSecretQuery: []
-      parameters:
-        - $ref: "#/components/parameters/CronSecretQuery"
       responses:
         "200":
           description: Counts of updated rows.
@@ -260,9 +258,6 @@ paths:
       description: Identical to `GET /api/cron/sync-prices`.
       security:
         - cronBearer: []
-        - cronSecretQuery: []
-      parameters:
-        - $ref: "#/components/parameters/CronSecretQuery"
       responses:
         "200":
           description: Counts of updated rows.
@@ -294,9 +289,6 @@ paths:
         Same `CRON_SECRET` and service-role requirements as `sync-prices`.
       security:
         - cronBearer: []
-        - cronSecretQuery: []
-      parameters:
-        - $ref: "#/components/parameters/CronSecretQuery"
       responses:
         "200":
           description: Per-ETF refresh summary.
@@ -323,9 +315,6 @@ paths:
       description: Identical to `GET /api/cron/sync-constituents`.
       security:
         - cronBearer: []
-        - cronSecretQuery: []
-      parameters:
-        - $ref: "#/components/parameters/CronSecretQuery"
       responses:
         "200":
           description: Per-ETF refresh summary.
@@ -352,22 +341,8 @@ components:
       type: http
       scheme: bearer
       description: >
-        `Authorization: Bearer $CRON_SECRET`. Only enforced when `CRON_SECRET`
-        is set in the environment.
-    cronSecretQuery:
-      type: apiKey
-      in: query
-      name: secret
-      description: Alternative to the Bearer header — `?secret=$CRON_SECRET`.
-
-  parameters:
-    CronSecretQuery:
-      name: secret
-      in: query
-      required: false
-      description: Cron secret, as an alternative to the Bearer header.
-      schema:
-        type: string
+        `Authorization: Bearer $CRON_SECRET` (header only). Only enforced when
+        `CRON_SECRET` is set in the environment.
 
   schemas:
     AssetType:

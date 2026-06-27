@@ -14,9 +14,8 @@ export const dynamic = "force-dynamic";
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return true;
-  const auth = req.headers.get("authorization") || "";
-  const url = new URL(req.url);
-  return auth === `Bearer ${secret}` || url.searchParams.get("secret") === secret;
+  // Header only — never accept the secret as a query param (leaks via logs).
+  return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 async function refresh(
