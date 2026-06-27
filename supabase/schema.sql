@@ -104,8 +104,32 @@ create table if not exists public.transactions (
 );
 create index if not exists transactions_asset_id_idx on public.transactions (asset_id);
 
+-- Applied-migrations registry (system table) --------------------------------
+create table if not exists public.schema_migrations (
+  version text primary key,
+  applied_at timestamptz not null default now()
+);
+-- A fresh schema.sql install already includes every migration's effect.
+insert into public.schema_migrations (version) values
+  ('0001_isin_wkn_and_executed_at'),
+  ('0002_instruments_catalog_and_currency'),
+  ('0003_etf_constituents'),
+  ('0004_country_and_dividends'),
+  ('0005_yahoo_quote_source'),
+  ('0006_normalize_3nf'),
+  ('0007_expand_constituents'),
+  ('0007_price_cache'),
+  ('0007_sector_region'),
+  ('0008_executed_at_naive'),
+  ('0009_fx_cache_and_crypto_usd'),
+  ('0010_drop_instrument_owner'),
+  ('0011_asset_currency'),
+  ('0012_schema_migrations')
+on conflict (version) do nothing;
+
 -- Row-level security ---------------------------------------------------------
 alter table public.profiles enable row level security;
+alter table public.schema_migrations enable row level security;
 alter table public.assets enable row level security;
 alter table public.transactions enable row level security;
 alter table public.instruments enable row level security;
@@ -128,6 +152,8 @@ create policy "constituents readable"
   on public.instrument_constituents for select using (true);
 drop policy if exists "fx readable" on public.fx_rates;
 create policy "fx readable" on public.fx_rates for select using (true);
+drop policy if exists "migrations readable" on public.schema_migrations;
+create policy "migrations readable" on public.schema_migrations for select using (true);
 
 -- `create policy` has no IF NOT EXISTS, so drop-then-create stays idempotent.
 drop policy if exists "own profile" on public.profiles;
