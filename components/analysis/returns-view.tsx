@@ -42,7 +42,9 @@ export function ReturnsView() {
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const base = data.profile.currency;
-  const [period, setPeriod] = useState<Period>("quarter");
+  // Each chart has its own period toggle.
+  const [heatPeriod, setHeatPeriod] = useState<Period>("quarter");
+  const [barPeriod, setBarPeriod] = useState<Period>("quarter");
 
   const holdings = useMemo(
     () =>
@@ -70,20 +72,27 @@ export function ReturnsView() {
     () => netFlows(data.assets, data.transactions, valuation),
     [data.assets, data.transactions, valuation],
   );
-  const returns = useMemo(() => periodReturns(series, flows, period), [series, flows, period]);
+  const heatReturns = useMemo(
+    () => periodReturns(series, flows, heatPeriod),
+    [series, flows, heatPeriod],
+  );
+  const barReturns = useMemo(
+    () => periodReturns(series, flows, barPeriod),
+    [series, flows, barPeriod],
+  );
 
   const barData = useMemo(
     () =>
-      returns.map((r) => ({
-        label: period === "year" ? r.label : `${String(r.year).slice(2)} ${r.label}`,
+      barReturns.map((r) => ({
+        label: barPeriod === "year" ? r.label : `${String(r.year).slice(2)} ${r.label}`,
         pct: r.ret * 100,
       })),
-    [returns, period],
+    [barReturns, barPeriod],
   );
 
   const years = useMemo(
-    () => Array.from(new Set(returns.map((r) => r.year))).sort((a, b) => b - a),
-    [returns],
+    () => Array.from(new Set(heatReturns.map((r) => r.year))).sort((a, b) => b - a),
+    [heatReturns],
   );
 
   const tree = useMemo(
@@ -107,7 +116,7 @@ export function ReturnsView() {
   }
 
   const cellFor = (year: number, q: number) =>
-    returns.find((r) => r.year === year && r.quarter === q);
+    heatReturns.find((r) => r.year === year && r.quarter === q);
 
   return (
     <div className="space-y-6">
@@ -119,8 +128,8 @@ export function ReturnsView() {
           </h2>
           <SegmentedControl<Period>
             size="sm"
-            value={period}
-            onChange={setPeriod}
+            value={heatPeriod}
+            onChange={setHeatPeriod}
             options={[
               { label: "Quarter", value: "quarter" },
               { label: "Year", value: "year" },
@@ -130,7 +139,7 @@ export function ReturnsView() {
 
         {/* Heatmap */}
         <div className="mt-4 overflow-x-auto">
-          {period === "quarter" ? (
+          {heatPeriod === "quarter" ? (
             <div
               className="inline-grid min-w-full gap-1 text-xs"
               style={{ gridTemplateColumns: "auto repeat(4, minmax(3.5rem, 1fr))" }}
@@ -161,7 +170,7 @@ export function ReturnsView() {
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {[...returns].reverse().map((r) => (
+              {[...heatReturns].reverse().map((r) => (
                 <div
                   key={r.key}
                   className="min-w-[5.5rem] rounded-lg px-4 py-3 text-center"
@@ -180,11 +189,11 @@ export function ReturnsView() {
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">Return by {period}</h3>
+          <h3 className="text-sm font-semibold">Return by {barPeriod}</h3>
           <SegmentedControl<Period>
             size="sm"
-            value={period}
-            onChange={setPeriod}
+            value={barPeriod}
+            onChange={setBarPeriod}
             options={[
               { label: "Quarter", value: "quarter" },
               { label: "Year", value: "year" },
@@ -241,10 +250,12 @@ interface CellProps {
   height?: number;
   name?: string;
   ret?: number;
+  depth?: number;
 }
 
-function PerfCell({ x = 0, y = 0, width = 0, height = 0, name = "", ret = 0 }: CellProps) {
-  if (width <= 0 || height <= 0) return null;
+function PerfCell({ x = 0, y = 0, width = 0, height = 0, name = "", ret = 0, depth = 1 }: CellProps) {
+  // depth 0 is the Treemap container — skip it (it drew a stray "0.0%" on top).
+  if (depth === 0 || width <= 0 || height <= 0) return null;
   const cx = x + width / 2;
   const cy = y + height / 2;
   // Font scales with the tile; SVG text doesn't wrap, so truncate to fit width.
@@ -272,16 +283,22 @@ function PerfCell({ x = 0, y = 0, width = 0, height = 0, name = "", ret = 0 }: C
   );
 }
 
+interface TreeNode {
+  name?: string;
+  size?: number;
+  ret?: number;
+}
 interface MapTooltipProps {
   currency: string;
   active?: boolean;
-  payload?: Array<{ payload?: { name?: string; size?: number; ret?: number } }>;
+  payload?: Array<{ payload?: TreeNode } & TreeNode>;
 }
 
 function MapTooltip({ currency, active, payload }: MapTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
-  const p = payload[0].payload;
-  if (!p) return null;
+  // Treemap tooltip payload may carry the node on `.payload` or inline.
+  const p: TreeNode = payload[0].payload ?? payload[0];
+  if (!p || p.name == null) return null;
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
       <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.name}</div>
