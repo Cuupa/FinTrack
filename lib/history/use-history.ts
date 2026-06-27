@@ -5,6 +5,7 @@
 // for anything not returned.
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type { HistItem, HistoryMap } from "./history";
 
 export function useHistory(
@@ -32,7 +33,7 @@ export function useHistory(
     let cancelled = false;
     const run = async () => {
       try {
-        const res = await fetch("/api/history", {
+        const res = await apiFetch("/api/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ base, range, items }),

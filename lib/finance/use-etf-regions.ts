@@ -5,6 +5,7 @@
 // (FMP) isn't configured — byRegion then falls back to constituent regions.
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { assetPriceKey } from "../types";
 import type { HoldingSummary } from "./portfolio";
 import type { RegionWeightsMap } from "./allocation";
@@ -36,7 +37,7 @@ export function useEtfRegions(
       const results = await Promise.all(
         needed.map(async (n) => {
           try {
-            const res = await fetch(`/api/fund/region/${encodeURIComponent(n.q)}`);
+            const res = await apiFetch(`/api/fund/region/${encodeURIComponent(n.q)}`);
             if (!res.ok) return null;
             const d = (await res.json()) as {
               found?: boolean;

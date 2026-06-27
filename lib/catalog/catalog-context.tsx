@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { apiFetch } from "@/lib/api";
 import {
   setCatalog,
   setConstituents,
@@ -33,7 +34,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/catalog")
+    apiFetch("/api/catalog")
       .then((res) => (res.ok ? res.json() : { instruments: [] }))
       .then(
         (json: {

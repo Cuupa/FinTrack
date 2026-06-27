@@ -3,6 +3,7 @@
 // System page: shows which database migrations have been applied.
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 
@@ -16,7 +17,7 @@ export default function SystemPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/migrations")
+    apiFetch("/api/migrations")
       .then((r) => (r.ok ? r.json() : { migrations: [] }))
       .then((d: { migrations?: Migration[] }) => {
         if (!cancelled) setMigrations(d.migrations ?? []);

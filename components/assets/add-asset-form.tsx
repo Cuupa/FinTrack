@@ -7,6 +7,7 @@
 // full date+time.
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { lookupInstrumentByQuery, currentPrice } from "@/lib/finance/prices";
 import { parseDecimal } from "@/lib/format";
@@ -131,7 +132,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
         return;
       }
       // 2. Live lookup API (resolves any ISIN/symbol via Yahoo).
-      const res = await fetch(`/api/lookup?q=${encodeURIComponent(q)}`);
+      const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(q)}`);
       const data = (res.ok ? await res.json() : { found: false }) as ApiMatch;
       if (data.found) {
         applyApiMatch(data);

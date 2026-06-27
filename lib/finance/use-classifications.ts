@@ -5,6 +5,7 @@
 // constituents are classified in the DB, so they don't need this.
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { assetPriceKey } from "../types";
 import { lookupInstrument } from "../catalog/catalog";
 import type { HoldingSummary } from "./portfolio";
@@ -40,7 +41,7 @@ export function useClassifications(
       const results = await Promise.all(
         needed.map(async (n) => {
           try {
-            const res = await fetch(`/api/classify?q=${encodeURIComponent(n.q)}`);
+            const res = await apiFetch(`/api/classify?q=${encodeURIComponent(n.q)}`);
             if (!res.ok) return null;
             const d = (await res.json()) as {
               found?: boolean;

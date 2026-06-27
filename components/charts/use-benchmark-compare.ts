@@ -6,6 +6,7 @@
 // refetch.
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { BENCHMARKS } from "@/lib/finance/benchmarks";
 import type { CompareSeries } from "./performance-chart";
 
@@ -24,7 +25,7 @@ export function useBenchmarkCompare(selected: string[]): CompareSeries[] {
   useEffect(() => {
     if (missing.length === 0) return;
     let cancelled = false;
-    fetch(`/api/benchmarks?ids=${encodeURIComponent(missing.join(","))}`)
+    apiFetch(`/api/benchmarks?ids=${encodeURIComponent(missing.join(","))}`)
       .then((r) => (r.ok ? r.json() : { benchmarks: {} }))
       .then((d: { benchmarks?: Hist }) => {
         if (!cancelled && d.benchmarks) setHist((prev) => ({ ...prev, ...d.benchmarks }));

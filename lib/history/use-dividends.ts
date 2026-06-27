@@ -5,6 +5,7 @@
 // not polled. Accumulating funds return an empty list.
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import type { HistItem } from "./history";
 
 export type DividendMap = Record<string, { date: string; amount: number }[]>;
@@ -22,7 +23,7 @@ export function useDividends(items: HistItem[], range = "10y"): DividendMap {
     let cancelled = false;
     const run = async () => {
       try {
-        const res = await fetch("/api/dividends", {
+        const res = await apiFetch("/api/dividends", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ range, items }),

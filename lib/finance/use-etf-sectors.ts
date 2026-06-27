@@ -6,6 +6,7 @@
 // look-through. Mirrors useClassifications (client-side, in-memory).
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { assetPriceKey } from "../types";
 import type { HoldingSummary } from "./portfolio";
 import type { SectorWeightsMap } from "./allocation";
@@ -37,7 +38,7 @@ export function useEtfSectors(
       const results = await Promise.all(
         needed.map(async (n) => {
           try {
-            const res = await fetch(`/api/fund/sector/${encodeURIComponent(n.q)}`);
+            const res = await apiFetch(`/api/fund/sector/${encodeURIComponent(n.q)}`);
             if (!res.ok) return null;
             const d = (await res.json()) as {
               found?: boolean;
