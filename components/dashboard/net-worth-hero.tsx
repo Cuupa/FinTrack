@@ -18,7 +18,8 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
-import { netFlows, cumulativeReturnSeries } from "@/lib/finance/returns";
+import { netFlows, cumulativeReturnSeries, riskMetrics } from "@/lib/finance/returns";
+import { InfoTip } from "@/components/ui/info-tip";
 import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
@@ -65,6 +66,8 @@ export function NetWorthHero() {
     () => cumulativeReturnSeries(series, netFlows(data.assets, data.transactions, valuation)),
     [series, data.assets, data.transactions, valuation],
   );
+  // Risk metrics over the selected window (TWR, vol, drawdown, downside vol).
+  const risk = useMemo(() => riskMetrics(returnSeries), [returnSeries]);
 
   const totals = useMemo(
     () => portfolioTotals(summarizeAll(data.assets, data.transactions, valuation)),
@@ -146,6 +149,12 @@ export function NetWorthHero() {
             valueClassName={irr != null ? plColor(irr) : ""}
             info="Annualised, money-weighted return that accounts for the timing and size of every buy and sell."
           />
+          <Stat
+            label={`TWR (${timeframe})`}
+            value={formatPercent(risk.twr)}
+            valueClassName={plColor(risk.twr)}
+            info="True time-weighted return over the selected timeframe: the portfolio's compounded performance with deposits/withdrawals removed (comparable to a fund/benchmark)."
+          />
         </div>
       </div>
 
@@ -178,7 +187,55 @@ export function NetWorthHero() {
           />
         )}
       </div>
+
+      {data.assets.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-4 dark:border-zinc-800">
+          <RiskStat
+            label="Volatility"
+            value={formatPercent(risk.volatility)}
+            info={`Annualised standard deviation of the portfolio's daily returns over ${timeframe}.`}
+          />
+          <RiskStat
+            label="Max drawdown"
+            value={formatPercent(-risk.maxDrawdown)}
+            valueClassName={risk.maxDrawdown > 0 ? plColor(-1) : ""}
+            info="Largest peak-to-trough decline over the timeframe."
+          />
+          <RiskStat
+            label="Drawdown duration"
+            value={`${risk.maxDrawdownDays} d`}
+            info="Longest stretch the portfolio spent below a previous peak."
+          />
+          <RiskStat
+            label="Downside vol"
+            value={formatPercent(risk.downsideDeviation)}
+            info="Annualised semi-deviation — volatility of only the negative days (downside risk)."
+          />
+        </div>
+      )}
     </Card>
+  );
+}
+
+function RiskStat({
+  label,
+  value,
+  info,
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  info: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 text-xs text-zinc-500">
+        {label}
+        <InfoTip text={info} />
+      </div>
+      <div className={`mt-0.5 font-semibold tabular-nums ${valueClassName}`}>{value}</div>
+    </div>
   );
 }
 

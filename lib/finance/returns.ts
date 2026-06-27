@@ -64,6 +64,64 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
   return out;
 }
 
+export interface RiskMetrics {
+  /** Cumulative time-weighted return over the window (fraction). */
+  twr: number;
+  /** Annualised volatility (std. dev. of daily returns), fraction. */
+  volatility: number;
+  /** Max peak-to-trough decline over the window (positive fraction). */
+  maxDrawdown: number;
+  /** Longest stretch below a prior peak, in days. */
+  maxDrawdownDays: number;
+  /** Annualised downside deviation (semi-deviation of negative days), fraction. */
+  downsideDeviation: number;
+}
+
+function daysBetween(a: string, b: string): number {
+  return Math.round(
+    (new Date(b + "T00:00:00Z").getTime() - new Date(a + "T00:00:00Z").getTime()) / 86_400_000,
+  );
+}
+
+/**
+ * Risk metrics for the selected window, derived from the cumulative-return
+ * series (so they reflect performance, not deposits). Daily returns are
+ * annualised at 365 (the series is calendar-daily).
+ */
+export function riskMetrics(returnSeries: SeriesPoint[]): RiskMetrics {
+  const n = returnSeries.length;
+  const twr = n > 0 ? returnSeries[n - 1].value : 0;
+  if (n < 2) {
+    return { twr, volatility: 0, maxDrawdown: 0, maxDrawdownDays: 0, downsideDeviation: 0 };
+  }
+  const idx = returnSeries.map((p) => 1 + p.value);
+  const daily: number[] = [];
+  for (let i = 1; i < n; i++) daily.push(idx[i] / idx[i - 1] - 1);
+
+  const mean = daily.reduce((s, x) => s + x, 0) / daily.length;
+  const variance = daily.reduce((s, x) => s + (x - mean) ** 2, 0) / Math.max(1, daily.length - 1);
+  const volatility = Math.sqrt(variance) * Math.sqrt(365);
+  const downVar = daily.reduce((s, x) => s + (x < 0 ? x * x : 0), 0) / daily.length;
+  const downsideDeviation = Math.sqrt(downVar) * Math.sqrt(365);
+
+  let peak = idx[0];
+  let peakDate = returnSeries[0].date;
+  let maxDD = 0;
+  let maxDays = 0;
+  for (let i = 0; i < n; i++) {
+    if (idx[i] >= peak) {
+      peak = idx[i];
+      peakDate = returnSeries[i].date;
+    } else {
+      const dd = (idx[i] - peak) / peak;
+      if (dd < maxDD) maxDD = dd;
+      const days = daysBetween(peakDate, returnSeries[i].date);
+      if (days > maxDays) maxDays = days;
+    }
+  }
+  return { twr, volatility, maxDrawdown: -maxDD, maxDrawdownDays: maxDays, downsideDeviation };
+}
+
 export interface PeriodReturn {
   /** Sort/identity key, e.g. "2025-Q1" or "2025". */
   key: string;
