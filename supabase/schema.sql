@@ -69,6 +69,16 @@ create table if not exists public.fx_rates (
   synced_at timestamptz not null default now()
 );
 
+-- Cached benchmark price history (daily close), so the chart comparison feature
+-- reads from the DB instead of hitting Yahoo on every view. Refreshed lazily by
+-- /api/benchmarks when stale.
+create table if not exists public.benchmark_history (
+  benchmark_id text not null,
+  date date not null,
+  close numeric not null,
+  primary key (benchmark_id, date)
+);
+
 -- Assets ---------------------------------------------------------------------
 -- A user's holding: a link to an instrument (master data) plus user notes.
 -- Master data (isin/wkn/symbol/name/type/currency) lives on the instrument.
@@ -124,7 +134,8 @@ insert into public.schema_migrations (version) values
   ('0009_fx_cache_and_crypto_usd'),
   ('0010_drop_instrument_owner'),
   ('0011_asset_currency'),
-  ('0012_schema_migrations')
+  ('0012_schema_migrations'),
+  ('0013_benchmark_history')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -135,6 +146,7 @@ alter table public.transactions enable row level security;
 alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
 alter table public.fx_rates enable row level security;
+alter table public.benchmark_history enable row level security;
 
 -- Catalog: instruments are global reference data — world-readable, and any
 -- authenticated user may add a new one (the catalog grows as people import
@@ -152,6 +164,8 @@ create policy "constituents readable"
   on public.instrument_constituents for select using (true);
 drop policy if exists "fx readable" on public.fx_rates;
 create policy "fx readable" on public.fx_rates for select using (true);
+drop policy if exists "benchmark history readable" on public.benchmark_history;
+create policy "benchmark history readable" on public.benchmark_history for select using (true);
 drop policy if exists "migrations readable" on public.schema_migrations;
 create policy "migrations readable" on public.schema_migrations for select using (true);
 
