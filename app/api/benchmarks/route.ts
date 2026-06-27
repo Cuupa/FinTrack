@@ -10,8 +10,10 @@ import { BENCHMARKS } from "@/lib/finance/benchmarks";
 export const dynamic = "force-dynamic";
 
 const STALE_DAYS = 4; // markets close weekends; refresh when older than this
-const RANGE = "10y";
-const INTERVAL = "1d";
+// Weekly keeps row counts well under PostgREST's ~1000-row read cap while still
+// covering long timeframes (1000 weekly points ≈ 19 years).
+const RANGE = "max";
+const INTERVAL = "1wk";
 
 function daysSince(isoDate: string): number {
   return (Date.now() - new Date(isoDate + "T00:00:00Z").getTime()) / 86_400_000;
@@ -63,15 +65,18 @@ export async function GET(req: Request): Promise<Response> {
       }
     }
 
+    // Read the MOST RECENT rows (PostgREST caps at ~1000): descending + limit,
+    // then reverse to ascending — otherwise we'd return the oldest rows, years
+    // before the chart window, and every benchmark would flat-line at 0%.
     const { data } = await supabase
       .from("benchmark_history")
       .select("date, close")
       .eq("benchmark_id", b.id)
-      .order("date", { ascending: true });
-    out[b.id] = ((data ?? []) as { date: string; close: number | string }[]).map((r) => ({
-      date: r.date,
-      close: Number(r.close),
-    }));
+      .order("date", { ascending: false })
+      .limit(1000);
+    out[b.id] = ((data ?? []) as { date: string; close: number | string }[])
+      .map((r) => ({ date: r.date, close: Number(r.close) }))
+      .reverse();
   }
 
   return Response.json({ benchmarks: out });
