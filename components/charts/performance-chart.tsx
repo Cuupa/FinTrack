@@ -228,25 +228,7 @@ export function PerformanceChart({
           ))}
         </LineChart>
       </ResponsiveContainer>
-
-      {comparing && (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
-          <LegendDot color={color} label={mainLabel} />
-          {compare.map((c) => (
-            <LegendDot key={c.label} color={c.color} label={c.label} />
-          ))}
-        </div>
-      )}
     </div>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
-      {label}
-    </span>
   );
 }
 

@@ -76,8 +76,11 @@ create table if not exists public.benchmark_history (
   benchmark_id text not null,
   date date not null,
   close numeric not null,
+  -- Currency the close is stored in (converted to the app base via historic FX).
+  currency text,
   primary key (benchmark_id, date)
 );
+alter table public.benchmark_history add column if not exists currency text;
 
 -- Cached ETF sector/region weightings, so Analysis reads from the DB instead of
 -- hitting Yahoo/onvista on every view. Refreshed by /api/cron/sync-etf-breakdowns.
@@ -146,7 +149,8 @@ insert into public.schema_migrations (version) values
   ('0011_asset_currency'),
   ('0012_schema_migrations'),
   ('0013_benchmark_history'),
-  ('0014_etf_breakdowns')
+  ('0014_etf_breakdowns'),
+  ('0015_benchmark_currency')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

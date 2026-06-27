@@ -42,7 +42,7 @@ async function fxRate(from: string, to: string): Promise<number> {
   if (cached) return cached;
   try {
     const res = await fetch(
-      `https://api.frankfurter.app/latest?from=${from}&to=${to}`,
+      `https://api.frankfurter.dev/v1/latest?from=${from}&to=${to}`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (res.ok) {

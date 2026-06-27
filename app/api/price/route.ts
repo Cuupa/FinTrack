@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 async function fxRate(from: string, to: string): Promise<number> {
   if (!from || !to || from === to) return 1;
   try {
-    const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`, {
+    const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${from}&to=${to}`, {
       signal: AbortSignal.timeout(8000),
     });
     if (res.ok) {
