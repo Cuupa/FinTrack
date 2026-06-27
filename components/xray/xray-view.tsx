@@ -98,7 +98,9 @@ export function XrayView() {
                         style={{ width: `${(e.percent / maxPercent) * 100}%` }}
                       />
                     </div>
-                    {formatNumber(e.percent * 100, 2)}%
+                    <span className="w-14 text-right tabular-nums">
+                      {formatNumber(e.percent * 100, 2)}%
+                    </span>
                   </div>
                 </td>
               </tr>
