@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
@@ -21,11 +22,12 @@ const BLURB: Record<TabKey, string> = {
 
 export default function AnalysisPage() {
   const [tab, setTab] = useState<TabKey>("distributions");
+  const { t: tr } = useI18n();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Analysis</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{tr("analysis.title")}</h1>
         <p className="text-sm text-zinc-500">{BLURB[tab]}</p>
       </div>
 

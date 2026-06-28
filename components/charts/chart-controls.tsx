@@ -5,6 +5,7 @@
 
 import { TIMEFRAMES, type Timeframe } from "@/lib/finance/dates";
 import { SegmentedControl } from "@/components/ui/primitives";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import type { ChartMode, ChartScale } from "./performance-chart";
 
 interface Props {
@@ -27,6 +28,7 @@ export function ChartControls({
   onMode,
   showMode = true,
 }: Props) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <SegmentedControl
@@ -55,8 +57,8 @@ export function ChartControls({
             value={mode}
             onChange={onMode}
             options={[
-              { label: "Wealth", value: "currency" },
-              { label: "Return", value: "percent" },
+              { label: t("chart.wealth"), value: "currency" },
+              { label: t("chart.return"), value: "percent" },
             ]}
           />
         )}

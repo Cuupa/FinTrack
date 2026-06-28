@@ -25,6 +25,7 @@ import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -38,6 +39,7 @@ export function NetWorthHero() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
+  const { t } = useI18n();
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
@@ -115,52 +117,52 @@ export function NetWorthHero() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
           <Stat
-            label="Net worth"
+            label={t("stat.netWorth")}
             value={formatCurrency(totals.marketValue, currency)}
-            info="Total current value of all your holdings, converted to your base currency."
+            info={t("tip.netWorth")}
             isPrivate
           />
           <Stat
-            label={`Change (${timeframe})`}
+            label={`${t("stat.change")} (${timeframe})`}
             value={historyLoading ? "…" : formatCurrency(periodChange.abs, currency)}
             sub={historyLoading ? undefined : formatPercent(periodChange.pct)}
             valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
-            info="Absolute change in net worth over the timeframe; the percentage is the time-weighted (contribution-adjusted) return."
+            info={t("tip.change")}
             isPrivate
           />
           <Stat
-            label="Unrealized P&L"
+            label={t("stat.unrealized")}
             value={formatCurrency(totals.unrealizedPL, currency)}
             sub={formatPercent(totals.totalPLPercent)}
             valueClassName={plColor(totals.unrealizedPL)}
-            info="Paper gain/loss on shares you still hold."
+            info={t("tip.unrealized")}
             isPrivate
           />
           <Stat
-            label="Realized P&L"
+            label={t("stat.realized")}
             value={formatCurrency(totals.realizedPL, currency)}
             valueClassName={plColor(totals.realizedPL)}
-            info="Locked-in gain/loss from shares you have sold."
+            info={t("tip.realized")}
             isPrivate
           />
           <Stat
-            label="Dividends received"
+            label={t("stat.dividends")}
             value={formatCurrency(dividendsReceived, currency)}
             valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
-            info="Sum of actual dividend payouts received, scaled by the shares held on each pay date."
+            info={t("tip.dividends")}
             isPrivate
           />
           <Stat
-            label="IRR (p.a.)"
+            label={t("stat.irr")}
             value={irr != null ? formatPercent(irr) : "—"}
             valueClassName={irr != null ? plColor(irr) : ""}
-            info="Annualised, money-weighted return that accounts for the timing and size of every buy and sell."
+            info={t("tip.irr")}
           />
           <Stat
-            label={`TWR (${timeframe})`}
+            label={`${t("stat.twr")} (${timeframe})`}
             value={historyLoading ? "…" : formatPercent(risk.twr)}
             valueClassName={historyLoading ? "text-zinc-400" : plColor(risk.twr)}
-            info="True time-weighted return over the selected timeframe: the portfolio's compounded performance with deposits/withdrawals removed (comparable to a fund/benchmark)."
+            info={t("tip.twr")}
           />
         </div>
       </div>
@@ -200,25 +202,25 @@ export function NetWorthHero() {
       {data.assets.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-4 dark:border-zinc-800">
           <RiskStat
-            label="Volatility"
+            label={t("stat.volatility")}
             value={historyLoading ? "…" : formatPercent(risk.volatility)}
-            info={`Annualised standard deviation of the portfolio's daily returns over ${timeframe}.`}
+            info={t("tip.volatility")}
           />
           <RiskStat
-            label="Max drawdown"
+            label={t("stat.maxDrawdown")}
             value={historyLoading ? "…" : formatPercent(-risk.maxDrawdown)}
             valueClassName={!historyLoading && risk.maxDrawdown > 0 ? plColor(-1) : ""}
-            info="Largest peak-to-trough decline over the timeframe."
+            info={t("tip.maxDrawdown")}
           />
           <RiskStat
-            label="Drawdown duration"
+            label={t("stat.drawdownDuration")}
             value={historyLoading ? "…" : `${risk.maxDrawdownDays} d`}
-            info="Longest stretch the portfolio spent below a previous peak."
+            info={t("tip.drawdownDuration")}
           />
           <RiskStat
-            label="Downside vol"
+            label={t("stat.downsideVol")}
             value={historyLoading ? "…" : formatPercent(risk.downsideDeviation)}
-            info="Annualised semi-deviation — volatility of only the negative days (downside risk)."
+            info={t("tip.downsideVol")}
           />
         </div>
       )}
@@ -249,19 +251,21 @@ function RiskStat({
 }
 
 function LoadingChart() {
+  const { t } = useI18n();
   return (
     <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
-      <p className="text-sm">Loading price history…</p>
+      <p className="text-sm">{t("chart.loading")}</p>
     </div>
   );
 }
 
 function EmptyChart() {
+  const { t } = useI18n();
   return (
     <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 text-center text-zinc-500 dark:border-zinc-700">
-      <p className="font-medium">No holdings yet</p>
-      <p className="text-sm">Add your first asset below to see your net worth grow.</p>
+      <p className="font-medium">{t("empty.noHoldings")}</p>
+      <p className="text-sm">{t("empty.addFirst")}</p>
     </div>
   );
 }

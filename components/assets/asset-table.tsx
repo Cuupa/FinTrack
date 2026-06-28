@@ -12,6 +12,7 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll, type HoldingSummary } from "@/lib/finance/portfolio";
 import { formatCurrency, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { assetIdentifier, type AssetType } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 type SortKey = "name" | "price" | "value" | "entry" | "allocation";
 
@@ -27,6 +28,7 @@ interface Row {
 export function AssetTable() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
+  const { t } = useI18n();
   const currency = data.profile.currency;
 
   const holdings = useMemo(
@@ -81,11 +83,11 @@ export function AssetTable() {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
-        <h2 className="text-lg font-semibold">Holdings</h2>
+        <h2 className="text-lg font-semibold">{t("table.holdings")}</h2>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter by name, symbol, ISIN, WKN…"
+          placeholder={t("table.filter")}
           className="ml-auto w-full max-w-xs rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
         />
         <div className="flex gap-1">
@@ -106,7 +108,7 @@ export function AssetTable() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="p-6 text-sm text-zinc-500">No holdings match your filter.</p>
+        <p className="p-6 text-sm text-zinc-500">{t("table.noMatch")}</p>
       ) : (
         <>
         {/* Mobile: stacked cards (the wide table is hidden below md). */}
@@ -150,11 +152,11 @@ export function AssetTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <Th label="Name" k="name" sort={sort} onSort={toggleSort} />
-                <Th label="Current price" k="price" sort={sort} onSort={toggleSort} align="right" />
-                <Th label="Entry price" k="entry" sort={sort} onSort={toggleSort} align="right" />
-                <Th label="Current value" k="value" sort={sort} onSort={toggleSort} align="right" />
-                <Th label="Allocation" k="allocation" sort={sort} onSort={toggleSort} align="right" />
+                <Th label={t("table.name")} k="name" sort={sort} onSort={toggleSort} />
+                <Th label={t("table.currentPrice")} k="price" sort={sort} onSort={toggleSort} align="right" />
+                <Th label={t("table.entryPrice")} k="entry" sort={sort} onSort={toggleSort} align="right" />
+                <Th label={t("table.currentValue")} k="value" sort={sort} onSort={toggleSort} align="right" />
+                <Th label={t("table.allocation")} k="allocation" sort={sort} onSort={toggleSort} align="right" />
               </tr>
             </thead>
             <tbody>
