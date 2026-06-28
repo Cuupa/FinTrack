@@ -8,8 +8,10 @@ import {
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
+import { twrSeries } from "../lib/finance/portfolio";
 import type { Asset, Transaction } from "../lib/types";
 import type { HoldingSummary, SeriesPoint } from "../lib/finance/portfolio";
+import type { HistoryMap } from "../lib/history/history";
 
 function asset(over: Partial<Asset> & Pick<Asset, "id">): Asset {
   return {
@@ -85,6 +87,37 @@ describe("periodReturns", () => {
     const q2 = periodReturns(series, flows, "quarter").find((r) => r.label === "Q2")!;
     // (165 - 100 - 50) / (100 + 25) = 15/125 = 0.12
     expect(q2.ret).toBeCloseTo(0.12, 6);
+  });
+});
+
+describe("twrSeries (price-based TWROR)", () => {
+  // Price doubles then stays flat; history keyed by the asset price key ("A").
+  const history: HistoryMap = {
+    A: [
+      { date: "2025-01-01", close: 100 },
+      { date: "2025-07-01", close: 200 },
+    ],
+  };
+  const assets = [asset({ id: "a" })];
+
+  it("starts at 0 and reflects the price return", () => {
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-01" })];
+    const out = twrSeries(assets, txs, "MAX", undefined, history);
+    expect(out[0].value).toBe(0);
+    expect(out[out.length - 1].value).toBeCloseTo(1.0, 2); // +100%
+  });
+
+  it("is invariant to deposits (a later buy doesn't change the return)", () => {
+    const base = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-01" })];
+    const withDeposit = [
+      ...base,
+      // A big extra purchase after the price already doubled — pure cash flow.
+      tx({ assetId: "a", type: "BUY", quantity: 1000, price: 200, date: "2025-09-01" }),
+    ];
+    const a = twrSeries(assets, base, "MAX", undefined, history);
+    const b = twrSeries(assets, withDeposit, "MAX", undefined, history);
+    const last = (s: SeriesPoint[]) => s[s.length - 1].value;
+    expect(last(b)).toBeCloseTo(last(a), 6); // deposit changes nothing
   });
 });
 

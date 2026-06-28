@@ -15,10 +15,11 @@ import {
   portfolioTotals,
   summarizeAll,
   transactionsByAsset,
+  twrSeries,
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
-import { netFlows, cumulativeReturnSeries, riskMetrics } from "@/lib/finance/returns";
+import { netFlows, riskMetrics } from "@/lib/finance/returns";
 import { InfoTip } from "@/components/ui/info-tip";
 import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
@@ -61,10 +62,11 @@ export function NetWorthHero() {
     () => netWorthSeries(data.assets, data.transactions, timeframe, valuation, histories),
     [data.assets, data.transactions, timeframe, valuation, histories],
   );
-  // Contribution-adjusted cumulative return over the window, for "Return" mode.
+  // True time-weighted cumulative return (price-based, deposits never counted),
+  // for "Return" mode — what brokers plot as TWROR.
   const returnSeries = useMemo(
-    () => cumulativeReturnSeries(series, netFlows(data.assets, data.transactions, valuation)),
-    [series, data.assets, data.transactions, valuation],
+    () => twrSeries(data.assets, data.transactions, timeframe, valuation, histories),
+    [data.assets, data.transactions, timeframe, valuation, histories],
   );
   // Risk metrics over the selected window (TWR, vol, drawdown, downside vol).
   const risk = useMemo(() => riskMetrics(returnSeries), [returnSeries]);

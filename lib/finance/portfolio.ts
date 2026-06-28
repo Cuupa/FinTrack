@@ -251,6 +251,70 @@ export function netWorthSeries(
 }
 
 /**
+ * True time-weighted cumulative return (TWROR) over a timeframe, as a fraction
+ * from the window start (0 at the first point).
+ *
+ * This is computed from PRICE moves, never from cash flows: each period's return
+ * is the value-weighted price return of the holdings, weighted by the value held
+ * at the START of the period (shares bought/sold during the period only affect
+ * subsequent periods). Deposits and withdrawals therefore can't show up as
+ * performance — no flow term, no cliffs — and a tiny early holding contributes
+ * its price return (e.g. +10%), not an explosive value ratio. This is what
+ * brokers/portfolio trackers (e.g. Finanzfluss) plot as "TWROR".
+ */
+export function twrSeries(
+  assets: Asset[],
+  txs: Transaction[],
+  tf: Timeframe,
+  v?: ValuationContext,
+  history?: HistoryMap,
+): SeriesPoint[] {
+  const end = today();
+  const start = timeframeStart(tf, end, earliestTxDate(txs));
+  const dates = dateRange(start, end);
+  const byAsset = assets.map((a) => {
+    const key = assetPriceKey(a);
+    return {
+      txs: transactionsByAsset(a.id, txs),
+      key,
+      type: a.type,
+      rate: rateFor(a, v),
+      factor: liveFactor(a, v),
+      hist: history?.[key] ?? null,
+    };
+  });
+
+  // Per-share value (base currency) of an asset on a date.
+  const priceAt = (b: (typeof byAsset)[number], date: string): number => {
+    const real = b.hist ? priceAtFrom(b.hist, date) : null;
+    const native = real != null ? real : priceOn(b.key, b.type, date) * b.factor;
+    return native * b.rate;
+  };
+
+  if (dates.length === 0) return [];
+  const out: SeriesPoint[] = [{ date: dates[0], value: 0 }];
+  let cum = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const prevDate = dates[i - 1];
+    const curDate = dates[i];
+    let baseVal = 0; // value of shares held at the START of the period
+    let periodPnl = 0; // their price-only P&L over the period
+    for (const b of byAsset) {
+      const shares = sharesAt(b.txs, prevDate); // shares at period start only
+      if (shares === 0) continue;
+      const pPrev = priceAt(b, prevDate);
+      const pCur = priceAt(b, curDate);
+      if (pPrev <= 0) continue;
+      baseVal += shares * pPrev;
+      periodPnl += shares * (pCur - pPrev);
+    }
+    if (baseVal > 0) cum *= 1 + periodPnl / baseVal;
+    out.push({ date: curDate, value: cum - 1 });
+  }
+  return out;
+}
+
+/**
  * Price series for a single asset over a timeframe (detail chart), in the
  * asset's native currency. Uses real history when available, else the
  * synthetic series rescaled to end at the live price.
