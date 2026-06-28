@@ -34,3 +34,82 @@ body {
   pointer-events: none;
   transition: filter 0.15s ease;
 }
+
+/* Modern range slider (components/ui/slider.tsx). The filled portion is driven
+   by the --fill custom property; pseudo-elements can't be styled via Tailwind. */
+.fin-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+.fin-slider:focus {
+  outline: none;
+}
+.fin-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #10b981 var(--fill, 0%),
+    rgb(228 228 231) var(--fill, 0%)
+  );
+}
+.fin-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(228 228 231);
+}
+.fin-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background: #10b981;
+}
+.fin-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -5px;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgb(212 212 216);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease;
+}
+.fin-slider::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgb(212 212 216);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.fin-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.fin-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  .fin-slider::-webkit-slider-runnable-track {
+    background: linear-gradient(
+      to right,
+      #10b981 var(--fill, 0%),
+      rgb(63 63 70) var(--fill, 0%)
+    );
+  }
+  .fin-slider::-moz-range-track {
+    background: rgb(63 63 70);
+  }
+  .fin-slider::-webkit-slider-thumb {
+    background: #fafafa;
+    border-color: rgb(82 82 91);
+  }
+  .fin-slider::-moz-range-thumb {
+    background: #fafafa;
+    border-color: rgb(82 82 91);
+  }
+}

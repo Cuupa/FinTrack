@@ -26,6 +26,7 @@ import {
 } from "@/lib/finance/monte-carlo";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
+import { Slider } from "@/components/ui/slider";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartMode, ChartScale } from "@/components/charts/performance-chart";
 
@@ -752,15 +753,9 @@ function SliderField({
         </div>
       ) : (
         <div className="mt-2 flex items-center gap-3">
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={(e) => onChange(Number(e.target.value))}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-zinc-200 accent-zinc-900 dark:bg-zinc-700 dark:accent-white"
-          />
+          <div className="flex-1">
+            <Slider min={min} max={max} step={step} value={value} onChange={onChange} aria-label={label} />
+          </div>
           <span className="w-24 shrink-0 text-right text-sm font-medium tabular-nums">
             {display}
             {suffix ? <span className="ml-1 text-xs text-zinc-400">{suffix}</span> : null}
