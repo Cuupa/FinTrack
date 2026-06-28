@@ -23,9 +23,13 @@ export function useHistory(
     [items, range, base],
   );
 
-  const [state, setState] = useState<{ histories: HistoryMap; loading: boolean }>({
+  // Store the signature the cached histories belong to. `loading` is then
+  // DERIVED (state.sig !== sig), so switching timeframe is immediately "loading"
+  // — we never report loading:false while still holding the previous range's
+  // histories (the race that showed wrong values on fast timeframe clicks).
+  const [state, setState] = useState<{ sig: string; histories: HistoryMap }>({
+    sig: "",
     histories: {},
-    loading: items.length > 0,
   });
 
   useEffect(() => {
@@ -39,9 +43,10 @@ export function useHistory(
           body: JSON.stringify({ base, range, items }),
         });
         const json = res.ok ? ((await res.json()) as { histories?: HistoryMap }) : null;
-        if (!cancelled) setState({ histories: json?.histories ?? {}, loading: false });
+        if (!cancelled) setState({ sig, histories: json?.histories ?? {} });
       } catch {
-        if (!cancelled) setState((s) => ({ histories: s.histories, loading: false }));
+        // Mark this sig done (empty) so we don't spin forever.
+        if (!cancelled) setState({ sig, histories: {} });
       }
     };
     // Defer out of the effect body (no synchronous setState in the effect).
@@ -53,5 +58,8 @@ export function useHistory(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
-  return state;
+  const loading = items.length > 0 && state.sig !== sig;
+  // While loading, don't hand back the previous range's histories — callers that
+  // ignore `loading` would otherwise mix them with the new timeframe.
+  return { histories: loading ? {} : state.histories, loading };
 }

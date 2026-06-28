@@ -82,7 +82,11 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     return it ? [it] : [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset, version]);
-  const { histories } = useHistory(histItems, timeframe, data.profile.currency);
+  const { histories, loading: historyLoading } = useHistory(
+    histItems,
+    timeframe,
+    data.profile.currency,
+  );
 
   const series = useMemo(
     () => (asset ? assetPriceSeries(asset, timeframe, valuation, histories) : []),
@@ -208,17 +212,24 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
         </div>
         <div className="mt-4">
-          <PerformanceChart
-            series={series}
-            scale={scale}
-            mode={mode}
-            currency={nativeCur}
-            markers={markers}
-            color="#6366f1"
-            compare={compare}
-            mainLabel={asset.name}
-            highlightType={highlight}
-          />
+          {historyLoading ? (
+            <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
+              <p className="text-sm">Loading price history…</p>
+            </div>
+          ) : (
+            <PerformanceChart
+              series={series}
+              scale={scale}
+              mode={mode}
+              currency={nativeCur}
+              markers={markers}
+              color="#6366f1"
+              compare={compare}
+              mainLabel={asset.name}
+              highlightType={highlight}
+            />
+          )}
         </div>
         <div
           className="mt-2 flex flex-wrap gap-4 text-xs text-zinc-500"

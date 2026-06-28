@@ -55,7 +55,7 @@ export function NetWorthHero() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const { histories } = useHistory(histItems, timeframe, currency);
+  const { histories, loading: historyLoading } = useHistory(histItems, timeframe, currency);
 
   const series = useMemo(
     () => netWorthSeries(data.assets, data.transactions, timeframe, valuation, histories),
@@ -99,14 +99,14 @@ export function NetWorthHero() {
     return total;
   }, [divMap, data.assets, data.transactions, currency, valuation]);
 
-  // Period change derived from the visible series.
+  // Period change: absolute net-worth delta over the window. The percentage is
+  // the contribution-adjusted return (TWR), not raw end/start — a portfolio that
+  // grew from ~0 via deposits has a meaningless raw ratio (it blows up).
   const periodChange = useMemo(() => {
     const start = series.find((p) => p.value > 0)?.value ?? 0;
     const end = series[series.length - 1]?.value ?? 0;
-    const abs = end - start;
-    const pct = start > 0 ? abs / start : 0;
-    return { abs, pct };
-  }, [series]);
+    return { abs: end - start, pct: risk.twr };
+  }, [series, risk.twr]);
 
   return (
     <Card>
@@ -120,10 +120,10 @@ export function NetWorthHero() {
           />
           <Stat
             label={`Change (${timeframe})`}
-            value={formatCurrency(periodChange.abs, currency)}
-            sub={formatPercent(periodChange.pct)}
-            valueClassName={plColor(periodChange.abs)}
-            info="How much your net worth moved over the selected timeframe ."
+            value={historyLoading ? "…" : formatCurrency(periodChange.abs, currency)}
+            sub={historyLoading ? undefined : formatPercent(periodChange.pct)}
+            valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
+            info="Absolute change in net worth over the timeframe; the percentage is the time-weighted (contribution-adjusted) return."
             isPrivate
           />
           <Stat
@@ -156,8 +156,8 @@ export function NetWorthHero() {
           />
           <Stat
             label={`TWR (${timeframe})`}
-            value={formatPercent(risk.twr)}
-            valueClassName={plColor(risk.twr)}
+            value={historyLoading ? "…" : formatPercent(risk.twr)}
+            valueClassName={historyLoading ? "text-zinc-400" : plColor(risk.twr)}
             info="True time-weighted return over the selected timeframe: the portfolio's compounded performance with deposits/withdrawals removed (comparable to a fund/benchmark)."
           />
         </div>
@@ -180,6 +180,8 @@ export function NetWorthHero() {
       <div className="mt-4">
         {totals.marketValue === 0 && data.assets.length === 0 ? (
           <EmptyChart />
+        ) : historyLoading ? (
+          <LoadingChart />
         ) : (
           <PerformanceChart
             series={series}
@@ -197,23 +199,23 @@ export function NetWorthHero() {
         <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-4 dark:border-zinc-800">
           <RiskStat
             label="Volatility"
-            value={formatPercent(risk.volatility)}
+            value={historyLoading ? "…" : formatPercent(risk.volatility)}
             info={`Annualised standard deviation of the portfolio's daily returns over ${timeframe}.`}
           />
           <RiskStat
             label="Max drawdown"
-            value={formatPercent(-risk.maxDrawdown)}
-            valueClassName={risk.maxDrawdown > 0 ? plColor(-1) : ""}
+            value={historyLoading ? "…" : formatPercent(-risk.maxDrawdown)}
+            valueClassName={!historyLoading && risk.maxDrawdown > 0 ? plColor(-1) : ""}
             info="Largest peak-to-trough decline over the timeframe."
           />
           <RiskStat
             label="Drawdown duration"
-            value={`${risk.maxDrawdownDays} d`}
+            value={historyLoading ? "…" : `${risk.maxDrawdownDays} d`}
             info="Longest stretch the portfolio spent below a previous peak."
           />
           <RiskStat
             label="Downside vol"
-            value={formatPercent(risk.downsideDeviation)}
+            value={historyLoading ? "…" : formatPercent(risk.downsideDeviation)}
             info="Annualised semi-deviation — volatility of only the negative days (downside risk)."
           />
         </div>
@@ -240,6 +242,15 @@ function RiskStat({
         <InfoTip text={info} />
       </div>
       <div className={`mt-0.5 font-semibold tabular-nums ${valueClassName}`}>{value}</div>
+    </div>
+  );
+}
+
+function LoadingChart() {
+  return (
+    <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
+      <p className="text-sm">Loading price history…</p>
     </div>
   );
 }
