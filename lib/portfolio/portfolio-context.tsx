@@ -41,6 +41,8 @@ interface PortfolioContextValue {
   updateProfile(patch: Partial<Profile>): Promise<void>;
   /** All of the user's portfolios. */
   portfolios: Portfolio[];
+  /** Every transaction (unscoped) — for building per-portfolio share snapshots. */
+  allTransactions: Transaction[];
   /** Ids of the portfolios currently included in `data`. */
   selectedPortfolioIds: string[];
   setSelectedPortfolios(ids: string[]): void;
@@ -211,6 +213,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setCurrency,
     updateProfile,
     portfolios: data.portfolios,
+    allTransactions: data.transactions,
     selectedPortfolioIds: activeIds,
     setSelectedPortfolios: setSelectedIds,
     createPortfolio,

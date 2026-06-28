@@ -29,6 +29,8 @@ export interface SharePayload {
   live?: boolean;
   /** Owner's display name, for the shared title ("Simon's Portfolio"). */
   ownerName?: string | null;
+  /** Portfolios this share covers (for rebuilding live shares); null = all. */
+  portfolioIds?: string[] | null;
   currency: string;
   createdAt: string;
   /** Net worth in base currency, or null in incognito shares. */
@@ -46,6 +48,8 @@ export interface SharePayload {
 
 export interface ShareSource {
   ownerName: string | null;
+  /** Portfolios this snapshot was built from; null = all. */
+  portfolioIds: string[] | null;
   currency: string;
   netWorth: number;
   irr: number | null;
@@ -75,6 +79,7 @@ export function buildSharePayload(
     incognito,
     live,
     ownerName: src.ownerName,
+    portfolioIds: src.portfolioIds,
     currency: src.currency,
     createdAt: new Date().toISOString(),
     netWorth: incognito ? null : r(total, 2),

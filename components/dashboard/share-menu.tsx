@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { apiFetch } from "@/lib/api";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useShareSource } from "@/lib/share/use-share-source";
@@ -16,13 +17,19 @@ import { buildSharePayload, encodeShare, type SharePayload } from "@/lib/share/s
 export function ShareMenu() {
   const { user } = useAuth();
   const { t } = useI18n();
-  const { source, loading } = useShareSource();
+  const { portfolios, selectedPortfolioIds } = usePortfolio();
+  // Explicit portfolio choice for the share, seeded from the header selection.
+  const [chosenIds, setChosenIds] = useState<string[]>(selectedPortfolioIds);
+  const { source, loading } = useShareSource(chosenIds);
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const togglePortfolio = (id: string) =>
+    setChosenIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   useEffect(() => {
     if (!open) return;
@@ -122,10 +129,39 @@ export function ShareMenu() {
             </button>
           </div>
 
+          {portfolios.length > 1 && (
+            <div className="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+              <div className="mb-1.5 text-xs font-medium text-zinc-500">{t("share.portfolios")}</div>
+              <div className="flex max-h-32 flex-col gap-1 overflow-y-auto">
+                {portfolios.map((p) => {
+                  const on = chosenIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => togglePortfolio(p.id)}
+                      className="flex items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                          on ? "border-emerald-500 bg-emerald-500 text-white" : "border-zinc-300 dark:border-zinc-600"
+                        }`}
+                      >
+                        {on ? "✓" : ""}
+                      </span>
+                      <span className="truncate">{p.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => share(false)}
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            disabled={chosenIds.length === 0}
+            className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
           >
             <span className="font-medium">{t("share.full")}</span>
             <span className="block text-xs text-zinc-500">{t("share.fullDesc")}</span>
@@ -133,7 +169,8 @@ export function ShareMenu() {
           <button
             type="button"
             onClick={() => share(true)}
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            disabled={chosenIds.length === 0}
+            className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
           >
             <span className="font-medium">{t("share.incognito")}</span>
             <span className="block text-xs text-zinc-500">{t("share.incognitoDesc")}</span>
