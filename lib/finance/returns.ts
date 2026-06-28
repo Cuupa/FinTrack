@@ -150,6 +150,80 @@ export function riskMetrics(returnSeries: SeriesPoint[]): RiskMetrics {
   return { twr, volatility, maxDrawdown: -maxDD, maxDrawdownDays: maxDays, downsideDeviation };
 }
 
+/** Linear-interpolated value of a (date-ascending) level series at `iso`. */
+function sampleAt(series: SeriesPoint[], iso: string): number | null {
+  if (series.length === 0 || iso < series[0].date) return null;
+  let lo = 0;
+  let hi = series.length - 1;
+  let idx = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (series[mid].date <= iso) {
+      idx = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  const a = series[idx];
+  const b = series[idx + 1];
+  if (!b || a.date === iso) return a.value;
+  const t0 = Date.parse(a.date);
+  const t1 = Date.parse(b.date);
+  if (!(t1 > t0)) return a.value;
+  return a.value + (b.value - a.value) * ((Date.parse(iso) - t0) / (t1 - t0));
+}
+
+export interface BetaAlpha {
+  /** Sensitivity to the benchmark (1 = moves with it, >1 = amplified). */
+  beta: number;
+  /** Annualised excess return vs. what beta alone would predict (CAPM). */
+  alpha: number;
+}
+
+/**
+ * Beta and (Jensen's) alpha of a level series `a` against a benchmark level
+ * series `b`, both expressed as positive levels (prices or 1+cumulative-return).
+ * The benchmark is sampled at `a`'s dates so the two can differ in spacing.
+ * Returns null when there isn't enough overlapping data.
+ */
+export function betaAlpha(a: SeriesPoint[], b: SeriesPoint[], rf = 0.02): BetaAlpha | null {
+  if (a.length < 3 || b.length < 2) return null;
+  const ar: number[] = [];
+  const br: number[] = [];
+  for (let i = 1; i < a.length; i++) {
+    if (a[i - 1].value <= 0 || a[i].value <= 0) continue;
+    const bp = sampleAt(b, a[i - 1].date);
+    const bc = sampleAt(b, a[i].date);
+    if (bp == null || bc == null || bp <= 0 || bc <= 0) continue;
+    ar.push(a[i].value / a[i - 1].value - 1);
+    br.push(bc / bp - 1);
+  }
+  const n = ar.length;
+  if (n < 2) return null;
+  const ma = ar.reduce((s, x) => s + x, 0) / n;
+  const mb = br.reduce((s, x) => s + x, 0) / n;
+  let cov = 0;
+  let varb = 0;
+  for (let i = 0; i < n; i++) {
+    cov += (ar[i] - ma) * (br[i] - mb);
+    varb += (br[i] - mb) ** 2;
+  }
+  if (varb <= 0) return null;
+  const beta = cov / varb;
+
+  // Annualised returns over the common span for the CAPM alpha.
+  const years = Math.max(
+    1 / 365,
+    (Date.parse(a[a.length - 1].date) - Date.parse(a[0].date)) / (365 * 86_400_000),
+  );
+  const bStart = sampleAt(b, a[0].date);
+  const bEnd = sampleAt(b, a[a.length - 1].date);
+  if (bStart == null || bEnd == null || bStart <= 0) return { beta, alpha: 0 };
+  const aAnn = (a[a.length - 1].value / a[0].value) ** (1 / years) - 1;
+  const bAnn = (bEnd / bStart) ** (1 / years) - 1;
+  const alpha = aAnn - (rf + beta * (bAnn - rf));
+  return { beta, alpha };
+}
+
 export interface PeriodReturn {
   /** Sort/identity key, e.g. "2025-Q1" or "2025". */
   key: string;

@@ -108,11 +108,51 @@ export const en = {
   "analysis.tab.distributions": "Distributions",
   "analysis.tab.returns": "Returns",
   "analysis.tab.trades": "Trades",
+  "analysis.tab.risks": "Risks",
   "analysis.blurb.distributions":
     "How your portfolio is split across investments, classes, sectors, regions and risk.",
   "analysis.blurb.returns":
     "Your contribution-adjusted returns by quarter and year, and a per-holding performance map.",
   "analysis.blurb.trades": "Realized P&L over time and your best and worst positions.",
+  "analysis.blurb.risks":
+    "Risk-adjusted return, volatility, drawdowns and how your holdings move together.",
+
+  // Risk tab
+  "risk.addHoldings": "Add holdings to see your risk metrics.",
+  "risk.portfolioTitle": "Portfolio risk",
+  "risk.portfolioTip":
+    "Risk metrics measured from your portfolio's real return history over the selected window (synthetic fallback). Beta/Alpha are vs. the chosen benchmark.",
+  "risk.benchmark": "Benchmark",
+  "risk.sharpe": "Sharpe",
+  "risk.sharpeTip":
+    "Return per unit of total risk: (annual return − 2% risk-free) ÷ volatility. Higher is better; above 1 is good.",
+  "risk.sortino": "Sortino",
+  "risk.sortinoTip":
+    "Like Sharpe but only penalises downside volatility, so upside swings don't count against you. Higher is better.",
+  "risk.volatility": "Volatility",
+  "risk.volatilityTip":
+    "Annualised standard deviation of returns — how much the value swings. Lower means a smoother ride.",
+  "risk.beta": "Beta",
+  "risk.betaTip":
+    "Sensitivity to the benchmark: 1 moves with it, >1 amplifies its moves, <1 dampens them. Near 1 is market-like.",
+  "risk.alpha": "Alpha",
+  "risk.alphaTip":
+    "Annualised return beyond what beta alone would predict (CAPM). Positive means you beat the benchmark on a risk-adjusted basis.",
+  "risk.maxDrawdown": "Max drawdown",
+  "risk.maxDrawdownTip":
+    "Largest peak-to-trough drop over the window, with how long it lasted. Smaller is better.",
+  "risk.var": "VaR (95%, 1mo)",
+  "risk.varTip":
+    "Value at Risk: with 95% confidence, the most you'd expect to lose over one month (normal approximation). Lower is better.",
+  "risk.days": "days",
+  "risk.byAsset": "Risk by holding",
+  "risk.byAssetTip": "Per-holding volatility, beta vs. the benchmark, Sharpe ratio and portfolio weight.",
+  "risk.asset": "Asset",
+  "risk.weight": "Weight",
+  "risk.correlation": "Correlation matrix",
+  "risk.correlationTip":
+    "How holdings move together: red = move in sync (less diversification), blue = move oppositely (a hedge), pale = independent.",
+  "risk.correlationNeed": "Add at least two holdings with history to see correlations.",
 
   // Allocation / distributions
   "alloc.investment": "Investments",
@@ -139,6 +179,13 @@ export const en = {
   "returns.perfMapTip":
     "Each holding sized by its current value and coloured by its return over the selected timeframe (green = up, red = down). MAX shows the all-time return vs. your cost basis.",
   "returns.addHoldings": "Add holdings to see your returns.",
+  "returns.divByValue": "Dividends received",
+  "returns.divTip":
+    "Real dividend payments you received, converted to your base currency and totalled per period.",
+  "returns.divByHolding": "Dividends by holding",
+  "returns.divByHoldingTip":
+    "Dividends received per holding, stacked by period — taller bars paid you more. Accumulating funds show nothing (they reinvest internally).",
+  "returns.noDividends": "No dividend payments recorded for the selected holdings.",
   "period.quarter": "Quarter",
   "period.year": "Year",
 
@@ -345,11 +392,51 @@ const de: Partial<Record<MessageKey, string>> = {
   "analysis.tab.distributions": "Verteilungen",
   "analysis.tab.returns": "Renditen",
   "analysis.tab.trades": "Trades",
+  "analysis.tab.risks": "Risiken",
   "analysis.blurb.distributions":
     "Wie sich Ihr Portfolio auf Investments, Klassen, Sektoren, Regionen und Risiko verteilt.",
   "analysis.blurb.returns":
     "Ihre einzahlungsbereinigten Renditen je Quartal und Jahr sowie eine Performance-Karte je Position.",
   "analysis.blurb.trades": "Realisierter G/V im Zeitverlauf und Ihre besten und schlechtesten Positionen.",
+  "analysis.blurb.risks":
+    "Risikobereinigte Rendite, Volatilität, Drawdowns und wie sich Ihre Positionen gemeinsam bewegen.",
+
+  // Risk tab
+  "risk.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Risikokennzahlen zu sehen.",
+  "risk.portfolioTitle": "Portfolio-Risiko",
+  "risk.portfolioTip":
+    "Risikokennzahlen aus der echten Renditehistorie Ihres Portfolios im gewählten Zeitraum (synthetischer Rückfall). Beta/Alpha beziehen sich auf die gewählte Benchmark.",
+  "risk.benchmark": "Benchmark",
+  "risk.sharpe": "Sharpe",
+  "risk.sharpeTip":
+    "Rendite je Einheit Gesamtrisiko: (Jahresrendite − 2% risikofrei) ÷ Volatilität. Höher ist besser; über 1 ist gut.",
+  "risk.sortino": "Sortino",
+  "risk.sortinoTip":
+    "Wie Sharpe, bestraft aber nur die Abwärtsvolatilität, sodass Aufwärtsbewegungen nicht negativ zählen. Höher ist besser.",
+  "risk.volatility": "Volatilität",
+  "risk.volatilityTip":
+    "Annualisierte Standardabweichung der Renditen — wie stark der Wert schwankt. Niedriger bedeutet ruhigeren Verlauf.",
+  "risk.beta": "Beta",
+  "risk.betaTip":
+    "Empfindlichkeit gegenüber der Benchmark: 1 läuft mit, >1 verstärkt, <1 dämpft. Nahe 1 ist marktähnlich.",
+  "risk.alpha": "Alpha",
+  "risk.alphaTip":
+    "Annualisierte Rendite über das, was Beta allein erwarten ließe (CAPM). Positiv heißt, Sie schlagen die Benchmark risikobereinigt.",
+  "risk.maxDrawdown": "Max. Drawdown",
+  "risk.maxDrawdownTip":
+    "Größter Rückgang vom Hoch zum Tief im Zeitraum, mit Dauer. Kleiner ist besser.",
+  "risk.var": "VaR (95%, 1M)",
+  "risk.varTip":
+    "Value at Risk: mit 95% Konfidenz der maximal erwartete Verlust über einen Monat (Normalverteilungs-Näherung). Niedriger ist besser.",
+  "risk.days": "Tage",
+  "risk.byAsset": "Risiko je Position",
+  "risk.byAssetTip": "Volatilität, Beta zur Benchmark, Sharpe-Ratio und Portfoliogewicht je Position.",
+  "risk.asset": "Wert",
+  "risk.weight": "Gewicht",
+  "risk.correlation": "Korrelationsmatrix",
+  "risk.correlationTip":
+    "Wie sich Positionen gemeinsam bewegen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",
+  "risk.correlationNeed": "Fügen Sie mindestens zwei Positionen mit Historie hinzu, um Korrelationen zu sehen.",
 
   // Allocation / distributions
   "alloc.investment": "Investments",
@@ -377,6 +464,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "returns.perfMapTip":
     "Jede Position ist nach ihrem aktuellen Wert dimensioniert und nach ihrer Rendite im gewählten Zeitraum eingefärbt (grün = hoch, rot = runter). MAX zeigt die Gesamtrendite gegenüber Ihrem Einstand.",
   "returns.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Renditen zu sehen.",
+  "returns.divByValue": "Erhaltene Dividenden",
+  "returns.divTip":
+    "Tatsächlich erhaltene Dividendenzahlungen, in Ihre Basiswährung umgerechnet und je Periode summiert.",
+  "returns.divByHolding": "Dividenden je Position",
+  "returns.divByHoldingTip":
+    "Erhaltene Dividenden je Position, gestapelt nach Periode — höhere Balken zahlten mehr. Thesaurierende Fonds zeigen nichts (sie legen intern wieder an).",
+  "returns.noDividends": "Keine Dividendenzahlungen für die gewählten Positionen erfasst.",
   "period.quarter": "Quartal",
   "period.year": "Jahr",
 

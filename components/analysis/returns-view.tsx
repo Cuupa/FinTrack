@@ -19,9 +19,15 @@ import {
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { netWorthSeries, summarizeAll } from "@/lib/finance/portfolio";
+import {
+  netWorthSeries,
+  summarizeAll,
+  transactionsByAsset,
+} from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
+import { useDividends } from "@/lib/history/use-dividends";
+import { dividendsFromEvents } from "@/lib/finance/dividends";
 import { netFlows, periodReturns, type Period } from "@/lib/finance/returns";
 import { assetPriceKey } from "@/lib/types";
 import { dateKey, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
@@ -41,6 +47,19 @@ function heatColor(ret: number): string {
   return ret >= 0 ? `rgba(16,185,129,${a})` : `rgba(239,68,68,${a})`;
 }
 
+/** Period bucket key for a date, e.g. "2025" (year) or "2025-Q2" (quarter). */
+function bucketOf(date: string, period: Period): string {
+  if (period === "year") return date.slice(0, 4);
+  const q = Math.floor((Number(date.slice(5, 7)) - 1) / 3) + 1;
+  return `${date.slice(0, 4)}-Q${q}`;
+}
+
+// A small categorical palette for the per-holding stacked dividend bars.
+const DIV_PALETTE = [
+  "#10b981", "#6366f1", "#f59e0b", "#ec4899", "#06b6d4",
+  "#8b5cf6", "#ef4444", "#84cc16", "#f97316", "#14b8a6",
+];
+
 export function ReturnsView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
@@ -55,6 +74,10 @@ export function ReturnsView() {
   const [scopeHeat, setScopeHeat] = useState<string[]>([]);
   const [scopeBar, setScopeBar] = useState<string[]>([]);
   const [scopeMap, setScopeMap] = useState<string[]>([]);
+  const [divValPeriod, setDivValPeriod] = useState<Period>("year");
+  const [divHoldPeriod, setDivHoldPeriod] = useState<Period>("year");
+  const [scopeDivVal, setScopeDivVal] = useState<string[]>([]);
+  const [scopeDivHold, setScopeDivHold] = useState<string[]>([]);
 
   const allHoldings = useMemo(
     () =>
@@ -78,6 +101,72 @@ export function ReturnsView() {
     [data.assets, version],
   );
   const { histories } = useHistory(histItems, "MAX", base);
+
+  // Real dividend payments per holding, converted to the base currency. Each
+  // entry: { id, name, payments: [{ date, value }] }. Empty for accumulating
+  // funds (no events).
+  const divMap = useDividends(histItems);
+  const dividendsByAsset = useMemo(() => {
+    const fx = valuation.fx ?? {};
+    return allHoldings
+      .map((h) => {
+        const events = divMap[assetPriceKey(h.asset)] ?? [];
+        const txs = transactionsByAsset(h.asset.id, data.transactions);
+        const cur = h.asset.currency ?? base;
+        const rate = cur === base ? 1 : (fx[cur] ?? 1);
+        const payments = dividendsFromEvents(events, txs).map((p) => ({
+          date: p.date,
+          value: p.total * rate,
+        }));
+        return { id: h.asset.id, name: h.asset.symbol || h.asset.name, payments };
+      })
+      .filter((d) => d.payments.length > 0);
+  }, [allHoldings, divMap, data.transactions, base, valuation]);
+
+  const hasDividends = dividendsByAsset.length > 0;
+
+  // Chart: total dividends received per period (time on the x-axis).
+  const divValueData = useMemo(() => {
+    const scoped =
+      scopeDivVal.length === 0
+        ? dividendsByAsset
+        : dividendsByAsset.filter((d) => scopeDivVal.includes(d.id));
+    const byBucket = new Map<string, number>();
+    for (const d of scoped)
+      for (const p of d.payments) {
+        const k = bucketOf(p.date, divValPeriod);
+        byBucket.set(k, (byBucket.get(k) ?? 0) + p.value);
+      }
+    return [...byBucket.entries()]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([label, value]) => ({ label, value }));
+  }, [dividendsByAsset, scopeDivVal, divValPeriod]);
+
+  // Chart: dividends per holding, stacked by period bucket (one segment/bucket).
+  const divHoldData = useMemo(() => {
+    const scoped =
+      scopeDivHold.length === 0
+        ? dividendsByAsset
+        : dividendsByAsset.filter((d) => scopeDivHold.includes(d.id));
+    const buckets = new Set<string>();
+    const rows = scoped.map((d) => {
+      const row: Record<string, number | string> = { name: d.name };
+      for (const p of d.payments) {
+        const k = bucketOf(p.date, divHoldPeriod);
+        buckets.add(k);
+        row[k] = (Number(row[k]) || 0) + p.value;
+      }
+      return row;
+    });
+    const bucketKeys = [...buckets].sort();
+    // Sort holdings by total received, biggest first.
+    rows.sort(
+      (a, b) =>
+        bucketKeys.reduce((s, k) => s + (Number(b[k]) || 0), 0) -
+        bucketKeys.reduce((s, k) => s + (Number(a[k]) || 0), 0),
+    );
+    return { rows, bucketKeys };
+  }, [dividendsByAsset, scopeDivHold, divHoldPeriod]);
 
   // Period returns for a given asset scope ([] = whole portfolio). Each chart
   // calls this with its own scope so they're fully independent.
@@ -280,6 +369,107 @@ export function ReturnsView() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </Card>
+
+      {/* Dividends received — by period (value over time). */}
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            {t("returns.divByValue")}
+            <InfoTip text={t("returns.divTip")} />
+          </h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <ScopeSelect options={scopeOptions} selected={scopeDivVal} onChange={setScopeDivVal} />
+            <SegmentedControl<Period>
+              size="sm"
+              value={divValPeriod}
+              onChange={setDivValPeriod}
+              options={[
+                { label: t("period.quarter"), value: "quarter" },
+                { label: t("period.year"), value: "year" },
+              ]}
+            />
+          </div>
+        </div>
+        {!hasDividends || divValueData.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">{t("returns.noDividends")}</p>
+        ) : (
+          <div className="mt-3" data-private>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={divValueData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="currentColor" className="text-zinc-400" />
+                <YAxis
+                  tickFormatter={(v) => formatCurrency(Number(v), base)}
+                  width={64}
+                  tick={{ fontSize: 11 }}
+                  stroke="currentColor"
+                  className="text-zinc-400"
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: "1px solid rgba(120,120,120,0.3)", fontSize: 13 }}
+                  formatter={(v) => [formatCurrency(Number(v), base), t("stat.dividends")]}
+                />
+                <Bar dataKey="value" fill={EMERALD} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
+      {/* Dividends received — by holding (stacked by period bucket). */}
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            {t("returns.divByHolding")}
+            <InfoTip text={t("returns.divByHoldingTip")} />
+          </h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <ScopeSelect options={scopeOptions} selected={scopeDivHold} onChange={setScopeDivHold} />
+            <SegmentedControl<Period>
+              size="sm"
+              value={divHoldPeriod}
+              onChange={setDivHoldPeriod}
+              options={[
+                { label: t("period.quarter"), value: "quarter" },
+                { label: t("period.year"), value: "year" },
+              ]}
+            />
+          </div>
+        </div>
+        {!hasDividends || divHoldData.rows.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">{t("returns.noDividends")}</p>
+        ) : (
+          <div className="mt-3" data-private>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={divHoldData.rows} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="currentColor" className="text-zinc-400" />
+                <YAxis
+                  tickFormatter={(v) => formatCurrency(Number(v), base)}
+                  width={64}
+                  tick={{ fontSize: 11 }}
+                  stroke="currentColor"
+                  className="text-zinc-400"
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: "1px solid rgba(120,120,120,0.3)", fontSize: 13 }}
+                  formatter={(v, n) => [formatCurrency(Number(v), base), String(n)]}
+                />
+                {divHoldData.bucketKeys.map((k, i) => (
+                  <Bar
+                    key={k}
+                    dataKey={k}
+                    stackId="div"
+                    fill={DIV_PALETTE[i % DIV_PALETTE.length]}
+                    isAnimationActive={false}
+                    radius={i === divHoldData.bucketKeys.length - 1 ? [3, 3, 0, 0] : undefined}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </Card>
 
       <Card>

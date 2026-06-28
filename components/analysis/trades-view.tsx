@@ -16,10 +16,19 @@ import {
 } from "recharts";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
-import { summarizeAll } from "@/lib/finance/portfolio";
+import { useCatalog } from "@/lib/catalog/catalog-context";
+import {
+  portfolioTotals,
+  summarizeAll,
+  transactionsByAsset,
+} from "@/lib/finance/portfolio";
+import { quoteItemFor } from "@/lib/finance/prices";
+import { useDividends } from "@/lib/history/use-dividends";
+import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { realizedByMonth, topMovers, type Mover, type MonthlyRealized } from "@/lib/finance/trades";
+import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
-import { Card } from "@/components/ui/primitives";
+import { Card, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
@@ -55,6 +64,7 @@ function fillMonths(rows: MonthlyRealized[]): MonthlyRealized[] {
 export function TradesView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
+  const { version } = useCatalog();
   const { t } = useI18n();
   const currency = data.profile.currency;
 
@@ -62,6 +72,31 @@ export function TradesView() {
     () => summarizeAll(data.assets, data.transactions, valuation),
     [data.assets, data.transactions, valuation],
   );
+
+  const totals = useMemo(() => portfolioTotals(holdings), [holdings]);
+
+  const histItems = useMemo(
+    () =>
+      data.assets
+        .map(quoteItemFor)
+        .filter((x): x is NonNullable<typeof x> => x !== null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.assets, version],
+  );
+  const divMap = useDividends(histItems);
+  const dividendsReceived = useMemo(() => {
+    const fx = valuation.fx ?? {};
+    let total = 0;
+    for (const asset of data.assets) {
+      const events = divMap[assetPriceKey(asset)];
+      if (!events || events.length === 0) continue;
+      const txs = transactionsByAsset(asset.id, data.transactions);
+      const received = totalDividends(dividendsFromEvents(events, txs));
+      const cur = asset.currency ?? currency;
+      total += received * (cur === currency ? 1 : (fx[cur] ?? 1));
+    }
+    return total;
+  }, [divMap, data.assets, data.transactions, currency, valuation]);
 
   const monthly = useMemo(
     () => realizedByMonth(data.assets, data.transactions, valuation),
@@ -89,6 +124,37 @@ export function TradesView() {
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <Stat
+            label={t("stat.unrealized")}
+            value={formatCurrency(totals.unrealizedPL, currency)}
+            sub={formatPercent(totals.totalPLPercent)}
+            valueClassName={plColor(totals.unrealizedPL)}
+            info={t("tip.unrealized")}
+            isPrivate
+          />
+        </Card>
+        <Card>
+          <Stat
+            label={t("stat.realized")}
+            value={formatCurrency(totals.realizedPL, currency)}
+            valueClassName={plColor(totals.realizedPL)}
+            info={t("tip.realized")}
+            isPrivate
+          />
+        </Card>
+        <Card>
+          <Stat
+            label={t("stat.dividends")}
+            value={formatCurrency(dividendsReceived, currency)}
+            valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
+            info={t("tip.dividends")}
+            isPrivate
+          />
+        </Card>
+      </div>
+
       <Card>
         <h2 className="flex items-center gap-1.5 text-lg font-semibold">
           {t("trades.byMonth")}

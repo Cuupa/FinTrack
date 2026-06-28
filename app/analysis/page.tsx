@@ -5,8 +5,9 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
+import { RiskView } from "@/components/analysis/risk-view";
 
-const TABS = ["distributions", "returns", "trades"] as const;
+const TABS = ["distributions", "returns", "trades", "risks"] as const;
 
 type TabKey = (typeof TABS)[number];
 
@@ -45,6 +46,7 @@ export default function AnalysisPage() {
       {tab === "distributions" && <AllocationView />}
       {tab === "returns" && <ReturnsView />}
       {tab === "trades" && <TradesView />}
+      {tab === "risks" && <RiskView />}
     </div>
   );
 }
