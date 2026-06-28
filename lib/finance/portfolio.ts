@@ -348,4 +348,56 @@ export function assetPriceSeries(
   }));
 }
 
+/**
+ * Profit of a single holding over a timeframe, in the base currency, with
+ * deposits/withdrawals during the window removed so the percentage is honest
+ * (matches the dashboard hero's period-change logic). Network-free: uses the
+ * live-anchored synthetic price for the start-of-window value, which is enough
+ * for a relative period figure in the holdings table.
+ *
+ * `abs` is the gain in base currency; `pct` is relative to the value held at the
+ * window start (or to the amount invested when the position started near zero).
+ */
+export function holdingPeriodProfit(
+  asset: Asset,
+  txs: Transaction[],
+  tf: Timeframe,
+  v?: ValuationContext,
+  history?: HistoryMap,
+): { abs: number; pct: number } {
+  const atxs = transactionsByAsset(asset.id, txs);
+  if (atxs.length === 0) return { abs: 0, pct: 0 };
+  const key = assetPriceKey(asset);
+  const end = today();
+  const start = timeframeStart(tf, end, earliestTxDate(atxs));
+  const factor = liveFactor(asset, v);
+  const rate = rateFor(asset, v);
+  const hist = history?.[key] ?? null;
+
+  const priceAt = (date: string): number => {
+    const real = hist ? priceAtFrom(hist, date) : null;
+    return real != null ? real : priceOn(key, asset.type, date) * factor;
+  };
+
+  const sharesStart = sharesAt(atxs, start);
+  const startValue = sharesStart * priceAt(start) * rate;
+
+  const sharesNow = sharesAt(atxs, end);
+  const priceNow = hist ? priceAt(end) : currentPrice(key, asset.type) * factor;
+  const endValue = sharesNow * priceNow * rate;
+
+  // Net cash invested into THIS position during the window (base currency):
+  // buys add, sells subtract. Fees are part of the cash moved.
+  let flows = 0;
+  for (const t of atxs) {
+    if (dateKey(t.date) <= start) continue;
+    const cash = t.quantity * t.price;
+    flows += (t.type === "BUY" ? cash + t.fee : -(cash - t.fee)) * rate;
+  }
+
+  const abs = endValue - startValue - flows;
+  const denom = startValue > 1e-6 ? startValue : flows > 1e-6 ? flows : 0;
+  return { abs, pct: denom > 0 ? abs / denom : 0 };
+}
+
 export { parseISODate };

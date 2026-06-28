@@ -273,44 +273,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </div>
       </Card>
 
-      {/* ETF look-through */}
-      {constituents.length > 0 && (
-        <Card>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">Top 10 holdings</h2>
-            <p className="text-xs text-zinc-500">
-              Representative constituents · your exposure shown per stock
-            </p>
-          </div>
-          <div className="mt-3 space-y-2">
-            {constituents
-              .slice()
-              .sort((a, b) => b.weight - a.weight)
-              .slice(0, 10)
-              .map((c) => (
-                <div key={c.name} className="flex items-center gap-3 text-sm">
-                  <span className="w-44 shrink-0 truncate">
-                    {c.name}
-                    {c.symbol && (
-                      <span className="ml-1 font-mono text-xs text-zinc-500">{c.symbol}</span>
-                    )}
-                  </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-indigo-500"
-                      style={{ width: `${Math.min(100, c.weight * 100 * 4)}%` }}
-                    />
-                  </div>
-                  <span className="w-16 shrink-0 text-right tabular-nums text-zinc-500">
-                    {formatNumber(c.weight * 100, 1)}%
-                  </span>
-                </div>
-              ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Advanced metrics */}
+      {/* Advanced metrics — directly under the chart */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <Stat
@@ -357,36 +320,74 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </Card>
       </div>
 
-      {/* Details — full width, directly under the metrics */}
-      <Card>
-        <h2 className="text-lg font-semibold">Details</h2>
-        <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <Row label="Name" value={asset.name} />
-          <Row label="ISIN" value={asset.isin ?? "—"} />
-          <Row label="WKN" value={asset.wkn ?? "—"} />
-          {asset.symbol && <Row label="Symbol" value={asset.symbol} />}
-          <Row label="Currency" value={nativeCur} />
-          <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} isPrivate />
-          <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
-          <Row label="Current price" value={formatCurrency(summary.price, nativeCur)} />
-          <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
-          <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
-          <Row label="Dividend yield" value={yld > 0 ? formatPercent(yld) : "—"} />
-          <Row
-            label="Dividends received"
-            value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
-            isPrivate
-          />
-          <Row
-            label="Volatility (p.a.)"
-            value={annual && annual.vol > 0 ? `${formatNumber(annual.vol * 100, 1)}%` : "—"}
-          />
-          <Row
-            label="Sharpe ratio"
-            value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
-          />
-        </dl>
-      </Card>
+      {/* Top 10 holdings (ETF look-through) + Details share one row */}
+      <div className={`grid gap-4 ${constituents.length > 0 ? "lg:grid-cols-2" : ""}`}>
+        {constituents.length > 0 && (
+          <Card>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-semibold">Top 10 holdings</h2>
+              <p className="text-xs text-zinc-500">
+                Representative constituents · your exposure shown per stock
+              </p>
+            </div>
+            <div className="mt-3 space-y-2">
+              {constituents
+                .slice()
+                .sort((a, b) => b.weight - a.weight)
+                .slice(0, 10)
+                .map((c) => (
+                  <div key={c.name} className="flex items-center gap-3 text-sm">
+                    <span className="w-44 shrink-0 truncate">
+                      {c.name}
+                      {c.symbol && (
+                        <span className="ml-1 font-mono text-xs text-zinc-500">{c.symbol}</span>
+                      )}
+                    </span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-indigo-500"
+                        style={{ width: `${Math.min(100, c.weight * 100 * 4)}%` }}
+                      />
+                    </div>
+                    <span className="w-16 shrink-0 text-right tabular-nums text-zinc-500">
+                      {formatNumber(c.weight * 100, 1)}%
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        )}
+
+        <Card>
+          <h2 className="text-lg font-semibold">Details</h2>
+          <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+            <Row label="Name" value={asset.name} />
+            <Row label="ISIN" value={asset.isin ?? "—"} />
+            <Row label="WKN" value={asset.wkn ?? "—"} />
+            {asset.symbol && <Row label="Symbol" value={asset.symbol} />}
+            <Row label="Currency" value={nativeCur} />
+            <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} isPrivate />
+            <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
+            <Row label="Current price" value={formatCurrency(summary.price, nativeCur)} />
+            <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
+            <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
+            <Row label="Dividend yield" value={yld > 0 ? formatPercent(yld) : "—"} />
+            <Row
+              label="Dividends received"
+              value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
+              isPrivate
+            />
+            <Row
+              label="Volatility (p.a.)"
+              value={annual && annual.vol > 0 ? `${formatNumber(annual.vol * 100, 1)}%` : "—"}
+            />
+            <Row
+              label="Sharpe ratio"
+              value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
+            />
+          </dl>
+        </Card>
+      </div>
 
       {/* Transactions — full width, add form above the table */}
       <Card>
@@ -569,7 +570,15 @@ function TransactionsTable({
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
                   {formatCurrency(t.fee, currency)}
                 </td>
-                <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                <td
+                  className={`py-2 pr-3 text-right tabular-nums ${
+                    t.type === "BUY"
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  }`}
+                  data-private
+                >
+                  {t.type === "BUY" ? "−" : "+"}
                   {formatCurrency(t.quantity * t.price, currency)}
                 </td>
                 {multiPortfolio && (

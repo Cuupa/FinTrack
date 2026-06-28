@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { useAuth } from "@/lib/auth/auth-context";
+import type { Timeframe } from "@/lib/finance/dates";
 import { NetWorthHero } from "@/components/dashboard/net-worth-hero";
 import { AssetTable } from "@/components/assets/asset-table";
 import { AddAssetForm } from "@/components/assets/add-asset-form";
@@ -13,8 +15,11 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function DashboardPage() {
   const { loading } = usePortfolio();
+  const { mode } = useAuth();
   const { t } = useI18n();
   const [adding, setAdding] = useState(false);
+  // Shared so the holdings table's profit column tracks the hero chart timeframe.
+  const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
 
   return (
     <div className="space-y-6">
@@ -25,7 +30,9 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <ShareMenu />
-          <ExportMenu />
+          {/* Registered users export from the profile menu; guests (no profile
+              menu) keep the standalone export button here. */}
+          {mode !== "registered" && <ExportMenu />}
           {!adding && (
             <Button variant="primary" onClick={() => setAdding(true)}>
               {t("dashboard.addAsset")}
@@ -39,9 +46,9 @@ export default function DashboardPage() {
       ) : (
         <>
           <LiveShareSync />
-          <NetWorthHero />
+          <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
           {adding && <AddAssetForm onDone={() => setAdding(false)} />}
-          <AssetTable />
+          <AssetTable timeframe={timeframe} />
         </>
       )}
     </div>

@@ -17,6 +17,9 @@ export const en = {
   "nav.signOut": "Sign out",
   "nav.settings": "Settings",
 
+  "export.csv": "Download CSV",
+  "export.json": "Download JSON",
+
   "settings.title": "Settings",
   "settings.name": "Name / nickname",
   "settings.language": "Language",
@@ -77,6 +80,7 @@ export const en = {
   "table.currentPrice": "Current price",
   "table.entryPrice": "Entry price",
   "table.currentValue": "Current value",
+  "table.profit": "Profit",
   "table.allocation": "Allocation",
   "table.noMatch": "No holdings match your filter.",
 
@@ -250,6 +254,9 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.signOut": "Abmelden",
   "nav.settings": "Einstellungen",
 
+  "export.csv": "CSV herunterladen",
+  "export.json": "JSON herunterladen",
+
   "settings.title": "Einstellungen",
   "settings.name": "Name / Spitzname",
   "settings.language": "Sprache",
@@ -310,6 +317,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "table.currentPrice": "Aktueller Kurs",
   "table.entryPrice": "Einstandskurs",
   "table.currentValue": "Aktueller Wert",
+  "table.profit": "Gewinn",
   "table.allocation": "Gewichtung",
   "table.noMatch": "Keine Positionen entsprechen Ihrem Filter.",
 

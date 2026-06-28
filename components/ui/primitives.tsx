@@ -26,6 +26,7 @@ export function Stat({
   valueClassName = "",
   info,
   isPrivate = false,
+  size = "md",
 }: {
   label: string;
   value: string;
@@ -35,13 +36,17 @@ export function Stat({
   info?: string;
   /** Mark the figure as an absolute amount, blurred in Incognito mode. */
   isPrivate?: boolean;
+  /** "sm" tightens the value font + spacing (used to keep the hero compact). */
+  size?: "sm" | "md";
 }) {
+  const valueSize = size === "sm" ? "text-xl" : "text-2xl";
+  const labelMin = size === "sm" ? "min-h-[1.75rem]" : "min-h-[2.25rem]";
   return (
     <div>
       {/* Inline (not flex) so the ⓘ flows right after the text and wraps with it;
           min-height reserves two lines so values stay aligned when a (e.g.
           German) label wraps. */}
-      <div className="flex min-h-[2.25rem] items-start text-sm leading-snug text-zinc-500">
+      <div className={`flex ${labelMin} items-start text-sm leading-snug text-zinc-500`}>
         <span>
           {label}
           {info && (
@@ -52,7 +57,7 @@ export function Stat({
         </span>
       </div>
       <div
-        className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}
+        className={`mt-1 ${valueSize} font-semibold tabular-nums ${valueClassName}`}
         {...(isPrivate ? { "data-private": "" } : {})}
       >
         {value}

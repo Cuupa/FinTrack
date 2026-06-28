@@ -1,14 +1,13 @@
 "use client";
 
-// Account settings: display name, base currency, language (persisted per user),
-// and password change (registered users). Guests can still set name/currency/
-// language — they persist to local storage via the store.
+// Account settings: display name, base currency, and password change
+// (registered users). Language lives in the header switcher, not here. Guests
+// can still set name/currency — they persist to local storage via the store.
 
 import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { LOCALES, type Locale } from "@/lib/i18n/locale";
 import { Button, Card } from "@/components/ui/primitives";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
@@ -16,13 +15,10 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 export function SettingsView() {
   const { data, updateProfile } = usePortfolio();
   const { mode, updatePassword } = useAuth();
-  const { t, setLocale } = useI18n();
+  const { t } = useI18n();
 
   const [name, setName] = useState(data.profile.name ?? "");
   const [currency, setCurrency] = useState(data.profile.currency);
-  const [locale, setLocaleState] = useState<Locale>(
-    (data.profile.locale as Locale) ?? "en",
-  );
   const [savedProfile, setSavedProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -32,8 +28,7 @@ export function SettingsView() {
 
   const saveProfile = async () => {
     setSavingProfile(true);
-    await updateProfile({ name: name.trim() || null, currency, locale });
-    setLocale(locale);
+    await updateProfile({ name: name.trim() || null, currency });
     setSavingProfile(false);
     setSavedProfile(true);
     setTimeout(() => setSavedProfile(false), 2000);
@@ -81,20 +76,6 @@ export function SettingsView() {
               {[...new Set([currency, ...CURRENCIES])].map((c) => (
                 <option key={c} value={c}>
                   {c}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label={t("settings.language")}>
-            <select
-              value={locale}
-              onChange={(e) => setLocaleState(e.target.value as Locale)}
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              {LOCALES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.label}
                 </option>
               ))}
             </select>

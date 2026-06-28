@@ -9,12 +9,17 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
-import { summarizeAll, type HoldingSummary } from "@/lib/finance/portfolio";
+import {
+  holdingPeriodProfit,
+  summarizeAll,
+  type HoldingSummary,
+} from "@/lib/finance/portfolio";
+import type { Timeframe } from "@/lib/finance/dates";
 import { formatCurrency, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { assetIdentifier, type AssetType } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
-type SortKey = "name" | "price" | "value" | "entry" | "allocation";
+type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
 
 const TYPE_FILTERS: (AssetType | "ALL")[] = ["ALL", "ETF", "STOCK", "CRYPTO", "CASH"];
 
@@ -23,9 +28,11 @@ interface Row {
   allocation: number;
   /** entry (average purchase) price in the native currency. */
   entry: number;
+  /** profit over the selected timeframe, base currency + fraction. */
+  profit: { abs: number; pct: number };
 }
 
-export function AssetTable() {
+export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
@@ -68,9 +75,10 @@ export function AssetTable() {
         h,
         allocation: total > 0 ? h.marketValue / total : 0,
         entry: h.position.avgCost,
+        profit: holdingPeriodProfit(h.asset, data.transactions, timeframe, valuation),
       }));
     return list.sort((a, b) => compare(a, b, sort.key) * sort.dir);
-  }, [holdings, query, typeFilter, sort, total]);
+  }, [holdings, query, typeFilter, sort, total, data.transactions, timeframe, valuation]);
 
   if (data.assets.length === 0) return null;
 
@@ -113,7 +121,7 @@ export function AssetTable() {
         <>
         {/* Mobile: stacked cards (the wide table is hidden below md). */}
         <ul className="divide-y divide-zinc-100 md:hidden dark:divide-zinc-800/60">
-          {rows.map(({ h, allocation, entry }) => {
+          {rows.map(({ h, allocation, entry, profit }) => {
             const nativeCur = h.currency || currency;
             const gain = h.price - entry;
             return (
@@ -139,6 +147,9 @@ export function AssetTable() {
                     </div>
                     <div className="mt-0.5 text-xs text-zinc-500 tabular-nums">
                       {formatNumber(allocation * 100, 1)}%
+                      <span className={`ml-1 ${plColor(profit.abs)}`}>
+                        {formatPercent(profit.pct)}
+                      </span>
                     </div>
                   </div>
                 </Link>
@@ -156,11 +167,12 @@ export function AssetTable() {
                 <Th label={t("table.currentPrice")} k="price" sort={sort} onSort={toggleSort} align="right" />
                 <Th label={t("table.entryPrice")} k="entry" sort={sort} onSort={toggleSort} align="right" />
                 <Th label={t("table.currentValue")} k="value" sort={sort} onSort={toggleSort} align="right" />
+                <Th label={`${t("table.profit")} (${timeframe})`} k="profit" sort={sort} onSort={toggleSort} align="right" />
                 <Th label={t("table.allocation")} k="allocation" sort={sort} onSort={toggleSort} align="right" />
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ h, allocation, entry }) => {
+              {rows.map(({ h, allocation, entry, profit }) => {
                 const nativeCur = h.currency || currency;
                 const gain = h.price - entry;
                 return (
@@ -187,6 +199,11 @@ export function AssetTable() {
                     </td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums" data-private>
                       {formatCurrency(h.marketValue, currency)}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${plColor(profit.abs)}`} data-private>
+                      {profit.abs >= 0 ? "+" : ""}
+                      {formatCurrency(profit.abs, currency)}
+                      <span className="ml-1 text-xs opacity-80">({formatPercent(profit.pct)})</span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       <div className="flex items-center justify-end gap-2">
@@ -250,6 +267,8 @@ function compare(a: Row, b: Row, key: SortKey): number {
       return a.entry - b.entry;
     case "value":
       return a.h.marketValue - b.h.marketValue;
+    case "profit":
+      return a.profit.abs - b.profit.abs;
     case "allocation":
       return a.allocation - b.allocation;
   }

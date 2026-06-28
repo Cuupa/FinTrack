@@ -68,7 +68,7 @@ export function MonteCarloPanel() {
   const [form, setForm] = useState({
     monthlyContribution: 500,
     years: 30,
-    runs: 1000,
+    runs: 5000,
   });
 
   // Estimate returns/volatility from the last `horizon` years of history, so the

@@ -40,6 +40,45 @@ const MARKER_COLOR: Record<ChartMarker["type"], string> = {
   DIV: "#f59e0b",
 };
 
+const MARKER_GLYPH: Record<ChartMarker["type"], string> = {
+  BUY: "▲",
+  SELL: "▼",
+  DIV: "●",
+};
+
+// A map-style pin dropped at the top of the chart for a buy/sell/dividend event:
+// a small coloured head with the event glyph and a short stem, replacing the old
+// full-height dotted reference line.
+function PinLabel(props: {
+  viewBox?: { x?: number; y?: number };
+  color: string;
+  glyph: string;
+  active?: boolean;
+  dimmed?: boolean;
+}) {
+  const { viewBox, color, glyph, active, dimmed } = props;
+  const x = viewBox?.x ?? 0;
+  const y = viewBox?.y ?? 0;
+  const r = active ? 8 : 6.5;
+  const opacity = dimmed ? 0.2 : 1;
+  return (
+    <g transform={`translate(${x}, ${y})`} opacity={opacity}>
+      <line x1={0} y1={r} x2={0} y2={r + 10} stroke={color} strokeWidth={active ? 2 : 1.3} />
+      <circle cx={0} cy={0} r={r} fill={color} stroke="white" strokeWidth={1} />
+      <text
+        x={0}
+        y={0.5}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={active ? 9 : 8}
+        fill="white"
+      >
+        {glyph}
+      </text>
+    </g>
+  );
+}
+
 interface Props {
   series: SeriesPoint[];
   scale: ChartScale;
@@ -68,21 +107,34 @@ function shortDate(iso: string): string {
 }
 
 /** Last value at or before a date in an ascending series (null before it). */
+// Value of a (possibly sparse) series at an arbitrary date. Benchmarks are
+// stored weekly, so a plain step lookup makes the overlay render as a staircase
+// against the daily portfolio line. Linearly interpolate between the two points
+// straddling `iso` so the benchmark curve is smooth.
 function valueAt(points: SeriesPoint[], iso: string): number | null {
   if (points.length === 0 || iso < points[0].date) return null;
+  // Binary search for the last index whose date <= iso.
   let lo = 0;
   let hi = points.length - 1;
-  let ans = points[0].value;
+  let idx = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     if (points[mid].date <= iso) {
-      ans = points[mid].value;
+      idx = mid;
       lo = mid + 1;
     } else {
       hi = mid - 1;
     }
   }
-  return ans;
+  const a = points[idx];
+  const b = points[idx + 1];
+  if (!b || a.date === iso) return a.value;
+  const t0 = Date.parse(a.date);
+  const t1 = Date.parse(b.date);
+  const ti = Date.parse(iso);
+  if (!(t1 > t0)) return a.value;
+  const f = (ti - t0) / (t1 - t0);
+  return a.value + (b.value - a.value) * f;
 }
 
 export function PerformanceChart({
@@ -152,7 +204,7 @@ export function PerformanceChart({
   return (
     <div>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+        <LineChart data={data} margin={{ top: 14, right: 12, bottom: 0, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
           <XAxis
             dataKey="date"
@@ -188,24 +240,23 @@ export function PerformanceChart({
           {snappedMarkers.map((m, i) => {
             const dimmed = highlightType != null && m.type !== highlightType;
             const active = highlightType != null && m.type === highlightType;
-            const glyph = m.type === "BUY" ? "▲" : m.type === "SELL" ? "▼" : "●";
-            const baseWidth = m.type === "DIV" ? 1.5 : 2;
-            const baseOpacity = m.type === "DIV" ? 0.7 : 0.9;
+            // The indicator is a pin at the top; only show a faint guide line
+            // when its type is highlighted, so the chart stays clean otherwise.
             return (
               <ReferenceLine
                 key={`${m.date}-${i}`}
                 x={m.date}
                 stroke={MARKER_COLOR[m.type]}
-                strokeDasharray={m.type === "DIV" ? "2 3" : "5 3"}
-                strokeWidth={active ? baseWidth + 1.5 : dimmed ? 1 : baseWidth}
-                strokeOpacity={dimmed ? 0.12 : active ? 1 : baseOpacity}
-                label={{
-                  value: glyph,
-                  position: "top",
-                  fill: MARKER_COLOR[m.type],
-                  fontSize: active ? 13 : 10,
-                  opacity: dimmed ? 0.2 : 1,
-                }}
+                strokeWidth={active ? 1.5 : 1}
+                strokeOpacity={active ? 0.35 : 0}
+                label={
+                  <PinLabel
+                    color={MARKER_COLOR[m.type]}
+                    glyph={MARKER_GLYPH[m.type]}
+                    active={active}
+                    dimmed={dimmed}
+                  />
+                }
               />
             );
           })}

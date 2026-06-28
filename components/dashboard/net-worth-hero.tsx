@@ -36,13 +36,19 @@ import {
   type ChartScale,
 } from "@/components/charts/performance-chart";
 
-export function NetWorthHero() {
+export function NetWorthHero({
+  timeframe,
+  onTimeframe,
+}: {
+  timeframe: Timeframe;
+  onTimeframe: (tf: Timeframe) => void;
+}) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const { t } = useI18n();
   const { incognito } = usePrivacy();
-  const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
+  const setTimeframe = onTimeframe;
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
@@ -108,24 +114,34 @@ export function NetWorthHero() {
     return total;
   }, [divMap, data.assets, data.transactions, currency, valuation]);
 
-  // Period change: absolute net-worth delta over the window. The percentage is
-  // the contribution-adjusted return (TWR), not raw end/start — a portfolio that
-  // grew from ~0 via deposits has a meaningless raw ratio (it blows up).
+  // Period change: absolute net-worth delta over the window, and the return
+  // relative to the window's starting value (with deposits/withdrawals removed,
+  // so the % is consistent with the absolute change). Falls back to TWR only
+  // when the starting value is negligible (early portfolio), where the raw ratio
+  // would blow up.
   const periodChange = useMemo(() => {
     const start = series.find((p) => p.value > 0)?.value ?? 0;
     const end = series[series.length - 1]?.value ?? 0;
-    return { abs: end - start, pct: risk.twr };
-  }, [series, risk.twr]);
+    const abs = end - start;
+    const winStart = series[0]?.date ?? "";
+    const flowsIn = netFlows(data.assets, data.transactions, valuation)
+      .filter((f) => f.date >= winStart)
+      .reduce((s, f) => s + f.amount, 0);
+    const peak = series.reduce((m, p) => (p.value > m ? p.value : m), 0);
+    const pct = start > peak * 0.02 ? (end - start - flowsIn) / start : risk.twr;
+    return { abs, pct };
+  }, [series, data.assets, data.transactions, valuation, risk.twr]);
 
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
           <Stat
             label={t("stat.netWorth")}
             value={formatCurrency(totals.marketValue, currency)}
             info={t("tip.netWorth")}
             isPrivate
+            size="sm"
           />
           <Stat
             label={`${t("stat.change")} (${timeframe})`}
@@ -134,6 +150,7 @@ export function NetWorthHero() {
             valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
             info={t("tip.change")}
             isPrivate
+            size="sm"
           />
           <Stat
             label={t("stat.unrealized")}
@@ -142,6 +159,7 @@ export function NetWorthHero() {
             valueClassName={plColor(totals.unrealizedPL)}
             info={t("tip.unrealized")}
             isPrivate
+            size="sm"
           />
           <Stat
             label={t("stat.realized")}
@@ -149,6 +167,7 @@ export function NetWorthHero() {
             valueClassName={plColor(totals.realizedPL)}
             info={t("tip.realized")}
             isPrivate
+            size="sm"
           />
           <Stat
             label={t("stat.dividends")}
@@ -156,17 +175,19 @@ export function NetWorthHero() {
             valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
             info={t("tip.dividends")}
             isPrivate
+            size="sm"
           />
           <Stat
             label={t("stat.irr")}
             value={irr != null ? formatPercent(irr) : "—"}
             valueClassName={irr != null ? plColor(irr) : ""}
             info={t("tip.irr")}
+            size="sm"
           />
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <ChartControls
           timeframe={timeframe}
           onTimeframe={setTimeframe}
