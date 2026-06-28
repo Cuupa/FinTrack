@@ -111,6 +111,24 @@ describe("cumulativeReturnSeries", () => {
     expect(Math.max(...out.map((p) => p.value))).toBeLessThan(0.2);
   });
 
+  it("does not register a cliff when a large mid-window flow mis-cancels", () => {
+    // A funded portfolio gains 5%, then a big deposit lands but the net-worth
+    // jump doesn't exactly match the recorded flow (e.g. an asset with no real
+    // history valued synthetically) — this must NOT show as a huge loss.
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 10000 },
+      { date: "2025-03-01", value: 10500 }, // +5% real
+      { date: "2025-03-15", value: 16000 }, // +€6000 deposit, but value only +€5500
+      { date: "2025-06-01", value: 16800 }, // +5% real on the new base
+    ];
+    const flows = [{ date: "2025-03-15", amount: 6000 }];
+    const out = cumulativeReturnSeries(series, flows);
+    // No absurd negative step; the line stays in a sane positive band.
+    expect(Math.min(...out.map((p) => p.value))).toBeGreaterThan(-0.05);
+    expect(out[out.length - 1].value).toBeGreaterThan(0.08); // ~ +5% then +5%
+    expect(out[out.length - 1].value).toBeLessThan(0.12);
+  });
+
   it("excludes deposits from the return (a pure deposit is ~0%)", () => {
     const series: SeriesPoint[] = [
       { date: "2025-01-01", value: 1000 },

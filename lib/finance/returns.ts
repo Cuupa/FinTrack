@@ -51,10 +51,18 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
   // price move by a tiny base explodes the figure (e.g. €10 → €20 reads as
   // +100%), and one such step poisons the whole chained series. So we only
   // accrue return once the invested base is a meaningful fraction of the
-  // portfolio's eventual peak — before that, the absolute P&L is negligible
-  // anyway. This also neutralises the artefact at a large initial deposit.
+  // portfolio's eventual peak — before that, the absolute P&L is negligible.
   const peak = series.reduce((m, p) => (p.value > m ? p.value : m), 0);
   const minBase = peak * 0.02;
+  // When a step is dominated by external cash flow (a big buy/sell relative to
+  // the base), its in-period return is unreliable: the flow rarely cancels the
+  // valuation change to the cent (different price source/date, an asset with no
+  // real history valued synthetically, FX), leaving a huge spurious step that
+  // poisons the chained series. Standard linked-TWR practice is to break the
+  // sub-period at a large flow — so we skip that step's return and resume from
+  // the new base. Ordinary contributions (well under this fraction) are
+  // unaffected and still handled by the (V − prev − F) term.
+  const FLOW_DOMINANT = 0.1;
 
   const out: SeriesPoint[] = [{ date: series[0].date, value: 0 }];
   let cum = 1;
@@ -67,7 +75,9 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
       fi += 1;
     }
     const prev = series[i - 1].value;
-    if (prev > minBase) cum *= 1 + (series[i].value - prev - F) / prev;
+    if (prev > minBase && Math.abs(F) <= prev * FLOW_DOMINANT) {
+      cum *= 1 + (series[i].value - prev - F) / prev;
+    }
     out.push({ date: series[i].date, value: cum - 1 });
   }
   return out;
