@@ -134,6 +134,16 @@ alter table public.assets add column if not exists currency text;
 create index if not exists assets_user_id_idx on public.assets (user_id);
 create index if not exists assets_instrument_id_idx on public.assets (instrument_id);
 
+-- Portfolios -----------------------------------------------------------------
+-- A user can hold several portfolios; transactions belong to one of them.
+create table if not exists public.portfolios (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null default 'Main',
+  created_at timestamptz not null default now()
+);
+create index if not exists portfolios_user_id_idx on public.portfolios (user_id);
+
 -- Transactions ---------------------------------------------------------------
 -- No user_id: ownership is derived via the asset (3NF — avoids the transitive
 -- dependency id -> asset_id -> user_id).
@@ -147,9 +157,13 @@ create table if not exists public.transactions (
   -- Trade date + time of day as a floating wall-clock (no time zone) — what
   -- the user picked, shown verbatim; avoids UTC reinterpretation/shifting.
   executed_at timestamp not null,
+  portfolio_id uuid references public.portfolios (id) on delete cascade,
   created_at timestamptz not null default now()
 );
+alter table public.transactions
+  add column if not exists portfolio_id uuid references public.portfolios (id) on delete cascade;
 create index if not exists transactions_asset_id_idx on public.transactions (asset_id);
+create index if not exists transactions_portfolio_id_idx on public.transactions (portfolio_id);
 
 -- Applied-migrations registry (system table) --------------------------------
 create table if not exists public.schema_migrations (
@@ -179,13 +193,15 @@ insert into public.schema_migrations (version) values
   ('0017_shared_portfolios'),
   ('0018_profile_name_locale'),
   ('0019_shared_live'),
-  ('0020_shared_owner_delete')
+  ('0020_shared_owner_delete'),
+  ('0021_portfolios')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
 alter table public.profiles enable row level security;
 alter table public.schema_migrations enable row level security;
 alter table public.assets enable row level security;
+alter table public.portfolios enable row level security;
 alter table public.transactions enable row level security;
 alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
@@ -235,6 +251,10 @@ create policy "migrations readable" on public.schema_migrations for select using
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
+
+drop policy if exists "own portfolios" on public.portfolios;
+create policy "own portfolios" on public.portfolios
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own assets" on public.assets;
 create policy "own assets" on public.assets

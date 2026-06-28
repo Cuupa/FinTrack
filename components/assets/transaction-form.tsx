@@ -20,10 +20,13 @@ export function TransactionForm({
   asset: Asset;
   onDone?: () => void;
 }) {
-  const { addTransaction } = usePortfolio();
+  const { addTransaction, portfolios, selectedPortfolioIds } = usePortfolio();
   const isCash = asset.type === "CASH";
 
   const [type, setType] = useState<TransactionType>("BUY");
+  const [portfolioId, setPortfolioId] = useState(
+    selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
+  );
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState(
     isCash ? "1" : String(round(currentPrice(assetPriceKey(asset), asset.type))),
@@ -50,6 +53,7 @@ export function TransactionForm({
     try {
       await addTransaction({
         assetId: asset.id,
+        portfolioId: portfolioId || portfolios[0]?.id || "",
         type,
         quantity: qty,
         price: px,
@@ -129,6 +133,22 @@ export function TransactionForm({
             className={inputCls}
           />
         </div>
+        {portfolios.length > 1 && (
+          <div className="col-span-2">
+            <label className="text-sm font-medium">Portfolio</label>
+            <select
+              value={portfolioId}
+              onChange={(e) => setPortfolioId(e.target.value)}
+              className={inputCls}
+            >
+              {portfolios.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       <Button type="submit" variant="primary" disabled={busy} className="w-full">

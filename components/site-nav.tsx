@@ -9,6 +9,7 @@ import { Button } from "./ui/primitives";
 import { PrivacyToggle } from "./privacy-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
 import { ProfileMenu } from "./profile-menu";
+import { PortfolioPicker } from "./portfolio-picker";
 
 const LINKS: { href: string; key: MessageKey }[] = [
   { href: "/", key: "nav.dashboard" },
@@ -53,6 +54,7 @@ export function SiteNav() {
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
         </Link>
+        <PortfolioPicker />
         {/* Inline links are hidden on mobile; MobileNav renders a bottom tab bar instead. */}
         <div className="hidden items-center gap-1 md:flex">
           {LINKS.map((l) => {

@@ -19,6 +19,7 @@ import type { AssetInput, TransactionInput } from "../store/types";
 import {
   emptyPortfolio,
   type Asset,
+  type Portfolio,
   type PortfolioData,
   type Profile,
   type Transaction,
@@ -26,6 +27,7 @@ import {
 import { useAuth } from "../auth/auth-context";
 
 interface PortfolioContextValue {
+  /** Portfolio data scoped to the currently-selected portfolios. */
   data: PortfolioData;
   loading: boolean;
   persistent: boolean;
@@ -37,6 +39,14 @@ interface PortfolioContextValue {
   deleteTransaction(id: string): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
+  /** All of the user's portfolios. */
+  portfolios: Portfolio[];
+  /** Ids of the portfolios currently included in `data`. */
+  selectedPortfolioIds: string[];
+  setSelectedPortfolios(ids: string[]): void;
+  createPortfolio(name: string): Promise<Portfolio>;
+  renamePortfolio(id: string, name: string): Promise<void>;
+  deletePortfolio(id: string): Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
@@ -45,6 +55,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<PortfolioData>(emptyPortfolio());
   const [loading, setLoading] = useState(true);
+  // null = all portfolios selected; otherwise the explicit selection.
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
 
   const store: DataStore = useMemo(
     () => createStore(getSupabaseClient(), user?.id ?? null),
@@ -141,8 +153,53 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [updateProfile],
   );
 
+  const createPortfolio = useCallback(
+    async (name: string) => {
+      const p = await store.createPortfolio(name);
+      setData((d) => ({ ...d, portfolios: [...d.portfolios, p] }));
+      // Auto-include a newly created portfolio in an explicit selection.
+      setSelectedIds((prev) => (prev === null ? null : [...prev, p.id]));
+      return p;
+    },
+    [store],
+  );
+
+  const renamePortfolio = useCallback(
+    async (id: string, name: string) => {
+      await store.renamePortfolio(id, name);
+      setData((d) => ({
+        ...d,
+        portfolios: d.portfolios.map((p) => (p.id === id ? { ...p, name } : p)),
+      }));
+    },
+    [store],
+  );
+
+  const deletePortfolio = useCallback(
+    async (id: string) => {
+      await store.deletePortfolio(id);
+      setSelectedIds((prev) => (prev === null ? null : prev.filter((x) => x !== id)));
+      await reload(); // transactions may have been reassigned
+    },
+    [store, reload],
+  );
+
+  const allIds = data.portfolios.map((p) => p.id);
+  const activeIds = selectedIds ?? allIds;
+  const activeKey = activeIds.join(",");
+  // Scope the data to the selected portfolios — every downstream view computes
+  // off `data.transactions`, so this is the single place portfolios are applied.
+  const scopedData = useMemo<PortfolioData>(
+    () => ({
+      ...data,
+      transactions: data.transactions.filter((t) => activeIds.includes(t.portfolioId)),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, activeKey],
+  );
+
   const value: PortfolioContextValue = {
-    data,
+    data: scopedData,
     loading,
     persistent: store.persistent,
     reload,
@@ -153,6 +210,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     deleteTransaction,
     setCurrency,
     updateProfile,
+    portfolios: data.portfolios,
+    selectedPortfolioIds: activeIds,
+    setSelectedPortfolios: setSelectedIds,
+    createPortfolio,
+    renamePortfolio,
+    deletePortfolio,
   };
 
   return (

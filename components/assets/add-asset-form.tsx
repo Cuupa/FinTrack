@@ -30,7 +30,10 @@ function round(n: number): number {
 }
 
 export function AddAssetForm({ onDone }: { onDone?: () => void }) {
-  const { addAsset, addTransaction, data } = usePortfolio();
+  const { addAsset, addTransaction, data, portfolios, selectedPortfolioIds } = usePortfolio();
+  const [portfolioId, setPortfolioId] = useState(
+    selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
+  );
   const base = data.profile.currency;
 
   const [manual, setManual] = useState(false);
@@ -193,6 +196,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
       });
       await addTransaction({
         assetId: asset.id,
+        portfolioId: portfolioId || portfolios[0]?.id || "",
         type: "BUY",
         quantity: qty,
         price: px,
@@ -471,6 +475,25 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
                 className={inputCls}
               />
             </div>
+            {portfolios.length > 1 && (
+              <div>
+                <label className="text-sm font-medium" htmlFor="portfolio">
+                  Portfolio
+                </label>
+                <select
+                  id="portfolio"
+                  value={portfolioId}
+                  onChange={(e) => setPortfolioId(e.target.value)}
+                  className={inputCls}
+                >
+                  {portfolios.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}

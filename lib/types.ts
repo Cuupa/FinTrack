@@ -49,10 +49,21 @@ export function assetIdentifier(asset: Asset): string {
   return asset.isin || asset.wkn || asset.symbol || "—";
 }
 
+/** A named portfolio. A user can hold several; transactions belong to one. */
+export interface Portfolio {
+  id: string;
+  name: string;
+}
+
+export const MAX_PORTFOLIOS = 20;
+export const DEFAULT_PORTFOLIO_ID = "default";
+
 /** A buy or sell event (PRD: `transactions`). */
 export interface Transaction {
   id: string;
   assetId: string;
+  /** The portfolio this transaction belongs to. */
+  portfolioId: string;
   type: TransactionType;
   /** Number of shares/units (always positive; direction comes from `type`). */
   quantity: number;
@@ -67,6 +78,7 @@ export interface Transaction {
 /** The complete persisted state for one user (or guest session). */
 export interface PortfolioData {
   profile: Profile;
+  portfolios: Portfolio[];
   assets: Asset[];
   transactions: Transaction[];
 }
@@ -74,5 +86,10 @@ export interface PortfolioData {
 export const DEFAULT_PROFILE: Profile = { currency: "EUR", name: null, locale: null };
 
 export function emptyPortfolio(): PortfolioData {
-  return { profile: { ...DEFAULT_PROFILE }, assets: [], transactions: [] };
+  return {
+    profile: { ...DEFAULT_PROFILE },
+    portfolios: [{ id: DEFAULT_PORTFOLIO_ID, name: "Main" }],
+    assets: [],
+    transactions: [],
+  };
 }

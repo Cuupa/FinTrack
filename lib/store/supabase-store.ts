@@ -10,7 +10,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_PROFILE,
+  MAX_PORTFOLIOS,
   type Asset,
+  type Portfolio,
   type PortfolioData,
   type Profile,
   type Transaction,
@@ -36,6 +38,7 @@ interface AssetRow {
 interface TxRow {
   id: string;
   asset_id: string;
+  portfolio_id: string | null;
   type: Transaction["type"];
   quantity: number;
   price: number;
@@ -57,12 +60,17 @@ export class SupabaseStore implements DataStore {
   ) {}
 
   async load(): Promise<PortfolioData> {
-    const [profileRes, assetsRes, txRes] = await Promise.all([
+    const [profileRes, portfoliosRes, assetsRes, txRes] = await Promise.all([
       this.supabase
         .from("profiles")
         .select("currency, display_name, locale")
         .eq("id", this.userId)
         .maybeSingle(),
+      this.supabase
+        .from("portfolios")
+        .select("id, name")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
       this.supabase
         .from("assets")
         .select(
@@ -72,11 +80,27 @@ export class SupabaseStore implements DataStore {
       // RLS scopes transactions to the user's assets — no user_id column.
       this.supabase
         .from("transactions")
-        .select("id, asset_id, type, quantity, price, fee, executed_at"),
+        .select("id, asset_id, portfolio_id, type, quantity, price, fee, executed_at"),
     ]);
 
     if (assetsRes.error) throw assetsRes.error;
     if (txRes.error) throw txRes.error;
+
+    // Ensure the user has at least one portfolio (creating a default for
+    // pre-multi-portfolio accounts) and backfill orphaned transactions.
+    let portfolios: Portfolio[] = ((portfoliosRes.data ?? []) as Portfolio[]).map((p) => ({
+      id: p.id,
+      name: p.name,
+    }));
+    if (portfolios.length === 0) {
+      const def = await this.createPortfolio("Main");
+      portfolios = [def];
+      await this.supabase
+        .from("transactions")
+        .update({ portfolio_id: def.id })
+        .is("portfolio_id", null);
+    }
+    const fallbackId = portfolios[0].id;
 
     const profile: Profile = profileRes.data
       ? {
@@ -104,6 +128,7 @@ export class SupabaseStore implements DataStore {
     const transactions: Transaction[] = ((txRes.data ?? []) as TxRow[]).map((r) => ({
       id: r.id,
       assetId: r.asset_id,
+      portfolioId: r.portfolio_id ?? fallbackId,
       type: r.type,
       quantity: Number(r.quantity),
       price: Number(r.price),
@@ -111,7 +136,7 @@ export class SupabaseStore implements DataStore {
       date: r.executed_at,
     }));
 
-    return { profile, assets, transactions };
+    return { profile, portfolios, assets, transactions };
   }
 
   async saveProfile(profile: Profile): Promise<void> {
@@ -201,19 +226,21 @@ export class SupabaseStore implements DataStore {
       .from("transactions")
       .insert({
         asset_id: input.assetId,
+        portfolio_id: input.portfolioId,
         type: input.type,
         quantity: input.quantity,
         price: input.price,
         fee: input.fee,
         executed_at: input.date,
       })
-      .select("id, asset_id, type, quantity, price, fee, executed_at")
+      .select("id, asset_id, portfolio_id, type, quantity, price, fee, executed_at")
       .single();
     if (error) throw error;
     const r = data as TxRow;
     return {
       id: r.id,
       assetId: r.asset_id,
+      portfolioId: r.portfolio_id ?? input.portfolioId,
       type: r.type,
       quantity: Number(r.quantity),
       price: Number(r.price),
@@ -228,6 +255,61 @@ export class SupabaseStore implements DataStore {
       .from("transactions")
       .delete()
       .eq("id", id);
+    if (error) throw error;
+  }
+
+  async createPortfolio(name: string): Promise<Portfolio> {
+    const { count } = await this.supabase
+      .from("portfolios")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", this.userId);
+    if ((count ?? 0) >= MAX_PORTFOLIOS) {
+      throw new Error(`You can have at most ${MAX_PORTFOLIOS} portfolios.`);
+    }
+    const { data, error } = await this.supabase
+      .from("portfolios")
+      .insert({ user_id: this.userId, name: name.trim() || "Portfolio" })
+      .select("id, name")
+      .single();
+    if (error) throw error;
+    return data as Portfolio;
+  }
+
+  async renamePortfolio(id: string, name: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("portfolios")
+      .update({ name: name.trim() })
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async deletePortfolio(id: string): Promise<void> {
+    // Keep at least one portfolio.
+    const { count } = await this.supabase
+      .from("portfolios")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", this.userId);
+    if ((count ?? 0) <= 1) return;
+    // Move this portfolio's transactions to another one, then delete it.
+    const { data: others } = await this.supabase
+      .from("portfolios")
+      .select("id")
+      .eq("user_id", this.userId)
+      .neq("id", id)
+      .limit(1);
+    const fallback = (others?.[0] as { id: string } | undefined)?.id;
+    if (fallback) {
+      await this.supabase
+        .from("transactions")
+        .update({ portfolio_id: fallback })
+        .eq("portfolio_id", id);
+    }
+    const { error } = await this.supabase
+      .from("portfolios")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
     if (error) throw error;
   }
 }

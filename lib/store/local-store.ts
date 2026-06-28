@@ -3,7 +3,7 @@
 // the guest banner. Defaults to localStorage; pass sessionStorage for
 // truly ephemeral sessions.
 
-import { emptyPortfolio, type PortfolioData, type Profile } from "../types";
+import { emptyPortfolio, MAX_PORTFOLIOS, type PortfolioData, type Profile } from "../types";
 import type { AssetInput, DataStore, TransactionInput } from "./types";
 import { newId } from "./types";
 
@@ -23,12 +23,23 @@ export class LocalStore implements DataStore {
       const raw = this.storage.getItem(STORAGE_KEY);
       if (!raw) return emptyPortfolio();
       const parsed = JSON.parse(raw) as PortfolioData;
+      // Ensure at least one portfolio, and backfill transactions saved before
+      // multi-portfolio (no portfolioId) to the default portfolio.
+      const portfolios =
+        parsed.portfolios && parsed.portfolios.length > 0
+          ? parsed.portfolios
+          : emptyPortfolio().portfolios;
+      const fallbackId = portfolios[0].id;
       return {
         // Merge over defaults so profiles saved before new fields (name, locale)
         // still have them.
         profile: { ...emptyPortfolio().profile, ...(parsed.profile ?? {}) },
+        portfolios,
         assets: parsed.assets ?? [],
-        transactions: parsed.transactions ?? [],
+        transactions: (parsed.transactions ?? []).map((t) => ({
+          ...t,
+          portfolioId: t.portfolioId ?? fallbackId,
+        })),
       };
     } catch {
       return emptyPortfolio();
@@ -84,6 +95,38 @@ export class LocalStore implements DataStore {
   async deleteTransaction(id: string) {
     const data = this.read();
     data.transactions = data.transactions.filter((t) => t.id !== id);
+    this.write(data);
+  }
+
+  async createPortfolio(name: string) {
+    const data = this.read();
+    if (data.portfolios.length >= MAX_PORTFOLIOS) {
+      throw new Error(`You can have at most ${MAX_PORTFOLIOS} portfolios.`);
+    }
+    const portfolio = { id: newId(), name: name.trim() || "Portfolio" };
+    data.portfolios.push(portfolio);
+    this.write(data);
+    return portfolio;
+  }
+
+  async renamePortfolio(id: string, name: string) {
+    const data = this.read();
+    const p = data.portfolios.find((x) => x.id === id);
+    if (p) {
+      p.name = name.trim() || p.name;
+      this.write(data);
+    }
+  }
+
+  async deletePortfolio(id: string) {
+    const data = this.read();
+    if (data.portfolios.length <= 1) return; // never remove the last portfolio
+    data.portfolios = data.portfolios.filter((p) => p.id !== id);
+    // Reassign or drop orphaned transactions to the first remaining portfolio.
+    const fallback = data.portfolios[0].id;
+    data.transactions = data.transactions.map((t) =>
+      t.portfolioId === id ? { ...t, portfolioId: fallback } : t,
+    );
     this.write(data);
   }
 }

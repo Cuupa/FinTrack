@@ -3,7 +3,7 @@ import { computePosition, sharesAt, portfolioTotals, type HoldingSummary } from 
 import type { Transaction } from "../lib/types";
 
 function tx(p: Partial<Transaction> & Pick<Transaction, "type" | "quantity" | "price">): Transaction {
-  return { id: "t", assetId: "a", fee: 0, date: "2025-01-01T00:00:00", ...p };
+  return { id: "t", assetId: "a", portfolioId: "p1", fee: 0, date: "2025-01-01T00:00:00", ...p };
 }
 
 describe("computePosition", () => {
