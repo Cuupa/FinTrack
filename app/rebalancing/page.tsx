@@ -9,10 +9,7 @@ export default function RebalancingPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("rebalancing.title")}</h1>
-        <p className="text-sm text-zinc-500">
-          Compare your current allocation to a target and see the trades needed to
-          get there.
-        </p>
+        <p className="text-sm text-zinc-500">{t("rebalancing.subtitle")}</p>
       </div>
       <RebalancingView />
     </div>

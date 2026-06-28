@@ -29,6 +29,7 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { ScopeSelect } from "@/components/analysis/scope-select";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
@@ -44,6 +45,7 @@ export function ReturnsView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
+  const { t } = useI18n();
   const base = data.profile.currency;
   // Every chart is independent: its own period/timeframe AND its own asset
   // scope ([] = portfolio-wide).
@@ -156,7 +158,7 @@ export function ReturnsView() {
   if (allHoldings.length === 0) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Add holdings to see your returns.</p>
+        <p className="text-sm text-zinc-500">{t("returns.addHoldings")}</p>
       </Card>
     );
   }
@@ -169,8 +171,8 @@ export function ReturnsView() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-            Returns
-            <InfoTip text="Period returns adjusted for deposits/withdrawals (modified Dietz), so adding money doesn't show up as a gain." />
+            {t("returns.title")}
+            <InfoTip text={t("returns.tip")} />
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <ScopeSelect options={scopeOptions} selected={scopeHeat} onChange={setScopeHeat} />
@@ -179,8 +181,8 @@ export function ReturnsView() {
               value={heatPeriod}
               onChange={setHeatPeriod}
               options={[
-                { label: "Quarter", value: "quarter" },
-                { label: "Year", value: "year" },
+                { label: t("period.quarter"), value: "quarter" },
+                { label: t("period.year"), value: "year" },
               ]}
             />
           </div>
@@ -238,7 +240,9 @@ export function ReturnsView() {
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">Return by {barPeriod}</h3>
+          <h3 className="text-sm font-semibold">
+            {barPeriod === "year" ? t("returns.byYear") : t("returns.byQuarter")}
+          </h3>
           <div className="flex flex-wrap items-center gap-3">
             <ScopeSelect options={scopeOptions} selected={scopeBar} onChange={setScopeBar} />
             <SegmentedControl<Period>
@@ -246,8 +250,8 @@ export function ReturnsView() {
               value={barPeriod}
               onChange={setBarPeriod}
               options={[
-                { label: "Quarter", value: "quarter" },
-                { label: "Year", value: "year" },
+                { label: t("period.quarter"), value: "quarter" },
+                { label: t("period.year"), value: "year" },
               ]}
             />
           </div>
@@ -281,8 +285,8 @@ export function ReturnsView() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-            Performance map
-            <InfoTip text="Each holding sized by its current value and coloured by its return over the selected timeframe (green = up, red = down). MAX shows the all-time return vs. your cost basis." />
+            {t("returns.perfMap")}
+            <InfoTip text={t("returns.perfMapTip")} />
           </h3>
           <div className="flex flex-wrap items-center gap-3">
             <ScopeSelect options={scopeOptions} selected={scopeMap} onChange={setScopeMap} />

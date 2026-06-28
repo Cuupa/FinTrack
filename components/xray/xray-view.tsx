@@ -12,11 +12,13 @@ import { xrayPortfolio } from "@/lib/finance/xray";
 import { hasConstituents } from "@/lib/catalog/catalog";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function XrayView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog(); // recompute once constituents load
+  const { t } = useI18n();
 
   const xray = useMemo(() => {
     const holdings = summarizeAll(data.assets, data.transactions, valuation).filter(
@@ -31,7 +33,7 @@ export function XrayView() {
   if (data.assets.length === 0) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Add holdings to see your look-through exposure.</p>
+        <p className="text-sm text-zinc-500">{t("xray.addHoldings")}</p>
       </Card>
     );
   }
@@ -40,9 +42,7 @@ export function XrayView() {
     return (
       <Card>
         <p className="text-sm text-zinc-500">
-          {hasConstituents()
-            ? "None of your holdings have look-through data yet (no stocks or recognised ETFs)."
-            : "Constituent data isn't available — connect Supabase and seed the catalog to enable X-ray."}
+          {hasConstituents() ? t("xray.noData") : t("xray.noCatalog")}
         </p>
       </Card>
     );
@@ -53,10 +53,10 @@ export function XrayView() {
   return (
     <Card>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">Stock exposure (look-through)</h2>
+        <h2 className="text-lg font-semibold">{t("xray.stockExposure")}</h2>
         <p className="text-sm text-zinc-500">
-          {formatNumber((xray.classified / (xray.total || 1)) * 100, 0)}% in equities ·{" "}
-          {formatCurrency(xray.unclassified, currency)} other / non-equity
+          {formatNumber((xray.classified / (xray.total || 1)) * 100, 0)}% {t("xray.inEquities")} ·{" "}
+          {formatCurrency(xray.unclassified, currency)} {t("xray.otherNonEquity")}
         </p>
       </div>
 
@@ -64,10 +64,10 @@ export function XrayView() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-              <th className="py-2 pr-3">Stock</th>
-              <th className="py-2 pr-3">Held via</th>
-              <th className="py-2 pr-3 text-right">Exposure</th>
-              <th className="py-2 pr-3 text-right">% of portfolio</th>
+              <th className="py-2 pr-3">{t("xray.colStock")}</th>
+              <th className="py-2 pr-3">{t("xray.colHeldVia")}</th>
+              <th className="py-2 pr-3 text-right">{t("xray.colExposure")}</th>
+              <th className="py-2 pr-3 text-right">{t("xray.colPct")}</th>
             </tr>
           </thead>
           <tbody>
@@ -108,10 +108,7 @@ export function XrayView() {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-zinc-500">
-        ETF look-through uses representative top holdings; the remainder of each
-        fund is counted as “other”.
-      </p>
+      <p className="mt-3 text-xs text-zinc-500">{t("xray.footnote")}</p>
     </Card>
   );
 }

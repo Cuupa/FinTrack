@@ -21,6 +21,7 @@ import { realizedByMonth, topMovers, type Mover, type MonthlyRealized } from "@/
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
@@ -54,6 +55,7 @@ function fillMonths(rows: MonthlyRealized[]): MonthlyRealized[] {
 export function TradesView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
+  const { t } = useI18n();
   const currency = data.profile.currency;
 
   const holdings = useMemo(
@@ -80,7 +82,7 @@ export function TradesView() {
   if (data.assets.length === 0) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Add holdings to see your trade history.</p>
+        <p className="text-sm text-zinc-500">{t("trades.addHoldings")}</p>
       </Card>
     );
   }
@@ -89,11 +91,11 @@ export function TradesView() {
     <div className="space-y-6">
       <Card>
         <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-          Realized P&amp;L by month
-          <InfoTip text="Locked-in gain/loss from sells, attributed to the month each sale happened (average-cost basis)." />
+          {t("trades.byMonth")}
+          <InfoTip text={t("trades.byMonthTip")} />
         </h2>
         {barData.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">No sells yet — realised P&amp;L appears here once you sell.</p>
+          <p className="mt-3 text-sm text-zinc-500">{t("trades.noSells")}</p>
         ) : (
           <div className="mt-3">
             <ResponsiveContainer width="100%" height={260}>
@@ -116,7 +118,7 @@ export function TradesView() {
                 />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: "1px solid rgba(120,120,120,0.3)", fontSize: 13 }}
-                  formatter={(v) => [formatCurrency(Number(v), currency), "Realized"]}
+                  formatter={(v) => [formatCurrency(Number(v), currency), t("trades.realized")]}
                 />
                 <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                   {barData.map((d, i) => (
@@ -130,8 +132,8 @@ export function TradesView() {
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <MoverList title="Top winners" movers={wins} currency={currency} positive />
-        <MoverList title="Top losers" movers={losses} currency={currency} positive={false} />
+        <MoverList title={t("trades.topWinners")} movers={wins} currency={currency} positive />
+        <MoverList title={t("trades.topLosers")} movers={losses} currency={currency} positive={false} />
       </div>
     </div>
   );
@@ -148,14 +150,15 @@ function MoverList({
   currency: string;
   positive: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <Card>
       <h3 className="flex items-center gap-1.5 text-sm font-semibold">
         {title}
-        <InfoTip text="Ranked by total profit/loss (realised plus unrealised) in your base currency." />
+        <InfoTip text={t("trades.moverTip")} />
       </h3>
       {movers.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-500">Nothing here yet.</p>
+        <p className="mt-3 text-sm text-zinc-500">{t("trades.nothing")}</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {movers.map((m) => (

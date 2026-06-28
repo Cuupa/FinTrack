@@ -9,9 +9,7 @@ export default function XrayPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("xray.title")}</h1>
-        <p className="text-sm text-zinc-500">
-          Your true exposure to individual stocks, looking through your funds.
-        </p>
+        <p className="text-sm text-zinc-500">{t("xray.subtitle")}</p>
       </div>
       <XrayView />
     </div>

@@ -4,6 +4,7 @@
 // No selection = "Portfolio wide" (all holdings).
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface ScopeOption {
   id: string;
@@ -19,6 +20,7 @@ export function ScopeSelect({
   selected: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,7 +38,7 @@ export function ScopeSelect({
 
   const summary =
     selected.length === 0
-      ? "Portfolio wide"
+      ? t("common.portfolioWide")
       : selected.length === 1
         ? (options.find((o) => o.id === selected[0])?.label ?? "1 selected")
         : `${selected.length} selected`;
@@ -48,7 +50,7 @@ export function ScopeSelect({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
       >
-        <span className="text-zinc-400">Scope:</span>
+        <span className="text-zinc-400">{t("common.scope")}:</span>
         {summary}
         <span className="text-[10px] text-zinc-400">▾</span>
       </button>
@@ -61,7 +63,7 @@ export function ScopeSelect({
               selected.length === 0 ? "font-semibold text-emerald-600 dark:text-emerald-400" : ""
             }`}
           >
-            Portfolio wide
+            {t("common.portfolioWide")}
           </button>
           <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
           {options.map((o) => {

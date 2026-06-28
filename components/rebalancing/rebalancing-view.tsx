@@ -13,6 +13,7 @@ import type { Slice } from "@/lib/finance/allocation";
 import { formatCurrency, formatNumber, parseDecimal, plColor } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const PALETTE = [
   "#6366f1",
@@ -43,6 +44,7 @@ let customSeq = 0;
 export function RebalancingView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
+  const { t } = useI18n();
   const base = data.profile.currency;
 
   const holdings = useMemo(
@@ -113,7 +115,7 @@ export function RebalancingView() {
   if (holdings.length === 0) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Add holdings to plan a rebalance.</p>
+        <p className="text-sm text-zinc-500">{t("rebalance.addHoldings")}</p>
       </Card>
     );
   }
@@ -153,7 +155,7 @@ export function RebalancingView() {
             legend (the previous bug). */}
         <div className="grid items-center gap-8 lg:grid-cols-[1fr_auto_1fr]">
           <RebalanceDonut
-            title="Current"
+            title={t("rebalance.current")}
             slices={currentSlices}
             total={currentTotal}
             currency={base}
@@ -188,7 +190,7 @@ export function RebalancingView() {
 
           {targetSlices.length > 0 ? (
             <RebalanceDonut
-              title="Target"
+              title={t("rebalance.target")}
               slices={targetSlices}
               total={total}
               currency={base}
@@ -196,7 +198,7 @@ export function RebalancingView() {
             />
           ) : (
             <div className="flex h-56 items-center justify-center text-center text-sm text-zinc-500">
-              Set target weights below.
+              {t("rebalance.setWeights")}
             </div>
           )}
         </div>
@@ -204,21 +206,21 @@ export function RebalancingView() {
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">Target allocation</h3>
+          <h3 className="text-sm font-semibold">{t("rebalance.targetAllocation")}</h3>
           <div className="flex items-center gap-3 text-sm">
             <span
               className={`tabular-nums ${
                 Math.abs(targetSum - 100) < 0.05 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
               }`}
             >
-              Total: {targetSum.toFixed(1)}%
+              {t("rebalance.total")}: {targetSum.toFixed(1)}%
             </span>
             <button
               type="button"
               onClick={normalize}
               className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
-              Normalise to 100%
+              {t("rebalance.normalise")}
             </button>
           </div>
         </div>
@@ -227,11 +229,11 @@ export function RebalancingView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <th className="py-2 pr-3">Position</th>
-                <th className="py-2 pr-3 text-right">Current</th>
-                <th className="py-2 pr-3 text-right">Target %</th>
-                <th className="py-2 pr-3 text-right">Target value</th>
-                <th className="py-2 pr-3 text-right">Action</th>
+                <th className="py-2 pr-3">{t("rebalance.colPosition")}</th>
+                <th className="py-2 pr-3 text-right">{t("rebalance.current")}</th>
+                <th className="py-2 pr-3 text-right">{t("rebalance.colTargetPct")}</th>
+                <th className="py-2 pr-3 text-right">{t("rebalance.colTargetValue")}</th>
+                <th className="py-2 pr-3 text-right">{t("rebalance.colAction")}</th>
                 <th className="py-2" />
               </tr>
             </thead>
@@ -274,7 +276,7 @@ export function RebalancingView() {
                       {formatCurrency(targetValue, base)}
                     </td>
                     <td className={`py-2 pr-3 text-right tabular-nums ${plColor(delta)}`} data-private>
-                      {delta >= 0 ? "Buy " : "Sell "}
+                      {delta >= 0 ? `${t("rebalance.buy")} ` : `${t("rebalance.sell")} `}
                       {formatCurrency(Math.abs(delta), base)}
                     </td>
                     <td className="py-2 text-right">
@@ -283,7 +285,7 @@ export function RebalancingView() {
                           type="button"
                           onClick={() => removeCustom(r.id)}
                           className="text-xs text-zinc-400 hover:text-red-500"
-                          aria-label="Remove position"
+                          aria-label={t("rebalance.removePosition")}
                         >
                           ✕
                         </button>
@@ -302,10 +304,10 @@ export function RebalancingView() {
             onClick={addCustom}
             className="rounded-lg border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
-            + Add target position
+            {t("rebalance.addPosition")}
           </button>
           <span className="text-zinc-500">
-            Pool to allocate: <Private>{formatCurrency(total, base)}</Private>
+            {t("rebalance.pool")} <Private>{formatCurrency(total, base)}</Private>
           </span>
         </div>
       </Card>

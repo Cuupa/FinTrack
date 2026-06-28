@@ -20,6 +20,7 @@ import {
   type Slice,
 } from "@/lib/finance/allocation";
 import { useTags } from "@/lib/tags/tags-context";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { colorForLabel } from "@/lib/colors";
 import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
@@ -29,17 +30,17 @@ import { Card } from "@/components/ui/primitives";
 import { AllocationPie } from "./allocation-pie";
 
 const TABS = [
-  { key: "investment", label: "Investments" },
-  { key: "assetClass", label: "Asset Classes" },
-  { key: "sector", label: "Sectors" },
-  { key: "region", label: "Region" },
-  { key: "country", label: "Countries" },
-  { key: "currency", label: "Currencies" },
-  { key: "volatility", label: "Volatility" },
-  { key: "custom", label: "Custom" },
+  "investment",
+  "assetClass",
+  "sector",
+  "region",
+  "country",
+  "currency",
+  "volatility",
+  "custom",
 ] as const;
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = (typeof TABS)[number];
 
 export function AllocationView() {
   const { data } = usePortfolio();
@@ -64,6 +65,7 @@ export function AllocationView() {
   const etfRegions = useEtfRegions(holdings, version);
   const etfCountries = useEtfCountries(holdings, version);
   const { tags } = useTags();
+  const { t } = useI18n();
 
   const charts = useMemo<Record<TabKey, Slice[]>>(
     () => ({
@@ -83,7 +85,7 @@ export function AllocationView() {
   if (holdings.length === 0) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Add holdings to see your allocation.</p>
+        <p className="text-sm text-zinc-500">{t("alloc.addHoldings")}</p>
       </Card>
     );
   }
@@ -93,32 +95,28 @@ export function AllocationView() {
       {/* Breakdown selector: a contained pill group, distinct from the page's
           primary underline tabs. */}
       <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
-        {TABS.map((t) => (
+        {TABS.map((key) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            aria-pressed={tab === t.key}
+            key={key}
+            onClick={() => setTab(key)}
+            aria-pressed={tab === key}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === t.key
+              tab === key
                 ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                 : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
             }`}
           >
-            {t.label}
+            {t(`alloc.${key}`)}
           </button>
         ))}
       </div>
 
       <div className="mt-8">
         {tab === "custom" && charts.custom.every((s) => s.label === "Untagged") ? (
-          <p className="py-6 text-center text-sm text-zinc-500">
-            No tags yet — open an asset and add tags to build a custom breakdown.
-          </p>
+          <p className="py-6 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
         ) : charts[tab].length === 0 ? (
           <p className="py-12 text-center text-sm text-zinc-500">
-            {tab === "region" || tab === "country"
-              ? "No geographic data yet — run the ETF-breakdowns sync to fetch each fund's country weightings."
-              : "No data for this breakdown yet."}
+            {tab === "region" || tab === "country" ? t("alloc.noGeo") : t("alloc.noData")}
           </p>
         ) : (
           <AllocationPie

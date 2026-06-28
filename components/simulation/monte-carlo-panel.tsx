@@ -27,6 +27,7 @@ import {
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartMode, ChartScale } from "@/components/charts/performance-chart";
 
@@ -44,6 +45,7 @@ function pct(fraction: number, digits = 1): string {
 export function MonteCarloPanel() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
+  const { t } = useI18n();
   const currency = data.profile.currency;
 
   const holdings = useMemo(
@@ -220,31 +222,31 @@ export function MonteCarloPanel() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
-        <h2 className="text-lg font-semibold">Parameters</h2>
+        <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
         <div className="mt-4 space-y-4">
           {hasPortfolio && (
             <div>
-              <label className="text-sm font-medium">Model</label>
+              <label className="text-sm font-medium">{t("sim.model")}</label>
               <div className="mt-1">
                 <SegmentedControl<SimMode>
                   value={effectiveMode}
                   onChange={setMode}
                   options={[
-                    { label: "My portfolio", value: "portfolio" },
-                    { label: "Custom", value: "custom" },
+                    { label: t("sim.myPortfolio"), value: "portfolio" },
+                    { label: t("sim.custom"), value: "custom" },
                   ]}
                 />
               </div>
               <p className="mt-1 text-xs text-zinc-500">
                 {effectiveMode === "portfolio"
-                  ? "Simulates each holding with its own volatility and the correlations between them."
-                  : "Simulates a single blended return and volatility."}
+                  ? t("sim.modelPortfolioDesc")
+                  : t("sim.modelCustomDesc")}
               </p>
             </div>
           )}
 
           <SliderField
-            label="Initial capital"
+            label={t("sim.initialCapital")}
             suffix={currency}
             value={initialCapital}
             onChange={(v) => setCapitalOverride(v)}
@@ -253,7 +255,7 @@ export function MonteCarloPanel() {
             step={1000}
           />
           <SliderField
-            label="Monthly contribution"
+            label={t("sim.monthlyContribution")}
             suffix={currency}
             value={form.monthlyContribution}
             onChange={(v) => update("monthlyContribution", v)}
@@ -262,8 +264,8 @@ export function MonteCarloPanel() {
             step={50}
           />
           <SliderField
-            label="Investment horizon"
-            suffix="years"
+            label={t("sim.horizon")}
+            suffix={t("sim.years")}
             value={form.years}
             onChange={(v) => update("years", v)}
             min={1}
@@ -298,7 +300,7 @@ export function MonteCarloPanel() {
                 digits={1}
               />
               <SliderField
-                label="Volatility (std. dev.)"
+                label={t("sim.volatility")}
                 suffix="%"
                 value={volatility}
                 onChange={(v) => setVolOverride(v)}
@@ -310,7 +312,7 @@ export function MonteCarloPanel() {
             </>
           )}
           <SliderField
-            label="Simulation runs"
+            label={t("sim.runs")}
             value={form.runs}
             onChange={(v) => update("runs", v)}
             min={1000}
@@ -318,7 +320,7 @@ export function MonteCarloPanel() {
             step={500}
           />
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
-            {running ? "Simulating…" : "Run simulation"}
+            {running ? t("sim.running") : t("sim.run")}
           </Button>
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
             <p className="font-medium text-zinc-700 dark:text-zinc-300">Default guidelines</p>
@@ -352,21 +354,21 @@ export function MonteCarloPanel() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Card>
                 <Stat
-                  label="Median outcome"
+                  label={t("sim.median")}
                   value={formatCurrency(final.median, currency)}
-                  sub={`after ${result.params.years} years`}
+                  sub={`${result.params.years} ${t("sim.years")}`}
                 />
               </Card>
               <Card>
                 <Stat
-                  label="Optimistic (90th pct)"
+                  label={t("sim.optimistic")}
                   value={formatCurrency(final.p90, currency)}
                   valueClassName={plColor(1)}
                 />
               </Card>
               <Card>
                 <Stat
-                  label="Pessimistic (10th pct)"
+                  label={t("sim.pessimistic")}
                   value={formatCurrency(final.p10, currency)}
                   valueClassName={plColor(-1)}
                 />
@@ -374,7 +376,7 @@ export function MonteCarloPanel() {
             </div>
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Projected wealth</h2>
+                <h2 className="text-lg font-semibold">{t("sim.projectedWealth")}</h2>
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Log scale is undefined for percentages — hide in percent mode. */}
                   {chartMode === "currency" && (
@@ -393,12 +395,12 @@ export function MonteCarloPanel() {
                     value={chartMode}
                     onChange={setChartMode}
                     options={[
-                      { label: "Currency", value: "currency" },
-                      { label: "Percent", value: "percent" },
+                      { label: t("sim.modeCurrency"), value: "currency" },
+                      { label: t("sim.modePercent"), value: "percent" },
                     ]}
                   />
                   <span className="text-xs text-zinc-500">
-                    {result.params.runs.toLocaleString()} runs
+                    {result.params.runs.toLocaleString()} {t("sim.runsLabel")}
                   </span>
                 </div>
               </div>
@@ -427,11 +429,8 @@ export function MonteCarloPanel() {
         ) : (
           <Card>
             <div className="flex h-80 flex-col items-center justify-center gap-2 text-center text-zinc-500">
-              <p className="font-medium">Configure your plan and run a simulation</p>
-              <p className="text-sm">
-                Adjust the parameters on the left to project how your wealth could
-                grow under thousands of market scenarios.
-              </p>
+              <p className="font-medium">{t("sim.configurePrompt")}</p>
+              <p className="text-sm">{t("sim.configureHint")}</p>
             </div>
           </Card>
         )}
@@ -669,21 +668,22 @@ function SummaryRow({
   median: number;
   currency: string;
 }) {
+  const { t } = useI18n();
   const growth = median - contributed;
   return (
     <div className="mt-4 grid grid-cols-3 gap-4 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
       <div>
-        <div className="text-zinc-500">Total contributed</div>
+        <div className="text-zinc-500">{t("sim.contributed")}</div>
         <div className="font-medium tabular-nums">{formatCurrency(contributed, currency)}</div>
       </div>
       <div>
-        <div className="text-zinc-500">Projected growth (median)</div>
+        <div className="text-zinc-500">{t("sim.growth")}</div>
         <div className={`font-medium tabular-nums ${plColor(growth)}`}>
           {formatCurrency(growth, currency)}
         </div>
       </div>
       <div>
-        <div className="text-zinc-500">Multiple</div>
+        <div className="text-zinc-500">{t("sim.multiple")}</div>
         <div className="font-medium tabular-nums">
           {contributed > 0 ? `${(median / contributed).toFixed(2)}×` : "—"}
         </div>
@@ -716,6 +716,7 @@ function SliderField({
   step?: number;
   digits?: number;
 }) {
+  const { t } = useI18n();
   const [manual, setManual] = useState(false);
   const display = digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
 
@@ -728,7 +729,7 @@ function SliderField({
           onClick={() => setManual((m) => !m)}
           className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
         >
-          {manual ? "Use slider" : "Enter value"}
+          {manual ? t("sim.useSlider") : t("sim.enterValue")}
         </button>
       </div>
       {manual ? (

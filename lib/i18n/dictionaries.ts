@@ -95,6 +95,127 @@ export const en = {
   "compare.hint": "Approximate comparison",
   "compare.hintFull":
     "Benchmarks are shown as total return (dividends reinvested) and converted to your currency using historic exchange rates, so currency and accumulating-vs-distributing differences can cause small deviations.",
+
+  // Analysis
+  "analysis.tab.distributions": "Distributions",
+  "analysis.tab.returns": "Returns",
+  "analysis.tab.trades": "Trades",
+  "analysis.blurb.distributions":
+    "How your portfolio is split across investments, classes, sectors, regions and risk.",
+  "analysis.blurb.returns":
+    "Your contribution-adjusted returns by quarter and year, and a per-holding performance map.",
+  "analysis.blurb.trades": "Realized P&L over time and your best and worst positions.",
+
+  // Allocation / distributions
+  "alloc.investment": "Investments",
+  "alloc.assetClass": "Asset Classes",
+  "alloc.sector": "Sectors",
+  "alloc.region": "Region",
+  "alloc.country": "Countries",
+  "alloc.currency": "Currencies",
+  "alloc.volatility": "Volatility",
+  "alloc.custom": "Custom",
+  "alloc.addHoldings": "Add holdings to see your allocation.",
+  "alloc.noTags": "No tags yet — open an asset and add tags to build a custom breakdown.",
+  "alloc.noGeo":
+    "No geographic data yet — run the ETF-breakdowns sync to fetch each fund's country weightings.",
+  "alloc.noData": "No data for this breakdown yet.",
+
+  // Returns
+  "returns.title": "Returns",
+  "returns.tip":
+    "Period returns adjusted for deposits/withdrawals (modified Dietz), so adding money doesn't show up as a gain.",
+  "returns.byQuarter": "Return by quarter",
+  "returns.byYear": "Return by year",
+  "returns.perfMap": "Performance map",
+  "returns.perfMapTip":
+    "Each holding sized by its current value and coloured by its return over the selected timeframe (green = up, red = down). MAX shows the all-time return vs. your cost basis.",
+  "returns.addHoldings": "Add holdings to see your returns.",
+  "period.quarter": "Quarter",
+  "period.year": "Year",
+
+  // Trades
+  "trades.byMonth": "Realized P&L by month",
+  "trades.byMonthTip":
+    "Locked-in gain/loss from sells, attributed to the month each sale happened (average-cost basis).",
+  "trades.noSells": "No sells yet — realised P&L appears here once you sell.",
+  "trades.realized": "Realized",
+  "trades.topWinners": "Top winners",
+  "trades.topLosers": "Top losers",
+  "trades.moverTip": "Ranked by total profit/loss (realised plus unrealised) in your base currency.",
+  "trades.nothing": "Nothing here yet.",
+  "trades.addHoldings": "Add holdings to see your trade history.",
+
+  // X-Ray
+  "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
+  "xray.addHoldings": "Add holdings to see your look-through exposure.",
+  "xray.noData":
+    "None of your holdings have look-through data yet (no stocks or recognised ETFs).",
+  "xray.noCatalog":
+    "Constituent data isn't available — connect Supabase and seed the catalog to enable X-ray.",
+  "xray.stockExposure": "Stock exposure (look-through)",
+  "xray.inEquities": "in equities",
+  "xray.otherNonEquity": "other / non-equity",
+  "xray.colStock": "Stock",
+  "xray.colHeldVia": "Held via",
+  "xray.colExposure": "Exposure",
+  "xray.colPct": "% of portfolio",
+  "xray.footnote":
+    "ETF look-through uses representative top holdings; the remainder of each fund is counted as “other”.",
+
+  // Rebalancing
+  "rebalancing.subtitle":
+    "Compare your current allocation to a target and see the trades needed to get there.",
+  "rebalance.addHoldings": "Add holdings to plan a rebalance.",
+  "rebalance.current": "Current",
+  "rebalance.target": "Target",
+  "rebalance.setWeights": "Set target weights below.",
+  "rebalance.targetAllocation": "Target allocation",
+  "rebalance.total": "Total",
+  "rebalance.normalise": "Normalise to 100%",
+  "rebalance.colPosition": "Position",
+  "rebalance.colTargetPct": "Target %",
+  "rebalance.colTargetValue": "Target value",
+  "rebalance.colAction": "Action",
+  "rebalance.buy": "Buy",
+  "rebalance.sell": "Sell",
+  "rebalance.addPosition": "+ Add target position",
+  "rebalance.pool": "Pool to allocate:",
+  "rebalance.removePosition": "Remove position",
+
+  // Simulation
+  "sim.subtitle": "Project your long-term wealth with a Monte Carlo simulation.",
+  "sim.parameters": "Parameters",
+  "sim.model": "Model",
+  "sim.myPortfolio": "My portfolio",
+  "sim.custom": "Custom",
+  "sim.modelPortfolioDesc":
+    "Simulates each holding with its own volatility and the correlations between them.",
+  "sim.modelCustomDesc": "Simulates a single blended return and volatility.",
+  "sim.initialCapital": "Initial capital",
+  "sim.monthlyContribution": "Monthly contribution",
+  "sim.horizon": "Investment horizon",
+  "sim.years": "years",
+  "sim.expectedReturn": "Expected annual return",
+  "sim.volatility": "Volatility (std. dev.)",
+  "sim.runs": "Simulation runs",
+  "sim.run": "Run simulation",
+  "sim.running": "Simulating…",
+  "sim.enterValue": "Enter value",
+  "sim.useSlider": "Use slider",
+  "sim.median": "Median outcome",
+  "sim.optimistic": "Optimistic (90th pct)",
+  "sim.pessimistic": "Pessimistic (10th pct)",
+  "sim.projectedWealth": "Projected wealth",
+  "sim.modeCurrency": "Currency",
+  "sim.modePercent": "Percent",
+  "sim.runsLabel": "runs",
+  "sim.contributed": "Total contributed",
+  "sim.growth": "Projected growth (median)",
+  "sim.multiple": "Multiple",
+  "sim.configurePrompt": "Configure your plan and run a simulation",
+  "sim.configureHint":
+    "Adjust the parameters on the left to project how your wealth could grow under thousands of market scenarios.",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -186,6 +307,129 @@ const de: Partial<Record<MessageKey, string>> = {
   "compare.hint": "Ungefährer Vergleich",
   "compare.hintFull":
     "Benchmarks werden als Total Return (Dividenden reinvestiert) dargestellt und mit historischen Wechselkursen in Ihre Währung umgerechnet; Währungs- und Thesaurierend-vs-Ausschüttend-Unterschiede können kleine Abweichungen verursachen.",
+
+  // Analysis
+  "analysis.tab.distributions": "Verteilungen",
+  "analysis.tab.returns": "Renditen",
+  "analysis.tab.trades": "Trades",
+  "analysis.blurb.distributions":
+    "Wie sich Ihr Portfolio auf Investments, Klassen, Sektoren, Regionen und Risiko verteilt.",
+  "analysis.blurb.returns":
+    "Ihre einzahlungsbereinigten Renditen je Quartal und Jahr sowie eine Performance-Karte je Position.",
+  "analysis.blurb.trades": "Realisierter G/V im Zeitverlauf und Ihre besten und schlechtesten Positionen.",
+
+  // Allocation / distributions
+  "alloc.investment": "Investments",
+  "alloc.assetClass": "Anlageklassen",
+  "alloc.sector": "Sektoren",
+  "alloc.region": "Region",
+  "alloc.country": "Länder",
+  "alloc.currency": "Währungen",
+  "alloc.volatility": "Volatilität",
+  "alloc.custom": "Eigene",
+  "alloc.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Aufteilung zu sehen.",
+  "alloc.noTags":
+    "Noch keine Tags — öffnen Sie eine Position und fügen Sie Tags hinzu, um eine eigene Aufteilung zu erstellen.",
+  "alloc.noGeo":
+    "Noch keine Geodaten — führen Sie die ETF-Breakdowns-Synchronisierung aus, um die Ländergewichtungen je Fonds zu laden.",
+  "alloc.noData": "Noch keine Daten für diese Aufteilung.",
+
+  // Returns
+  "returns.title": "Renditen",
+  "returns.tip":
+    "Periodenrenditen bereinigt um Ein-/Auszahlungen (modifizierte Dietz-Methode), sodass Einzahlungen nicht als Gewinn erscheinen.",
+  "returns.byQuarter": "Rendite je Quartal",
+  "returns.byYear": "Rendite je Jahr",
+  "returns.perfMap": "Performance-Karte",
+  "returns.perfMapTip":
+    "Jede Position ist nach ihrem aktuellen Wert dimensioniert und nach ihrer Rendite im gewählten Zeitraum eingefärbt (grün = hoch, rot = runter). MAX zeigt die Gesamtrendite gegenüber Ihrem Einstand.",
+  "returns.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Renditen zu sehen.",
+  "period.quarter": "Quartal",
+  "period.year": "Jahr",
+
+  // Trades
+  "trades.byMonth": "Realisierter G/V je Monat",
+  "trades.byMonthTip":
+    "Realisierter Gewinn/Verlust aus Verkäufen, dem Monat des jeweiligen Verkaufs zugeordnet (Durchschnittskosten).",
+  "trades.noSells": "Noch keine Verkäufe — realisierter G/V erscheint hier, sobald Sie verkaufen.",
+  "trades.realized": "Realisiert",
+  "trades.topWinners": "Top-Gewinner",
+  "trades.topLosers": "Top-Verlierer",
+  "trades.moverTip":
+    "Sortiert nach Gesamtgewinn/-verlust (realisiert plus nicht realisiert) in Ihrer Basiswährung.",
+  "trades.nothing": "Hier ist noch nichts.",
+  "trades.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Handelshistorie zu sehen.",
+
+  // X-Ray
+  "xray.subtitle": "Ihr tatsächliches Engagement in Einzelaktien — durch Ihre Fonds hindurch.",
+  "xray.addHoldings": "Fügen Sie Positionen hinzu, um Ihr Durchschau-Engagement zu sehen.",
+  "xray.noData":
+    "Keine Ihrer Positionen hat bisher Durchschau-Daten (keine Aktien oder erkannten ETFs).",
+  "xray.noCatalog":
+    "Bestandteildaten sind nicht verfügbar — verbinden Sie Supabase und befüllen Sie den Katalog, um die Durchschau zu aktivieren.",
+  "xray.stockExposure": "Aktien-Engagement (Durchschau)",
+  "xray.inEquities": "in Aktien",
+  "xray.otherNonEquity": "sonstige / nicht-Aktien",
+  "xray.colStock": "Aktie",
+  "xray.colHeldVia": "Gehalten über",
+  "xray.colExposure": "Engagement",
+  "xray.colPct": "% des Portfolios",
+  "xray.footnote":
+    "Die ETF-Durchschau nutzt repräsentative Top-Positionen; der Rest jedes Fonds zählt als „sonstige“.",
+
+  // Rebalancing
+  "rebalancing.subtitle":
+    "Vergleichen Sie Ihre aktuelle Aufteilung mit einem Ziel und sehen Sie die nötigen Trades.",
+  "rebalance.addHoldings": "Fügen Sie Positionen hinzu, um eine Umschichtung zu planen.",
+  "rebalance.current": "Aktuell",
+  "rebalance.target": "Ziel",
+  "rebalance.setWeights": "Legen Sie unten die Zielgewichtungen fest.",
+  "rebalance.targetAllocation": "Zielaufteilung",
+  "rebalance.total": "Gesamt",
+  "rebalance.normalise": "Auf 100 % normieren",
+  "rebalance.colPosition": "Position",
+  "rebalance.colTargetPct": "Ziel %",
+  "rebalance.colTargetValue": "Zielwert",
+  "rebalance.colAction": "Aktion",
+  "rebalance.buy": "Kaufen",
+  "rebalance.sell": "Verkaufen",
+  "rebalance.addPosition": "+ Zielposition hinzufügen",
+  "rebalance.pool": "Zu verteilendes Kapital:",
+  "rebalance.removePosition": "Position entfernen",
+
+  // Simulation
+  "sim.subtitle": "Projizieren Sie Ihr langfristiges Vermögen mit einer Monte-Carlo-Simulation.",
+  "sim.parameters": "Parameter",
+  "sim.model": "Modell",
+  "sim.myPortfolio": "Mein Portfolio",
+  "sim.custom": "Benutzerdefiniert",
+  "sim.modelPortfolioDesc":
+    "Simuliert jede Position mit ihrer eigenen Volatilität und den Korrelationen untereinander.",
+  "sim.modelCustomDesc": "Simuliert eine einzelne gemischte Rendite und Volatilität.",
+  "sim.initialCapital": "Anfangskapital",
+  "sim.monthlyContribution": "Monatlicher Sparbetrag",
+  "sim.horizon": "Anlagehorizont",
+  "sim.years": "Jahre",
+  "sim.expectedReturn": "Erwartete Jahresrendite",
+  "sim.volatility": "Volatilität (Std.-Abw.)",
+  "sim.runs": "Simulationsläufe",
+  "sim.run": "Simulation starten",
+  "sim.running": "Simuliere…",
+  "sim.enterValue": "Wert eingeben",
+  "sim.useSlider": "Schieberegler",
+  "sim.median": "Median-Ergebnis",
+  "sim.optimistic": "Optimistisch (90. Perzentil)",
+  "sim.pessimistic": "Pessimistisch (10. Perzentil)",
+  "sim.projectedWealth": "Projiziertes Vermögen",
+  "sim.modeCurrency": "Währung",
+  "sim.modePercent": "Prozent",
+  "sim.runsLabel": "Läufe",
+  "sim.contributed": "Insgesamt eingezahlt",
+  "sim.growth": "Projiziertes Wachstum (Median)",
+  "sim.multiple": "Vielfaches",
+  "sim.configurePrompt": "Konfigurieren Sie Ihren Plan und starten Sie eine Simulation",
+  "sim.configureHint":
+    "Passen Sie die Parameter links an, um zu projizieren, wie Ihr Vermögen unter tausenden Marktszenarien wachsen könnte.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };
