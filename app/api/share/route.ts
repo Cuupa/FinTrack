@@ -21,8 +21,11 @@ function shortId(len = 10): string {
 
 export async function POST(req: Request): Promise<Response> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
+  // Prefer the service role, but fall back to the anon key — an RLS insert
+  // policy lets anyone create a share, so short links work without a service
+  // role configured (the common Vercel setup).
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
     return Response.json({ error: "sharing not configured" }, { status: 503 });
   }
 
@@ -35,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
   const payload = normalizeShare((body as { payload?: unknown })?.payload);
   if (!payload) return Response.json({ error: "invalid payload" }, { status: 400 });
 
-  const supabase = createClient(url, serviceKey);
+  const supabase = createClient(url, key);
   // Retry a couple of times on the (astronomically unlikely) id collision.
   for (let attempt = 0; attempt < 3; attempt++) {
     const id = shortId();

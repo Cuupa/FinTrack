@@ -12,6 +12,9 @@ create table if not exists public.shared_portfolios (
 alter table public.shared_portfolios enable row level security;
 drop policy if exists "shared portfolios readable" on public.shared_portfolios;
 create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
+-- Anyone may create a share (random ids), so short links work on the anon key.
+drop policy if exists "shared portfolios insertable" on public.shared_portfolios;
+create policy "shared portfolios insertable" on public.shared_portfolios for insert with check (true);
 
 insert into public.schema_migrations (version) values ('0017_shared_portfolios')
 on conflict (version) do nothing;

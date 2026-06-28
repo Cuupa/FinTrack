@@ -201,10 +201,12 @@ drop policy if exists "fx readable" on public.fx_rates;
 create policy "fx readable" on public.fx_rates for select using (true);
 drop policy if exists "benchmark history readable" on public.benchmark_history;
 create policy "benchmark history readable" on public.benchmark_history for select using (true);
--- Shared snapshots are world-readable by id (a share link); writes are
--- service-role only (the create endpoint), which bypasses RLS.
+-- Shared snapshots are world-readable by id (a share link), and anyone may
+-- create one (so short links work without a service role). Ids are random.
 drop policy if exists "shared portfolios readable" on public.shared_portfolios;
 create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
+drop policy if exists "shared portfolios insertable" on public.shared_portfolios;
+create policy "shared portfolios insertable" on public.shared_portfolios for insert with check (true);
 drop policy if exists "etf breakdowns readable" on public.etf_breakdowns;
 create policy "etf breakdowns readable" on public.etf_breakdowns for select using (true);
 drop policy if exists "migrations readable" on public.schema_migrations;

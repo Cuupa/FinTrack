@@ -50,6 +50,15 @@ export interface ShareSource {
   holdings: { name: string; type: string; marketValue: number; ret: number }[];
 }
 
+/** Round to `d` decimals (keeps payloads small — raw floats are absurdly long). */
+function r(n: number, d: number): number {
+  const f = 10 ** d;
+  return Math.round(n * f) / f;
+}
+function roundSeries(s: SharePt[], d: number): SharePt[] {
+  return s.map((p) => ({ date: p.date, value: r(p.value, d) }));
+}
+
 export function buildSharePayload(src: ShareSource, incognito: boolean): SharePayload {
   const total = src.netWorth || 0;
   return {
@@ -57,17 +66,17 @@ export function buildSharePayload(src: ShareSource, incognito: boolean): SharePa
     incognito,
     currency: src.currency,
     createdAt: new Date().toISOString(),
-    netWorth: incognito ? null : total,
-    irr: src.irr,
-    twr: src.twr,
-    twrSeries: src.twrSeries,
-    wealthSeries: incognito ? null : src.wealthSeries,
+    netWorth: incognito ? null : r(total, 2),
+    irr: src.irr != null ? r(src.irr, 4) : null,
+    twr: src.twr != null ? r(src.twr, 4) : null,
+    twrSeries: roundSeries(src.twrSeries, 4),
+    wealthSeries: incognito ? null : roundSeries(src.wealthSeries, 2),
     holdings: src.holdings.map((h) => ({
       name: h.name,
       type: h.type,
-      allocation: total > 0 ? h.marketValue / total : 0,
-      ret: h.ret,
-      value: incognito ? null : h.marketValue,
+      allocation: r(total > 0 ? h.marketValue / total : 0, 4),
+      ret: r(h.ret, 4),
+      value: incognito ? null : r(h.marketValue, 2),
     })),
   };
 }
