@@ -89,10 +89,23 @@ create index if not exists benchmark_history_id_currency_date_idx
 -- hitting Yahoo/onvista on every view. Refreshed by /api/cron/sync-etf-breakdowns.
 create table if not exists public.etf_breakdowns (
   etf_key text not null,
-  kind text not null check (kind in ('sector', 'region')),
+  kind text not null check (kind in ('sector', 'region', 'country')),
   data jsonb not null,
   synced_at timestamptz not null default now(),
   primary key (etf_key, kind)
+);
+-- Widen the kind check for existing installs (added 'country').
+alter table public.etf_breakdowns drop constraint if exists etf_breakdowns_kind_check;
+alter table public.etf_breakdowns
+  add constraint etf_breakdowns_kind_check check (kind in ('sector', 'region', 'country'));
+
+-- Shared portfolio snapshots: a short id → the (already mode-appropriate) JSON
+-- payload, so share links can be short instead of carrying the whole snapshot.
+-- World-readable (that's the point of a share link); written by the service role.
+create table if not exists public.shared_portfolios (
+  id text primary key,
+  payload jsonb not null,
+  created_at timestamptz not null default now()
 );
 
 -- Assets ---------------------------------------------------------------------
@@ -153,7 +166,9 @@ insert into public.schema_migrations (version) values
   ('0012_schema_migrations'),
   ('0013_benchmark_history'),
   ('0014_etf_breakdowns'),
-  ('0015_benchmark_currency')
+  ('0015_benchmark_currency'),
+  ('0016_etf_country_kind'),
+  ('0017_shared_portfolios')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -166,6 +181,7 @@ alter table public.instrument_constituents enable row level security;
 alter table public.fx_rates enable row level security;
 alter table public.benchmark_history enable row level security;
 alter table public.etf_breakdowns enable row level security;
+alter table public.shared_portfolios enable row level security;
 
 -- Catalog: instruments are global reference data — world-readable, and any
 -- authenticated user may add a new one (the catalog grows as people import
@@ -185,6 +201,10 @@ drop policy if exists "fx readable" on public.fx_rates;
 create policy "fx readable" on public.fx_rates for select using (true);
 drop policy if exists "benchmark history readable" on public.benchmark_history;
 create policy "benchmark history readable" on public.benchmark_history for select using (true);
+-- Shared snapshots are world-readable by id (a share link); writes are
+-- service-role only (the create endpoint), which bypasses RLS.
+drop policy if exists "shared portfolios readable" on public.shared_portfolios;
+create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
 drop policy if exists "etf breakdowns readable" on public.etf_breakdowns;
 create policy "etf breakdowns readable" on public.etf_breakdowns for select using (true);
 drop policy if exists "migrations readable" on public.schema_migrations;

@@ -703,6 +703,73 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
 
+  /api/share:
+    post:
+      tags: [Sharing]
+      operationId: createShare
+      summary: Create a shared portfolio snapshot
+      description: >
+        Stores a (already mode-appropriate) portfolio snapshot server-side and
+        returns a short id used to build a share link. Incognito snapshots carry
+        only relative figures. Requires the service role; 503 when sharing isn't
+        configured (the client then falls back to a URL-fragment link).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payload]
+              properties:
+                payload:
+                  type: object
+                  description: The SharePayload (allocation, TWROR/wealth series, IRR, holdings).
+      responses:
+        "200":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string, example: a1B2c3D4e5 }
+        "400":
+          description: Invalid payload.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "503":
+          description: Sharing not configured (no service role).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/share/{id}:
+    get:
+      tags: [Sharing]
+      operationId: getShare
+      summary: Fetch a shared portfolio snapshot by id
+      description: Public-readable by id (the share link is the capability).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, example: a1B2c3D4e5 }
+      responses:
+        "200":
+          description: The snapshot (or `found:false`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [found, payload]
+                    properties:
+                      found: { const: true }
+                      payload: { type: object }
+                  - $ref: "#/components/schemas/NotFound"
+
 components:
   securitySchemes:
     cronBearer:
