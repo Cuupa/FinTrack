@@ -430,6 +430,59 @@ paths:
                             weight: { type: number, description: "fraction 0..1" }
                   - $ref: "#/components/schemas/NotFound"
 
+  /api/fund/country:
+    get:
+      tags: [Market data]
+      operationId: getFundCountries
+      summary: All cached fund country breakdowns
+      description: Per-country weightings per fund (keyed by ISIN/symbol), from the etf_breakdowns cache.
+      responses:
+        "200":
+          description: Map of fund key → country weightings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [countries]
+                properties:
+                  countries: { type: object, additionalProperties: true }
+
+  /api/fund/country/{symbol}:
+    get:
+      tags: [Market data]
+      operationId: getFundCountry
+      summary: One fund's per-country weightings
+      description: >
+        Per-country weightings (English country names), keyless from onvista.
+        Served from the etf_breakdowns cache; falls back to a live onvista fetch
+        when not cached. `found:false` when unavailable (client falls back to the
+        instrument's own country).
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: ISIN of the fund.
+          schema: { type: string, example: IE00BK5BQT80 }
+      responses:
+        "200":
+          description: Country weightings (or `found:false`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [found, countries]
+                    properties:
+                      found: { const: true }
+                      countries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            country: { type: string }
+                            weight: { type: number, description: "fraction 0..1" }
+                  - $ref: "#/components/schemas/NotFound"
+
   /api/dividends:
     post:
       tags: [Market data]

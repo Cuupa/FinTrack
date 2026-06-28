@@ -250,6 +250,86 @@ export async function fetchEtfRegionWeights(query: string): Promise<RegionWeight
   }
 }
 
+// onvista country names are German — map them to English for display.
+const ONVISTA_COUNTRY_EN: Record<string, string> = {
+  USA: "United States",
+  Kanada: "Canada",
+  Mexiko: "Mexico",
+  Brasilien: "Brazil",
+  Großbritannien: "United Kingdom",
+  Deutschland: "Germany",
+  Frankreich: "France",
+  Schweiz: "Switzerland",
+  Niederlande: "Netherlands",
+  Irland: "Ireland",
+  Spanien: "Spain",
+  Schweden: "Sweden",
+  Italien: "Italy",
+  Dänemark: "Denmark",
+  Finnland: "Finland",
+  Belgien: "Belgium",
+  Luxemburg: "Luxembourg",
+  Norwegen: "Norway",
+  Österreich: "Austria",
+  Portugal: "Portugal",
+  Japan: "Japan",
+  Taiwan: "Taiwan",
+  Südkorea: "South Korea",
+  China: "China",
+  Indien: "India",
+  Australien: "Australia",
+  Hongkong: "Hong Kong",
+  Singapur: "Singapore",
+  Malaysia: "Malaysia",
+  Thailand: "Thailand",
+  Neuseeland: "New Zealand",
+  Indonesien: "Indonesia",
+  Israel: "Israel",
+  "Saudi-Arabien": "Saudi Arabia",
+  Südafrika: "South Africa",
+  "Vereinigte Arabische Emirate": "United Arab Emirates",
+  Katar: "Qatar",
+  "Barmittel und sonst. VM": "Cash & other",
+};
+
+export interface CountryWeight {
+  country: string;
+  weight: number;
+}
+
+/**
+ * An ETF's per-COUNTRY breakdown (English country names), via onvista's keyless
+ * fund country breakdown. Mirrors fetchEtfRegionWeights but keeps country
+ * granularity. Null when the ISIN isn't found there.
+ */
+export async function fetchEtfCountryWeights(query: string): Promise<CountryWeight[] | null> {
+  const q = query.trim().toUpperCase();
+  if (!isISIN(q)) return null; // onvista is keyed by ISIN
+  try {
+    const res = await fetch(
+      `https://api.onvista.de/api/v1/funds/ISIN:${encodeURIComponent(q)}/breakdowns`,
+      { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      countryBreakdown?: { list?: Array<{ nameBreakdown?: string; investmentPct?: number }> };
+    };
+    const list = data.countryBreakdown?.list;
+    if (!Array.isArray(list) || list.length === 0) return null;
+
+    const byCountry = new Map<string, number>();
+    for (const item of list) {
+      const pct = Number(item.investmentPct);
+      if (!item.nameBreakdown || !Number.isFinite(pct) || pct <= 0) continue;
+      const country = ONVISTA_COUNTRY_EN[item.nameBreakdown] ?? item.nameBreakdown;
+      byCountry.set(country, (byCountry.get(country) ?? 0) + pct / 100);
+    }
+    return byCountry.size ? Array.from(byCountry, ([country, weight]) => ({ country, weight })) : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface Classification {
   sector: string | null;
   region: string | null;

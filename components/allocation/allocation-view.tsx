@@ -10,6 +10,7 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import {
   byAssetClass,
+  byCountryLookThrough,
   byCurrency,
   byInvestment,
   byRegion,
@@ -20,6 +21,7 @@ import {
 import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
+import { useEtfCountries } from "@/lib/finance/use-etf-countries";
 import { Card } from "@/components/ui/primitives";
 import { ScopeSelect } from "@/components/analysis/scope-select";
 import { AllocationPie } from "./allocation-pie";
@@ -29,6 +31,7 @@ const TABS = [
   { key: "assetClass", label: "Asset Classes" },
   { key: "sector", label: "Sectors" },
   { key: "region", label: "Region" },
+  { key: "country", label: "Countries" },
   { key: "currency", label: "Currencies" },
   { key: "volatility", label: "Volatility" },
 ] as const;
@@ -68,6 +71,7 @@ export function AllocationView() {
   // Online-fetched per-ETF sector + region weightings (full fund breakdowns).
   const etfSectors = useEtfSectors(holdings, version);
   const etfRegions = useEtfRegions(holdings, version);
+  const etfCountries = useEtfCountries(holdings, version);
 
   const charts = useMemo<Record<TabKey, Slice[]>>(
     () => ({
@@ -75,11 +79,12 @@ export function AllocationView() {
       assetClass: byAssetClass(holdings),
       sector: bySector(holdings, classMap, etfSectors),
       region: byRegion(holdings, classMap, etfRegions),
+      country: byCountryLookThrough(holdings, classMap, etfCountries),
       currency: byCurrency(holdings, base),
       volatility: byVolatility(holdings),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holdings, base, version, classMap, etfSectors, etfRegions],
+    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries],
   );
 
   if (allHoldings.length === 0) {
@@ -116,8 +121,8 @@ export function AllocationView() {
       <div className="mt-8">
         {charts[tab].length === 0 ? (
           <p className="py-12 text-center text-sm text-zinc-500">
-            {tab === "region"
-              ? "No region data yet — run the classification sync to fetch each holding's region."
+            {tab === "region" || tab === "country"
+              ? "No geographic data yet — run the ETF-breakdowns sync to fetch each fund's country weightings."
               : "No data for this breakdown yet."}
           </p>
         ) : (

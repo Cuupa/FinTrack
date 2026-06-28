@@ -1,30 +1,27 @@
 "use client";
 
-// Online-enriches sector/region classifications for directly-held stocks that
-// the catalog doesn't classify (e.g. custom assets), via /api/classify. ETF
-// constituents are classified in the DB, so they don't need this.
+// Fetches each ETF holding's per-country breakdown (via /api/fund/country) for
+// the Analysis "Countries" pie. Mirrors useEtfRegions. Empty when the source
+// (onvista) has no data — byCountryLookThrough then falls back to the
+// instrument's own country.
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { assetPriceKey } from "../types";
-import { lookupInstrument } from "../catalog/catalog";
 import type { HoldingSummary } from "./portfolio";
-import type { ClassMap } from "./allocation";
+import type { CountryWeightsMap } from "./allocation";
 
-export function useClassifications(
+export function useEtfCountries(
   holdings: HoldingSummary[],
   version: number,
-): ClassMap {
-  const [map, setMap] = useState<ClassMap>({});
+): CountryWeightsMap {
+  const [map, setMap] = useState<CountryWeightsMap>({});
 
-  // Direct stocks with no catalog classification.
   const needed = useMemo(() => {
     const out: { key: string; q: string }[] = [];
     for (const h of holdings) {
-      if (h.asset.type !== "STOCK") continue;
+      if (h.asset.type !== "ETF") continue;
       const key = assetPriceKey(h.asset);
-      const inst = lookupInstrument(key);
-      if (inst?.sector || inst?.region) continue;
       const q = h.asset.isin || h.asset.symbol;
       if (q) out.push({ key, q });
     }
@@ -41,16 +38,13 @@ export function useClassifications(
       const results = await Promise.all(
         needed.map(async (n) => {
           try {
-            const res = await apiFetch(`/api/classify?q=${encodeURIComponent(n.q)}`);
+            const res = await apiFetch(`/api/fund/country/${encodeURIComponent(n.q)}`);
             if (!res.ok) return null;
             const d = (await res.json()) as {
               found?: boolean;
-              sector?: string | null;
-              region?: string | null;
-              country?: string | null;
+              countries?: { country: string; weight: number }[];
             };
-            if (d.found)
-              return [n.key, { sector: d.sector, region: d.region, country: d.country }] as const;
+            if (d.found && Array.isArray(d.countries)) return [n.key, d.countries] as const;
           } catch {
             /* ignore */
           }
@@ -58,7 +52,7 @@ export function useClassifications(
         }),
       );
       if (cancelled) return;
-      const add: ClassMap = {};
+      const add: CountryWeightsMap = {};
       for (const r of results) if (r) add[r[0]] = r[1];
       if (Object.keys(add).length > 0) setMap((prev) => ({ ...prev, ...add }));
     };

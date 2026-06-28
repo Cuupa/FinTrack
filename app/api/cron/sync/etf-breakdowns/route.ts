@@ -5,7 +5,11 @@
 // queries with.
 
 import { createClient } from "@supabase/supabase-js";
-import { fetchEtfSectorWeights, fetchEtfRegionWeights } from "@/lib/server/classify";
+import {
+  fetchEtfSectorWeights,
+  fetchEtfRegionWeights,
+  fetchEtfCountryWeights,
+} from "@/lib/server/classify";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -39,12 +43,14 @@ async function handle(req: Request): Promise<Response> {
     const key = (r.isin || r.symbol || "").toUpperCase();
     if (!key) continue;
     funds += 1;
-    const [sectors, regions] = await Promise.all([
+    const [sectors, regions, countries] = await Promise.all([
       fetchEtfSectorWeights(key).catch(() => null),
       fetchEtfRegionWeights(r.isin || key).catch(() => null),
+      fetchEtfCountryWeights(r.isin || key).catch(() => null),
     ]);
     if (sectors?.length) rows.push({ etf_key: key, kind: "sector", data: sectors });
     if (regions?.length) rows.push({ etf_key: key, kind: "region", data: regions });
+    if (countries?.length) rows.push({ etf_key: key, kind: "country", data: countries });
   }
 
   if (rows.length > 0) {

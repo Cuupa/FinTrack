@@ -12,13 +12,19 @@ export interface Slice {
 }
 
 /** Online-fetched classifications keyed by assetPriceKey (for custom stocks). */
-export type ClassMap = Record<string, { sector?: string | null; region?: string | null }>;
+export type ClassMap = Record<
+  string,
+  { sector?: string | null; region?: string | null; country?: string | null }
+>;
 
 /** Online-fetched ETF sector weightings keyed by assetPriceKey. */
 export type SectorWeightsMap = Record<string, { sector: string; weight: number }[]>;
 
 /** Online-fetched ETF region (geographic) weightings keyed by assetPriceKey. */
 export type RegionWeightsMap = Record<string, { region: string; weight: number }[]>;
+
+/** Online-fetched ETF per-country weightings keyed by assetPriceKey. */
+export type CountryWeightsMap = Record<string, { country: string; weight: number }[]>;
 
 function group(
   holdings: HoldingSummary[],
@@ -52,6 +58,37 @@ export function byCountry(holdings: HoldingSummary[]): Slice[] {
     const inst = lookupInstrument(assetPriceKey(h.asset));
     return inst?.country ?? "Unknown";
   });
+}
+
+/**
+ * Geographic breakdown by COUNTRY, looking through funds: ETFs use their
+ * onvista per-country weightings; direct stocks use the instrument's (or
+ * online-fetched) country. Crypto/cash (no geography) and any still-unclassified
+ * holding are excluded, so the chart shows only real countries — normalised
+ * across what IS classified. Without country data this is empty.
+ */
+export function byCountryLookThrough(
+  holdings: HoldingSummary[],
+  overrides?: ClassMap,
+  etfCountries?: CountryWeightsMap,
+): Slice[] {
+  const map = new Map<string, number>();
+  const add = (label: string | null | undefined, v: number) => {
+    if (label) map.set(label, (map.get(label) ?? 0) + v);
+  };
+  for (const h of holdings) {
+    if (h.marketValue <= 0) continue;
+    const key = assetPriceKey(h.asset);
+    if (h.asset.type === "ETF") {
+      const weights = etfCountries?.[key];
+      if (weights && weights.length > 0) {
+        for (const w of weights) add(w.country, h.marketValue * w.weight);
+      }
+    } else if (h.asset.type === "STOCK") {
+      add(lookupInstrument(key)?.country || overrides?.[key]?.country, h.marketValue);
+    }
+  }
+  return Array.from(map, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 }
 
 /** Annualised volatility for an asset, from the catalog (else a type default). */
