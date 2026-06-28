@@ -21,6 +21,7 @@ import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
 import { Card } from "@/components/ui/primitives";
+import { ScopeSelect } from "@/components/analysis/scope-select";
 import { AllocationPie } from "./allocation-pie";
 
 const TABS = [
@@ -41,13 +42,25 @@ export function AllocationView() {
   const base = data.profile.currency;
 
   const [tab, setTab] = useState<TabKey>("assetClass");
+  // Scope: empty = portfolio-wide; otherwise restrict to the selected assets.
+  const [scope, setScope] = useState<string[]>([]);
 
-  const holdings = useMemo(
+  const allHoldings = useMemo(
     () =>
       summarizeAll(data.assets, data.transactions, valuation).filter(
         (h) => h.position.shares > 0,
       ),
     [data.assets, data.transactions, valuation],
+  );
+
+  const holdings = useMemo(
+    () => (scope.length === 0 ? allHoldings : allHoldings.filter((h) => scope.includes(h.asset.id))),
+    [allHoldings, scope],
+  );
+
+  const scopeOptions = useMemo(
+    () => allHoldings.map((h) => ({ id: h.asset.id, label: h.asset.name })),
+    [allHoldings],
   );
 
   // Online-fetched classifications for custom stocks the catalog doesn't know.
@@ -69,7 +82,7 @@ export function AllocationView() {
     [holdings, base, version, classMap, etfSectors, etfRegions],
   );
 
-  if (holdings.length === 0) {
+  if (allHoldings.length === 0) {
     return (
       <Card>
         <p className="text-sm text-zinc-500">Add holdings to see your allocation.</p>
@@ -79,23 +92,25 @@ export function AllocationView() {
 
   return (
     <Card>
-      {/* Breakdown selector: a contained pill group, distinct from the page's
-          primary underline tabs. */}
-      <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            aria-pressed={tab === t.key}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === t.key
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Breakdown selector (pills) + scope multiselect. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              aria-pressed={tab === t.key}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                tab === t.key
+                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
       </div>
 
       <div className="mt-8">
