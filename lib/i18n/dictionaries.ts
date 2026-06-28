@@ -69,7 +69,7 @@ export const en = {
   "chart.return": "Return",
   "chart.loading": "Loading price history…",
   "empty.noHoldings": "No holdings yet",
-  "empty.addFirst": "Add your first asset below to see your net worth grow.",
+  "empty.addFirst": "Add your first asset to see your net worth grow.",
 
   "table.holdings": "Holdings",
   "table.filter": "Filter by name, symbol, ISIN, WKN…",
@@ -282,7 +282,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "chart.return": "Rendite",
   "chart.loading": "Kursverlauf wird geladen…",
   "empty.noHoldings": "Noch keine Positionen",
-  "empty.addFirst": "Fügen Sie unten Ihre erste Position hinzu, um Ihr Vermögen wachsen zu sehen.",
+  "empty.addFirst": "Fügen Sie Ihre erste Position hinzu, um Ihr Vermögen wachsen zu sehen.",
 
   "table.holdings": "Positionen",
   "table.filter": "Nach Name, Symbol, ISIN, WKN filtern…",
