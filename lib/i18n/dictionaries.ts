@@ -35,7 +35,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.dashboard": "Übersicht",
   "nav.analysis": "Analyse",
   "nav.xray": "Röntgen",
-  "nav.rebalance": "Umschichten",
+  "nav.rebalance": "Rebalancing",
   "nav.simulation": "Simulation",
   "nav.login": "Anmelden",
   "nav.register": "Registrieren",
@@ -43,14 +43,14 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "dashboard.title": "Übersicht",
   "dashboard.subtitle": "Ihr Portfolio auf einen Blick.",
-  "dashboard.addAsset": "+ Wert hinzufügen",
+  "dashboard.addAsset": "+ Position hinzufügen",
   "dashboard.export": "Exportieren",
   "dashboard.share": "Teilen",
 
   "analysis.title": "Analyse",
   "simulation.title": "Simulation",
-  "rebalancing.title": "Umschichtung",
-  "xray.title": "Portfolio-Röntgen",
+  "rebalancing.title": "Rebalancing",
+  "xray.title": "Portfolio X-Ray",
 
   "common.scope": "Bereich",
   "common.portfolioWide": "Gesamtes Portfolio",

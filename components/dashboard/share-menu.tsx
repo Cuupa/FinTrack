@@ -28,7 +28,9 @@ export function ShareMenu() {
   const { version } = useCatalog();
   const currency = data.profile.currency;
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,18 +78,23 @@ export function ShareMenu() {
   }, [data, valuation, histories, currency]);
 
   const share = async (incognito: boolean) => {
-    setOpen(false);
-    setStatus("Creating link…");
-    const payload = buildSharePayload(source, incognito);
-    const link = await createLink(payload);
+    setCreating(true);
+    setLink(null);
+    setCopied(false);
+    const url = await createLink(buildSharePayload(source, incognito));
+    setLink(url);
+    setCreating(false);
+  };
+
+  const copy = async () => {
+    if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
-      setStatus(incognito ? "Incognito link copied" : "Link copied");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch {
       window.prompt("Copy this share link:", link);
-      setStatus(null);
     }
-    setTimeout(() => setStatus(null), 2500);
   };
 
   const disabled = source.holdings.length === 0 || loading;
@@ -117,10 +124,10 @@ export function ShareMenu() {
           <circle cx="18" cy="19" r="3" />
           <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
         </svg>
-        {status && <span className="hidden sm:inline">{status}</span>}
+        <span className="hidden sm:inline">Share</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           <button
             type="button"
             onClick={() => share(false)}
@@ -139,6 +146,50 @@ export function ShareMenu() {
               Allocations &amp; returns only — no amounts.
             </span>
           </button>
+
+          {(creating || link) && (
+            <div className="border-t border-zinc-200 p-2.5 dark:border-zinc-800">
+              {creating ? (
+                <div className="flex items-center gap-2 px-1 py-1 text-xs text-zinc-500">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
+                  Creating link…
+                </div>
+              ) : (
+                link && (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      readOnly
+                      value={link}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={copy}
+                      title="Copy link"
+                      aria-label="Copy link"
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                        copied
+                          ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                          : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      }`}
+                    >
+                      {copied ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
