@@ -85,8 +85,13 @@ function daysBetween(a: string, b: string): number {
 
 /**
  * Risk metrics for the selected window, derived from the cumulative-return
- * series (so they reflect performance, not deposits). Daily returns are
- * annualised at 365 (the series is calendar-daily).
+ * series (so they reflect performance, not deposits).
+ *
+ * Annualisation is **sampling-aware**: the net-worth series caps its point count
+ * (so over long windows consecutive points span several days, not one). We
+ * derive periods-per-year from the actual average spacing — ppy = 365·(n−1)/
+ * spanDays — instead of assuming 365, otherwise volatility would be overstated
+ * by √(stepDays) on any window longer than the point cap.
  */
 export function riskMetrics(returnSeries: SeriesPoint[]): RiskMetrics {
   const n = returnSeries.length;
@@ -98,11 +103,15 @@ export function riskMetrics(returnSeries: SeriesPoint[]): RiskMetrics {
   const daily: number[] = [];
   for (let i = 1; i < n; i++) daily.push(idx[i] / idx[i - 1] - 1);
 
+  // Periods per year from the series' real spacing (robust to point capping).
+  const spanDays = Math.max(1, daysBetween(returnSeries[0].date, returnSeries[n - 1].date));
+  const ppy = (365 * (n - 1)) / spanDays;
+
   const mean = daily.reduce((s, x) => s + x, 0) / daily.length;
   const variance = daily.reduce((s, x) => s + (x - mean) ** 2, 0) / Math.max(1, daily.length - 1);
-  const volatility = Math.sqrt(variance) * Math.sqrt(365);
+  const volatility = Math.sqrt(variance) * Math.sqrt(ppy);
   const downVar = daily.reduce((s, x) => s + (x < 0 ? x * x : 0), 0) / daily.length;
-  const downsideDeviation = Math.sqrt(downVar) * Math.sqrt(365);
+  const downsideDeviation = Math.sqrt(downVar) * Math.sqrt(ppy);
 
   let peak = idx[0];
   let peakDate = returnSeries[0].date;

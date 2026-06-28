@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { xirr, portfolioIRR } from "../lib/finance/irr";
-import { netFlows, periodReturns } from "../lib/finance/returns";
+import { netFlows, periodReturns, riskMetrics } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
 import type { Asset, Transaction } from "../lib/types";
@@ -80,6 +80,48 @@ describe("periodReturns", () => {
     const q2 = periodReturns(series, flows, "quarter").find((r) => r.label === "Q2")!;
     // (165 - 100 - 50) / (100 + 25) = 15/125 = 0.12
     expect(q2.ret).toBeCloseTo(0.12, 6);
+  });
+});
+
+describe("riskMetrics annualisation", () => {
+  // Same return path sampled daily vs. every other day must annualise to the
+  // same volatility — i.e. annualisation is driven by real spacing, not a fixed
+  // 365 (the bug the audit fixed).
+  it("is invariant to series point spacing", () => {
+    // i.i.d.-ish daily returns from a deterministic LCG, so downsampling
+    // doesn't systematically cancel (unlike an anti-correlated wiggle).
+    let seed = 12345;
+    const rnd = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff - 0.5; // ~uniform in [-0.5, 0.5]
+    };
+    const daily: SeriesPoint[] = [];
+    let v = 0;
+    for (let d = 0; d < 400; d++) {
+      const iso = new Date(Date.UTC(2025, 0, 1 + d)).toISOString().slice(0, 10);
+      v = (1 + v) * (1 + rnd() * 0.02) - 1;
+      daily.push({ date: iso, value: v });
+    }
+    const everyOther = daily.filter((_, i) => i % 2 === 0);
+    const a = riskMetrics(daily).volatility;
+    const b = riskMetrics(everyOther).volatility;
+    // With spacing-aware annualisation the two agree closely; the old fixed-365
+    // code differed by ≈√2.
+    expect(b).toBeGreaterThan(a * 0.75);
+    expect(b).toBeLessThan(a * 1.25);
+  });
+
+  it("reports a peak-to-trough drawdown", () => {
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 0 },
+      { date: "2025-01-08", value: 0.2 }, // peak
+      { date: "2025-01-15", value: -0.1 }, // trough from 1.2 -> 0.9
+      { date: "2025-01-22", value: 0.05 },
+    ];
+    const m = riskMetrics(series);
+    // (0.9 - 1.2) / 1.2 = -0.25
+    expect(m.maxDrawdown).toBeCloseTo(0.25, 6);
+    expect(m.maxDrawdownDays).toBeGreaterThanOrEqual(7);
   });
 });
 
