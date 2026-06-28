@@ -15,6 +15,16 @@ export const en = {
   "nav.login": "Log in",
   "nav.register": "Register",
   "nav.signOut": "Sign out",
+  "nav.settings": "Settings",
+
+  "settings.title": "Settings",
+  "settings.name": "Name / nickname",
+  "settings.language": "Language",
+  "settings.currency": "Base currency",
+  "settings.changePassword": "Change password",
+  "settings.newPassword": "New password",
+  "settings.save": "Save",
+  "settings.saved": "Saved",
 
   "dashboard.title": "Dashboard",
   "dashboard.subtitle": "Your portfolio at a glance.",
@@ -40,6 +50,16 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.login": "Anmelden",
   "nav.register": "Registrieren",
   "nav.signOut": "Abmelden",
+  "nav.settings": "Einstellungen",
+
+  "settings.title": "Einstellungen",
+  "settings.name": "Name / Spitzname",
+  "settings.language": "Sprache",
+  "settings.currency": "Basiswährung",
+  "settings.changePassword": "Passwort ändern",
+  "settings.newPassword": "Neues Passwort",
+  "settings.save": "Speichern",
+  "settings.saved": "Gespeichert",
 
   "dashboard.title": "Übersicht",
   "dashboard.subtitle": "Ihr Portfolio auf einen Blick.",

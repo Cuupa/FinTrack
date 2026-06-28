@@ -36,6 +36,7 @@ interface PortfolioContextValue {
   addTransaction(input: TransactionInput): Promise<Transaction>;
   deleteTransaction(id: string): Promise<void>;
   setCurrency(currency: string): Promise<void>;
+  updateProfile(patch: Partial<Profile>): Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
@@ -126,13 +127,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
-  const setCurrency = useCallback(
-    async (currency: string) => {
-      const profile: Profile = { ...data.profile, currency };
+  const updateProfile = useCallback(
+    async (patch: Partial<Profile>) => {
+      const profile: Profile = { ...data.profile, ...patch };
       await store.saveProfile(profile);
       setData((d) => ({ ...d, profile }));
     },
     [store, data.profile],
+  );
+
+  const setCurrency = useCallback(
+    (currency: string) => updateProfile({ currency }),
+    [updateProfile],
   );
 
   const value: PortfolioContextValue = {
@@ -146,6 +152,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addTransaction,
     deleteTransaction,
     setCurrency,
+    updateProfile,
   };
 
   return (

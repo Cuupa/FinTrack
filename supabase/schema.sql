@@ -10,8 +10,12 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   currency text not null default 'EUR',
+  display_name text,
+  locale text,
   created_at timestamptz not null default now()
 );
+alter table public.profiles add column if not exists display_name text;
+alter table public.profiles add column if not exists locale text;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of
@@ -168,7 +172,8 @@ insert into public.schema_migrations (version) values
   ('0014_etf_breakdowns'),
   ('0015_benchmark_currency'),
   ('0016_etf_country_kind'),
-  ('0017_shared_portfolios')
+  ('0017_shared_portfolios'),
+  ('0018_profile_name_locale')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

@@ -27,6 +27,7 @@ interface AuthContextValue {
   signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>;
   signInWithOAuth(provider: "google" | "github"): Promise<void>;
   signOut(): Promise<void>;
+  updatePassword(newPassword: string): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -107,6 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, [supabase]);
 
+  const updatePassword = useCallback(
+    async (newPassword: string) => {
+      if (!supabase) throw new Error("Auth is not configured.");
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    },
+    [supabase],
+  );
+
   const value: AuthContextValue = {
     user,
     mode: user ? "registered" : "guest",
@@ -116,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signInWithOAuth,
     signOut,
+    updatePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

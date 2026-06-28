@@ -8,6 +8,7 @@ import { LivePricesProvider } from "@/lib/live/live-prices-context";
 import { PrivacyProvider } from "@/lib/privacy/privacy-context";
 import { TagsProvider } from "@/lib/tags/tags-context";
 import { I18nProvider } from "@/lib/i18n/i18n-context";
+import { LocaleSync } from "@/components/locale-sync";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -17,7 +18,10 @@ export function Providers({ children }: { children: ReactNode }) {
           <PortfolioProvider>
             <LivePricesProvider>
               <PrivacyProvider>
-                <TagsProvider>{children}</TagsProvider>
+                <TagsProvider>
+                  <LocaleSync />
+                  {children}
+                </TagsProvider>
               </PrivacyProvider>
             </LivePricesProvider>
           </PortfolioProvider>

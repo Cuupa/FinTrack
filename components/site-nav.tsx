@@ -8,6 +8,7 @@ import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { Button } from "./ui/primitives";
 import { PrivacyToggle } from "./privacy-toggle";
 import { LocaleSwitcher } from "./locale-switcher";
+import { ProfileMenu } from "./profile-menu";
 
 const LINKS: { href: string; key: MessageKey }[] = [
   { href: "/", key: "nav.dashboard" },
@@ -19,7 +20,7 @@ const LINKS: { href: string; key: MessageKey }[] = [
 
 export function SiteNav() {
   const pathname = usePathname();
-  const { user, mode, signOut } = useAuth();
+  const { mode } = useAuth();
   const { t } = useI18n();
 
   return (
@@ -51,14 +52,7 @@ export function SiteNav() {
           <LocaleSwitcher />
           <PrivacyToggle />
           {mode === "registered" ? (
-            <>
-              <span className="hidden text-sm text-zinc-500 sm:inline">
-                {user?.email}
-              </span>
-              <Button variant="secondary" onClick={() => void signOut()}>
-                {t("nav.signOut")}
-              </Button>
-            </>
+            <ProfileMenu />
           ) : (
             <>
               <Link href="/login">

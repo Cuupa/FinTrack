@@ -9,6 +9,10 @@ export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "CASH"];
 export interface Profile {
   /** ISO 4217 base currency for all displayed values, e.g. "EUR". */
   currency: string;
+  /** Display name / nickname, shown in the UI and on shared portfolios. */
+  name: string | null;
+  /** Preferred UI locale ("en" | "de"); null = use the device/last choice. */
+  locale: string | null;
 }
 
 /**
@@ -67,7 +71,7 @@ export interface PortfolioData {
   transactions: Transaction[];
 }
 
-export const DEFAULT_PROFILE: Profile = { currency: "EUR" };
+export const DEFAULT_PROFILE: Profile = { currency: "EUR", name: null, locale: null };
 
 export function emptyPortfolio(): PortfolioData {
   return { profile: { ...DEFAULT_PROFILE }, assets: [], transactions: [] };

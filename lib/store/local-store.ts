@@ -24,7 +24,9 @@ export class LocalStore implements DataStore {
       if (!raw) return emptyPortfolio();
       const parsed = JSON.parse(raw) as PortfolioData;
       return {
-        profile: parsed.profile ?? emptyPortfolio().profile,
+        // Merge over defaults so profiles saved before new fields (name, locale)
+        // still have them.
+        profile: { ...emptyPortfolio().profile, ...(parsed.profile ?? {}) },
         assets: parsed.assets ?? [],
         transactions: parsed.transactions ?? [],
       };

@@ -60,7 +60,7 @@ export class SupabaseStore implements DataStore {
     const [profileRes, assetsRes, txRes] = await Promise.all([
       this.supabase
         .from("profiles")
-        .select("currency")
+        .select("currency, display_name, locale")
         .eq("id", this.userId)
         .maybeSingle(),
       this.supabase
@@ -79,7 +79,11 @@ export class SupabaseStore implements DataStore {
     if (txRes.error) throw txRes.error;
 
     const profile: Profile = profileRes.data
-      ? { currency: profileRes.data.currency }
+      ? {
+          currency: profileRes.data.currency,
+          name: profileRes.data.display_name ?? null,
+          locale: profileRes.data.locale ?? null,
+        }
       : { ...DEFAULT_PROFILE };
 
     const assets: Asset[] = ((assetsRes.data ?? []) as AssetRow[]).map((r) => {
@@ -111,9 +115,12 @@ export class SupabaseStore implements DataStore {
   }
 
   async saveProfile(profile: Profile): Promise<void> {
-    const { error } = await this.supabase
-      .from("profiles")
-      .upsert({ id: this.userId, currency: profile.currency });
+    const { error } = await this.supabase.from("profiles").upsert({
+      id: this.userId,
+      currency: profile.currency,
+      display_name: profile.name,
+      locale: profile.locale,
+    });
     if (error) throw error;
   }
 
