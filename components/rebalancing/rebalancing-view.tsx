@@ -5,14 +5,29 @@
 // buy/sell amounts needed to reach the target. Client-only — nothing persisted.
 
 import { useMemo, useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import type { Slice } from "@/lib/finance/allocation";
-import { formatCurrency, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, formatNumber, parseDecimal, plColor } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
-import { AllocationPie } from "@/components/allocation/allocation-pie";
+
+const PALETTE = [
+  "#6366f1",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#3b82f6",
+  "#8b5cf6",
+  "#14b8a6",
+  "#ec4899",
+  "#84cc16",
+  "#f97316",
+  "#06b6d4",
+  "#a855f7",
+];
 
 interface Target {
   id: string;
@@ -73,9 +88,19 @@ export function RebalancingView() {
   // positions are funded by trimming over-weight holdings.
   const total = currentTotal;
 
+  // One colour per position (by name), shared across both donuts and the legend
+  // so the same holding is the same colour everywhere.
+  const colorByName = useMemo(() => {
+    const map: Record<string, string> = {};
+    rows.forEach((r, i) => {
+      if (!(r.name in map)) map[r.name] = PALETTE[i % PALETTE.length];
+    });
+    return map;
+  }, [rows]);
+
   const currentSlices: Slice[] = useMemo(
-    () => holdings.map((h) => ({ label: h.asset.name, value: h.marketValue })),
-    [holdings],
+    () => rows.filter((r) => r.current > 0).map((r) => ({ label: r.name, value: r.current })),
+    [rows],
   );
   const targetSlices: Slice[] = useMemo(
     () =>
@@ -124,21 +149,56 @@ export function RebalancingView() {
   return (
     <div className="space-y-6">
       <Card>
-        <div className="grid gap-8 sm:grid-cols-2">
-          <div>
-            <h2 className="mb-4 text-center text-sm font-semibold text-zinc-500">Current</h2>
-            <AllocationPie slices={currentSlices} currency={base} />
+        {/* Two donuts share one legend, so neither carries its own overlapping
+            legend (the previous bug). */}
+        <div className="grid items-center gap-8 lg:grid-cols-[1fr_auto_1fr]">
+          <RebalanceDonut
+            title="Current"
+            slices={currentSlices}
+            total={currentTotal}
+            currency={base}
+            colorByName={colorByName}
+          />
+
+          <div className="min-w-0 lg:w-72">
+            <ul className="space-y-1.5 text-sm">
+              {rows.map((r) => {
+                const curPct = currentTotal > 0 ? (r.current / currentTotal) * 100 : 0;
+                return (
+                  <li key={r.id} className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-[4px]"
+                      style={{ backgroundColor: colorByName[r.name] }}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-zinc-700 dark:text-zinc-200">
+                      {r.name}
+                    </span>
+                    <span className="w-12 shrink-0 text-right tabular-nums text-zinc-400">
+                      {formatNumber(curPct, 1)}%
+                    </span>
+                    <span className="shrink-0 text-zinc-400">→</span>
+                    <span className="w-12 shrink-0 text-right font-semibold tabular-nums">
+                      {formatNumber(r.pct, 1)}%
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <div>
-            <h2 className="mb-4 text-center text-sm font-semibold text-zinc-500">Target</h2>
-            {targetSlices.length > 0 ? (
-              <AllocationPie slices={targetSlices} currency={base} />
-            ) : (
-              <p className="py-16 text-center text-sm text-zinc-500">
-                Set target weights below.
-              </p>
-            )}
-          </div>
+
+          {targetSlices.length > 0 ? (
+            <RebalanceDonut
+              title="Target"
+              slices={targetSlices}
+              total={total}
+              currency={base}
+              colorByName={colorByName}
+            />
+          ) : (
+            <div className="flex h-56 items-center justify-center text-center text-sm text-zinc-500">
+              Set target weights below.
+            </div>
+          )}
         </div>
       </Card>
 
@@ -249,6 +309,54 @@ export function RebalancingView() {
           </span>
         </div>
       </Card>
+    </div>
+  );
+}
+
+/** A donut-only allocation chart with a centred total (no legend of its own). */
+function RebalanceDonut({
+  title,
+  slices,
+  total,
+  currency,
+  colorByName,
+}: {
+  title: string;
+  slices: Slice[];
+  total: number;
+  currency: string;
+  colorByName: Record<string, string>;
+}) {
+  return (
+    <div className="flex flex-col items-center">
+      <h2 className="mb-3 text-sm font-semibold text-zinc-500">{title}</h2>
+      <div className="relative h-56 w-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={slices}
+              dataKey="value"
+              nameKey="label"
+              innerRadius={74}
+              outerRadius={104}
+              paddingAngle={slices.length > 1 ? 2 : 0}
+              cornerRadius={5}
+              stroke="none"
+              isAnimationActive={false}
+            >
+              {slices.map((s) => (
+                <Cell key={s.label} fill={colorByName[s.label] ?? "#a1a1aa"} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-[11px] uppercase tracking-wide text-zinc-400">Total</span>
+          <span className="mt-0.5 text-lg font-semibold tabular-nums" data-private>
+            {formatCurrency(total, currency)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
