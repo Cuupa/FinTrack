@@ -92,6 +92,8 @@ export const en = {
   "share.incognitoDesc": "Allocations & returns only — no amounts.",
   "share.creating": "Creating link…",
   "share.copy": "Copy link",
+  "shared.viewing": "You're viewing a shared portfolio",
+  "shared.open": "Open FinTrack",
 
   "compare.hint": "Approximate comparison",
   "compare.hintFull":
@@ -305,6 +307,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "share.incognitoDesc": "Nur Gewichtung & Rendite — keine Beträge.",
   "share.creating": "Link wird erstellt…",
   "share.copy": "Link kopieren",
+  "shared.viewing": "Sie sehen ein geteiltes Portfolio",
+  "shared.open": "FinTrack öffnen",
 
   "compare.hint": "Ungefährer Vergleich",
   "compare.hintFull":

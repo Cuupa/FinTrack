@@ -50,12 +50,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <body className="min-h-full overflow-x-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Providers>
           <GuestBanner />
           <SiteNav />
           {/* pb leaves room for the fixed mobile tab bar (MobileNav). */}
-          <main className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:py-8 md:pb-8">
+          <main className="mx-auto max-w-[1600px] px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-8">
             <LocaleBoundary>{children}</LocaleBoundary>
           </main>
           <MobileNav />

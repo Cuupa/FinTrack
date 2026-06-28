@@ -23,9 +23,33 @@ export function SiteNav() {
   const { mode } = useAuth();
   const { t } = useI18n();
 
+  // A shared portfolio is a read-only view of someone else's data: no app
+  // navigation, no privacy switcher — just a notice and a way back to the app.
+  if (pathname.startsWith("/shared")) {
+    return (
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+        <nav className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3">
+          <span className="text-lg font-semibold tracking-tight">
+            Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
+          </span>
+          <span className="hidden items-center gap-1.5 text-sm text-zinc-500 sm:flex">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4M12 8h.01" strokeLinecap="round" />
+            </svg>
+            {t("shared.viewing")}
+          </span>
+          <Link href="/" className="ml-auto">
+            <Button variant="primary">{t("shared.open")}</Button>
+          </Link>
+        </nav>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
-      <nav className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
+      <nav className="mx-auto flex max-w-[1600px] items-center gap-6 px-4 py-3">
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
         </Link>
