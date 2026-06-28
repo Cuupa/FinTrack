@@ -26,14 +26,21 @@ export function DistributionChart({
   scale = "linear",
   mode = "currency",
   height = 360,
+  highlight = null,
 }: {
   result: MonteCarloResult;
   currency: string;
   scale?: ChartScale;
   mode?: ChartMode;
   height?: number;
+  /** Series key to emphasise (others dim) — driven by legend hover. */
+  highlight?: string | null;
 }) {
   const { t } = useI18n();
+  // Per-series opacity helpers for the legend-hover highlight.
+  const areaOpacity = (key: string, base: number) =>
+    highlight == null ? base : highlight === key ? Math.min(0.6, base * 2.2) : base * 0.3;
+  const lineOpacity = (key: string) => (highlight == null || highlight === key ? 1 : 0.2);
   // Percent mode expresses each band as growth over what was contributed by
   // that year, so the contributed line is a flat 0% baseline.
   const pct = (v: number, c: number) => (c > 0 ? v / c - 1 : 0);
@@ -102,7 +109,7 @@ export function DistributionChart({
           dataKey="rangeFull"
           stroke="none"
           fill="#6366f1"
-          fillOpacity={0.08}
+          fillOpacity={areaOpacity("rangeFull", 0.08)}
           activeDot={false}
           isAnimationActive={false}
         />
@@ -110,7 +117,7 @@ export function DistributionChart({
           dataKey="range80"
           stroke="none"
           fill="#6366f1"
-          fillOpacity={0.16}
+          fillOpacity={areaOpacity("range80", 0.16)}
           activeDot={false}
           isAnimationActive={false}
         />
@@ -118,14 +125,15 @@ export function DistributionChart({
           dataKey="range50"
           stroke="none"
           fill="#6366f1"
-          fillOpacity={0.24}
+          fillOpacity={areaOpacity("range50", 0.24)}
           activeDot={false}
           isAnimationActive={false}
         />
         <Line
           dataKey="median"
           stroke="#4f46e5"
-          strokeWidth={2.5}
+          strokeWidth={highlight === "median" ? 4 : 2.5}
+          strokeOpacity={lineOpacity("median")}
           dot={false}
           activeDot={{ r: 4, fill: "#4f46e5", stroke: "#fff", strokeWidth: 1.5 }}
           isAnimationActive={false}
@@ -133,7 +141,8 @@ export function DistributionChart({
         <Line
           dataKey="contributed"
           stroke="#64748b"
-          strokeWidth={1.5}
+          strokeWidth={highlight === "contributed" ? 2.5 : 1.5}
+          strokeOpacity={lineOpacity("contributed")}
           strokeDasharray="5 4"
           dot={false}
           activeDot={false}

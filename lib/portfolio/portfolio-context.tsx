@@ -36,6 +36,7 @@ interface PortfolioContextValue {
   updateAsset(id: string, patch: Partial<AssetInput>): Promise<void>;
   deleteAsset(id: string): Promise<void>;
   addTransaction(input: TransactionInput): Promise<Transaction>;
+  updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -130,6 +131,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const updateTransaction = useCallback(
+    async (id: string, patch: Partial<TransactionInput>) => {
+      await store.updateTransaction(id, patch);
+      setData((d) => ({
+        ...d,
+        transactions: d.transactions.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      }));
+    },
+    [store],
+  );
+
   const deleteTransaction = useCallback(
     async (id: string) => {
       await store.deleteTransaction(id);
@@ -209,6 +221,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     updateAsset,
     deleteAsset,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     setCurrency,
     updateProfile,

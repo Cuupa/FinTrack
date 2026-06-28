@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { addDays, today, type Timeframe } from "@/lib/finance/dates";
+import { addDays, nowDateTimeLocal, today, type Timeframe } from "@/lib/finance/dates";
 import {
   assetPriceSeries,
   summarizeHolding,
@@ -22,9 +22,15 @@ import {
   formatDateTime,
   formatNumber,
   formatPercent,
+  parseDecimal,
   plColor,
 } from "@/lib/format";
-import { assetIdentifier, type Transaction } from "@/lib/types";
+import {
+  assetIdentifier,
+  type Portfolio,
+  type Transaction,
+  type TransactionType,
+} from "@/lib/types";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor } from "@/lib/catalog/catalog";
@@ -47,7 +53,8 @@ import { AssetTags } from "./asset-tags";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function AssetDetail({ assetId }: { assetId: string }) {
-  const { data, loading, deleteAsset, deleteTransaction } = usePortfolio();
+  const { data, loading, deleteAsset, deleteTransaction, updateTransaction, portfolios } =
+    usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const router = useRouter();
@@ -397,6 +404,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             <TransactionsTable
               txs={txs}
               currency={nativeCur}
+              portfolios={portfolios}
+              onUpdate={(id, patch) => void updateTransaction(id, patch)}
               onDelete={(t) =>
                 setPending({
                   title: "Delete transaction?",
@@ -474,16 +483,21 @@ function txCompare(a: Transaction, b: Transaction, key: TxSortKey): number {
 function TransactionsTable({
   txs,
   currency,
+  portfolios,
+  onUpdate,
   onDelete,
 }: {
   txs: Transaction[];
   currency: string;
+  portfolios: Portfolio[];
+  onUpdate: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
   onDelete: (t: Transaction) => void;
 }) {
   const [sort, setSort] = useState<{ key: TxSortKey; dir: 1 | -1 }>({
     key: "date",
     dir: -1,
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const rows = useMemo(
     () => [...txs].sort((a, b) => txCompare(a, b, sort.key) * sort.dir),
@@ -498,6 +512,8 @@ function TransactionsTable({
     );
   }
 
+  const multiPortfolio = portfolios.length > 1;
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -509,53 +525,170 @@ function TransactionsTable({
             <TxTh label="Price" k="price" align="right" sort={sort} onSort={toggle} />
             <TxTh label="Fee" k="fee" align="right" sort={sort} onSort={toggle} />
             <TxTh label="Total" k="total" align="right" sort={sort} onSort={toggle} />
+            {multiPortfolio && <th className="py-2 pr-3 font-medium">Portfolio</th>}
             <th className="py-2"></th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((t) => (
-            <tr
-              key={t.id}
-              className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
-            >
-              <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(t.date)}</td>
-              <td className="py-2 pr-3">
-                <span
-                  className={
-                    t.type === "BUY"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-red-600 dark:text-red-400"
-                  }
-                >
-                  {t.type}
-                </span>
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                {formatNumber(t.quantity, 4)}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums">
-                {formatCurrency(t.price, currency)}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                {formatCurrency(t.fee, currency)}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                {formatCurrency(t.quantity * t.price, currency)}
-              </td>
-              <td className="py-2 text-right">
-                <button
-                  onClick={() => onDelete(t)}
-                  className="text-xs text-zinc-400 hover:text-red-500"
-                  aria-label="Delete transaction"
-                >
-                  ✕
-                </button>
-              </td>
-            </tr>
-          ))}
+          {rows.map((t) =>
+            editingId === t.id ? (
+              <TransactionEditRow
+                key={t.id}
+                tx={t}
+                portfolios={portfolios}
+                multiPortfolio={multiPortfolio}
+                onSave={(patch) => {
+                  onUpdate(t.id, patch);
+                  setEditingId(null);
+                }}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <tr
+                key={t.id}
+                className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+              >
+                <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(t.date)}</td>
+                <td className="py-2 pr-3">
+                  <span
+                    className={
+                      t.type === "BUY"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }
+                  >
+                    {t.type}
+                  </span>
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                  {formatNumber(t.quantity, 4)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums">
+                  {formatCurrency(t.price, currency)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                  {formatCurrency(t.fee, currency)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                  {formatCurrency(t.quantity * t.price, currency)}
+                </td>
+                {multiPortfolio && (
+                  <td className="py-2 pr-3 text-zinc-500">
+                    {portfolios.find((p) => p.id === t.portfolioId)?.name ?? "—"}
+                  </td>
+                )}
+                <td className="py-2 text-right whitespace-nowrap">
+                  <button
+                    onClick={() => setEditingId(t.id)}
+                    className="px-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                    aria-label="Edit transaction"
+                    title="Edit"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="inline h-3.5 w-3.5">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDelete(t)}
+                    className="px-1 text-zinc-400 hover:text-red-500"
+                    aria-label="Delete transaction"
+                    title="Delete"
+                  >
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            ),
+          )}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function TransactionEditRow({
+  tx,
+  portfolios,
+  multiPortfolio,
+  onSave,
+  onCancel,
+}: {
+  tx: Transaction;
+  portfolios: Portfolio[];
+  multiPortfolio: boolean;
+  onSave: (patch: Partial<Omit<Transaction, "id">>) => void;
+  onCancel: () => void;
+}) {
+  const [type, setType] = useState(tx.type);
+  const [quantity, setQuantity] = useState(String(tx.quantity));
+  const [price, setPrice] = useState(String(tx.price));
+  const [fee, setFee] = useState(String(tx.fee));
+  const [date, setDate] = useState(tx.date.slice(0, 16));
+  const [portfolioId, setPortfolioId] = useState(tx.portfolioId);
+
+  const cell = "w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+
+  const save = () => {
+    const qty = parseDecimal(quantity);
+    const px = parseDecimal(price);
+    onSave({
+      type,
+      quantity: Number.isFinite(qty) && qty > 0 ? qty : tx.quantity,
+      price: Number.isFinite(px) && px >= 0 ? px : tx.price,
+      fee: parseDecimal(fee) || 0,
+      date,
+      portfolioId,
+    });
+  };
+
+  return (
+    <tr className="border-b border-zinc-100 bg-zinc-50 last:border-0 dark:border-zinc-800/60 dark:bg-zinc-800/30">
+      <td className="py-1.5 pr-2">
+        <input
+          type="datetime-local"
+          value={date}
+          max={nowDateTimeLocal()}
+          onChange={(e) => setDate(e.target.value)}
+          className={cell}
+        />
+      </td>
+      <td className="py-1.5 pr-2">
+        <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
+          <option value="BUY">BUY</option>
+          <option value="SELL">SELL</option>
+        </select>
+      </td>
+      <td className="py-1.5 pr-2">
+        <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={`${cell} text-right`} />
+      </td>
+      <td className="py-1.5 pr-2">
+        <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} className={`${cell} text-right`} />
+      </td>
+      <td className="py-1.5 pr-2">
+        <input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} className={`${cell} text-right`} />
+      </td>
+      <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
+      {multiPortfolio && (
+        <td className="py-1.5 pr-2">
+          <select value={portfolioId} onChange={(e) => setPortfolioId(e.target.value)} className={cell}>
+            {portfolios.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </td>
+      )}
+      <td className="py-1.5 text-right whitespace-nowrap">
+        <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label="Save" title="Save">
+          ✓
+        </button>
+        <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label="Cancel" title="Cancel">
+          ✕
+        </button>
+      </td>
+    </tr>
   );
 }
 

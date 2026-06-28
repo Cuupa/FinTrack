@@ -119,6 +119,7 @@ export function MonteCarloPanel() {
 
   const [result, setResult] = useState<MonteCarloResult | null>(null);
   const [scale, setScale] = useState<ChartScale>("linear");
+  const [hover, setHover] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // In "My portfolio" mode the parameters are auto-derived; the user must opt in
   // to editing them.
@@ -409,14 +410,19 @@ export function MonteCarloPanel() {
                 </div>
               </div>
               <div className="mt-4">
-                <DistributionChart result={result} currency={currency} scale={scale} />
+                <DistributionChart
+                  result={result}
+                  currency={currency}
+                  scale={scale}
+                  highlight={hover}
+                />
               </div>
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} info={t("sim.tipBand50")} />
-                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} info={t("sim.tipBand80")} />
-                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} info={t("sim.tipBandFull")} />
-                <Legend color="#4f46e5" label={t("sim.medianLine")} line info={t("sim.tipMedian")} />
-                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed info={t("sim.tipContributed")} />
+                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} info={t("sim.tipBand50")} seriesKey="range50" onHover={setHover} />
+                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} info={t("sim.tipBand80")} seriesKey="range80" onHover={setHover} />
+                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} info={t("sim.tipBandFull")} seriesKey="rangeFull" onHover={setHover} />
+                <Legend color="#4f46e5" label={t("sim.medianLine")} line info={t("sim.tipMedian")} seriesKey="median" onHover={setHover} />
+                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed info={t("sim.tipContributed")} seriesKey="contributed" onHover={setHover} />
               </div>
               <SummaryRow
                 contributed={final.contributed}
@@ -817,6 +823,8 @@ function Legend({
   line = false,
   dashed = false,
   info,
+  seriesKey,
+  onHover,
 }: {
   color: string;
   label: string;
@@ -824,9 +832,15 @@ function Legend({
   line?: boolean;
   dashed?: boolean;
   info?: string;
+  seriesKey?: string;
+  onHover?: (k: string | null) => void;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300">
+    <span
+      className="inline-flex cursor-default items-center gap-1.5 rounded-md px-1 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+      onMouseEnter={() => seriesKey && onHover?.(seriesKey)}
+      onMouseLeave={() => onHover?.(null)}
+    >
       {line ? (
         <span
           className="inline-block h-0 w-4 align-middle"

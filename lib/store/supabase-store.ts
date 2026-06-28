@@ -249,6 +249,20 @@ export class SupabaseStore implements DataStore {
     };
   }
 
+  async updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.assetId !== undefined) upd.asset_id = patch.assetId;
+    if (patch.portfolioId !== undefined) upd.portfolio_id = patch.portfolioId;
+    if (patch.type !== undefined) upd.type = patch.type;
+    if (patch.quantity !== undefined) upd.quantity = patch.quantity;
+    if (patch.price !== undefined) upd.price = patch.price;
+    if (patch.fee !== undefined) upd.fee = patch.fee;
+    if (patch.date !== undefined) upd.executed_at = patch.date;
+    if (Object.keys(upd).length === 0) return;
+    const { error } = await this.supabase.from("transactions").update(upd).eq("id", id);
+    if (error) throw error;
+  }
+
   async deleteTransaction(id: string): Promise<void> {
     // RLS restricts deletion to the user's own transactions.
     const { error } = await this.supabase

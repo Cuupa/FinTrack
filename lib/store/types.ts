@@ -18,6 +18,7 @@ export interface DataStore {
   updateAsset(id: string, patch: Partial<AssetInput>): Promise<void>;
   deleteAsset(id: string): Promise<void>;
   addTransaction(input: TransactionInput): Promise<Transaction>;
+  updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
   createPortfolio(name: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;

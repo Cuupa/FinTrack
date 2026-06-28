@@ -92,6 +92,15 @@ export class LocalStore implements DataStore {
     return tx;
   }
 
+  async updateTransaction(id: string, patch: Partial<TransactionInput>) {
+    const data = this.read();
+    const idx = data.transactions.findIndex((t) => t.id === id);
+    if (idx >= 0) {
+      data.transactions[idx] = { ...data.transactions[idx], ...patch };
+      this.write(data);
+    }
+  }
+
   async deleteTransaction(id: string) {
     const data = this.read();
     data.transactions = data.transactions.filter((t) => t.id !== id);

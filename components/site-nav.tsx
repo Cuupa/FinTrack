@@ -40,9 +40,12 @@ export function SiteNav() {
             </svg>
             {t("shared.viewing")}
           </span>
-          <Link href="/" className="ml-auto">
-            <Button variant="primary">{t("shared.open")}</Button>
-          </Link>
+          <div className="ml-auto flex items-center gap-3">
+            <LocaleSwitcher />
+            <Link href="/">
+              <Button variant="primary">{t("shared.open")}</Button>
+            </Link>
+          </div>
         </nav>
       </header>
     );
