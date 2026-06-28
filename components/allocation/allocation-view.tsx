@@ -20,7 +20,7 @@ import {
   type Slice,
 } from "@/lib/finance/allocation";
 import { useTags } from "@/lib/tags/tags-context";
-import { formatCurrency } from "@/lib/format";
+import { colorForLabel } from "@/lib/colors";
 import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
@@ -112,7 +112,7 @@ export function AllocationView() {
       <div className="mt-8">
         {tab === "custom" && charts.custom.every((s) => s.label === "Untagged") ? (
           <p className="py-6 text-center text-sm text-zinc-500">
-            Assign a tag to a holding below to build a custom breakdown.
+            No tags yet — open an asset and add tags to build a custom breakdown.
           </p>
         ) : charts[tab].length === 0 ? (
           <p className="py-12 text-center text-sm text-zinc-500">
@@ -121,67 +121,19 @@ export function AllocationView() {
               : "No data for this breakdown yet."}
           </p>
         ) : (
-          <AllocationPie slices={charts[tab]} currency={base} />
+          <AllocationPie
+            slices={charts[tab]}
+            currency={base}
+            colors={
+              tab === "custom"
+                ? charts.custom.map((s) =>
+                    s.label === "Untagged" ? "#a1a1aa" : colorForLabel(s.label),
+                  )
+                : undefined
+            }
+          />
         )}
       </div>
-
-      {tab === "custom" && (
-        <CustomTagEditor
-          holdings={holdings}
-          currency={base}
-        />
-      )}
     </Card>
-  );
-}
-
-function CustomTagEditor({
-  holdings,
-  currency,
-}: {
-  holdings: ReturnType<typeof summarizeAll>;
-  currency: string;
-}) {
-  const { tags, allTags, setTag, clearTag } = useTags();
-  return (
-    <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-      <h3 className="text-sm font-semibold">Tag your holdings</h3>
-      <p className="mt-0.5 text-xs text-zinc-500">
-        Group assets into your own categories (e.g. “Core”, “Speculative”,
-        “Pension”). The breakdown above aggregates by these tags.
-      </p>
-      <datalist id="custom-tag-suggestions">
-        {allTags.map((t) => (
-          <option key={t} value={t} />
-        ))}
-      </datalist>
-      <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-        {holdings.map((h) => (
-          <li key={h.asset.id} className="flex items-center gap-3 py-2">
-            <span className="min-w-0 flex-1 truncate text-sm">{h.asset.name}</span>
-            <span className="hidden w-28 shrink-0 text-right text-xs tabular-nums text-zinc-500 sm:block" data-private>
-              {formatCurrency(h.marketValue, currency)}
-            </span>
-            <input
-              list="custom-tag-suggestions"
-              value={tags[h.asset.id] ?? ""}
-              onChange={(e) => setTag(h.asset.id, e.target.value)}
-              placeholder="Untagged"
-              className="w-36 shrink-0 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            />
-            {tags[h.asset.id] && (
-              <button
-                type="button"
-                onClick={() => clearTag(h.asset.id)}
-                className="shrink-0 text-xs text-zinc-400 hover:text-red-500"
-                aria-label="Clear tag"
-              >
-                ✕
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }

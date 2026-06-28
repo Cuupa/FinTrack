@@ -1,8 +1,7 @@
 "use client";
 
-// User-defined custom tags (categories) per asset, for the Analysis "Custom"
-// distribution. One category per asset keeps the breakdown a clean part-of-whole
-// pie. Persisted in localStorage (client-only, no server round-trip).
+// User-defined tags per asset (1..n), for the Analysis "Custom" distribution and
+// the asset page's tag badges. Persisted in localStorage (client-only).
 
 import {
   createContext,
@@ -16,14 +15,15 @@ import {
 
 const STORAGE_KEY = "fintrack-tags";
 
-type TagMap = Record<string, string>; // assetId -> tag
+type TagMap = Record<string, string[]>; // assetId -> tags
 
 interface TagsContextValue {
   tags: TagMap;
   /** All distinct tag names in use, sorted. */
   allTags: string[];
-  setTag: (assetId: string, tag: string) => void;
-  clearTag: (assetId: string) => void;
+  tagsFor: (assetId: string) => string[];
+  addTag: (assetId: string, tag: string) => void;
+  removeTag: (assetId: string, tag: string) => void;
 }
 
 const TagsContext = createContext<TagsContextValue | null>(null);
@@ -35,7 +35,7 @@ export function TagsProvider({ children }: { children: ReactNode }) {
     void Promise.resolve().then(() => {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) setTags(JSON.parse(raw) as TagMap);
+        if (raw) setTags(migrate(JSON.parse(raw)));
       } catch {
         /* ignore */
       }
@@ -51,34 +51,53 @@ export function TagsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setTag = useCallback(
+  const tagsFor = useCallback((assetId: string) => tags[assetId] ?? [], [tags]);
+
+  const addTag = useCallback(
     (assetId: string, tag: string) => {
       const t = tag.trim();
-      persist({ ...tags, [assetId]: t });
+      if (!t) return;
+      const cur = tags[assetId] ?? [];
+      if (cur.some((x) => x.toLowerCase() === t.toLowerCase())) return;
+      persist({ ...tags, [assetId]: [...cur, t] });
     },
     [tags, persist],
   );
 
-  const clearTag = useCallback(
-    (assetId: string) => {
-      const next = { ...tags };
-      delete next[assetId];
-      persist(next);
+  const removeTag = useCallback(
+    (assetId: string, tag: string) => {
+      const cur = tags[assetId] ?? [];
+      const next = cur.filter((x) => x !== tag);
+      const map = { ...tags };
+      if (next.length) map[assetId] = next;
+      else delete map[assetId];
+      persist(map);
     },
     [tags, persist],
   );
 
   const allTags = useMemo(
-    () => Array.from(new Set(Object.values(tags).filter(Boolean))).sort(),
+    () => Array.from(new Set(Object.values(tags).flat().filter(Boolean))).sort(),
     [tags],
   );
 
   const value = useMemo<TagsContextValue>(
-    () => ({ tags, allTags, setTag, clearTag }),
-    [tags, allTags, setTag, clearTag],
+    () => ({ tags, allTags, tagsFor, addTag, removeTag }),
+    [tags, allTags, tagsFor, addTag, removeTag],
   );
 
   return <TagsContext.Provider value={value}>{children}</TagsContext.Provider>;
+}
+
+/** Accept the old single-tag shape (assetId -> string) and upgrade to arrays. */
+function migrate(raw: unknown): TagMap {
+  if (!raw || typeof raw !== "object") return {};
+  const out: TagMap = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === "string" && !!x);
+    else if (typeof v === "string" && v) out[k] = [v];
+  }
+  return out;
 }
 
 export function useTags(): TagsContextValue {

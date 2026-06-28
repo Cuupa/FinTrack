@@ -43,6 +43,7 @@ import {
   type ChartMarker,
 } from "@/components/charts/performance-chart";
 import { TransactionForm } from "./transaction-form";
+import { AssetTags } from "./asset-tags";
 
 export function AssetDetail({ assetId }: { assetId: string }) {
   const { data, loading, deleteAsset, deleteTransaction } = usePortfolio();
@@ -196,6 +197,9 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           </Button>
         </div>
       </div>
+
+      {/* Tags */}
+      <AssetTags assetId={asset.id} />
 
       {/* Price chart */}
       <Card>

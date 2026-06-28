@@ -26,12 +26,16 @@ const PALETTE = [
 export function AllocationPie({
   slices,
   currency,
+  colors,
 }: {
   slices: Slice[];
   currency: string;
+  /** Optional per-slice colours (aligned to `slices`); defaults to the palette. */
+  colors?: string[];
 }) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   const [active, setActive] = useState<number | null>(null);
+  const colorAt = (i: number) => colors?.[i] ?? PALETTE[i % PALETTE.length];
 
   if (total <= 0) {
     return <p className="py-16 text-center text-sm text-zinc-500">No data</p>;
@@ -63,7 +67,7 @@ export function AllocationPie({
               {slices.map((_, i) => (
                 <Cell
                   key={i}
-                  fill={PALETTE[i % PALETTE.length]}
+                  fill={colorAt(i)}
                   opacity={active === null || active === i ? 1 : 0.25}
                   style={{ transition: "opacity 150ms" }}
                 />
@@ -121,7 +125,7 @@ export function AllocationPie({
               <span
                 className="inline-block h-3 w-3 shrink-0 rounded-[4px] transition-transform"
                 style={{
-                  backgroundColor: PALETTE[i % PALETTE.length],
+                  backgroundColor: colorAt(i),
                   transform: isActive ? "scale(1.25)" : "scale(1)",
                 }}
               />
