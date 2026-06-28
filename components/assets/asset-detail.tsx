@@ -290,9 +290,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
                       style={{ width: `${Math.min(100, c.weight * 100 * 4)}%` }}
                     />
                   </div>
-                  <span className="w-28 shrink-0 text-right tabular-nums text-zinc-500">
-                    {formatNumber(c.weight * 100, 1)}% ·{" "}
-                    <span data-private>{formatCurrency(summary.marketValue * c.weight, currency)}</span>
+                  <span className="w-16 shrink-0 text-right tabular-nums text-zinc-500">
+                    {formatNumber(c.weight * 100, 1)}%
                   </span>
                 </div>
               ))}
