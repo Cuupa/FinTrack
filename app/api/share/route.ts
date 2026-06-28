@@ -35,14 +35,19 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
-  const payload = normalizeShare((body as { payload?: unknown })?.payload);
+  const b = body as { payload?: unknown; owner?: unknown; mode?: unknown };
+  const payload = normalizeShare(b?.payload);
   if (!payload) return Response.json({ error: "invalid payload" }, { status: 400 });
+  const owner = typeof b.owner === "string" ? b.owner : null;
+  const mode = b.mode === "live" ? "live" : "snapshot";
 
   const supabase = createClient(url, key);
   // Retry a couple of times on the (astronomically unlikely) id collision.
   for (let attempt = 0; attempt < 3; attempt++) {
     const id = shortId();
-    const { error } = await supabase.from("shared_portfolios").insert({ id, payload });
+    const { error } = await supabase
+      .from("shared_portfolios")
+      .insert({ id, payload, owner, mode });
     if (!error) return Response.json({ id });
     if (!/duplicate|unique/i.test(error.message)) {
       return Response.json({ error: error.message }, { status: 500 });

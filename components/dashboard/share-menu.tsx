@@ -5,30 +5,18 @@
 // server-side under a short id; if that's unavailable it falls back to encoding
 // the snapshot in the URL fragment.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { useLivePrices } from "@/lib/live/live-prices-context";
-import { useCatalog } from "@/lib/catalog/catalog-context";
-import { quoteItemFor } from "@/lib/finance/prices";
-import { useHistory } from "@/lib/history/use-history";
-import { netWorthSeries, summarizeAll, twrSeries } from "@/lib/finance/portfolio";
-import { netFlows } from "@/lib/finance/returns";
-import { portfolioIRR } from "@/lib/finance/irr";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
 import { apiFetch } from "@/lib/api";
-import {
-  buildSharePayload,
-  encodeShare,
-  type ShareSource,
-  type SharePayload,
-} from "@/lib/share/share";
+import { useShareSource } from "@/lib/share/use-share-source";
+import { buildSharePayload, encodeShare, type SharePayload } from "@/lib/share/share";
 
 export function ShareMenu() {
-  const { data } = usePortfolio();
-  const { valuation } = useLivePrices();
-  const { version } = useCatalog();
-  const currency = data.profile.currency;
+  const { user } = useAuth();
+  const { source, loading } = useShareSource();
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,46 +30,14 @@ export function ShareMenu() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const histItems = useMemo(
-    () =>
-      data.assets.map(quoteItemFor).filter((x): x is NonNullable<typeof x> => x !== null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.assets, version],
-  );
-  const { histories, loading } = useHistory(histItems, "MAX", currency);
-
-  const source = useMemo<ShareSource>(() => {
-    const holdings = summarizeAll(data.assets, data.transactions, valuation).filter(
-      (h) => h.position.shares > 0,
-    );
-    const netWorth = holdings.reduce((s, h) => s + h.marketValue, 0);
-    const wealthSeries = netWorthSeries(data.assets, data.transactions, "MAX", valuation, histories);
-    const twr = twrSeries(data.assets, data.transactions, "MAX", valuation, histories);
-    const flows = netFlows(data.assets, data.transactions, valuation).map((f) => ({
-      date: f.date,
-      amount: -f.amount,
-    }));
-    return {
-      currency,
-      netWorth,
-      irr: portfolioIRR(flows, netWorth),
-      twr: twr.length ? twr[twr.length - 1].value : null,
-      twrSeries: twr,
-      wealthSeries,
-      holdings: holdings.map((h) => ({
-        name: h.asset.name,
-        type: h.asset.type,
-        marketValue: h.marketValue,
-        ret: h.unrealizedPLPercent,
-      })),
-    };
-  }, [data, valuation, histories, currency]);
-
   const share = async (incognito: boolean) => {
     setCreating(true);
     setLink(null);
     setCopied(false);
-    const url = await createLink(buildSharePayload(source, incognito));
+    // Live shares require an account (the owner keeps them refreshed).
+    const isLive = live && !!user;
+    const payload = buildSharePayload(source, incognito, isLive);
+    const url = await createLink(payload, isLive ? (user?.id ?? null) : null);
     setLink(url);
     setCreating(false);
   };
@@ -128,6 +84,36 @@ export function ShareMenu() {
       </button>
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          {/* Snapshot vs Live mode. Live keeps the shared view in sync as the
+              owner's portfolio changes; it needs an account. */}
+          <div className="flex items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+            <div>
+              <div className="text-sm font-medium">{live ? "Live" : "Snapshot"}</div>
+              <div className="text-xs text-zinc-500">
+                {live
+                  ? "Auto-updates as your portfolio changes."
+                  : "A frozen point-in-time copy."}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={live}
+              disabled={!user}
+              title={user ? "Toggle live mode" : "Sign in to share live"}
+              onClick={() => setLive((v) => !v)}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+                live ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  live ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => share(false)}
@@ -197,12 +183,12 @@ export function ShareMenu() {
 }
 
 /** Store the snapshot server-side for a short link; fall back to a fragment link. */
-async function createLink(payload: SharePayload): Promise<string> {
+async function createLink(payload: SharePayload, owner: string | null): Promise<string> {
   try {
     const res = await apiFetch("/api/share", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload }),
+      body: JSON.stringify({ payload, owner, mode: payload.live ? "live" : "snapshot" }),
     });
     if (res.ok) {
       const { id } = (await res.json()) as { id?: string };

@@ -724,6 +724,14 @@ paths:
                 payload:
                   type: object
                   description: The SharePayload (allocation, TWROR/wealth series, IRR, holdings).
+                owner:
+                  type: string
+                  nullable: true
+                  description: Owner user id (live shares only; lets the owner refresh it).
+                mode:
+                  type: string
+                  enum: [snapshot, live]
+                  description: Snapshot (frozen) or live (owner-refreshed).
       responses:
         "200":
           description: Created.

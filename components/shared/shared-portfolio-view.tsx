@@ -34,6 +34,13 @@ function windowSlice(series: SharePt[], tf: Timeframe, rebaseReturn: boolean): S
   return win.map((p) => ({ date: p.date, value: (1 + p.value) / (1 + base) - 1 }));
 }
 
+/** "Simon's Portfolio" (handles names ending in s), else "Shared portfolio". */
+function shareTitle(name: string | null | undefined): string {
+  const n = (name ?? "").trim();
+  if (!n) return "Shared portfolio";
+  return `${n}${/s$/i.test(n) ? "'" : "'s"} Portfolio`;
+}
+
 export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
   const { incognito, currency, holdings, netWorth, irr, wealthSeries, twrSeries } = payload;
   const [tf, setTf] = useState<Timeframe>("1Y");
@@ -57,16 +64,22 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Shared portfolio</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{shareTitle(payload.ownerName)}</h1>
           <p className="text-sm text-zinc-500">
-            A read-only snapshot{incognito ? " (incognito — amounts hidden)" : ""}.
+            A read-only {payload.live ? "live view" : "snapshot"}
+            {incognito ? " (incognito — amounts hidden)" : ""}.
           </p>
         </div>
-        {incognito && (
+        <div className="flex items-center gap-2">
           <span className="rounded-full border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-500 dark:border-zinc-700">
-            Incognito
+            {payload.live ? "Live" : "Snapshot"}
           </span>
-        )}
+          {incognito && (
+            <span className="rounded-full border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-500 dark:border-zinc-700">
+              Incognito
+            </span>
+          )}
+        </div>
       </div>
 
       <Card>

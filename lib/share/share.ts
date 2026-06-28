@@ -25,6 +25,10 @@ export interface ShareHolding {
 export interface SharePayload {
   v: 2;
   incognito: boolean;
+  /** True for a live (auto-refreshed by the owner) share. */
+  live?: boolean;
+  /** Owner's display name, for the shared title ("Simon's Portfolio"). */
+  ownerName?: string | null;
   currency: string;
   createdAt: string;
   /** Net worth in base currency, or null in incognito shares. */
@@ -41,6 +45,7 @@ export interface SharePayload {
 }
 
 export interface ShareSource {
+  ownerName: string | null;
   currency: string;
   netWorth: number;
   irr: number | null;
@@ -59,11 +64,17 @@ function roundSeries(s: SharePt[], d: number): SharePt[] {
   return s.map((p) => ({ date: p.date, value: r(p.value, d) }));
 }
 
-export function buildSharePayload(src: ShareSource, incognito: boolean): SharePayload {
+export function buildSharePayload(
+  src: ShareSource,
+  incognito: boolean,
+  live = false,
+): SharePayload {
   const total = src.netWorth || 0;
   return {
     v: 2,
     incognito,
+    live,
+    ownerName: src.ownerName,
     currency: src.currency,
     createdAt: new Date().toISOString(),
     netWorth: incognito ? null : r(total, 2),

@@ -109,8 +109,12 @@ alter table public.etf_breakdowns
 create table if not exists public.shared_portfolios (
   id text primary key,
   payload jsonb not null,
+  owner uuid,
+  mode text not null default 'snapshot',
   created_at timestamptz not null default now()
 );
+alter table public.shared_portfolios add column if not exists owner uuid;
+alter table public.shared_portfolios add column if not exists mode text not null default 'snapshot';
 
 -- Assets ---------------------------------------------------------------------
 -- A user's holding: a link to an instrument (master data) plus user notes.
@@ -173,7 +177,8 @@ insert into public.schema_migrations (version) values
   ('0015_benchmark_currency'),
   ('0016_etf_country_kind'),
   ('0017_shared_portfolios'),
-  ('0018_profile_name_locale')
+  ('0018_profile_name_locale'),
+  ('0019_shared_live')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -212,6 +217,10 @@ drop policy if exists "shared portfolios readable" on public.shared_portfolios;
 create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
 drop policy if exists "shared portfolios insertable" on public.shared_portfolios;
 create policy "shared portfolios insertable" on public.shared_portfolios for insert with check (true);
+-- An owner may keep their own (live) shares current.
+drop policy if exists "shared portfolios owner update" on public.shared_portfolios;
+create policy "shared portfolios owner update" on public.shared_portfolios
+  for update using (owner = auth.uid()) with check (owner = auth.uid());
 drop policy if exists "etf breakdowns readable" on public.etf_breakdowns;
 create policy "etf breakdowns readable" on public.etf_breakdowns for select using (true);
 drop policy if exists "migrations readable" on public.schema_migrations;
