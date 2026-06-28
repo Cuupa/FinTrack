@@ -11,6 +11,7 @@ import type { SharePayload, SharePt } from "@/lib/share/share";
 import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { formatCurrency, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
+import { InfoTip } from "@/components/ui/info-tip";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import {
@@ -20,6 +21,36 @@ import {
 import { AllocationPie } from "@/components/allocation/allocation-pie";
 
 const TFS: Timeframe[] = ["1M", "3M", "YTD", "1Y", "5Y", "MAX"];
+
+type HoldingSortKey = "name" | "type" | "allocation" | "ret" | "value";
+
+function SortTh({
+  label,
+  k,
+  sort,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  k: HoldingSortKey;
+  sort: { key: HoldingSortKey; dir: 1 | -1 };
+  onSort: (k: HoldingSortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sort.key === k;
+  return (
+    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 uppercase hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        {label}
+        <span className="text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
 
 /** Slice a dated series to a timeframe; optionally re-base a cumulative-return
  *  series so it restarts at 0 at the window start. */
@@ -65,6 +96,33 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
     value: !incognito && h.value != null ? h.value : h.allocation,
   }));
 
+  // Sortable holdings table.
+  const [sort, setSort] = useState<{ key: HoldingSortKey; dir: 1 | -1 }>({
+    key: "allocation",
+    dir: -1,
+  });
+  const sortedHoldings = useMemo(() => {
+    const arr = [...holdings];
+    arr.sort((a, b) => {
+      switch (sort.key) {
+        case "name":
+          return a.name.localeCompare(b.name) * sort.dir;
+        case "type":
+          return a.type.localeCompare(b.type) * sort.dir;
+        case "ret":
+          return (a.ret - b.ret) * sort.dir;
+        case "value":
+          return ((a.value ?? 0) - (b.value ?? 0)) * sort.dir;
+        case "allocation":
+        default:
+          return (a.allocation - b.allocation) * sort.dir;
+      }
+    });
+    return arr;
+  }, [holdings, sort]);
+  const toggleSort = (key: HoldingSortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: -1 }));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,17 +148,23 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
       <Card>
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
           {!incognito && netWorth != null && (
-            <Stat label="Net worth" value={formatCurrency(netWorth, currency)} />
+            <Stat
+              label="Net worth"
+              value={formatCurrency(netWorth, currency)}
+              info="Total current value of all holdings, in the portfolio's base currency."
+            />
           )}
           <Stat
             label={`TWROR (${tf})`}
             value={windowTwr != null ? formatPercent(windowTwr) : "—"}
             valueClassName={windowTwr != null ? plColor(windowTwr) : ""}
+            info="Time-weighted rate of return over the selected timeframe: performance with deposits/withdrawals removed (comparable to a fund/benchmark)."
           />
           <Stat
             label="IRR (p.a.)"
             value={irr != null ? formatPercent(irr) : "—"}
             valueClassName={irr != null ? plColor(irr) : ""}
+            info="Annualised, money-weighted return that accounts for the timing and size of every buy and sell."
           />
         </div>
 
@@ -164,26 +228,34 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
 
       {slices.length > 0 && (
         <Card>
-          <h2 className="mb-4 text-sm font-semibold">Allocation</h2>
+          <h2 className="mb-4 flex items-center gap-1.5 text-sm font-semibold">
+            Allocation
+            <InfoTip text="Share of the portfolio by holding (by current value)." />
+          </h2>
           <AllocationPie slices={slices} currency={currency} showTotal={!incognito} />
         </Card>
       )}
 
       <Card>
-        <h2 className="text-lg font-semibold">Holdings</h2>
+        <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+          Holdings
+          <InfoTip text="Each position's weight, return (vs. cost basis), and value. Click a column to sort." />
+        </h2>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <th className="py-2 pr-3">Name</th>
-                <th className="py-2 pr-3">Type</th>
-                <th className="py-2 pr-3 text-right">Allocation</th>
-                <th className="py-2 pr-3 text-right">Return</th>
-                {!incognito && <th className="py-2 pr-3 text-right">Value</th>}
+                <SortTh label="Name" k="name" sort={sort} onSort={toggleSort} />
+                <SortTh label="Type" k="type" sort={sort} onSort={toggleSort} />
+                <SortTh label="Allocation" k="allocation" sort={sort} onSort={toggleSort} align="right" />
+                <SortTh label="Return" k="ret" sort={sort} onSort={toggleSort} align="right" />
+                {!incognito && (
+                  <SortTh label="Value" k="value" sort={sort} onSort={toggleSort} align="right" />
+                )}
               </tr>
             </thead>
             <tbody>
-              {holdings.map((h, i) => (
+              {sortedHoldings.map((h, i) => (
                 <tr
                   key={`${h.name}-${i}`}
                   className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
