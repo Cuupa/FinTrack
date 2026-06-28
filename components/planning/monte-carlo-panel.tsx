@@ -102,6 +102,10 @@ export function MonteCarloPanel() {
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
   const [returnOverride, setReturnOverride] = useState<number | null>(null);
   const [volOverride, setVolOverride] = useState<number | null>(null);
+  // Per-asset μ/σ overrides (portfolio mode), keyed by asset name. Percent units.
+  const [assetOverrides, setAssetOverrides] = useState<
+    Record<string, { mean?: number; vol?: number }>
+  >({});
 
   const initialCapital =
     capitalOverride ?? (netWorth > 0 ? Math.round(netWorth) : 10000);
@@ -144,11 +148,14 @@ export function MonteCarloPanel() {
               monthlyContribution: form.monthlyContribution,
               years,
               runs,
-              assets: model.assets.map((a) => ({
-                weight: a.weight,
-                mean: a.mean,
-                vol: a.vol,
-              })),
+              assets: model.assets.map((a) => {
+                const o = assetOverrides[a.name];
+                return {
+                  weight: a.weight,
+                  mean: o?.mean != null ? o.mean / 100 : a.mean,
+                  vol: o?.vol != null ? o.vol / 100 : a.vol,
+                };
+              }),
               corr: model.corr,
             } satisfies PortfolioMonteCarloParams,
           }
@@ -235,27 +242,43 @@ export function MonteCarloPanel() {
             </div>
           )}
 
-          <Field
+          <SliderField
             label="Initial capital"
             suffix={currency}
             value={initialCapital}
             onChange={(v) => setCapitalOverride(v)}
+            min={0}
+            max={Math.max(100000, Math.round((netWorth || 0) * 3))}
+            step={1000}
           />
-          <Field
+          <SliderField
             label="Monthly contribution"
             suffix={currency}
             value={form.monthlyContribution}
             onChange={(v) => update("monthlyContribution", v)}
+            min={0}
+            max={5000}
+            step={50}
           />
-          <Field
+          <SliderField
             label="Investment horizon"
             suffix="years"
             value={form.years}
             onChange={(v) => update("years", v)}
+            min={1}
+            max={40}
+            step={1}
           />
 
           {effectiveMode === "portfolio" && model ? (
-            <PortfolioModelNote model={model} />
+            <PortfolioModelNote
+              model={model}
+              overrides={assetOverrides}
+              onOverride={(name, patch) =>
+                setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
+              }
+              onResetOverrides={() => setAssetOverrides({})}
+            />
           ) : (
             <>
               <EstimateNote
@@ -263,29 +286,35 @@ export function MonteCarloPanel() {
                 usingEstimates={usingEstimates}
                 onReset={resetToEstimates}
               />
-              <Field
+              <SliderField
                 label="Expected annual return"
                 suffix="%"
                 value={expectedReturn}
                 onChange={(v) => setReturnOverride(v)}
-                step="0.1"
+                min={-5}
+                max={20}
+                step={0.1}
+                digits={1}
               />
-              <Field
+              <SliderField
                 label="Volatility (std. dev.)"
                 suffix="%"
                 value={volatility}
                 onChange={(v) => setVolOverride(v)}
-                step="0.1"
+                min={0}
+                max={60}
+                step={0.5}
+                digits={1}
               />
             </>
           )}
-          <Field
+          <SliderField
             label="Simulation runs"
             value={form.runs}
             onChange={(v) => update("runs", v)}
             min={1000}
             max={10000}
-            step="500"
+            step={500}
           />
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
             {running ? "Simulating…" : "Run simulation"}
@@ -410,7 +439,17 @@ export function MonteCarloPanel() {
   );
 }
 
-function PortfolioModelNote({ model }: { model: PortfolioModel }) {
+function PortfolioModelNote({
+  model,
+  overrides,
+  onOverride,
+  onResetOverrides,
+}: {
+  model: PortfolioModel;
+  overrides: Record<string, { mean?: number; vol?: number }>;
+  onOverride: (name: string, patch: { mean?: number; vol?: number }) => void;
+  onResetOverrides: () => void;
+}) {
   // Pure guess = at least one holding has NO real history; otherwise figures are
   // data-backed (possibly blended toward the long-run prior for short windows).
   const pureGuess = model.assets.some((a) => !a.real);
@@ -430,6 +469,9 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
           "border-indigo-300/60 bg-indigo-100 text-indigo-800 dark:border-indigo-700/60 dark:bg-indigo-900/40 dark:text-indigo-200",
         bar: "bg-indigo-400 dark:bg-indigo-500",
       };
+
+  const [adv, setAdv] = useState(false);
+  const hasOverrides = Object.values(overrides).some((o) => o.mean != null || o.vol != null);
 
   return (
     <div className={`rounded-xl border p-3.5 text-xs ${theme.box}`}>
@@ -454,38 +496,79 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
         </p>
       ) : null}
 
+      <div className="mt-2 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setAdv((v) => !v)}
+          className="text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
+        >
+          {adv ? "Hide overrides" : "Override μ / σ per asset"}
+        </button>
+        {hasOverrides && (
+          <button
+            type="button"
+            onClick={onResetOverrides}
+            className="text-[11px] font-medium text-zinc-500 hover:underline"
+          >
+            Reset overrides
+          </button>
+        )}
+      </div>
+
       <ul className="mt-3 space-y-2.5">
-        {model.assets.map((a) => (
-          <li key={a.name}>
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate font-medium text-zinc-700 dark:text-zinc-200">
-                {a.name}
-              </span>
-              <span className="shrink-0 tabular-nums text-zinc-700 dark:text-zinc-200">
-                {formatPercent(a.mean)}{" "}
-                <span className="text-zinc-400">/ σ {pct(a.vol)}</span>
-              </span>
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
-                <div
-                  className={`h-full rounded-full ${theme.bar}`}
-                  style={{ width: `${Math.min(100, a.weight * 100)}%` }}
-                />
+        {model.assets.map((a) => {
+          const o = overrides[a.name];
+          const effMean = o?.mean != null ? o.mean / 100 : a.mean;
+          const effVol = o?.vol != null ? o.vol / 100 : a.vol;
+          const overridden = o?.mean != null || o?.vol != null;
+          return (
+            <li key={a.name}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate font-medium text-zinc-700 dark:text-zinc-200">
+                  {a.name}
+                </span>
+                <span className="shrink-0 tabular-nums text-zinc-700 dark:text-zinc-200">
+                  {formatPercent(effMean)}{" "}
+                  <span className="text-zinc-400">/ σ {pct(effVol)}</span>
+                  {overridden && <span className="ml-1 text-indigo-500">•</span>}
+                </span>
               </div>
-              <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
-                {pct(a.weight, 0)}
-              </span>
-            </div>
-            <div className="mt-0.5 text-[11px] text-zinc-500">
-              {!a.real
-                ? "long-run assumption · no price history"
-                : a.estimated
-                  ? `${a.years.toFixed(1)} yr history · blended to long-run`
-                  : `${a.years.toFixed(1)} yr history`}
-            </div>
-          </li>
-        ))}
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
+                  <div
+                    className={`h-full rounded-full ${theme.bar}`}
+                    style={{ width: `${Math.min(100, a.weight * 100)}%` }}
+                  />
+                </div>
+                <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
+                  {pct(a.weight, 0)}
+                </span>
+              </div>
+              {adv ? (
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <OverrideInput
+                    label="Return %"
+                    value={o?.mean ?? round1(a.mean * 100)}
+                    onChange={(v) => onOverride(a.name, { mean: v })}
+                  />
+                  <OverrideInput
+                    label="σ %"
+                    value={o?.vol ?? round1(a.vol * 100)}
+                    onChange={(v) => onOverride(a.name, { vol: v })}
+                  />
+                </div>
+              ) : (
+                <div className="mt-0.5 text-[11px] text-zinc-500">
+                  {!a.real
+                    ? "long-run assumption · no price history"
+                    : a.estimated
+                      ? `${a.years.toFixed(1)} yr history · blended to long-run`
+                      : `${a.years.toFixed(1)} yr history`}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <p className="mt-3 border-t border-current/10 pt-2 text-zinc-500">
@@ -493,6 +576,31 @@ function PortfolioModelNote({ model }: { model: PortfolioModel }) {
         the {model.corrYears.toFixed(1)} yr the holdings overlap.
       </p>
     </div>
+  );
+}
+
+/** Compact labelled numeric input for a per-asset μ/σ override. */
+function OverrideInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+      <span className="shrink-0">{label}</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        step="0.1"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full min-w-0 rounded-md border border-zinc-300 bg-white/60 px-2 py-1 text-right text-xs tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+      />
+    </label>
   );
 }
 
@@ -583,47 +691,82 @@ function SummaryRow({
   );
 }
 
-function Field({
+/**
+ * Dual-mode parameter control: a slider by default, with an "Enter value"
+ * toggle that swaps in a precise numeric field (and back). Used for every
+ * scalar simulation input.
+ */
+function SliderField({
   label,
   value,
   onChange,
   suffix,
-  step = "1",
   min = 0,
-  max,
+  max = 100,
+  step = 1,
+  digits = 0,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   suffix?: string;
-  step?: string;
   min?: number;
   max?: number;
+  step?: number;
+  digits?: number;
 }) {
+  const [manual, setManual] = useState(false);
+  const display = digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
+
   return (
     <div>
-      <label className="text-sm font-medium">{label}</label>
-      <div className="group relative mt-1">
-        <input
-          type="number"
-          inputMode="decimal"
-          step={step}
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          // Hide the native spinner (it overlapped the suffix) and leave room
-          // for the unit label on the right.
-          className={`w-full rounded-lg border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-            suffix ? "pr-12" : "pr-3"
-          }`}
-        />
-        {suffix && (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-400">
-            {suffix}
-          </span>
-        )}
+      <div className="flex items-baseline justify-between gap-2">
+        <label className="text-sm font-medium">{label}</label>
+        <button
+          type="button"
+          onClick={() => setManual((m) => !m)}
+          className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+        >
+          {manual ? "Use slider" : "Enter value"}
+        </button>
       </div>
+      {manual ? (
+        <div className="group relative mt-1">
+          <input
+            type="number"
+            inputMode="decimal"
+            step={step}
+            min={min}
+            max={max}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className={`w-full rounded-lg border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+              suffix ? "pr-12" : "pr-3"
+            }`}
+          />
+          {suffix && (
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-400">
+              {suffix}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="mt-2 flex items-center gap-3">
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-zinc-200 accent-zinc-900 dark:bg-zinc-700 dark:accent-white"
+          />
+          <span className="w-24 shrink-0 text-right text-sm font-medium tabular-nums">
+            {display}
+            {suffix ? <span className="ml-1 text-xs text-zinc-400">{suffix}</span> : null}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
