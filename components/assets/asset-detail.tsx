@@ -44,12 +44,16 @@ import {
 } from "@/components/charts/performance-chart";
 import { TransactionForm } from "./transaction-form";
 import { AssetTags } from "./asset-tags";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function AssetDetail({ assetId }: { assetId: string }) {
   const { data, loading, deleteAsset, deleteTransaction } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const router = useRouter();
+  // Subscribe to the locale so figures re-format when the language changes
+  // (this page formats currency without otherwise consuming the i18n context).
+  useI18n();
   const currency = data.profile.currency;
 
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");

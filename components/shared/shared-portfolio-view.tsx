@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { SharePayload, SharePt } from "@/lib/share/share";
 import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { formatCurrency, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -73,6 +74,7 @@ function shareTitle(name: string | null | undefined): string {
 }
 
 export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
+  useI18n(); // re-format figures on language change
   const { incognito, currency, holdings, netWorth, irr, wealthSeries, twrSeries } = payload;
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [mode, setMode] = useState<ChartMode>(wealthSeries ? "currency" : "percent");

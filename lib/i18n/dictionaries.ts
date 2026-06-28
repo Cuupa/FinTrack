@@ -230,6 +230,13 @@ export const en = {
   "sim.medianLine": "Median",
   "sim.contributedLine": "Contributed",
   "sim.year": "Year",
+  "sim.tipMedian": "The middle outcome — half the simulated paths ended above this value, half below.",
+  "sim.tipBand50": "The middle 50% of outcomes (25th to 75th percentile) — the most likely range.",
+  "sim.tipBand80": "The middle 80% of outcomes (10th to 90th percentile).",
+  "sim.tipBandFull": "The full spread from the worst to the best simulated path.",
+  "sim.tipContributed": "Total you would have paid in (initial capital + contributions), with no growth.",
+  "sim.tipOptimistic": "An optimistic outcome: only 10% of simulations did better.",
+  "sim.tipPessimistic": "A pessimistic outcome: only 10% of simulations did worse.",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -458,6 +465,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.medianLine": "Median",
   "sim.contributedLine": "Eingezahlt",
   "sim.year": "Jahr",
+  "sim.tipMedian": "Das mittlere Ergebnis — die Hälfte der simulierten Pfade endete darüber, die Hälfte darunter.",
+  "sim.tipBand50": "Die mittleren 50% der Ergebnisse (25. bis 75. Perzentil) — der wahrscheinlichste Bereich.",
+  "sim.tipBand80": "Die mittleren 80% der Ergebnisse (10. bis 90. Perzentil).",
+  "sim.tipBandFull": "Die volle Spanne vom schlechtesten bis zum besten simulierten Pfad.",
+  "sim.tipContributed": "Summe Ihrer Einzahlungen (Anfangskapital + Sparbeträge), ohne Wachstum.",
+  "sim.tipOptimistic": "Ein optimistisches Ergebnis: nur 10% der Simulationen waren besser.",
+  "sim.tipPessimistic": "Ein pessimistisches Ergebnis: nur 10% der Simulationen waren schlechter.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };

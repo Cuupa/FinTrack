@@ -27,6 +27,7 @@ import {
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
+import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
@@ -369,6 +370,7 @@ export function MonteCarloPanel() {
                   label={t("sim.median")}
                   value={formatCurrency(final.median, currency)}
                   sub={`${result.params.years} ${t("sim.years")}`}
+                  info={t("sim.tipMedian")}
                 />
               </Card>
               <Card>
@@ -376,6 +378,7 @@ export function MonteCarloPanel() {
                   label={t("sim.optimistic")}
                   value={formatCurrency(final.p90, currency)}
                   valueClassName={plColor(1)}
+                  info={t("sim.tipOptimistic")}
                 />
               </Card>
               <Card>
@@ -383,6 +386,7 @@ export function MonteCarloPanel() {
                   label={t("sim.pessimistic")}
                   value={formatCurrency(final.p10, currency)}
                   valueClassName={plColor(-1)}
+                  info={t("sim.tipPessimistic")}
                 />
               </Card>
             </div>
@@ -408,11 +412,11 @@ export function MonteCarloPanel() {
                 <DistributionChart result={result} currency={currency} scale={scale} />
               </div>
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} />
-                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} />
-                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} />
-                <Legend color="#4f46e5" label={t("sim.medianLine")} line />
-                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed />
+                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} info={t("sim.tipBand50")} />
+                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} info={t("sim.tipBand80")} />
+                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} info={t("sim.tipBandFull")} />
+                <Legend color="#4f46e5" label={t("sim.medianLine")} line info={t("sim.tipMedian")} />
+                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed info={t("sim.tipContributed")} />
               </div>
               <SummaryRow
                 contributed={final.contributed}
@@ -812,15 +816,17 @@ function Legend({
   opacity = 1,
   line = false,
   dashed = false,
+  info,
 }: {
   color: string;
   label: string;
   opacity?: number;
   line?: boolean;
   dashed?: boolean;
+  info?: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300">
+    <span className="inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300">
       {line ? (
         <span
           className="inline-block h-0 w-4 align-middle"
@@ -833,6 +839,7 @@ function Legend({
         />
       )}
       {label}
+      {info && <InfoTip text={info} />}
     </span>
   );
 }
