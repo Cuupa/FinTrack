@@ -56,7 +56,8 @@ export function XrayView() {
         <h2 className="text-lg font-semibold">{t("xray.stockExposure")}</h2>
         <p className="text-sm text-zinc-500">
           {formatNumber((xray.classified / (xray.total || 1)) * 100, 0)}% {t("xray.inEquities")} ·{" "}
-          {formatCurrency(xray.unclassified, currency)} {t("xray.otherNonEquity")}
+          <span data-private>{formatCurrency(xray.unclassified, currency)}</span>{" "}
+          {t("xray.otherNonEquity")}
         </p>
       </div>
 
@@ -87,7 +88,7 @@ export function XrayView() {
                     .map((s) => (s.viaEtf ? s.holdingName : `${s.holdingName} (direct)`))
                     .join(", ")}
                 </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
+                <td className="py-2 pr-3 text-right tabular-nums" data-private>
                   {formatCurrency(e.value, currency)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">

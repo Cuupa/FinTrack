@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import type { Slice } from "@/lib/finance/allocation";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const PALETTE = [
   "#6366f1",
@@ -27,12 +28,17 @@ export function AllocationPie({
   slices,
   currency,
   colors,
+  showTotal = true,
 }: {
   slices: Slice[];
   currency: string;
   /** Optional per-slice colours (aligned to `slices`); defaults to the palette. */
   colors?: string[];
+  /** Show the currency total/values in the centre. Off when slices are weights
+   *  (e.g. an incognito shared view), where absolute amounts don't exist. */
+  showTotal?: boolean;
 }) {
+  const { t } = useI18n();
   const total = slices.reduce((s, x) => s + x.value, 0);
   const [active, setActive] = useState<number | null>(null);
   const colorAt = (i: number) => colors?.[i] ?? PALETTE[i % PALETTE.length];
@@ -85,19 +91,25 @@ export function AllocationPie({
               <span className="mt-0.5 text-xl font-semibold tabular-nums">
                 {formatNumber((sel.value / total) * 100, 1)}%
               </span>
-              <span className="text-xs text-zinc-500 tabular-nums">
-                {formatCurrency(sel.value, currency)}
-              </span>
+              {showTotal && (
+                <span className="text-xs text-zinc-500 tabular-nums">
+                  {formatCurrency(sel.value, currency)}
+                </span>
+              )}
             </>
-          ) : (
+          ) : showTotal ? (
             <>
               <span className="text-xs uppercase tracking-wide text-zinc-400">
-                Total
+                {t("common.total")}
               </span>
               <span className="mt-0.5 text-xl font-semibold tabular-nums">
                 {formatCurrency(total, currency)}
               </span>
             </>
+          ) : (
+            <span className="text-xs uppercase tracking-wide text-zinc-400">
+              {t("common.total")} 100%
+            </span>
           )}
         </div>
       </div>

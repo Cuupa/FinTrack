@@ -356,15 +356,16 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           <Row label="WKN" value={asset.wkn ?? "—"} />
           {asset.symbol && <Row label="Symbol" value={asset.symbol} />}
           <Row label="Currency" value={nativeCur} />
-          <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} />
-          <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} />
+          <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} isPrivate />
+          <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
           <Row label="Current price" value={formatCurrency(summary.price, nativeCur)} />
-          <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} />
-          <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} />
+          <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
+          <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
           <Row label="Dividend yield" value={yld > 0 ? formatPercent(yld) : "—"} />
           <Row
             label="Dividends received"
             value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
+            isPrivate
           />
           <Row
             label="Volatility (p.a.)"
@@ -526,16 +527,16 @@ function TransactionsTable({
                   {t.type}
                 </span>
               </td>
-              <td className="py-2 pr-3 text-right tabular-nums">
+              <td className="py-2 pr-3 text-right tabular-nums" data-private>
                 {formatNumber(t.quantity, 4)}
               </td>
               <td className="py-2 pr-3 text-right tabular-nums">
                 {formatCurrency(t.price, currency)}
               </td>
-              <td className="py-2 pr-3 text-right tabular-nums">
+              <td className="py-2 pr-3 text-right tabular-nums" data-private>
                 {formatCurrency(t.fee, currency)}
               </td>
-              <td className="py-2 pr-3 text-right tabular-nums">
+              <td className="py-2 pr-3 text-right tabular-nums" data-private>
                 {formatCurrency(t.quantity * t.price, currency)}
               </td>
               <td className="py-2 text-right">
@@ -555,11 +556,21 @@ function TransactionsTable({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  isPrivate = false,
+}: {
+  label: string;
+  value: string;
+  isPrivate?: boolean;
+}) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-zinc-500">{label}</dt>
-      <dd className="text-right font-medium tabular-nums">{value}</dd>
+      <dd className="text-right font-medium tabular-nums" {...(isPrivate ? { "data-private": "" } : {})}>
+        {value}
+      </dd>
     </div>
   );
 }

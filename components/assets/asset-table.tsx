@@ -182,7 +182,7 @@ export function AssetTable() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-500">
+                    <td className="px-4 py-3 text-right tabular-nums text-zinc-500" data-private>
                       {formatCurrency(entry, nativeCur)}
                     </td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums" data-private>

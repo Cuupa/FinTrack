@@ -97,7 +97,7 @@ export function TradesView() {
         {barData.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("trades.noSells")}</p>
         ) : (
-          <div className="mt-3">
+          <div className="mt-3" data-private>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
@@ -172,7 +172,7 @@ function MoverList({
                   {m.symbol && <span className="ml-1 font-mono text-xs text-zinc-500">{m.symbol}</span>}
                 </span>
                 <span className={`shrink-0 text-right text-sm tabular-nums ${plColor(positive ? 1 : -1)}`}>
-                  {formatCurrency(m.pl, currency)}
+                  <span data-private>{formatCurrency(m.pl, currency)}</span>
                   <span className="ml-1 text-xs opacity-80">{formatPercent(m.plPercent)}</span>
                 </span>
               </Link>

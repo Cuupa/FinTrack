@@ -26,6 +26,7 @@ import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { usePrivacy } from "@/lib/privacy/privacy-context";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -40,6 +41,7 @@ export function NetWorthHero() {
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const { t } = useI18n();
+  const { incognito } = usePrivacy();
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
@@ -47,6 +49,8 @@ export function NetWorthHero() {
 
   const currency = data.profile.currency;
   const comparing = benchmarks.length > 0;
+  // Privacy mode hides absolute wealth → the chart is always Return there.
+  const chartMode: ChartMode = comparing || incognito ? "percent" : mode;
   const compare = useBenchmarkCompare(benchmarks, currency);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
@@ -168,10 +172,11 @@ export function NetWorthHero() {
           onTimeframe={setTimeframe}
           scale={scale}
           onScale={setScale}
-          // Comparing benchmarks forces relative (Return) mode — reflect that in
-          // the toggle.
-          mode={comparing ? "percent" : mode}
+          // Comparing forces relative (Return) mode — reflect that in the toggle.
+          // Privacy mode forbids Wealth entirely, so hide the toggle there.
+          mode={chartMode}
           onMode={setMode}
+          showMode={!incognito}
         />
       </div>
       <div className="mt-3 flex justify-end">
@@ -187,7 +192,7 @@ export function NetWorthHero() {
           <PerformanceChart
             series={series}
             scale={scale}
-            mode={comparing ? "percent" : mode}
+            mode={chartMode}
             currency={currency}
             compare={compare}
             mainLabel="Net worth"

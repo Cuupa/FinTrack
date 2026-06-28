@@ -39,6 +39,7 @@ export const en = {
 
   "common.scope": "Scope",
   "common.portfolioWide": "Portfolio wide",
+  "common.total": "Total",
 
   "stat.netWorth": "Net worth",
   "stat.change": "Change",
@@ -251,6 +252,7 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "common.scope": "Bereich",
   "common.portfolioWide": "Gesamtes Portfolio",
+  "common.total": "Gesamt",
 
   "stat.netWorth": "Nettovermögen",
   "stat.change": "Veränderung",

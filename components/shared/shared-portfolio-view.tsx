@@ -58,7 +58,12 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
   const chartSeries = mode === "currency" && wealthSlice ? wealthSlice : returnSlice;
   const windowTwr = returnSlice.length ? returnSlice[returnSlice.length - 1].value : null;
 
-  const slices = holdings.map((h) => ({ label: h.name, value: h.allocation }));
+  // Use absolute values when available (so the donut centre shows the real
+  // total); incognito has only weights, so the currency total is hidden.
+  const slices = holdings.map((h) => ({
+    label: h.name,
+    value: !incognito && h.value != null ? h.value : h.allocation,
+  }));
 
   return (
     <div className="space-y-6">
@@ -160,7 +165,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
       {slices.length > 0 && (
         <Card>
           <h2 className="mb-4 text-sm font-semibold">Allocation</h2>
-          <AllocationPie slices={slices} currency={currency} />
+          <AllocationPie slices={slices} currency={currency} showTotal={!incognito} />
         </Card>
       )}
 
