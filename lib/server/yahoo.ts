@@ -192,15 +192,21 @@ async function chart(
   symbol: string,
   range: string,
   interval: string,
+  // When true, use Yahoo's adjusted close (dividends reinvested = total return),
+  // so a distributing fund/index is comparable to an accumulating one.
+  total = false,
 ): Promise<{ points: YahooPoint[]; currency: string } | null> {
   const data = (await getJSON(
-    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}${total ? "&events=div" : ""}`,
   )) as
     | {
         chart?: {
           result?: Array<{
             timestamp?: number[];
-            indicators?: { quote?: Array<{ close?: (number | null)[] }> };
+            indicators?: {
+              quote?: Array<{ close?: (number | null)[] }>;
+              adjclose?: Array<{ adjclose?: (number | null)[] }>;
+            };
             meta?: { currency?: string };
           }>;
         };
@@ -209,10 +215,12 @@ async function chart(
   const result = data?.chart?.result?.[0];
   const ts = result?.timestamp;
   const close = result?.indicators?.quote?.[0]?.close;
-  if (!ts || !close) return null;
+  const adj = total ? result?.indicators?.adjclose?.[0]?.adjclose : undefined;
+  const series = adj ?? close;
+  if (!ts || !series) return null;
   const points: YahooPoint[] = [];
   for (let i = 0; i < ts.length; i++) {
-    const c = close[i];
+    const c = series[i];
     if (typeof c === "number" && c > 0) {
       points.push({ date: new Date(ts[i] * 1000).toISOString().slice(0, 10), close: c });
     }
@@ -240,6 +248,9 @@ export async function historyByQuery(
   hint: string | undefined,
   range: string,
   interval: string,
+  // Use total-return (adjusted close) — for benchmarks, so a distributing index
+  // is comparable to an accumulating holding.
+  total = false,
 ): Promise<{ points: YahooPoint[]; currency: string } | null> {
   const want = (wantCurrency || "").toUpperCase();
   const candidates: string[] = [];
@@ -250,7 +261,7 @@ export async function historyByQuery(
 
   let fallback: { points: YahooPoint[]; currency: string } | null = null;
   for (const s of candidates.slice(0, 5)) {
-    const c = await chart(s, range, interval);
+    const c = await chart(s, range, interval, total);
     if (!c) continue;
     if (!want || c.currency === want) return c;
     if (!fallback) fallback = c;

@@ -231,6 +231,14 @@ export function PerformanceChart({
           ))}
         </LineChart>
       </ResponsiveContainer>
+      {comparing && (
+        <p className="mt-2 px-1 text-[11px] leading-snug text-zinc-400">
+          Benchmark comparison is approximate: benchmarks are shown as total
+          return (dividends reinvested) and converted to {currency} using
+          historic exchange rates, so currency and accumulating-vs-distributing
+          differences can cause small deviations.
+        </p>
+      )}
     </div>
   );
 }

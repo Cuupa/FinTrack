@@ -122,7 +122,9 @@ export async function GET(req: Request): Promise<Response> {
       if (force || !last || daysSince(last) > STALE_DAYS) {
         const query = isISIN(b.item.key) ? b.item.key : b.item.id || b.item.key;
         const hint = b.item.id || undefined;
-        const r = await historyByQuery(query, b.item.currency, hint, RANGE, INTERVAL).catch(
+        // Total-return (adjusted close) so distributing benchmarks are
+        // comparable to accumulating holdings.
+        const r = await historyByQuery(query, b.item.currency, hint, RANGE, INTERVAL, true).catch(
           () => null,
         );
         if (r && r.points.length > 0) {
