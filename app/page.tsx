@@ -8,24 +8,26 @@ import { AddAssetForm } from "@/components/assets/add-asset-form";
 import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ShareMenu } from "@/components/dashboard/share-menu";
 import { Button } from "@/components/ui/primitives";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function DashboardPage() {
   const { loading } = usePortfolio();
+  const { t } = useI18n();
   const [adding, setAdding] = useState(false);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-zinc-500">Your portfolio at a glance.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
+          <p className="text-sm text-zinc-500">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <ShareMenu />
           <ExportMenu />
           {!adding && (
             <Button variant="primary" onClick={() => setAdding(true)}>
-              + Add asset
+              {t("dashboard.addAsset")}
             </Button>
           )}
         </div>

@@ -1,4 +1,8 @@
-// Display formatting helpers.
+// Display formatting helpers. Number/date/currency formatting follows the active
+// locale (set via the i18n provider); pass `undefined` historically meant "use
+// the runtime default" — now we route through the chosen preference.
+
+import { intlLocale } from "./i18n/locale";
 
 /** Decode the few HTML entities that appear in seeded/fetched asset names. */
 export function decodeEntities(s: string): string {
@@ -20,7 +24,7 @@ export function parseDecimal(s: string): number {
 }
 
 export function formatCurrency(value: number, currency = "EUR"): string {
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(intlLocale(), {
     style: "currency",
     currency,
     maximumFractionDigits: 2,
@@ -28,7 +32,7 @@ export function formatCurrency(value: number, currency = "EUR"): string {
 }
 
 export function formatCompactCurrency(value: number, currency = "EUR"): string {
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(intlLocale(), {
     style: "currency",
     currency,
     notation: "compact",
@@ -37,7 +41,7 @@ export function formatCompactCurrency(value: number, currency = "EUR"): string {
 }
 
 export function formatPercent(fraction: number, digits = 2): string {
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(intlLocale(), {
     style: "percent",
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -46,14 +50,14 @@ export function formatPercent(fraction: number, digits = 2): string {
 }
 
 export function formatNumber(value: number, digits = 2): string {
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(intlLocale(), {
     maximumFractionDigits: digits,
   }).format(value);
 }
 
 export function formatDate(iso: string): string {
   const day = iso.slice(0, 10);
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(intlLocale(), {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -78,7 +82,7 @@ export function formatDateTime(iso: string): string {
     Number(hh),
     Number(mm),
   );
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(intlLocale(), {
     year: "numeric",
     month: "short",
     day: "numeric",

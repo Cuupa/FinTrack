@@ -7,19 +7,22 @@ import { CatalogProvider } from "@/lib/catalog/catalog-context";
 import { LivePricesProvider } from "@/lib/live/live-prices-context";
 import { PrivacyProvider } from "@/lib/privacy/privacy-context";
 import { TagsProvider } from "@/lib/tags/tags-context";
+import { I18nProvider } from "@/lib/i18n/i18n-context";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <CatalogProvider>
-        <PortfolioProvider>
-          <LivePricesProvider>
-            <PrivacyProvider>
-              <TagsProvider>{children}</TagsProvider>
-            </PrivacyProvider>
-          </LivePricesProvider>
-        </PortfolioProvider>
-      </CatalogProvider>
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <CatalogProvider>
+          <PortfolioProvider>
+            <LivePricesProvider>
+              <PrivacyProvider>
+                <TagsProvider>{children}</TagsProvider>
+              </PrivacyProvider>
+            </LivePricesProvider>
+          </PortfolioProvider>
+        </CatalogProvider>
+      </AuthProvider>
+    </I18nProvider>
   );
 }

@@ -3,20 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { Button } from "./ui/primitives";
 import { PrivacyToggle } from "./privacy-toggle";
+import { LocaleSwitcher } from "./locale-switcher";
 
-const LINKS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/analysis", label: "Analysis" },
-  { href: "/xray", label: "X-Ray" },
-  { href: "/rebalancing", label: "Rebalance" },
-  { href: "/planning", label: "Planning" },
+const LINKS: { href: string; key: MessageKey }[] = [
+  { href: "/", key: "nav.dashboard" },
+  { href: "/analysis", key: "nav.analysis" },
+  { href: "/xray", key: "nav.xray" },
+  { href: "/rebalancing", key: "nav.rebalance" },
+  { href: "/planning", key: "nav.planning" },
 ];
 
 export function SiteNav() {
   const pathname = usePathname();
   const { user, mode, signOut } = useAuth();
+  const { t } = useI18n();
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
@@ -38,12 +42,13 @@ export function SiteNav() {
                     : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               >
-                {l.label}
+                {t(l.key)}
               </Link>
             );
           })}
         </div>
         <div className="ml-auto flex items-center gap-3">
+          <LocaleSwitcher />
           <PrivacyToggle />
           {mode === "registered" ? (
             <>
@@ -51,16 +56,16 @@ export function SiteNav() {
                 {user?.email}
               </span>
               <Button variant="secondary" onClick={() => void signOut()}>
-                Sign out
+                {t("nav.signOut")}
               </Button>
             </>
           ) : (
             <>
               <Link href="/login">
-                <Button variant="secondary">Log in</Button>
+                <Button variant="secondary">{t("nav.login")}</Button>
               </Link>
               <Link href="/login?tab=signup">
-                <Button variant="primary">Register</Button>
+                <Button variant="primary">{t("nav.register")}</Button>
               </Link>
             </>
           )}
