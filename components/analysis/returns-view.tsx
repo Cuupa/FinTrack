@@ -4,7 +4,7 @@
 // (quarter or year), plus a "performance map" treemap of current holdings
 // sized by value and coloured by return.
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -45,13 +45,14 @@ export function ReturnsView() {
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const base = data.profile.currency;
-  // Each chart has its own period toggle.
+  // Every chart is independent: its own period/timeframe AND its own asset
+  // scope ([] = portfolio-wide).
   const [heatPeriod, setHeatPeriod] = useState<Period>("quarter");
   const [barPeriod, setBarPeriod] = useState<Period>("quarter");
-  // The performance map can be scoped to a timeframe.
   const [mapTf, setMapTf] = useState<Timeframe>("MAX");
-  // Scope: empty = portfolio-wide; otherwise restrict to the selected assets.
-  const [scope, setScope] = useState<string[]>([]);
+  const [scopeHeat, setScopeHeat] = useState<string[]>([]);
+  const [scopeBar, setScopeBar] = useState<string[]>([]);
+  const [scopeMap, setScopeMap] = useState<string[]>([]);
 
   const allHoldings = useMemo(
     () =>
@@ -66,23 +67,6 @@ export function ReturnsView() {
     [allHoldings],
   );
 
-  // Assets/transactions restricted to the scope (all when none selected).
-  const scopedAssets = useMemo(
-    () => (scope.length === 0 ? data.assets : data.assets.filter((a) => scope.includes(a.id))),
-    [data.assets, scope],
-  );
-  const scopedTxs = useMemo(
-    () =>
-      scope.length === 0
-        ? data.transactions
-        : data.transactions.filter((t) => scope.includes(t.assetId)),
-    [data.transactions, scope],
-  );
-  const holdings = useMemo(
-    () => (scope.length === 0 ? allHoldings : allHoldings.filter((h) => scope.includes(h.asset.id))),
-    [allHoldings, scope],
-  );
-
   const histItems = useMemo(
     () =>
       data.assets
@@ -93,21 +77,30 @@ export function ReturnsView() {
   );
   const { histories } = useHistory(histItems, "MAX", base);
 
-  const series = useMemo(
-    () => netWorthSeries(scopedAssets, scopedTxs, "MAX", valuation, histories),
-    [scopedAssets, scopedTxs, valuation, histories],
+  // Period returns for a given asset scope ([] = whole portfolio). Each chart
+  // calls this with its own scope so they're fully independent.
+  const returnsForScope = useCallback(
+    (scope: string[], period: Period) => {
+      const a =
+        scope.length === 0 ? data.assets : data.assets.filter((x) => scope.includes(x.id));
+      const t =
+        scope.length === 0
+          ? data.transactions
+          : data.transactions.filter((x) => scope.includes(x.assetId));
+      const series = netWorthSeries(a, t, "MAX", valuation, histories);
+      const flows = netFlows(a, t, valuation);
+      return periodReturns(series, flows, period);
+    },
+    [data.assets, data.transactions, valuation, histories],
   );
-  const flows = useMemo(
-    () => netFlows(scopedAssets, scopedTxs, valuation),
-    [scopedAssets, scopedTxs, valuation],
-  );
+
   const heatReturns = useMemo(
-    () => periodReturns(series, flows, heatPeriod),
-    [series, flows, heatPeriod],
+    () => returnsForScope(scopeHeat, heatPeriod),
+    [returnsForScope, scopeHeat, heatPeriod],
   );
   const barReturns = useMemo(
-    () => periodReturns(series, flows, barPeriod),
-    [series, flows, barPeriod],
+    () => returnsForScope(scopeBar, barPeriod),
+    [returnsForScope, scopeBar, barPeriod],
   );
 
   const barData = useMemo(
@@ -130,13 +123,20 @@ export function ReturnsView() {
     return ds[0] ?? null;
   }, [data.transactions]);
 
-  // Treemap: holdings sized by value, coloured by return over the selected
-  // timeframe. "MAX" keeps the all-time unrealised return (vs. cost basis);
-  // shorter windows use the price return from each asset's history.
+  // Treemap: holdings (scoped) sized by value, coloured by return over the
+  // selected timeframe. "MAX" keeps the all-time unrealised return (vs. cost
+  // basis); shorter windows use the price return from each asset's history.
+  const mapHoldings = useMemo(
+    () =>
+      scopeMap.length === 0
+        ? allHoldings
+        : allHoldings.filter((h) => scopeMap.includes(h.asset.id)),
+    [allHoldings, scopeMap],
+  );
   const tree = useMemo(() => {
     const end = today();
     const start = timeframeStart(mapTf, end, earliest);
-    return holdings
+    return mapHoldings
       .map((h) => {
         let ret = h.unrealizedPLPercent;
         if (mapTf !== "MAX") {
@@ -151,9 +151,9 @@ export function ReturnsView() {
         return { name: h.asset.symbol || h.asset.name, size: Math.max(0, h.marketValue), ret };
       })
       .filter((d) => d.size > 0);
-  }, [holdings, histories, mapTf, earliest]);
+  }, [mapHoldings, histories, mapTf, earliest]);
 
-  if (holdings.length === 0) {
+  if (allHoldings.length === 0) {
     return (
       <Card>
         <p className="text-sm text-zinc-500">Add holdings to see your returns.</p>
@@ -173,7 +173,7 @@ export function ReturnsView() {
             <InfoTip text="Period returns adjusted for deposits/withdrawals (modified Dietz), so adding money doesn't show up as a gain." />
           </h2>
           <div className="flex flex-wrap items-center gap-3">
-            <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
+            <ScopeSelect options={scopeOptions} selected={scopeHeat} onChange={setScopeHeat} />
             <SegmentedControl<Period>
               size="sm"
               value={heatPeriod}
@@ -239,15 +239,18 @@ export function ReturnsView() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Return by {barPeriod}</h3>
-          <SegmentedControl<Period>
-            size="sm"
-            value={barPeriod}
-            onChange={setBarPeriod}
-            options={[
-              { label: "Quarter", value: "quarter" },
-              { label: "Year", value: "year" },
-            ]}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <ScopeSelect options={scopeOptions} selected={scopeBar} onChange={setScopeBar} />
+            <SegmentedControl<Period>
+              size="sm"
+              value={barPeriod}
+              onChange={setBarPeriod}
+              options={[
+                { label: "Quarter", value: "quarter" },
+                { label: "Year", value: "year" },
+              ]}
+            />
+          </div>
         </div>
         <div className="mt-3">
           <ResponsiveContainer width="100%" height={260}>
@@ -281,21 +284,24 @@ export function ReturnsView() {
             Performance map
             <InfoTip text="Each holding sized by its current value and coloured by its return over the selected timeframe (green = up, red = down). MAX shows the all-time return vs. your cost basis." />
           </h3>
-          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
-            {(["1M", "3M", "YTD", "1Y", "5Y", "MAX"] as Timeframe[]).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setMapTf(tf)}
-                aria-pressed={mapTf === tf}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  mapTf === tf
-                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <ScopeSelect options={scopeOptions} selected={scopeMap} onChange={setScopeMap} />
+            <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+              {(["1M", "3M", "YTD", "1Y", "5Y", "MAX"] as Timeframe[]).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setMapTf(tf)}
+                  aria-pressed={mapTf === tf}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    mapTf === tf
+                      ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="mt-3">
