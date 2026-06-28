@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FinTrack",
-  description: "Financial planning and asset tracking.",
+  description: "Financial simulation and asset tracking.",
   applicationName: "FinTrack",
   appleWebApp: {
     capable: true,

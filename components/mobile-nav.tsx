@@ -32,8 +32,8 @@ const TABS: { href: string; label: string; icon: ReactNode }[] = [
     icon: <path d="M12 3v18M5 7h14M7 7l-3 6a3 3 0 0 0 6 0L7 7zm10 0l-3 6a3 3 0 0 0 6 0l-3-6z" />,
   },
   {
-    href: "/planning",
-    label: "Planning",
+    href: "/simulation",
+    label: "Simulation",
     icon: <path d="M9 17V9m4 8V5m4 12v-6M4 21h16" />,
   },
 ];

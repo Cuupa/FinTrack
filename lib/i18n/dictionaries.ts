@@ -11,7 +11,7 @@ export const en = {
   "nav.analysis": "Analysis",
   "nav.xray": "X-Ray",
   "nav.rebalance": "Rebalance",
-  "nav.planning": "Planning",
+  "nav.simulation": "Simulation",
   "nav.login": "Log in",
   "nav.register": "Register",
   "nav.signOut": "Sign out",
@@ -23,7 +23,7 @@ export const en = {
   "dashboard.share": "Share",
 
   "analysis.title": "Analysis",
-  "planning.title": "Planning",
+  "simulation.title": "Simulation",
   "rebalancing.title": "Rebalancing",
   "xray.title": "Portfolio X-Ray",
 
@@ -36,7 +36,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.analysis": "Analyse",
   "nav.xray": "Röntgen",
   "nav.rebalance": "Umschichten",
-  "nav.planning": "Planung",
+  "nav.simulation": "Simulation",
   "nav.login": "Anmelden",
   "nav.register": "Registrieren",
   "nav.signOut": "Abmelden",
@@ -48,7 +48,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "dashboard.share": "Teilen",
 
   "analysis.title": "Analyse",
-  "planning.title": "Planung",
+  "simulation.title": "Simulation",
   "rebalancing.title": "Umschichtung",
   "xray.title": "Portfolio-Röntgen",
 

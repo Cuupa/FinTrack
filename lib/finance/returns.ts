@@ -47,6 +47,15 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
   let fi = 0;
   while (fi < sorted.length && sorted[fi].date <= series[0].date) fi += 1;
 
+  // A daily return on a near-empty portfolio is meaningless: dividing a normal
+  // price move by a tiny base explodes the figure (e.g. €10 → €20 reads as
+  // +100%), and one such step poisons the whole chained series. So we only
+  // accrue return once the invested base is a meaningful fraction of the
+  // portfolio's eventual peak — before that, the absolute P&L is negligible
+  // anyway. This also neutralises the artefact at a large initial deposit.
+  const peak = series.reduce((m, p) => (p.value > m ? p.value : m), 0);
+  const minBase = peak * 0.02;
+
   const out: SeriesPoint[] = [{ date: series[0].date, value: 0 }];
   let cum = 1;
   for (let i = 1; i < series.length; i++) {
@@ -58,7 +67,7 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
       fi += 1;
     }
     const prev = series[i - 1].value;
-    if (prev > 0) cum *= 1 + (series[i].value - prev - F) / prev;
+    if (prev > minBase) cum *= 1 + (series[i].value - prev - F) / prev;
     out.push({ date: series[i].date, value: cum - 1 });
   }
   return out;

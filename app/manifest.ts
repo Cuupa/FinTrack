@@ -6,7 +6,7 @@ import type { MetadataRoute } from "next";
 // uses the dynamically generated PNG from app/apple-icon.tsx.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "FinTrack — Financial Planning & Asset Tracking",
+    name: "FinTrack — Financial Simulation & Asset Tracking",
     short_name: "FinTrack",
     description: "Track your portfolio, net worth, and run financial simulations.",
     start_url: "/",

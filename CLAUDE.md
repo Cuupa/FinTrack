@@ -108,7 +108,7 @@ the Stooq + synthetic fallbacks.
 - `lib/finance/allocation.ts` — pie-chart breakdowns by investment / class /
   currency / country / volatility (`/allocation`).
 - `lib/finance/stats.ts` + portfolio Monte Carlo — per-asset μ/σ + correlation
-  (Cholesky) drive the "My portfolio" simulation mode (`/planning`).
+  (Cholesky) drive the "My portfolio" simulation mode (`/simulation`).
 
 ### Asset identity
 
@@ -142,7 +142,7 @@ form auto-imports name/ISIN/WKN **and the asset type** via
 
 - `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable table
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
-- `/planning` — Monte Carlo simulation
+- `/simulation` — Monte Carlo simulation
 - `/login` — Supabase email/password + Google/GitHub OAuth
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in

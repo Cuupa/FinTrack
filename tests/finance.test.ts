@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { xirr, portfolioIRR } from "../lib/finance/irr";
-import { netFlows, periodReturns, riskMetrics } from "../lib/finance/returns";
+import {
+  netFlows,
+  periodReturns,
+  riskMetrics,
+  cumulativeReturnSeries,
+} from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
 import type { Asset, Transaction } from "../lib/types";
@@ -80,6 +85,40 @@ describe("periodReturns", () => {
     const q2 = periodReturns(series, flows, "quarter").find((r) => r.label === "Q2")!;
     // (165 - 100 - 50) / (100 + 25) = 15/125 = 0.12
     expect(q2.ret).toBeCloseTo(0.12, 6);
+  });
+});
+
+describe("cumulativeReturnSeries", () => {
+  it("starts at 0 and does not explode on a tiny early base", () => {
+    // A near-empty portfolio that wiggles, then a big deposit funds it, after
+    // which it gains a real 10%. The early noise must not blow up the line.
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 10 },
+      { date: "2025-01-02", value: 20 }, // +100% on a tiny base — must be ignored
+      { date: "2025-06-01", value: 10000 }, // big deposit lands
+      { date: "2025-12-01", value: 11000 }, // +10% real growth on a funded base
+    ];
+    const flows = [
+      { date: "2025-01-01", amount: 10 },
+      { date: "2025-06-01", amount: 9980 }, // the deposit
+    ];
+    const out = cumulativeReturnSeries(series, flows);
+    expect(out[0].value).toBe(0);
+    // The final cumulative return is the real ~10%, not hundreds of percent.
+    expect(out[out.length - 1].value).toBeGreaterThan(0.08);
+    expect(out[out.length - 1].value).toBeLessThan(0.12);
+    // No point in the series is absurd.
+    expect(Math.max(...out.map((p) => p.value))).toBeLessThan(0.2);
+  });
+
+  it("excludes deposits from the return (a pure deposit is ~0%)", () => {
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 1000 },
+      { date: "2025-02-01", value: 2000 }, // doubled, but only via a deposit
+    ];
+    const flows = [{ date: "2025-02-01", amount: 1000 }];
+    const out = cumulativeReturnSeries(series, flows);
+    expect(Math.abs(out[out.length - 1].value)).toBeLessThan(0.001);
   });
 });
 

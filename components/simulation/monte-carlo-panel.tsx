@@ -1,6 +1,6 @@
 "use client";
 
-// Monte Carlo planning UI (PRD §3.3). Collects the simulation parameters,
+// Monte Carlo simulation UI (PRD §3.3). Collects the simulation parameters,
 // runs 1,000+ paths in a Web Worker, and renders the probability fan plus
 // best/median/worst outcomes. Initial capital defaults to current net worth.
 

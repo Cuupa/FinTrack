@@ -14,7 +14,7 @@ const LINKS: { href: string; key: MessageKey }[] = [
   { href: "/analysis", key: "nav.analysis" },
   { href: "/xray", key: "nav.xray" },
   { href: "/rebalancing", key: "nav.rebalance" },
-  { href: "/planning", key: "nav.planning" },
+  { href: "/simulation", key: "nav.simulation" },
 ];
 
 export function SiteNav() {
