@@ -170,6 +170,68 @@ export async function fetchEtfSectorWeights(query: string): Promise<SectorWeight
   }
 }
 
+// onvista branch (sector) names are German → GICS-style sector.
+const ONVISTA_SECTOR_EN: Record<string, string> = {
+  Informationstechnologie: "Information Technology",
+  Technologie: "Information Technology",
+  Finanzen: "Financials",
+  Finanzwesen: "Financials",
+  Finanzdienstleistungen: "Financials",
+  Gesundheitswesen: "Health Care",
+  Gesundheit: "Health Care",
+  Industrie: "Industrials",
+  Industrieunternehmen: "Industrials",
+  "Zyklische Konsumgüter": "Consumer Discretionary",
+  "Nicht-Basiskonsumgüter": "Consumer Discretionary",
+  "Nichtzyklische Konsumgüter": "Consumer Staples",
+  Basiskonsumgüter: "Consumer Staples",
+  Kommunikation: "Communication Services",
+  Kommunikationsdienste: "Communication Services",
+  Telekommunikation: "Communication Services",
+  Energie: "Energy",
+  Grundstoffe: "Materials",
+  Rohstoffe: "Materials",
+  "Roh-, Hilfs- & Betriebsstoffe": "Materials",
+  Versorger: "Utilities",
+  Versorgungsbetriebe: "Utilities",
+  Immobilien: "Real Estate",
+};
+
+/** An ETF's sector breakdown from onvista's keyless branch breakdown (by ISIN). */
+export async function fetchEtfSectorWeightsOnvista(query: string): Promise<SectorWeight[] | null> {
+  const q = query.trim().toUpperCase();
+  if (!isISIN(q)) return null;
+  try {
+    const res = await fetch(
+      `https://api.onvista.de/api/v1/funds/ISIN:${encodeURIComponent(q)}/breakdowns`,
+      { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      branchBreakdown?: { list?: Array<{ nameBreakdown?: string; investmentPct?: number }> };
+    };
+    const list = data.branchBreakdown?.list;
+    if (!Array.isArray(list) || list.length === 0) return null;
+
+    const bySector = new Map<string, number>();
+    for (const item of list) {
+      const pct = Number(item.investmentPct);
+      if (!item.nameBreakdown || !Number.isFinite(pct) || pct <= 0) continue;
+      const sector = ONVISTA_SECTOR_EN[item.nameBreakdown];
+      if (!sector) continue; // skip unmapped (e.g. cash) rather than show a bogus label
+      bySector.set(sector, (bySector.get(sector) ?? 0) + pct / 100);
+    }
+    return bySector.size ? Array.from(bySector, ([sector, weight]) => ({ sector, weight })) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** ETF sector weights, using Yahoo and onvista together (whichever delivers). */
+export async function etfSectorWeights(query: string): Promise<SectorWeight[] | null> {
+  return (await fetchEtfSectorWeights(query)) ?? (await fetchEtfSectorWeightsOnvista(query));
+}
+
 export interface RegionWeight {
   region: string;
   weight: number;

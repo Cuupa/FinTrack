@@ -3,7 +3,7 @@
 // to a live Yahoo fetch when the fund isn't cached.
 
 import { createClient } from "@supabase/supabase-js";
-import { fetchEtfSectorWeights } from "@/lib/server/classify";
+import { etfSectorWeights } from "@/lib/server/classify";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export async function GET(
   const hit = await cached(q.toUpperCase());
   if (hit) return Response.json({ found: true, sectors: hit });
 
-  const sectors = await fetchEtfSectorWeights(q);
+  const sectors = await etfSectorWeights(q);
   if (!sectors) return Response.json({ found: false });
   return Response.json({ found: true, sectors });
 }

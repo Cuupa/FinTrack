@@ -6,7 +6,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import {
-  fetchEtfSectorWeights,
+  etfSectorWeights,
   fetchEtfRegionWeights,
   fetchEtfCountryWeights,
 } from "@/lib/server/classify";
@@ -44,7 +44,8 @@ async function handle(req: Request): Promise<Response> {
     if (!key) continue;
     funds += 1;
     const [sectors, regions, countries] = await Promise.all([
-      fetchEtfSectorWeights(key).catch(() => null),
+      // Yahoo + onvista together (whichever delivers the sector breakdown).
+      etfSectorWeights(r.isin || key).catch(() => null),
       fetchEtfRegionWeights(r.isin || key).catch(() => null),
       fetchEtfCountryWeights(r.isin || key).catch(() => null),
     ]);
