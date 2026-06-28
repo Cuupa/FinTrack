@@ -28,6 +28,7 @@ import { dateKey, timeframeStart, today, type Timeframe } from "@/lib/finance/da
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
+import { ScopeSelect } from "@/components/analysis/scope-select";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
@@ -49,13 +50,37 @@ export function ReturnsView() {
   const [barPeriod, setBarPeriod] = useState<Period>("quarter");
   // The performance map can be scoped to a timeframe.
   const [mapTf, setMapTf] = useState<Timeframe>("MAX");
+  // Scope: empty = portfolio-wide; otherwise restrict to the selected assets.
+  const [scope, setScope] = useState<string[]>([]);
 
-  const holdings = useMemo(
+  const allHoldings = useMemo(
     () =>
       summarizeAll(data.assets, data.transactions, valuation).filter(
         (h) => h.position.shares > 0,
       ),
     [data.assets, data.transactions, valuation],
+  );
+
+  const scopeOptions = useMemo(
+    () => allHoldings.map((h) => ({ id: h.asset.id, label: h.asset.name })),
+    [allHoldings],
+  );
+
+  // Assets/transactions restricted to the scope (all when none selected).
+  const scopedAssets = useMemo(
+    () => (scope.length === 0 ? data.assets : data.assets.filter((a) => scope.includes(a.id))),
+    [data.assets, scope],
+  );
+  const scopedTxs = useMemo(
+    () =>
+      scope.length === 0
+        ? data.transactions
+        : data.transactions.filter((t) => scope.includes(t.assetId)),
+    [data.transactions, scope],
+  );
+  const holdings = useMemo(
+    () => (scope.length === 0 ? allHoldings : allHoldings.filter((h) => scope.includes(h.asset.id))),
+    [allHoldings, scope],
   );
 
   const histItems = useMemo(
@@ -69,12 +94,12 @@ export function ReturnsView() {
   const { histories } = useHistory(histItems, "MAX", base);
 
   const series = useMemo(
-    () => netWorthSeries(data.assets, data.transactions, "MAX", valuation, histories),
-    [data.assets, data.transactions, valuation, histories],
+    () => netWorthSeries(scopedAssets, scopedTxs, "MAX", valuation, histories),
+    [scopedAssets, scopedTxs, valuation, histories],
   );
   const flows = useMemo(
-    () => netFlows(data.assets, data.transactions, valuation),
-    [data.assets, data.transactions, valuation],
+    () => netFlows(scopedAssets, scopedTxs, valuation),
+    [scopedAssets, scopedTxs, valuation],
   );
   const heatReturns = useMemo(
     () => periodReturns(series, flows, heatPeriod),
@@ -147,15 +172,18 @@ export function ReturnsView() {
             Returns
             <InfoTip text="Period returns adjusted for deposits/withdrawals (modified Dietz), so adding money doesn't show up as a gain." />
           </h2>
-          <SegmentedControl<Period>
-            size="sm"
-            value={heatPeriod}
-            onChange={setHeatPeriod}
-            options={[
-              { label: "Quarter", value: "quarter" },
-              { label: "Year", value: "year" },
-            ]}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
+            <SegmentedControl<Period>
+              size="sm"
+              value={heatPeriod}
+              onChange={setHeatPeriod}
+              options={[
+                { label: "Quarter", value: "quarter" },
+                { label: "Year", value: "year" },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Heatmap */}
