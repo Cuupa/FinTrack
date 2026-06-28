@@ -92,7 +92,7 @@ export function AllocationPie({
                 {formatNumber((sel.value / total) * 100, 1)}%
               </span>
               {showTotal && (
-                <span className="text-xs text-zinc-500 tabular-nums">
+                <span className="text-xs text-zinc-500 tabular-nums" data-private>
                   {formatCurrency(sel.value, currency)}
                 </span>
               )}
@@ -102,7 +102,7 @@ export function AllocationPie({
               <span className="text-xs uppercase tracking-wide text-zinc-400">
                 {t("common.total")}
               </span>
-              <span className="mt-0.5 text-xl font-semibold tabular-nums">
+              <span className="mt-0.5 text-xl font-semibold tabular-nums" data-private>
                 {formatCurrency(total, currency)}
               </span>
             </>

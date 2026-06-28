@@ -5,6 +5,7 @@ import { Providers } from "@/components/providers";
 import { SiteNav } from "@/components/site-nav";
 import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
+import { LocaleBoundary } from "@/components/locale-boundary";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 const geistSans = Geist({
@@ -55,7 +56,7 @@ export default function RootLayout({
           <SiteNav />
           {/* pb leaves room for the fixed mobile tab bar (MobileNav). */}
           <main className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:py-8 md:pb-8">
-            {children}
+            <LocaleBoundary>{children}</LocaleBoundary>
           </main>
           <MobileNav />
         </Providers>
