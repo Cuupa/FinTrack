@@ -6,6 +6,7 @@ import { NetWorthHero } from "@/components/dashboard/net-worth-hero";
 import { AssetTable } from "@/components/assets/asset-table";
 import { AddAssetForm } from "@/components/assets/add-asset-form";
 import { ExportMenu } from "@/components/dashboard/export-menu";
+import { ShareMenu } from "@/components/dashboard/share-menu";
 import { Button } from "@/components/ui/primitives";
 
 export default function DashboardPage() {
@@ -20,6 +21,7 @@ export default function DashboardPage() {
           <p className="text-sm text-zinc-500">Your portfolio at a glance.</p>
         </div>
         <div className="flex items-center gap-2">
+          <ShareMenu />
           <ExportMenu />
           {!adding && (
             <Button variant="primary" onClick={() => setAdding(true)}>
