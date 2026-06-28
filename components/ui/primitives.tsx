@@ -38,9 +38,18 @@ export function Stat({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-1 text-sm text-zinc-500">
-        {label}
-        {info && <InfoTip text={info} />}
+      {/* Inline (not flex) so the ⓘ flows right after the text and wraps with it;
+          min-height reserves two lines so values stay aligned when a (e.g.
+          German) label wraps. */}
+      <div className="flex min-h-[2.25rem] items-start text-sm leading-snug text-zinc-500">
+        <span>
+          {label}
+          {info && (
+            <span className="ml-1 inline-flex translate-y-0.5 align-text-bottom">
+              <InfoTip text={info} />
+            </span>
+          )}
+        </span>
       </div>
       <div
         className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}

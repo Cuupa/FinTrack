@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { apiFetch } from "@/lib/api";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useShareSource } from "@/lib/share/use-share-source";
@@ -14,6 +15,7 @@ import { buildSharePayload, encodeShare, type SharePayload } from "@/lib/share/s
 
 export function ShareMenu() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const { source, loading } = useShareSource();
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState<string | null>(null);
@@ -67,8 +69,8 @@ export function ShareMenu() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        title="Share portfolio"
-        aria-label="Share portfolio"
+        title={t("share.button")}
+        aria-label={t("share.button")}
         className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
       >
         <svg
@@ -86,19 +88,19 @@ export function ShareMenu() {
           <circle cx="18" cy="19" r="3" />
           <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
         </svg>
-        <span className="hidden sm:inline">Share</span>
+        <span className="hidden sm:inline">{t("share.button")}</span>
       </button>
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {/* Snapshot vs Live mode. Live keeps the shared view in sync as the
               owner's portfolio changes; it needs an account. */}
           <div className="flex items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
-            <div>
-              <div className="text-sm font-medium">{live ? "Live" : "Snapshot"}</div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                {live ? t("share.live") : t("share.snapshot")}
+              </div>
               <div className="text-xs text-zinc-500">
-                {live
-                  ? "Auto-updates as your portfolio changes."
-                  : "A frozen point-in-time copy."}
+                {live ? t("share.liveDesc") : t("share.snapshotDesc")}
               </div>
             </div>
             <button
@@ -106,15 +108,15 @@ export function ShareMenu() {
               role="switch"
               aria-checked={live}
               disabled={!user}
-              title={user ? "Toggle live mode" : "Sign in to share live"}
+              title={user ? t("share.live") : t("share.liveHint")}
               onClick={() => setLive((v) => !v)}
-              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-40 ${
                 live ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
               }`}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                  live ? "translate-x-4" : "translate-x-0.5"
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  live ? "translate-x-[18px]" : "translate-x-0.5"
                 }`}
               />
             </button>
@@ -125,18 +127,16 @@ export function ShareMenu() {
             onClick={() => share(false)}
             className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
-            <span className="font-medium">Share full portfolio</span>
-            <span className="block text-xs text-zinc-500">Includes absolute amounts.</span>
+            <span className="font-medium">{t("share.full")}</span>
+            <span className="block text-xs text-zinc-500">{t("share.fullDesc")}</span>
           </button>
           <button
             type="button"
             onClick={() => share(true)}
             className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
-            <span className="font-medium">Share in incognito</span>
-            <span className="block text-xs text-zinc-500">
-              Allocations &amp; returns only — no amounts.
-            </span>
+            <span className="font-medium">{t("share.incognito")}</span>
+            <span className="block text-xs text-zinc-500">{t("share.incognitoDesc")}</span>
           </button>
 
           {(creating || link) && (
@@ -144,7 +144,7 @@ export function ShareMenu() {
               {creating ? (
                 <div className="flex items-center gap-2 px-1 py-1 text-xs text-zinc-500">
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
-                  Creating link…
+                  {t("share.creating")}
                 </div>
               ) : (
                 link && (
@@ -158,8 +158,8 @@ export function ShareMenu() {
                     <button
                       type="button"
                       onClick={copy}
-                      title="Copy link"
-                      aria-label="Copy link"
+                      title={t("share.copy")}
+                      aria-label={t("share.copy")}
                       className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
                         copied
                           ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"

@@ -78,6 +78,23 @@ export const en = {
   "table.currentValue": "Current value",
   "table.allocation": "Allocation",
   "table.noMatch": "No holdings match your filter.",
+
+  "share.button": "Share",
+  "share.snapshot": "Snapshot",
+  "share.live": "Live",
+  "share.snapshotDesc": "A frozen point-in-time copy.",
+  "share.liveDesc": "Auto-updates as your portfolio changes.",
+  "share.liveHint": "Sign in to share live",
+  "share.full": "Share full portfolio",
+  "share.fullDesc": "Includes absolute amounts.",
+  "share.incognito": "Share in incognito",
+  "share.incognitoDesc": "Allocations & returns only — no amounts.",
+  "share.creating": "Creating link…",
+  "share.copy": "Copy link",
+
+  "compare.hint": "Approximate comparison",
+  "compare.hintFull":
+    "Benchmarks are shown as total return (dividends reinvested) and converted to your currency using historic exchange rates, so currency and accumulating-vs-distributing differences can cause small deviations.",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -152,6 +169,23 @@ const de: Partial<Record<MessageKey, string>> = {
   "table.currentValue": "Aktueller Wert",
   "table.allocation": "Gewichtung",
   "table.noMatch": "Keine Positionen entsprechen Ihrem Filter.",
+
+  "share.button": "Teilen",
+  "share.snapshot": "Momentaufnahme",
+  "share.live": "Live",
+  "share.snapshotDesc": "Eine eingefrorene Kopie zum Zeitpunkt.",
+  "share.liveDesc": "Aktualisiert sich, wenn sich Ihr Portfolio ändert.",
+  "share.liveHint": "Zum Live-Teilen anmelden",
+  "share.full": "Vollständiges Portfolio teilen",
+  "share.fullDesc": "Enthält absolute Beträge.",
+  "share.incognito": "Inkognito teilen",
+  "share.incognitoDesc": "Nur Gewichtung & Rendite — keine Beträge.",
+  "share.creating": "Link wird erstellt…",
+  "share.copy": "Link kopieren",
+
+  "compare.hint": "Ungefährer Vergleich",
+  "compare.hintFull":
+    "Benchmarks werden als Total Return (Dividenden reinvestiert) dargestellt und mit historischen Wechselkursen in Ihre Währung umgerechnet; Währungs- und Thesaurierend-vs-Ausschüttend-Unterschiede können kleine Abweichungen verursachen.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };

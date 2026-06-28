@@ -46,6 +46,7 @@ export function NetWorthHero() {
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
 
   const currency = data.profile.currency;
+  const comparing = benchmarks.length > 0;
   const compare = useBenchmarkCompare(benchmarks, currency);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
@@ -158,12 +159,6 @@ export function NetWorthHero() {
             valueClassName={irr != null ? plColor(irr) : ""}
             info={t("tip.irr")}
           />
-          <Stat
-            label={`${t("stat.twr")} (${timeframe})`}
-            value={historyLoading ? "…" : formatPercent(risk.twr)}
-            valueClassName={historyLoading ? "text-zinc-400" : plColor(risk.twr)}
-            info={t("tip.twr")}
-          />
         </div>
       </div>
 
@@ -173,7 +168,9 @@ export function NetWorthHero() {
           onTimeframe={setTimeframe}
           scale={scale}
           onScale={setScale}
-          mode={mode}
+          // Comparing benchmarks forces relative (Return) mode — reflect that in
+          // the toggle.
+          mode={comparing ? "percent" : mode}
           onMode={setMode}
         />
       </div>
@@ -190,7 +187,7 @@ export function NetWorthHero() {
           <PerformanceChart
             series={series}
             scale={scale}
-            mode={mode}
+            mode={comparing ? "percent" : mode}
             currency={currency}
             compare={compare}
             mainLabel="Net worth"
@@ -200,7 +197,13 @@ export function NetWorthHero() {
       </div>
 
       {data.assets.length > 0 && (
-        <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-4 dark:border-zinc-800">
+        <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-3 lg:grid-cols-5 dark:border-zinc-800">
+          <RiskStat
+            label={`${t("stat.twr")} (${timeframe})`}
+            value={historyLoading ? "…" : formatPercent(risk.twr)}
+            valueClassName={historyLoading ? "" : plColor(risk.twr)}
+            info={t("tip.twr")}
+          />
           <RiskStat
             label={t("stat.volatility")}
             value={historyLoading ? "…" : formatPercent(risk.volatility)}
@@ -241,9 +244,13 @@ function RiskStat({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-1 text-xs text-zinc-500">
-        {label}
-        <InfoTip text={info} />
+      <div className="flex min-h-[2rem] items-start text-xs leading-snug text-zinc-500">
+        <span>
+          {label}
+          <span className="ml-1 inline-flex translate-y-0.5 align-text-bottom">
+            <InfoTip text={info} />
+          </span>
+        </span>
       </div>
       <div className={`mt-0.5 font-semibold tabular-nums ${valueClassName}`}>{value}</div>
     </div>

@@ -17,6 +17,8 @@ import {
 } from "recharts";
 import type { SeriesPoint } from "@/lib/finance/portfolio";
 import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export type ChartScale = "linear" | "log";
 export type ChartMode = "currency" | "percent";
@@ -96,6 +98,7 @@ export function PerformanceChart({
   highlightType = null,
   returnSeries,
 }: Props) {
+  const { t } = useI18n();
   const comparing = compare.length > 0;
   // Comparison is only meaningful as relative performance.
   const pctMode = comparing || mode === "percent";
@@ -232,12 +235,10 @@ export function PerformanceChart({
         </LineChart>
       </ResponsiveContainer>
       {comparing && (
-        <p className="mt-2 px-1 text-[11px] leading-snug text-zinc-400">
-          Benchmark comparison is approximate: benchmarks are shown as total
-          return (dividends reinvested) and converted to {currency} using
-          historic exchange rates, so currency and accumulating-vs-distributing
-          differences can cause small deviations.
-        </p>
+        <div className="mt-2 flex items-center gap-1.5 px-1 text-[11px] text-zinc-400">
+          <InfoTip text={t("compare.hintFull")} />
+          {t("compare.hint")}
+        </div>
       )}
     </div>
   );
