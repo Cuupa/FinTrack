@@ -225,18 +225,7 @@ export function MonteCarloPanel() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
-          {effectiveMode === "portfolio" && (
-            <button
-              type="button"
-              onClick={() => setEditing((e) => !e)}
-              className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            >
-              {editing ? t("sim.lock") : t("sim.edit")}
-            </button>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
         <div className="mt-4 space-y-4">
           {hasPortfolio && (
             <div>
@@ -267,7 +256,15 @@ export function MonteCarloPanel() {
             min={0}
             max={Math.max(100000, Math.round((netWorth || 0) * 3))}
             step={1000}
-            disabled={locked}
+            lockable={effectiveMode === "portfolio"}
+            locked={locked}
+            onToggleLock={() => {
+              if (locked) setEditing(true);
+              else {
+                setEditing(false);
+                setCapitalOverride(null); // re-lock → back to net worth
+              }
+            }}
           />
           <SliderField
             label={t("sim.monthlyContribution")}
@@ -277,7 +274,6 @@ export function MonteCarloPanel() {
             min={0}
             max={5000}
             step={50}
-            disabled={locked}
           />
           <SliderField
             label={t("sim.horizon")}
@@ -287,7 +283,6 @@ export function MonteCarloPanel() {
             min={1}
             max={40}
             step={1}
-            disabled={locked}
           />
 
           {effectiveMode === "portfolio" && model ? (
@@ -298,7 +293,6 @@ export function MonteCarloPanel() {
                 setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
               }
               onResetOverrides={() => setAssetOverrides({})}
-              editable={editing}
             />
           ) : (
             <>
@@ -336,7 +330,6 @@ export function MonteCarloPanel() {
             min={1000}
             max={10000}
             step={500}
-            disabled={locked}
           />
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
             {running ? t("sim.running") : t("sim.run")}
@@ -712,7 +705,9 @@ function SliderField({
   max = 100,
   step = 1,
   digits = 0,
-  disabled = false,
+  lockable = false,
+  locked = false,
+  onToggleLock,
 }: {
   label: string;
   value: number;
@@ -722,17 +717,38 @@ function SliderField({
   max?: number;
   step?: number;
   digits?: number;
-  disabled?: boolean;
+  /** Show a lock toggle (e.g. Initial capital, auto-set from net worth). */
+  lockable?: boolean;
+  locked?: boolean;
+  onToggleLock?: () => void;
 }) {
   const { t } = useI18n();
   const [manual, setManual] = useState(false);
   const display = digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
 
-  if (disabled) {
+  const lockBtn = lockable ? (
+    <button
+      type="button"
+      onClick={onToggleLock}
+      title={locked ? t("sim.capitalLocked") : t("sim.capitalUnlocked")}
+      aria-label={locked ? t("sim.capitalLocked") : t("sim.capitalUnlocked")}
+      className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        {locked ? <path d="M8 11V7a4 4 0 0 1 8 0v4" /> : <path d="M8 11V7a4 4 0 0 1 7.5-2" />}
+      </svg>
+    </button>
+  ) : null;
+
+  if (lockable && locked) {
     return (
-      <div className="opacity-60">
-        <label className="text-sm font-medium">{label}</label>
-        <div className="mt-1 text-sm font-semibold tabular-nums">
+      <div>
+        <div className="flex items-baseline justify-between gap-2">
+          <label className="text-sm font-medium">{label}</label>
+          {lockBtn}
+        </div>
+        <div className="mt-1 text-sm font-semibold tabular-nums opacity-70">
           {display}
           {suffix ? <span className="ml-1 text-xs font-normal text-zinc-400">{suffix}</span> : null}
         </div>
@@ -744,13 +760,16 @@ function SliderField({
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <label className="text-sm font-medium">{label}</label>
-        <button
-          type="button"
-          onClick={() => setManual((m) => !m)}
-          className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-        >
-          {manual ? t("sim.useSlider") : t("sim.enterValue")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setManual((m) => !m)}
+            className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            {manual ? t("sim.useSlider") : t("sim.enterValue")}
+          </button>
+          {lockBtn}
+        </div>
       </div>
       {manual ? (
         <div className="group relative mt-1">
