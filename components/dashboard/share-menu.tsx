@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { apiFetch } from "@/lib/api";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { useShareSource } from "@/lib/share/use-share-source";
 import { buildSharePayload, encodeShare, type SharePayload } from "@/lib/share/share";
 
@@ -36,8 +37,13 @@ export function ShareMenu() {
     setCopied(false);
     // Live shares require an account (the owner keeps them refreshed).
     const isLive = live && !!user;
+    // Creating a new link voids the user's previous ones.
+    if (user) {
+      const supabase = getSupabaseClient();
+      await supabase?.from("shared_portfolios").delete().eq("owner", user.id);
+    }
     const payload = buildSharePayload(source, incognito, isLive);
-    const url = await createLink(payload, isLive ? (user?.id ?? null) : null);
+    const url = await createLink(payload, user?.id ?? null);
     setLink(url);
     setCreating(false);
   };

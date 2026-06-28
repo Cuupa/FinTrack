@@ -178,7 +178,8 @@ insert into public.schema_migrations (version) values
   ('0016_etf_country_kind'),
   ('0017_shared_portfolios'),
   ('0018_profile_name_locale'),
-  ('0019_shared_live')
+  ('0019_shared_live'),
+  ('0020_shared_owner_delete')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -217,10 +218,14 @@ drop policy if exists "shared portfolios readable" on public.shared_portfolios;
 create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
 drop policy if exists "shared portfolios insertable" on public.shared_portfolios;
 create policy "shared portfolios insertable" on public.shared_portfolios for insert with check (true);
--- An owner may keep their own (live) shares current.
+-- An owner may keep their own (live) shares current and delete them (so a new
+-- share can void the previous links).
 drop policy if exists "shared portfolios owner update" on public.shared_portfolios;
 create policy "shared portfolios owner update" on public.shared_portfolios
   for update using (owner = auth.uid()) with check (owner = auth.uid());
+drop policy if exists "shared portfolios owner delete" on public.shared_portfolios;
+create policy "shared portfolios owner delete" on public.shared_portfolios
+  for delete using (owner = auth.uid());
 drop policy if exists "etf breakdowns readable" on public.etf_breakdowns;
 create policy "etf breakdowns readable" on public.etf_breakdowns for select using (true);
 drop policy if exists "migrations readable" on public.schema_migrations;
