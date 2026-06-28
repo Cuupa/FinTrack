@@ -12,12 +12,15 @@ import {
   byAssetClass,
   byCountryLookThrough,
   byCurrency,
+  byCustom,
   byInvestment,
   byRegion,
   bySector,
   byVolatility,
   type Slice,
 } from "@/lib/finance/allocation";
+import { useTags } from "@/lib/tags/tags-context";
+import { formatCurrency } from "@/lib/format";
 import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
@@ -34,6 +37,7 @@ const TABS = [
   { key: "country", label: "Countries" },
   { key: "currency", label: "Currencies" },
   { key: "volatility", label: "Volatility" },
+  { key: "custom", label: "Custom" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -72,6 +76,7 @@ export function AllocationView() {
   const etfSectors = useEtfSectors(holdings, version);
   const etfRegions = useEtfRegions(holdings, version);
   const etfCountries = useEtfCountries(holdings, version);
+  const { tags } = useTags();
 
   const charts = useMemo<Record<TabKey, Slice[]>>(
     () => ({
@@ -82,9 +87,10 @@ export function AllocationView() {
       country: byCountryLookThrough(holdings, classMap, etfCountries),
       currency: byCurrency(holdings, base),
       volatility: byVolatility(holdings),
+      custom: byCustom(holdings, tags),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries],
+    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries, tags],
   );
 
   if (allHoldings.length === 0) {
@@ -119,7 +125,11 @@ export function AllocationView() {
       </div>
 
       <div className="mt-8">
-        {charts[tab].length === 0 ? (
+        {tab === "custom" && charts.custom.every((s) => s.label === "Untagged") ? (
+          <p className="py-6 text-center text-sm text-zinc-500">
+            Assign a tag to a holding below to build a custom breakdown.
+          </p>
+        ) : charts[tab].length === 0 ? (
           <p className="py-12 text-center text-sm text-zinc-500">
             {tab === "region" || tab === "country"
               ? "No geographic data yet — run the ETF-breakdowns sync to fetch each fund's country weightings."
@@ -129,6 +139,64 @@ export function AllocationView() {
           <AllocationPie slices={charts[tab]} currency={base} />
         )}
       </div>
+
+      {tab === "custom" && (
+        <CustomTagEditor
+          holdings={holdings}
+          currency={base}
+        />
+      )}
     </Card>
+  );
+}
+
+function CustomTagEditor({
+  holdings,
+  currency,
+}: {
+  holdings: ReturnType<typeof summarizeAll>;
+  currency: string;
+}) {
+  const { tags, allTags, setTag, clearTag } = useTags();
+  return (
+    <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <h3 className="text-sm font-semibold">Tag your holdings</h3>
+      <p className="mt-0.5 text-xs text-zinc-500">
+        Group assets into your own categories (e.g. “Core”, “Speculative”,
+        “Pension”). The breakdown above aggregates by these tags.
+      </p>
+      <datalist id="custom-tag-suggestions">
+        {allTags.map((t) => (
+          <option key={t} value={t} />
+        ))}
+      </datalist>
+      <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+        {holdings.map((h) => (
+          <li key={h.asset.id} className="flex items-center gap-3 py-2">
+            <span className="min-w-0 flex-1 truncate text-sm">{h.asset.name}</span>
+            <span className="hidden w-28 shrink-0 text-right text-xs tabular-nums text-zinc-500 sm:block" data-private>
+              {formatCurrency(h.marketValue, currency)}
+            </span>
+            <input
+              list="custom-tag-suggestions"
+              value={tags[h.asset.id] ?? ""}
+              onChange={(e) => setTag(h.asset.id, e.target.value)}
+              placeholder="Untagged"
+              className="w-36 shrink-0 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+            />
+            {tags[h.asset.id] && (
+              <button
+                type="button"
+                onClick={() => clearTag(h.asset.id)}
+                className="shrink-0 text-xs text-zinc-400 hover:text-red-500"
+                aria-label="Clear tag"
+              >
+                ✕
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { PortfolioProvider } from "@/lib/portfolio/portfolio-context";
 import { CatalogProvider } from "@/lib/catalog/catalog-context";
 import { LivePricesProvider } from "@/lib/live/live-prices-context";
 import { PrivacyProvider } from "@/lib/privacy/privacy-context";
+import { TagsProvider } from "@/lib/tags/tags-context";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -13,7 +14,9 @@ export function Providers({ children }: { children: ReactNode }) {
       <CatalogProvider>
         <PortfolioProvider>
           <LivePricesProvider>
-            <PrivacyProvider>{children}</PrivacyProvider>
+            <PrivacyProvider>
+              <TagsProvider>{children}</TagsProvider>
+            </PrivacyProvider>
           </LivePricesProvider>
         </PortfolioProvider>
       </CatalogProvider>

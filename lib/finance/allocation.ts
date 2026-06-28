@@ -45,6 +45,11 @@ export function byInvestment(holdings: HoldingSummary[]): Slice[] {
   return group(holdings, (h) => h.asset.name);
 }
 
+/** Group by the user's custom tag (category); untagged holdings bucket together. */
+export function byCustom(holdings: HoldingSummary[], tags: Record<string, string>): Slice[] {
+  return group(holdings, (h) => tags[h.asset.id]?.trim() || "Untagged");
+}
+
 export function byAssetClass(holdings: HoldingSummary[]): Slice[] {
   return group(holdings, (h) => h.asset.type);
 }
