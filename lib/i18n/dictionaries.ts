@@ -219,6 +219,14 @@ export const en = {
   "sim.configurePrompt": "Configure your plan and run a simulation",
   "sim.configureHint":
     "Adjust the parameters on the left to project how your wealth could grow under thousands of market scenarios.",
+  "sim.edit": "Enable editing",
+  "sim.lock": "Lock parameters",
+  "sim.band50": "25–75th pct",
+  "sim.band80": "10–90th pct",
+  "sim.bandFull": "Worst–Best",
+  "sim.medianLine": "Median",
+  "sim.contributedLine": "Contributed",
+  "sim.year": "Year",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -436,6 +444,14 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.configurePrompt": "Konfigurieren Sie Ihren Plan und starten Sie eine Simulation",
   "sim.configureHint":
     "Passen Sie die Parameter links an, um zu projizieren, wie Ihr Vermögen unter tausenden Marktszenarien wachsen könnte.",
+  "sim.edit": "Bearbeiten aktivieren",
+  "sim.lock": "Parameter sperren",
+  "sim.band50": "25.–75. Perzentil",
+  "sim.band80": "10.–90. Perzentil",
+  "sim.bandFull": "Schlechtester–Bester",
+  "sim.medianLine": "Median",
+  "sim.contributedLine": "Eingezahlt",
+  "sim.year": "Jahr",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };

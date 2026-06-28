@@ -29,7 +29,7 @@ import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
-import type { ChartMode, ChartScale } from "@/components/charts/performance-chart";
+import type { ChartScale } from "@/components/charts/performance-chart";
 
 type SimMode = "portfolio" | "custom";
 
@@ -118,8 +118,11 @@ export function MonteCarloPanel() {
 
   const [result, setResult] = useState<MonteCarloResult | null>(null);
   const [scale, setScale] = useState<ChartScale>("linear");
-  const [chartMode, setChartMode] = useState<ChartMode>("currency");
   const [running, setRunning] = useState(false);
+  // In "My portfolio" mode the parameters are auto-derived; the user must opt in
+  // to editing them.
+  const [editing, setEditing] = useState(false);
+  const locked = effectiveMode === "portfolio" && !editing;
   const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
@@ -222,7 +225,18 @@ export function MonteCarloPanel() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
-        <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
+          {effectiveMode === "portfolio" && (
+            <button
+              type="button"
+              onClick={() => setEditing((e) => !e)}
+              className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              {editing ? t("sim.lock") : t("sim.edit")}
+            </button>
+          )}
+        </div>
         <div className="mt-4 space-y-4">
           {hasPortfolio && (
             <div>
@@ -253,6 +267,7 @@ export function MonteCarloPanel() {
             min={0}
             max={Math.max(100000, Math.round((netWorth || 0) * 3))}
             step={1000}
+            disabled={locked}
           />
           <SliderField
             label={t("sim.monthlyContribution")}
@@ -262,6 +277,7 @@ export function MonteCarloPanel() {
             min={0}
             max={5000}
             step={50}
+            disabled={locked}
           />
           <SliderField
             label={t("sim.horizon")}
@@ -271,6 +287,7 @@ export function MonteCarloPanel() {
             min={1}
             max={40}
             step={1}
+            disabled={locked}
           />
 
           {effectiveMode === "portfolio" && model ? (
@@ -281,6 +298,7 @@ export function MonteCarloPanel() {
                 setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
               }
               onResetOverrides={() => setAssetOverrides({})}
+              editable={editing}
             />
           ) : (
             <>
@@ -318,6 +336,7 @@ export function MonteCarloPanel() {
             min={1000}
             max={10000}
             step={500}
+            disabled={locked}
           />
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
             {running ? t("sim.running") : t("sim.run")}
@@ -378,25 +397,13 @@ export function MonteCarloPanel() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">{t("sim.projectedWealth")}</h2>
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Log scale is undefined for percentages — hide in percent mode. */}
-                  {chartMode === "currency" && (
-                    <SegmentedControl<ChartScale>
-                      size="sm"
-                      value={scale}
-                      onChange={setScale}
-                      options={[
-                        { label: "Linear", value: "linear" },
-                        { label: "Logarithmic", value: "log" },
-                      ]}
-                    />
-                  )}
-                  <SegmentedControl<ChartMode>
+                  <SegmentedControl<ChartScale>
                     size="sm"
-                    value={chartMode}
-                    onChange={setChartMode}
+                    value={scale}
+                    onChange={setScale}
                     options={[
-                      { label: t("sim.modeCurrency"), value: "currency" },
-                      { label: t("sim.modePercent"), value: "percent" },
+                      { label: "Linear", value: "linear" },
+                      { label: "Logarithmic", value: "log" },
                     ]}
                   />
                   <span className="text-xs text-zinc-500">
@@ -405,19 +412,14 @@ export function MonteCarloPanel() {
                 </div>
               </div>
               <div className="mt-4">
-                <DistributionChart
-                  result={result}
-                  currency={currency}
-                  scale={scale}
-                  mode={chartMode}
-                />
+                <DistributionChart result={result} currency={currency} scale={scale} />
               </div>
-              <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
-                <Legend color="#6366f1" opacity={0.24} label="25–75th pct" />
-                <Legend color="#6366f1" opacity={0.16} label="10–90th pct" />
-                <Legend color="#6366f1" opacity={0.08} label="Worst–Best" />
-                <Legend color="#4f46e5" label="Median" line />
-                <Legend color="#64748b" label="Contributed" line dashed />
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} />
+                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} />
+                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} />
+                <Legend color="#4f46e5" label={t("sim.medianLine")} line />
+                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed />
               </div>
               <SummaryRow
                 contributed={final.contributed}
@@ -444,11 +446,13 @@ function PortfolioModelNote({
   overrides,
   onOverride,
   onResetOverrides,
+  editable = true,
 }: {
   model: PortfolioModel;
   overrides: Record<string, { mean?: number; vol?: number }>;
   onOverride: (name: string, patch: { mean?: number; vol?: number }) => void;
   onResetOverrides: () => void;
+  editable?: boolean;
 }) {
   // Pure guess = at least one holding has NO real history; otherwise figures are
   // data-backed (possibly blended toward the long-run prior for short windows).
@@ -496,24 +500,26 @@ function PortfolioModelNote({
         </p>
       ) : null}
 
-      <div className="mt-2 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setAdv((v) => !v)}
-          className="text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
-        >
-          {adv ? "Hide overrides" : "Override μ / σ per asset"}
-        </button>
-        {hasOverrides && (
+      {editable && (
+        <div className="mt-2 flex items-center justify-between">
           <button
             type="button"
-            onClick={onResetOverrides}
-            className="text-[11px] font-medium text-zinc-500 hover:underline"
+            onClick={() => setAdv((v) => !v)}
+            className="text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
           >
-            Reset overrides
+            {adv ? "Hide overrides" : "Override μ / σ per asset"}
           </button>
-        )}
-      </div>
+          {hasOverrides && (
+            <button
+              type="button"
+              onClick={onResetOverrides}
+              className="text-[11px] font-medium text-zinc-500 hover:underline"
+            >
+              Reset overrides
+            </button>
+          )}
+        </div>
+      )}
 
       <ul className="mt-3 space-y-2.5">
         {model.assets.map((a) => {
@@ -706,6 +712,7 @@ function SliderField({
   max = 100,
   step = 1,
   digits = 0,
+  disabled = false,
 }: {
   label: string;
   value: number;
@@ -715,10 +722,23 @@ function SliderField({
   max?: number;
   step?: number;
   digits?: number;
+  disabled?: boolean;
 }) {
   const { t } = useI18n();
   const [manual, setManual] = useState(false);
   const display = digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
+
+  if (disabled) {
+    return (
+      <div className="opacity-60">
+        <label className="text-sm font-medium">{label}</label>
+        <div className="mt-1 text-sm font-semibold tabular-nums">
+          {display}
+          {suffix ? <span className="ml-1 text-xs font-normal text-zinc-400">{suffix}</span> : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -781,17 +801,18 @@ function Legend({
   dashed?: boolean;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className="inline-block h-3 w-3 rounded-sm"
-        style={{
-          backgroundColor: line ? "transparent" : color,
-          opacity: line ? 1 : opacity,
-          borderTop: line
-            ? `2px ${dashed ? "dashed" : "solid"} ${color}`
-            : undefined,
-        }}
-      />
+    <span className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300">
+      {line ? (
+        <span
+          className="inline-block h-0 w-4 align-middle"
+          style={{ borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }}
+        />
+      ) : (
+        <span
+          className="inline-block h-3.5 w-3.5 rounded-[3px] border border-zinc-300/50 dark:border-zinc-600/50"
+          style={{ backgroundColor: color, opacity }}
+        />
+      )}
       {label}
     </span>
   );
