@@ -284,11 +284,18 @@ export function twrSeries(
     };
   });
 
-  // Per-share value (base currency) of an asset on a date.
-  const priceAt = (b: (typeof byAsset)[number], date: string): number => {
-    const real = b.hist ? priceAtFrom(b.hist, date) : null;
-    const native = real != null ? real : priceOn(b.key, b.type, date) * b.factor;
-    return native * b.rate;
+  // Per-share value (base currency) of an asset on a date, or null when we have
+  // no trustworthy price. Crucially, an asset WITH real history returns null
+  // before that history begins — we must NOT splice the synthetic series onto
+  // the real one, or the seam shows up as a huge fake return (the early "jump").
+  // Only assets with no real history at all use the synthetic series.
+  const priceAt = (b: (typeof byAsset)[number], date: string): number | null => {
+    if (b.hist && b.hist.length > 0) {
+      const real = priceAtFrom(b.hist, date);
+      return real != null && real > 0 ? real * b.rate : null;
+    }
+    const synth = priceOn(b.key, b.type, date) * b.factor;
+    return synth > 0 ? synth * b.rate : null;
   };
 
   if (dates.length === 0) return [];
@@ -304,7 +311,9 @@ export function twrSeries(
       if (shares === 0) continue;
       const pPrev = priceAt(b, prevDate);
       const pCur = priceAt(b, curDate);
-      if (pPrev <= 0) continue;
+      // Skip the asset this period unless it has a real price at BOTH ends from
+      // the same source (no synthetic↔real seam).
+      if (pPrev == null || pCur == null) continue;
       baseVal += shares * pPrev;
       periodPnl += shares * (pCur - pPrev);
     }

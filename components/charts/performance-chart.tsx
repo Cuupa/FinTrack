@@ -99,6 +99,9 @@ export function PerformanceChart({
   const comparing = compare.length > 0;
   // Comparison is only meaningful as relative performance.
   const pctMode = comparing || mode === "percent";
+  // In return mode the main line is the cumulative return (TWROR), not the value
+  // — so don't keep calling it "Net worth".
+  const mainName = returnSeries && pctMode ? "Return" : mainLabel;
 
   // Baselines: main = first positive value; each benchmark = its value at the
   // window start (so all lines begin at 0%).
@@ -206,7 +209,7 @@ export function PerformanceChart({
           <Line
             type="monotone"
             dataKey="value"
-            name={mainLabel}
+            name={mainName}
             stroke={color}
             strokeWidth={2}
             dot={false}
