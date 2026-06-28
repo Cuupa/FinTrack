@@ -34,7 +34,7 @@ export const en = {
 const de: Partial<Record<MessageKey, string>> = {
   "nav.dashboard": "Übersicht",
   "nav.analysis": "Analyse",
-  "nav.xray": "Röntgen",
+  "nav.xray": "X-Ray",
   "nav.rebalance": "Rebalancing",
   "nav.simulation": "Simulation",
   "nav.login": "Anmelden",
