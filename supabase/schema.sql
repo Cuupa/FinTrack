@@ -89,6 +89,21 @@ alter table public.benchmark_history add column if not exists currency text;
 create index if not exists benchmark_history_id_currency_date_idx
   on public.benchmark_history (benchmark_id, currency, date desc);
 
+-- Cached REAL price history per asset (keyed by price key + timeframe range), in
+-- the asset's native currency. Shared, world-readable reference data written by
+-- the /api/history route (service role); cuts repeated slow Yahoo/CoinGecko
+-- calls. `synced_at` drives staleness. One row per (price_key, range, date).
+create table if not exists public.instrument_history (
+  price_key text not null,
+  range text not null,
+  date date not null,
+  close numeric not null,
+  synced_at timestamptz not null default now(),
+  primary key (price_key, range, date)
+);
+create index if not exists instrument_history_key_range_date_idx
+  on public.instrument_history (price_key, range, date desc);
+
 -- Cached ETF sector/region weightings, so Analysis reads from the DB instead of
 -- hitting Yahoo/onvista on every view. Refreshed by /api/cron/sync-etf-breakdowns.
 create table if not exists public.etf_breakdowns (
@@ -194,7 +209,8 @@ insert into public.schema_migrations (version) values
   ('0018_profile_name_locale'),
   ('0019_shared_live'),
   ('0020_shared_owner_delete'),
-  ('0021_portfolios')
+  ('0021_portfolios'),
+  ('0022_instrument_history')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -207,6 +223,7 @@ alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
 alter table public.fx_rates enable row level security;
 alter table public.benchmark_history enable row level security;
+alter table public.instrument_history enable row level security;
 alter table public.etf_breakdowns enable row level security;
 alter table public.shared_portfolios enable row level security;
 
@@ -228,6 +245,8 @@ drop policy if exists "fx readable" on public.fx_rates;
 create policy "fx readable" on public.fx_rates for select using (true);
 drop policy if exists "benchmark history readable" on public.benchmark_history;
 create policy "benchmark history readable" on public.benchmark_history for select using (true);
+drop policy if exists "instrument history readable" on public.instrument_history;
+create policy "instrument history readable" on public.instrument_history for select using (true);
 -- Shared snapshots are world-readable by id (a share link), and anyone may
 -- create one (so short links work without a service role). Ids are random.
 drop policy if exists "shared portfolios readable" on public.shared_portfolios;

@@ -4,9 +4,77 @@
 //   - Crypto:   CoinGecko market_chart in the base currency.
 // Missing series are omitted; the chart falls back to the synthetic series.
 
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
 
 export const dynamic = "force-dynamic";
+
+// How long a cached equity series stays fresh before we refetch. Short windows
+// (daily data) go stale in a day; long windows (weekly/monthly bars) in a week.
+function staleHours(range: string): number {
+  return range === "5Y" || range === "10Y" || range === "MAX" ? 24 * 7 : 24;
+}
+
+function hoursSince(iso: string | null): number {
+  if (!iso) return Infinity;
+  return (Date.now() - Date.parse(iso)) / 3_600_000;
+}
+
+/** Most recent sync time for a cached (key, range) series, or null if absent. */
+async function lastSync(
+  supabase: SupabaseClient,
+  key: string,
+  range: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("instrument_history")
+    .select("synced_at")
+    .eq("price_key", key)
+    .eq("range", range)
+    .order("synced_at", { ascending: false })
+    .limit(1);
+  return (data?.[0] as { synced_at: string } | undefined)?.synced_at ?? null;
+}
+
+/** Read a cached series (ascending), capped at PostgREST's ~1000 rows. */
+async function readCached(
+  supabase: SupabaseClient,
+  key: string,
+  range: string,
+): Promise<YahooPoint[]> {
+  const { data } = await supabase
+    .from("instrument_history")
+    .select("date, close")
+    .eq("price_key", key)
+    .eq("range", range)
+    .order("date", { ascending: false })
+    .limit(1000);
+  return ((data ?? []) as { date: string; close: number | string }[])
+    .map((r) => ({ date: r.date, close: Number(r.close) }))
+    .reverse();
+}
+
+async function writeCached(
+  supabase: SupabaseClient,
+  key: string,
+  range: string,
+  points: YahooPoint[],
+): Promise<void> {
+  await supabase.from("instrument_history").delete().eq("price_key", key).eq("range", range);
+  const syncedAt = new Date().toISOString();
+  // Insert in chunks to stay well under any row-count limits.
+  for (let i = 0; i < points.length; i += 500) {
+    await supabase.from("instrument_history").insert(
+      points.slice(i, i + 500).map((p) => ({
+        price_key: key,
+        range,
+        date: p.date,
+        close: p.close,
+        synced_at: syncedAt,
+      })),
+    );
+  }
+}
 
 interface HistItem {
   key: string;
@@ -126,8 +194,41 @@ export async function POST(req: Request): Promise<Response> {
   const items = Array.isArray(body.items) ? body.items : [];
   const histories: Record<string, YahooPoint[]> = {};
 
+  // Equity history is shared, base-independent reference data → cache it in the
+  // DB so we don't re-hit Yahoo on every load (this is the most-called, slowest
+  // route). Crypto is priced per-base by CoinGecko, so it's always fetched live.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = url && (service || anon) ? createClient(url, service || anon!) : null;
+  const canWrite = !!service;
+
   await Promise.all(
     items.map(async (item) => {
+      if (!item.key) return;
+
+      if (supabase && item.source !== "coingecko") {
+        // Refresh from the provider when the cache is missing or stale (writes
+        // need the service role; otherwise we serve whatever is cached).
+        if (canWrite && hoursSince(await lastSync(supabase, item.key, range)) > staleHours(range)) {
+          const fresh = await yahooHistory(item, range).catch(() => null);
+          if (fresh && fresh.length > 0) await writeCached(supabase, item.key, range, fresh);
+        }
+        const cached = await readCached(supabase, item.key, range);
+        if (cached.length > 0) {
+          histories[item.key] = cached;
+          return;
+        }
+        // Cache empty and we can't write (no service role): fall back to a live
+        // fetch so the chart still has data.
+        if (!canWrite) {
+          const live = await yahooHistory(item, range).catch(() => null);
+          if (live && live.length > 0) histories[item.key] = live;
+          return;
+        }
+        return;
+      }
+
       const series =
         item.source === "coingecko"
           ? await coingeckoHistory(item, base, range).catch(() => null)
