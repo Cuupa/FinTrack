@@ -123,6 +123,10 @@ export const en = {
   "risk.portfolioTip":
     "Risk metrics measured from your portfolio's real return history over the selected window (synthetic fallback). Beta/Alpha are vs. the chosen benchmark.",
   "risk.benchmark": "Benchmark",
+  "risk.vs": "vs",
+  "risk.qGood": "Healthy",
+  "risk.qModerate": "Moderate",
+  "risk.qPoor": "Watch",
   "risk.sharpe": "Sharpe",
   "risk.sharpeTip":
     "Return per unit of total risk: (annual return − 2% risk-free) ÷ volatility. Higher is better; above 1 is good.",
@@ -407,6 +411,10 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.portfolioTip":
     "Risikokennzahlen aus der echten Renditehistorie Ihres Portfolios im gewählten Zeitraum (synthetischer Rückfall). Beta/Alpha beziehen sich auf die gewählte Benchmark.",
   "risk.benchmark": "Benchmark",
+  "risk.vs": "vs",
+  "risk.qGood": "Gesund",
+  "risk.qModerate": "Moderat",
+  "risk.qPoor": "Achtung",
   "risk.sharpe": "Sharpe",
   "risk.sharpeTip":
     "Rendite je Einheit Gesamtrisiko: (Jahresrendite − 2% risikofrei) ÷ Volatilität. Höher ist besser; über 1 ist gut.",

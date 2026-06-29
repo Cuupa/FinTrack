@@ -1,9 +1,10 @@
 "use client";
 
-// Risk tab: portfolio-level risk metrics (Sharpe, Sortino, volatility, beta,
-// alpha, max drawdown, VaR) shown as gauges, a per-asset risk table, and a
-// correlation heatmap. All figures are measured from real history where
-// available (synthetic fallback), over the selected timeframe.
+// Risk tab: portfolio-level risk metrics shown as modern metric cards (Sharpe,
+// Sortino, volatility, beta, alpha, max drawdown, VaR), a sortable per-asset
+// risk table, and a correlation heatmap. The primary control scopes everything
+// to a selection of YOUR OWN positions; a benchmark can be chosen for beta/alpha.
+// Figures are measured from real history where available (synthetic fallback).
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -19,6 +20,7 @@ import { assetPriceKey } from "@/lib/types";
 import type { Timeframe } from "@/lib/finance/dates";
 import { BENCHMARKS } from "@/lib/finance/benchmarks";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
+import { ScopeSelect } from "@/components/analysis/scope-select";
 import { formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -26,6 +28,8 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 
 const RF = 0.02; // risk-free rate used for Sharpe/Sortino/alpha
 const TF_OPTIONS: Timeframe[] = ["1Y", "5Y", "10Y", "MAX"];
+
+type SortKey = "name" | "vol" | "beta" | "sharpe" | "weight";
 
 export function RiskView() {
   const { data } = usePortfolio();
@@ -36,13 +40,38 @@ export function RiskView() {
 
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [benchId, setBenchId] = useState<string>(BENCHMARKS[0].id);
+  const [scope, setScope] = useState<string[]>([]);
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "weight", dir: -1 });
 
-  const holdings = useMemo(
+  const allHoldings = useMemo(
     () =>
       summarizeAll(data.assets, data.transactions, valuation).filter(
         (h) => h.position.shares > 0,
       ),
     [data.assets, data.transactions, valuation],
+  );
+
+  const scopeOptions = useMemo(
+    () => allHoldings.map((h) => ({ id: h.asset.id, label: h.asset.name })),
+    [allHoldings],
+  );
+
+  // Everything below is scoped to the selected own positions ([] = all).
+  const inScope = (id: string) => scope.length === 0 || scope.includes(id);
+  const holdings = useMemo(
+    () => allHoldings.filter((h) => inScope(h.asset.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allHoldings, scope],
+  );
+  const scopedAssets = useMemo(
+    () => data.assets.filter((a) => inScope(a.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.assets, scope],
+  );
+  const scopedTxs = useMemo(
+    () => data.transactions.filter((tx) => inScope(tx.assetId)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.transactions, scope],
   );
   const total = useMemo(() => holdings.reduce((s, h) => s + h.marketValue, 0), [holdings]);
 
@@ -59,10 +88,9 @@ export function RiskView() {
   const benchCompare = useBenchmarkCompare([benchId], base);
   const benchPoints = useMemo(() => benchCompare[0]?.points ?? [], [benchCompare]);
 
-  // Portfolio cumulative return series over the window → risk metrics.
   const returnSeries = useMemo(
-    () => twrSeries(data.assets, data.transactions, tf, valuation, histories),
-    [data.assets, data.transactions, tf, valuation, histories],
+    () => twrSeries(scopedAssets, scopedTxs, tf, valuation, histories),
+    [scopedAssets, scopedTxs, tf, valuation, histories],
   );
   const risk = useMemo(() => riskMetrics(returnSeries), [returnSeries]);
 
@@ -80,7 +108,6 @@ export function RiskView() {
     const sharpe = risk.volatility > 0 ? (annReturn - RF) / risk.volatility : null;
     const sortino =
       risk.downsideDeviation > 0 ? (annReturn - RF) / risk.downsideDeviation : null;
-    // Parametric 1-month VaR at 95% (normal): expected worst monthly loss.
     const monthlyVol = risk.volatility / Math.sqrt(12);
     const var95 = Math.max(0, 1.645 * monthlyVol - annReturn / 12);
     const levels = returnSeries.map((p) => ({ date: p.date, value: 1 + p.value }));
@@ -88,29 +115,34 @@ export function RiskView() {
     return { annReturn, sharpe, sortino, var95, beta: ba?.beta ?? null, alpha: ba?.alpha ?? null };
   }, [returnSeries, risk, benchPoints]);
 
-  // Per-asset risk table.
   const assetRows = useMemo(() => {
-    return holdings
-      .map((h) => {
-        const ann = assetAnnualStats(h.asset, histories, 5);
-        const key = assetPriceKey(h.asset);
-        const hist = histories[key];
-        const levels = hist ? hist.map((p) => ({ date: p.date, value: p.close })) : [];
-        const ba = levels.length >= 3 ? betaAlpha(levels, benchPoints, RF) : null;
-        return {
-          id: h.asset.id,
-          name: h.asset.name,
-          symbol: h.asset.symbol,
-          vol: ann.vol,
-          sharpe: ann.sharpe,
-          beta: ba?.beta ?? null,
-          weight: total > 0 ? h.marketValue / total : 0,
-        };
-      })
-      .sort((a, b) => b.weight - a.weight);
-  }, [holdings, histories, benchPoints, total]);
+    const rows = holdings.map((h) => {
+      const ann = assetAnnualStats(h.asset, histories, 5);
+      const key = assetPriceKey(h.asset);
+      const hist = histories[key];
+      const levels = hist ? hist.map((p) => ({ date: p.date, value: p.close })) : [];
+      const ba = levels.length >= 3 ? betaAlpha(levels, benchPoints, RF) : null;
+      return {
+        id: h.asset.id,
+        name: h.asset.name,
+        symbol: h.asset.symbol,
+        vol: ann.vol,
+        sharpe: ann.sharpe,
+        beta: ba?.beta ?? null,
+        weight: total > 0 ? h.marketValue / total : 0,
+      };
+    });
+    const val = (r: (typeof rows)[number], k: SortKey): number | string =>
+      k === "name" ? r.name.toLowerCase() : (r[k] ?? -Infinity);
+    return rows.sort((a, b) => {
+      const va = val(a, sort.key);
+      const vb = val(b, sort.key);
+      if (va < vb) return -1 * sort.dir;
+      if (va > vb) return 1 * sort.dir;
+      return 0;
+    });
+  }, [holdings, histories, benchPoints, total, sort]);
 
-  // Correlation matrix (value-weighted holdings, real monthly returns).
   const model = useMemo(
     () =>
       estimatePortfolioModel(
@@ -121,13 +153,16 @@ export function RiskView() {
     [holdings, histories],
   );
 
-  if (holdings.length === 0) {
+  if (allHoldings.length === 0) {
     return (
       <Card>
         <p className="text-sm text-zinc-500">{t("risk.addHoldings")}</p>
       </Card>
     );
   }
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "name" ? 1 : -1 }));
 
   return (
     <div className="space-y-6">
@@ -137,7 +172,9 @@ export function RiskView() {
             {t("risk.portfolioTitle")}
             <InfoTip text={t("risk.portfolioTip")} />
           </h2>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
+            <span className="text-xs text-zinc-400">{t("risk.vs")}</span>
             <select
               value={benchId}
               onChange={(e) => setBenchId(e.target.value)}
@@ -169,8 +206,8 @@ export function RiskView() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-          <GaugeStat
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+          <MetricCard
             label={t("risk.sharpe")}
             info={t("risk.sharpeTip")}
             value={portfolio.sharpe}
@@ -179,7 +216,7 @@ export function RiskView() {
             goodHigh
             format={(v) => formatNumber(v, 2)}
           />
-          <GaugeStat
+          <MetricCard
             label={t("risk.sortino")}
             info={t("risk.sortinoTip")}
             value={portfolio.sortino}
@@ -188,7 +225,7 @@ export function RiskView() {
             goodHigh
             format={(v) => formatNumber(v, 2)}
           />
-          <GaugeStat
+          <MetricCard
             label={t("risk.volatility")}
             info={t("risk.volatilityTip")}
             value={risk.volatility}
@@ -197,7 +234,7 @@ export function RiskView() {
             goodHigh={false}
             format={(v) => formatPercent(v, 1)}
           />
-          <GaugeStat
+          <MetricCard
             label={t("risk.beta")}
             info={t("risk.betaTip")}
             value={portfolio.beta}
@@ -206,7 +243,7 @@ export function RiskView() {
             neutral={1}
             format={(v) => formatNumber(v, 2)}
           />
-          <GaugeStat
+          <MetricCard
             label={t("risk.alpha")}
             info={t("risk.alphaTip")}
             value={portfolio.alpha}
@@ -215,7 +252,7 @@ export function RiskView() {
             goodHigh
             format={(v) => formatPercent(v, 1)}
           />
-          <GaugeStat
+          <MetricCard
             label={t("risk.maxDrawdown")}
             info={t("risk.maxDrawdownTip")}
             value={risk.maxDrawdown}
@@ -225,7 +262,7 @@ export function RiskView() {
             format={(v) => formatPercent(v, 1)}
             sub={`${risk.maxDrawdownDays} ${t("risk.days")}`}
           />
-          <GaugeStat
+          <MetricCard
             label={t("risk.var")}
             info={t("risk.varTip")}
             value={portfolio.var95}
@@ -237,7 +274,7 @@ export function RiskView() {
         </div>
       </Card>
 
-      {/* Per-asset risk table */}
+      {/* Per-asset risk table (sortable) */}
       <Card>
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           {t("risk.byAsset")}
@@ -247,11 +284,11 @@ export function RiskView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                <th className="py-2 pr-3 font-medium">{t("risk.asset")}</th>
-                <th className="py-2 pr-3 text-right font-medium">{t("risk.volatility")}</th>
-                <th className="py-2 pr-3 text-right font-medium">{t("risk.beta")}</th>
-                <th className="py-2 pr-3 text-right font-medium">{t("risk.sharpe")}</th>
-                <th className="py-2 text-right font-medium">{t("risk.weight")}</th>
+                <RiskTh label={t("risk.asset")} k="name" sort={sort} onSort={toggleSort} />
+                <RiskTh label={t("risk.volatility")} k="vol" align="right" sort={sort} onSort={toggleSort} />
+                <RiskTh label={t("risk.beta")} k="beta" align="right" sort={sort} onSort={toggleSort} />
+                <RiskTh label={t("risk.sharpe")} k="sharpe" align="right" sort={sort} onSort={toggleSort} />
+                <RiskTh label={t("risk.weight")} k="weight" align="right" sort={sort} onSort={toggleSort} />
               </tr>
             </thead>
             <tbody>
@@ -303,11 +340,12 @@ export function RiskView() {
   );
 }
 
-// --- Gauge -------------------------------------------------------------------
+// --- Metric card -------------------------------------------------------------
 
 /** Quality (0 bad … 1 good) for colouring, given the desired direction. */
 function quality(frac: number, goodHigh?: boolean, neutral?: number): number {
-  if (neutral != null) return 1 - Math.min(1, Math.abs(frac - neutral) / Math.max(neutral, 1 - neutral));
+  if (neutral != null)
+    return 1 - Math.min(1, Math.abs(frac - neutral) / Math.max(neutral, 1 - neutral));
   return goodHigh ? frac : 1 - frac;
 }
 
@@ -317,12 +355,7 @@ function qualityColor(q: number): string {
   return "#ef4444";
 }
 
-function polar(cx: number, cy: number, r: number, deg: number): [number, number] {
-  const rad = (deg * Math.PI) / 180;
-  return [cx + r * Math.cos(rad), cy - r * Math.sin(rad)];
-}
-
-function GaugeStat({
+function MetricCard({
   label,
   info,
   value,
@@ -343,41 +376,71 @@ function GaugeStat({
   format: (v: number) => string;
   sub?: string;
 }) {
+  const { t } = useI18n();
   const has = value != null && Number.isFinite(value);
   const frac = has ? Math.min(1, Math.max(0, ((value as number) - min) / (max - min))) : 0;
   const neutralFrac = neutral != null ? (neutral - min) / (max - min) : undefined;
   const q = quality(frac, goodHigh, neutralFrac);
   const color = has ? qualityColor(q) : "#a1a1aa";
-  // 180° arc, left (180°) → right (0°).
-  const angle = 180 - 180 * frac;
-  const [nx, ny] = polar(50, 50, 34, angle);
-  const [vx, vy] = polar(50, 50, 40, angle);
+  const word = !has ? "" : q >= 0.66 ? t("risk.qGood") : q >= 0.33 ? t("risk.qModerate") : t("risk.qPoor");
 
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="flex items-center gap-1 text-xs leading-snug text-zinc-500">
-        <span>{label}</span>
+    <div className="rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/60 p-3.5 dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/40">
+      <div className="flex items-center gap-1 text-xs font-medium text-zinc-500">
+        <span className="truncate">{label}</span>
         <InfoTip text={info} />
       </div>
-      <svg viewBox="0 0 100 58" className="mt-1 w-full max-w-[120px]">
-        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth={7} strokeLinecap="round" />
-        {has && (
-          <path
-            d={`M 10 50 A 40 40 0 0 1 ${vx.toFixed(2)} ${vy.toFixed(2)}`}
-            fill="none"
-            stroke={color}
-            strokeWidth={7}
-            strokeLinecap="round"
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="text-2xl font-semibold tabular-nums" style={{ color }}>
+          {has ? format(value as number) : "—"}
+        </span>
+      </div>
+      {/* slim meter showing where the value sits within its range */}
+      <div className="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
+        <div
+          className="h-full rounded-full transition-[width]"
+          style={{ width: `${frac * 100}%`, backgroundColor: color }}
+        />
+        {neutralFrac != null && (
+          <span
+            className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-zinc-400 dark:bg-zinc-500"
+            style={{ left: `${neutralFrac * 100}%` }}
           />
         )}
-        {has && <line x1={50} y1={50} x2={nx.toFixed(2)} y2={ny.toFixed(2)} stroke={color} strokeWidth={2} />}
-        <circle cx={50} cy={50} r={2.5} fill={color} />
-      </svg>
-      <div className="-mt-1 text-base font-semibold tabular-nums" style={{ color }}>
-        {has ? format(value as number) : "—"}
       </div>
-      {sub && <div className="text-[11px] text-zinc-400 tabular-nums">{sub}</div>}
+      <div className="mt-1.5 flex items-center justify-between text-[10px]">
+        <span className="text-zinc-400 tabular-nums">{sub ?? ""}</span>
+        <span className="font-medium" style={{ color }}>
+          {word}
+        </span>
+      </div>
     </div>
+  );
+}
+
+function RiskTh({
+  label,
+  k,
+  align = "left",
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: SortKey;
+  align?: "left" | "right";
+  sort: { key: SortKey; dir: 1 | -1 };
+  onSort: (k: SortKey) => void;
+}) {
+  return (
+    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
+      <button
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        {label}
+        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
   );
 }
 
