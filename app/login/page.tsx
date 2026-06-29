@@ -31,6 +31,7 @@ function LoginForm() {
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,6 +50,12 @@ function LoginForm() {
         await signInWithPassword(email, password);
         router.replace("/");
       } else {
+        if (password.length < 6) {
+          throw new Error("Password must be at least 6 characters.");
+        }
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match.");
+        }
         const { needsConfirmation } = await signUp(email, password);
         if (needsConfirmation) {
           setMessage("Check your email to confirm your account, then sign in.");
@@ -115,14 +122,38 @@ function LoginForm() {
               id="password"
               type="password"
               required
-              minLength={6}
+              // The 6-character minimum only applies when creating an account;
+              // sign-in accepts whatever the user already has.
+              minLength={tab === "signup" ? 6 : undefined}
               autoComplete={tab === "signin" ? "current-password" : "new-password"}
               value={password}
               disabled={!authAvailable || busy}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700"
             />
+            {tab === "signup" && (
+              <p className="mt-1 text-xs text-zinc-500">At least 6 characters.</p>
+            )}
           </div>
+
+          {tab === "signup" && (
+            <div>
+              <label className="text-sm font-medium" htmlFor="confirm-password">
+                Retype password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                required
+                minLength={6}
+                autoComplete="new-password"
+                value={confirmPassword}
+                disabled={!authAvailable || busy}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700"
+              />
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           {message && (
@@ -166,6 +197,7 @@ function LoginForm() {
               setTab(tab === "signin" ? "signup" : "signin");
               setError(null);
               setMessage(null);
+              setConfirmPassword("");
             }}
           >
             {tab === "signin" ? "Create one" : "Sign in"}
