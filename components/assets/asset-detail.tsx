@@ -52,6 +52,7 @@ import {
 import { TransactionForm } from "./transaction-form";
 import { AssetTags } from "./asset-tags";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import {MessageKey} from "@/lib/i18n/dictionaries";
 
 export function AssetDetail({ assetId }: { assetId: string }) {
   const { data, loading, deleteAsset, deleteTransaction, updateTransaction, portfolios } =
@@ -61,7 +62,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   const router = useRouter();
   // Subscribe to the locale so figures re-format when the language changes
   // (this page formats currency without otherwise consuming the i18n context).
-  useI18n();
+  const { t } = useI18n();
   const currency = data.profile.currency;
 
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
@@ -177,7 +178,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       },
     });
   }
-
+  const rawType = String(asset.type).toLowerCase();
+  const typeKey = `assetType.${rawType}` as MessageKey;
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -191,7 +193,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               {assetIdentifier(asset)}
             </span>
             <span className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700">
-              {asset.type}
+              {t(typeKey)}
             </span>
           </h1>
           <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
