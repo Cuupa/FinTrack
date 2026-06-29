@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { MAX_PORTFOLIOS } from "@/lib/types";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function PortfolioPicker() {
   const {
@@ -22,6 +23,8 @@ export function PortfolioPicker() {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +43,7 @@ export function PortfolioPicker() {
 
   const allSelected = selectedPortfolioIds.length === portfolios.length;
   const summary = allSelected
-    ? "All portfolios"
+    ? t("nav.allPortfolios")
     : selectedPortfolioIds.length === 1
       ? (portfolios.find((p) => p.id === selectedPortfolioIds[0])?.name ?? "1 selected")
       : `${selectedPortfolioIds.length} of ${portfolios.length}`;
@@ -90,7 +93,7 @@ export function PortfolioPicker() {
               onClick={() => setSelectedPortfolios(portfolios.map((p) => p.id))}
               className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
             >
-              Select all
+              {t("common.selectAll")}
             </button>
           </div>
 
@@ -178,7 +181,7 @@ export function PortfolioPicker() {
                 disabled={portfolios.length >= MAX_PORTFOLIOS}
                 className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-zinc-800"
               >
-                + New portfolio
+                {t("nav.newPortfolio")}
               </button>
             )}
           </div>

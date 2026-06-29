@@ -17,6 +17,9 @@ export const en = {
   "nav.signOut": "Sign out",
   "nav.settings": "Settings",
 
+  "nav.allPortfolios": "All portfolios",
+  "nav.newPortfolio": "+ New portfolio",
+
   "export.csv": "Download CSV",
   "export.json": "Download JSON",
 
@@ -43,6 +46,8 @@ export const en = {
   "common.scope": "Scope",
   "common.portfolioWide": "Portfolio wide",
   "common.total": "Total",
+
+  "common.selectAll": "Select all",
 
   "stat.netWorth": "Net worth",
   "stat.change": "Change",
@@ -311,6 +316,9 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.signOut": "Abmelden",
   "nav.settings": "Einstellungen",
 
+  "nav.allPortfolios": "Alle Portfolios",
+  "nav.newPortfolio": "+ Neues Portfolio",
+
   "export.csv": "CSV herunterladen",
   "export.json": "JSON herunterladen",
 
@@ -337,6 +345,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "common.scope": "Bereich",
   "common.portfolioWide": "Gesamtes Portfolio",
   "common.total": "Gesamt",
+
+  "common.selectAll": "Alles auswählen",
 
   "stat.netWorth": "Nettovermögen",
   "stat.change": "Veränderung",
