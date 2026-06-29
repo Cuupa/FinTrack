@@ -48,6 +48,12 @@ export const en = {
   "common.total": "Total",
 
   "common.selectAll": "Select all",
+  "common.holdingValue": "Holding value",
+
+  "common.marketValue": "Market value",
+
+  "privacy.showFigures": "Show figures",
+  "privacy.hideFigures": "Hide figures",
 
   "stat.netWorth": "Net worth",
   "stat.change": "Change",
@@ -72,6 +78,7 @@ export const en = {
   "tip.maxDrawdown": "Largest peak-to-trough decline over the timeframe.",
   "tip.drawdownDuration": "Longest stretch the portfolio spent below a previous peak.",
   "tip.downsideVol": "Annualised semi-deviation — volatility of only the negative days (downside risk).",
+  "tip.marketValue": "Current value of this holding.",
 
   "chart.wealth": "Wealth",
   "chart.return": "Return",
@@ -345,8 +352,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "common.scope": "Bereich",
   "common.portfolioWide": "Gesamtes Portfolio",
   "common.total": "Gesamt",
+  "common.marketValue": "Marktwert",
 
   "common.selectAll": "Alles auswählen",
+  "common.holdingValue": "Positionswert",
+
+  "privacy.showFigures": "Beträge anzeigen",
+  "privacy.hideFigures": "Beträge ausblenden",
 
   "stat.netWorth": "Nettovermögen",
   "stat.change": "Veränderung",
@@ -371,6 +383,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "tip.maxDrawdown": "Größter Rückgang vom Hoch zum Tief im Zeitraum.",
   "tip.drawdownDuration": "Längste Phase unterhalb eines vorherigen Hochs.",
   "tip.downsideVol": "Annualisierte Semi-Abweichung — Volatilität nur der negativen Tage (Abwärtsrisiko).",
+  "tip.marketValue": "Aktueller Wert dieser Position",
 
   "chart.wealth": "Vermögen",
   "chart.return": "Rendite",

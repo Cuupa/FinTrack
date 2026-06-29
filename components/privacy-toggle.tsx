@@ -4,9 +4,12 @@
 // locked (shared permalink) since the recipient must not be able to reveal.
 
 import { usePrivacy } from "@/lib/privacy/privacy-context";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function PrivacyToggle({ className = "" }: { className?: string }) {
   const { incognito, locked, toggle } = usePrivacy();
+  const { t } = useI18n();
+
   if (locked) return null;
 
   return (
@@ -14,8 +17,8 @@ export function PrivacyToggle({ className = "" }: { className?: string }) {
       type="button"
       onClick={toggle}
       aria-pressed={incognito}
-      title={incognito ? "Show figures" : "Hide figures (incognito)"}
-      aria-label={incognito ? "Show figures" : "Hide figures (incognito)"}
+      title={incognito ? t("privacy.showFigures") : t("privacy.hideFigures") }
+      aria-label={incognito ? t("privacy.showFigures") : t("privacy.hideFigures") }
       className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
     >
       <svg

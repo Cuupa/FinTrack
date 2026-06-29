@@ -201,7 +201,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               {formatCurrency(summary.price, nativeCur)}
             </span>
             <span className="text-zinc-500">
-              Holding value <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
+              {t("common.holdingValue")} <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
             </span>
           </div>
         </div>
@@ -280,37 +280,37 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <Stat
-            label="Market value"
+            label={t("common.marketValue")}
             value={formatCurrency(summary.marketValue, currency)}
-            info="Current value of this holding."
+            info={t("tip.marketValue")}
             isPrivate
           />
         </Card>
         <Card>
           <Stat
-            label="Unrealized P&L"
+            label={t("stat.unrealized")}
             value={formatCurrency(summary.unrealizedPL, currency)}
             sub={formatPercent(summary.unrealizedPLPercent)}
             valueClassName={plColor(summary.unrealizedPL)}
-            info="Paper gain/loss on shares still held."
+            info={t("tip.unrealized")}
             isPrivate
           />
         </Card>
         <Card>
           <Stat
-            label="Realized P&L"
+            label={t("stat.unrealized")}
             value={formatCurrency(summary.realizedPL, currency)}
             valueClassName={plColor(summary.realizedPL)}
-            info="Locked-in gain/loss from shares of this asset you have already sold."
+            info={t("tip.unrealized")}
             isPrivate
           />
         </Card>
         <Card>
           <Stat
-            label="IRR (annualized)"
+            label={t("stat.irr")}
             value={irr === null ? "—" : formatPercent(irr)}
             valueClassName={irr === null ? "" : plColor(irr)}
-            info="Money-weighted annual return for this position."
+            info={t("stat.irr")}
           />
         </Card>
         <Card>
