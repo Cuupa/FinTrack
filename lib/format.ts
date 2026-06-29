@@ -23,6 +23,15 @@ export function parseDecimal(s: string): number {
   return cleaned === "" ? NaN : Number(cleaned);
 }
 
+/**
+ * Drop a leading zero a user typed in front of a real number, so a field
+ * pre-filled with "0" doesn't turn "300" into "0300". Keeps a lone "0" and
+ * decimals like "0.5" / "0,5" intact.
+ */
+export function stripLeadingZero(s: string): string {
+  return s.replace(/^0+(?=\d)/, "");
+}
+
 export function formatCurrency(value: number, currency = "EUR"): string {
   return new Intl.NumberFormat(intlLocale(), {
     style: "currency",

@@ -47,6 +47,33 @@ const changed = (prev: number | string | null, next: number): boolean => {
   return Math.abs(p - next) >= p * 1e-4;
 };
 
+// 1 unit of `from` in `to` (Frankfurter/ECB), cached per run. 1 when equal.
+const fxCache = new Map<string, number>();
+async function fxRate(from: string, to: string): Promise<number> {
+  const a = (from || "").toUpperCase();
+  const b = (to || "").toUpperCase();
+  if (!a || !b || a === b) return 1;
+  const ck = `${a}|${b}`;
+  const cached = fxCache.get(ck);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${a}&to=${b}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { rates?: Record<string, number> };
+      const rate = data.rates?.[b];
+      if (typeof rate === "number" && rate > 0) {
+        fxCache.set(ck, rate);
+        return rate;
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  return 1;
+}
+
 async function syncEquities(
   supabase: SupabaseClient,
   rows: InstrumentRow[],
@@ -60,9 +87,17 @@ async function syncEquities(
       const hint = r.quote_source === "yahoo" && r.quote_id ? r.quote_id : undefined;
       try {
         const resolved = await resolveQuote(query, r.currency || "", hint);
-        const p = resolved ? resolved.price : null;
         const symbol = resolved?.symbol;
+        let p = resolved ? resolved.price : null;
         if (p == null) return;
+        // The instrument's last_price must be in the instrument's own currency.
+        // When only a different-currency listing exists (e.g. a US stock the user
+        // holds in EUR resolves to the USD NASDAQ line), convert via FX — exactly
+        // as /api/price does — so the cached price isn't a raw USD number stored
+        // as EUR (the Alphabet 337.39 vs 295.93 bug).
+        if (r.currency && resolved && resolved.currency && resolved.currency !== r.currency) {
+          p = p * (await fxRate(resolved.currency, r.currency));
+        }
         // Auto-imported instruments are created without a quote listing, so the
         // cron resolves one (by ISIN/WKN/symbol — never hardcoded) and persists
         // it. Also re-persists when the resolved listing differs from the stored

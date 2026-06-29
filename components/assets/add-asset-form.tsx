@@ -10,7 +10,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { lookupInstrumentByQuery, currentPrice } from "@/lib/finance/prices";
-import { parseDecimal } from "@/lib/format";
+import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import type { Instrument } from "@/lib/catalog/catalog";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
@@ -418,7 +418,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
                 type="text"
                 inputMode="decimal"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => setQuantity(stripLeadingZero(e.target.value))}
                 className={inputCls}
               />
             </div>
@@ -444,7 +444,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
                   type="text"
                   inputMode="decimal"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => setPrice(stripLeadingZero(e.target.value))}
                   className={inputCls}
                 />
               </div>
@@ -458,7 +458,7 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
                 type="text"
                 inputMode="decimal"
                 value={fee}
-                onChange={(e) => setFee(e.target.value)}
+                onChange={(e) => setFee(stripLeadingZero(e.target.value))}
                 className={inputCls}
               />
             </div>

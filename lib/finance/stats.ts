@@ -18,13 +18,26 @@ const MONTHLY_PPY = 12;
 const MIN_REAL_MONTHS = 6;
 
 // General long-run capital-market assumptions per asset type (annualised
-// fractions), used only when an asset has no usable real history.
+// NOMINAL fractions), used as the prior an asset's measured return regresses
+// toward — and the sole source when there's no usable real history. These are
+// conservative long-run averages: broad equities ~7%, not a hot recent window.
 const GENERAL: Record<AssetType, { mean: number; vol: number }> = {
   ETF: { mean: 0.07, vol: 0.16 },
   STOCK: { mean: 0.07, vol: 0.2 },
-  CRYPTO: { mean: 0.1, vol: 0.7 },
+  CRYPTO: { mean: 0.08, vol: 0.7 },
   CASH: { mean: 0.02, vol: 0.005 },
 };
+
+// Commodities/precious metals (e.g. a gold ETC) have an equity-like vol but a
+// far lower long-run real return — nowhere near 10% over decades. Detected by
+// name since the asset record carries no sector. Used as the prior for such
+// holdings instead of the equity-like ETF assumption.
+const COMMODITY = { mean: 0.03, vol: 0.16 };
+const COMMODITY_RE = /\b(gold|silver|platin|palladium|silber|commodit|rohstoff|edelmetall|bullion|precious\s*metal)/i;
+
+function isCommodity(asset: Asset): boolean {
+  return COMMODITY_RE.test(asset.name || "");
+}
 
 export interface AssetStat {
   name: string;
@@ -229,7 +242,7 @@ function leverageFactor(name: string): number {
  * funds: vol ≈ |L|·σ and drift ≈ L·μ − ½·L·(L−1)·σ² (daily-rebalance vol drag).
  */
 function generalFor(asset: Asset): { mean: number; vol: number } {
-  const g = GENERAL[asset.type] ?? GENERAL.ETF;
+  const g = isCommodity(asset) ? COMMODITY : (GENERAL[asset.type] ?? GENERAL.ETF);
   const L = leverageFactor(asset.name);
   if (L === 1) return { mean: g.mean, vol: g.vol };
   return { mean: L * g.mean - 0.5 * L * (L - 1) * g.vol * g.vol, vol: Math.abs(L) * g.vol };
@@ -263,9 +276,20 @@ function assetMeanVol(
       return { mean: measured, vol, years, real: true, estimated: false };
     }
     const prior = generalFor(asset).mean;
-    const tau = Math.max(1, horizonYears / 3);
+    // τ grows with the horizon so a long projection leans on the long-run prior,
+    // not a hot recent window. (A 30y plan must not assume the market keeps
+    // compounding at a bull-run pace.)
+    const tau = Math.max(2, horizonYears);
     const w = years / (years + tau);
-    const mean = w * measured + (1 - w) * prior;
+    let mean = w * measured + (1 - w) * prior;
+    // Over long horizons, anchor hard to the long-run prior: a strong run (or
+    // slump) can't imply a decade-plus at that pace. Keeps the projection within
+    // a tight band of the capital-market assumption (e.g. equities ≈ 7%, never 9%
+    // over 30y; a gold ETC ≈ 3%, never 10%).
+    if (horizonYears >= 15) {
+      const band = 0.015;
+      mean = Math.min(prior + band, Math.max(prior - band, mean));
+    }
     // Flag as a blended estimate once the long-run prior carries real weight.
     return { mean, vol, years, real: true, estimated: w < 0.85 };
   }

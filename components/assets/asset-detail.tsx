@@ -24,6 +24,7 @@ import {
   formatPercent,
   parseDecimal,
   plColor,
+  stripLeadingZero,
 } from "@/lib/format";
 import {
   assetIdentifier,
@@ -656,13 +657,13 @@ function TransactionEditRow({
           </select>
         </td>
         <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={`${cell} text-right`} />
+          <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
         </td>
         <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} className={`${cell} text-right`} />
+          <input inputMode="decimal" value={price} onChange={(e) => setPrice(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
         </td>
         <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} className={`${cell} text-right`} />
+          <input inputMode="decimal" value={fee} onChange={(e) => setFee(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
         </td>
         <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
         <td className="py-1.5 text-right whitespace-nowrap">

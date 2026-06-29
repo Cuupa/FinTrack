@@ -47,3 +47,6 @@ Screenshot*.png
 asset.png
 sectors.png
 TODO.md
+
+# broker CSV exports / scratch data (never commit)
+*.csv
