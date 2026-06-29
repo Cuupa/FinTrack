@@ -234,17 +234,16 @@ export function PerformanceChart({
             className="text-zinc-400"
           />
           <Tooltip
-            contentStyle={{
-              borderRadius: 8,
-              border: "1px solid rgba(120,120,120,0.3)",
-              fontSize: 13,
-            }}
-            labelFormatter={(label) => shortDate(String(label))}
-            formatter={(value, name) => {
-              if (value == null) return ["—", name as string];
-              const v = Number(value);
-              return [pctMode ? formatPercent(v) : formatCurrency(v, currency), name as string];
-            }}
+            cursor={{ stroke: "rgba(120,120,120,0.35)", strokeWidth: 1 }}
+            content={({ active, payload, label }) => (
+              <ChartTooltip
+                active={active}
+                payload={payload as ReadonlyArray<TooltipEntry> | undefined}
+                label={label as string}
+                pctMode={pctMode}
+                currency={currency}
+              />
+            )}
           />
           <Line
             type="monotone"
@@ -301,6 +300,54 @@ export function PerformanceChart({
           {t("compare.hint")}
         </div>
       )}
+    </div>
+  );
+}
+
+interface TooltipEntry {
+  name?: string;
+  value?: number | string | null;
+  color?: string;
+  stroke?: string;
+}
+
+// Tooltip styled to match the simulation chart: a dated header, then one row per
+// series with a colour swatch, label and right-aligned value.
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  pctMode,
+  currency,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<TooltipEntry>;
+  label?: string;
+  pctMode: boolean;
+  currency: string;
+}) {
+  const rows = (payload ?? []).filter((p) => p.value != null);
+  if (!active || rows.length === 0) return null;
+  const fmt = (v: number) => (pctMode ? formatPercent(v) : formatCurrency(v, currency));
+  return (
+    <div className="min-w-[12rem] rounded-lg border border-zinc-200 bg-white p-3 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">
+        {label ? shortDate(String(label)) : ""}
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center justify-between gap-4 py-0.5">
+          <span className="inline-flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-[2px]"
+              style={{ backgroundColor: r.color || r.stroke || "#10b981" }}
+            />
+            {r.name}
+          </span>
+          <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
+            {fmt(Number(r.value))}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

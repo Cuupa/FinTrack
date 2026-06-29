@@ -215,8 +215,12 @@ async function chart(
   const result = data?.chart?.result?.[0];
   const ts = result?.timestamp;
   const close = result?.indicators?.quote?.[0]?.close;
-  const adj = total ? result?.indicators?.adjclose?.[0]?.adjclose : undefined;
-  const series = adj ?? close;
+  const adj = result?.indicators?.adjclose?.[0]?.adjclose;
+  // Total-return wants adjusted close. Otherwise prefer raw close, but fall back
+  // to adjclose — some listings (notably German mutual funds) report only an
+  // adjclose array with a null `close`, which otherwise yields an empty series
+  // and a blank chart.
+  const series = total ? (adj ?? close) : (close ?? adj);
   if (!ts || !series) return null;
   const points: YahooPoint[] = [];
   for (let i = 0; i < ts.length; i++) {
