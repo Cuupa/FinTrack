@@ -49,12 +49,15 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full overflow-x-clip bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      {/* No overflow clipping on <body>: on iOS Safari that breaks the fixed
+          bottom nav's stickiness. Horizontal overflow is contained on <main>
+          instead, leaving the fixed MobileNav anchored to the viewport. */}
+      <body className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Providers>
           <GuestBanner />
           <SiteNav />
           {/* pb leaves room for the fixed mobile tab bar (MobileNav). */}
-          <main className="mx-auto max-w-[1600px] px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-8">
+          <main className="mx-auto max-w-[1600px] overflow-x-clip px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-8">
             {children}
           </main>
           <MobileNav />

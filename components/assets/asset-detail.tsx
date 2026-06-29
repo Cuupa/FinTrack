@@ -320,45 +320,10 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </Card>
       </div>
 
-      {/* Top 10 holdings (ETF look-through) + Details share one row */}
-      <div className={`grid gap-4 ${constituents.length > 0 ? "lg:grid-cols-2" : ""}`}>
-        {constituents.length > 0 && (
-          <Card>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold">Top 10 holdings</h2>
-              <p className="text-xs text-zinc-500">
-                Representative constituents · your exposure shown per stock
-              </p>
-            </div>
-            <div className="mt-3 space-y-2">
-              {constituents
-                .slice()
-                .sort((a, b) => b.weight - a.weight)
-                .slice(0, 10)
-                .map((c) => (
-                  <div key={c.name} className="flex items-center gap-3 text-sm">
-                    <span className="w-44 shrink-0 truncate">
-                      {c.name}
-                      {c.symbol && (
-                        <span className="ml-1 font-mono text-xs text-zinc-500">{c.symbol}</span>
-                      )}
-                    </span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                      <div
-                        className="h-full rounded-full bg-indigo-500"
-                        style={{ width: `${Math.min(100, c.weight * 100 * 4)}%` }}
-                      />
-                    </div>
-                    <span className="w-16 shrink-0 text-right tabular-nums text-zinc-500">
-                      {formatNumber(c.weight * 100, 1)}%
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </Card>
-        )}
-
-        <Card>
+      {/* Details + Top 10 holdings (ETF look-through) share one row, Details
+          twice as wide (2:1). */}
+      <div className={`grid gap-4 ${constituents.length > 0 ? "lg:grid-cols-3" : ""}`}>
+        <Card className={constituents.length > 0 ? "lg:col-span-2" : ""}>
           <h2 className="text-lg font-semibold">Details</h2>
           <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <Row label="Name" value={asset.name} />
@@ -387,6 +352,33 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             />
           </dl>
         </Card>
+
+        {constituents.length > 0 && (
+          <Card>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-semibold">Top 10 holdings</h2>
+            </div>
+            <div className="mt-3 space-y-2">
+              {constituents
+                .slice()
+                .sort((a, b) => b.weight - a.weight)
+                .slice(0, 10)
+                .map((c) => (
+                  <div key={c.name} className="flex items-center gap-3 text-sm">
+                    <span className="min-w-0 flex-1 truncate">
+                      {c.name}
+                      {c.symbol && (
+                        <span className="ml-1 font-mono text-xs text-zinc-500">{c.symbol}</span>
+                      )}
+                    </span>
+                    <span className="w-12 shrink-0 text-right tabular-nums text-zinc-500">
+                      {formatNumber(c.weight * 100, 1)}%
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Transactions — full width, add form above the table */}
@@ -526,7 +518,6 @@ function TransactionsTable({
             <TxTh label="Price" k="price" align="right" sort={sort} onSort={toggle} />
             <TxTh label="Fee" k="fee" align="right" sort={sort} onSort={toggle} />
             <TxTh label="Total" k="total" align="right" sort={sort} onSort={toggle} />
-            {multiPortfolio && <th className="py-2 pr-3 font-medium">Portfolio</th>}
             <th className="py-2"></th>
           </tr>
         </thead>
@@ -581,11 +572,6 @@ function TransactionsTable({
                   {t.type === "BUY" ? "−" : "+"}
                   {formatCurrency(t.quantity * t.price, currency)}
                 </td>
-                {multiPortfolio && (
-                  <td className="py-2 pr-3 text-zinc-500">
-                    {portfolios.find((p) => p.id === t.portfolioId)?.name ?? "—"}
-                  </td>
-                )}
                 <td className="py-2 text-right whitespace-nowrap">
                   <button
                     onClick={() => setEditingId(t.id)}
@@ -652,52 +638,64 @@ function TransactionEditRow({
   };
 
   return (
-    <tr className="border-b border-zinc-100 bg-zinc-50 last:border-0 dark:border-zinc-800/60 dark:bg-zinc-800/30">
-      <td className="py-1.5 pr-2">
-        <input
-          type="datetime-local"
-          value={date}
-          max={nowDateTimeLocal()}
-          onChange={(e) => setDate(e.target.value)}
-          className={cell}
-        />
-      </td>
-      <td className="py-1.5 pr-2">
-        <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
-        </select>
-      </td>
-      <td className="py-1.5 pr-2">
-        <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={`${cell} text-right`} />
-      </td>
-      <td className="py-1.5 pr-2">
-        <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} className={`${cell} text-right`} />
-      </td>
-      <td className="py-1.5 pr-2">
-        <input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} className={`${cell} text-right`} />
-      </td>
-      <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
-      {multiPortfolio && (
+    <>
+      <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
         <td className="py-1.5 pr-2">
-          <select value={portfolioId} onChange={(e) => setPortfolioId(e.target.value)} className={cell}>
-            {portfolios.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+          <input
+            type="datetime-local"
+            value={date}
+            max={nowDateTimeLocal()}
+            onChange={(e) => setDate(e.target.value)}
+            className={cell}
+          />
+        </td>
+        <td className="py-1.5 pr-2">
+          <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
           </select>
         </td>
+        <td className="py-1.5 pr-2">
+          <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={`${cell} text-right`} />
+        </td>
+        <td className="py-1.5 pr-2">
+          <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} className={`${cell} text-right`} />
+        </td>
+        <td className="py-1.5 pr-2">
+          <input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} className={`${cell} text-right`} />
+        </td>
+        <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
+        <td className="py-1.5 text-right whitespace-nowrap">
+          <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label="Save" title="Save">
+            ✓
+          </button>
+          <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label="Cancel" title="Cancel">
+            ✕
+          </button>
+        </td>
+      </tr>
+      {/* The portfolio is only surfaced (and editable) while editing. */}
+      {multiPortfolio && (
+        <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
+          <td colSpan={7} className="px-2 pb-2">
+            <label className="flex items-center gap-2 text-xs text-zinc-500">
+              <span className="shrink-0">Portfolio</span>
+              <select
+                value={portfolioId}
+                onChange={(e) => setPortfolioId(e.target.value)}
+                className={`${cell} max-w-xs`}
+              >
+                {portfolios.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </td>
+        </tr>
       )}
-      <td className="py-1.5 text-right whitespace-nowrap">
-        <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label="Save" title="Save">
-          ✓
-        </button>
-        <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label="Cancel" title="Cancel">
-          ✕
-        </button>
-      </td>
-    </tr>
+    </>
   );
 }
 

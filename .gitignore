@@ -43,6 +43,7 @@ next-env.d.ts
 # local screenshots / scratch (never commit)
 Bildschirmfoto*.png
 screenshot*.png
+Screenshot*.png
 asset.png
 sectors.png
 TODO.md

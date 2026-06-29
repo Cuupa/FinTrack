@@ -66,11 +66,11 @@ export function PortfolioPicker() {
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative min-w-0" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 max-w-[12rem] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="inline-flex h-9 w-full max-w-[8rem] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:max-w-[12rem] dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         title="Portfolios"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0" strokeLinecap="round" strokeLinejoin="round">

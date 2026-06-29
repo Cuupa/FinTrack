@@ -50,7 +50,7 @@ export function AllocationPie({
   const sel = active != null ? slices[active] : null;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-10 sm:flex-row sm:items-center sm:gap-14">
+    <div className="flex flex-col items-center justify-center gap-10 sm:flex-row sm:items-start sm:gap-14">
       {/* Donut with a centre readout */}
       <div
         className="relative h-72 w-72 shrink-0"

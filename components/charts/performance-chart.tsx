@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ReferenceLine,
+  ReferenceDot,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -46,28 +46,32 @@ const MARKER_GLYPH: Record<ChartMarker["type"], string> = {
   DIV: "●",
 };
 
-// A map-style pin dropped at the top of the chart for a buy/sell/dividend event:
-// a small coloured head with the event glyph and a short stem, replacing the old
-// full-height dotted reference line.
-function PinLabel(props: {
-  viewBox?: { x?: number; y?: number };
+// A map-style pin whose tip sits ON the line at the event's data point: a small
+// coloured head with the event glyph and a pointer tapering down to the price.
+// Recharts injects cx/cy (the pixel position of the ReferenceDot).
+function PinShape(props: {
+  cx?: number;
+  cy?: number;
   color: string;
   glyph: string;
   active?: boolean;
   dimmed?: boolean;
 }) {
-  const { viewBox, color, glyph, active, dimmed } = props;
-  const x = viewBox?.x ?? 0;
-  const y = viewBox?.y ?? 0;
+  const { cx = 0, cy = 0, color, glyph, active, dimmed } = props;
   const r = active ? 8 : 6.5;
-  const opacity = dimmed ? 0.2 : 1;
+  const headY = cy - (r + 7); // circle centre, above the data point
+  const opacity = dimmed ? 0.25 : 1;
   return (
-    <g transform={`translate(${x}, ${y})`} opacity={opacity}>
-      <line x1={0} y1={r} x2={0} y2={r + 10} stroke={color} strokeWidth={active ? 2 : 1.3} />
-      <circle cx={0} cy={0} r={r} fill={color} stroke="white" strokeWidth={1} />
+    <g opacity={opacity}>
+      {/* pointer from the head down to the exact data point */}
+      <path
+        d={`M ${cx} ${cy} L ${cx - 3.2} ${headY + r - 1.5} L ${cx + 3.2} ${headY + r - 1.5} Z`}
+        fill={color}
+      />
+      <circle cx={cx} cy={headY} r={r} fill={color} stroke="white" strokeWidth={1.2} />
       <text
-        x={0}
-        y={0.5}
+        x={cx}
+        y={headY + 0.5}
         textAnchor="middle"
         dominantBaseline="central"
         fontSize={active ? 9 : 8}
@@ -194,6 +198,11 @@ export function PerformanceChart({
   const logHi = positives.length ? Math.max(...positives) : 1;
 
   const seriesDates = series.map((p) => p.date);
+  // The y-value of the plotted line at each date, so markers can sit ON the line.
+  const valueByDate = new Map<string, number>();
+  for (const row of data) {
+    if (typeof row.value === "number") valueByDate.set(row.date as string, row.value);
+  }
   const snappedMarkers = markers
     .map((m) => ({ ...m, date: nearest(seriesDates, m.date) }))
     .filter((m) => m.date !== null) as ChartMarker[];
@@ -204,7 +213,7 @@ export function PerformanceChart({
   return (
     <div>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 14, right: 12, bottom: 0, left: 8 }}>
+        <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
           <XAxis
             dataKey="date"
@@ -237,29 +246,6 @@ export function PerformanceChart({
               return [pctMode ? formatPercent(v) : formatCurrency(v, currency), name as string];
             }}
           />
-          {snappedMarkers.map((m, i) => {
-            const dimmed = highlightType != null && m.type !== highlightType;
-            const active = highlightType != null && m.type === highlightType;
-            // The indicator is a pin at the top; only show a faint guide line
-            // when its type is highlighted, so the chart stays clean otherwise.
-            return (
-              <ReferenceLine
-                key={`${m.date}-${i}`}
-                x={m.date}
-                stroke={MARKER_COLOR[m.type]}
-                strokeWidth={active ? 1.5 : 1}
-                strokeOpacity={active ? 0.35 : 0}
-                label={
-                  <PinLabel
-                    color={MARKER_COLOR[m.type]}
-                    glyph={MARKER_GLYPH[m.type]}
-                    active={active}
-                    dimmed={dimmed}
-                  />
-                }
-              />
-            );
-          })}
           <Line
             type="monotone"
             dataKey="value"
@@ -283,6 +269,30 @@ export function PerformanceChart({
               isAnimationActive={false}
             />
           ))}
+          {/* Pins paint last so they sit on top of the line. */}
+          {snappedMarkers.map((m, i) => {
+            const y = valueByDate.get(m.date);
+            if (y == null) return null;
+            const dimmed = highlightType != null && m.type !== highlightType;
+            const active = highlightType != null && m.type === highlightType;
+            // A pin whose tip sits on the line at the transaction/dividend point.
+            return (
+              <ReferenceDot
+                key={`${m.date}-${i}`}
+                x={m.date}
+                y={y}
+                r={0}
+                shape={
+                  <PinShape
+                    color={MARKER_COLOR[m.type]}
+                    glyph={MARKER_GLYPH[m.type]}
+                    active={active}
+                    dimmed={dimmed}
+                  />
+                }
+              />
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
       {comparing && (

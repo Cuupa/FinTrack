@@ -53,8 +53,8 @@ export function SiteNav() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
-      <nav className="mx-auto flex max-w-[1600px] items-center gap-6 px-4 py-3">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+      <nav className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-3 sm:gap-4 md:gap-6">
+        <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
           Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
         </Link>
         <PortfolioPicker />
@@ -77,7 +77,7 @@ export function SiteNav() {
             );
           })}
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
           <LocaleSwitcher />
           <PrivacyToggle />
           {mode === "registered" ? (
