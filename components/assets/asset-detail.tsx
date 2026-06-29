@@ -185,7 +185,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Link href="/" className="text-sm text-zinc-500 hover:underline">
-            ← Dashboard
+            ← {t("nav.dashboard")}
           </Link>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold tracking-tight">
             {asset.name}
@@ -207,7 +207,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </div>
         <div className="flex items-center gap-3">
           <Button variant="danger" onClick={handleDelete}>
-            Delete
+            {t("asset.delete")}
           </Button>
         </div>
       </div>
@@ -298,27 +298,27 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </Card>
         <Card>
           <Stat
-            label={t("stat.unrealized")}
+            label={t("stat.realized")}
             value={formatCurrency(summary.realizedPL, currency)}
             valueClassName={plColor(summary.realizedPL)}
-            info={t("tip.unrealized")}
+            info={t("tip.realized")}
             isPrivate
           />
         </Card>
         <Card>
           <Stat
-            label={t("stat.irr")}
+            label={t("asset.metric.irr")}
             value={irr === null ? "—" : formatPercent(irr)}
             valueClassName={irr === null ? "" : plColor(irr)}
-            info={t("stat.irr")}
+            info={t("asset.metric.irrTip")}
           />
         </Card>
         <Card>
           <Stat
-            label="Sharpe ratio"
+            label={t("asset.metric.sharpe")}
             value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
             valueClassName={annual?.sharpe != null ? plColor(annual.sharpe) : ""}
-            info="Risk-adjusted return: annualised excess return (over a 2% risk-free rate) per unit of volatility, measured from this asset's price history."
+            info={t("asset.metric.sharpeTip")}
           />
         </Card>
       </div>
@@ -327,30 +327,30 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           twice as wide (2:1). */}
       <div className={`grid gap-4 ${constituents.length > 0 ? "lg:grid-cols-3" : ""}`}>
         <Card className={constituents.length > 0 ? "lg:col-span-2" : ""}>
-          <h2 className="text-lg font-semibold">Details</h2>
+          <h2 className="text-lg font-semibold">{t("asset.details")}</h2>
           <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-            <Row label="Name" value={asset.name} />
-            <Row label="ISIN" value={asset.isin ?? "—"} />
-            <Row label="WKN" value={asset.wkn ?? "—"} />
-            {asset.symbol && <Row label="Symbol" value={asset.symbol} />}
-            <Row label="Currency" value={nativeCur} />
-            <Row label="Shares held" value={formatNumber(summary.position.shares, 4)} isPrivate />
-            <Row label="Avg. cost" value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
-            <Row label="Current price" value={formatCurrency(summary.price, nativeCur)} />
-            <Row label="Cost basis" value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
-            <Row label="Total fees" value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
-            <Row label="Dividend yield" value={yld > 0 ? formatPercent(yld) : "—"} />
+            <Row label={t("asset.row.name")} value={asset.name} />
+            <Row label={t("asset.row.isin")} value={asset.isin ?? "—"} />
+            <Row label={t("asset.row.wkn")} value={asset.wkn ?? "—"} />
+            {asset.symbol && <Row label={t("asset.row.symbol")} value={asset.symbol} />}
+            <Row label={t("asset.row.currency")} value={nativeCur} />
+            <Row label={t("asset.row.shares")} value={formatNumber(summary.position.shares, 4)} isPrivate />
+            <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
+            <Row label={t("asset.row.currentPrice")} value={formatCurrency(summary.price, nativeCur)} />
+            <Row label={t("asset.row.costBasis")} value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
+            <Row label={t("asset.row.totalFees")} value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
+            <Row label={t("asset.row.divYield")} value={yld > 0 ? formatPercent(yld) : "—"} />
             <Row
-              label="Dividends received"
+              label={t("asset.row.divReceived")}
               value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
               isPrivate
             />
             <Row
-              label="Volatility (p.a.)"
+              label={t("asset.row.volatility")}
               value={annual && annual.vol > 0 ? `${formatNumber(annual.vol * 100, 1)}%` : "—"}
             />
             <Row
-              label="Sharpe ratio"
+              label={t("asset.row.sharpe")}
               value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
             />
           </dl>
@@ -358,25 +358,31 @@ export function AssetDetail({ assetId }: { assetId: string }) {
 
         {constituents.length > 0 && (
           <Card>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold">Top 10 holdings</h2>
-            </div>
-            <div className="mt-3 space-y-2">
+            <h2 className="text-lg font-semibold">{t("asset.topHoldings")}</h2>
+            <div className="mt-3 space-y-2.5">
               {constituents
                 .slice()
                 .sort((a, b) => b.weight - a.weight)
                 .slice(0, 10)
                 .map((c) => (
-                  <div key={c.name} className="flex items-center gap-3 text-sm">
-                    <span className="min-w-0 flex-1 truncate">
-                      {c.name}
-                      {c.symbol && (
-                        <span className="ml-1 font-mono text-xs text-zinc-500">{c.symbol}</span>
-                      )}
-                    </span>
-                    <span className="w-12 shrink-0 text-right tabular-nums text-zinc-500">
-                      {formatNumber(c.weight * 100, 1)}%
-                    </span>
+                  <div key={c.name} className="text-sm">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        {c.name}
+                        {c.symbol && (
+                          <span className="ml-1 font-mono text-xs text-zinc-500">{c.symbol}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-zinc-500">
+                        {formatNumber(c.weight * 100, 1)}%
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-indigo-500"
+                        style={{ width: `${Math.min(100, c.weight * 100 * 4)}%` }}
+                      />
+                    </div>
                   </div>
                 ))}
             </div>
@@ -386,15 +392,15 @@ export function AssetDetail({ assetId }: { assetId: string }) {
 
       {/* Transactions — full width, add form above the table */}
       <Card>
-        <h2 className="text-lg font-semibold">Transactions</h2>
+        <h2 className="text-lg font-semibold">{t("asset.transactions")}</h2>
 
         <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h3 className="mb-3 text-sm font-semibold">Add transaction</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
           <TransactionForm asset={asset} />
         </div>
 
         {txs.length === 0 ? (
-          <p className="mt-4 text-sm text-zinc-500">No transactions yet.</p>
+          <p className="mt-4 text-sm text-zinc-500">{t("asset.noTransactions")}</p>
         ) : (
           <div className="mt-4">
             <TransactionsTable
@@ -402,11 +408,11 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               currency={nativeCur}
               portfolios={portfolios}
               onUpdate={(id, patch) => void updateTransaction(id, patch)}
-              onDelete={(t) =>
+              onDelete={(tx) =>
                 setPending({
-                  title: "Delete transaction?",
-                  message: `This ${t.type} of ${formatNumber(t.quantity, 4)} on ${formatDateTime(t.date)} will be removed.`,
-                  action: () => void deleteTransaction(t.id),
+                  title: t("tx.deleteConfirmTitle"),
+                  message: `${tx.type} · ${formatNumber(tx.quantity, 4)} · ${formatDateTime(tx.date)}`,
+                  action: () => void deleteTransaction(tx.id),
                 })
               }
             />
@@ -489,6 +495,8 @@ function TransactionsTable({
   onUpdate: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
   onDelete: (t: Transaction) => void;
 }) {
+  // Aliased to `tr` — the row map below binds `t` to the transaction.
+  const { t: tr } = useI18n();
   const [sort, setSort] = useState<{ key: TxSortKey; dir: 1 | -1 }>({
     key: "date",
     dir: -1,
@@ -515,12 +523,12 @@ function TransactionsTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-            <TxTh label="Date" k="date" sort={sort} onSort={toggle} />
-            <TxTh label="Type" k="type" sort={sort} onSort={toggle} />
-            <TxTh label="Qty" k="quantity" align="right" sort={sort} onSort={toggle} />
-            <TxTh label="Price" k="price" align="right" sort={sort} onSort={toggle} />
-            <TxTh label="Fee" k="fee" align="right" sort={sort} onSort={toggle} />
-            <TxTh label="Total" k="total" align="right" sort={sort} onSort={toggle} />
+            <TxTh label={tr("tx.date")} k="date" sort={sort} onSort={toggle} />
+            <TxTh label={tr("tx.type")} k="type" sort={sort} onSort={toggle} />
+            <TxTh label={tr("tx.qty")} k="quantity" align="right" sort={sort} onSort={toggle} />
+            <TxTh label={tr("tx.price")} k="price" align="right" sort={sort} onSort={toggle} />
+            <TxTh label={tr("tx.fee")} k="fee" align="right" sort={sort} onSort={toggle} />
+            <TxTh label={tr("tx.total")} k="total" align="right" sort={sort} onSort={toggle} />
             <th className="py-2"></th>
           </tr>
         </thead>
@@ -579,8 +587,8 @@ function TransactionsTable({
                   <button
                     onClick={() => setEditingId(t.id)}
                     className="px-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                    aria-label="Edit transaction"
-                    title="Edit"
+                    aria-label={tr("tx.edit")}
+                    title={tr("tx.edit")}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="inline h-3.5 w-3.5">
                       <path d="M12 20h9" />
@@ -590,8 +598,8 @@ function TransactionsTable({
                   <button
                     onClick={() => onDelete(t)}
                     className="px-1 text-zinc-400 hover:text-red-500"
-                    aria-label="Delete transaction"
-                    title="Delete"
+                    aria-label={tr("tx.deleteTitle")}
+                    title={tr("tx.deleteTitle")}
                   >
                     ✕
                   </button>
@@ -625,6 +633,7 @@ function TransactionEditRow({
   const [date, setDate] = useState(tx.date.slice(0, 16));
   const [portfolioId, setPortfolioId] = useState(tx.portfolioId);
 
+  const { t: tr } = useI18n();
   const cell = "w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
   const save = () => {
@@ -669,10 +678,10 @@ function TransactionEditRow({
         </td>
         <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
         <td className="py-1.5 text-right whitespace-nowrap">
-          <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label="Save" title="Save">
+          <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label={tr("tx.save")} title={tr("tx.save")}>
             ✓
           </button>
-          <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label="Cancel" title="Cancel">
+          <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label={tr("tx.cancel")} title={tr("tx.cancel")}>
             ✕
           </button>
         </td>
@@ -682,7 +691,7 @@ function TransactionEditRow({
         <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
           <td colSpan={7} className="px-2 pb-2">
             <label className="flex items-center gap-2 text-xs text-zinc-500">
-              <span className="shrink-0">Portfolio</span>
+              <span className="shrink-0">{tr("tx.portfolio")}</span>
               <select
                 value={portfolioId}
                 onChange={(e) => setPortfolioId(e.target.value)}

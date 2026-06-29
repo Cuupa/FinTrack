@@ -11,6 +11,7 @@ import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
 import { Button } from "@/components/ui/primitives";
+import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function DashboardPage() {
@@ -47,10 +48,15 @@ export default function DashboardPage() {
         <>
           <LiveShareSync />
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
-          {adding && <AddAssetForm onDone={() => setAdding(false)} />}
           <AssetTable timeframe={timeframe} />
         </>
       )}
+
+      {/* Add-asset opens in a modal so it appears right where you clicked,
+          not buried at the bottom of the page. */}
+      <Modal open={adding} onClose={() => setAdding(false)}>
+        <AddAssetForm onDone={() => setAdding(false)} />
+      </Modal>
     </div>
   );
 }

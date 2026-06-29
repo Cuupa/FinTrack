@@ -9,6 +9,7 @@ import { currentPrice } from "@/lib/finance/prices";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -21,6 +22,7 @@ export function TransactionForm({
   onDone?: () => void;
 }) {
   const { addTransaction, portfolios, selectedPortfolioIds } = usePortfolio();
+  const { t } = useI18n();
   const isCash = asset.type === "CASH";
   const cur = asset.currency || "EUR";
 
@@ -51,11 +53,11 @@ export function TransactionForm({
     const qty = parseDecimal(quantity);
     const px = isCash ? 1 : parseDecimal(price);
     if (!Number.isFinite(qty) || qty <= 0) {
-      setError("Enter a positive quantity.");
+      setError(t("tx.errQty"));
       return;
     }
     if (!isCash && (!Number.isFinite(px) || px < 0)) {
-      setError("Enter a valid price.");
+      setError(t("tx.errPrice"));
       return;
     }
     setBusy(true);
@@ -73,7 +75,7 @@ export function TransactionForm({
       setFee("0");
       onDone?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add transaction.");
+      setError(err instanceof Error ? err.message : t("tx.errFail"));
     } finally {
       setBusy(false);
     }
@@ -98,14 +100,14 @@ export function TransactionForm({
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
-              {tt === "BUY" ? "Buy" : "Sell"}
+              {tt === "BUY" ? t("tx.buy") : t("tx.sell")}
             </button>
           );
         })}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label={isCash ? "Amount" : "Quantity"}>
+        <Field label={isCash ? t("tx.amount") : t("tx.quantity")}>
           <input
             type="text"
             inputMode="decimal"
@@ -116,7 +118,7 @@ export function TransactionForm({
           />
         </Field>
         {!isCash && (
-          <Field label="Price">
+          <Field label={t("tx.price")}>
             <div className="relative">
               <input
                 type="text"
@@ -131,7 +133,7 @@ export function TransactionForm({
             </div>
           </Field>
         )}
-        <Field label="Fee">
+        <Field label={t("tx.fee")}>
           <div className="relative">
             <input
               type="text"
@@ -145,7 +147,7 @@ export function TransactionForm({
             </span>
           </div>
         </Field>
-        <Field label="Date & time">
+        <Field label={t("tx.dateTime")}>
           <input
             type="datetime-local"
             value={executedAt}
@@ -155,7 +157,7 @@ export function TransactionForm({
           />
         </Field>
         {portfolios.length > 1 && (
-          <Field label="Portfolio" className="col-span-2">
+          <Field label={t("tx.portfolio")} className="col-span-2">
             <select
               value={portfolioId}
               onChange={(e) => setPortfolioId(e.target.value)}
@@ -173,7 +175,7 @@ export function TransactionForm({
 
       {/* Live total preview */}
       <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40">
-        <span className="text-zinc-500">{isBuy ? "Total cost" : "Total proceeds"}</span>
+        <span className="text-zinc-500">{isBuy ? t("tx.totalCost") : t("tx.totalProceeds")}</span>
         <span
           className={`font-semibold tabular-nums ${
             isBuy ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
@@ -195,7 +197,7 @@ export function TransactionForm({
             : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
         }`}
       >
-        {busy ? "Adding…" : isBuy ? "Add buy" : "Add sell"}
+        {busy ? t("tx.adding") : isBuy ? t("tx.addBuy") : t("tx.addSell")}
       </Button>
     </form>
   );
