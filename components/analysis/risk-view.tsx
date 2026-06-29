@@ -39,7 +39,10 @@ export function RiskView() {
   const base = data.profile.currency;
 
   const [tf, setTf] = useState<Timeframe>("1Y");
-  const [benchId, setBenchId] = useState<string>(BENCHMARKS[0].id);
+  // Beta/Alpha need a reference index; MSCI World is the sensible default and
+  // keeps the header simple (no confusing "vs" picker).
+  const benchId = BENCHMARKS[0].id;
+  const benchLabel = BENCHMARKS[0].label;
   const [scope, setScope] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "weight", dir: -1 });
 
@@ -174,19 +177,6 @@ export function RiskView() {
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
-            <span className="text-xs text-zinc-400">{t("risk.vs")}</span>
-            <select
-              value={benchId}
-              onChange={(e) => setBenchId(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-              aria-label={t("risk.benchmark")}
-            >
-              {BENCHMARKS.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
             <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
               {TF_OPTIONS.map((opt) => (
                 <button
@@ -242,6 +232,7 @@ export function RiskView() {
             max={2}
             neutral={1}
             format={(v) => formatNumber(v, 2)}
+            sub={`${t("risk.vs")} ${benchLabel}`}
           />
           <MetricCard
             label={t("risk.alpha")}
@@ -251,6 +242,7 @@ export function RiskView() {
             max={0.1}
             goodHigh
             format={(v) => formatPercent(v, 1)}
+            sub={`${t("risk.vs")} ${benchLabel}`}
           />
           <MetricCard
             label={t("risk.maxDrawdown")}
@@ -384,36 +376,50 @@ function MetricCard({
   const color = has ? qualityColor(q) : "#a1a1aa";
   const word = !has ? "" : q >= 0.66 ? t("risk.qGood") : q >= 0.33 ? t("risk.qModerate") : t("risk.qPoor");
 
+  // The track is a poor→good landscape (oriented by the metric's direction);
+  // the thumb marks where this value sits, so the picture has clear meaning.
+  const RED = "#ef4444";
+  const AMBER = "#f59e0b";
+  const GREEN = "#10b981";
+  const gradient =
+    neutralFrac != null
+      ? `linear-gradient(to right, ${RED}, ${GREEN} ${neutralFrac * 100}%, ${RED})`
+      : goodHigh
+        ? `linear-gradient(to right, ${RED}, ${AMBER}, ${GREEN})`
+        : `linear-gradient(to right, ${GREEN}, ${AMBER}, ${RED})`;
+
   return (
-    <div className="rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/60 p-3.5 dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/40">
+    <div
+      title={`${label} — ${info}`}
+      className="group rounded-xl border border-zinc-200/70 bg-white p-3.5 transition-shadow hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+    >
       <div className="flex items-center gap-1 text-xs font-medium text-zinc-500">
         <span className="truncate">{label}</span>
         <InfoTip text={info} />
       </div>
-      <div className="mt-1.5 flex items-baseline gap-1.5">
+      <div className="mt-1.5 flex items-baseline justify-between gap-1.5">
         <span className="text-2xl font-semibold tabular-nums" style={{ color }}>
           {has ? format(value as number) : "—"}
         </span>
-      </div>
-      {/* slim meter showing where the value sits within its range */}
-      <div className="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
-        <div
-          className="h-full rounded-full transition-[width]"
-          style={{ width: `${frac * 100}%`, backgroundColor: color }}
-        />
-        {neutralFrac != null && (
+        {word && (
           <span
-            className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-zinc-400 dark:bg-zinc-500"
-            style={{ left: `${neutralFrac * 100}%` }}
+            className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+            style={{ color, backgroundColor: `${color}1f` }}
+          >
+            {word}
+          </span>
+        )}
+      </div>
+      {/* bullet gauge: zone track + thumb at the value */}
+      <div className="relative mt-3 h-2 w-full rounded-full" style={{ background: gradient, opacity: has ? 0.85 : 0.2 }}>
+        {has && (
+          <span
+            className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-white shadow ring-1 ring-black/10 dark:border-zinc-900"
+            style={{ left: `${frac * 100}%`, backgroundColor: color }}
           />
         )}
       </div>
-      <div className="mt-1.5 flex items-center justify-between text-[10px]">
-        <span className="text-zinc-400 tabular-nums">{sub ?? ""}</span>
-        <span className="font-medium" style={{ color }}>
-          {word}
-        </span>
-      </div>
+      {sub && <div className="mt-1.5 text-[10px] text-zinc-400 tabular-nums">{sub}</div>}
     </div>
   );
 }
