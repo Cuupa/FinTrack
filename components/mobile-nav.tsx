@@ -21,11 +21,11 @@ const TABS: { href: string; label: string; icon: ReactNode }[] = [
     label: "Analysis",
     icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" />,
   },
-  {
-    href: "/xray",
-    label: "X-ray",
-    icon: <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,
-  },
+  // {
+  //   href: "/xray",
+  //   label: "X-ray",
+  //   icon: <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,
+  // },
   {
     href: "/rebalancing",
     label: "Rebalance",

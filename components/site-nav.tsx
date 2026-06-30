@@ -14,7 +14,7 @@ import { PortfolioPicker } from "./portfolio-picker";
 const LINKS: { href: string; key: MessageKey }[] = [
   { href: "/", key: "nav.dashboard" },
   { href: "/analysis", key: "nav.analysis" },
-  { href: "/xray", key: "nav.xray" },
+  // { href: "/xray", key: "nav.xray" },
   { href: "/rebalancing", key: "nav.rebalance" },
   { href: "/simulation", key: "nav.simulation" },
 ];
