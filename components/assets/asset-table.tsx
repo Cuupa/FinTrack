@@ -109,7 +109,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                   : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
-              {t(`assetType.${_t?.toLowerCase()}`)}
+              {t(`assetType.${_t}`)}
             </button>
           ))}
         </div>

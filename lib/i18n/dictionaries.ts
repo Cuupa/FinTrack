@@ -366,15 +366,13 @@ export const en = {
   "sim.tipOptimistic": "The 90th percentile: you beat 90% of the simulated outcomes — only 10% did better.",
   "sim.tipPessimistic": "The 10th percentile: a poor case — 90% of simulated outcomes did better, only 10% did worse.",
 
-  "assetType": {
-    "all": "All",
-    "stock": "Stock",
-    "etf": "ETF",
-    "fund": "Fund",
-    "crypto": "Cryptocurrency",
-    "cash": "Cash",
-    "bond": "Bond"
-  }
+  "assetType.ALL": "All",
+  "assetType.STOCK": "Stock",
+  "assetType.ETF": "ETF",
+  "assetType.FUND": "Fund",
+  "assetType.CRYPTO": "Cryptocurrency",
+  "assetType.CASH": "Cash",
+  "assetType.BOND": "Bond",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -738,13 +736,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.tipOptimistic": "Das 90. Perzentil: Sie schlagen 90% der simulierten Ergebnisse — nur 10% waren besser.",
   "sim.tipPessimistic": "Das 10. Perzentil: ein schlechter Fall — 90% der Ergebnisse waren besser, nur 10% schlechter.",
 
-  "assetType.all": "Alles",
-  "assetType.stock": "Aktie",
-  "assetType.etf": "ETF",
-  "assetType.fund": "Fonds",
-  "assetType.crypto": "Kryptowährung",
-  "assetType.cash": "Bargeld",
-  "assetType.bond": "Anleihe",
+  "assetType.ALL": "Alles",
+  "assetType.STOCK": "Aktie",
+  "assetType.ETF": "ETF",
+  "assetType.FUND": "Fonds",
+  "assetType.CRYPTO": "Kryptowährung",
+  "assetType.CASH": "Bargeld",
+  "assetType.BOND": "Anleihe",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };
