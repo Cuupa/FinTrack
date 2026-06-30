@@ -99,17 +99,17 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
           className="ml-auto w-full max-w-xs rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
         />
         <div className="flex gap-1">
-          {TYPE_FILTERS.map((t) => (
+          {TYPE_FILTERS.map((_t) => (
             <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
+              key={_t}
+              onClick={() => setTypeFilter(_t)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-                typeFilter === t
+                typeFilter === _t
                   ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
                   : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
-              {t}
+              {t("assetType." + _t.toLowerCase())}
             </button>
           ))}
         </div>

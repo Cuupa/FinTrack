@@ -52,6 +52,8 @@ export const en = {
 
   "common.marketValue": "Market value",
 
+  "common.compare": "Compare",
+
   "privacy.showFigures": "Show figures",
   "privacy.hideFigures": "Hide figures",
 
@@ -364,6 +366,7 @@ export const en = {
   "sim.tipOptimistic": "The 90th percentile: you beat 90% of the simulated outcomes — only 10% did better.",
   "sim.tipPessimistic": "The 10th percentile: a poor case — 90% of simulated outcomes did better, only 10% did worse.",
 
+  "assetType.all": "All",
   "assetType.stock": "Stock",
   "assetType.etf": "ETF",
   "assetType.fund": "Fund",
@@ -416,6 +419,8 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "common.selectAll": "Alles auswählen",
   "common.holdingValue": "Positionswert",
+
+  "common.compare": "Vergleichen",
 
   "privacy.showFigures": "Beträge anzeigen",
   "privacy.hideFigures": "Beträge ausblenden",
@@ -731,6 +736,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.tipOptimistic": "Das 90. Perzentil: Sie schlagen 90% der simulierten Ergebnisse — nur 10% waren besser.",
   "sim.tipPessimistic": "Das 10. Perzentil: ein schlechter Fall — 90% der Ergebnisse waren besser, nur 10% schlechter.",
 
+  "assetType.all": "Alles",
   "assetType.stock": "Aktie",
   "assetType.etf": "ETF",
   "assetType.fund": "Fonds",
