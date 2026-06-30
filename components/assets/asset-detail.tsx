@@ -178,7 +178,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
       },
     });
   }
-  const rawType = String(asset.type).toLowerCase();
+  const rawType = String(asset.type);
   const typeKey = `assetType.${rawType}` as MessageKey;
   return (
     <div className="space-y-6">
