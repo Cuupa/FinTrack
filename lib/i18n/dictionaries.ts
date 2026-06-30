@@ -366,13 +366,15 @@ export const en = {
   "sim.tipOptimistic": "The 90th percentile: you beat 90% of the simulated outcomes — only 10% did better.",
   "sim.tipPessimistic": "The 10th percentile: a poor case — 90% of simulated outcomes did better, only 10% did worse.",
 
-  "assetType.all": "All",
-  "assetType.stock": "Stock",
-  "assetType.etf": "ETF",
-  "assetType.fund": "Fund",
-  "assetType.crypto": "Cryptocurrency",
-  "assetType.cash": "Cash",
-  "assetType.bond": "Bond",
+  "assetType": {
+    "all": "All",
+    "stock": "Stock",
+    "etf": "ETF",
+    "fund": "Fund",
+    "crypto": "Cryptocurrency",
+    "cash": "Cash",
+    "bond": "Bond"
+  }
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
