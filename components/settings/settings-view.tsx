@@ -23,6 +23,7 @@ export function SettingsView() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [pwStatus, setPwStatus] = useState<string | null>(null);
   const [savingPw, setSavingPw] = useState(false);
 
@@ -39,11 +40,16 @@ export function SettingsView() {
       setPwStatus("Password must be at least 6 characters.");
       return;
     }
+    if (password !== confirmPassword) {
+      setPwStatus("Passwords do not match.");
+      return;
+    }
     setSavingPw(true);
     setPwStatus(null);
     try {
       await updatePassword(password);
       setPassword("");
+      setConfirmPassword("");
       setPwStatus(t("settings.saved"));
     } catch (e) {
       setPwStatus(e instanceof Error ? e.message : "Could not update password.");
@@ -104,11 +110,26 @@ export function SettingsView() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
+                minLength={6}
+                className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              />
+            </Field>
+            <Field label={t("settings.confirmPassword")}>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={6}
                 className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </Field>
             <div className="flex items-center gap-3">
-              <Button variant="primary" onClick={savePassword} disabled={savingPw || !password}>
+              <Button
+                variant="primary"
+                onClick={savePassword}
+                disabled={savingPw || !password || !confirmPassword}
+              >
                 {savingPw ? "…" : t("settings.save")}
               </Button>
               {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}

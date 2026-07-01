@@ -29,6 +29,7 @@ export const en = {
   "settings.currency": "Base currency",
   "settings.changePassword": "Change password",
   "settings.newPassword": "New password",
+  "settings.confirmPassword": "Confirm password",
   "settings.save": "Save",
   "settings.saved": "Saved",
 
@@ -405,6 +406,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "settings.currency": "Basiswährung",
   "settings.changePassword": "Passwort ändern",
   "settings.newPassword": "Neues Passwort",
+  "settings.confirmPassword": "Passwort bestätigen",
   "settings.save": "Speichern",
   "settings.saved": "Gespeichert",
 
