@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import type { SeriesPoint } from "@/lib/finance/portfolio";
 import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
+import { niceTicks } from "@/lib/ticks";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { InfoTip } from "@/components/ui/info-tip";
 
@@ -212,6 +213,20 @@ export function PerformanceChart({
   const formatY = (v: number) =>
     pctMode ? formatPercent(v, 0) : formatCompactCurrency(v, currency);
 
+  // Clean 0/5-ending ticks for the linear axes (log keeps Recharts' own scale).
+  const linearTicks = (() => {
+    if (useLog) return undefined;
+    const nums: number[] = [];
+    for (const row of data) {
+      for (const [k, val] of Object.entries(row)) {
+        if (k !== "date" && typeof val === "number" && Number.isFinite(val)) nums.push(val);
+      }
+    }
+    if (nums.length === 0) return undefined;
+    const t = niceTicks(Math.min(...nums), Math.max(...nums));
+    return t.length >= 2 ? t : undefined;
+  })();
+
   return (
     <div>
       <ResponsiveContainer width="100%" height={height}>
@@ -227,7 +242,14 @@ export function PerformanceChart({
           />
           <YAxis
             scale={useLog ? "log" : "linear"}
-            domain={useLog ? [logLo, logHi] : ["auto", "auto"]}
+            domain={
+              useLog
+                ? [logLo, logHi]
+                : linearTicks
+                  ? [linearTicks[0], linearTicks[linearTicks.length - 1]]
+                  : ["auto", "auto"]
+            }
+            ticks={linearTicks}
             allowDataOverflow={useLog}
             tickFormatter={formatY}
             width={72}
