@@ -34,6 +34,14 @@ import type { ChartScale } from "@/components/charts/performance-chart";
 
 type SimMode = "portfolio" | "custom";
 
+/** A fresh 32-bit seed from Web Crypto (never Math.random) for the sim PRNG. */
+function randomSeed(): number {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    return crypto.getRandomValues(new Uint32Array(1))[0];
+  }
+  return (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
+}
+
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
@@ -142,8 +150,11 @@ export function MonteCarloPanel() {
 
   function run() {
     const years = Math.max(1, Math.round(form.years));
-    // Clamp to [1,000, 10,000] paths.
-    const runs = Math.min(10000, Math.max(1000, Math.round(form.runs)));
+    // Clamp to [1,000, 25,000] paths.
+    const runs = Math.min(25000, Math.max(1000, Math.round(form.runs)));
+    // Seed the run's PRNG from Web Crypto (never Math.random), so the run is
+    // reproducible and the seed can be persisted for auditing.
+    const seed = randomSeed();
 
     // Portfolio mode simulates each holding with its own μ/σ and the
     // correlation structure; custom mode uses a single μ/σ.
@@ -165,6 +176,7 @@ export function MonteCarloPanel() {
                 };
               }),
               corr: model.corr,
+              seed,
             } satisfies PortfolioMonteCarloParams,
           }
         : {
@@ -176,6 +188,7 @@ export function MonteCarloPanel() {
               expectedReturn: expectedReturn / 100,
               volatility: volatility / 100,
               runs,
+              seed,
             } satisfies MonteCarloParams,
           };
 
@@ -330,7 +343,7 @@ export function MonteCarloPanel() {
             value={form.runs}
             onChange={(v) => update("runs", v)}
             min={1000}
-            max={10000}
+            max={25000}
             step={500}
           />
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>

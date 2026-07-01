@@ -14,6 +14,8 @@ export interface MonteCarloParams {
   volatility: number;
   /** Number of simulation runs (PRD requires >= 1000). */
   runs: number;
+  /** Seed for the PRNG, so a run is reproducible/auditable. */
+  seed: number;
 }
 
 export interface YearBand {
@@ -37,11 +39,22 @@ export interface MonteCarloResult {
   finalDistribution: number[];
 }
 
-function gaussian(): number {
+/** Deterministic, seedable PRNG (mulberry32) — reproducible runs for auditing. */
+export function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function gaussian(rng: () => number): number {
   let u = 0;
   let v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while (u === 0) u = rng();
+  while (v === 0) v = rng();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
@@ -65,6 +78,7 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
   const monthlyMean =
     Math.pow(1 + expectedReturn, 1 / 12) - 1; // geometric monthly drift
   const monthlyVol = volatility / Math.sqrt(12);
+  const rng = mulberry32(params.seed >>> 0);
 
   // yearValues[y] collects every run's value at the end of year y (0..years).
   const yearValues: number[][] = Array.from({ length: years + 1 }, () => []);
@@ -74,7 +88,7 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     let value = initialCapital;
     yearValues[0].push(value);
     for (let m = 1; m <= months; m++) {
-      const monthReturn = monthlyMean + monthlyVol * gaussian();
+      const monthReturn = monthlyMean + monthlyVol * gaussian(rng);
       value = value * (1 + monthReturn) + monthlyContribution;
       if (value < 0) value = 0;
       if (m % 12 === 0) {
@@ -133,6 +147,8 @@ export interface PortfolioMonteCarloParams {
   assets: PortfolioAsset[];
   /** Correlation matrix aligned to `assets`. */
   corr: number[][];
+  /** Seed for the PRNG, so a run is reproducible/auditable. */
+  seed: number;
 }
 
 /** Cholesky factor (lower triangular) of a correlation matrix; null if not
@@ -169,6 +185,7 @@ export function runPortfolioMonteCarlo(
   const { initialCapital, monthlyContribution, years, runs, assets, corr } = params;
   const n = assets.length;
   const months = Math.max(1, Math.round(years * 12));
+  const rng = mulberry32(params.seed >>> 0);
 
   const monthlyMean = assets.map((a) => Math.pow(1 + a.mean, 1 / 12) - 1);
   const monthlyVol = assets.map((a) => a.vol / Math.sqrt(12));
@@ -189,7 +206,7 @@ export function runPortfolioMonteCarlo(
     yearValues[0].push(initialCapital);
 
     for (let m = 1; m <= months; m++) {
-      for (let i = 0; i < n; i++) z[i] = gaussian();
+      for (let i = 0; i < n; i++) z[i] = gaussian(rng);
       for (let i = 0; i < n; i++) {
         // Correlated standard normal for asset i: (L · z)_i
         let c = 0;
@@ -220,6 +237,7 @@ export function runPortfolioMonteCarlo(
     expectedReturn: assets.reduce((s, a) => s + a.weight * a.mean, 0),
     volatility: 0,
     runs,
+    seed: params.seed,
   };
   return reduceRuns(equivParams, yearValues, finals, initialCapital, monthlyContribution);
 }
