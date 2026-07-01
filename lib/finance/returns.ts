@@ -185,26 +185,66 @@ export interface BetaAlpha {
   alpha: number;
 }
 
+/** Month-spaced ISO dates from `start` to `end` inclusive (for a common grid). */
+function monthlyGrid(start: string, end: string): string[] {
+  const out: string[] = [];
+  let y = Number(start.slice(0, 4));
+  let m = Number(start.slice(5, 7));
+  const day = start.slice(8, 10);
+  for (let guard = 0; guard < 1200; guard++) {
+    const iso = `${y}-${String(m).padStart(2, "0")}-${day}`;
+    if (iso > end) break;
+    out.push(iso);
+    if (++m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  if (out.length === 0 || out[out.length - 1] !== end) out.push(end);
+  return out;
+}
+
 /**
  * Beta and (Jensen's) alpha of a level series `a` against a benchmark level
- * series `b`, both expressed as positive levels (prices or 1+cumulative-return).
- * The benchmark is sampled at `a`'s dates so the two can differ in spacing.
- * Returns null when there isn't enough overlapping data.
+ * series `b`, both expressed as positive levels (prices or 1+cumulative-return)
+ * **in the same currency**.
+ *
+ * Both series are resampled onto a common MONTHLY grid over their overlapping
+ * date range before returns are computed. This is the correctness fix: sampling
+ * one series onto the other's (finer/daily) grid compares real daily moves
+ * against near-flat interpolated benchmark moves, which collapses the covariance
+ * and produces nonsensical betas (e.g. −0.35 for a world-tracking ETF vs. the
+ * world index). A common grid gives matched intervals for a meaningful
+ * Cov(Rp,Rm)/Var(Rm).
  */
 export function betaAlpha(a: SeriesPoint[], b: SeriesPoint[], rf = 0.02): BetaAlpha | null {
-  if (a.length < 3 || b.length < 2) return null;
+  if (a.length < 3 || b.length < 3) return null;
+  const start = a[0].date > b[0].date ? a[0].date : b[0].date;
+  const end = a[a.length - 1].date < b[b.length - 1].date ? a[a.length - 1].date : b[b.length - 1].date;
+  if (end <= start) return null;
+
+  const grid = monthlyGrid(start, end);
+  if (grid.length < 4) return null;
+
+  const av: number[] = [];
+  const bv: number[] = [];
+  for (const d of grid) {
+    const va = sampleAt(a, d);
+    const vb = sampleAt(b, d);
+    if (va == null || vb == null || va <= 0 || vb <= 0) return null;
+    av.push(va);
+    bv.push(vb);
+  }
+
   const ar: number[] = [];
   const br: number[] = [];
-  for (let i = 1; i < a.length; i++) {
-    if (a[i - 1].value <= 0 || a[i].value <= 0) continue;
-    const bp = sampleAt(b, a[i - 1].date);
-    const bc = sampleAt(b, a[i].date);
-    if (bp == null || bc == null || bp <= 0 || bc <= 0) continue;
-    ar.push(a[i].value / a[i - 1].value - 1);
-    br.push(bc / bp - 1);
+  for (let i = 1; i < grid.length; i++) {
+    ar.push(av[i] / av[i - 1] - 1);
+    br.push(bv[i] / bv[i - 1] - 1);
   }
   const n = ar.length;
-  if (n < 2) return null;
+  if (n < 3) return null;
+
   const ma = ar.reduce((s, x) => s + x, 0) / n;
   const mb = br.reduce((s, x) => s + x, 0) / n;
   let cov = 0;
@@ -216,16 +256,12 @@ export function betaAlpha(a: SeriesPoint[], b: SeriesPoint[], rf = 0.02): BetaAl
   if (varb <= 0) return null;
   const beta = cov / varb;
 
-  // Annualised returns over the common span for the CAPM alpha.
   const years = Math.max(
     1 / 365,
-    (Date.parse(a[a.length - 1].date) - Date.parse(a[0].date)) / (365 * 86_400_000),
+    (Date.parse(end) - Date.parse(start)) / (365 * 86_400_000),
   );
-  const bStart = sampleAt(b, a[0].date);
-  const bEnd = sampleAt(b, a[a.length - 1].date);
-  if (bStart == null || bEnd == null || bStart <= 0) return { beta, alpha: 0 };
-  const aAnn = (a[a.length - 1].value / a[0].value) ** (1 / years) - 1;
-  const bAnn = (bEnd / bStart) ** (1 / years) - 1;
+  const aAnn = (av[av.length - 1] / av[0]) ** (1 / years) - 1;
+  const bAnn = (bv[bv.length - 1] / bv[0]) ** (1 / years) - 1;
   const alpha = aAnn - (rf + beta * (bAnn - rf));
   return { beta, alpha };
 }

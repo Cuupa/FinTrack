@@ -119,11 +119,16 @@ export function RiskView() {
   }, [returnSeries, risk, benchPoints]);
 
   const assetRows = useMemo(() => {
+    const fx = valuation.fx ?? {};
     const rows = holdings.map((h) => {
       const ann = assetAnnualStats(h.asset, histories, 5);
       const key = assetPriceKey(h.asset);
       const hist = histories[key];
-      const levels = hist ? hist.map((p) => ({ date: p.date, value: p.close })) : [];
+      // Normalise the asset's price history into the BASE currency before beta,
+      // so the benchmark (base) and asset returns aren't distorted by FX drift.
+      const cur = h.asset.currency ?? base;
+      const rate = cur === base ? 1 : (fx[cur] ?? 1);
+      const levels = hist ? hist.map((p) => ({ date: p.date, value: p.close * rate })) : [];
       const ba = levels.length >= 3 ? betaAlpha(levels, benchPoints, RF) : null;
       return {
         id: h.asset.id,
@@ -144,7 +149,7 @@ export function RiskView() {
       if (va > vb) return 1 * sort.dir;
       return 0;
     });
-  }, [holdings, histories, benchPoints, total, sort]);
+  }, [holdings, histories, benchPoints, total, sort, valuation, base]);
 
   const model = useMemo(
     () =>

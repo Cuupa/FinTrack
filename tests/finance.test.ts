@@ -5,6 +5,7 @@ import {
   periodReturns,
   riskMetrics,
   cumulativeReturnSeries,
+  betaAlpha,
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
@@ -255,5 +256,42 @@ describe("dividends", () => {
 
   it("ignores events before any shares were held (accumulating → none)", () => {
     expect(dividendsFromEvents([], [])).toEqual([]);
+  });
+});
+
+describe("betaAlpha", () => {
+  // Build daily level series over ~2 years for an asset that is the benchmark
+  // scaled by beta (with matching drift) plus a little idiosyncratic noise.
+  function series(days: number, fn: (i: number) => number) {
+    const out = [];
+    const start = Date.UTC(2024, 0, 1);
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start + i * 86_400_000).toISOString().slice(0, 10);
+      out.push({ date: d, value: fn(i) });
+    }
+    return out;
+  }
+
+  it("recovers beta ~1 for an asset that tracks the benchmark (daily vs weekly)", () => {
+    const days = 500;
+    // Benchmark stored WEEKLY (sparse), asset DAILY — the mismatch that used to
+    // break the covariance. A near-1:1 tracker must still read ~1.
+    const bmDaily = series(days, (i) => 100 * Math.exp(0.0003 * i + 0.01 * Math.sin(i / 7)));
+    const bmWeekly = bmDaily.filter((_, i) => i % 7 === 0);
+    const asset = series(days, (i) => 50 * Math.exp(0.0003 * i + 0.01 * Math.sin(i / 7)));
+    const res = betaAlpha(asset, bmWeekly);
+    expect(res).not.toBeNull();
+    expect(res!.beta).toBeGreaterThan(0.7);
+    expect(res!.beta).toBeLessThan(1.3);
+  });
+
+  it("gives beta ~2 for a 2x-amplified asset", () => {
+    const days = 400;
+    const bm = series(days, (i) => 100 * Math.exp(0.0002 * i + 0.02 * Math.sin(i / 5)));
+    const asset = series(days, (i) => 100 * Math.exp(0.0004 * i + 0.04 * Math.sin(i / 5)));
+    const res = betaAlpha(asset, bm);
+    expect(res).not.toBeNull();
+    expect(res!.beta).toBeGreaterThan(1.5);
+    expect(res!.beta).toBeLessThan(2.5);
   });
 });
