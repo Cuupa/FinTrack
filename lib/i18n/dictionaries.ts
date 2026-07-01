@@ -53,6 +53,7 @@ export const en = {
   "common.marketValue": "Market value",
 
   "common.compare": "Compare",
+  "common.other": "Other",
 
   "privacy.showFigures": "Show figures",
   "privacy.hideFigures": "Hide figures",
@@ -427,6 +428,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "common.holdingValue": "Positionswert",
 
   "common.compare": "Vergleichen",
+  "common.other": "Andere",
 
   "privacy.showFigures": "Beträge anzeigen",
   "privacy.hideFigures": "Beträge ausblenden",

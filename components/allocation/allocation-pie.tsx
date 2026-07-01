@@ -3,7 +3,7 @@
 // Interactive donut allocation chart. Hovering a segment (or a legend row)
 // highlights it, dims the rest, and shows that slice's value in the centre.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import type { Slice } from "@/lib/finance/allocation";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -24,6 +24,51 @@ const PALETTE = [
   "#a855f7",
 ];
 
+const OTHER_COLOR = "#a1a1aa";
+const OTHER_LABELS = new Set(["other", "others", "andere", "sonstige"]);
+
+/**
+ * Merge every slice below 1% of the total into a single "Other" bucket (folding
+ * into an existing "Other" slice when present), so tiny slivers don't clutter
+ * the donut. Colours are regrouped in lockstep so they stay aligned.
+ */
+function groupSmallSlices(
+  slices: Slice[],
+  colors: string[] | undefined,
+  otherLabel: string,
+): { slices: Slice[]; colors: string[] } {
+  const total = slices.reduce((s, x) => s + x.value, 0);
+  const colorFor = (i: number) => colors?.[i] ?? PALETTE[i % PALETTE.length];
+  if (total <= 0) return { slices, colors: slices.map((_, i) => colorFor(i)) };
+
+  const threshold = 0.01 * total;
+  const kept: Slice[] = [];
+  const keptColors: string[] = [];
+  let otherSum = 0;
+  let otherIdx = -1;
+
+  slices.forEach((s, i) => {
+    const isOther = OTHER_LABELS.has(s.label.trim().toLowerCase());
+    if (s.value >= threshold || isOther) {
+      if (isOther) otherIdx = kept.length;
+      kept.push(s);
+      keptColors.push(isOther ? OTHER_COLOR : colorFor(i));
+    } else {
+      otherSum += s.value;
+    }
+  });
+
+  if (otherSum > 0) {
+    if (otherIdx >= 0) {
+      kept[otherIdx] = { ...kept[otherIdx], value: kept[otherIdx].value + otherSum };
+    } else {
+      kept.push({ label: otherLabel, value: otherSum });
+      keptColors.push(OTHER_COLOR);
+    }
+  }
+  return { slices: kept, colors: keptColors };
+}
+
 export function AllocationPie({
   slices,
   currency,
@@ -39,15 +84,20 @@ export function AllocationPie({
   showTotal?: boolean;
 }) {
   const { t } = useI18n();
-  const total = slices.reduce((s, x) => s + x.value, 0);
+  const grouped = useMemo(
+    () => groupSmallSlices(slices, colors, t("common.other")),
+    [slices, colors, t],
+  );
+  const gSlices = grouped.slices;
+  const total = gSlices.reduce((s, x) => s + x.value, 0);
   const [active, setActive] = useState<number | null>(null);
-  const colorAt = (i: number) => colors?.[i] ?? PALETTE[i % PALETTE.length];
+  const colorAt = (i: number) => grouped.colors[i] ?? PALETTE[i % PALETTE.length];
 
   if (total <= 0) {
     return <p className="py-16 text-center text-sm text-zinc-500">No data</p>;
   }
 
-  const sel = active != null ? slices[active] : null;
+  const sel = active != null ? gSlices[active] : null;
 
   return (
     <div className="flex flex-col items-center justify-center gap-10 sm:flex-row sm:items-start sm:gap-14">
@@ -59,18 +109,18 @@ export function AllocationPie({
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={slices}
+              data={gSlices}
               dataKey="value"
               nameKey="label"
               innerRadius={94}
               outerRadius={active === null ? 130 : 134}
-              paddingAngle={slices.length > 1 ? 2 : 0}
+              paddingAngle={gSlices.length > 1 ? 2 : 0}
               cornerRadius={6}
               stroke="none"
               onMouseEnter={(_, i: number) => setActive(i)}
               isAnimationActive={false}
             >
-              {slices.map((_, i) => (
+              {gSlices.map((_, i) => (
                 <Cell
                   key={i}
                   fill={colorAt(i)}
@@ -119,10 +169,10 @@ export function AllocationPie({
           visible. Exact € is shown in the donut centre on hover (not repeated). */}
       <ul
         className={`grid w-full gap-x-8 gap-y-0.5 text-sm ${
-          slices.length > 8 ? "sm:max-w-2xl sm:grid-cols-2" : "max-w-md"
+          gSlices.length > 8 ? "sm:max-w-2xl sm:grid-cols-2" : "max-w-md"
         }`}
       >
-        {slices.map((s, i) => {
+        {gSlices.map((s, i) => {
           const isActive = active === i;
           const dim = active !== null && !isActive;
           return (
