@@ -165,7 +165,8 @@ create index if not exists portfolios_user_id_idx on public.portfolios (user_id)
 create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),
   asset_id uuid not null references public.assets (id) on delete cascade,
-  type text not null check (type in ('BUY', 'SELL')),
+  -- BOOKING = free crediting (Einbuchung), added at zero cost basis.
+  type text not null check (type in ('BUY', 'SELL', 'BOOKING')),
   quantity numeric not null check (quantity > 0),
   price numeric not null check (price >= 0),
   fee numeric not null default 0 check (fee >= 0),
@@ -210,7 +211,8 @@ insert into public.schema_migrations (version) values
   ('0019_shared_live'),
   ('0020_shared_owner_delete'),
   ('0021_portfolios'),
-  ('0022_instrument_history')
+  ('0022_instrument_history'),
+  ('0023_transaction_booking')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

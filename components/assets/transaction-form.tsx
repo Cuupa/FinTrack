@@ -40,12 +40,14 @@ export function TransactionForm({
   const [busy, setBusy] = useState(false);
 
   const isBuy = type === "BUY";
+  const isBooking = type === "BOOKING";
   const qtyNum = parseDecimal(quantity);
   const pxNum = isCash ? 1 : parseDecimal(price);
   const feeNum = parseDecimal(fee) || 0;
-  // Cash leaving (buy) / arriving (sell) once fees are applied.
+  // Cash leaving (buy) / arriving (sell); a BOOKING costs nothing, so its "total"
+  // is the market value received.
   const gross = Number.isFinite(qtyNum) && Number.isFinite(pxNum) ? qtyNum * pxNum : 0;
-  const total = isBuy ? gross + feeNum : gross - feeNum;
+  const total = isBuy ? gross + feeNum : isBooking ? gross : gross - feeNum;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,10 +85,13 @@ export function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Buy / Sell segmented toggle */}
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60">
-        {(["BUY", "SELL"] as TransactionType[]).map((tt) => {
+      {/* Buy / Sell / Booking segmented toggle */}
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60">
+        {(["BUY", "SELL", "BOOKING"] as TransactionType[]).map((tt) => {
           const active = type === tt;
+          const activeBg =
+            tt === "BUY" ? "bg-emerald-500" : tt === "SELL" ? "bg-red-500" : "bg-indigo-500";
+          const label = tt === "BUY" ? t("tx.buy") : tt === "SELL" ? t("tx.sell") : t("tx.booking");
           return (
             <button
               key={tt}
@@ -94,17 +99,20 @@ export function TransactionForm({
               onClick={() => setType(tt)}
               className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
                 active
-                  ? tt === "BUY"
-                    ? "bg-emerald-500 text-white shadow-sm"
-                    : "bg-red-500 text-white shadow-sm"
+                  ? `${activeBg} text-white shadow-sm`
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
-              {tt === "BUY" ? t("tx.buy") : t("tx.sell")}
+              {label}
             </button>
           );
         })}
       </div>
+      {isBooking && (
+        <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+          {t("tx.bookingHint")}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Field label={isCash ? t("tx.amount") : t("tx.quantity")}>
@@ -175,7 +183,9 @@ export function TransactionForm({
 
       {/* Live total preview */}
       <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40">
-        <span className="text-zinc-500">{isBuy ? t("tx.totalCost") : t("tx.totalProceeds")}</span>
+        <span className="text-zinc-500">
+          {isBuy ? t("tx.totalCost") : isBooking ? t("tx.valueReceived") : t("tx.totalProceeds")}
+        </span>
         <span
           className={`font-semibold tabular-nums ${
             isBuy ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
@@ -194,10 +204,12 @@ export function TransactionForm({
         className={`w-full ${
           isBuy
             ? "!bg-emerald-500 hover:!bg-emerald-600 !text-white dark:!bg-emerald-500"
-            : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
+            : isBooking
+              ? "!bg-indigo-500 hover:!bg-indigo-600 !text-white dark:!bg-indigo-500"
+              : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
         }`}
       >
-        {busy ? t("tx.adding") : isBuy ? t("tx.addBuy") : t("tx.addSell")}
+        {busy ? t("tx.adding") : isBuy ? t("tx.addBuy") : isBooking ? t("tx.addBooking") : t("tx.addSell")}
       </Button>
     </form>
   );

@@ -28,7 +28,13 @@ export function netFlows(assets: Asset[], txs: Transaction[], v?: ValuationConte
     if (!a) continue;
     const rate = rateOf(a, v);
     const gross = t.quantity * t.price;
-    const amount = t.type === "BUY" ? (gross + t.fee) * rate : -(gross - t.fee) * rate;
+    // BOOKING (Einbuchung) is a free crediting — no external cash flows in.
+    const amount =
+      t.type === "BUY"
+        ? (gross + t.fee) * rate
+        : t.type === "SELL"
+          ? -(gross - t.fee) * rate
+          : 0;
     flows.push({ date: t.date.slice(0, 10), amount });
   }
   return flows;

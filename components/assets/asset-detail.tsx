@@ -255,10 +255,11 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         >
           {(
             [
-              ["BUY", "buy", "text-emerald-500"],
-              ["SELL", "sell", "text-red-500"],
-              ["DIV", "dividend", "text-amber-500"],
-            ] as const
+              ["BUY", t("tx.buy"), "text-emerald-500"],
+              ["SELL", t("tx.sell"), "text-red-500"],
+              ["BOOKING", t("tx.booking"), "text-indigo-500"],
+              ["DIV", t("tx.dividend"), "text-amber-500"],
+            ] as [ChartMarker["type"], string, string][]
           ).map(([type, label, color]) => (
             <button
               key={type}
@@ -557,7 +558,9 @@ function TransactionsTable({
                     className={
                       t.type === "BUY"
                         ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
+                        : t.type === "BOOKING"
+                          ? "text-indigo-600 dark:text-indigo-400"
+                          : "text-red-600 dark:text-red-400"
                     }
                   >
                     {t.type}
@@ -665,6 +668,7 @@ function TransactionEditRow({
           <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
             <option value="BUY">BUY</option>
             <option value="SELL">SELL</option>
+            <option value="BOOKING">BOOKING</option>
           </select>
         </td>
         <td className="py-1.5 pr-2">

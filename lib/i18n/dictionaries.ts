@@ -176,6 +176,12 @@ export const en = {
   "tx.errPrice": "Enter a valid price.",
   "tx.errFail": "Failed to add transaction.",
   "tx.deleteConfirmTitle": "Delete transaction?",
+  "tx.booking": "Booking",
+  "tx.dividend": "Dividend",
+  "tx.addBooking": "Add booking",
+  "tx.valueReceived": "Value received",
+  "tx.bookingHint":
+    "A free crediting (e.g. an employer contribution or gift). Added at zero cost — its full current value counts as profit.",
 
   // Analysis
   "analysis.tab.distributions": "Distributions",
@@ -544,6 +550,12 @@ const de: Partial<Record<MessageKey, string>> = {
   "tx.errPrice": "Geben Sie einen gültigen Kurs ein.",
   "tx.errFail": "Transaktion konnte nicht hinzugefügt werden.",
   "tx.deleteConfirmTitle": "Transaktion löschen?",
+  "tx.booking": "Einbuchung",
+  "tx.dividend": "Dividende",
+  "tx.addBooking": "Einbuchung hinzufügen",
+  "tx.valueReceived": "Erhaltener Wert",
+  "tx.bookingHint":
+    "Eine kostenlose Einbuchung (z. B. Arbeitgeberzuschuss oder Geschenk). Ohne Kosten gebucht — der volle aktuelle Wert zählt als Gewinn.",
 
   // Analysis
   "analysis.tab.distributions": "Verteilungen",

@@ -1,7 +1,10 @@
 // Core domain types shared across the app and both storage backends.
 
 export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "CASH";
-export type TransactionType = "BUY" | "SELL";
+// BOOKING is a cost-free crediting of shares — e.g. an
+// employer's vermögenswirksame Leistung or a gift. It adds shares at ZERO cost
+// basis, so their full current value counts as profit.
+export type TransactionType = "BUY" | "SELL" | "BOOKING";
 
 export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "CASH"];
 

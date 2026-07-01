@@ -47,6 +47,13 @@ export function computePosition(txs: Transaction[]): Position {
       const newShares = shares + t.quantity;
       avgCost = newShares > 0 ? (shares * avgCost + cost) / newShares : 0;
       shares = newShares;
+    } else if (t.type === "BOOKING") {
+      // Free crediting: add shares at zero cost so their whole
+      // market value is profit. The recorded price is informational only; only
+      // any fee adds to basis.
+      const newShares = shares + t.quantity;
+      avgCost = newShares > 0 ? (shares * avgCost + t.fee) / newShares : 0;
+      shares = newShares;
     } else {
       const proceeds = t.quantity * t.price - t.fee;
       realizedPL += proceeds - t.quantity * avgCost;
@@ -67,7 +74,7 @@ export function sharesAt(txs: Transaction[], isoDate: string): number {
   for (const t of txs) {
     // Compare by day: transactions carry a full timestamp, series keys don't.
     if (dateKey(t.date) > isoDate) continue;
-    shares += t.type === "BUY" ? t.quantity : -t.quantity;
+    shares += t.type === "SELL" ? -t.quantity : t.quantity;
   }
   return Math.max(0, shares);
 }
@@ -392,7 +399,9 @@ export function holdingPeriodProfit(
   for (const t of atxs) {
     if (dateKey(t.date) <= start) continue;
     const cash = t.quantity * t.price;
-    flows += (t.type === "BUY" ? cash + t.fee : -(cash - t.fee)) * rate;
+    // BOOKING adds no cash (free crediting) → its value shows up as profit.
+    const flow = t.type === "BUY" ? cash + t.fee : t.type === "SELL" ? -(cash - t.fee) : 0;
+    flows += flow * rate;
   }
 
   const abs = endValue - startValue - flows;

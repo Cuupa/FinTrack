@@ -44,8 +44,10 @@ export function realizedByMonth(
     let shares = 0;
     let avgCost = 0;
     for (const t of [...atxs].sort(byDateAsc)) {
-      if (t.type === "BUY") {
-        const cost = t.quantity * t.price + t.fee;
+      if (t.type === "BUY" || t.type === "BOOKING") {
+        // BOOKING (free crediting) adds shares at zero cost — only a fee (if any)
+        // raises the basis, so the whole value becomes realised profit on sale.
+        const cost = t.type === "BUY" ? t.quantity * t.price + t.fee : t.fee;
         const ns = shares + t.quantity;
         avgCost = ns > 0 ? (shares * avgCost + cost) / ns : 0;
         shares = ns;
