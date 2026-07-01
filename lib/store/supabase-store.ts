@@ -17,7 +17,7 @@ import {
   type Profile,
   type Transaction,
 } from "../types";
-import type { AssetInput, DataStore, TransactionInput } from "./types";
+import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
 
 interface InstrumentEmbed {
   isin: string | null;
@@ -325,5 +325,31 @@ export class SupabaseStore implements DataStore {
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) throw error;
+  }
+
+  async loadSimulation(hash: string): Promise<SimulationCacheEntry | null> {
+    const { data } = await this.supabase
+      .from("simulation_runs")
+      .select("params, seed, result, created_at")
+      .eq("user_id", this.userId)
+      .eq("params_hash", hash)
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    const row = data as { params: unknown; seed: number; result: unknown; created_at: string };
+    return { hash, params: row.params, seed: Number(row.seed), result: row.result, createdAt: row.created_at };
+  }
+
+  async saveSimulation(entry: SimulationCacheEntry): Promise<void> {
+    await this.supabase.from("simulation_runs").upsert(
+      {
+        user_id: this.userId,
+        params_hash: entry.hash,
+        params: entry.params,
+        seed: entry.seed,
+        result: entry.result,
+      },
+      { onConflict: "user_id,params_hash" },
+    );
   }
 }

@@ -181,6 +181,19 @@ alter table public.transactions
 create index if not exists transactions_asset_id_idx on public.transactions (asset_id);
 create index if not exists transactions_portfolio_id_idx on public.transactions (portfolio_id);
 
+-- Cached Monte Carlo simulation runs, keyed by a hash of the (seed-independent)
+-- parameters. Rerunning with identical params reuses the stored result instead
+-- of recomputing. The seed is kept for auditing/reproducibility.
+create table if not exists public.simulation_runs (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  params_hash text not null,
+  params jsonb not null,
+  seed bigint not null,
+  result jsonb not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, params_hash)
+);
+
 -- Applied-migrations registry (system table) --------------------------------
 create table if not exists public.schema_migrations (
   version text primary key,
@@ -212,7 +225,8 @@ insert into public.schema_migrations (version) values
   ('0020_shared_owner_delete'),
   ('0021_portfolios'),
   ('0022_instrument_history'),
-  ('0023_transaction_booking')
+  ('0023_transaction_booking'),
+  ('0024_simulation_runs')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -221,6 +235,7 @@ alter table public.schema_migrations enable row level security;
 alter table public.assets enable row level security;
 alter table public.portfolios enable row level security;
 alter table public.transactions enable row level security;
+alter table public.simulation_runs enable row level security;
 alter table public.instruments enable row level security;
 alter table public.instrument_constituents enable row level security;
 alter table public.fx_rates enable row level security;
@@ -279,6 +294,10 @@ create policy "own portfolios" on public.portfolios
 
 drop policy if exists "own assets" on public.assets;
 create policy "own assets" on public.assets
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own simulations" on public.simulation_runs;
+create policy "own simulations" on public.simulation_runs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Transactions are owned via their asset (no user_id column).

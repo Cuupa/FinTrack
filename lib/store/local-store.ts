@@ -4,10 +4,11 @@
 // truly ephemeral sessions.
 
 import { emptyPortfolio, MAX_PORTFOLIOS, type PortfolioData, type Profile } from "../types";
-import type { AssetInput, DataStore, TransactionInput } from "./types";
+import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
 import { newId } from "./types";
 
 const STORAGE_KEY = "fintrack:portfolio:v1";
+const SIM_KEY = "fintrack:simulations:v1";
 
 export class LocalStore implements DataStore {
   readonly persistent = false;
@@ -137,6 +138,36 @@ export class LocalStore implements DataStore {
       t.portfolioId === id ? { ...t, portfolioId: fallback } : t,
     );
     this.write(data);
+  }
+
+  async loadSimulation(hash: string) {
+    const map = this.readSims();
+    return map[hash] ?? null;
+  }
+
+  async saveSimulation(entry: SimulationCacheEntry) {
+    const map = this.readSims();
+    map[entry.hash] = entry;
+    // Cap the cache so localStorage can't grow without bound (keep newest 20).
+    const entries = Object.values(map).sort((a, b) =>
+      a.createdAt < b.createdAt ? 1 : -1,
+    );
+    const trimmed: Record<string, SimulationCacheEntry> = {};
+    for (const e of entries.slice(0, 20)) trimmed[e.hash] = e;
+    try {
+      this.storage.setItem(SIM_KEY, JSON.stringify(trimmed));
+    } catch {
+      /* storage full — ignore, the sim just recomputes next time */
+    }
+  }
+
+  private readSims(): Record<string, SimulationCacheEntry> {
+    try {
+      const raw = this.storage.getItem(SIM_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, SimulationCacheEntry>) : {};
+    } catch {
+      return {};
+    }
   }
 }
 

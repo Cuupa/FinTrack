@@ -15,7 +15,7 @@ import {
 } from "react";
 import { getSupabaseClient } from "../supabase/client";
 import { createStore, type DataStore } from "../store";
-import type { AssetInput, TransactionInput } from "../store/types";
+import type { AssetInput, SimulationCacheEntry, TransactionInput } from "../store/types";
 import {
   emptyPortfolio,
   type Asset,
@@ -40,6 +40,8 @@ interface PortfolioContextValue {
   deleteTransaction(id: string): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
+  loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
+  saveSimulation(entry: SimulationCacheEntry): Promise<void>;
   /** All of the user's portfolios. */
   portfolios: Portfolio[];
   /** Every transaction (unscoped) — for building per-portfolio share snapshots. */
@@ -198,6 +200,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store, reload],
   );
 
+  const loadSimulation = useCallback((hash: string) => store.loadSimulation(hash), [store]);
+  const saveSimulation = useCallback(
+    (entry: SimulationCacheEntry) => store.saveSimulation(entry),
+    [store],
+  );
+
   const allIds = data.portfolios.map((p) => p.id);
   const activeIds = selectedIds ?? allIds;
   const activeKey = activeIds.join(",");
@@ -225,6 +233,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     deleteTransaction,
     setCurrency,
     updateProfile,
+    loadSimulation,
+    saveSimulation,
     portfolios: data.portfolios,
     allTransactions: data.transactions,
     selectedPortfolioIds: activeIds,

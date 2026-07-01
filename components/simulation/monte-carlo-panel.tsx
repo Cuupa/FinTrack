@@ -34,6 +34,48 @@ import type { ChartScale } from "@/components/charts/performance-chart";
 
 type SimMode = "portfolio" | "custom";
 
+function fnv1a(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+/** Stable cache key from the params, ignoring the seed (same inputs → reuse). */
+function hashSimParams(
+  kind: "scalar" | "portfolio",
+  params: MonteCarloParams | PortfolioMonteCarloParams,
+): string {
+  const r = (n: number) => Math.round(n * 1e6) / 1e6;
+  let canon: unknown;
+  if (kind === "portfolio") {
+    const p = params as PortfolioMonteCarloParams;
+    canon = {
+      kind,
+      initialCapital: r(p.initialCapital),
+      monthlyContribution: r(p.monthlyContribution),
+      years: p.years,
+      runs: p.runs,
+      assets: p.assets.map((a) => ({ weight: r(a.weight), mean: r(a.mean), vol: r(a.vol) })),
+      corr: p.corr.map((row) => row.map(r)),
+    };
+  } else {
+    const p = params as MonteCarloParams;
+    canon = {
+      kind,
+      initialCapital: r(p.initialCapital),
+      monthlyContribution: r(p.monthlyContribution),
+      years: p.years,
+      runs: p.runs,
+      expectedReturn: r(p.expectedReturn),
+      volatility: r(p.volatility),
+    };
+  }
+  return fnv1a(JSON.stringify(canon));
+}
+
 /** A fresh 32-bit seed from Web Crypto (never Math.random) for the sim PRNG. */
 function randomSeed(): number {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
@@ -52,7 +94,7 @@ function pct(fraction: number, digits = 1): string {
 }
 
 export function MonteCarloPanel() {
-  const { data } = usePortfolio();
+  const { data, loadSimulation, saveSimulation } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
   const currency = data.profile.currency;
@@ -192,6 +234,7 @@ export function MonteCarloPanel() {
             } satisfies MonteCarloParams,
           };
 
+    const hash = hashSimParams(message.kind, message.params);
     setRunning(true);
 
     // Prefer a Web Worker for the "background" execution the PRD asks for, but
@@ -199,13 +242,23 @@ export function MonteCarloPanel() {
     // load, or respond falls back to the same pure computation on the main
     // thread. The sim is fast enough that the fallback is imperceptible.
     let settled = false;
-    const finish = (r: MonteCarloResult) => {
+    const finish = (r: MonteCarloResult, fromCache = false) => {
       if (settled) return;
       settled = true;
       setResult(r);
       setRunning(false);
       workerRef.current?.terminate();
       workerRef.current = null;
+      // Persist fresh runs so an identical re-run reuses the stored result.
+      if (!fromCache) {
+        void saveSimulation({
+          hash,
+          params: message.params,
+          seed,
+          result: r,
+          createdAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
     };
     const fallback = () =>
       finish(
@@ -214,25 +267,41 @@ export function MonteCarloPanel() {
           : runMonteCarlo(message.params),
       );
 
-    try {
-      const worker = new Worker(
-        new URL("../../lib/finance/monte-carlo.worker.ts", import.meta.url),
-      );
-      workerRef.current?.terminate();
-      workerRef.current = worker;
-      const watchdog = setTimeout(fallback, 4000);
-      worker.onmessage = (e: MessageEvent<MonteCarloResult>) => {
-        clearTimeout(watchdog);
-        finish(e.data);
-      };
-      worker.onerror = () => {
-        clearTimeout(watchdog);
+    const compute = () => {
+      try {
+        const worker = new Worker(
+          new URL("../../lib/finance/monte-carlo.worker.ts", import.meta.url),
+        );
+        workerRef.current?.terminate();
+        workerRef.current = worker;
+        const watchdog = setTimeout(fallback, 4000);
+        worker.onmessage = (e: MessageEvent<MonteCarloResult>) => {
+          clearTimeout(watchdog);
+          finish(e.data);
+        };
+        worker.onerror = () => {
+          clearTimeout(watchdog);
+          fallback();
+        };
+        worker.postMessage(message);
+      } catch {
         fallback();
-      };
-      worker.postMessage(message);
-    } catch {
-      fallback();
-    }
+      }
+    };
+
+    // Reuse a stored run with identical params before computing anything.
+    void loadSimulation(hash)
+      .then((cached) => {
+        if (settled) return;
+        if (cached && cached.result) {
+          finish(cached.result as MonteCarloResult, true);
+        } else {
+          compute();
+        }
+      })
+      .catch(() => {
+        if (!settled) compute();
+      });
   }
 
   const final = result?.bands[result.bands.length - 1];

@@ -9,6 +9,15 @@ import type { Asset, Portfolio, PortfolioData, Profile, Transaction } from "../t
 export type AssetInput = Omit<Asset, "id">;
 export type TransactionInput = Omit<Transaction, "id">;
 
+/** A cached Monte Carlo run, keyed by a hash of its (seed-independent) params. */
+export interface SimulationCacheEntry {
+  hash: string;
+  params: unknown;
+  seed: number;
+  result: unknown;
+  createdAt: string;
+}
+
 export interface DataStore {
   /** Whether this store persists across sessions/devices. */
   readonly persistent: boolean;
@@ -23,6 +32,9 @@ export interface DataStore {
   createPortfolio(name: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
   deletePortfolio(id: string): Promise<void>;
+  /** Reuse a previously computed simulation with identical params, or null. */
+  loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
+  saveSimulation(entry: SimulationCacheEntry): Promise<void>;
 }
 
 export function newId(): string {
