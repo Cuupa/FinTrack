@@ -15,6 +15,7 @@ import type { Instrument } from "@/lib/catalog/catalog";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
@@ -36,10 +37,13 @@ export function AddAssetForm({
   onDone?: () => void;
   embedded?: boolean;
 }) {
-  const { addAsset, addTransaction, data, portfolios, selectedPortfolioIds } = usePortfolio();
+  const { addAsset, addTransaction, createPortfolio, data, portfolios, selectedPortfolioIds } =
+    usePortfolio();
   const [portfolioId, setPortfolioId] = useState(
     selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
+  const [newPortfolio, setNewPortfolio] = useState("");
+  const [addingPortfolio, setAddingPortfolio] = useState(false);
   const base = data.profile.currency;
 
   const [manual, setManual] = useState(false);
@@ -384,25 +388,21 @@ export function AddAssetForm({
       {/* Trading currency — drives which listing the price comes from. */}
       {ready && !isCash && (
         <div className="mt-4">
-          <label className="text-sm font-medium" htmlFor="currency">
-            Trading currency
-          </label>
-          <select
-            id="currency"
-            value={assetCurrency}
-            onChange={(e) => {
-              const c = e.target.value;
-              setAssetCurrency(c);
-              void fetchPrice(isin || symbol, c, type);
-            }}
-            className={inputCls}
-          >
-            {Array.from(new Set([base, ...CURRENCIES])).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <label className="text-sm font-medium">Trading currency</label>
+          <div className="mt-1 max-w-[10rem]">
+            <SelectMenu
+              value={assetCurrency}
+              ariaLabel="Trading currency"
+              onChange={(c) => {
+                setAssetCurrency(c);
+                void fetchPrice(isin || symbol, c, type);
+              }}
+              options={Array.from(new Set([base, ...CURRENCIES])).map((c) => ({
+                value: c,
+                label: c,
+              }))}
+            />
+          </div>
           <p className="mt-1 text-xs text-zinc-500">
             Prices use the listing in this currency — pick {base} if you trade on
             your home exchange.
@@ -481,25 +481,56 @@ export function AddAssetForm({
                 className={inputCls}
               />
             </div>
-            {portfolios.length > 1 && (
-              <div>
-                <label className="text-sm font-medium" htmlFor="portfolio">
-                  Portfolio
-                </label>
-                <select
-                  id="portfolio"
+            <div>
+              <label className="text-sm font-medium">Portfolio</label>
+              <div className="mt-1">
+                <SelectMenu
                   value={portfolioId}
-                  onChange={(e) => setPortfolioId(e.target.value)}
-                  className={inputCls}
-                >
-                  {portfolios.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="Portfolio"
+                  onChange={setPortfolioId}
+                  options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+                  footer={(close) =>
+                    addingPortfolio ? (
+                      <input
+                        autoFocus
+                        value={newPortfolio}
+                        placeholder="Portfolio name"
+                        onChange={(e) => setNewPortfolio(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            const name = newPortfolio.trim();
+                            if (name) {
+                              try {
+                                const p = await createPortfolio(name);
+                                setPortfolioId(p.id);
+                              } catch {
+                                /* at max portfolios — ignore */
+                              }
+                            }
+                            setNewPortfolio("");
+                            setAddingPortfolio(false);
+                            close();
+                          }
+                          if (e.key === "Escape") {
+                            setAddingPortfolio(false);
+                            setNewPortfolio("");
+                          }
+                        }}
+                        className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAddingPortfolio(true)}
+                        className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                      >
+                        + New portfolio
+                      </button>
+                    )
+                  }
+                />
               </div>
-            )}
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}

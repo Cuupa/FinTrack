@@ -12,6 +12,7 @@ import { reconcile, type ReconciledRow } from "@/lib/import/reconcile";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { AssetType } from "@/lib/types";
 
@@ -188,17 +189,14 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
         <>
           <div className="flex flex-wrap items-center gap-3">
             <label className="text-sm text-zinc-500">{t("import.portfolio")}</label>
-            <select
-              value={portfolioId}
-              onChange={(e) => setPortfolioId(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              {portfolios.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <div className="w-44">
+              <SelectMenu
+                value={portfolioId}
+                ariaLabel={t("import.portfolio")}
+                onChange={setPortfolioId}
+                options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+              />
+            </div>
             <span className="text-xs text-zinc-500">
               {counts.neu} {t("import.new")} · {counts.conflict} {t("import.conflicts")} ·{" "}
               {counts.imported} {t("import.alreadyImported")}
