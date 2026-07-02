@@ -9,6 +9,7 @@ import { currentPrice } from "@/lib/finance/prices";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 const inputCls =
@@ -21,7 +22,7 @@ export function TransactionForm({
   asset: Asset;
   onDone?: () => void;
 }) {
-  const { addTransaction, portfolios, selectedPortfolioIds } = usePortfolio();
+  const { addTransaction, createPortfolio, portfolios, selectedPortfolioIds } = usePortfolio();
   const { t } = useI18n();
   const isCash = asset.type === "CASH";
   const cur = asset.currency || "EUR";
@@ -35,6 +36,8 @@ export function TransactionForm({
     isCash ? "1" : String(round(currentPrice(assetPriceKey(asset), asset.type))),
   );
   const [fee, setFee] = useState("0");
+  const [addingPortfolio, setAddingPortfolio] = useState(false);
+  const [newPortfolio, setNewPortfolio] = useState("");
   const [executedAt, setExecutedAt] = useState(nowDateTimeLocal());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -164,19 +167,53 @@ export function TransactionForm({
             className={inputCls}
           />
         </Field>
-        {portfolios.length > 1 && (
+        {portfolios.length > 0 && (
           <Field label={t("tx.portfolio")} className="col-span-2">
-            <select
+            <SelectMenu
               value={portfolioId}
-              onChange={(e) => setPortfolioId(e.target.value)}
-              className={inputCls}
-            >
-              {portfolios.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              ariaLabel={t("tx.portfolio")}
+              onChange={setPortfolioId}
+              options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+              footer={(close) =>
+                addingPortfolio ? (
+                  <input
+                    autoFocus
+                    value={newPortfolio}
+                    placeholder={t("nav.newPortfolio")}
+                    onChange={(e) => setNewPortfolio(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        const name = newPortfolio.trim();
+                        if (name) {
+                          try {
+                            const p = await createPortfolio(name);
+                            setPortfolioId(p.id);
+                          } catch {
+                            /* at max portfolios — ignore */
+                          }
+                        }
+                        setNewPortfolio("");
+                        setAddingPortfolio(false);
+                        close();
+                      }
+                      if (e.key === "Escape") {
+                        setAddingPortfolio(false);
+                        setNewPortfolio("");
+                      }
+                    }}
+                    className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingPortfolio(true)}
+                    className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                  >
+                    + {t("nav.newPortfolio")}
+                  </button>
+                )
+              }
+            />
           </Field>
         )}
       </div>
