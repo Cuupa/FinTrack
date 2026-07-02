@@ -140,6 +140,8 @@ export const en = {
   "table.profit": "Profit",
   "table.allocation": "Allocation",
   "table.noMatch": "No holdings match your filter.",
+  "table.pastHoldings": "Past holdings",
+  "table.lastTransaction": "Last transaction",
 
   "share.button": "Share",
   "share.snapshot": "Snapshot",
@@ -575,6 +577,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "table.profit": "Gewinn",
   "table.allocation": "Gewichtung",
   "table.noMatch": "Keine Positionen entsprechen Ihrem Filter.",
+  "table.pastHoldings": "Frühere Positionen",
+  "table.lastTransaction": "Letzte Transaktion",
 
   "share.button": "Teilen",
   "share.snapshot": "Momentaufnahme",

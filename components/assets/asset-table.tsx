@@ -14,14 +14,17 @@ import {
   summarizeAll,
   type HoldingSummary,
 } from "@/lib/finance/portfolio";
-import type { Timeframe } from "@/lib/finance/dates";
-import { formatCurrency, formatNumber, formatPercent, plColor } from "@/lib/format";
+import { dateKey, type Timeframe } from "@/lib/finance/dates";
+import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { assetIdentifier, type AssetType } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
 
 const TYPE_FILTERS: (AssetType | "ALL")[] = ["ALL", "ETF", "STOCK", "CRYPTO", "CASH"];
+
+/** Shares below this are treated as fully liquidated (float dust). */
+const SHARE_EPS = 1e-9;
 
 interface Row {
   h: HoldingSummary;
@@ -38,18 +41,36 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
   const { t } = useI18n();
   const currency = data.profile.currency;
 
-  const holdings = useMemo(
-    () =>
-      summarizeAll(data.assets, data.transactions, valuation).filter(
-        (h) => h.position.shares > 0,
-      ),
+  const allSummaries = useMemo(
+    () => summarizeAll(data.assets, data.transactions, valuation),
     [data.assets, data.transactions, valuation],
+  );
+
+  const holdings = useMemo(
+    () => allSummaries.filter((h) => h.position.shares > SHARE_EPS),
+    [allSummaries],
   );
 
   const total = useMemo(
     () => holdings.reduce((s, h) => s + h.marketValue, 0),
     [holdings],
   );
+
+  // Assets with a zero position but at least one transaction: fully
+  // liquidated holdings, shown collapsed below the main table. Also track
+  // each asset's most recent transaction day for that section.
+  const { pastHoldings, lastTxDate } = useMemo(() => {
+    const last = new Map<string, string>();
+    for (const t of data.transactions) {
+      const d = dateKey(t.date);
+      const cur = last.get(t.assetId);
+      if (!cur || d > cur) last.set(t.assetId, d);
+    }
+    const past = allSummaries.filter(
+      (h) => h.position.shares <= SHARE_EPS && last.has(h.asset.id),
+    );
+    return { pastHoldings: past, lastTxDate: last };
+  }, [allSummaries, data.transactions]);
 
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
@@ -89,6 +110,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
   }
 
   return (
+    <>
     <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">{t("table.holdings")}</h2>
@@ -227,6 +249,52 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         </>
       )}
     </div>
+
+    {pastHoldings.length > 0 && (
+      <details className="group mt-4 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <summary className="flex cursor-pointer list-none items-center gap-1 px-4 py-4 text-lg font-semibold marker:content-none">
+          <span className="inline-block text-sm transition-transform group-open:rotate-90">
+            ›
+          </span>
+          {t("table.pastHoldings")}{" "}
+          <span className="font-normal text-zinc-400">({pastHoldings.length})</span>
+        </summary>
+        <div className="overflow-x-auto border-t border-zinc-200 dark:border-zinc-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+                <th className="px-4 py-2 font-medium">{t("table.name")}</th>
+                <th className="px-4 py-2 text-right font-medium">{t("stat.realized")}</th>
+                <th className="px-4 py-2 text-right font-medium">{t("table.lastTransaction")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pastHoldings.map((h) => (
+                <tr
+                  key={h.asset.id}
+                  className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                >
+                  <td className="px-4 py-3">
+                    <Link href={`/assets/${h.asset.id}`} className="font-medium hover:underline">
+                      {h.asset.name}
+                    </Link>
+                    <div className="text-xs text-zinc-500">{assetIdentifier(h.asset)}</div>
+                  </td>
+                  <td className={`px-4 py-3 text-right tabular-nums ${plColor(h.realizedPL)}`} data-private>
+                    {h.realizedPL >= 0 ? "+" : ""}
+                    {formatCurrency(h.realizedPL, currency)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-zinc-500">
+                    {formatDate(lastTxDate.get(h.asset.id) ?? "")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    )}
+    </>
   );
 }
 
