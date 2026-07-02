@@ -16,6 +16,8 @@ import { formatCurrency, formatNumber, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { apiFetch } from "@/lib/api";
+import { lookupInstrumentByQuery } from "@/lib/finance/prices";
 import type { AssetType, TransactionType } from "@/lib/types";
 
 // A conflict is resolved field by field: each mergeable field takes its value
@@ -49,6 +51,45 @@ async function readFile(file: File): Promise<string> {
     }
   }
   return utf8;
+}
+
+/** The identifier a parsed row is priced/matched by — isin, then wkn, then symbol. */
+function rowIdentifier(p: Pick<ParsedTx, "isin" | "wkn" | "symbol">): string {
+  return (p.isin || p.wkn || p.symbol || "").toUpperCase();
+}
+
+/**
+ * Resolve the official instrument name for every unique identifier in a
+ * parsed CSV, so the preview and the assets created from it show the real
+ * name instead of whatever the broker export happened to print. Tries the
+ * in-memory catalog first (synchronous), then falls back to the live
+ * /api/lookup route; a row's CSV name is kept if neither resolves.
+ */
+async function resolveNames(rows: ParsedTx[]): Promise<Map<string, string>> {
+  const ids = new Set<string>();
+  for (const p of rows) {
+    const id = rowIdentifier(p);
+    if (id) ids.add(id);
+  }
+  const resolved = new Map<string, string>();
+  await Promise.all(
+    Array.from(ids).map(async (id) => {
+      const match = lookupInstrumentByQuery(id);
+      if (match?.name) {
+        resolved.set(id, match.name);
+        return;
+      }
+      try {
+        const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(id)}`);
+        if (!res.ok) return;
+        const d = (await res.json()) as { found?: boolean; name?: string };
+        if (d.found && d.name) resolved.set(id, d.name);
+      } catch {
+        /* live lookup failed — keep the CSV name for this identifier */
+      }
+    }),
+  );
+  return resolved;
 }
 
 function txTypeColor(type: TransactionType): string {
@@ -97,6 +138,14 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
         setReconciled([]);
         setFileName(null);
         return;
+      }
+      // Replace the broker's CSV name with the official instrument name
+      // (catalog first, then a live lookup) so both the preview and the
+      // assets created from it show the real name.
+      const names = await resolveNames(parsed);
+      for (const p of parsed) {
+        const resolved = names.get(rowIdentifier(p));
+        if (resolved) p.name = resolved;
       }
       const imported = new Set(await loadImportedFingerprints());
       const rec = reconcile(parsed, data.assets, allTransactions, imported);
