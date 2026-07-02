@@ -9,6 +9,7 @@ import { newId } from "./types";
 
 const STORAGE_KEY = "fintrack:portfolio:v1";
 const SIM_KEY = "fintrack:simulations:v1";
+const IMPORT_KEY = "fintrack:imported:v1";
 
 export class LocalStore implements DataStore {
   readonly persistent = false;
@@ -167,6 +168,25 @@ export class LocalStore implements DataStore {
       return raw ? (JSON.parse(raw) as Record<string, SimulationCacheEntry>) : {};
     } catch {
       return {};
+    }
+  }
+
+  async loadImportedFingerprints() {
+    try {
+      const raw = this.storage.getItem(IMPORT_KEY);
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async addImportedFingerprints(fingerprints: string[]) {
+    const set = new Set(await this.loadImportedFingerprints());
+    for (const f of fingerprints) set.add(f);
+    try {
+      this.storage.setItem(IMPORT_KEY, JSON.stringify([...set]));
+    } catch {
+      /* storage full — ignore */
     }
   }
 }

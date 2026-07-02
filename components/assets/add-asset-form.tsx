@@ -29,7 +29,13 @@ function round(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-export function AddAssetForm({ onDone }: { onDone?: () => void }) {
+export function AddAssetForm({
+  onDone,
+  embedded = false,
+}: {
+  onDone?: () => void;
+  embedded?: boolean;
+}) {
   const { addAsset, addTransaction, data, portfolios, selectedPortfolioIds } = usePortfolio();
   const [portfolioId, setPortfolioId] = useState(
     selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
@@ -212,9 +218,9 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
     }
   }
 
-  return (
-    <Card>
-      <h2 className="text-lg font-semibold">Add asset</h2>
+  const body = (
+    <>
+      {!embedded && <h2 className="text-lg font-semibold">Add asset</h2>}
 
       {/* Import field */}
       {!manual && (
@@ -518,6 +524,8 @@ export function AddAssetForm({ onDone }: { onDone?: () => void }) {
           </Button>
         </div>
       )}
-    </Card>
+    </>
   );
+
+  return embedded ? body : <Card>{body}</Card>;
 }

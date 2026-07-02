@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import type { Timeframe } from "@/lib/finance/dates";
 import { NetWorthHero } from "@/components/dashboard/net-worth-hero";
 import { AssetTable } from "@/components/assets/asset-table";
-import { AddAssetForm } from "@/components/assets/add-asset-form";
+import { AddAssetPanel } from "@/components/assets/add-asset-panel";
 import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
@@ -55,7 +55,7 @@ export default function DashboardPage() {
       {/* Add-asset opens in a modal so it appears right where you clicked,
           not buried at the bottom of the page. */}
       <Modal open={adding} onClose={() => setAdding(false)}>
-        <AddAssetForm onDone={() => setAdding(false)} />
+        <AddAssetPanel onDone={() => setAdding(false)} />
       </Modal>
     </div>
   );

@@ -35,6 +35,9 @@ export interface DataStore {
   /** Reuse a previously computed simulation with identical params, or null. */
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
   saveSimulation(entry: SimulationCacheEntry): Promise<void>;
+  /** Fingerprints of CSV rows already imported (so re-imports skip them). */
+  loadImportedFingerprints(): Promise<string[]>;
+  addImportedFingerprints(fingerprints: string[]): Promise<void>;
 }
 
 export function newId(): string {

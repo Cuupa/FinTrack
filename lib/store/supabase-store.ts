@@ -352,4 +352,20 @@ export class SupabaseStore implements DataStore {
       { onConflict: "user_id,params_hash" },
     );
   }
+
+  async loadImportedFingerprints(): Promise<string[]> {
+    const { data } = await this.supabase
+      .from("imported_rows")
+      .select("fingerprint")
+      .eq("user_id", this.userId);
+    return ((data ?? []) as { fingerprint: string }[]).map((r) => r.fingerprint);
+  }
+
+  async addImportedFingerprints(fingerprints: string[]): Promise<void> {
+    if (fingerprints.length === 0) return;
+    await this.supabase.from("imported_rows").upsert(
+      fingerprints.map((f) => ({ user_id: this.userId, fingerprint: f })),
+      { onConflict: "user_id,fingerprint" },
+    );
+  }
 }

@@ -42,6 +42,8 @@ interface PortfolioContextValue {
   updateProfile(patch: Partial<Profile>): Promise<void>;
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
   saveSimulation(entry: SimulationCacheEntry): Promise<void>;
+  loadImportedFingerprints(): Promise<string[]>;
+  addImportedFingerprints(fingerprints: string[]): Promise<void>;
   /** All of the user's portfolios. */
   portfolios: Portfolio[];
   /** Every transaction (unscoped) — for building per-portfolio share snapshots. */
@@ -205,6 +207,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     (entry: SimulationCacheEntry) => store.saveSimulation(entry),
     [store],
   );
+  const loadImportedFingerprints = useCallback(() => store.loadImportedFingerprints(), [store]);
+  const addImportedFingerprints = useCallback(
+    (fps: string[]) => store.addImportedFingerprints(fps),
+    [store],
+  );
 
   const allIds = data.portfolios.map((p) => p.id);
   const activeIds = selectedIds ?? allIds;
@@ -235,6 +242,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     updateProfile,
     loadSimulation,
     saveSimulation,
+    loadImportedFingerprints,
+    addImportedFingerprints,
     portfolios: data.portfolios,
     allTransactions: data.transactions,
     selectedPortfolioIds: activeIds,
