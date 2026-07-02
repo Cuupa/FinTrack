@@ -41,7 +41,11 @@ export function Modal({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div role="dialog" aria-modal="true" className={`relative z-10 my-8 w-full ${maxWidthClass}`}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={`relative z-10 my-8 flex max-h-[calc(100dvh-4rem)] w-full flex-col ${maxWidthClass}`}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -50,7 +54,12 @@ export function Modal({
         >
           ✕
         </button>
-        {children}
+        {/* Scrolls internally so the close button (positioned relative to
+            the dialog above, not this wrapper) stays pinned in place instead
+            of scrolling away with tall content. min-h-0 lets this flex child
+            shrink to make room for the scrollbar instead of growing past
+            max-h-[...] on the dialog. */}
+        <div className="min-h-0 overflow-y-auto">{children}</div>
       </div>
     </div>
   );

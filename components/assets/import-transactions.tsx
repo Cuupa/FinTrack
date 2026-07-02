@@ -39,6 +39,25 @@ function isMerged(res: Resolution | undefined): boolean {
   return res != null && MERGE_FIELDS.some((f) => res[f] === "incoming");
 }
 
+/**
+ * A "conflict" whose matched existing transaction is identical in every
+ * mergeable field to the incoming row — the fuzzy matcher flags it, but
+ * there's nothing to decide. Dates compare by day only (the matcher already
+ * tolerates sub-day time differences); the other fields compare exactly.
+ */
+function isIdentical(row: ReconciledRow): boolean {
+  const ex = row.existing;
+  if (!ex) return false;
+  const p = row.parsed;
+  return (
+    ex.type === p.type &&
+    ex.quantity === p.quantity &&
+    ex.price === p.price &&
+    ex.fee === p.fee &&
+    ex.date.slice(0, 10) === p.date.slice(0, 10)
+  );
+}
+
 async function readFile(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
   const utf8 = new TextDecoder("utf-8").decode(buf);
@@ -169,9 +188,20 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
     () => reconciled.map((r, i) => ({ r, i })).filter((x) => x.r.status === "new"),
     [reconciled],
   );
-  const conflictRows = useMemo(
+  const conflictAll = useMemo(
     () => reconciled.map((r, i) => ({ r, i })).filter((x) => x.r.status === "conflict"),
     [reconciled],
+  );
+  // Split conflicts into ones that actually need a decision and ones whose
+  // matched existing transaction is byte-for-byte the same as the incoming
+  // row — those get a collapsed, no-action summary instead of a merge card.
+  const conflictRows = useMemo(
+    () => conflictAll.filter((x) => !isIdentical(x.r)),
+    [conflictAll],
+  );
+  const identicalRows = useMemo(
+    () => conflictAll.filter((x) => isIdentical(x.r)),
+    [conflictAll],
   );
   const importedCount = useMemo(
     () => reconciled.filter((r) => r.status === "imported").length,
@@ -199,6 +229,13 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
       const recorded: { fingerprint: string; transactionId: string | null }[] = [];
       for (let i = 0; i < reconciled.length; i++) {
         const r = reconciled[i];
+        // Identical rows never got a merge card to act on — recording them
+        // against the existing transaction they matched is what stops them
+        // resurfacing as noise on the next import.
+        if (r.status === "conflict" && r.existing && isIdentical(r)) {
+          recorded.push({ fingerprint: r.fingerprint, transactionId: r.existing.id });
+          continue;
+        }
         const res = resolutions[i];
         const merge = r.status === "conflict" && r.existing && isMerged(res);
         const importNew = r.status === "new" && included[i];
@@ -337,6 +374,54 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
 
       {hasFile && (
         <>
+          {/* Compact counts so the shape of the import is clear before scrolling
+              through any of the sections below. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            {newRows.length > 0 && (
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                {newRows.length} {t("import.new")}
+              </span>
+            )}
+            {conflictRows.length > 0 && (
+              <span className="font-medium text-amber-700 dark:text-amber-300">
+                {conflictRows.length} {t("import.conflicts")}
+              </span>
+            )}
+            {identicalRows.length > 0 && (
+              <span className="text-zinc-400">
+                {identicalRows.length} {t("import.identicalSection")}
+              </span>
+            )}
+            {importedCount > 0 && (
+              <span className="text-zinc-400">
+                {importedCount} {t("import.alreadyImported")}
+              </span>
+            )}
+          </div>
+
+          {/* Conflicts: three-pane merge, current | result | incoming. Real
+              conflicts only — rows identical to their match need no card. */}
+          {conflictRows.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                {t("import.conflictSection")}{" "}
+                <span className="font-normal text-zinc-400">({conflictRows.length})</span>
+              </h3>
+              <div className="space-y-3">
+                {conflictRows.map(({ r, i }) => (
+                  <ConflictMerge
+                    key={i}
+                    row={r}
+                    resolution={resolutions[i] ?? allFrom("current")}
+                    onResolution={(res) =>
+                      setResolutions((prev) => ({ ...prev, [i]: res }))
+                    }
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* New transactions: include/exclude with checkboxes. */}
           {newRows.length > 0 && (
             <section>
@@ -387,26 +472,29 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
             </section>
           )}
 
-          {/* Conflicts: three-pane merge, current | result | incoming. */}
-          {conflictRows.length > 0 && (
-            <section>
-              <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
-                {t("import.conflictSection")}{" "}
-                <span className="font-normal text-zinc-400">({conflictRows.length})</span>
-              </h3>
-              <div className="space-y-3">
-                {conflictRows.map(({ r, i }) => (
-                  <ConflictMerge
-                    key={i}
-                    row={r}
-                    resolution={resolutions[i] ?? allFrom("current")}
-                    onResolution={(res) =>
-                      setResolutions((prev) => ({ ...prev, [i]: res }))
-                    }
-                  />
+          {/* Identical rows: the matched existing transaction already has
+              these exact values — nothing to decide, so just list them
+              collapsed instead of forcing 20 merge cards with no signal. */}
+          {identicalRows.length > 0 && (
+            <details className="group rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-zinc-500 marker:content-none">
+                <span className="mr-1 inline-block transition-transform group-open:rotate-90">
+                  ›
+                </span>
+                {t("import.identicalSection")}{" "}
+                <span className="font-normal text-zinc-400">({identicalRows.length})</span>
+              </summary>
+              <ul className="divide-y divide-zinc-100 border-t border-zinc-200 dark:divide-zinc-800/60 dark:border-zinc-800">
+                {identicalRows.map(({ r, i }) => (
+                  <li key={i} className="flex items-center gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <AssetLine parsed={r.parsed} />
+                    </div>
+                    <TxSummary parsed={r.parsed} />
+                  </li>
                 ))}
-              </div>
-            </section>
+              </ul>
+            </details>
           )}
 
           {importedCount > 0 && (
@@ -419,7 +507,11 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
             <span className="text-sm text-zinc-500">
               {willApply} {t("import.willImport")}
             </span>
-            <Button variant="primary" onClick={apply} disabled={busy || willApply === 0}>
+            <Button
+              variant="primary"
+              onClick={apply}
+              disabled={busy || (willApply === 0 && identicalRows.length === 0)}
+            >
               {busy ? t("import.importing") : t("import.apply")}
             </Button>
           </div>
