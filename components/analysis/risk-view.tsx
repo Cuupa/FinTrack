@@ -7,7 +7,7 @@
 // everything to a selection of your own positions. Figures are measured from
 // real history where available (synthetic fallback).
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
@@ -29,6 +29,17 @@ const RF = 0.02; // risk-free rate used for Sharpe/Sortino/alpha
 const TF_OPTIONS: Timeframe[] = ["1Y", "5Y", "10Y", "MAX"];
 
 type SortKey = "name" | "vol" | "beta" | "alpha" | "sharpe" | "weight";
+
+/**
+ * Sharpe cell coloring: only a strong risk-adjusted return (>= 1) reads as
+ * "good" (emerald); a merely positive-but-mediocre Sharpe (0..1) stays the
+ * default ink instead of overstating it as green, and negative is red.
+ */
+function sharpeColor(value: number): string {
+  if (value >= 1) return "text-emerald-600 dark:text-emerald-400";
+  if (value < 0) return "text-red-600 dark:text-red-400";
+  return "text-zinc-500";
+}
 
 export function RiskView() {
   const { data } = usePortfolio();
@@ -290,7 +301,14 @@ export function RiskView() {
               <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
                 <RiskTh label={t("risk.asset")} k="name" sort={sort} onSort={toggleSort} />
                 <RiskTh label={t("risk.volatility")} k="vol" align="right" sort={sort} onSort={toggleSort} />
-                <RiskTh label={t("risk.beta")} k="beta" align="right" sort={sort} onSort={toggleSort} />
+                <RiskTh
+                  label={t("risk.beta")}
+                  suffix={t("risk.betaSuffix")}
+                  k="beta"
+                  align="right"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
                 <RiskTh label={t("risk.alpha")} k="alpha" align="right" sort={sort} onSort={toggleSort} />
                 <RiskTh label={t("risk.sharpe")} k="sharpe" align="right" sort={sort} onSort={toggleSort} />
                 <RiskTh label={t("risk.weight")} k="weight" align="right" sort={sort} onSort={toggleSort} />
@@ -319,7 +337,7 @@ export function RiskView() {
                   <td className={`py-2 pr-3 text-right tabular-nums ${r.alpha != null ? plColor(r.alpha) : ""}`}>
                     {r.alpha != null ? formatPercent(r.alpha, 1) : "—"}
                   </td>
-                  <td className={`py-2 pr-3 text-right tabular-nums ${r.sharpe != null ? plColor(r.sharpe) : ""}`}>
+                  <td className={`py-2 pr-3 text-right tabular-nums ${r.sharpe != null ? sharpeColor(r.sharpe) : ""}`}>
                     {r.sharpe != null ? formatNumber(r.sharpe, 2) : "—"}
                   </td>
                   <td className="py-2 text-right tabular-nums text-zinc-500">
@@ -393,16 +411,13 @@ function MetricCard({
 }) {
   const { t } = useI18n();
   const has = value != null && Number.isFinite(value);
-  const frac = has ? Math.min(1, Math.max(0, ((value as number) - min) / (max - min))) : 0;
+  const clampFrac = (v: number) => Math.min(1, Math.max(0, (v - min) / (max - min)));
+  const frac = has ? clampFrac(value as number) : 0;
+  const goodFrac = clampFrac(good);
+  const okFrac = clampFrac(ok);
   const q = has ? tier(value as number, good, ok, higherIsBetter) : 0;
   const color = has ? TIER_COLOR[q] : "#a1a1aa";
   const word = !has ? "" : q === 2 ? t("risk.qGood") : q === 1 ? t("risk.qModerate") : t("risk.qPoor");
-
-  // Track: a poor→good landscape oriented by the metric's direction; the thumb
-  // marks where the value sits.
-  const gradient = higherIsBetter
-    ? `linear-gradient(to right, ${RED}, ${AMBER}, ${GREEN})`
-    : `linear-gradient(to right, ${GREEN}, ${AMBER}, ${RED})`;
 
   return (
     <div
@@ -426,11 +441,19 @@ function MetricCard({
           </span>
         )}
       </div>
-      {/* bullet gauge: zone track + thumb at the value */}
-      <div className="relative mt-3 h-2 w-full rounded-full" style={{ background: gradient, opacity: has ? 0.85 : 0.2 }}>
+      {/* neutral track + threshold ticks + colored marker at the value */}
+      <div className="relative mt-3 h-1 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
+        <span
+          className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
+          style={{ left: `${okFrac * 100}%` }}
+        />
+        <span
+          className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
+          style={{ left: `${goodFrac * 100}%` }}
+        />
         {has && (
           <span
-            className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-white shadow ring-1 ring-black/10 dark:border-zinc-900"
+            className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-zinc-900"
             style={{ left: `${frac * 100}%`, backgroundColor: color }}
           />
         )}
@@ -442,12 +465,15 @@ function MetricCard({
 
 function RiskTh({
   label,
+  suffix,
   k,
   align = "left",
   sort,
   onSort,
 }: {
   label: string;
+  /** Muted, lowercase-style annotation appended after the label (e.g. the benchmark a beta/alpha is measured against). */
+  suffix?: string;
   k: SortKey;
   align?: "left" | "right";
   sort: { key: SortKey; dir: 1 | -1 };
@@ -460,6 +486,7 @@ function RiskTh({
         className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
       >
         {label}
+        {suffix && <span className="normal-case text-zinc-400 dark:text-zinc-500">({suffix})</span>}
         <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
       </button>
     </th>
@@ -468,51 +495,115 @@ function RiskTh({
 
 // --- Correlation heatmap -----------------------------------------------------
 
-function corrColor(c: number): string {
-  // +1 → red (move together), 0 → neutral, −1 → blue (hedge).
-  if (c >= 0) return `rgba(239,68,68,${0.12 + 0.6 * c})`;
-  return `rgba(59,130,246,${0.12 + 0.6 * -c})`;
-}
+const CORR_BLUE = "59,130,246"; // r = -1
+const CORR_RED = "239,68,68"; // r = +1
+const CORR_LABEL_W = 96; // px, row-label column
+const CORR_CELL_MAX = 56; // px, cap per the design spec
+const CORR_CELL_MIN = 32; // px, below this the matrix scrolls instead of shrinking further
 
-function shortLabel(name: string): string {
-  return name.length > 10 ? `${name.slice(0, 9)}…` : name;
+/** Diverging blue→neutral→red background for a correlation value in [-1, 1]. */
+function corrBg(c: number): string {
+  const alpha = Math.min(0.85, Math.abs(c));
+  const rgb = c >= 0 ? CORR_RED : CORR_BLUE;
+  return `rgba(${rgb},${alpha})`;
 }
 
 function CorrelationMatrix({ labels, corr }: { labels: string[]; corr: number[][] }) {
+  const { t } = useI18n();
   const n = labels.length;
+  const [hovered, setHovered] = useState<{ i: number; j: number } | null>(null);
+  const hasHighCorr = useMemo(
+    () => corr.some((row, i) => row.some((c, j) => i !== j && Math.abs(c) >= 0.8)),
+    [corr],
+  );
+
   return (
-    <div className="mt-3 overflow-x-auto">
-      <table className="border-separate" style={{ borderSpacing: 2 }}>
-        <thead>
-          <tr>
-            <th />
-            {labels.map((l, i) => (
-              <th key={i} className="px-1 pb-1 text-[10px] font-medium text-zinc-500" title={l}>
-                <div className="mx-auto w-10 truncate">{shortLabel(l)}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {labels.map((row, i) => (
-            <tr key={i}>
-              <td className="pr-2 text-right text-[10px] font-medium text-zinc-500" title={row}>
-                <div className="w-20 truncate">{shortLabel(row)}</div>
-              </td>
-              {Array.from({ length: n }, (_, j) => (
-                <td
-                  key={j}
-                  className="h-10 w-10 rounded text-center text-[10px] tabular-nums text-zinc-700 dark:text-zinc-200"
-                  style={{ backgroundColor: corrColor(corr[i][j]) }}
-                  title={`${row} ↔ ${labels[j]}: ${corr[i][j].toFixed(2)}`}
-                >
-                  {corr[i][j].toFixed(2)}
-                </td>
-              ))}
-            </tr>
+    <div className="mt-3">
+      <div className="overflow-x-auto">
+        <div
+          className="grid gap-[3px]"
+          style={{
+            gridTemplateColumns: `${CORR_LABEL_W}px repeat(${n}, minmax(${CORR_CELL_MIN}px, 1fr))`,
+            width: `min(100%, ${CORR_LABEL_W + n * CORR_CELL_MAX}px)`,
+            minWidth: `${CORR_LABEL_W + n * CORR_CELL_MIN}px`,
+          }}
+        >
+          <div />
+          {labels.map((l, j) => (
+            <div
+              key={`col-${j}`}
+              className="flex items-end justify-center overflow-hidden pb-1 text-center text-[10px] font-medium text-zinc-500"
+              title={l}
+            >
+              <span className="truncate">{l}</span>
+            </div>
           ))}
-        </tbody>
-      </table>
+          {labels.map((row, i) => (
+            <Fragment key={`row-${i}`}>
+              <div
+                className="flex items-center justify-end overflow-hidden pr-2 text-right text-[10px] font-medium text-zinc-500"
+                title={row}
+              >
+                <span className="truncate">{row}</span>
+              </div>
+              {labels.map((col, j) => {
+                const value = corr[i][j];
+                const diag = i === j;
+                const highCorr = !diag && Math.abs(value) >= 0.8;
+                const isHovered = hovered?.i === i && hovered?.j === j;
+                const alpha = Math.min(0.85, Math.abs(value));
+                const ink = diag
+                  ? "text-zinc-400 dark:text-zinc-500"
+                  : alpha > 0.5
+                    ? "text-white"
+                    : "text-zinc-700 dark:text-zinc-200";
+                const ring = isHovered
+                  ? "ring-2 ring-zinc-900 dark:ring-white"
+                  : highCorr
+                    ? "ring-1 ring-amber-500/60"
+                    : "";
+                return (
+                  <button
+                    key={`cell-${i}-${j}`}
+                    type="button"
+                    title={`${row} × ${col}: ${value.toFixed(2)}`}
+                    onMouseEnter={() => setHovered({ i, j })}
+                    onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered({ i, j })}
+                    onBlur={() => setHovered(null)}
+                    className={`flex items-center justify-center rounded text-xs tabular-nums transition-shadow ${diag ? "bg-zinc-100 dark:bg-zinc-800" : ""} ${ink} ${ring}`}
+                    style={{
+                      aspectRatio: "1 / 1",
+                      backgroundColor: diag ? undefined : corrBg(value),
+                    }}
+                  >
+                    {value.toFixed(2)}
+                  </button>
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* legend: diverging scale from -1 (blue) through 0 (neutral) to +1 (red) */}
+      <div className="mt-4 max-w-xs">
+        <div
+          className="h-2 rounded-full"
+          style={{
+            background: `linear-gradient(to right, rgba(${CORR_BLUE},0.85), rgba(161,161,170,0.2), rgba(${CORR_RED},0.85))`,
+          }}
+        />
+        <div className="mt-1 flex justify-between text-[10px] tabular-nums text-zinc-500">
+          <span>−1</span>
+          <span>0</span>
+          <span>+1</span>
+        </div>
+      </div>
+
+      {hasHighCorr && (
+        <p className="mt-3 text-xs text-amber-600 dark:text-amber-500">{t("risk.correlationHighPairs")}</p>
+      )}
     </div>
   );
 }

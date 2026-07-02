@@ -263,6 +263,7 @@ export const en = {
   "risk.beta": "Beta",
   "risk.betaTip":
     "Sensitivity to YOUR portfolio: 1 moves with it, >1 amplifies its swings, <1 dampens them, negative moves opposite (a hedge).",
+  "risk.betaSuffix": "vs. portfolio",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
     "Annualised return beyond what the holding's beta to your portfolio would predict. Positive = it added risk-adjusted value.",
@@ -281,6 +282,7 @@ export const en = {
   "risk.correlationTip":
     "How holdings move together: red = move in sync (less diversification), blue = move oppositely (a hedge), pale = independent.",
   "risk.correlationNeed": "Add at least two holdings with history to see correlations.",
+  "risk.correlationHighPairs": "Pairs above 0.8 move together — limited diversification.",
 
   // Allocation / distributions
   "alloc.investment": "Investments",
@@ -702,6 +704,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.beta": "Beta",
   "risk.betaTip":
     "Empfindlichkeit gegenüber IHREM Portfolio: 1 läuft mit, >1 verstärkt, <1 dämpft, negativ läuft gegenläufig (Absicherung).",
+  "risk.betaSuffix": "ggü. Portfolio",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
     "Annualisierte Rendite über das, was das Beta zu Ihrem Portfolio erwarten ließe. Positiv = risikobereinigter Mehrwert.",
@@ -720,6 +723,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.correlationTip":
     "Wie sich Positionen gemeinsam bewegen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",
   "risk.correlationNeed": "Fügen Sie mindestens zwei Positionen mit Historie hinzu, um Korrelationen zu sehen.",
+  "risk.correlationHighPairs": "Paare über 0,8 bewegen sich im Gleichschritt — eingeschränkte Diversifikation.",
 
   // Allocation / distributions
   "alloc.investment": "Investments",
