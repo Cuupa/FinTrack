@@ -72,6 +72,28 @@ dividend yield) and ETF constituents live in Postgres (`instruments`,
 Without Supabase the cache is empty: auto-import and live quotes are
 unavailable, synthetic pricing still works.
 
+### Feature flags in the database (not env vars)
+
+`feature_flags` holds a global on/off per feature (world-readable);
+`user_feature_flags` holds per-user overrides that win over the global value.
+Both are toggled by the owner via SQL/dashboard only. `FeatureFlagsProvider`
+(`lib/flags/flags-context.tsx`) loads them; components gate via
+`useFeatureFlag(...)`. Missing row / no Supabase ⇒ enabled. Gate a new feature
+by seeding a row (migration + schema.sql) — never with env vars or the Vercel
+Flags SDK (explicitly rejected).
+
+### CSV import & fingerprints
+
+`lib/import/csv.ts` parses broker exports (known German brokers precisely, a
+header-driven generic parser otherwise); names are replaced by the official
+instrument name looked up via catalog → `/api/lookup`. `lib/import/reconcile.ts`
+fuzzy-matches rows against existing transactions; identical matches are filed
+away silently, real conflicts go through a three-pane field-level merge.
+Applied rows record a fingerprint (`imported_rows`) **tied to the transaction
+id** — deleting the transaction/asset/portfolio cascades the fingerprint, so
+re-imports surface correctly. UI rule: every destructive action gets a
+`ConfirmDialog` first.
+
 ### Live prices, FX & multi-currency
 
 Real quotes come from `/api/quotes`: equities via **Yahoo Finance resolved by
