@@ -226,7 +226,8 @@ insert into public.schema_migrations (version) values
   ('0021_portfolios'),
   ('0022_instrument_history'),
   ('0023_transaction_booking'),
-  ('0024_simulation_runs')
+  ('0024_simulation_runs'),
+  ('0025_app_settings')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -323,6 +324,34 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- App-wide settings (single row). `max_users` caps registrations; null = no
+-- limit. The owner changes it on a moment's notice with:
+--   update public.app_settings set max_users = 50;   -- or NULL to disable
+create table if not exists public.app_settings (
+  id int primary key default 1 check (id = 1),
+  max_users int,
+  updated_at timestamptz not null default now()
+);
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+alter table public.app_settings enable row level security;
+
+-- Whether registration is currently open (below the user cap). SECURITY DEFINER
+-- so the anon login page can check without reading auth.users or app_settings
+-- directly. Enforced again server-side by /api/registration-status.
+create or replace function public.registration_open()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select case
+    when (select max_users from public.app_settings where id = 1) is null then true
+    else (select count(*) from auth.users)
+       < (select max_users from public.app_settings where id = 1)
+  end;
+$$;
+grant execute on function public.registration_open() to anon, authenticated;
 
 -- Seed the instruments catalog -----------------------------------------------
 insert into public.instruments

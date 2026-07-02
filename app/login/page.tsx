@@ -3,7 +3,21 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { Button, Card } from "@/components/ui/primitives";
+
+/** Whether new registrations are currently allowed (below the user cap). */
+async function checkRegistrationOpen(): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return true;
+  try {
+    const { data, error } = await supabase.rpc("registration_open");
+    if (error) return true; // fail open — don't block signups on a check error
+    return data !== false;
+  } catch {
+    return true;
+  }
+}
 
 export default function LoginPage() {
   return (
@@ -35,10 +49,23 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // null = not yet checked; false = registrations closed (user cap reached).
+  const [signupOpen, setSignupOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (user) router.replace("/");
   }, [user, router]);
+
+  useEffect(() => {
+    if (!authAvailable) return;
+    let cancelled = false;
+    checkRegistrationOpen().then((open) => {
+      if (!cancelled) setSignupOpen(open);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authAvailable]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +82,11 @@ function LoginForm() {
         }
         if (password !== confirmPassword) {
           throw new Error("Passwords do not match.");
+        }
+        // Re-check the cap at submit time (it may have filled since page load).
+        if (!(await checkRegistrationOpen())) {
+          setSignupOpen(false);
+          throw new Error("Registrations are currently closed.");
         }
         const { needsConfirmation } = await signUp(email, password);
         if (needsConfirmation) {
@@ -155,6 +187,13 @@ function LoginForm() {
             </div>
           )}
 
+          {tab === "signup" && signupOpen === false && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+              Registrations are currently closed — the app has reached its user
+              limit. You can still use everything in Guest Mode.
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           {message && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
@@ -164,7 +203,7 @@ function LoginForm() {
             type="submit"
             variant="primary"
             className="w-full"
-            disabled={!authAvailable || busy}
+            disabled={!authAvailable || busy || (tab === "signup" && signupOpen === false)}
           >
             {tab === "signin" ? "Sign in" : "Create account"}
           </Button>
