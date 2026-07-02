@@ -157,7 +157,11 @@ async function coingeckoHistory(
   range: string,
 ): Promise<YahooPoint[] | null> {
   const cfg = RANGE[range] ?? RANGE["1Y"];
-  const days = cfg.days === "ytd" ? String(ytdDays()) : cfg.days;
+  // CoinGecko's free tier returns only ~1 year for `days=max`, but honours a
+  // large explicit day count — so MAX asks for a big number instead (BTC has
+  // data back to ~2013), fixing the MAX chart that started only ~1 year ago.
+  const days =
+    cfg.days === "ytd" ? String(ytdDays()) : cfg.days === "max" ? "5000" : cfg.days;
   try {
     const res = await fetch(
       `https://api.coingecko.com/api/v3/coins/${item.id}/market_chart?vs_currency=${base.toLowerCase()}&days=${days}`,
@@ -212,10 +216,12 @@ export async function POST(req: Request): Promise<Response> {
         // need the service role; otherwise we serve whatever is cached).
         if (canWrite && hoursSince(await lastSync(supabase, item.key, range)) > staleHours(range)) {
           const fresh = await yahooHistory(item, range).catch(() => null);
-          if (fresh && fresh.length > 0) await writeCached(supabase, item.key, range, fresh);
+          // Only cache a usable series (>= 2 points) — a lone point is a flat,
+          // useless line; leaving it uncached lets the synthetic fallback show.
+          if (fresh && fresh.length >= 2) await writeCached(supabase, item.key, range, fresh);
         }
         const cached = await readCached(supabase, item.key, range);
-        if (cached.length > 0) {
+        if (cached.length >= 2) {
           histories[item.key] = cached;
           return;
         }
@@ -223,7 +229,7 @@ export async function POST(req: Request): Promise<Response> {
         // fetch so the chart still has data.
         if (!canWrite) {
           const live = await yahooHistory(item, range).catch(() => null);
-          if (live && live.length > 0) histories[item.key] = live;
+          if (live && live.length >= 2) histories[item.key] = live;
           return;
         }
         return;
@@ -233,7 +239,7 @@ export async function POST(req: Request): Promise<Response> {
         item.source === "coingecko"
           ? await coingeckoHistory(item, base, range).catch(() => null)
           : await yahooHistory(item, range).catch(() => null);
-      if (series && series.length > 0) histories[item.key] = series;
+      if (series && series.length >= 2) histories[item.key] = series;
     }),
   );
 

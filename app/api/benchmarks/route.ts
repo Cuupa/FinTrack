@@ -10,10 +10,11 @@ import { BENCHMARKS } from "@/lib/finance/benchmarks";
 export const dynamic = "force-dynamic";
 
 const STALE_DAYS = 4; // markets close weekends; refresh when older than this
-// Weekly keeps row counts well under PostgREST's ~1000-row read cap while still
-// covering long timeframes (1000 weekly points ≈ 19 years).
-const RANGE = "max";
-const INTERVAL = "1wk";
+// Daily over ~2 years (~500 points, well under PostgREST's ~1000-row read cap)
+// so benchmark overlays are smooth against the daily portfolio line instead of a
+// coarse weekly staircase. Longer compare windows show up to this much history.
+const RANGE = "2y";
+const INTERVAL = "1d";
 const DEFAULT_BASE = "EUR";
 // Base currencies we pre-convert and persist on every sync, so a chart view is
 // a plain DB read (no FX call). EUR is always included so the on-the-fly

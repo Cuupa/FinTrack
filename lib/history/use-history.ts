@@ -43,7 +43,14 @@ export function useHistory(
           body: JSON.stringify({ base, range, items }),
         });
         const json = res.ok ? ((await res.json()) as { histories?: HistoryMap }) : null;
-        if (!cancelled) setState({ sig, histories: json?.histories ?? {} });
+        // A single (or zero) point isn't a usable series — drop it so the chart
+        // falls back to the full synthetic line instead of a flat/blank one.
+        const raw = json?.histories ?? {};
+        const usable: HistoryMap = {};
+        for (const [k, pts] of Object.entries(raw)) {
+          if (Array.isArray(pts) && pts.length >= 2) usable[k] = pts;
+        }
+        if (!cancelled) setState({ sig, histories: usable });
       } catch {
         // Mark this sig done (empty) so we don't spin forever.
         if (!cancelled) setState({ sig, histories: {} });
