@@ -368,6 +368,13 @@ export const en = {
   "sim.years": "years",
   "sim.withdrawalYears": "Withdrawal phase",
   "sim.monthlyWithdrawal": "Monthly withdrawal",
+  "sim.withdrawalRate": "Annual withdrawal rate",
+  "sim.withdrawalRateHint":
+    "Each year you draw this percentage of the portfolio's value at retirement (fixed thereafter). ~4% is the classic long-run safe rate; the amount you can actually draw depends on how your portfolio grows.",
+  "sim.withdrawalTitle": "Withdrawal income",
+  "sim.withdrawalMetricsTip":
+    "How much this plan lets you draw during the withdrawal phase, from the pessimistic (10th pct) to optimistic (90th pct) outcomes.",
+  "sim.perYear": "yr",
   "sim.useSafeRate": "Use safe rate",
   "sim.perMonth": "mo",
   "sim.safeRateHint":
@@ -783,6 +790,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.years": "Jahre",
   "sim.withdrawalYears": "Entnahmephase",
   "sim.monthlyWithdrawal": "Monatliche Entnahme",
+  "sim.withdrawalRate": "Jährliche Entnahmerate",
+  "sim.withdrawalRateHint":
+    "Sie entnehmen jährlich diesen Prozentsatz des Portfoliowerts zu Rentenbeginn (danach fest). ~4% gilt als klassische sichere Rate; der real entnehmbare Betrag hängt vom Portfoliowachstum ab.",
+  "sim.withdrawalTitle": "Entnahme-Einkommen",
+  "sim.withdrawalMetricsTip":
+    "Wie viel dieser Plan in der Entnahmephase ausschüttet — vom pessimistischen (10. Perzentil) bis zum optimistischen (90. Perzentil) Verlauf.",
+  "sim.perYear": "Jahr",
   "sim.useSafeRate": "Sichere Rate verwenden",
   "sim.perMonth": "Mon.",
   "sim.safeRateHint":

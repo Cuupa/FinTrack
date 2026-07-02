@@ -11,12 +11,7 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
-import {
-  estimatePortfolioModel,
-  portfolioOrBenchmarkStats,
-  type PortfolioModel,
-  type PortfolioStats,
-} from "@/lib/finance/stats";
+import { estimatePortfolioModel, type PortfolioModel } from "@/lib/finance/stats";
 import {
   runMonteCarlo,
   runPortfolioMonteCarlo,
@@ -31,8 +26,16 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
+import { isFeatureEnabled } from "@/lib/flags";
 
 type SimMode = "portfolio" | "custom";
+
+// Custom-mode defaults (percent). Deliberately independent of the user's
+// holdings — a neutral world-equity baseline the user can override.
+const CUSTOM_RETURN_DEFAULT = 7;
+const CUSTOM_VOL_DEFAULT = 16;
+// Default annual withdrawal rate (percent) — the classic "4% rule".
+const WITHDRAWAL_RATE_DEFAULT = 4;
 
 function fnv1a(s: string): string {
   let h = 0x811c9dc5;
@@ -59,7 +62,7 @@ function hashSimParams(
       years: p.years,
       runs: p.runs,
       withdrawalYears: p.withdrawalYears ?? 0,
-      monthlyWithdrawal: p.monthlyWithdrawal ?? 0,
+      withdrawalRate: r(p.withdrawalRate ?? 0),
       rebalanceYearly: !!p.rebalanceYearly,
       assets: p.assets.map((a) => ({ weight: r(a.weight), mean: r(a.mean), vol: r(a.vol) })),
       corr: p.corr.map((row) => row.map(r)),
@@ -73,7 +76,7 @@ function hashSimParams(
       years: p.years,
       runs: p.runs,
       withdrawalYears: p.withdrawalYears ?? 0,
-      monthlyWithdrawal: p.monthlyWithdrawal ?? 0,
+      withdrawalRate: r(p.withdrawalRate ?? 0),
       expectedReturn: r(p.expectedReturn),
       volatility: r(p.volatility),
     };
@@ -125,7 +128,7 @@ export function MonteCarloPanel() {
     years: 30,
     runs: 5000,
     withdrawalYears: 0,
-    monthlyWithdrawal: 0,
+    withdrawalRate: WITHDRAWAL_RATE_DEFAULT,
   });
   const [rebalanceYearly, setRebalanceYearly] = useState(false);
 
@@ -147,18 +150,26 @@ export function MonteCarloPanel() {
   );
   const { histories } = useHistory(histItems, "MAX", currency);
 
-  // Aggregate portfolio statistics (single μ/σ) for the custom mode default.
-  const stats = useMemo(
-    () => portfolioOrBenchmarkStats(holdings, lookbackYears, histories),
-    [holdings, lookbackYears, histories],
-  );
   // Per-asset model (each asset's μ/σ + correlation) for the portfolio mode.
   const model = useMemo(
     () => estimatePortfolioModel(holdings, lookbackYears, histories),
     [holdings, lookbackYears, histories],
   );
-  const hasPortfolio = model !== null && model.assets.length > 0;
-  const effectiveMode: SimMode = hasPortfolio ? mode : "custom";
+  // Sub-feature flags: the "My portfolio" and "Custom" sections, and the
+  // withdrawal phase, can each be turned off independently.
+  const portfolioAllowed = isFeatureEnabled("simulationPortfolio");
+  const customAllowed = isFeatureEnabled("simulationCustom");
+  const withdrawalAllowed = isFeatureEnabled("simulationWithdrawal");
+
+  const hasPortfolio = model !== null && model.assets.length > 0 && portfolioAllowed;
+  // Pick a mode honouring the flags: custom off ⇒ force portfolio; portfolio
+  // unavailable ⇒ force custom; otherwise use the user's choice.
+  const effectiveMode: SimMode = !customAllowed
+    ? "portfolio"
+    : !hasPortfolio
+      ? "custom"
+      : mode;
+  const showModeToggle = hasPortfolio && customAllowed;
   // Estimated parameters are the defaults; overrides (if the user edits a
   // field) take precedence. Derived rather than synced via an effect.
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
@@ -171,12 +182,15 @@ export function MonteCarloPanel() {
 
   const initialCapital =
     capitalOverride ?? (netWorth > 0 ? Math.round(netWorth) : 10000);
-  const expectedReturn = returnOverride ?? round1(stats.expectedReturn * 100);
-  const volatility = volOverride ?? round1(stats.volatility * 100);
+  // Custom mode deliberately IGNORES the user's holdings: it starts from the
+  // research-backed defaults (7% p.a. return, 16% volatility) which the user can
+  // then change. Only the "My portfolio" mode measures μ/σ from real history.
+  const expectedReturn = returnOverride ?? CUSTOM_RETURN_DEFAULT;
+  const volatility = volOverride ?? CUSTOM_VOL_DEFAULT;
   const usingEstimates = returnOverride === null && volOverride === null;
 
   const [result, setResult] = useState<MonteCarloResult | null>(null);
-  const [scale, setScale] = useState<ChartScale>("linear");
+  const [scale, setScale] = useState<ChartScale>("log");
   const [hover, setHover] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // In "My portfolio" mode the parameters are auto-derived; the user must opt in
@@ -184,20 +198,6 @@ export function MonteCarloPanel() {
   const [editing, setEditing] = useState(false);
   const locked = effectiveMode === "portfolio" && !editing;
   const workerRef = useRef<Worker | null>(null);
-
-  // "Safe" monthly withdrawal that (in expectation) doesn't consume the invested
-  // capital: draw only the expected nominal growth on the projected end-of-
-  // accumulation capital.
-  const safeMonthlyWithdrawal = useMemo(() => {
-    const er = expectedReturn / 100;
-    const yrs = Math.max(1, Math.round(form.years));
-    const annual = form.monthlyContribution * 12;
-    const fv =
-      er === 0
-        ? initialCapital + annual * yrs
-        : initialCapital * Math.pow(1 + er, yrs) + annual * ((Math.pow(1 + er, yrs) - 1) / er);
-    return Math.max(0, Math.round((fv * er) / 12));
-  }, [expectedReturn, form.years, form.monthlyContribution, initialCapital]);
 
   useEffect(() => {
     return () => workerRef.current?.terminate();
@@ -216,8 +216,8 @@ export function MonteCarloPanel() {
     const years = Math.max(1, Math.round(form.years));
     // Clamp to [1,000, 25,000] paths.
     const runs = Math.min(25000, Math.max(1000, Math.round(form.runs)));
-    const withdrawalYears = Math.max(0, Math.round(form.withdrawalYears));
-    const monthlyWithdrawal = Math.max(0, Math.round(form.monthlyWithdrawal));
+    const withdrawalYears = withdrawalAllowed ? Math.max(0, Math.round(form.withdrawalYears)) : 0;
+    const withdrawalRate = Math.max(0, form.withdrawalRate) / 100;
     // Seed the run's PRNG from Web Crypto (never Math.random), so the run is
     // reproducible and the seed can be persisted for auditing.
     const seed = randomSeed();
@@ -244,7 +244,7 @@ export function MonteCarloPanel() {
               corr: model.corr,
               seed,
               withdrawalYears,
-              monthlyWithdrawal,
+              withdrawalRate,
               rebalanceYearly,
             } satisfies PortfolioMonteCarloParams,
           }
@@ -259,7 +259,7 @@ export function MonteCarloPanel() {
               runs,
               seed,
               withdrawalYears,
-              monthlyWithdrawal,
+              withdrawalRate,
             } satisfies MonteCarloParams,
           };
 
@@ -340,7 +340,7 @@ export function MonteCarloPanel() {
       <Card className="lg:col-span-1">
         <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
         <div className="mt-4 space-y-4">
-          {hasPortfolio && (
+          {showModeToggle && (
             <div>
               <label className="text-sm font-medium">{t("sim.model")}</label>
               <div className="mt-1">
@@ -398,51 +398,52 @@ export function MonteCarloPanel() {
             step={1}
           />
 
-          {/* Optional decumulation phase after the accumulation horizon. */}
-          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-            <SliderField
-              label={t("sim.withdrawalYears")}
-              suffix={t("sim.years")}
-              value={form.withdrawalYears}
-              onChange={(v) => update("withdrawalYears", v)}
-              min={0}
-              max={40}
-              step={1}
-            />
-            {form.withdrawalYears > 0 && (
-              <div className="mt-3 space-y-2">
-                <SliderField
-                  label={t("sim.monthlyWithdrawal")}
-                  suffix={currency}
-                  value={form.monthlyWithdrawal}
-                  onChange={(v) => update("monthlyWithdrawal", v)}
-                  min={0}
-                  max={Math.max(10000, safeMonthlyWithdrawal * 2)}
-                  step={50}
-                />
-                <button
-                  type="button"
-                  onClick={() => update("monthlyWithdrawal", safeMonthlyWithdrawal)}
-                  className="w-full rounded-md border border-emerald-300 px-2 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+          {/* Optional decumulation phase (feature-flagged) + portfolio rebalance. */}
+          {(withdrawalAllowed || effectiveMode === "portfolio") && (
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              {withdrawalAllowed && (
+                <>
+                  <SliderField
+                    label={t("sim.withdrawalYears")}
+                    suffix={t("sim.years")}
+                    value={form.withdrawalYears}
+                    onChange={(v) => update("withdrawalYears", v)}
+                    min={0}
+                    max={40}
+                    step={1}
+                  />
+                  {form.withdrawalYears > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <SliderField
+                        label={t("sim.withdrawalRate")}
+                        suffix="%"
+                        value={form.withdrawalRate}
+                        onChange={(v) => update("withdrawalRate", v)}
+                        min={0}
+                        max={10}
+                        step={0.1}
+                        digits={1}
+                      />
+                      <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              {effectiveMode === "portfolio" && (
+                <label
+                  className={`${withdrawalAllowed ? "mt-3 " : ""}flex items-center gap-2 text-sm`}
                 >
-                  {t("sim.useSafeRate")}: {formatCurrency(safeMonthlyWithdrawal, currency)}
-                  /{t("sim.perMonth")}
-                </button>
-                <p className="text-xs text-zinc-500">{t("sim.safeRateHint")}</p>
-              </div>
-            )}
-            {effectiveMode === "portfolio" && (
-              <label className="mt-3 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={rebalanceYearly}
-                  onChange={(e) => setRebalanceYearly(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
-                />
-                <span>{t("sim.rebalanceYearly")}</span>
-              </label>
-            )}
-          </div>
+                  <input
+                    type="checkbox"
+                    checked={rebalanceYearly}
+                    onChange={(e) => setRebalanceYearly(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+                  />
+                  <span>{t("sim.rebalanceYearly")}</span>
+                </label>
+              )}
+            </div>
+          )}
 
           {effectiveMode === "portfolio" && model ? (
             <PortfolioModelNote
@@ -455,8 +456,7 @@ export function MonteCarloPanel() {
             />
           ) : (
             <>
-              <EstimateNote
-                stats={stats}
+              <CustomAssumptionsNote
                 usingEstimates={usingEstimates}
                 onReset={resetToEstimates}
               />
@@ -548,6 +548,36 @@ export function MonteCarloPanel() {
                 />
               </Card>
             </div>
+
+            {/* Decumulation: how much this plan lets you draw each year/month. */}
+            {result.withdrawal && (
+              <Card>
+                <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+                  {t("sim.withdrawalTitle")}
+                  <InfoTip text={t("sim.withdrawalMetricsTip")} />
+                </h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                  <WithdrawalStat
+                    label={t("sim.pessimistic")}
+                    annual={result.withdrawal.p10}
+                    currency={currency}
+                    valueClassName={plColor(-1)}
+                  />
+                  <WithdrawalStat
+                    label={t("sim.median")}
+                    annual={result.withdrawal.median}
+                    currency={currency}
+                  />
+                  <WithdrawalStat
+                    label={t("sim.optimistic")}
+                    annual={result.withdrawal.p90}
+                    currency={currency}
+                    valueClassName={plColor(1)}
+                  />
+                </div>
+              </Card>
+            )}
+
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">{t("sim.projectedWealth")}</h2>
@@ -770,12 +800,10 @@ function OverrideInput({
   );
 }
 
-function EstimateNote({
-  stats,
+function CustomAssumptionsNote({
   usingEstimates,
   onReset,
 }: {
-  stats: PortfolioStats;
   usingEstimates: boolean;
   onReset: () => void;
 }) {
@@ -783,8 +811,7 @@ function EstimateNote({
     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
       <div className="flex items-center justify-between">
         <span className="font-medium text-indigo-900 dark:text-indigo-200">
-          Estimated from {stats.sampleYears.toFixed(1)} yrs of{" "}
-          {stats.real ? "real market" : "modelled"} history
+          Custom assumptions
         </span>
         {!usingEstimates && (
           <button
@@ -792,35 +819,42 @@ function EstimateNote({
             onClick={onReset}
             className="font-medium text-indigo-700 underline underline-offset-2 dark:text-indigo-300"
           >
-            Reset
+            Reset to {CUSTOM_RETURN_DEFAULT}% / {CUSTOM_VOL_DEFAULT}%
           </button>
         )}
       </div>
       <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-        {stats.fromBenchmark
-          ? "Based on a diversified world-equity benchmark (no holdings yet)."
-          : "Based on the value-weighted historical returns of your holdings."}{" "}
-        μ&nbsp;{formatPercent(stats.expectedReturn)} · σ&nbsp;{pct(stats.volatility)}.
+        This mode ignores your holdings and projects from your own return and
+        volatility assumptions — defaulting to a neutral world-equity baseline
+        (μ&nbsp;{CUSTOM_RETURN_DEFAULT}% · σ&nbsp;{CUSTOM_VOL_DEFAULT}%).
       </p>
-      {stats.estimated && (
-        <p className="mt-1 text-amber-700 dark:text-amber-300">
-          Limited price history — based on general long-run assumptions.
-        </p>
-      )}
-      {!stats.fromBenchmark && stats.perAsset.length > 1 && (
-        <ul className="mt-2 space-y-0.5 text-zinc-500">
-          {stats.perAsset.map((a) => (
-            <li key={a.name} className="flex justify-between gap-2 tabular-nums">
-              <span className="truncate">
-                {a.name} ({pct(a.weight, 0)})
-              </span>
-              <span>
-                {formatPercent(a.annualReturn)} / σ {pct(a.annualVol)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+    </div>
+  );
+}
+
+/** One percentile of the annual withdrawal amount, with its monthly equivalent. */
+function WithdrawalStat({
+  label,
+  annual,
+  currency,
+  valueClassName = "",
+}: {
+  label: string;
+  annual: number;
+  currency: string;
+  valueClassName?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="text-sm text-zinc-500">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}>
+        {formatCurrency(annual, currency)}
+        <span className="ml-1 text-sm font-normal text-zinc-400">/{t("sim.perYear")}</span>
+      </div>
+      <div className="mt-0.5 text-sm tabular-nums text-zinc-500">
+        {formatCurrency(annual / 12, currency)}/{t("sim.perMonth")}
+      </div>
     </div>
   );
 }

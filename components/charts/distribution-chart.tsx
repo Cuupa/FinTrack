@@ -81,6 +81,13 @@ export function DistributionChart({
         <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
         <XAxis
           dataKey="year"
+          type="number"
+          // Pin the axis to the real [0, last-year] range with no side padding so
+          // year 0 sits flush at the left edge (a category axis leaves a gap that
+          // looked like empty space before the curve, most visibly on log scale).
+          domain={[0, data.length ? data[data.length - 1].year : 0]}
+          allowDecimals={false}
+          padding={{ left: 0, right: 0 }}
           tickFormatter={(y) => `${y}y`}
           tick={{ fontSize: 12 }}
           stroke="currentColor"

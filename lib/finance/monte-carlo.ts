@@ -20,6 +20,22 @@ export interface MonteCarloParams {
   withdrawalYears?: number;
   /** Monthly amount withdrawn during the decumulation phase (base currency). */
   monthlyWithdrawal?: number;
+  /**
+   * Annual withdrawal RATE (fraction, e.g. 0.04 for 4%). When set, each run
+   * withdraws a fixed nominal monthly amount of `rate × (that run's value at
+   * retirement) / 12` — so the withdrawn amount scales with how the portfolio
+   * actually grew. Takes precedence over `monthlyWithdrawal`.
+   */
+  withdrawalRate?: number;
+}
+
+/** Distribution of the (per-run) annual withdrawal amount, when a rate is used. */
+export interface WithdrawalSummary {
+  /** Sorted annual withdrawal amounts across runs. */
+  distribution: number[];
+  p10: number;
+  median: number;
+  p90: number;
 }
 
 export interface YearBand {
@@ -41,6 +57,8 @@ export interface MonteCarloResult {
   bands: YearBand[];
   /** Sorted final-value distribution across all runs. */
   finalDistribution: number[];
+  /** Present only when a decumulation phase used a withdrawal RATE. */
+  withdrawal?: WithdrawalSummary;
 }
 
 /** Deterministic, seedable PRNG (mulberry32) — reproducible runs for auditing. */
@@ -82,7 +100,9 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
   const totalYears = years + wYears;
   const accMonths = Math.max(1, Math.round(years * 12));
   const months = Math.max(1, Math.round(totalYears * 12));
-  const monthlyWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
+  const flatWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
+  const withdrawalRate = Math.max(0, params.withdrawalRate ?? 0);
+  const usesRate = withdrawalRate > 0 && wYears > 0;
   const monthlyMean =
     Math.pow(1 + expectedReturn, 1 / 12) - 1; // geometric monthly drift
   const monthlyVol = volatility / Math.sqrt(12);
@@ -91,14 +111,23 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
   // yearValues[y] collects every run's value at the end of year y.
   const yearValues: number[][] = Array.from({ length: totalYears + 1 }, () => []);
   const finals: number[] = [];
+  const withdrawals: number[] = []; // per-run annual withdrawal amount (rate mode)
 
   for (let r = 0; r < runs; r++) {
     let value = initialCapital;
     yearValues[0].push(value);
+    // Fixed nominal monthly withdrawal for this run, set at retirement.
+    let runMonthlyWithdrawal = usesRate ? 0 : flatWithdrawal;
     for (let m = 1; m <= months; m++) {
+      // Lock in the rate-based withdrawal from the value at retirement.
+      if (usesRate && m === accMonths + 1) {
+        runMonthlyWithdrawal = (withdrawalRate * value) / 12;
+        withdrawals.push(withdrawalRate * value);
+      }
       const monthReturn = monthlyMean + monthlyVol * gaussian(rng);
-      // Accumulate, then draw down in the withdrawal phase.
-      const cashflow = m <= accMonths ? monthlyContribution : -monthlyWithdrawal;
+      // Accumulate, then draw down in the withdrawal phase (never below 0 — a
+      // depleted portfolio simply has nothing left to withdraw).
+      const cashflow = m <= accMonths ? monthlyContribution : -runMonthlyWithdrawal;
       value = value * (1 + monthReturn) + cashflow;
       if (value < 0) value = 0;
       if (m % 12 === 0) {
@@ -109,7 +138,7 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     finals.push(value);
   }
 
-  return reduceRuns(params, yearValues, finals, initialCapital, monthlyContribution);
+  return reduceRuns(params, yearValues, finals, initialCapital, monthlyContribution, withdrawals);
 }
 
 /** Reduce per-year run snapshots into percentile bands + a final distribution. */
@@ -119,17 +148,27 @@ function reduceRuns(
   finals: number[],
   initialCapital: number,
   monthlyContribution: number,
+  withdrawals: number[] = [],
 ): MonteCarloResult {
   const accYears = params.years;
-  const wd = Math.max(0, params.monthlyWithdrawal ?? 0);
+  // Annual withdrawal reference line: either the flat amount, or (rate mode) the
+  // median of the per-run withdrawal amounts.
+  const sortedW = [...withdrawals].sort((a, b) => a - b);
+  const annualWithdrawalRef =
+    sortedW.length > 0
+      ? percentile(sortedW, 50)
+      : Math.max(0, params.monthlyWithdrawal ?? 0) * 12;
   const bands: YearBand[] = yearValues.map((vals, year) => {
     const sorted = [...vals].sort((a, b) => a - b);
     const mean = sorted.reduce((s, x) => s + x, 0) / (sorted.length || 1);
     // Net contributed: paid-in during accumulation, drawn-down thereafter.
-    const contributed =
+    // Never below 0 — you can't have withdrawn more than was ever there.
+    const contributed = Math.max(
+      0,
       initialCapital +
-      monthlyContribution * 12 * Math.min(year, accYears) -
-      wd * 12 * Math.max(0, year - accYears);
+        monthlyContribution * 12 * Math.min(year, accYears) -
+        annualWithdrawalRef * Math.max(0, year - accYears),
+    );
     return {
       year,
       worst: sorted[0] ?? 0,
@@ -143,7 +182,16 @@ function reduceRuns(
       contributed,
     };
   });
-  return { params, bands, finalDistribution: finals.sort((a, b) => a - b) };
+  const withdrawal: WithdrawalSummary | undefined =
+    sortedW.length > 0
+      ? {
+          distribution: sortedW,
+          p10: percentile(sortedW, 10),
+          median: percentile(sortedW, 50),
+          p90: percentile(sortedW, 90),
+        }
+      : undefined;
+  return { params, bands, finalDistribution: finals.sort((a, b) => a - b), withdrawal };
 }
 
 // --- Portfolio-aware simulation ---------------------------------------------
@@ -170,6 +218,12 @@ export interface PortfolioMonteCarloParams {
   withdrawalYears?: number;
   /** Monthly amount withdrawn during the decumulation phase (base currency). */
   monthlyWithdrawal?: number;
+  /**
+   * Annual withdrawal RATE (fraction). When set, each run withdraws a fixed
+   * nominal monthly amount of `rate × (that run's value at retirement) / 12`.
+   * Takes precedence over `monthlyWithdrawal`.
+   */
+  withdrawalRate?: number;
   /** Rebalance back to target weights at each year boundary. */
   rebalanceYearly?: boolean;
 }
@@ -211,7 +265,9 @@ export function runPortfolioMonteCarlo(
   const totalYears = years + wYears;
   const accMonths = Math.max(1, Math.round(years * 12));
   const months = Math.max(1, Math.round(totalYears * 12));
-  const monthlyWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
+  const flatWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
+  const withdrawalRate = Math.max(0, params.withdrawalRate ?? 0);
+  const usesRate = withdrawalRate > 0 && wYears > 0;
   const rebalanceYearly = !!params.rebalanceYearly;
   const rng = mulberry32(params.seed >>> 0);
 
@@ -227,11 +283,14 @@ export function runPortfolioMonteCarlo(
 
   const yearValues: number[][] = Array.from({ length: totalYears + 1 }, () => []);
   const finals: number[] = [];
+  const withdrawals: number[] = []; // per-run annual withdrawal amount (rate mode)
   const z = new Array<number>(n);
 
   for (let r = 0; r < runs; r++) {
     const values = weights.map((w) => initialCapital * w);
     yearValues[0].push(initialCapital);
+    // Fixed nominal monthly withdrawal for this run, set at retirement.
+    let runMonthlyWithdrawal = usesRate ? 0 : flatWithdrawal;
 
     for (let m = 1; m <= months; m++) {
       for (let i = 0; i < n; i++) z[i] = gaussian(rng);
@@ -239,13 +298,18 @@ export function runPortfolioMonteCarlo(
       const accumulating = m <= accMonths;
       let portValue = 0;
       for (let i = 0; i < n; i++) portValue += values[i];
+      // Lock in the rate-based withdrawal from the value at retirement.
+      if (usesRate && m === accMonths + 1) {
+        runMonthlyWithdrawal = (withdrawalRate * portValue) / 12;
+        withdrawals.push(withdrawalRate * portValue);
+      }
       for (let i = 0; i < n; i++) {
         let c = 0; // correlated standard normal for asset i: (L · z)_i
         for (let k = 0; k <= i; k++) c += L[i][k] * z[k];
         const ret = monthlyMean[i] + monthlyVol[i] * c;
         const cash = accumulating
           ? monthlyContribution * weights[i]
-          : -monthlyWithdrawal * (portValue > 0 ? values[i] / portValue : weights[i]);
+          : -runMonthlyWithdrawal * (portValue > 0 ? values[i] / portValue : weights[i]);
         values[i] = values[i] * (1 + ret) + cash;
         if (values[i] < 0) values[i] = 0;
       }
@@ -276,6 +340,7 @@ export function runPortfolioMonteCarlo(
     seed: params.seed,
     withdrawalYears: params.withdrawalYears,
     monthlyWithdrawal: params.monthlyWithdrawal,
+    withdrawalRate: params.withdrawalRate,
   };
-  return reduceRuns(equivParams, yearValues, finals, initialCapital, monthlyContribution);
+  return reduceRuns(equivParams, yearValues, finals, initialCapital, monthlyContribution, withdrawals);
 }
