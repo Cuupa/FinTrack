@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import type { SeriesPoint } from "@/lib/finance/portfolio";
-import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
+import { decimalPlaces, formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
 import { niceTicks } from "@/lib/ticks";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -210,9 +210,6 @@ export function PerformanceChart({
     .map((m) => ({ ...m, date: nearest(seriesDates, m.date) }))
     .filter((m) => m.date !== null) as ChartMarker[];
 
-  const formatY = (v: number) =>
-    pctMode ? formatPercent(v, 0) : formatCompactCurrency(v, currency);
-
   // Clean 0/5-ending ticks for the linear axes (log keeps Recharts' own scale).
   const linearTicks = (() => {
     if (useLog) return undefined;
@@ -226,6 +223,21 @@ export function PerformanceChart({
     const t = niceTicks(Math.min(...nums), Math.max(...nums));
     return t.length >= 2 ? t : undefined;
   })();
+
+  // Align every currency tick to the same number of decimals as the tick that
+  // needs the most, so a whole 5 reads "5.00" beside "4.50" (not a bare "5").
+  // Only for small-value axes; large ones stay compact ("€12.5K").
+  const tickDecimals =
+    linearTicks && Math.max(...linearTicks.map((v) => Math.abs(v))) < 10_000
+      ? Math.max(0, ...linearTicks.map((v) => decimalPlaces(v)))
+      : null;
+
+  const formatY = (v: number) =>
+    pctMode
+      ? formatPercent(v, 0)
+      : tickDecimals != null
+        ? formatCurrency(v, currency, tickDecimals)
+        : formatCompactCurrency(v, currency);
 
   return (
     <div>

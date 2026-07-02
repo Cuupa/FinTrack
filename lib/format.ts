@@ -32,12 +32,24 @@ export function stripLeadingZero(s: string): string {
   return s.replace(/^0+(?=\d)/, "");
 }
 
-export function formatCurrency(value: number, currency = "EUR"): string {
+export function formatCurrency(value: number, currency = "EUR", digits?: number): string {
   return new Intl.NumberFormat(intlLocale(), {
     style: "currency",
     currency,
-    maximumFractionDigits: 2,
+    // When `digits` is given, pin both bounds so every value carries the same
+    // number of decimals (e.g. a whole 5 renders as "5.00" next to "4.50").
+    ...(digits != null
+      ? { minimumFractionDigits: digits, maximumFractionDigits: digits }
+      : { maximumFractionDigits: 2 }),
   }).format(value);
+}
+
+/** Number of decimal places in `v` (capped), for aligning a set of axis ticks. */
+export function decimalPlaces(v: number, cap = 2): number {
+  for (let d = 0; d < cap; d++) {
+    if (Math.abs(v * 10 ** d - Math.round(v * 10 ** d)) < 1e-9) return d;
+  }
+  return cap;
 }
 
 export function formatCompactCurrency(value: number, currency = "EUR"): string {
