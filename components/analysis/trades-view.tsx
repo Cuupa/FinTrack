@@ -2,7 +2,7 @@
 
 // Trades tab: realised P&L per month and the best/worst holdings by total P&L.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Bar,
@@ -18,22 +18,59 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import {
+  holdingPeriodProfit,
   portfolioTotals,
   summarizeAll,
   transactionsByAsset,
+  type HoldingSummary,
+  type ValuationContext,
 } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useDividends } from "@/lib/history/use-dividends";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { realizedByMonth, topMovers, type Mover, type MonthlyRealized } from "@/lib/finance/trades";
-import { assetPriceKey } from "@/lib/types";
+import { type Timeframe } from "@/lib/finance/dates";
+import { assetPriceKey, type Transaction } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
-import { Card, Stat } from "@/components/ui/primitives";
+import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
+
+const TF_OPTIONS: Timeframe[] = ["1M", "3M", "YTD", "1Y", "5Y", "MAX"];
+
+/**
+ * Best/worst holdings ranked by profit over a specific timeframe rather than
+ * all-time: per holding, the same windowed profit the dashboard's holdings
+ * table uses (price change over the window, net of deposits/withdrawals into
+ * the position during it), so "1Y" ranks by the last year's movement even for
+ * positions opened long ago.
+ */
+function windowedMovers(
+  holdings: HoldingSummary[],
+  txs: Transaction[],
+  tf: Timeframe,
+  v: ValuationContext,
+  n = 5,
+): { wins: Mover[]; losses: Mover[] } {
+  const movers: Mover[] = holdings
+    .filter((h) => h.position.shares > 0 || h.realizedPL !== 0)
+    .map((h) => {
+      const { abs, pct } = holdingPeriodProfit(h.asset, txs, tf, v);
+      return {
+        id: h.asset.id,
+        name: h.asset.name,
+        symbol: h.asset.symbol,
+        pl: abs,
+        plPercent: pct,
+      };
+    });
+  const wins = movers.filter((m) => m.pl > 0).sort((a, b) => b.pl - a.pl).slice(0, n);
+  const losses = movers.filter((m) => m.pl < 0).sort((a, b) => a.pl - b.pl).slice(0, n);
+  return { wins, losses };
+}
 
 /** "2025-01" → "Jan '25". */
 function monthLabel(ym: string): string {
@@ -67,6 +104,8 @@ export function TradesView() {
   const { version } = useCatalog();
   const { t } = useI18n();
   const currency = data.profile.currency;
+
+  const [moversTf, setMoversTf] = useState<Timeframe>("MAX");
 
   const holdings = useMemo(
     () => summarizeAll(data.assets, data.transactions, valuation),
@@ -103,7 +142,13 @@ export function TradesView() {
     [data.assets, data.transactions, valuation],
   );
 
-  const { wins, losses } = useMemo(() => topMovers(holdings), [holdings]);
+  const { wins, losses } = useMemo(
+    () =>
+      moversTf === "MAX"
+        ? topMovers(holdings)
+        : windowedMovers(holdings, data.transactions, moversTf, valuation),
+    [holdings, data.transactions, moversTf, valuation],
+  );
 
   const barData = useMemo(
     () =>
@@ -197,9 +242,20 @@ export function TradesView() {
         )}
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <MoverList title={t("trades.topWinners")} movers={wins} currency={currency} positive />
-        <MoverList title={t("trades.topLosers")} movers={losses} currency={currency} positive={false} />
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">{t("trades.topMoversTitle")}</h2>
+          <SegmentedControl
+            size="sm"
+            value={moversTf}
+            onChange={setMoversTf}
+            options={TF_OPTIONS.map((opt) => ({ label: opt, value: opt }))}
+          />
+        </div>
+        <div className="mt-3 grid gap-6 md:grid-cols-2">
+          <MoverList title={t("trades.topWinners")} movers={wins} currency={currency} positive />
+          <MoverList title={t("trades.topLosers")} movers={losses} currency={currency} positive={false} />
+        </div>
       </div>
     </div>
   );

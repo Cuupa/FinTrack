@@ -323,9 +323,11 @@ export const en = {
     "Locked-in gain/loss from sells, attributed to the month each sale happened (average-cost basis).",
   "trades.noSells": "No sells yet — realised P&L appears here once you sell.",
   "trades.realized": "Realized",
+  "trades.topMoversTitle": "Top movers",
   "trades.topWinners": "Top winners",
   "trades.topLosers": "Top losers",
-  "trades.moverTip": "Ranked by total profit/loss (realised plus unrealised) in your base currency.",
+  "trades.moverTip":
+    "Ranked by profit/loss over the selected period (realised plus unrealised), in your base currency.",
   "trades.nothing": "Nothing here yet.",
   "trades.addHoldings": "Add holdings to see your trade history.",
 
@@ -761,10 +763,11 @@ const de: Partial<Record<MessageKey, string>> = {
     "Realisierter Gewinn/Verlust aus Verkäufen, dem Monat des jeweiligen Verkaufs zugeordnet (Durchschnittskosten).",
   "trades.noSells": "Noch keine Verkäufe — realisierter G/V erscheint hier, sobald Sie verkaufen.",
   "trades.realized": "Realisiert",
+  "trades.topMoversTitle": "Top-Bewegungen",
   "trades.topWinners": "Top-Gewinner",
   "trades.topLosers": "Top-Verlierer",
   "trades.moverTip":
-    "Sortiert nach Gesamtgewinn/-verlust (realisiert plus nicht realisiert) in Ihrer Basiswährung.",
+    "Sortiert nach Gewinn/Verlust im gewählten Zeitraum (realisiert plus nicht realisiert) in Ihrer Basiswährung.",
   "trades.nothing": "Hier ist noch nichts.",
   "trades.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Handelshistorie zu sehen.",
 
