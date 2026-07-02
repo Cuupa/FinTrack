@@ -43,7 +43,9 @@ interface PortfolioContextValue {
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
   saveSimulation(entry: SimulationCacheEntry): Promise<void>;
   loadImportedFingerprints(): Promise<string[]>;
-  addImportedFingerprints(fingerprints: string[]): Promise<void>;
+  addImportedFingerprints(
+    entries: { fingerprint: string; transactionId: string | null }[],
+  ): Promise<void>;
   /** All of the user's portfolios. */
   portfolios: Portfolio[];
   /** Every transaction (unscoped) — for building per-portfolio share snapshots. */
@@ -209,7 +211,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   );
   const loadImportedFingerprints = useCallback(() => store.loadImportedFingerprints(), [store]);
   const addImportedFingerprints = useCallback(
-    (fps: string[]) => store.addImportedFingerprints(fps),
+    (entries: { fingerprint: string; transactionId: string | null }[]) =>
+      store.addImportedFingerprints(entries),
     [store],
   );
 

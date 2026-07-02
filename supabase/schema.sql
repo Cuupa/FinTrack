@@ -202,6 +202,14 @@ create table if not exists public.imported_rows (
   created_at timestamptz not null default now(),
   primary key (user_id, fingerprint)
 );
+-- A fingerprint only means anything in relation to the transaction it created
+-- or merged into: deleting that transaction (directly, via asset delete, or
+-- via portfolio delete — all of which cascade onto transactions) should
+-- cascade away the fingerprint too, otherwise a re-imported CSV wrongly shows
+-- the row as "already imported" even though the transaction is gone. Nullable
+-- because rows recorded before migration 0028 have no link.
+alter table public.imported_rows
+  add column if not exists transaction_id uuid references public.transactions (id) on delete cascade;
 
 -- Applied-migrations registry (system table) --------------------------------
 create table if not exists public.schema_migrations (
@@ -238,7 +246,8 @@ insert into public.schema_migrations (version) values
   ('0024_simulation_runs'),
   ('0025_app_settings'),
   ('0026_imported_rows'),
-  ('0027_feature_flags')
+  ('0027_feature_flags'),
+  ('0028_imported_rows_transaction')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

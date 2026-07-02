@@ -82,8 +82,10 @@ export class LocalStore implements DataStore {
   async deleteAsset(id: string) {
     const data = this.read();
     data.assets = data.assets.filter((a) => a.id !== id);
+    const removedIds = data.transactions.filter((t) => t.assetId === id).map((t) => t.id);
     data.transactions = data.transactions.filter((t) => t.assetId !== id);
     this.write(data);
+    this.pruneImportedFingerprints(removedIds);
   }
 
   async addTransaction(input: TransactionInput) {
@@ -107,6 +109,7 @@ export class LocalStore implements DataStore {
     const data = this.read();
     data.transactions = data.transactions.filter((t) => t.id !== id);
     this.write(data);
+    this.pruneImportedFingerprints([id]);
   }
 
   async createPortfolio(name: string) {
@@ -138,10 +141,16 @@ export class LocalStore implements DataStore {
     const doomed = new Set(
       data.transactions.filter((t) => t.portfolioId === id).map((t) => t.assetId),
     );
+    const removedTxIds = data.transactions
+      .filter((t) => t.portfolioId === id)
+      .map((t) => t.id);
     data.transactions = data.transactions.filter((t) => t.portfolioId !== id);
     const stillUsed = new Set(data.transactions.map((t) => t.assetId));
     data.assets = data.assets.filter((a) => !doomed.has(a.id) || stillUsed.has(a.id));
     this.write(data);
+    // Prune fingerprints for the removed transactions so re-importing the same
+    // CSV after deleting a portfolio doesn't skip rows as "already imported".
+    this.pruneImportedFingerprints(removedTxIds);
   }
 
   async loadSimulation(hash: string) {
@@ -174,23 +183,56 @@ export class LocalStore implements DataStore {
     }
   }
 
-  async loadImportedFingerprints() {
+  // fingerprint -> id of the transaction it created/merged into (null if
+  // unknown, e.g. rows recorded before this link existed).
+  private readImportRecord(): Record<string, string | null> {
     try {
       const raw = this.storage.getItem(IMPORT_KEY);
-      return raw ? (JSON.parse(raw) as string[]) : [];
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, string | null> | string[];
+      // Tolerate the legacy bare fingerprint-array format.
+      if (Array.isArray(parsed)) {
+        return Object.fromEntries(parsed.map((f) => [f, null]));
+      }
+      return parsed;
     } catch {
-      return [];
+      return {};
     }
   }
 
-  async addImportedFingerprints(fingerprints: string[]) {
-    const set = new Set(await this.loadImportedFingerprints());
-    for (const f of fingerprints) set.add(f);
+  private writeImportRecord(record: Record<string, string | null>): void {
     try {
-      this.storage.setItem(IMPORT_KEY, JSON.stringify([...set]));
+      this.storage.setItem(IMPORT_KEY, JSON.stringify(record));
     } catch {
       /* storage full — ignore */
     }
+  }
+
+  /** Drops fingerprints tied to now-deleted transactions. */
+  private pruneImportedFingerprints(removedTransactionIds: string[]): void {
+    if (removedTransactionIds.length === 0) return;
+    const removed = new Set(removedTransactionIds);
+    const record = this.readImportRecord();
+    let changed = false;
+    for (const [fingerprint, transactionId] of Object.entries(record)) {
+      if (transactionId != null && removed.has(transactionId)) {
+        delete record[fingerprint];
+        changed = true;
+      }
+    }
+    if (changed) this.writeImportRecord(record);
+  }
+
+  async loadImportedFingerprints() {
+    return Object.keys(this.readImportRecord());
+  }
+
+  async addImportedFingerprints(
+    entries: { fingerprint: string; transactionId: string | null }[],
+  ) {
+    const record = this.readImportRecord();
+    for (const e of entries) record[e.fingerprint] = e.transactionId;
+    this.writeImportRecord(record);
   }
 }
 

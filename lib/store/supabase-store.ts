@@ -299,6 +299,8 @@ export class SupabaseStore implements DataStore {
   }
 
   async deletePortfolio(id: string): Promise<void> {
+    // imported_rows cleanup for these transactions rides on the
+    // transaction_id FK's on-delete-cascade — nothing extra needed here.
     // Keep at least one portfolio.
     const { count } = await this.supabase
       .from("portfolios")
@@ -380,10 +382,16 @@ export class SupabaseStore implements DataStore {
     return ((data ?? []) as { fingerprint: string }[]).map((r) => r.fingerprint);
   }
 
-  async addImportedFingerprints(fingerprints: string[]): Promise<void> {
-    if (fingerprints.length === 0) return;
+  async addImportedFingerprints(
+    entries: { fingerprint: string; transactionId: string | null }[],
+  ): Promise<void> {
+    if (entries.length === 0) return;
     await this.supabase.from("imported_rows").upsert(
-      fingerprints.map((f) => ({ user_id: this.userId, fingerprint: f })),
+      entries.map((e) => ({
+        user_id: this.userId,
+        fingerprint: e.fingerprint,
+        transaction_id: e.transactionId,
+      })),
       { onConflict: "user_id,fingerprint" },
     );
   }

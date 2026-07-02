@@ -38,7 +38,15 @@ export interface DataStore {
   saveSimulation(entry: SimulationCacheEntry): Promise<void>;
   /** Fingerprints of CSV rows already imported (so re-imports skip them). */
   loadImportedFingerprints(): Promise<string[]>;
-  addImportedFingerprints(fingerprints: string[]): Promise<void>;
+  /**
+   * Records fingerprints, each tied to the transaction it created or merged
+   * into (null for legacy/unknown), so deleting that transaction — directly,
+   * via asset delete, or via portfolio delete — cascades the fingerprint away
+   * too instead of leaking and blocking re-import.
+   */
+  addImportedFingerprints(
+    entries: { fingerprint: string; transactionId: string | null }[],
+  ): Promise<void>;
 }
 
 export function newId(): string {

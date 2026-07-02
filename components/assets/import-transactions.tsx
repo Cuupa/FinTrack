@@ -147,7 +147,7 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
         if (k) cache.set(k, a.id);
       }
 
-      const recorded: string[] = [];
+      const recorded: { fingerprint: string; transactionId: string | null }[] = [];
       for (let i = 0; i < reconciled.length; i++) {
         const r = reconciled[i];
         const res = resolutions[i];
@@ -171,6 +171,7 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
           assetId = created.id;
           if (k) cache.set(k, assetId);
         }
+        let transactionId: string;
         if (merge && r.existing) {
           // Field-wise merge: each field comes from the side the user accepted.
           const ex = r.existing;
@@ -185,8 +186,9 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
             fee: pick("fee"),
             date: pick("date"),
           });
+          transactionId = ex.id;
         } else {
-          await addTransaction({
+          const created = await addTransaction({
             assetId,
             portfolioId,
             type: p.type,
@@ -195,8 +197,9 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
             fee: p.fee,
             date: p.date,
           });
+          transactionId = created.id;
         }
-        recorded.push(r.fingerprint);
+        recorded.push({ fingerprint: r.fingerprint, transactionId });
       }
       await addImportedFingerprints(recorded);
       onDone?.();
