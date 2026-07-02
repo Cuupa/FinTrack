@@ -1,6 +1,8 @@
 "use client";
 
 import { RebalancingView } from "@/components/rebalancing/rebalancing-view";
+import { FeatureUnavailable } from "@/components/feature-unavailable";
+import { isFeatureEnabled } from "@/lib/flags";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function RebalancingPage() {
@@ -11,7 +13,7 @@ export default function RebalancingPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("rebalancing.title")}</h1>
         <p className="text-sm text-zinc-500">{t("rebalancing.subtitle")}</p>
       </div>
-      <RebalancingView />
+      {isFeatureEnabled("rebalance") ? <RebalancingView /> : <FeatureUnavailable />}
     </div>
   );
 }

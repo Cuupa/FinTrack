@@ -9,22 +9,32 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
+import { isFeatureEnabled, type FeatureFlag } from "@/lib/flags";
 
-const LINKS: { href: string; key: MessageKey; icon: ReactNode }[] = [
+const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFlag }[] = [
   { href: "/", key: "nav.dashboard", icon: <path d="M3 12l9-9 9 9M5 10v10h14V10" /> },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/xray",
     key: "nav.xray",
     icon: <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,
+    flag: "xray",
   },
   {
     href: "/rebalancing",
     key: "nav.rebalance",
     icon: <path d="M12 3v18M5 7h14M7 7l-3 6a3 3 0 0 0 6 0L7 7zm10 0l-3 6a3 3 0 0 0 6 0l-3-6z" />,
+    flag: "rebalance",
   },
-  { href: "/simulation", key: "nav.simulation", icon: <path d="M9 17V9m4 8V5m4 12v-6M4 21h16" /> },
+  {
+    href: "/simulation",
+    key: "nav.simulation",
+    icon: <path d="M9 17V9m4 8V5m4 12v-6M4 21h16" />,
+    flag: "simulation",
+  },
 ];
+
+const VISIBLE_LINKS = LINKS.filter((l) => !l.flag || isFeatureEnabled(l.flag));
 
 const STORAGE_KEY = "fintrack:sidebar-collapsed";
 
@@ -59,7 +69,7 @@ export function Sidebar() {
       } transition-[width] duration-150`}
     >
       <nav className="flex h-full flex-col gap-1 p-2">
-        {LINKS.map((l) => {
+        {VISIBLE_LINKS.map((l) => {
           const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           return (
             <Link

@@ -6,6 +6,7 @@ import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
+import { isFeatureEnabled } from "@/lib/flags";
 
 const TABS = ["distributions", "returns", "trades", "risks"] as const;
 
@@ -14,6 +15,9 @@ type TabKey = (typeof TABS)[number];
 export default function AnalysisPage() {
   const [tab, setTab] = useState<TabKey>("distributions");
   const { t: tr } = useI18n();
+
+  // The Risk tab is behind a feature flag.
+  const tabs = TABS.filter((key) => key !== "risks" || isFeatureEnabled("risk"));
 
   return (
     <div className="space-y-6">
@@ -26,7 +30,7 @@ export default function AnalysisPage() {
           breakdown pills. */}
       <div className="border-b border-zinc-200 dark:border-zinc-800">
         <div className="-mb-px flex gap-6">
-          {TABS.map((key) => (
+          {tabs.map((key) => (
             <button
               key={key}
               onClick={() => setTab(key)}

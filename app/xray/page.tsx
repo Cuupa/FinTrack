@@ -1,6 +1,8 @@
 "use client";
 
 import { XrayView } from "@/components/xray/xray-view";
+import { FeatureUnavailable } from "@/components/feature-unavailable";
+import { isFeatureEnabled } from "@/lib/flags";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function XrayPage() {
@@ -11,7 +13,7 @@ export default function XrayPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("xray.title")}</h1>
         <p className="text-sm text-zinc-500">{t("xray.subtitle")}</p>
       </div>
-      <XrayView />
+      {isFeatureEnabled("xray") ? <XrayView /> : <FeatureUnavailable />}
     </div>
   );
 }

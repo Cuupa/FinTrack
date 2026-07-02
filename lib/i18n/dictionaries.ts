@@ -74,6 +74,8 @@ export const en = {
 
   "common.selectAll": "Select all",
   "common.holdingValue": "Holding value",
+  "common.featureUnavailable": "This feature is currently unavailable.",
+  "common.featureUnavailableHint": "It has been disabled for this environment.",
 
   "common.marketValue": "Market value",
 
@@ -487,6 +489,8 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "common.selectAll": "Alles auswählen",
   "common.holdingValue": "Positionswert",
+  "common.featureUnavailable": "Diese Funktion ist derzeit nicht verfügbar.",
+  "common.featureUnavailableHint": "Sie wurde für diese Umgebung deaktiviert.",
 
   "common.compare": "Vergleichen",
   "common.other": "Andere",
