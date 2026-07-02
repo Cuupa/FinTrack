@@ -209,7 +209,7 @@ export function TransactionForm({
                     onClick={() => setAddingPortfolio(true)}
                     className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                   >
-                    + {t("nav.newPortfolio")}
+                    {t("nav.newPortfolio")}
                   </button>
                 )
               }
