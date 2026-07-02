@@ -133,11 +133,14 @@ export class LocalStore implements DataStore {
     const data = this.read();
     if (data.portfolios.length <= 1) return; // never remove the last portfolio
     data.portfolios = data.portfolios.filter((p) => p.id !== id);
-    // Reassign or drop orphaned transactions to the first remaining portfolio.
-    const fallback = data.portfolios[0].id;
-    data.transactions = data.transactions.map((t) =>
-      t.portfolioId === id ? { ...t, portfolioId: fallback } : t,
+    // Cascade: drop the portfolio's transactions, then any asset that was
+    // held only through them (no transactions left in other portfolios).
+    const doomed = new Set(
+      data.transactions.filter((t) => t.portfolioId === id).map((t) => t.assetId),
     );
+    data.transactions = data.transactions.filter((t) => t.portfolioId !== id);
+    const stillUsed = new Set(data.transactions.map((t) => t.assetId));
+    data.assets = data.assets.filter((a) => !doomed.has(a.id) || stillUsed.has(a.id));
     this.write(data);
   }
 

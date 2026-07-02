@@ -305,20 +305,39 @@ export class SupabaseStore implements DataStore {
       .select("id", { count: "exact", head: true })
       .eq("user_id", this.userId);
     if ((count ?? 0) <= 1) return;
-    // Move this portfolio's transactions to another one, then delete it.
-    const { data: others } = await this.supabase
-      .from("portfolios")
-      .select("id")
-      .eq("user_id", this.userId)
-      .neq("id", id)
-      .limit(1);
-    const fallback = (others?.[0] as { id: string } | undefined)?.id;
-    if (fallback) {
-      await this.supabase
+    // Cascade: delete the portfolio's transactions, then any asset that was
+    // held only through them (no transactions left in other portfolios).
+    const { data: doomedRows, error: doomedErr } = await this.supabase
+      .from("transactions")
+      .select("asset_id")
+      .eq("portfolio_id", id);
+    if (doomedErr) throw doomedErr;
+    const doomed = [...new Set((doomedRows ?? []).map((r) => r.asset_id as string))];
+
+    const { error: txErr } = await this.supabase
+      .from("transactions")
+      .delete()
+      .eq("portfolio_id", id);
+    if (txErr) throw txErr;
+
+    if (doomed.length > 0) {
+      const { data: stillUsedRows, error: usedErr } = await this.supabase
         .from("transactions")
-        .update({ portfolio_id: fallback })
-        .eq("portfolio_id", id);
+        .select("asset_id")
+        .in("asset_id", doomed);
+      if (usedErr) throw usedErr;
+      const stillUsed = new Set((stillUsedRows ?? []).map((r) => r.asset_id as string));
+      const orphans = doomed.filter((a) => !stillUsed.has(a));
+      if (orphans.length > 0) {
+        const { error: assetErr } = await this.supabase
+          .from("assets")
+          .delete()
+          .in("id", orphans)
+          .eq("user_id", this.userId);
+        if (assetErr) throw assetErr;
+      }
     }
+
     const { error } = await this.supabase
       .from("portfolios")
       .delete()

@@ -31,6 +31,7 @@ export interface DataStore {
   deleteTransaction(id: string): Promise<void>;
   createPortfolio(name: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
+  /** Deletes the portfolio, its transactions, and assets held only in it. */
   deletePortfolio(id: string): Promise<void>;
   /** Reuse a previously computed simulation with identical params, or null. */
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;

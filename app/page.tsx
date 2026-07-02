@@ -53,8 +53,9 @@ export default function DashboardPage() {
       )}
 
       {/* Add-asset opens in a modal so it appears right where you clicked,
-          not buried at the bottom of the page. */}
-      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-4xl">
+          not buried at the bottom of the page. Window-wide (capped at the
+          site's 1600px content width) so the CSV merge view has room. */}
+      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-[1600px]">
         <AddAssetPanel onDone={() => setAdding(false)} />
       </Modal>
     </div>

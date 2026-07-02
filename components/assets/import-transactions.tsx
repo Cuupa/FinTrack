@@ -2,24 +2,40 @@
 
 // CSV transaction import (Add-asset modal → Import tab). Parses a broker export
 // entirely in the browser, reconciles each row against the portfolio (new /
-// conflict / already-imported), and lets the user resolve conflicts in a
-// side-by-side (IntelliJ-style) merge view, then creates the assets +
-// transactions and records what was merged. Known German brokers parse
-// precisely; any other CSV falls back to a generic header-driven parser.
+// conflict / already-imported), and lets the user resolve conflicts in an
+// IntelliJ-style three-pane merge (current | result | incoming, accepting
+// individual fields from either side), then creates the assets + transactions
+// and records what was merged. Known German brokers parse precisely; any other
+// CSV falls back to a generic header-driven parser.
 
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { parseCsv, type ParsedTx } from "@/lib/import/csv";
 import { reconcile, type ReconciledRow } from "@/lib/import/reconcile";
 import { formatCurrency, formatNumber, formatDateTime } from "@/lib/format";
-import { Button, SegmentedControl } from "@/components/ui/primitives";
+import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { AssetType, TransactionType } from "@/lib/types";
 
-// Per-conflict choice: keep what's already in the portfolio, or overwrite it
-// with the incoming row. New rows use a simple include/exclude instead.
-type ConflictChoice = "keep" | "use";
+// A conflict is resolved field by field: each mergeable field takes its value
+// from the existing transaction ("current") or the CSV row ("incoming"). New
+// rows use a simple include/exclude instead.
+const MERGE_FIELDS = ["type", "quantity", "price", "fee", "date"] as const;
+type MergeField = (typeof MERGE_FIELDS)[number];
+type MergeSide = "current" | "incoming";
+type Resolution = Record<MergeField, MergeSide>;
+
+function allFrom(side: MergeSide): Resolution {
+  return { type: side, quantity: side, price: side, fee: side, date: side };
+}
+
+/** The five mergeable values, whichever object they come from. */
+type MergeValues = Pick<ParsedTx, MergeField>;
+
+function isMerged(res: Resolution | undefined): boolean {
+  return res != null && MERGE_FIELDS.some((f) => res[f] === "incoming");
+}
 
 async function readFile(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
@@ -60,9 +76,9 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [reconciled, setReconciled] = useState<ReconciledRow[]>([]);
-  // New rows: included by index (default all). Conflicts: choice by index.
+  // New rows: included by index (default all). Conflicts: per-field resolution.
   const [included, setIncluded] = useState<Record<number, boolean>>({});
-  const [choices, setChoices] = useState<Record<number, ConflictChoice>>({});
+  const [resolutions, setResolutions] = useState<Record<number, Resolution>>({});
   const [portfolioId, setPortfolioId] = useState(
     selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
@@ -88,13 +104,13 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
       setReconciled(rec);
       // Defaults: include every new row; keep the existing side for conflicts.
       const inc: Record<number, boolean> = {};
-      const ch: Record<number, ConflictChoice> = {};
+      const res: Record<number, Resolution> = {};
       rec.forEach((r, i) => {
         if (r.status === "new") inc[i] = true;
-        else if (r.status === "conflict") ch[i] = "keep";
+        else if (r.status === "conflict") res[i] = allFrom("current");
       });
       setIncluded(inc);
-      setChoices(ch);
+      setResolutions(res);
     } catch {
       setError(t("import.readError"));
     }
@@ -115,7 +131,7 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
 
   const willApply =
     newRows.filter((x) => included[x.i]).length +
-    conflictRows.filter((x) => choices[x.i] === "use").length;
+    conflictRows.filter((x) => isMerged(resolutions[x.i])).length;
 
   async function apply() {
     setBusy(true);
@@ -134,9 +150,10 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
       const recorded: string[] = [];
       for (let i = 0; i < reconciled.length; i++) {
         const r = reconciled[i];
-        const replace = r.status === "conflict" && choices[i] === "use";
+        const res = resolutions[i];
+        const merge = r.status === "conflict" && r.existing && isMerged(res);
         const importNew = r.status === "new" && included[i];
-        if (!replace && !importNew) continue;
+        if (!merge && !importNew) continue;
 
         const p = r.parsed;
         const k = key(p.isin, p.wkn, p.symbol);
@@ -154,19 +171,30 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
           assetId = created.id;
           if (k) cache.set(k, assetId);
         }
-        const payload = {
-          assetId,
-          portfolioId,
-          type: p.type,
-          quantity: p.quantity,
-          price: p.price,
-          fee: p.fee,
-          date: p.date,
-        };
-        if (replace && r.existing) {
-          await updateTransaction(r.existing.id, payload);
+        if (merge && r.existing) {
+          // Field-wise merge: each field comes from the side the user accepted.
+          const ex = r.existing;
+          const pick = <F extends MergeField>(f: F): MergeValues[F] =>
+            (res[f] === "incoming" ? p : ex)[f];
+          await updateTransaction(ex.id, {
+            assetId,
+            portfolioId: ex.portfolioId,
+            type: pick("type"),
+            quantity: pick("quantity"),
+            price: pick("price"),
+            fee: pick("fee"),
+            date: pick("date"),
+          });
         } else {
-          await addTransaction(payload);
+          await addTransaction({
+            assetId,
+            portfolioId,
+            type: p.type,
+            quantity: p.quantity,
+            price: p.price,
+            fee: p.fee,
+            date: p.date,
+          });
         }
         recorded.push(r.fingerprint);
       }
@@ -242,7 +270,7 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
                       type="button"
                       onClick={() => setAddingPortfolio(true)}
                       className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
-                    >re
+                    >
                       {t("nav.newPortfolio")}
                     </button>
                   )
@@ -307,7 +335,7 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
             </section>
           )}
 
-          {/* Conflicts: side-by-side existing vs incoming, pick a side. */}
+          {/* Conflicts: three-pane merge, current | result | incoming. */}
           {conflictRows.length > 0 && (
             <section>
               <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
@@ -319,8 +347,10 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
                   <ConflictMerge
                     key={i}
                     row={r}
-                    choice={choices[i] ?? "keep"}
-                    onChoice={(ch) => setChoices((prev) => ({ ...prev, [i]: ch }))}
+                    resolution={resolutions[i] ?? allFrom("current")}
+                    onResolution={(res) =>
+                      setResolutions((prev) => ({ ...prev, [i]: res }))
+                    }
                   />
                 ))}
               </div>
@@ -370,27 +400,61 @@ function TxSummary({ parsed }: { parsed: ParsedTx }) {
   );
 }
 
-/** IntelliJ-style two-pane conflict: current (left) vs incoming (right). */
+/**
+ * IntelliJ-style three-pane merge: current (left) | result (center) |
+ * incoming (right). Each differing field is accepted into the result from
+ * either side via the chevron buttons; identical fields are shown dimmed.
+ */
 function ConflictMerge({
   row,
-  choice,
-  onChoice,
+  resolution,
+  onResolution,
 }: {
   row: ReconciledRow;
-  choice: ConflictChoice;
-  onChoice: (c: ConflictChoice) => void;
+  resolution: Resolution;
+  onResolution: (r: Resolution) => void;
 }) {
   const { t } = useI18n();
   const p = row.parsed;
-  const cur = p.currency || "EUR";
   const ex = row.existing;
+  if (!ex) return null;
+  const cur = p.currency || "EUR";
 
-  const paneCls = (active: boolean) =>
-    `flex-1 rounded-lg border p-3 transition-colors ${
-      active
-        ? "border-emerald-400 bg-emerald-50/60 dark:border-emerald-700 dark:bg-emerald-950/30"
-        : "border-zinc-200 opacity-60 dark:border-zinc-800"
+  const labels: Record<MergeField, string> = {
+    type: t("tx.type"),
+    quantity: t("tx.quantity"),
+    price: t("tx.price"),
+    fee: t("tx.fee"),
+    date: t("tx.date"),
+  };
+  const fmt = (v: MergeValues, f: MergeField) => {
+    switch (f) {
+      case "type":
+        return <span className={txTypeColor(v.type)}>{v.type}</span>;
+      case "quantity":
+        return formatNumber(v.quantity, 4);
+      case "price":
+        return formatCurrency(v.price, cur);
+      case "fee":
+        return formatCurrency(v.fee, cur);
+      case "date":
+        return formatDateTime(v.date);
+    }
+  };
+  const differs = (f: MergeField) => ex[f] !== p[f];
+  const accept = (f: MergeField, side: MergeSide) =>
+    onResolution({ ...resolution, [f]: side });
+
+  const sideCls = (active: boolean, changed: boolean) =>
+    `flex min-w-0 items-center gap-1 rounded-md px-2 py-1 text-sm tabular-nums ${
+      changed
+        ? active
+          ? "bg-emerald-50 ring-1 ring-emerald-300 dark:bg-emerald-950/40 dark:ring-emerald-800"
+          : "bg-white dark:bg-zinc-900"
+        : "text-zinc-400"
     }`;
+  const chevronCls =
+    "shrink-0 rounded px-1 text-zinc-400 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300";
 
   return (
     <div className="rounded-xl border border-amber-300/60 bg-amber-50/40 p-3 dark:border-amber-900/40 dark:bg-amber-950/10">
@@ -401,43 +465,85 @@ function ConflictMerge({
             {p.isin || p.wkn || p.symbol}
           </div>
         </div>
-        <div className="w-44 shrink-0">
-          <SegmentedControl<ConflictChoice>
-            size="sm"
-            value={choice}
-            onChange={onChoice}
-            options={[
-              { label: t("import.keepCurrent"), value: "keep" },
-              { label: t("import.useIncoming"), value: "use" },
-            ]}
-          />
+        <div className="flex shrink-0 gap-3 text-xs">
+          <button
+            type="button"
+            onClick={() => onResolution(allFrom("current"))}
+            className="font-medium text-zinc-500 hover:underline"
+          >
+            {t("import.keepCurrent")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onResolution(allFrom("incoming"))}
+            className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          >
+            {t("import.useIncoming")}
+          </button>
         </div>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <button type="button" onClick={() => onChoice("keep")} className={`${paneCls(choice === "keep")} text-left`}>
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[36rem] grid-cols-[auto_1fr_1fr_1fr] items-center gap-x-3 gap-y-1">
+          <div />
+          <div className="px-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
             {t("import.inPortfolio")}
           </div>
-          {ex ? (
-            <div className="text-sm tabular-nums">
-              <span className={txTypeColor(ex.type)}>{ex.type}</span>{" "}
-              {formatNumber(ex.quantity, 4)} @ {formatCurrency(ex.price, cur)}
-              <div className="text-[11px] text-zinc-400">{formatDateTime(ex.date)}</div>
-            </div>
-          ) : (
-            <div className="text-sm text-zinc-400">—</div>
-          )}
-        </button>
-        <button type="button" onClick={() => onChoice("use")} className={`${paneCls(choice === "use")} text-left`}>
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="px-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            {t("import.result")}
+          </div>
+          <div className="px-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
             {t("import.fromFile")}
           </div>
-          <div className="text-sm tabular-nums">
-            <span className={txTypeColor(p.type)}>{p.type}</span>{" "}
-            {formatNumber(p.quantity, 4)} @ {formatCurrency(p.price, cur)}
-            <div className="text-[11px] text-zinc-400">{formatDateTime(p.date)}</div>
-          </div>
-        </button>
+
+          {MERGE_FIELDS.map((f) => {
+            const changed = differs(f);
+            const side = resolution[f];
+            const chosen: MergeValues = side === "incoming" ? p : ex;
+            return (
+              <div key={f} className="contents">
+                <div className="text-xs text-zinc-500">{labels[f]}</div>
+                <div className={sideCls(side === "current", changed)}>
+                  <span className="min-w-0 flex-1 truncate">{fmt(ex, f)}</span>
+                  {changed && (
+                    <button
+                      type="button"
+                      onClick={() => accept(f, "current")}
+                      aria-label={`${labels[f]}: ${t("import.keepCurrent")}`}
+                      className={chevronCls}
+                    >
+                      »
+                    </button>
+                  )}
+                </div>
+                <div
+                  className={`rounded-md px-2 py-1 text-sm tabular-nums ${
+                    changed && side === "incoming"
+                      ? "bg-emerald-100/70 font-medium dark:bg-emerald-900/40"
+                      : changed
+                        ? "bg-white dark:bg-zinc-900"
+                        : "text-zinc-400"
+                  }`}
+                >
+                  {fmt(chosen, f)}
+                </div>
+                <div className={sideCls(side === "incoming", changed)}>
+                  {changed && (
+                    <button
+                      type="button"
+                      onClick={() => accept(f, "incoming")}
+                      aria-label={`${labels[f]}: ${t("import.useIncoming")}`}
+                      className={chevronCls}
+                    >
+                      «
+                    </button>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{fmt(p, f)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

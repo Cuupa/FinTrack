@@ -19,6 +19,9 @@ export const en = {
 
   "nav.allPortfolios": "All portfolios",
   "nav.newPortfolio": "+ New portfolio",
+  "nav.deletePortfolioTitle": "Delete portfolio?",
+  "nav.deletePortfolioMsg":
+    "Its transactions — and assets held only in this portfolio — are deleted permanently.",
 
   "export.csv": "Download CSV",
   "export.json": "Download JSON",
@@ -67,6 +70,7 @@ export const en = {
   "import.fromFile": "From this file",
   "import.keepCurrent": "Keep current",
   "import.useIncoming": "Use file",
+  "import.result": "Result",
   "import.reselectFile": "Choose a different file",
   "import.includeAll": "Select all",
   "import.includeNone": "Clear",
@@ -450,6 +454,9 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "nav.allPortfolios": "Alle Portfolios",
   "nav.newPortfolio": "+ Neues Portfolio",
+  "nav.deletePortfolioTitle": "Portfolio löschen?",
+  "nav.deletePortfolioMsg":
+    "Seine Transaktionen — und nur in diesem Portfolio gehaltene Assets — werden endgültig gelöscht.",
 
   "export.csv": "CSV herunterladen",
   "export.json": "JSON herunterladen",
@@ -498,6 +505,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "import.fromFile": "Aus dieser Datei",
   "import.keepCurrent": "Aktuelles behalten",
   "import.useIncoming": "Datei übernehmen",
+  "import.result": "Ergebnis",
   "import.reselectFile": "Andere Datei wählen",
   "import.includeAll": "Alle auswählen",
   "import.includeNone": "Leeren",

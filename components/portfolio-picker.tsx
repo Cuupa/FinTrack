@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { MAX_PORTFOLIOS } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function PortfolioPicker() {
   const {
@@ -22,6 +23,9 @@ export function PortfolioPicker() {
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
+  // Deleting cascades to the portfolio's transactions + solely-held assets,
+  // so it always goes through a confirmation dialog first.
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const { t } = useI18n();
@@ -145,7 +149,7 @@ export function PortfolioPicker() {
                       {portfolios.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => void deletePortfolio(p.id)}
+                          onClick={() => setConfirmDelete({ id: p.id, name: p.name })}
                           className="shrink-0 px-1 text-xs text-zinc-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
                           title="Delete"
                           aria-label="Delete portfolio"
@@ -187,6 +191,18 @@ export function PortfolioPicker() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title={t("nav.deletePortfolioTitle")}
+        message={confirmDelete ? `“${confirmDelete.name}” — ${t("nav.deletePortfolioMsg")}` : undefined}
+        confirmLabel={t("tx.deleteTitle")}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (confirmDelete) void deletePortfolio(confirmDelete.id);
+          setConfirmDelete(null);
+        }}
+      />
     </div>
   );
 }
