@@ -295,3 +295,25 @@ describe("betaAlpha", () => {
     expect(res!.beta).toBeLessThan(2.5);
   });
 });
+
+describe("monte carlo withdrawal phase", () => {
+  it("accumulates then draws the capital down", async () => {
+    const { runMonteCarlo } = await import("../lib/finance/monte-carlo");
+    const res = runMonteCarlo({
+      initialCapital: 100000,
+      monthlyContribution: 0,
+      years: 5,
+      expectedReturn: 0,
+      volatility: 0,
+      runs: 100,
+      seed: 12345,
+      withdrawalYears: 10,
+      monthlyWithdrawal: 1000,
+    });
+    // Bands cover accumulation + withdrawal years.
+    expect(res.bands.length).toBe(16);
+    // Flat during accumulation (no return, no contribution), then depletes.
+    expect(res.bands[5].median).toBeCloseTo(100000, 0);
+    expect(res.bands[15].median).toBe(0); // 10y * 12k > 100k → depleted
+  });
+});

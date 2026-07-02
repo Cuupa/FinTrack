@@ -16,6 +16,10 @@ export interface MonteCarloParams {
   runs: number;
   /** Seed for the PRNG, so a run is reproducible/auditable. */
   seed: number;
+  /** Optional decumulation phase after the `years` accumulation phase. */
+  withdrawalYears?: number;
+  /** Monthly amount withdrawn during the decumulation phase (base currency). */
+  monthlyWithdrawal?: number;
 }
 
 export interface YearBand {
@@ -74,14 +78,18 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     runs,
   } = params;
 
-  const months = Math.max(1, Math.round(years * 12));
+  const wYears = Math.max(0, Math.round(params.withdrawalYears ?? 0));
+  const totalYears = years + wYears;
+  const accMonths = Math.max(1, Math.round(years * 12));
+  const months = Math.max(1, Math.round(totalYears * 12));
+  const monthlyWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
   const monthlyMean =
     Math.pow(1 + expectedReturn, 1 / 12) - 1; // geometric monthly drift
   const monthlyVol = volatility / Math.sqrt(12);
   const rng = mulberry32(params.seed >>> 0);
 
-  // yearValues[y] collects every run's value at the end of year y (0..years).
-  const yearValues: number[][] = Array.from({ length: years + 1 }, () => []);
+  // yearValues[y] collects every run's value at the end of year y.
+  const yearValues: number[][] = Array.from({ length: totalYears + 1 }, () => []);
   const finals: number[] = [];
 
   for (let r = 0; r < runs; r++) {
@@ -89,11 +97,13 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     yearValues[0].push(value);
     for (let m = 1; m <= months; m++) {
       const monthReturn = monthlyMean + monthlyVol * gaussian(rng);
-      value = value * (1 + monthReturn) + monthlyContribution;
+      // Accumulate, then draw down in the withdrawal phase.
+      const cashflow = m <= accMonths ? monthlyContribution : -monthlyWithdrawal;
+      value = value * (1 + monthReturn) + cashflow;
       if (value < 0) value = 0;
       if (m % 12 === 0) {
         const y = m / 12;
-        if (y <= years) yearValues[y].push(value);
+        if (y <= totalYears) yearValues[y].push(value);
       }
     }
     finals.push(value);
@@ -110,9 +120,16 @@ function reduceRuns(
   initialCapital: number,
   monthlyContribution: number,
 ): MonteCarloResult {
+  const accYears = params.years;
+  const wd = Math.max(0, params.monthlyWithdrawal ?? 0);
   const bands: YearBand[] = yearValues.map((vals, year) => {
     const sorted = [...vals].sort((a, b) => a - b);
     const mean = sorted.reduce((s, x) => s + x, 0) / (sorted.length || 1);
+    // Net contributed: paid-in during accumulation, drawn-down thereafter.
+    const contributed =
+      initialCapital +
+      monthlyContribution * 12 * Math.min(year, accYears) -
+      wd * 12 * Math.max(0, year - accYears);
     return {
       year,
       worst: sorted[0] ?? 0,
@@ -123,7 +140,7 @@ function reduceRuns(
       p90: percentile(sorted, 90),
       best: sorted[sorted.length - 1] ?? 0,
       mean,
-      contributed: initialCapital + monthlyContribution * 12 * year,
+      contributed,
     };
   });
   return { params, bands, finalDistribution: finals.sort((a, b) => a - b) };
@@ -149,6 +166,12 @@ export interface PortfolioMonteCarloParams {
   corr: number[][];
   /** Seed for the PRNG, so a run is reproducible/auditable. */
   seed: number;
+  /** Optional decumulation phase after the `years` accumulation phase. */
+  withdrawalYears?: number;
+  /** Monthly amount withdrawn during the decumulation phase (base currency). */
+  monthlyWithdrawal?: number;
+  /** Rebalance back to target weights at each year boundary. */
+  rebalanceYearly?: boolean;
 }
 
 /** Cholesky factor (lower triangular) of a correlation matrix; null if not
@@ -184,7 +207,12 @@ export function runPortfolioMonteCarlo(
 ): MonteCarloResult {
   const { initialCapital, monthlyContribution, years, runs, assets, corr } = params;
   const n = assets.length;
-  const months = Math.max(1, Math.round(years * 12));
+  const wYears = Math.max(0, Math.round(params.withdrawalYears ?? 0));
+  const totalYears = years + wYears;
+  const accMonths = Math.max(1, Math.round(years * 12));
+  const months = Math.max(1, Math.round(totalYears * 12));
+  const monthlyWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
+  const rebalanceYearly = !!params.rebalanceYearly;
   const rng = mulberry32(params.seed >>> 0);
 
   const monthlyMean = assets.map((a) => Math.pow(1 + a.mean, 1 / 12) - 1);
@@ -197,7 +225,7 @@ export function runPortfolioMonteCarlo(
       Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
     );
 
-  const yearValues: number[][] = Array.from({ length: years + 1 }, () => []);
+  const yearValues: number[][] = Array.from({ length: totalYears + 1 }, () => []);
   const finals: number[] = [];
   const z = new Array<number>(n);
 
@@ -207,21 +235,29 @@ export function runPortfolioMonteCarlo(
 
     for (let m = 1; m <= months; m++) {
       for (let i = 0; i < n; i++) z[i] = gaussian(rng);
+      // Accumulate then draw down; withdrawals come proportionally from assets.
+      const accumulating = m <= accMonths;
+      let portValue = 0;
+      for (let i = 0; i < n; i++) portValue += values[i];
       for (let i = 0; i < n; i++) {
-        // Correlated standard normal for asset i: (L · z)_i
-        let c = 0;
+        let c = 0; // correlated standard normal for asset i: (L · z)_i
         for (let k = 0; k <= i; k++) c += L[i][k] * z[k];
         const ret = monthlyMean[i] + monthlyVol[i] * c;
-        values[i] = values[i] * (1 + ret) + monthlyContribution * weights[i];
+        const cash = accumulating
+          ? monthlyContribution * weights[i]
+          : -monthlyWithdrawal * (portValue > 0 ? values[i] / portValue : weights[i]);
+        values[i] = values[i] * (1 + ret) + cash;
         if (values[i] < 0) values[i] = 0;
       }
       if (m % 12 === 0) {
-        const y = m / 12;
-        if (y <= years) {
-          let total = 0;
-          for (let i = 0; i < n; i++) total += values[i];
-          yearValues[y].push(total);
+        let total = 0;
+        for (let i = 0; i < n; i++) total += values[i];
+        // Optional annual rebalance back to target weights.
+        if (rebalanceYearly && total > 0) {
+          for (let i = 0; i < n; i++) values[i] = total * weights[i];
         }
+        const y = m / 12;
+        if (y <= totalYears) yearValues[y].push(total);
       }
     }
     let total = 0;
@@ -238,6 +274,8 @@ export function runPortfolioMonteCarlo(
     volatility: 0,
     runs,
     seed: params.seed,
+    withdrawalYears: params.withdrawalYears,
+    monthlyWithdrawal: params.monthlyWithdrawal,
   };
   return reduceRuns(equivParams, yearValues, finals, initialCapital, monthlyContribution);
 }

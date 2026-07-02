@@ -58,6 +58,9 @@ function hashSimParams(
       monthlyContribution: r(p.monthlyContribution),
       years: p.years,
       runs: p.runs,
+      withdrawalYears: p.withdrawalYears ?? 0,
+      monthlyWithdrawal: p.monthlyWithdrawal ?? 0,
+      rebalanceYearly: !!p.rebalanceYearly,
       assets: p.assets.map((a) => ({ weight: r(a.weight), mean: r(a.mean), vol: r(a.vol) })),
       corr: p.corr.map((row) => row.map(r)),
     };
@@ -69,6 +72,8 @@ function hashSimParams(
       monthlyContribution: r(p.monthlyContribution),
       years: p.years,
       runs: p.runs,
+      withdrawalYears: p.withdrawalYears ?? 0,
+      monthlyWithdrawal: p.monthlyWithdrawal ?? 0,
       expectedReturn: r(p.expectedReturn),
       volatility: r(p.volatility),
     };
@@ -119,7 +124,10 @@ export function MonteCarloPanel() {
     monthlyContribution: 500,
     years: 30,
     runs: 5000,
+    withdrawalYears: 0,
+    monthlyWithdrawal: 0,
   });
+  const [rebalanceYearly, setRebalanceYearly] = useState(false);
 
   // Estimate returns/volatility from the last `horizon` years of history, so the
   // figures are the average over the selected period and change with it (capped
@@ -177,6 +185,20 @@ export function MonteCarloPanel() {
   const locked = effectiveMode === "portfolio" && !editing;
   const workerRef = useRef<Worker | null>(null);
 
+  // "Safe" monthly withdrawal that (in expectation) doesn't consume the invested
+  // capital: draw only the expected nominal growth on the projected end-of-
+  // accumulation capital.
+  const safeMonthlyWithdrawal = useMemo(() => {
+    const er = expectedReturn / 100;
+    const yrs = Math.max(1, Math.round(form.years));
+    const annual = form.monthlyContribution * 12;
+    const fv =
+      er === 0
+        ? initialCapital + annual * yrs
+        : initialCapital * Math.pow(1 + er, yrs) + annual * ((Math.pow(1 + er, yrs) - 1) / er);
+    return Math.max(0, Math.round((fv * er) / 12));
+  }, [expectedReturn, form.years, form.monthlyContribution, initialCapital]);
+
   useEffect(() => {
     return () => workerRef.current?.terminate();
   }, []);
@@ -194,6 +216,8 @@ export function MonteCarloPanel() {
     const years = Math.max(1, Math.round(form.years));
     // Clamp to [1,000, 25,000] paths.
     const runs = Math.min(25000, Math.max(1000, Math.round(form.runs)));
+    const withdrawalYears = Math.max(0, Math.round(form.withdrawalYears));
+    const monthlyWithdrawal = Math.max(0, Math.round(form.monthlyWithdrawal));
     // Seed the run's PRNG from Web Crypto (never Math.random), so the run is
     // reproducible and the seed can be persisted for auditing.
     const seed = randomSeed();
@@ -219,6 +243,9 @@ export function MonteCarloPanel() {
               }),
               corr: model.corr,
               seed,
+              withdrawalYears,
+              monthlyWithdrawal,
+              rebalanceYearly,
             } satisfies PortfolioMonteCarloParams,
           }
         : {
@@ -231,6 +258,8 @@ export function MonteCarloPanel() {
               volatility: volatility / 100,
               runs,
               seed,
+              withdrawalYears,
+              monthlyWithdrawal,
             } satisfies MonteCarloParams,
           };
 
@@ -368,6 +397,52 @@ export function MonteCarloPanel() {
             max={40}
             step={1}
           />
+
+          {/* Optional decumulation phase after the accumulation horizon. */}
+          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <SliderField
+              label={t("sim.withdrawalYears")}
+              suffix={t("sim.years")}
+              value={form.withdrawalYears}
+              onChange={(v) => update("withdrawalYears", v)}
+              min={0}
+              max={40}
+              step={1}
+            />
+            {form.withdrawalYears > 0 && (
+              <div className="mt-3 space-y-2">
+                <SliderField
+                  label={t("sim.monthlyWithdrawal")}
+                  suffix={currency}
+                  value={form.monthlyWithdrawal}
+                  onChange={(v) => update("monthlyWithdrawal", v)}
+                  min={0}
+                  max={Math.max(10000, safeMonthlyWithdrawal * 2)}
+                  step={50}
+                />
+                <button
+                  type="button"
+                  onClick={() => update("monthlyWithdrawal", safeMonthlyWithdrawal)}
+                  className="w-full rounded-md border border-emerald-300 px-2 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                >
+                  {t("sim.useSafeRate")}: {formatCurrency(safeMonthlyWithdrawal, currency)}
+                  /{t("sim.perMonth")}
+                </button>
+                <p className="text-xs text-zinc-500">{t("sim.safeRateHint")}</p>
+              </div>
+            )}
+            {effectiveMode === "portfolio" && (
+              <label className="mt-3 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={rebalanceYearly}
+                  onChange={(e) => setRebalanceYearly(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+                />
+                <span>{t("sim.rebalanceYearly")}</span>
+              </label>
+            )}
+          </div>
 
           {effectiveMode === "portfolio" && model ? (
             <PortfolioModelNote
