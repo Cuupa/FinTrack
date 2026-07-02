@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteNav } from "@/components/site-nav";
+import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
@@ -56,10 +57,13 @@ export default function RootLayout({
         <Providers>
           <GuestBanner />
           <SiteNav />
-          {/* pb leaves room for the fixed mobile tab bar (MobileNav). */}
-          <main className="mx-auto max-w-[1600px] overflow-x-clip px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-8">
-            {children}
-          </main>
+          <div className="flex w-full">
+            <Sidebar />
+            {/* Window-wide content. pb leaves room for the fixed mobile tab bar. */}
+            <main className="min-w-0 flex-1 overflow-x-clip px-4 py-5 pb-24 sm:px-6 md:pb-8 lg:px-8">
+              {children}
+            </main>
+          </div>
           <MobileNav />
         </Providers>
         <ServiceWorkerRegister />

@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
