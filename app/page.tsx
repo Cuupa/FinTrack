@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
       {/* Add-asset opens in a modal so it appears right where you clicked,
           not buried at the bottom of the page. */}
-      <Modal open={adding} onClose={() => setAdding(false)}>
+      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-4xl">
         <AddAssetPanel onDone={() => setAdding(false)} />
       </Modal>
     </div>

@@ -267,11 +267,139 @@ function parseDeutscheBank(text: string): ParsedTx[] {
   return out;
 }
 
+// --- generic (any-broker) parser --------------------------------------------
+
+/** Number tolerant of both decimal comma and decimal point, plus thousands
+ *  separators and stray currency symbols. "1.234,50" and "1,234.50" → 1234.5. */
+function anyNum(s: string): number {
+  let v = (s ?? "").trim().replace(/["']/g, "").replace(/\s/g, "");
+  v = v.replace(/[^0-9.,-]/g, "");
+  if (v === "" || v === "-") return NaN;
+  const lastComma = v.lastIndexOf(",");
+  const lastDot = v.lastIndexOf(".");
+  if (lastComma >= 0 && lastDot >= 0) {
+    // The right-most separator is the decimal; the other groups thousands.
+    if (lastComma > lastDot) v = v.replace(/\./g, "").replace(",", ".");
+    else v = v.replace(/,/g, "");
+  } else if (lastComma >= 0) {
+    v = v.replace(",", "."); // lone comma → decimal comma (European default)
+  }
+  return parseFloat(v);
+}
+
+/** Date tolerant of ISO, dd.mm.yyyy and dd/mm/yyyy, each with optional time. */
+function anyDate(s: string): string {
+  const v = (s ?? "").trim();
+  let m = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}:\d{2}(?::\d{2})?))?/);
+  if (m) {
+    const time = m[4] ? (m[4].length === 5 ? `${m[4]}:00` : m[4]) : "00:00:00";
+    return `${m[1]}-${m[2]}-${m[3]}T${time}`;
+  }
+  m = v.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?/);
+  if (m) {
+    const y = m[3].length === 2 ? `20${m[3]}` : m[3];
+    const time = m[4] ? (m[4].length === 5 ? `${m[4]}:00` : m[4]) : "00:00:00";
+    return `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}T${time}`;
+  }
+  return `${v.slice(0, 10)}T00:00:00`;
+}
+
+/** Map a free-text side/type column to a transaction type. */
+function anyType(s: string): TransactionType | null {
+  const t = (s || "").toLowerCase();
+  if (/verkauf|sell|sale|sold|redemption/.test(t)) return "SELL";
+  if (/kauf|buy|purchase|bought|savings|sparplan/.test(t)) return "BUY";
+  if (/einbuchung|booking|transfer|deposit|einlieferung/.test(t)) return "BOOKING";
+  return null;
+}
+
+/** Best delimiter for a header line (the one that yields the most columns). */
+function detectDelim(headerLine: string): string {
+  let best = ",";
+  let bestCount = -1;
+  for (const d of [";", "\t", ","]) {
+    const n = headerLine.split(d).length;
+    if (n > bestCount) {
+      bestCount = n;
+      best = d;
+    }
+  }
+  return best;
+}
+
+const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
+
+/**
+ * Header-driven parser for any broker's CSV, used when none of the known
+ * formats match. Columns are located by fuzzy header names (English + German);
+ * numbers and dates are parsed leniently. Rows without a usable quantity, price
+ * and identifier are skipped. Not every export will map perfectly, but this lets
+ * arbitrary broker files be imported instead of being rejected outright.
+ */
+export function parseGeneric(text: string): ParsedTx[] {
+  const lines = toLines(text);
+  if (lines.length < 2) return [];
+  const delim = detectDelim(lines[0]);
+  const header = splitLine(lines[0], delim);
+  const find = (names: string[]) => {
+    for (const n of names) {
+      const i = header.findIndex((h) => h.toLowerCase().includes(n));
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
+  const c = {
+    date: find(["datetime", "date", "datum", "buchung", "valuta", "trade"]),
+    type: find(["type", "art", "richtung", "side", "umsatz", "transaction", "direction"]),
+    isin: find(["isin"]),
+    wkn: find(["wkn"]),
+    symbol: find(["symbol", "ticker"]),
+    name: find(["name", "bezeichnung", "fonds", "instrument", "security", "wertpapier", "description"]),
+    qty: find(["quantity", "anzahl", "shares", "anteile", "stück", "stueck", "menge", "nominal", "bestand", "units"]),
+    price: find(["price", "kurs", "preis", "rate"]),
+    fee: find(["fee", "gebühr", "gebuehr", "provision", "kosten", "commission"]),
+    currency: find(["currency", "währung", "waehrung", "ccy"]),
+  };
+  // Needs at least a quantity, a price and some identifier column to be a trade
+  // export we can meaningfully import.
+  if (c.qty < 0 || c.price < 0 || (c.isin < 0 && c.wkn < 0 && c.symbol < 0 && c.name < 0)) {
+    return [];
+  }
+  const out: ParsedTx[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const r = splitLine(lines[i], delim);
+    const qty = anyNum(r[c.qty]);
+    const price = anyNum(r[c.price]);
+    if (!(qty > 0) || !(price > 0)) continue;
+    const symbolRaw = c.symbol >= 0 ? r[c.symbol] || null : null;
+    const isin = (c.isin >= 0 ? r[c.isin] || null : null) ?? (symbolRaw && ISIN_RE.test(symbolRaw) ? symbolRaw : null);
+    const symbol = symbolRaw && !ISIN_RE.test(symbolRaw) ? symbolRaw : null;
+    const wkn = c.wkn >= 0 ? r[c.wkn] || null : null;
+    if (!isin && !wkn && !symbol) continue;
+    out.push({
+      isin,
+      wkn,
+      symbol,
+      name: (c.name >= 0 && r[c.name]) || isin || symbol || wkn || "",
+      type: (c.type >= 0 ? anyType(r[c.type]) : null) ?? "BUY",
+      quantity: qty,
+      price,
+      fee: c.fee >= 0 ? Math.abs(anyNum(r[c.fee]) || 0) : 0,
+      date: c.date >= 0 ? anyDate(r[c.date]) : new Date().toISOString().slice(0, 19),
+      currency: (c.currency >= 0 && r[c.currency]) || "EUR",
+      assetType: "ETF",
+    });
+  }
+  return out;
+}
+
 export function parseCsv(text: string, format?: BrokerFormat): { format: BrokerFormat | null; rows: ParsedTx[] } {
   const fmt = format ?? detectFormat(text);
-  if (!fmt) return { format: null, rows: [] };
-  const rows =
-    fmt === "zero"
+  // Known broker formats parse precisely; anything else falls back to the
+  // generic header-driven parser so files from other brokers still import.
+  const rows = !fmt
+    ? parseGeneric(text)
+    : fmt === "zero"
       ? parseZero(text)
       : fmt === "fnz"
         ? parseFnz(text)
