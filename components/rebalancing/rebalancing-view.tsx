@@ -10,27 +10,13 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import type { Slice } from "@/lib/finance/allocation";
-import { formatCurrency, formatNumber, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, parseDecimal, plColor } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { PALETTE } from "@/lib/colors";
 
 type RebalanceMode = "trade" | "buyOnly";
-
-const PALETTE = [
-  "#6366f1",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#3b82f6",
-  "#8b5cf6",
-  "#14b8a6",
-  "#ec4899",
-  "#84cc16",
-  "#f97316",
-  "#06b6d4",
-  "#a855f7",
-];
 
 interface Target {
   id: string;
@@ -67,7 +53,7 @@ export function RebalancingView() {
   const [pctEdits, setPctEdits] = useState<Record<string, number>>({});
   const [customRows, setCustomRows] = useState<{ id: string; name: string }[]>([]);
   const [mode, setMode] = useState<RebalanceMode>("trade");
-  // The position highlighted across both donuts + legend on hover.
+  // The position highlighted across both donuts + the table row on hover.
   const [activeName, setActiveName] = useState<string | null>(null);
 
   const rows = useMemo<Target[]>(() => {
@@ -106,8 +92,8 @@ export function RebalancingView() {
   const total = buyOnly ? buyOnlyTotal : currentTotal;
   const additionalNeeded = Math.max(0, total - currentTotal);
 
-  // One colour per position (by name), shared across both donuts and the legend
-  // so the same holding is the same colour everywhere.
+  // One colour per position (by name), shared across both donuts and the table
+  // swatches so the same holding is the same colour everywhere.
   const colorByName = useMemo(() => {
     const map: Record<string, string> = {};
     rows.forEach((r, i) => {
@@ -167,9 +153,7 @@ export function RebalancingView() {
   return (
     <div className="space-y-6">
       <Card>
-        {/* Two donuts share one legend, so neither carries its own overlapping
-            legend (the previous bug). */}
-        <div className="grid items-center gap-8 lg:grid-cols-[1fr_auto_1fr]">
+        <div className="flex flex-wrap items-center justify-around gap-8">
           <RebalanceDonut
             title={t("rebalance.current")}
             slices={currentSlices}
@@ -179,39 +163,6 @@ export function RebalancingView() {
             activeName={activeName}
             onHover={setActiveName}
           />
-
-          <div className="min-w-0 lg:w-72">
-            <ul className="space-y-1.5 text-sm">
-              {rows.map((r) => {
-                const curPct = currentTotal > 0 ? (r.current / currentTotal) * 100 : 0;
-                return (
-                  <li
-                    key={r.id}
-                    onMouseEnter={() => setActiveName(r.name)}
-                    onMouseLeave={() => setActiveName(null)}
-                    className={`flex items-center gap-2 rounded px-1 transition-opacity ${
-                      activeName && activeName !== r.name ? "opacity-40" : ""
-                    }`}
-                  >
-                    <span
-                      className="inline-block h-3 w-3 shrink-0 rounded-[4px]"
-                      style={{ backgroundColor: colorByName[r.name] }}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-zinc-700 dark:text-zinc-200">
-                      {r.name}
-                    </span>
-                    <span className="w-12 shrink-0 text-right tabular-nums text-zinc-400">
-                      {formatNumber(curPct, 1)}%
-                    </span>
-                    <span className="shrink-0 text-zinc-400">→</span>
-                    <span className="w-12 shrink-0 text-right font-semibold tabular-nums">
-                      {formatNumber(r.pct, 1)}%
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
 
           {targetSlices.length > 0 ? (
             <RebalanceDonut
@@ -293,15 +244,21 @@ export function RebalancingView() {
                     }`}
                   >
                     <td className="py-2 pr-3">
-                      {isCustom ? (
-                        <input
-                          value={r.name}
-                          onChange={(e) => renameCustom(r.id, e.target.value)}
-                          className="w-40 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      <div className="inline-flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                          style={{ backgroundColor: colorByName[r.name] ?? "#a1a1aa" }}
                         />
-                      ) : (
-                        <span className="font-medium">{r.name}</span>
-                      )}
+                        {isCustom ? (
+                          <input
+                            value={r.name}
+                            onChange={(e) => renameCustom(r.id, e.target.value)}
+                            className="w-40 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                          />
+                        ) : (
+                          <span className="font-medium">{r.name}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums text-zinc-500" data-private>
                       {formatCurrency(r.current, base)}
