@@ -319,9 +319,13 @@ export const en = {
   "rebalance.colAction": "Action",
   "rebalance.buy": "Buy",
   "rebalance.sell": "Sell",
+  "rebalance.keep": "—",
   "rebalance.addPosition": "+ Add target position",
   "rebalance.pool": "Pool to allocate:",
   "rebalance.removePosition": "Remove position",
+  "rebalance.modeTrade": "Buy & sell",
+  "rebalance.modeBuyOnly": "Buy only",
+  "rebalance.additional": "Additional investment:",
 
   // Simulation
   "sim.subtitle": "Project your long-term wealth with a Monte Carlo simulation.",
@@ -697,8 +701,12 @@ const de: Partial<Record<MessageKey, string>> = {
   "rebalance.colAction": "Aktion",
   "rebalance.buy": "Kaufen",
   "rebalance.sell": "Verkaufen",
+  "rebalance.keep": "—",
   "rebalance.addPosition": "+ Zielposition hinzufügen",
   "rebalance.pool": "Zu verteilendes Kapital:",
+  "rebalance.modeTrade": "Kaufen & Verkaufen",
+  "rebalance.modeBuyOnly": "Nur kaufen",
+  "rebalance.additional": "Zusätzliche Investition:",
   "rebalance.removePosition": "Position entfernen",
 
   // Simulation

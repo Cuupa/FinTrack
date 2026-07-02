@@ -11,9 +11,11 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import type { Slice } from "@/lib/finance/allocation";
 import { formatCurrency, formatNumber, parseDecimal, plColor } from "@/lib/format";
-import { Card } from "@/components/ui/primitives";
+import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { useI18n } from "@/lib/i18n/i18n-context";
+
+type RebalanceMode = "trade" | "buyOnly";
 
 const PALETTE = [
   "#6366f1",
@@ -64,6 +66,9 @@ export function RebalancingView() {
   // We store edits keyed by row id so they survive re-renders.
   const [pctEdits, setPctEdits] = useState<Record<string, number>>({});
   const [customRows, setCustomRows] = useState<{ id: string; name: string }[]>([]);
+  const [mode, setMode] = useState<RebalanceMode>("trade");
+  // The position highlighted across both donuts + legend on hover.
+  const [activeName, setActiveName] = useState<string | null>(null);
 
   const rows = useMemo<Target[]>(() => {
     const base: Target[] = holdings.map((h) => {
@@ -86,9 +91,20 @@ export function RebalancingView() {
   }, [holdings, currentTotal, pctEdits, customRows]);
 
   const targetSum = rows.reduce((s, r) => s + r.pct, 0);
-  // The pool to allocate: keep the existing capital (rebalance in place). New
-  // positions are funded by trimming over-weight holdings.
-  const total = currentTotal;
+  const buyOnly = mode === "buyOnly";
+  // Buy-only: no selling allowed, so the new total is the smallest T at which
+  // every target-weighted value is >= what's already held — i.e. set by the most
+  // over-weight target (current / weight). Underweight positions are then topped
+  // up with fresh money; over-weight ones are simply left as-is.
+  const buyOnlyTotal = useMemo(() => {
+    const cands = rows.filter((r) => r.pct > 0);
+    if (cands.length === 0) return currentTotal;
+    return Math.max(currentTotal, ...cands.map((r) => r.current / (r.pct / 100)));
+  }, [rows, currentTotal]);
+  // The pool to allocate. Trade mode rebalances the existing capital in place;
+  // buy-only grows the pool to `buyOnlyTotal` with new contributions.
+  const total = buyOnly ? buyOnlyTotal : currentTotal;
+  const additionalNeeded = Math.max(0, total - currentTotal);
 
   // One colour per position (by name), shared across both donuts and the legend
   // so the same holding is the same colour everywhere.
@@ -160,6 +176,8 @@ export function RebalancingView() {
             total={currentTotal}
             currency={base}
             colorByName={colorByName}
+            activeName={activeName}
+            onHover={setActiveName}
           />
 
           <div className="min-w-0 lg:w-72">
@@ -167,7 +185,14 @@ export function RebalancingView() {
               {rows.map((r) => {
                 const curPct = currentTotal > 0 ? (r.current / currentTotal) * 100 : 0;
                 return (
-                  <li key={r.id} className="flex items-center gap-2">
+                  <li
+                    key={r.id}
+                    onMouseEnter={() => setActiveName(r.name)}
+                    onMouseLeave={() => setActiveName(null)}
+                    className={`flex items-center gap-2 rounded px-1 transition-opacity ${
+                      activeName && activeName !== r.name ? "opacity-40" : ""
+                    }`}
+                  >
                     <span
                       className="inline-block h-3 w-3 shrink-0 rounded-[4px]"
                       style={{ backgroundColor: colorByName[r.name] }}
@@ -195,6 +220,8 @@ export function RebalancingView() {
               total={total}
               currency={base}
               colorByName={colorByName}
+              activeName={activeName}
+              onHover={setActiveName}
             />
           ) : (
             <div className="flex h-56 items-center justify-center text-center text-sm text-zinc-500">
@@ -206,7 +233,18 @@ export function RebalancingView() {
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">{t("rebalance.targetAllocation")}</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-sm font-semibold">{t("rebalance.targetAllocation")}</h3>
+            <SegmentedControl<RebalanceMode>
+              size="sm"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { label: t("rebalance.modeTrade"), value: "trade" },
+                { label: t("rebalance.modeBuyOnly"), value: "buyOnly" },
+              ]}
+            />
+          </div>
           <div className="flex items-center gap-3 text-sm">
             <span
               className={`tabular-nums ${
@@ -239,13 +277,20 @@ export function RebalancingView() {
             </thead>
             <tbody>
               {rows.map((r) => {
-                const targetValue = (r.pct / 100) * total;
+                const rawTarget = (r.pct / 100) * total;
+                // Buy-only keeps over-weight/zero-target positions untouched.
+                const kept = buyOnly && rawTarget < r.current;
+                const targetValue = kept ? r.current : rawTarget;
                 const delta = targetValue - r.current;
                 const isCustom = r.id.startsWith("custom-");
                 return (
                   <tr
                     key={r.id}
-                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+                    onMouseEnter={() => setActiveName(r.name)}
+                    onMouseLeave={() => setActiveName(null)}
+                    className={`border-b border-zinc-100 last:border-0 dark:border-zinc-800/60 ${
+                      activeName === r.name ? "bg-zinc-50 dark:bg-zinc-800/40" : ""
+                    }`}
                   >
                     <td className="py-2 pr-3">
                       {isCustom ? (
@@ -275,9 +320,15 @@ export function RebalancingView() {
                     <td className="py-2 pr-3 text-right tabular-nums" data-private>
                       {formatCurrency(targetValue, base)}
                     </td>
-                    <td className={`py-2 pr-3 text-right tabular-nums ${plColor(delta)}`} data-private>
-                      {delta >= 0 ? `${t("rebalance.buy")} ` : `${t("rebalance.sell")} `}
-                      {formatCurrency(Math.abs(delta), base)}
+                    <td
+                      className={`py-2 pr-3 text-right tabular-nums ${
+                        kept || Math.abs(delta) < 0.005 ? "text-zinc-400" : plColor(delta)
+                      }`}
+                      data-private
+                    >
+                      {kept || Math.abs(delta) < 0.005
+                        ? t("rebalance.keep")
+                        : `${delta >= 0 ? t("rebalance.buy") : t("rebalance.sell")} ${formatCurrency(Math.abs(delta), base)}`}
                     </td>
                     <td className="py-2 text-right">
                       {isCustom && (
@@ -306,9 +357,21 @@ export function RebalancingView() {
           >
             {t("rebalance.addPosition")}
           </button>
-          <span className="text-zinc-500">
-            {t("rebalance.pool")} <Private>{formatCurrency(total, base)}</Private>
-          </span>
+          <div className="flex flex-wrap items-center gap-4 text-zinc-500">
+            {buyOnly && (
+              <span>
+                {t("rebalance.additional")}{" "}
+                <Private>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(additionalNeeded, base)}
+                  </span>
+                </Private>
+              </span>
+            )}
+            <span>
+              {t("rebalance.pool")} <Private>{formatCurrency(total, base)}</Private>
+            </span>
+          </div>
         </div>
       </Card>
     </div>
@@ -322,12 +385,16 @@ function RebalanceDonut({
   total,
   currency,
   colorByName,
+  activeName,
+  onHover,
 }: {
   title: string;
   slices: Slice[];
   total: number;
   currency: string;
   colorByName: Record<string, string>;
+  activeName: string | null;
+  onHover: (name: string | null) => void;
 }) {
   return (
     <div className="flex flex-col items-center">
@@ -345,9 +412,16 @@ function RebalanceDonut({
               cornerRadius={5}
               stroke="none"
               isAnimationActive={false}
+              onMouseEnter={(_, i: number) => onHover(slices[i]?.label ?? null)}
+              onMouseLeave={() => onHover(null)}
             >
               {slices.map((s) => (
-                <Cell key={s.label} fill={colorByName[s.label] ?? "#a1a1aa"} />
+                <Cell
+                  key={s.label}
+                  fill={colorByName[s.label] ?? "#a1a1aa"}
+                  opacity={activeName === null || activeName === s.label ? 1 : 0.25}
+                  style={{ transition: "opacity 150ms" }}
+                />
               ))}
             </Pie>
           </PieChart>
