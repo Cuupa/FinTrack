@@ -87,7 +87,20 @@ export function RiskView() {
     () => twrSeries(scopedAssets, scopedTxs, tf, valuation, histories),
     [scopedAssets, scopedTxs, tf, valuation, histories],
   );
-  const risk = useMemo(() => riskMetrics(returnSeries), [returnSeries]);
+  // twrSeries emits a flat 0-value prefix for every day before the scoped
+  // holding(s) had any shares (periods with zero shares are skipped, so `cum`
+  // never moves off 1). Feeding those fake flat days into riskMetrics dilutes
+  // volatility/downside/drawdown, and annualising the accrued TWR over that
+  // padded span (instead of the actual exposure span) understates the return
+  // — for a young, short-history holding this can even flip Sharpe negative.
+  // Trim the prefix, keeping one leading zero point as the baseline, so KPI
+  // metrics and their annualisation window cover only the period the scoped
+  // holding(s) were actually held.
+  const metricsSeries = useMemo(() => {
+    const i = returnSeries.findIndex((p) => p.value !== 0);
+    return i > 0 ? returnSeries.slice(i - 1) : returnSeries;
+  }, [returnSeries]);
+  const risk = useMemo(() => riskMetrics(metricsSeries), [metricsSeries]);
 
   // The portfolio's own return path is the reference "market" for the per-asset
   // beta/alpha — an intrinsic measure of each holding vs the whole portfolio,
@@ -98,12 +111,15 @@ export function RiskView() {
   );
 
   const portfolio = useMemo(() => {
-    const n = returnSeries.length;
+    // Annualise over the trimmed (exposure-only) span, not the raw timeframe
+    // span, so a holding bought partway through the window isn't penalised
+    // for the flat pre-purchase prefix it never actually earned a return over.
+    const n = metricsSeries.length;
     const years =
       n > 1
         ? Math.max(
             1 / 365,
-            (Date.parse(returnSeries[n - 1].date) - Date.parse(returnSeries[0].date)) /
+            (Date.parse(metricsSeries[n - 1].date) - Date.parse(metricsSeries[0].date)) /
               (365 * 86_400_000),
           )
         : 1;
@@ -114,7 +130,7 @@ export function RiskView() {
     const monthlyVol = risk.volatility / Math.sqrt(12);
     const var95 = Math.max(0, 1.645 * monthlyVol - annReturn / 12);
     return { annReturn, sharpe, sortino, var95 };
-  }, [returnSeries, risk]);
+  }, [metricsSeries, risk]);
 
   const assetRows = useMemo(() => {
     const fx = valuation.fx ?? {};
