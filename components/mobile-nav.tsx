@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { isFeatureEnabled, type FeatureFlag } from "@/lib/flags";
+import { useFeatureFlags, type FeatureFlag } from "@/lib/flags/flags-context";
 
 const ALL_TABS: { href: string; label: string; icon: ReactNode; flag?: FeatureFlag }[] = [
   {
@@ -36,10 +36,10 @@ const ALL_TABS: { href: string; label: string; icon: ReactNode; flag?: FeatureFl
   },
 ];
 
-const TABS = ALL_TABS.filter((t) => !t.flag || isFeatureEnabled(t.flag));
-
 export function MobileNav() {
   const pathname = usePathname();
+  const { isEnabled } = useFeatureFlags();
+  const tabs = ALL_TABS.filter((t) => !t.flag || isEnabled(t.flag));
 
   // Shared portfolios are a read-only external view — no app navigation.
   if (pathname.startsWith("/shared")) return null;
@@ -51,7 +51,7 @@ export function MobileNav() {
       aria-label="Primary"
     >
       <div className="mx-auto flex max-w-[1600px]">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active =
             tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
           return (

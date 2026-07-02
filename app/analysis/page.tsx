@@ -6,7 +6,7 @@ import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
-import { isFeatureEnabled } from "@/lib/flags";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 
 const TABS = ["distributions", "returns", "trades", "risks"] as const;
 
@@ -17,7 +17,8 @@ export default function AnalysisPage() {
   const { t: tr } = useI18n();
 
   // The Risk tab is behind a feature flag.
-  const tabs = TABS.filter((key) => key !== "risks" || isFeatureEnabled("risk"));
+  const riskEnabled = useFeatureFlag("risk");
+  const tabs = TABS.filter((key) => key !== "risks" || riskEnabled);
 
   return (
     <div className="space-y-6">
@@ -50,7 +51,7 @@ export default function AnalysisPage() {
       {tab === "distributions" && <AllocationView />}
       {tab === "returns" && <ReturnsView />}
       {tab === "trades" && <TradesView />}
-      {tab === "risks" && <RiskView />}
+      {tab === "risks" && riskEnabled && <RiskView />}
     </div>
   );
 }

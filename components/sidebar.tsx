@@ -9,7 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
-import { isFeatureEnabled, type FeatureFlag } from "@/lib/flags";
+import { useFeatureFlags, type FeatureFlag } from "@/lib/flags/flags-context";
 
 const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFlag }[] = [
   { href: "/", key: "nav.dashboard", icon: <path d="M3 12l9-9 9 9M5 10v10h14V10" /> },
@@ -34,14 +34,15 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
   },
 ];
 
-const VISIBLE_LINKS = LINKS.filter((l) => !l.flag || isFeatureEnabled(l.flag));
-
 const STORAGE_KEY = "fintrack:sidebar-collapsed";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { t } = useI18n();
+  const { isEnabled } = useFeatureFlags();
   const [collapsed, setCollapsed] = useState(false);
+
+  const visibleLinks = LINKS.filter((l) => !l.flag || isEnabled(l.flag));
 
   useEffect(() => {
     // Deferred (async continuation) to satisfy the no-sync-setState-in-effect
@@ -69,7 +70,7 @@ export function Sidebar() {
       } transition-[width] duration-150`}
     >
       <nav className="flex h-full flex-col gap-1 p-2">
-        {VISIBLE_LINKS.map((l) => {
+        {visibleLinks.map((l) => {
           const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           return (
             <Link

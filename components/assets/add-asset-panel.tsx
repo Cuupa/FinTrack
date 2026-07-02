@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { AddAssetForm } from "./add-asset-form";
 import { ImportTransactions } from "./import-transactions";
-import { isFeatureEnabled } from "@/lib/flags";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 type Tab = "manual" | "import";
@@ -15,7 +15,7 @@ type Tab = "manual" | "import";
 export function AddAssetPanel({ onDone }: { onDone?: () => void }) {
   const [tab, setTab] = useState<Tab>("manual");
   const { t } = useI18n();
-  const csvImport = isFeatureEnabled("csvImport");
+  const csvImport = useFeatureFlag("csvImport");
   // With CSV import off, the modal is manual-only — no tab switcher needed.
   const activeTab = csvImport ? tab : "manual";
   return (

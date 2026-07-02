@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/lib/auth/auth-context";
+import { FeatureFlagsProvider } from "@/lib/flags/flags-context";
 import { PortfolioProvider } from "@/lib/portfolio/portfolio-context";
 import { CatalogProvider } from "@/lib/catalog/catalog-context";
 import { LivePricesProvider } from "@/lib/live/live-prices-context";
@@ -14,18 +15,20 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <I18nProvider>
       <AuthProvider>
-        <CatalogProvider>
-          <PortfolioProvider>
-            <LivePricesProvider>
-              <PrivacyProvider>
-                <TagsProvider>
-                  <LocaleSync />
-                  {children}
-                </TagsProvider>
-              </PrivacyProvider>
-            </LivePricesProvider>
-          </PortfolioProvider>
-        </CatalogProvider>
+        <FeatureFlagsProvider>
+          <CatalogProvider>
+            <PortfolioProvider>
+              <LivePricesProvider>
+                <PrivacyProvider>
+                  <TagsProvider>
+                    <LocaleSync />
+                    {children}
+                  </TagsProvider>
+                </PrivacyProvider>
+              </LivePricesProvider>
+            </PortfolioProvider>
+          </CatalogProvider>
+        </FeatureFlagsProvider>
       </AuthProvider>
     </I18nProvider>
   );

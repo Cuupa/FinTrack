@@ -26,7 +26,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
-import { isFeatureEnabled } from "@/lib/flags";
+import { useFeatureFlags } from "@/lib/flags/flags-context";
 
 type SimMode = "portfolio" | "custom";
 
@@ -157,9 +157,10 @@ export function MonteCarloPanel() {
   );
   // Sub-feature flags: the "My portfolio" and "Custom" sections, and the
   // withdrawal phase, can each be turned off independently.
-  const portfolioAllowed = isFeatureEnabled("simulationPortfolio");
-  const customAllowed = isFeatureEnabled("simulationCustom");
-  const withdrawalAllowed = isFeatureEnabled("simulationWithdrawal");
+  const { isEnabled } = useFeatureFlags();
+  const portfolioAllowed = isEnabled("simulationPortfolio");
+  const customAllowed = isEnabled("simulationCustom");
+  const withdrawalAllowed = isEnabled("simulationWithdrawal");
 
   const hasPortfolio = model !== null && model.assets.length > 0 && portfolioAllowed;
   // Pick a mode honouring the flags: custom off ⇒ force portfolio; portfolio
