@@ -226,7 +226,7 @@ export const en = {
   "risk.addHoldings": "Add holdings to see your risk metrics.",
   "risk.portfolioTitle": "Portfolio risk",
   "risk.portfolioTip":
-    "Risk metrics measured from your portfolio's real return history over the selected window (synthetic fallback). Beta/Alpha are vs. the chosen benchmark.",
+    "Risk metrics measured from your portfolio's real return history over the selected window (synthetic fallback).",
   "risk.benchmark": "Benchmark",
   "risk.vs": "vs",
   "risk.qGood": "Healthy",
@@ -243,10 +243,10 @@ export const en = {
     "Annualised standard deviation of returns — how much the value swings. Lower means a smoother ride.",
   "risk.beta": "Beta",
   "risk.betaTip":
-    "Sensitivity to the benchmark: 1 moves with it, >1 amplifies its moves, <1 dampens them. Near 1 is market-like.",
+    "Sensitivity to YOUR portfolio: 1 moves with it, >1 amplifies its swings, <1 dampens them, negative moves opposite (a hedge).",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
-    "Annualised return beyond what beta alone would predict (CAPM). Positive means you beat the benchmark on a risk-adjusted basis.",
+    "Annualised return beyond what the holding's beta to your portfolio would predict. Positive = it added risk-adjusted value.",
   "risk.maxDrawdown": "Max drawdown",
   "risk.maxDrawdownTip":
     "Largest peak-to-trough drop over the window, with how long it lasted. Smaller is better.",
@@ -255,7 +255,7 @@ export const en = {
     "Value at Risk: with 95% confidence, the most you'd expect to lose over one month (normal approximation). Lower is better.",
   "risk.days": "days",
   "risk.byAsset": "Risk by holding",
-  "risk.byAssetTip": "Per-holding volatility, beta vs. the benchmark, Sharpe ratio and portfolio weight.",
+  "risk.byAssetTip": "Per-holding volatility, beta & alpha vs. your own portfolio, Sharpe ratio and weight.",
   "risk.asset": "Asset",
   "risk.weight": "Weight",
   "risk.correlation": "Correlation matrix",
@@ -637,7 +637,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Risikokennzahlen zu sehen.",
   "risk.portfolioTitle": "Portfolio-Risiko",
   "risk.portfolioTip":
-    "Risikokennzahlen aus der echten Renditehistorie Ihres Portfolios im gewählten Zeitraum (synthetischer Rückfall). Beta/Alpha beziehen sich auf die gewählte Benchmark.",
+    "Risikokennzahlen aus der echten Renditehistorie Ihres Portfolios im gewählten Zeitraum (synthetischer Rückfall).",
   "risk.benchmark": "Benchmark",
   "risk.vs": "vs",
   "risk.qGood": "Gesund",
@@ -654,10 +654,10 @@ const de: Partial<Record<MessageKey, string>> = {
     "Annualisierte Standardabweichung der Renditen — wie stark der Wert schwankt. Niedriger bedeutet ruhigeren Verlauf.",
   "risk.beta": "Beta",
   "risk.betaTip":
-    "Empfindlichkeit gegenüber der Benchmark: 1 läuft mit, >1 verstärkt, <1 dämpft. Nahe 1 ist marktähnlich.",
+    "Empfindlichkeit gegenüber IHREM Portfolio: 1 läuft mit, >1 verstärkt, <1 dämpft, negativ läuft gegenläufig (Absicherung).",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
-    "Annualisierte Rendite über das, was Beta allein erwarten ließe (CAPM). Positiv heißt, Sie schlagen die Benchmark risikobereinigt.",
+    "Annualisierte Rendite über das, was das Beta zu Ihrem Portfolio erwarten ließe. Positiv = risikobereinigter Mehrwert.",
   "risk.maxDrawdown": "Max. Drawdown",
   "risk.maxDrawdownTip":
     "Größter Rückgang vom Hoch zum Tief im Zeitraum, mit Dauer. Kleiner ist besser.",
@@ -666,7 +666,7 @@ const de: Partial<Record<MessageKey, string>> = {
     "Value at Risk: mit 95% Konfidenz der maximal erwartete Verlust über einen Monat (Normalverteilungs-Näherung). Niedriger ist besser.",
   "risk.days": "Tage",
   "risk.byAsset": "Risiko je Position",
-  "risk.byAssetTip": "Volatilität, Beta zur Benchmark, Sharpe-Ratio und Portfoliogewicht je Position.",
+  "risk.byAssetTip": "Volatilität, Beta & Alpha zu Ihrem eigenen Portfolio, Sharpe-Ratio und Gewicht je Position.",
   "risk.asset": "Wert",
   "risk.weight": "Gewicht",
   "risk.correlation": "Korrelationsmatrix",
