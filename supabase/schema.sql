@@ -255,7 +255,8 @@ insert into public.schema_migrations (version) values
   ('0026_imported_rows'),
   ('0027_feature_flags'),
   ('0028_imported_rows_transaction'),
-  ('0029_transaction_interest')
+  ('0029_transaction_interest'),
+  ('0030_offline_mode')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -430,7 +431,8 @@ insert into public.feature_flags (flag, description) values
   ('simulation', 'Monte Carlo simulation (whole feature)'),
   ('simulationPortfolio', 'Simulation — My portfolio mode'),
   ('simulationCustom', 'Simulation — Custom mode'),
-  ('simulationWithdrawal', 'Simulation — Withdrawal phase')
+  ('simulationWithdrawal', 'Simulation — Withdrawal phase'),
+  ('offline', 'Offline mode (read-only app shell + last-known data)')
 on conflict (flag) do nothing;
 
 -- Seed the instruments catalog -----------------------------------------------

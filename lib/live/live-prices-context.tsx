@@ -21,16 +21,22 @@ import { useCatalog } from "../catalog/catalog-context";
 import { fxToBase, lookupInstrument } from "../catalog/catalog";
 import { assetPriceKey } from "../types";
 import type { ValuationContext } from "../finance/portfolio";
+import { useOnlineStatus } from "../offline/connectivity";
 
 interface LivePricesValue {
   valuation: ValuationContext;
+  /** True when prices are known to be last-known (offline), not live. */
+  stale: boolean;
+  /** When the underlying catalog snapshot was last fetched, if known. */
+  asOf: string | null;
 }
 
 const LivePricesContext = createContext<LivePricesValue | null>(null);
 
 export function LivePricesProvider({ children }: { children: ReactNode }) {
   const { data } = usePortfolio();
-  const { version } = useCatalog();
+  const { version, catalogAsOf } = useCatalog();
+  const { online } = useOnlineStatus();
   const base = data.profile.currency;
 
   // On-demand prices for holdings the cron hasn't cached yet, keyed by price key
@@ -113,8 +119,15 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.assets, base, version, fetched]);
 
+  // Prices are only "stale" once we're confirmed offline and have a
+  // last-known catalog snapshot to fall back on — no valuation math changes,
+  // this just badges what's already being shown.
+  const stale = !online && catalogAsOf != null;
+
   return (
-    <LivePricesContext.Provider value={{ valuation }}>{children}</LivePricesContext.Provider>
+    <LivePricesContext.Provider value={{ valuation, stale, asOf: catalogAsOf }}>
+      {children}
+    </LivePricesContext.Provider>
   );
 }
 

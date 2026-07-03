@@ -32,7 +32,8 @@ export type FeatureFlag =
   | "simulation"
   | "simulationPortfolio"
   | "simulationCustom"
-  | "simulationWithdrawal";
+  | "simulationWithdrawal"
+  | "offline";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

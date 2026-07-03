@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/site-nav";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
+import { OfflineBanner } from "@/components/offline/offline-banner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 const geistSans = Geist({
@@ -56,6 +57,9 @@ export default function RootLayout({
       <body className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Providers>
           <GuestBanner />
+          {/* Needs FeatureFlagsProvider/LivePricesProvider, so it lives inside
+              Providers — SW registration below stays unconditional. */}
+          <OfflineBanner />
           <SiteNav />
           <div className="flex w-full">
             <Sidebar />
