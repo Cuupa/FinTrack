@@ -26,12 +26,7 @@ import {
   plColor,
   stripLeadingZero,
 } from "@/lib/format";
-import {
-  assetIdentifier,
-  type Portfolio,
-  type Transaction,
-  type TransactionType,
-} from "@/lib/types";
+import { type Portfolio, type Transaction, type TransactionType } from "@/lib/types";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor } from "@/lib/catalog/catalog";
@@ -41,6 +36,7 @@ import { useHistory } from "@/lib/history/use-history";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CopyValue } from "@/components/ui/copy-value";
+import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -190,11 +186,10 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           </Link>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold tracking-tight">
             {asset.name}
-            <CopyValue value={assetIdentifier(asset)}>
-              <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                {assetIdentifier(asset)}
-              </span>
-            </CopyValue>
+            <AssetIdentifiers
+              asset={asset}
+              chipClassName="rounded bg-zinc-100 px-2 py-0.5 font-mono text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+            />
             <span className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700">
               {t(typeKey)}
             </span>
