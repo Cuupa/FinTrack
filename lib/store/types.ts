@@ -23,13 +23,19 @@ export interface DataStore {
   readonly persistent: boolean;
   load(): Promise<PortfolioData>;
   saveProfile(profile: Profile): Promise<void>;
-  addAsset(input: AssetInput): Promise<Asset>;
+  /**
+   * `id` is an optional caller-supplied uuid (OFFLINE_DESIGN.md §2 phase 2 /
+   * §3): `OfflineStore` assigns the id up front so its optimistic local
+   * mirror and the eventual server row share one uuid, making queued replay
+   * idempotent. Omitted, implementations generate one as before.
+   */
+  addAsset(input: AssetInput, id?: string): Promise<Asset>;
   updateAsset(id: string, patch: Partial<AssetInput>): Promise<void>;
   deleteAsset(id: string): Promise<void>;
-  addTransaction(input: TransactionInput): Promise<Transaction>;
+  addTransaction(input: TransactionInput, id?: string): Promise<Transaction>;
   updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
-  createPortfolio(name: string): Promise<Portfolio>;
+  createPortfolio(name: string, id?: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
   /** Deletes the portfolio, its transactions, and assets held only in it. */
   deletePortfolio(id: string): Promise<void>;

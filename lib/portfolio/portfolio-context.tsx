@@ -25,6 +25,7 @@ import {
   type Transaction,
 } from "../types";
 import { useAuth } from "../auth/auth-context";
+import { useFeatureFlag } from "../flags/flags-context";
 
 interface PortfolioContextValue {
   /** Portfolio data scoped to the currently-selected portfolios. */
@@ -67,9 +68,14 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   // null = all portfolios selected; otherwise the explicit selection.
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
 
+  // `createStore` is plain (called outside React) and can't read DB-backed
+  // flags itself, so the `offline` flag is resolved here via the normal
+  // hook (OFFLINE_DESIGN.md §2 phase 2) and threaded through, same as
+  // `user.id`.
+  const offlineEnabled = useFeatureFlag("offline");
   const store: DataStore = useMemo(
-    () => createStore(getSupabaseClient(), user?.id ?? null),
-    [user?.id],
+    () => createStore(getSupabaseClient(), user?.id ?? null, offlineEnabled),
+    [user?.id, offlineEnabled],
   );
 
   const reload = useCallback(async () => {

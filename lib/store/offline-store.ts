@@ -1,0 +1,245 @@
+// Keeps Registered Mode usable offline — OFFLINE_DESIGN.md §2 phase 2 / §3.
+// `OfflineStore` wraps an inner `DataStore` (in practice `SupabaseStore`) and
+// a local mirror (a `LocalStore` pointed at a user-scoped key) so UI/finance
+// code keeps calling the plain `DataStore` interface and never learns about
+// connectivity — this file is the only place that does.
+//
+// Every mutation:
+//   1. assigns the id up front (`newId()`) so the mirror entity and the
+//      eventual server row share one uuid — replay in phase 3 is then
+//      idempotent (§3's "one real wrinkle, and its fix");
+//   2. applies optimistically to the mirror;
+//   3. is attempted against the inner store. A genuine *network* failure is
+//      queued for phase 3 to replay later (mirror's optimistic write stands).
+//      A non-network failure (validation/RLS — we ARE online) means the
+//      mutation was actually rejected: best-effort resync the mirror from
+//      the server and rethrow, so the caller's own optimistic UI state
+//      doesn't apply a change the server refused either.
+//
+// "Online" is decided by the real outcome of each inner-store call, never by
+// `navigator.onLine` alone (wrong behind captive portals / flaky VPNs) — see
+// lib/offline/connectivity.tsx for the equivalent read-side probe.
+
+import type { Asset, Portfolio, PortfolioData, Profile, Transaction } from "../types";
+import { LocalStore, mirrorStorageKeys } from "./local-store";
+import { MutationQueue, type MutationOp } from "./mutation-queue";
+import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
+import { newId } from "./types";
+
+/**
+ * True only for fetch/network-level failures — never for app-level errors
+ * (RLS denial, validation, `MAX_PORTFOLIOS`, etc.), which must still surface
+ * to the caller instead of being silently queued.
+ */
+function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError) return true; // fetch() throws TypeError on network failure
+  if (err instanceof Error) {
+    return /failed to fetch|fetch failed|network|ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(
+      err.message,
+    );
+  }
+  return false;
+}
+
+export class OfflineStore implements DataStore {
+  readonly persistent = true;
+  private mirror: LocalStore;
+  private queue: MutationQueue;
+
+  constructor(
+    private inner: DataStore,
+    private userId: string,
+    storage?: Storage,
+  ) {
+    this.mirror = new LocalStore(storage, mirrorStorageKeys(userId));
+    this.queue = new MutationQueue(userId, storage);
+  }
+
+  private enqueue(op: MutationOp, id: string, payload: unknown): void {
+    // Throws on quota failure (MutationQueue.append) — propagates up through
+    // the mutation method so the caller sees a hard error, per §5.4: never
+    // silently drop a mutation that couldn't be queued.
+    this.queue.append(op, this.userId, id, payload);
+  }
+
+  /**
+   * Called when the inner store rejects a mutation already applied
+   * optimistically to the mirror. Network failure → queue for later replay.
+   * Anything else → we're online and the server said no; resync the mirror
+   * from server truth (best-effort) and rethrow so the caller doesn't treat
+   * the rejected change as applied.
+   */
+  private async handleFailure(
+    err: unknown,
+    op: MutationOp,
+    id: string,
+    payload: unknown,
+  ): Promise<void> {
+    if (isNetworkError(err)) {
+      this.enqueue(op, id, payload);
+      return;
+    }
+    try {
+      const fresh = await this.inner.load();
+      await this.mirror.replaceAll(fresh);
+    } catch {
+      /* still offline-ish, or resync failed — leave the stale optimistic
+         mirror write; a future successful load() will reconcile it. */
+    }
+    throw err;
+  }
+
+  async load(): Promise<PortfolioData> {
+    try {
+      const data = await this.inner.load();
+      await this.mirror.replaceAll(data);
+      return data;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      return this.mirror.load();
+    }
+  }
+
+  async saveProfile(profile: Profile): Promise<void> {
+    await this.mirror.saveProfile(profile);
+    try {
+      await this.inner.saveProfile(profile);
+    } catch (err) {
+      // Profiles have no id of their own — the queue keys the op by userId.
+      await this.handleFailure(err, "saveProfile", this.userId, profile);
+    }
+  }
+
+  async addAsset(input: AssetInput, id?: string): Promise<Asset> {
+    const assetId = id ?? newId();
+    const asset = await this.mirror.addAsset(input, assetId);
+    try {
+      await this.inner.addAsset(input, assetId);
+    } catch (err) {
+      await this.handleFailure(err, "addAsset", assetId, input);
+    }
+    return asset;
+  }
+
+  async updateAsset(id: string, patch: Partial<AssetInput>): Promise<void> {
+    await this.mirror.updateAsset(id, patch);
+    try {
+      await this.inner.updateAsset(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateAsset", id, patch);
+    }
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    await this.mirror.deleteAsset(id);
+    try {
+      await this.inner.deleteAsset(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteAsset", id, null);
+    }
+  }
+
+  async addTransaction(input: TransactionInput, id?: string): Promise<Transaction> {
+    const txId = id ?? newId();
+    const tx = await this.mirror.addTransaction(input, txId);
+    try {
+      await this.inner.addTransaction(input, txId);
+    } catch (err) {
+      await this.handleFailure(err, "addTransaction", txId, input);
+    }
+    return tx;
+  }
+
+  async updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void> {
+    await this.mirror.updateTransaction(id, patch);
+    try {
+      await this.inner.updateTransaction(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateTransaction", id, patch);
+    }
+  }
+
+  async deleteTransaction(id: string): Promise<void> {
+    await this.mirror.deleteTransaction(id);
+    try {
+      await this.inner.deleteTransaction(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteTransaction", id, null);
+    }
+  }
+
+  async createPortfolio(name: string, id?: string): Promise<Portfolio> {
+    const portfolioId = id ?? newId();
+    const portfolio = await this.mirror.createPortfolio(name, portfolioId);
+    try {
+      await this.inner.createPortfolio(name, portfolioId);
+    } catch (err) {
+      await this.handleFailure(err, "createPortfolio", portfolioId, { name });
+    }
+    return portfolio;
+  }
+
+  async renamePortfolio(id: string, name: string): Promise<void> {
+    await this.mirror.renamePortfolio(id, name);
+    try {
+      await this.inner.renamePortfolio(id, name);
+    } catch (err) {
+      await this.handleFailure(err, "renamePortfolio", id, { name });
+    }
+  }
+
+  async deletePortfolio(id: string): Promise<void> {
+    await this.mirror.deletePortfolio(id);
+    try {
+      await this.inner.deletePortfolio(id);
+    } catch (err) {
+      await this.handleFailure(err, "deletePortfolio", id, null);
+    }
+  }
+
+  // Simulation cache + import fingerprints are non-critical, re-derivable
+  // caches — ridden on the mirror (§2 phase 2 note) but deliberately never
+  // queued, to keep the queue small and ops-only (§5.4).
+
+  async loadSimulation(hash: string): Promise<SimulationCacheEntry | null> {
+    try {
+      const entry = await this.inner.loadSimulation(hash);
+      if (entry) await this.mirror.saveSimulation(entry);
+      return entry;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      return this.mirror.loadSimulation(hash);
+    }
+  }
+
+  async saveSimulation(entry: SimulationCacheEntry): Promise<void> {
+    await this.mirror.saveSimulation(entry);
+    try {
+      await this.inner.saveSimulation(entry);
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      // best-effort only — not queued.
+    }
+  }
+
+  async loadImportedFingerprints(): Promise<string[]> {
+    try {
+      return await this.inner.loadImportedFingerprints();
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      return this.mirror.loadImportedFingerprints();
+    }
+  }
+
+  async addImportedFingerprints(
+    entries: { fingerprint: string; transactionId: string | null }[],
+  ): Promise<void> {
+    await this.mirror.addImportedFingerprints(entries);
+    try {
+      await this.inner.addImportedFingerprints(entries);
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      // best-effort only — not queued.
+    }
+  }
+}

@@ -184,11 +184,16 @@ export class SupabaseStore implements DataStore {
     return (data as { id: string }).id;
   }
 
-  async addAsset(input: AssetInput): Promise<Asset> {
+  async addAsset(input: AssetInput, id?: string): Promise<Asset> {
     const instrumentId = await this.resolveInstrument(input);
     const { data, error } = await this.supabase
       .from("assets")
       .insert({
+        // `id` omitted (undefined is dropped from the JSON body) lets the
+        // column default (`gen_random_uuid()`) apply; passed explicitly by
+        // `OfflineStore` on replay so the row matches its offline mirror id
+        // (OFFLINE_DESIGN.md §3 — RLS checks user_id, not id).
+        id,
         user_id: this.userId,
         instrument_id: instrumentId,
         currency: input.currency, // the user's per-holding trading currency
@@ -221,10 +226,11 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
   }
 
-  async addTransaction(input: TransactionInput): Promise<Transaction> {
+  async addTransaction(input: TransactionInput, id?: string): Promise<Transaction> {
     const { data, error } = await this.supabase
       .from("transactions")
       .insert({
+        id, // see addAsset — undefined lets the DB default generate one
         asset_id: input.assetId,
         portfolio_id: input.portfolioId,
         type: input.type,
@@ -272,7 +278,7 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
   }
 
-  async createPortfolio(name: string): Promise<Portfolio> {
+  async createPortfolio(name: string, id?: string): Promise<Portfolio> {
     const { count } = await this.supabase
       .from("portfolios")
       .select("id", { count: "exact", head: true })
@@ -282,7 +288,7 @@ export class SupabaseStore implements DataStore {
     }
     const { data, error } = await this.supabase
       .from("portfolios")
-      .insert({ user_id: this.userId, name: name.trim() || "Portfolio" })
+      .insert({ id, user_id: this.userId, name: name.trim() || "Portfolio" })
       .select("id, name")
       .single();
     if (error) throw error;

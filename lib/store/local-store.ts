@@ -11,18 +11,49 @@ const STORAGE_KEY = "fintrack:portfolio:v1";
 const SIM_KEY = "fintrack:simulations:v1";
 const IMPORT_KEY = "fintrack:imported:v1";
 
+/** The three localStorage keys a LocalStore instance reads/writes. */
+export interface LocalStoreKeys {
+  portfolio: string;
+  simulations: string;
+  imported: string;
+}
+
+const GUEST_KEYS: LocalStoreKeys = {
+  portfolio: STORAGE_KEY,
+  simulations: SIM_KEY,
+  imported: IMPORT_KEY,
+};
+
+/**
+ * User-scoped key set for the offline mirror (OFFLINE_DESIGN.md §2 phase 2),
+ * distinct from the Guest Mode keys above so signing out to Guest Mode on the
+ * same device never blends a registered user's data into the guest store —
+ * and distinct *per user* so two registered accounts on a shared device don't
+ * blend simulation caches / import fingerprints either (§5.4).
+ */
+export function mirrorStorageKeys(userId: string): LocalStoreKeys {
+  const base = `fintrack:mirror:${userId}:v1`;
+  return {
+    portfolio: base,
+    simulations: `fintrack:mirror:${userId}:simulations:v1`,
+    imported: `fintrack:mirror:${userId}:imported:v1`,
+  };
+}
+
 export class LocalStore implements DataStore {
   readonly persistent = false;
   private storage: Storage;
+  private keys: LocalStoreKeys;
 
-  constructor(storage?: Storage) {
+  constructor(storage?: Storage, keys: LocalStoreKeys = GUEST_KEYS) {
     // Fall back to an in-memory shim during SSR / when storage is unavailable.
     this.storage = storage ?? memoryStorageFallback();
+    this.keys = keys;
   }
 
   private read(): PortfolioData {
     try {
-      const raw = this.storage.getItem(STORAGE_KEY);
+      const raw = this.storage.getItem(this.keys.portfolio);
       if (!raw) return emptyPortfolio();
       const parsed = JSON.parse(raw) as PortfolioData;
       // Ensure at least one portfolio, and backfill transactions saved before
@@ -49,11 +80,19 @@ export class LocalStore implements DataStore {
   }
 
   private write(data: PortfolioData): void {
-    this.storage.setItem(STORAGE_KEY, JSON.stringify(data));
+    this.storage.setItem(this.keys.portfolio, JSON.stringify(data));
   }
 
   async load(): Promise<PortfolioData> {
     return this.read();
+  }
+
+  /**
+   * Full write-through replace — used by `OfflineStore` to mirror a
+   * successful `inner.load()` result verbatim (OFFLINE_DESIGN.md §2 phase 2).
+   */
+  async replaceAll(data: PortfolioData): Promise<void> {
+    this.write(data);
   }
 
   async saveProfile(profile: Profile): Promise<void> {
@@ -62,9 +101,9 @@ export class LocalStore implements DataStore {
     this.write(data);
   }
 
-  async addAsset(input: AssetInput) {
+  async addAsset(input: AssetInput, id?: string) {
     const data = this.read();
-    const asset = { ...input, id: newId() };
+    const asset = { ...input, id: id ?? newId() };
     data.assets.push(asset);
     this.write(data);
     return asset;
@@ -88,9 +127,9 @@ export class LocalStore implements DataStore {
     this.pruneImportedFingerprints(removedIds);
   }
 
-  async addTransaction(input: TransactionInput) {
+  async addTransaction(input: TransactionInput, id?: string) {
     const data = this.read();
-    const tx = { ...input, id: newId() };
+    const tx = { ...input, id: id ?? newId() };
     data.transactions.push(tx);
     this.write(data);
     return tx;
@@ -112,12 +151,12 @@ export class LocalStore implements DataStore {
     this.pruneImportedFingerprints([id]);
   }
 
-  async createPortfolio(name: string) {
+  async createPortfolio(name: string, id?: string) {
     const data = this.read();
     if (data.portfolios.length >= MAX_PORTFOLIOS) {
       throw new Error(`You can have at most ${MAX_PORTFOLIOS} portfolios.`);
     }
-    const portfolio = { id: newId(), name: name.trim() || "Portfolio" };
+    const portfolio = { id: id ?? newId(), name: name.trim() || "Portfolio" };
     data.portfolios.push(portfolio);
     this.write(data);
     return portfolio;
@@ -168,7 +207,7 @@ export class LocalStore implements DataStore {
     const trimmed: Record<string, SimulationCacheEntry> = {};
     for (const e of entries.slice(0, 20)) trimmed[e.hash] = e;
     try {
-      this.storage.setItem(SIM_KEY, JSON.stringify(trimmed));
+      this.storage.setItem(this.keys.simulations, JSON.stringify(trimmed));
     } catch {
       /* storage full — ignore, the sim just recomputes next time */
     }
@@ -176,7 +215,7 @@ export class LocalStore implements DataStore {
 
   private readSims(): Record<string, SimulationCacheEntry> {
     try {
-      const raw = this.storage.getItem(SIM_KEY);
+      const raw = this.storage.getItem(this.keys.simulations);
       return raw ? (JSON.parse(raw) as Record<string, SimulationCacheEntry>) : {};
     } catch {
       return {};
@@ -187,7 +226,7 @@ export class LocalStore implements DataStore {
   // unknown, e.g. rows recorded before this link existed).
   private readImportRecord(): Record<string, string | null> {
     try {
-      const raw = this.storage.getItem(IMPORT_KEY);
+      const raw = this.storage.getItem(this.keys.imported);
       if (!raw) return {};
       const parsed = JSON.parse(raw) as Record<string, string | null> | string[];
       // Tolerate the legacy bare fingerprint-array format.
@@ -202,7 +241,7 @@ export class LocalStore implements DataStore {
 
   private writeImportRecord(record: Record<string, string | null>): void {
     try {
-      this.storage.setItem(IMPORT_KEY, JSON.stringify(record));
+      this.storage.setItem(this.keys.imported, JSON.stringify(record));
     } catch {
       /* storage full — ignore */
     }
@@ -236,7 +275,9 @@ export class LocalStore implements DataStore {
   }
 }
 
-function memoryStorageFallback(): Storage {
+/** Exported so other store pieces (mutation-queue, offline-store) can share
+ *  the same SSR/no-storage fallback shim. */
+export function memoryStorageFallback(): Storage {
   const map = new Map<string, string>();
   return {
     getItem: (k) => map.get(k) ?? null,
