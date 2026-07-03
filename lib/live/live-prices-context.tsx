@@ -39,14 +39,14 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
 
   // Holdings with no cached price that we can resolve on demand (equities).
   const uncached = useMemo(() => {
-    const out: { key: string; q: string; currency: string }[] = [];
+    const out: { key: string; q: string; currency: string; name: string }[] = [];
     for (const asset of data.assets) {
       if (asset.type !== "STOCK" && asset.type !== "ETF") continue;
       const key = assetPriceKey(asset);
       if (lookupInstrument(key)?.lastPrice != null) continue; // cron has it
       if (fetched[key] != null) continue; // already fetched this session
       const q = asset.isin || asset.symbol;
-      if (q) out.push({ key, q, currency: asset.currency ?? base });
+      if (q) out.push({ key, q, currency: asset.currency ?? base, name: asset.name });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,8 +61,12 @@ export function LivePricesProvider({ children }: { children: ReactNode }) {
       const results = await Promise.all(
         uncached.map(async (u) => {
           try {
+            // `name` is a fallback Yahoo search query for when `q` (the
+            // ISIN/WKN/symbol) turns up no search results at all — some real
+            // ISINs aren't in Yahoo's search index (e.g. Alphabet's Class C
+            // ISIN US02079K3059 resolves by name but not by ISIN or WKN).
             const res = await fetch(
-              `/api/price?q=${encodeURIComponent(u.q)}&currency=${encodeURIComponent(u.currency)}`,
+              `/api/price?q=${encodeURIComponent(u.q)}&currency=${encodeURIComponent(u.currency)}&name=${encodeURIComponent(u.name)}`,
             );
             if (!res.ok) return null;
             const d = (await res.json()) as { found?: boolean; price?: number };

@@ -132,25 +132,47 @@ export async function resolveQuote(
   query: string,
   wantCurrency: string,
   hint?: string,
+  // A secondary query (e.g. the asset's name) tried when `query` (the ISIN/
+  // WKN) turns up no Yahoo search results at all.
+  fallbackQuery?: string,
 ): Promise<{ symbol: string; currency: string; price: number } | null> {
   const want = (wantCurrency || "").toUpperCase();
+
+  // Fast path: a previously-resolved listing (the stored quote_id) that still
+  // has data and matches — skip search + ranking, the steady-state cost once
+  // an instrument has been resolved once.
+  if (hint) {
+    const c = await chart(hint, "5d", "1d");
+    if (c && c.points.length > 0 && (!want || c.currency === want)) {
+      return { symbol: hint, currency: c.currency, price: c.points[c.points.length - 1].close };
+    }
+  }
+
   const candidates: string[] = [];
   if (hint) candidates.push(hint);
-  for (const s of await searchCandidates(query)) {
+  for (const s of await searchCandidates(query, fallbackQuery)) {
     if (!candidates.includes(s)) candidates.push(s);
   }
 
-  let fallback: { symbol: string; currency: string; price: number } | null = null;
-  for (const s of candidates.slice(0, 6)) {
+  // Scan every candidate rather than stopping at the first currency match:
+  // Yahoo's search-relevance order sometimes ranks a thin/duplicate listing
+  // (near-zero volume — a fractional or barely-traded line) ahead of the real
+  // one, so the most liquid same-currency listing is preferred instead.
+  type Hit = { symbol: string; currency: string; price: number; volume: number };
+  const hits: Hit[] = [];
+  for (const s of candidates.slice(0, 8)) {
     // 5-day daily candles: a live listing yields recent closes; a thin/dead one
     // yields none and is skipped (this is what rejected the bogus 97.82 line).
     const c = await chart(s, "5d", "1d");
     if (!c || c.points.length === 0) continue;
-    const hit = { symbol: s, currency: c.currency, price: c.points[c.points.length - 1].close };
-    if (!want || c.currency === want) return hit;
-    if (!fallback) fallback = hit;
+    hits.push({ symbol: s, currency: c.currency, price: c.points[c.points.length - 1].close, volume: c.volume });
   }
-  return fallback;
+  if (hits.length === 0) return null;
+  const matches = want ? hits.filter((h) => h.currency === want) : hits;
+  const pool = matches.length > 0 ? matches : hits;
+  pool.sort((a, b) => b.volume - a.volume);
+  const best = pool[0];
+  return { symbol: best.symbol, currency: best.currency, price: best.price };
 }
 
 export interface AssetMatch {
@@ -195,7 +217,7 @@ async function chart(
   // When true, use Yahoo's adjusted close (dividends reinvested = total return),
   // so a distributing fund/index is comparable to an accumulating one.
   total = false,
-): Promise<{ points: YahooPoint[]; currency: string } | null> {
+): Promise<{ points: YahooPoint[]; currency: string; volume: number } | null> {
   const data = (await getJSON(
     `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}${total ? "&events=div" : ""}`,
   )) as
@@ -207,7 +229,7 @@ async function chart(
               quote?: Array<{ close?: (number | null)[] }>;
               adjclose?: Array<{ adjclose?: (number | null)[] }>;
             };
-            meta?: { currency?: string };
+            meta?: { currency?: string; regularMarketVolume?: number };
           }>;
         };
       }
@@ -230,14 +252,82 @@ async function chart(
     }
   }
   if (points.length === 0) return null;
-  return { points, currency: (result?.meta?.currency ?? "").toUpperCase() };
+  return {
+    points,
+    currency: (result?.meta?.currency ?? "").toUpperCase(),
+    volume: result?.meta?.regularMarketVolume ?? 0,
+  };
 }
 
-async function searchCandidates(query: string): Promise<string[]> {
-  const data = (await getJSON(
-    `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0`,
-  )) as { quotes?: Array<{ symbol?: string }> } | null;
-  return (data?.quotes ?? []).map((q) => q.symbol).filter((s): s is string => !!s);
+// German broker/exchange security-name descriptors (share class, par value,
+// registration form, ...) that Yahoo's search chokes on. The name is cut at
+// the FIRST occurrence of any of these (case-insensitive), e.g.
+// "ALPHABET INC.CL.A DL-,001" → "ALPHABET INC".
+const NAME_NOISE = [
+  ".CL",   // share class:      "INC.CL.A"
+  " CL.",  // share class:      "INC CL.A"
+  " DL-",  // par value (USD):  "DL-,001"
+  " DL ",  // par value (USD):  "DL 0,001"
+  " O.N",  // ohne Nennwert:    "BASF SE O.N."
+  " INH",  // Inhaber-Aktien:   "… INH. O.N."
+  " VZ",   // Vorzugsaktien:    "VOLKSWAGEN AG VZ"
+  " ADR",  // depositary rcpts: "ALIBABA GR.HLDG ADR"
+  " NAM.", // Namens-Aktien:    "… NAM. EO 1"
+  " EO-",  // par value (EUR):  "EO-,10"
+  ",",     // par-value tail:   "DL-,001"
+  "/",     // ratio tail:       "ADR/8"
+];
+
+/**
+ * Strip German exchange-descriptor noise from a broker CSV security name so
+ * Yahoo search can match it: cut at the first noise marker, collapse
+ * whitespace. Pure; exported for tests.
+ */
+export function normalizeSecurityName(name: string): string {
+  const upper = name.toUpperCase();
+  let cut = name.length;
+  for (const p of NAME_NOISE) {
+    const i = upper.indexOf(p);
+    if (i > 0 && i < cut) cut = i;
+  }
+  return name.slice(0, cut).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Yahoo symbols matching `query`. When it yields nothing and `fallbackQuery`
+ * is given (e.g. the asset's name), retries with that — Yahoo's search index
+ * doesn't cover every ISIN (observed for at least one real, listed security:
+ * Alphabet's Class C ISIN US02079K3059 returns zero results by ISIN or WKN,
+ * but resolves fine by company name). Broker CSV names carry German exchange
+ * descriptors ("ALPHABET INC.CL.A DL-,001") that Yahoo also fails on, so the
+ * fallback escalates: raw name → normalized name → its first two tokens.
+ * Capped at three fallback attempts, each at least 3 characters long.
+ */
+async function searchCandidates(query: string, fallbackQuery?: string): Promise<string[]> {
+  const search = async (q: string): Promise<string[]> => {
+    const data = (await getJSON(
+      `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0`,
+    )) as { quotes?: Array<{ symbol?: string }> } | null;
+    return (data?.quotes ?? []).map((s) => s.symbol).filter((s): s is string => !!s);
+  };
+  const primary = await search(query);
+  if (primary.length > 0) return primary;
+
+  // Fallback attempts, most specific first; dedupe, skip too-short/identical.
+  const raw = fallbackQuery?.trim() ?? "";
+  const normalized = normalizeSecurityName(raw);
+  const tokens = normalized.split(" ");
+  const attempts: string[] = [raw, normalized];
+  if (tokens.length > 2) attempts.push(tokens.slice(0, 2).join(" "));
+
+  const tried = new Set([query.toUpperCase()]);
+  for (const attempt of attempts.slice(0, 3)) {
+    if (attempt.length < 3 || tried.has(attempt.toUpperCase())) continue;
+    tried.add(attempt.toUpperCase());
+    const hits = await search(attempt);
+    if (hits.length > 0) return hits;
+  }
+  return [];
 }
 
 /**
@@ -255,22 +345,41 @@ export async function historyByQuery(
   // Use total-return (adjusted close) — for benchmarks, so a distributing index
   // is comparable to an accumulating holding.
   total = false,
+  // A secondary query (e.g. the asset's name) tried when `query` (the ISIN/
+  // WKN) turns up no Yahoo search results at all.
+  fallbackQuery?: string,
 ): Promise<{ points: YahooPoint[]; currency: string } | null> {
   const want = (wantCurrency || "").toUpperCase();
+
+  // Fast path: the previously-resolved listing still has data and matches —
+  // skip search + ranking (the steady-state cost once resolved once).
+  if (hint) {
+    const c = await chart(hint, range, interval, total);
+    if (c && (!want || c.currency === want)) return c;
+  }
+
   const candidates: string[] = [];
   if (hint) candidates.push(hint);
-  for (const s of await searchCandidates(query)) {
+  for (const s of await searchCandidates(query, fallbackQuery)) {
     if (!candidates.includes(s)) candidates.push(s);
   }
 
-  let fallback: { points: YahooPoint[]; currency: string } | null = null;
+  // Scan every candidate rather than stopping at the first currency match —
+  // same reasoning as resolveQuote: prefer the most liquid same-currency
+  // listing so quotes and history never settle on different lines.
+  type Hit = { currency: string; volume: number; series: { points: YahooPoint[]; currency: string } };
+  const hits: Hit[] = [];
   for (const s of candidates.slice(0, 5)) {
+    if (s === hint) continue; // already checked on the fast path above
     const c = await chart(s, range, interval, total);
     if (!c) continue;
-    if (!want || c.currency === want) return c;
-    if (!fallback) fallback = c;
+    hits.push({ currency: c.currency, volume: c.volume, series: c });
   }
-  return fallback;
+  if (hits.length === 0) return null;
+  const matches = want ? hits.filter((h) => h.currency === want) : hits;
+  const pool = matches.length > 0 ? matches : hits;
+  pool.sort((a, b) => b.volume - a.volume);
+  return pool[0].series;
 }
 
 export interface DividendEvent {
@@ -321,11 +430,14 @@ export async function dividendsByQuery(
   wantCurrency: string,
   hint: string | undefined,
   range: string,
+  // A secondary query (e.g. the asset's name) tried when `query` (the ISIN/
+  // WKN) turns up no Yahoo search results at all.
+  fallbackQuery?: string,
 ): Promise<{ events: DividendEvent[]; currency: string } | null> {
   const want = (wantCurrency || "").toUpperCase();
   const candidates: string[] = [];
   if (hint) candidates.push(hint);
-  for (const s of await searchCandidates(query)) {
+  for (const s of await searchCandidates(query, fallbackQuery)) {
     if (!candidates.includes(s)) candidates.push(s);
   }
 

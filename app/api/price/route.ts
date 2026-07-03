@@ -29,9 +29,12 @@ export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim();
   const currency = (url.searchParams.get("currency") || "").toUpperCase();
+  // Fallback Yahoo search query (the asset's name) when `q` (ISIN/WKN/symbol)
+  // turns up nothing — some real ISINs aren't in Yahoo's search index.
+  const name = url.searchParams.get("name")?.trim() || undefined;
   if (!q) return Response.json({ found: false });
 
-  const r = await resolveQuote(q, currency);
+  const r = await resolveQuote(q, currency, undefined, name);
   if (!r) return Response.json({ found: false });
 
   // Convert into the requested currency when the resolved listing differs.

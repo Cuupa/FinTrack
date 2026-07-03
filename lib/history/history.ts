@@ -14,6 +14,9 @@ export interface HistItem {
   source: "yahoo" | "stooq" | "coingecko";
   id: string;
   currency: string;
+  // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
+  // up nothing (some real ISINs aren't in Yahoo's search index).
+  name?: string;
 }
 
 /**

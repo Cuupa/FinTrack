@@ -12,6 +12,9 @@ interface DivItem {
   source: "yahoo" | "stooq" | "coingecko";
   id: string;
   currency: string;
+  // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
+  // up nothing (some real ISINs aren't in Yahoo's search index).
+  name?: string;
 }
 
 interface RequestBody {
@@ -62,7 +65,7 @@ export async function POST(req: Request): Promise<Response> {
       const query = isISIN(item.key) ? item.key : item.id || item.key;
       const hint = item.source === "yahoo" && item.id ? item.id : undefined;
       const want = (item.currency || "").toUpperCase();
-      const r = await dividendsByQuery(query, want, hint, range).catch(() => null);
+      const r = await dividendsByQuery(query, want, hint, range, item.name).catch(() => null);
       if (!r) return;
       let events = r.events;
       if (want && r.currency && r.currency !== want && events.length > 0) {

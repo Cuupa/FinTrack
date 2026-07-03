@@ -20,6 +20,9 @@ interface QuoteItem {
   source: "yahoo" | "stooq" | "coingecko";
   id: string;
   currency: string;
+  // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
+  // up nothing (some real ISINs aren't in Yahoo's search index).
+  name?: string;
 }
 
 interface RequestBody {
@@ -39,6 +42,31 @@ async function getJSON(url: string): Promise<unknown | null> {
   }
 }
 
+// 1 unit of `from` in `to` (Frankfurter/ECB). 1 when equal/unknown.
+const fxCache = new Map<string, number>();
+async function fxRate(from: string, to: string): Promise<number> {
+  if (!from || !to || from === to) return 1;
+  const ck = `${from}|${to}`;
+  const cached = fxCache.get(ck);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${from}&to=${to}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { rates?: Record<string, number> };
+      const rate = data.rates?.[to];
+      if (typeof rate === "number" && rate > 0) {
+        fxCache.set(ck, rate);
+        return rate;
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  return 1;
+}
+
 async function getText(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
@@ -53,8 +81,16 @@ async function getText(url: string): Promise<string | null> {
 async function priceViaYahoo(item: QuoteItem): Promise<number | null> {
   const query = isISIN(item.key) ? item.key : item.id || item.key;
   const hint = item.source === "yahoo" && item.id ? item.id : undefined;
-  const r = await resolveQuote(query, item.currency, hint);
-  return r ? r.price : null;
+  const r = await resolveQuote(query, item.currency, hint, item.name);
+  if (!r) return null;
+  // resolveQuote may fall back to a different-currency listing when nothing
+  // in the asset's currency is available — convert so the result is always
+  // in the asset's own currency (matches /api/price and the cron sync).
+  const want = (item.currency || "").toUpperCase();
+  if (want && r.currency && r.currency !== want) {
+    return r.price * (await fxRate(r.currency, want));
+  }
+  return r.price;
 }
 
 async function fetchStooq(

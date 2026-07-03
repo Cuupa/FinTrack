@@ -168,10 +168,12 @@ export function quoteRefFor(asset: Asset): QuoteRef | null {
 /** Build a live-quote item for an asset (for /api/quotes and /api/history). */
 export function quoteItemFor(
   asset: Asset,
-): { key: string; source: QuoteRef["source"]; id: string; currency: string } | null {
+): { key: string; source: QuoteRef["source"]; id: string; currency: string; name?: string } | null {
   const ref = quoteRefFor(asset);
   if (!ref) return null;
-  return { key: assetPriceKey(asset), source: ref.source, id: ref.id, currency: ref.currency };
+  // `name` lets the server fall back to a Yahoo name search when the ISIN/WKN
+  // itself has no search hit (some real ISINs aren't in Yahoo's index).
+  return { key: assetPriceKey(asset), source: ref.source, id: ref.id, currency: ref.currency, name: asset.name };
 }
 
 export { parseISODate, addDays };

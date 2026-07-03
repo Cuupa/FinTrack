@@ -82,6 +82,9 @@ interface HistItem {
   source: "yahoo" | "stooq" | "coingecko";
   id: string;
   currency: string;
+  // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
+  // up nothing (some real ISINs aren't in Yahoo's search index).
+  name?: string;
 }
 
 interface RequestBody {
@@ -132,7 +135,15 @@ async function yahooHistory(item: HistItem, range: string): Promise<YahooPoint[]
   const query = isISIN(item.key) ? item.key : item.id || item.key;
   const hint = item.source === "yahoo" && item.id ? item.id : undefined;
   const cfg = RANGE[range] ?? RANGE["1Y"];
-  const result = await historyByQuery(query, item.currency, hint, cfg.yRange, cfg.yInterval);
+  const result = await historyByQuery(
+    query,
+    item.currency,
+    hint,
+    cfg.yRange,
+    cfg.yInterval,
+    false,
+    item.name,
+  );
   if (!result) return null;
 
   const want = (item.currency || "").toUpperCase();
