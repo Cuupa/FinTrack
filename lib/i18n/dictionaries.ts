@@ -40,6 +40,8 @@ export const en = {
   "settings.deleteAccountHint":
     "Permanently deletes your account and all data — portfolios, assets, and transactions. This cannot be undone.",
   "settings.deleteAccountType": 'Type "delete" to confirm',
+  "settings.deleteAccountPassword": "Current password",
+  "settings.deleteAccountWrongPassword": "Wrong password.",
   "settings.deleteAccountError": "Deletion failed.",
 
   "dashboard.title": "Dashboard",
@@ -510,6 +512,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "settings.deleteAccountHint":
     "Löscht Ihr Konto und alle Daten dauerhaft — Portfolios, Wertpapiere und Transaktionen. Dies kann nicht rückgängig gemacht werden.",
   "settings.deleteAccountType": 'Geben Sie "delete" zur Bestätigung ein',
+  "settings.deleteAccountPassword": "Aktuelles Passwort",
+  "settings.deleteAccountWrongPassword": "Falsches Passwort.",
   "settings.deleteAccountError": "Löschen fehlgeschlagen.",
 
   "dashboard.title": "Übersicht",

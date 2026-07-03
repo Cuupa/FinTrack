@@ -16,7 +16,7 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 
 export function SettingsView() {
   const { data, updateProfile } = usePortfolio();
-  const { mode, updatePassword, signOut } = useAuth();
+  const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
 
@@ -31,8 +31,11 @@ export function SettingsView() {
   const [savingPw, setSavingPw] = useState(false);
 
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const hasPassword = user?.identities?.some((i) => i.provider === "email") ?? false;
 
   const saveProfile = async () => {
     setSavingProfile(true);
@@ -77,9 +80,16 @@ export function SettingsView() {
       if (!token) throw new Error(t("settings.deleteAccountError"));
       const res = await fetch("/api/account/delete", {
         method: "POST",
-        headers: { authorization: `Bearer ${token}` },
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ password: deletePassword }),
       });
-      if (!res.ok) throw new Error(t("settings.deleteAccountError"));
+      if (!res.ok) {
+        if (res.status === 403) throw new Error(t("settings.deleteAccountWrongPassword"));
+        throw new Error(t("settings.deleteAccountError"));
+      }
       await signOut();
       router.push("/");
     } catch (e) {
@@ -174,6 +184,17 @@ export function SettingsView() {
           </h2>
           <div className="mt-4 space-y-4">
             <p className="text-sm text-zinc-500">{t("settings.deleteAccountHint")}</p>
+            {hasPassword && (
+              <Field label={t("settings.deleteAccountPassword")}>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                />
+              </Field>
+            )}
             <Field label={t("settings.deleteAccountType")}>
               <input
                 value={deleteConfirm}
@@ -187,7 +208,11 @@ export function SettingsView() {
               <Button
                 variant="danger"
                 onClick={deleteAccount}
-                disabled={deleting || deleteConfirm.trim().toLowerCase() !== "delete"}
+                disabled={
+                  deleting ||
+                  deleteConfirm.trim().toLowerCase() !== "delete" ||
+                  (hasPassword && !deletePassword)
+                }
               >
                 {deleting ? "…" : t("settings.deleteAccount")}
               </Button>
