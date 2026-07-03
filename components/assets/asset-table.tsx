@@ -18,6 +18,7 @@ import { dateKey, type Timeframe } from "@/lib/finance/dates";
 import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { assetIdentifier, type AssetType } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { CopyValue } from "@/components/ui/copy-value";
 
 type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
 
@@ -206,7 +207,9 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                       <Link href={`/assets/${h.asset.id}`} className="font-medium hover:underline">
                         {h.asset.name}
                       </Link>
-                      <div className="text-xs text-zinc-500">{assetIdentifier(h.asset)}</div>
+                      <div className="text-xs text-zinc-500">
+                        <CopyValue value={assetIdentifier(h.asset)}>{assetIdentifier(h.asset)}</CopyValue>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       {formatCurrency(h.price, nativeCur)}
@@ -278,7 +281,9 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                     <Link href={`/assets/${h.asset.id}`} className="font-medium hover:underline">
                       {h.asset.name}
                     </Link>
-                    <div className="text-xs text-zinc-500">{assetIdentifier(h.asset)}</div>
+                    <div className="text-xs text-zinc-500">
+                      <CopyValue value={assetIdentifier(h.asset)}>{assetIdentifier(h.asset)}</CopyValue>
+                    </div>
                   </td>
                   <td className={`px-4 py-3 text-right tabular-nums ${plColor(h.realizedPL)}`} data-private>
                     {h.realizedPL >= 0 ? "+" : ""}

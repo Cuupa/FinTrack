@@ -4,7 +4,7 @@
 // with buy/sell markers, advanced metrics (IRR, master data, dividends,
 // realized/unrealized P&L) and the transaction log.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
@@ -40,6 +40,7 @@ import { assetAnnualStats } from "@/lib/finance/stats";
 import { useHistory } from "@/lib/history/use-history";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CopyValue } from "@/components/ui/copy-value";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -189,9 +190,11 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           </Link>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold tracking-tight">
             {asset.name}
-            <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              {assetIdentifier(asset)}
-            </span>
+            <CopyValue value={assetIdentifier(asset)}>
+              <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                {assetIdentifier(asset)}
+              </span>
+            </CopyValue>
             <span className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700">
               {t(typeKey)}
             </span>
@@ -331,9 +334,17 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           <h2 className="text-lg font-semibold">{t("asset.details")}</h2>
           <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <Row label={t("asset.row.name")} value={asset.name} />
-            <Row label={t("asset.row.isin")} value={asset.isin ?? "—"} />
-            <Row label={t("asset.row.wkn")} value={asset.wkn ?? "—"} />
-            {asset.symbol && <Row label={t("asset.row.symbol")} value={asset.symbol} />}
+            <Row
+              label={t("asset.row.isin")}
+              value={asset.isin ? <CopyValue value={asset.isin} /> : "—"}
+            />
+            <Row
+              label={t("asset.row.wkn")}
+              value={asset.wkn ? <CopyValue value={asset.wkn} /> : "—"}
+            />
+            {asset.symbol && (
+              <Row label={t("asset.row.symbol")} value={<CopyValue value={asset.symbol} />} />
+            )}
             <Row label={t("asset.row.currency")} value={nativeCur} />
             <Row label={t("asset.row.shares")} value={formatNumber(summary.position.shares, 4)} isPrivate />
             <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
@@ -721,7 +732,7 @@ function Row({
   isPrivate = false,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   isPrivate?: boolean;
 }) {
   return (

@@ -35,6 +35,12 @@ export const en = {
   "settings.confirmPassword": "Confirm password",
   "settings.save": "Save",
   "settings.saved": "Saved",
+  "settings.dangerZone": "Danger zone",
+  "settings.deleteAccount": "Delete account",
+  "settings.deleteAccountHint":
+    "Permanently deletes your account and all data — portfolios, assets, and transactions. This cannot be undone.",
+  "settings.deleteAccountType": 'Type "delete" to confirm',
+  "settings.deleteAccountError": "Deletion failed.",
 
   "dashboard.title": "Dashboard",
   "dashboard.subtitle": "Your portfolio at a glance.",
@@ -99,6 +105,7 @@ export const en = {
 
   "common.compare": "Compare",
   "common.other": "Other",
+  "common.copy": "Copy",
 
   "privacy.showFigures": "Show figures",
   "privacy.hideFigures": "Hide figures",
@@ -490,6 +497,12 @@ const de: Partial<Record<MessageKey, string>> = {
   "settings.confirmPassword": "Passwort bestätigen",
   "settings.save": "Speichern",
   "settings.saved": "Gespeichert",
+  "settings.dangerZone": "Gefahrenzone",
+  "settings.deleteAccount": "Konto löschen",
+  "settings.deleteAccountHint":
+    "Löscht Ihr Konto und alle Daten dauerhaft — Portfolios, Wertpapiere und Transaktionen. Dies kann nicht rückgängig gemacht werden.",
+  "settings.deleteAccountType": 'Geben Sie "delete" zur Bestätigung ein',
+  "settings.deleteAccountError": "Löschen fehlgeschlagen.",
 
   "dashboard.title": "Übersicht",
   "dashboard.subtitle": "Ihr Portfolio auf einen Blick.",
@@ -553,6 +566,7 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "common.compare": "Vergleichen",
   "common.other": "Andere",
+  "common.copy": "Kopieren",
 
   "privacy.showFigures": "Beträge anzeigen",
   "privacy.hideFigures": "Beträge ausblenden",

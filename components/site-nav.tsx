@@ -48,9 +48,9 @@ export function SiteNav() {
         <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
           Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
         </Link>
-        <PortfolioPicker />
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <PortfolioPicker />
           <LocaleSwitcher />
           <PrivacyToggle />
           {mode === "registered" ? (
