@@ -4,6 +4,7 @@
 // Controlled: render with `open` and handle onConfirm/onCancel.
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./primitives";
 
 export function ConfirmDialog({
@@ -31,8 +32,13 @@ export function ConfirmDialog({
   }, [open, onCancel]);
 
   if (!open) return null;
+  // Rendered through a portal to document.body: a `fixed inset-0` overlay
+  // nested inside an ancestor with `backdrop-filter` (e.g. the blurred site
+  // header) would otherwise be positioned relative to that ancestor instead
+  // of the viewport, since backdrop-filter establishes a containing block.
+  if (typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -56,6 +62,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
