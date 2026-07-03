@@ -50,7 +50,8 @@ export const en = {
   "import.new": "new",
   "import.conflicts": "conflicts",
   "import.alreadyImported": "already imported",
-  "import.skippedCash": "cash entries (dividends/fees) skipped",
+  "import.skippedCash": "rows without an executed transaction skipped (cash, cancelled orders)",
+  "import.invalidRows": "rows ignored (missing ISIN/WKN, date, shares, or price)",
   "import.status": "Status",
   "import.asset": "Asset",
   "import.row": "Transaction",
@@ -248,6 +249,8 @@ export const en = {
   "risk.portfolioTitle": "Portfolio risk",
   "risk.portfolioTip":
     "Risk metrics measured from your portfolio's real return history over the selected window (synthetic fallback).",
+  "risk.kpiScopeHint":
+    "These figures describe the selected scope as one combined portfolio — diversification lowers its volatility, so its Sharpe can exceed every single holding's.",
   "risk.benchmark": "Benchmark",
   "risk.vs": "vs",
   "risk.qGood": "Healthy",
@@ -283,9 +286,11 @@ export const en = {
     "Value at Risk: with 95% confidence, the most you'd expect to lose over one month (normal approximation). Lower is better.",
   "risk.days": "days",
   "risk.byAsset": "Risk by holding",
-  "risk.byAssetTip": "Per-holding volatility, beta & alpha vs. the MSCI World index, Sharpe ratio and weight.",
+  "risk.byAssetTip":
+    "Per-holding volatility, beta & alpha vs. the MSCI World index, Sharpe ratio and weight. Each row measures the asset on its own over the selected window; scope the view to a single holding and the tiles above match its row exactly.",
   "risk.asset": "Asset",
   "risk.weight": "Weight",
+  "risk.weightTip": "This holding's share of the selected scope's total market value.",
   "risk.correlation": "Correlation matrix",
   "risk.correlationTip":
     "How holdings move together: red = move in sync (less diversification), blue = move oppositely (a hedge), pale = independent.",
@@ -500,7 +505,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "import.new": "neu",
   "import.conflicts": "Konflikte",
   "import.alreadyImported": "bereits importiert",
-  "import.skippedCash": "Barumsätze (Dividenden/Gebühren) übersprungen",
+  "import.skippedCash": "Zeilen ohne ausgeführte Transaktion übersprungen (Barumsätze, stornierte Orders)",
+  "import.invalidRows": "Zeilen ignoriert (ISIN/WKN, Datum, Stückzahl oder Kurs fehlt)",
   "import.status": "Status",
   "import.asset": "Wert",
   "import.row": "Transaktion",
@@ -697,6 +703,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.portfolioTitle": "Portfolio-Risiko",
   "risk.portfolioTip":
     "Risikokennzahlen aus der echten Renditehistorie Ihres Portfolios im gewählten Zeitraum (synthetischer Rückfall).",
+  "risk.kpiScopeHint":
+    "Diese Kennzahlen beschreiben die gewählte Auswahl als ein Gesamtportfolio — Diversifikation senkt dessen Volatilität, daher kann die Sharpe-Ratio über der jedes einzelnen Wertes liegen.",
   "risk.benchmark": "Benchmark",
   "risk.vs": "vs",
   "risk.qGood": "Gesund",
@@ -732,9 +740,11 @@ const de: Partial<Record<MessageKey, string>> = {
     "Value at Risk: mit 95% Konfidenz der maximal erwartete Verlust über einen Monat (Normalverteilungs-Näherung). Niedriger ist besser.",
   "risk.days": "Tage",
   "risk.byAsset": "Risiko je Position",
-  "risk.byAssetTip": "Volatilität, Beta & Alpha zum MSCI World Index, Sharpe-Ratio und Gewicht je Position.",
+  "risk.byAssetTip":
+    "Volatilität, Beta & Alpha zum MSCI World Index, Sharpe-Ratio und Gewicht je Position. Jede Zeile bewertet den Wert für sich über den gewählten Zeitraum; wird oben ein einzelner Wert als Scope gewählt, stimmen die Kacheln exakt mit seiner Zeile überein.",
   "risk.asset": "Wert",
   "risk.weight": "Gewicht",
+  "risk.weightTip": "Anteil dieser Position am Gesamtwert der gewählten Auswahl.",
   "risk.correlation": "Korrelationsmatrix",
   "risk.correlationTip":
     "Wie sich Positionen gemeinsam bewegen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",

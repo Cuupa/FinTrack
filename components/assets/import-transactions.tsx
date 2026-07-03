@@ -77,37 +77,58 @@ function rowIdentifier(p: Pick<ParsedTx, "isin" | "wkn" | "symbol">): string {
   return (p.isin || p.wkn || p.symbol || "").toUpperCase();
 }
 
+interface ResolvedInstrument {
+  name?: string;
+  /** Only set when the lookup returned a concrete, known type — a real
+   *  lookup beats the generic parser's name-based ETF/STOCK guess. */
+  type?: AssetType;
+}
+
+/** /api/lookup requests are throttled to this many concurrent in-flight
+ *  calls: Yahoo (the resolver behind it) rate-limits large bursts, which a
+ *  ~30-identifier import would otherwise fire all at once. */
+const LOOKUP_BATCH_SIZE = 4;
+
 /**
- * Resolve the official instrument name for every unique identifier in a
- * parsed CSV, so the preview and the assets created from it show the real
- * name instead of whatever the broker export happened to print. Tries the
- * in-memory catalog first (synchronous), then falls back to the live
- * /api/lookup route; a row's CSV name is kept if neither resolves.
+ * Resolve the official instrument name (and, when known, the real asset
+ * type) for every unique identifier in a parsed CSV, so the preview and the
+ * assets created from it show accurate data instead of whatever the broker
+ * export happened to print — or, for the generic parser, had to guess from
+ * the name. Tries the in-memory catalog first (synchronous, unthrottled);
+ * identifiers the catalog misses fall back to the live /api/lookup route in
+ * throttled batches. A row's CSV name/type is kept if neither resolves.
  */
-async function resolveNames(rows: ParsedTx[]): Promise<Map<string, string>> {
+async function resolveNames(rows: ParsedTx[]): Promise<Map<string, ResolvedInstrument>> {
   const ids = new Set<string>();
   for (const p of rows) {
     const id = rowIdentifier(p);
     if (id) ids.add(id);
   }
-  const resolved = new Map<string, string>();
-  await Promise.all(
-    Array.from(ids).map(async (id) => {
-      const match = lookupInstrumentByQuery(id);
-      if (match?.name) {
-        resolved.set(id, match.name);
-        return;
-      }
-      try {
-        const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(id)}`);
-        if (!res.ok) return;
-        const d = (await res.json()) as { found?: boolean; name?: string };
-        if (d.found && d.name) resolved.set(id, d.name);
-      } catch {
-        /* live lookup failed — keep the CSV name for this identifier */
-      }
-    }),
-  );
+  const resolved = new Map<string, ResolvedInstrument>();
+  const remaining: string[] = [];
+  for (const id of ids) {
+    const match = lookupInstrumentByQuery(id);
+    if (match?.name) {
+      resolved.set(id, { name: match.name, type: match.type });
+    } else {
+      remaining.push(id);
+    }
+  }
+  for (let i = 0; i < remaining.length; i += LOOKUP_BATCH_SIZE) {
+    const batch = remaining.slice(i, i + LOOKUP_BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (id) => {
+        try {
+          const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(id)}`);
+          if (!res.ok) return;
+          const d = (await res.json()) as { found?: boolean; name?: string; type?: AssetType };
+          if (d.found) resolved.set(id, { name: d.name, type: d.type });
+        } catch {
+          /* live lookup failed — keep the CSV name/type for this identifier */
+        }
+      }),
+    );
+  }
   return resolved;
 }
 
@@ -151,6 +172,9 @@ export function ImportTransactions({
   const [reconciled, setReconciled] = useState<ReconciledRow[]>([]);
   // Recognised-but-cash-only rows (dividends, fees) the parser skipped.
   const [skippedCount, setSkippedCount] = useState(0);
+  // Rows the parser emitted but the validation guardrail rejected (missing
+  // ISIN/WKN, bad date, non-positive shares/price) — counted, never imported.
+  const [invalidCount, setInvalidCount] = useState(0);
   // New rows: included by index (default all). Conflicts: per-field resolution.
   const [included, setIncluded] = useState<Record<number, boolean>>({});
   const [resolutions, setResolutions] = useState<Record<number, Resolution>>({});
@@ -166,22 +190,26 @@ export function ImportTransactions({
     setError(null);
     try {
       const text = await readFile(file);
-      const { rows: parsed, skipped } = parseCsv(text);
+      const { rows: parsed, skipped, invalid } = parseCsv(text);
       if (parsed.length === 0) {
         setError(t("import.noRows"));
         setReconciled([]);
         setFileName(null);
         setSkippedCount(0);
+        setInvalidCount(0);
         return;
       }
       setSkippedCount(skipped);
-      // Replace the broker's CSV name with the official instrument name
-      // (catalog first, then a live lookup) so both the preview and the
-      // assets created from it show the real name.
-      const names = await resolveNames(parsed);
+      setInvalidCount(invalid);
+      // Replace the broker's CSV name/type with the official instrument data
+      // (catalog first, then a throttled live lookup) so both the preview
+      // and the assets created from it are accurate, not the export's own
+      // text or the generic parser's name-based type guess.
+      const resolvedById = await resolveNames(parsed);
       for (const p of parsed) {
-        const resolved = names.get(rowIdentifier(p));
-        if (resolved) p.name = resolved;
+        const resolved = resolvedById.get(rowIdentifier(p));
+        if (resolved?.name) p.name = resolved.name;
+        if (resolved?.type) p.assetType = resolved.type;
       }
       const imported = new Set(await loadImportedFingerprints());
       const rec = reconcile(parsed, data.assets, allTransactions, imported);
@@ -436,6 +464,11 @@ export function ImportTransactions({
             {skippedCount > 0 && (
               <span className="text-zinc-400">
                 {skippedCount} {t("import.skippedCash")}
+              </span>
+            )}
+            {invalidCount > 0 && (
+              <span className="font-medium text-amber-600 dark:text-amber-400">
+                {invalidCount} {t("import.invalidRows")}
               </span>
             )}
           </div>

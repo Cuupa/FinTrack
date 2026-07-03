@@ -21,7 +21,7 @@ export interface ParsedTx {
   assetType: AssetType;
 }
 
-export type BrokerFormat = "zero" | "fnz" | "traderepublic" | "deutschebank" | "dbtransactions";
+export type BrokerFormat = "zeroorders" | "fnz" | "traderepublic" | "deutschebank" | "dbtransactions";
 
 // --- helpers ----------------------------------------------------------------
 
@@ -90,7 +90,9 @@ export function detectFormat(text: string): BrokerFormat | null {
   const h = first.toLowerCase();
   if (h.includes("datetime") && h.includes("asset_class")) return "traderepublic";
   if (h.includes("depotnummer") && h.includes("umsatzart")) return "fnz";
-  if (h.includes("ausführung kurs") || h.includes("ausf") && h.includes("richtung")) return "zero";
+  if (h.includes("richtung") && h.includes("ausführung kurs") && h.includes("anzahl ausgeführt")) {
+    return "zeroorders";
+  }
   if (h.includes("bestand") && h.includes("einstandskurs")) return "deutschebank";
   // Deutsche Bank "PrivatDepot" transaction export (distinct from the
   // Bestandsaufstellung snapshot above): a real Umsatzart-keyed history.
@@ -107,8 +109,22 @@ function assetTypeFromClass(s: string): AssetType {
   return "ETF";
 }
 
-/** Finanzen.net zero — order history. Only executed orders become transactions. */
-function parseZero(text: string): ParsedTx[] {
+/** Guess ETF vs STOCK from the instrument name — used by parsers whose export
+ *  carries no reliable type/Gattung column of its own. */
+function inferAssetType(name: string): "ETF" | "STOCK" {
+  return /\bETF\b|UCITS|Fonds|Fund/i.test(name || "") ? "ETF" : "STOCK";
+}
+
+/**
+ * Scalable Capital "ZERO" order history export. Every row is an order
+ * *attempt* — only the ones whose "Status" is "ausgeführt" (executed) ever
+ * became a real trade; the rest (gestrichen/abgelaufen/zurückgewiesen) are
+ * recognised non-transactions and counted as `skipped`, not invalid. Side
+ * comes from "Richtung" (Kauf/Verkauf) — never from "Orderart" (Limit/
+ * Market), which says nothing about direction and would otherwise silently
+ * default every row to BUY, mis-importing real sells as buys.
+ */
+function parseZeroOrders(text: string): { rows: ParsedTx[]; skipped: number } {
   const lines = toLines(text);
   const header = splitLine(lines[0], ";");
   const c = {
@@ -124,27 +140,29 @@ function parseZero(text: string): ParsedTx[] {
     fee: idx(header, "Mindermengenzuschlag"),
   };
   const out: ParsedTx[] = [];
+  let skipped = 0;
   for (let i = 1; i < lines.length; i++) {
     const r = splitLine(lines[i], ";");
-    const qty = deNum(r[c.execQty]);
-    const price = deNum(r[c.execPrice]);
-    // Skip cancelled/unexecuted orders (no executed qty or price).
-    if (!(qty > 0) || !(price > 0) || !r[c.execDate]) continue;
+    if ((r[c.status] || "").trim().toLowerCase() !== "ausgeführt") {
+      skipped++; // cancelled / expired / rejected order — never executed
+      continue;
+    }
+    const name = r[c.name] || r[c.isin] || "";
     out.push({
       isin: r[c.isin] || null,
       wkn: r[c.wkn] || null,
       symbol: null,
-      name: r[c.name] || r[c.isin] || "",
+      name,
       type: /verkauf/i.test(r[c.richtung]) ? "SELL" : "BUY",
-      quantity: qty,
-      price,
-      fee: c.fee >= 0 ? deNum(r[c.fee]) || 0 : 0,
+      quantity: deNum(r[c.execQty]),
+      price: deNum(r[c.execPrice]),
+      fee: c.fee >= 0 ? Math.abs(deNum(r[c.fee])) || 0 : 0,
       date: deDate(r[c.execDate], r[c.execTime]),
       currency: "EUR",
-      assetType: "STOCK",
+      assetType: inferAssetType(name),
     });
   }
-  return out;
+  return { rows: out, skipped };
 }
 
 /**
@@ -169,6 +187,11 @@ function parseFnz(text: string): { rows: ParsedTx[]; skipped: number } {
     isin: idx(header, "ISIN"),
     betrag: idx(header, "Zahlungsbetrag"),
     anteile: idx(header, "Anteile"),
+    kurs: idx(header, "Abrechnungskurs"),
+    // "Devisenkurs (ZW/FW)" — matched by the parenthesised pair alone because
+    // real exports vary the spacing ("Devisenkurs  (ZW/FW)") and the header
+    // also carries "Devisenkurs (ZW/EW)" and "Devisenkurs (EUR/ZW)" columns.
+    fx: idx(header, "ZW/FW"),
   };
   const out: ParsedTx[] = [];
   let skipped = 0;
@@ -185,7 +208,19 @@ function parseFnz(text: string): { rows: ParsedTx[]; skipped: number } {
     // Employer VL contributions and cost-free plan creditings → BOOKING.
     const isVL = /verm.genswirksame/i.test(r[c.teil] ?? "");
     const isPlanCredit = art.includes("ansparplan") || art.includes("wiederanlage fondsertrag");
-    const price = Math.abs(amount) / Math.abs(shares);
+    // Primary price: the actually settled EUR value per share. Some rows book
+    // a zero Zahlungsbetrag (fee-covering "Entgeltbelastung Verkauf" sells,
+    // in-kind Übertrag legs) — fall back to the settlement price columns:
+    // Abrechnungskurs in FW ÷ Devisenkurs (ZW/FW), or Abrechnungskurs alone
+    // when the fund already trades in the payment currency (Devisenkurs blank).
+    let price = Math.abs(amount) / Math.abs(shares);
+    if (!Number.isFinite(price) || price === 0) {
+      const kurs = c.kurs >= 0 ? deNum(r[c.kurs]) : NaN;
+      const fx = c.fx >= 0 ? deNum(r[c.fx]) : NaN;
+      if (Number.isFinite(kurs) && kurs > 0) {
+        price = Number.isFinite(fx) && fx > 0 ? kurs / fx : kurs;
+      }
+    }
     out.push({
       isin: r[c.isin] || null,
       wkn: null,
@@ -444,7 +479,7 @@ export function parseGeneric(text: string): ParsedTx[] {
   };
   const c = {
     date: find(["datetime", "date", "datum", "buchung", "valuta", "trade"]),
-    type: find(["type", "art", "richtung", "side", "umsatz", "transaction", "direction"]),
+    type: find(["type", "richtung", "art", "side", "umsatz", "transaction", "direction"]),
     isin: find(["isin"]),
     wkn: find(["wkn"]),
     symbol: find(["symbol", "ticker"]),
@@ -470,48 +505,78 @@ export function parseGeneric(text: string): ParsedTx[] {
     const symbol = symbolRaw && !ISIN_RE.test(symbolRaw) ? symbolRaw : null;
     const wkn = c.wkn >= 0 ? r[c.wkn] || null : null;
     if (!isin && !wkn && !symbol) continue;
+    const name = (c.name >= 0 && r[c.name]) || isin || symbol || wkn || "";
     out.push({
       isin,
       wkn,
       symbol,
-      name: (c.name >= 0 && r[c.name]) || isin || symbol || wkn || "",
+      name,
       type: (c.type >= 0 ? anyType(r[c.type]) : null) ?? "BUY",
       quantity: qty,
       price,
       fee: c.fee >= 0 ? Math.abs(anyNum(r[c.fee]) || 0) : 0,
       date: c.date >= 0 ? anyDate(r[c.date]) : new Date().toISOString().slice(0, 19),
       currency: (c.currency >= 0 && r[c.currency]) || "EUR",
-      assetType: "ETF",
+      assetType: inferAssetType(name),
     });
   }
   return out;
 }
 
+/**
+ * Guardrail applied to every parsed row regardless of broker: a row may only
+ * become a transaction if it carries a real identifier — ISIN or WKN, since
+ * without one of those we can't reliably match it against the catalog or
+ * existing holdings — a parseable date, a positive share count and a
+ * positive, finite price. A bare `symbol` is not enough *unless* the row is
+ * crypto (`assetType === "CRYPTO"`): crypto has no ISIN/WKN by nature, so a
+ * symbol (e.g. "BTC") is the only identifier it can ever carry. This runs
+ * centrally in `parseCsv` after every per-broker parser, so no individual
+ * parser needs to duplicate it.
+ */
+export function isValidTx(tx: ParsedTx): boolean {
+  const hasIdentifier = Boolean(tx.isin || tx.wkn) || (tx.assetType === "CRYPTO" && Boolean(tx.symbol));
+  return (
+    hasIdentifier &&
+    /^\d{4}-\d{2}-\d{2}/.test(tx.date || "") &&
+    Number.isFinite(tx.quantity) &&
+    tx.quantity > 0 &&
+    Number.isFinite(tx.price) &&
+    tx.price > 0
+  );
+}
+
 export function parseCsv(
   text: string,
   format?: BrokerFormat,
-): { format: BrokerFormat | null; rows: ParsedTx[]; skipped: number } {
+): { format: BrokerFormat | null; rows: ParsedTx[]; skipped: number; invalid: number } {
   const fmt = format ?? detectFormat(text);
   // Known broker formats parse precisely; anything else falls back to the
   // generic header-driven parser so files from other brokers still import.
-  // Only the formats with recognised-but-cash-only rows (FNZ, Deutsche Bank
-  // transactions) report a non-zero `skipped` count.
+  // Only the formats with recognised-but-cash-only or unexecuted rows (FNZ,
+  // Deutsche Bank transactions, ZERO orders) report a non-zero `skipped` count.
+  let rows: ParsedTx[];
+  let skipped: number;
   if (fmt === "fnz") {
-    const { rows, skipped } = parseFnz(text);
-    return { format: fmt, rows, skipped };
-  }
-  if (fmt === "dbtransactions") {
-    const { rows, skipped } = parseDbTransactions(text);
-    return { format: fmt, rows, skipped };
-  }
-  const rows = !fmt
-    ? parseGeneric(text)
-    : fmt === "zero"
-      ? parseZero(text)
+    ({ rows, skipped } = parseFnz(text));
+  } else if (fmt === "dbtransactions") {
+    ({ rows, skipped } = parseDbTransactions(text));
+  } else if (fmt === "zeroorders") {
+    ({ rows, skipped } = parseZeroOrders(text));
+  } else {
+    rows = !fmt
+      ? parseGeneric(text)
       : fmt === "traderepublic"
         ? parseTradeRepublic(text)
         : parseDeutscheBank(text);
-  return { format: fmt, rows, skipped: 0 };
+    skipped = 0;
+  }
+  // Central, parser-agnostic guardrail: rows the parser emitted but that fail
+  // basic sanity (no ISIN/WKN, bad date, non-positive quantity/price) never
+  // become transactions — they're rejected and counted, not silently dropped.
+  const valid = rows.filter(isValidTx);
+  const invalid = rows.length - valid.length;
+  return { format: fmt, rows: valid, skipped, invalid };
 }
 
 /** Fuzzy fingerprint: identifier + type + day + rounded qty/price, so a row

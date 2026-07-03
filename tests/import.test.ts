@@ -1,13 +1,25 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseCsv, detectFormat, fingerprint } from "../lib/import/csv";
+import { parseCsv, detectFormat, fingerprint, isValidTx, type ParsedTx } from "../lib/import/csv";
 import { reconcile } from "../lib/import/reconcile";
 import type { Asset, Transaction } from "../lib/types";
 
 const ZERO = [
   "Name;ISIN;WKN;Anzahl;Anzahl storniert;Status;Orderart;Limit;Stop;Erstellt Datum;Erstellt Zeit;Gültig bis;Richtung;Wert;Wert storniert;Mindermengenzuschlag;Ausführung Datum;Ausführung Zeit;Ausführung Kurs;Anzahl ausgeführt;Anzahl offen;Gestrichen Datum;Gestrichen Zeit",
   "Apple;US0378331005;865985;2;;ausgeführt;Market;;;01.03.2025;10:00:00;;Kauf;-460,00;;1,00;03.03.2025;09:30:00;230,00;2;0;;",
+  "GameStop;US36467W1099;A0HGDX;3;;gestrichen;Limit;21,00;;29.05.2025;16:16:24;22.05.2026;Kauf;-63,00;;1,00;;;;0;0;02.06.2025;09:12:33",
+].join("\n");
+
+// Small anonymized excerpt covering an executed Kauf, an executed Verkauf and
+// a gestrichen (cancelled) row, used to exercise direction and the
+// execution-date-not-creation-date distinction: the Verkauf row's "Erstellt
+// Datum" (05.03.2025) differs from its "Ausführung Datum" (06.03.2025), and
+// only the latter must land in the parsed transaction.
+const ZERO_ORDERS = [
+  "Name;ISIN;WKN;Anzahl;Anzahl storniert;Status;Orderart;Limit;Stop;Erstellt Datum;Erstellt Zeit;Gültig bis;Richtung;Wert;Wert storniert;Mindermengenzuschlag;Ausführung Datum;Ausführung Zeit;Ausführung Kurs;Anzahl ausgeführt;Anzahl offen;Gestrichen Datum;Gestrichen Zeit",
+  "Apple;US0378331005;865985;2;;ausgeführt;Market;;;01.03.2025;10:00:00;;Kauf;-460,00;;1,00;03.03.2025;09:30:00;230,00;2;0;;",
+  "Apple;US0378331005;865985;1;;ausgeführt;Market;;;05.03.2025;11:00:00;;Verkauf;120,00;;1,00;06.03.2025;15:45:00;125,00;1;0;;",
   "GameStop;US36467W1099;A0HGDX;3;;gestrichen;Limit;21,00;;29.05.2025;16:16:24;22.05.2026;Kauf;-63,00;;1,00;;;;0;0;02.06.2025;09:12:33",
 ].join("\n");
 
@@ -28,9 +40,17 @@ const DB = [
 ].join("\n");
 
 // Real FNZ export excerpt (Depotnummer anonymized). Anteile is SIGNED: negative
-// for every share-reducing Umsatzart. The last row is a synthetic cash-only
-// variant (Anteile = 0) to exercise the skipped-row counting — the real export
-// has no such rows, but other FNZ exports do.
+// for every share-reducing Umsatzart. The penultimate row is a synthetic
+// cash-only variant (Anteile = 0) to exercise the skipped-row counting — the
+// real export has no such rows, but other FNZ exports do. Two rows in here
+// (Entgeltbelastung Verkauf and Interner Übertrag (Abgang)) book a zero
+// "Zahlungsbetrag in ZW" — the parser falls back to the settlement price
+// (Abrechnungskurs in FW ÷ Devisenkurs (ZW/FW)), which both of these rows
+// have, so they still resolve to a valid price. The last row is a further
+// synthetic variant of the same zero-Zahlungsbetrag situation but *without*
+// Abrechnungskurs either, so no fallback is possible — it exercises the
+// validation guardrail's invalid-row counting, which the real export
+// otherwise no longer hits after the settlement-price fallback was added.
 const FNZ_FULL = [
   "Depotnummer;Depotposition;Ref. Nr.;Buchungsdatum;Umsatzart;Teilumsatz;Fonds;ISIN;Zahlungsbetrag in ZW;Zahlungswährung (ZW);Anteile;Abrechnungskurs in FW;Fondswährung (FW);Kursdatum;Devisenkurs  (ZW/FW);Anlagebetrag in ZW;Vertriebsprovision in ZW (im Abrechnungskurs enthalten);KVG Einbehalt in ZW (im Abrechnungskurs enthalten);Gegenwert der Anteile in ZW;Anteile zum Bestandsdatum;Barausschüttung/Steuerliquidität je Anteil in EW;Ertragswährung (EW);Bestandsdatum;Devisenkurs (ZW/EW);Barausschüttung/Steuerliquidität in ZW;Bruttobetrag VAP je Anteil in EUR;Entgelt in ZW;Entgelt in EUR;Steuern in ZW;Steuern in EUR;Devisenkurs (EUR/ZW);Art des Steuereinbehalts;Steuereinbehalt in EUR",
   "99000000000;26;0400059167/29052026;01.06.26;Kauf;vermögenswirksame Leistungen;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;40;EUR;0,242496;190,6;USD;29.05.26;1,157811;39,92;0;0;0;0;0;;;;0;0;0,08;0,08;0;0;;Steuereinbehalt direkt am Umsatz;0",
@@ -43,6 +63,7 @@ const FNZ_FULL = [
   "99000000000;16;0400067527/13082025;18.08.25;Fondsumschichtung (Abgang);Verkauf;Vontobel Fund - Global Equity A-USD;LU0218910023;4,9;EUR;-0,012359;465,93;USD;14.08.25;1,175712;4,9;0;0;0;0;0;;;;0;0;0;0;0;0;;Steuereinbehalt direkt am Umsatz;0",
   "99000000000;27;0400363302/02102025;06.10.25;Interner Übertrag (Abgang);Übertrag der Anteile;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;0;EUR;-0,049516;165,36;USD;02.10.25;1,1664;0;0;0;7,02;0;0;;;;0;0;0;0;0;0;;Steuereinbehalt direkt am Umsatz;0",
   "99000000000;10;0400000000/01012026;02.01.26;Entgeltbelastung;;DWS Top Dividende LD;DE0009848119;-12;EUR;0;;EUR;02.01.26;;0;0;0;0;0;0;;;;0;0;12;12;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;10;0400999999/01022026;03.02.26;Entgeltbelastung Verkauf;Verkauf;DWS Top Dividende LD;DE0009848119;0;EUR;-0,01;;EUR;03.02.26;;0;0;0;0;0;0;;;;0;0;5;5;0;0;;Steuereinbehalt direkt am Umsatz;0",
 ].join("\n");
 
 // Real Deutsche Bank PrivatDepot Umsätze excerpt (Depot-/Konto-Nr. anonymized),
@@ -61,7 +82,7 @@ const DB_TX = "\uFEFF" + [
 
 describe("csv detectFormat", () => {
   it("identifies each broker", () => {
-    expect(detectFormat(ZERO)).toBe("zero");
+    expect(detectFormat(ZERO)).toBe("zeroorders");
     expect(detectFormat(FNZ)).toBe("fnz");
     expect(detectFormat(TR)).toBe("traderepublic");
     expect(detectFormat(DB)).toBe("deutschebank");
@@ -71,9 +92,10 @@ describe("csv detectFormat", () => {
 });
 
 describe("csv parsers", () => {
-  it("zero: only executed orders, comma decimals", () => {
-    const { rows } = parseCsv(ZERO);
+  it("zeroorders: only executed orders, comma decimals", () => {
+    const { rows, skipped } = parseCsv(ZERO);
     expect(rows).toHaveLength(1); // the cancelled order is dropped
+    expect(skipped).toBe(1); // ...and counted, not silently discarded
     expect(rows[0]).toMatchObject({
       isin: "US0378331005",
       type: "BUY",
@@ -81,6 +103,27 @@ describe("csv parsers", () => {
       price: 230,
       fee: 1,
       date: "2025-03-03T09:30:00",
+    });
+  });
+
+  it("zeroorders: direction from Richtung, date from execution not creation", () => {
+    const { format, rows, skipped, invalid } = parseCsv(ZERO_ORDERS);
+    expect(format).toBe("zeroorders");
+    expect(rows).toHaveLength(2);
+    expect(skipped).toBe(1); // the gestrichen GameStop order
+    expect(invalid).toBe(0);
+    const [buy, sell] = rows;
+    expect(buy).toMatchObject({
+      type: "BUY",
+      quantity: 2,
+      price: 230,
+      date: "2025-03-03T09:30:00", // Ausführung Datum/Zeit, not Erstellt
+    });
+    expect(sell).toMatchObject({
+      type: "SELL",
+      quantity: 1,
+      price: 125,
+      date: "2025-03-06T15:45:00", // Ausführung Datum/Zeit, not Erstellt
     });
   });
 
@@ -119,13 +162,20 @@ describe("csv parsers", () => {
   });
 
   it("fnz: every share-moving Umsatzart parses; signed Anteile sets direction", () => {
-    const { rows, skipped } = parseCsv(FNZ_FULL);
-    // 10 data rows: 9 move shares, 1 synthetic cash-only row is skipped.
+    const { rows, skipped, invalid } = parseCsv(FNZ_FULL);
+    // 11 data rows: 10 move shares, 1 synthetic cash-only row is skipped. Of
+    // the 10, two (Entgeltbelastung Verkauf, Interner Übertrag (Abgang)) book
+    // a zero Zahlungsbetrag but both carry Abrechnungskurs + Devisenkurs, so
+    // the settlement-price fallback resolves them; the last synthetic row
+    // reproduces the same zero-Zahlungsbetrag Entgeltbelastung Verkauf but
+    // without Abrechnungskurs either, so no fallback is possible and it's the
+    // one still rejected by the validation guardrail.
     expect(rows).toHaveLength(9);
     expect(skipped).toBe(1);
+    expect(invalid).toBe(1);
     // Every quantity is stored positive; direction lives in the type.
     for (const r of rows) expect(r.quantity).toBeGreaterThan(0);
-    const [vl, kauf, verkauf, plan, wieder, entgelt, umschZu, umschAb, uebertragAb] = rows;
+    const [vl, kauf, verkauf, plan, wieder, entgeltVerkauf, umschZu, umschAb, uebertragAbgang] = rows;
     // VL contribution and plan credits (Ansparplan, Wiederanlage) → BOOKING.
     expect(vl).toMatchObject({ type: "BOOKING", isin: "IE00BK5BQT80" });
     expect(vl.quantity).toBeCloseTo(0.242496, 6);
@@ -145,24 +195,28 @@ describe("csv parsers", () => {
     expect(verkauf.quantity).toBeCloseTo(9.631951, 6);
     expect(verkauf.price).toBeCloseTo(1545.03 / 9.631951, 2);
     expect(verkauf.date).toBe("2026-03-09T00:00:00");
-    // Entgeltbelastung Verkauf sells shares to cover a fee → SELL.
-    expect(entgelt.type).toBe("SELL");
-    expect(entgelt.quantity).toBeCloseTo(0.082514, 6);
+    // Entgeltbelastung Verkauf: zero Zahlungsbetrag → settlement-price
+    // fallback (Abrechnungskurs in FW ÷ Devisenkurs (ZW/FW)).
+    expect(entgeltVerkauf).toMatchObject({ type: "SELL", isin: "IE00BK5BQT80" });
+    expect(entgeltVerkauf.quantity).toBeCloseTo(0.082514, 6);
+    expect(entgeltVerkauf.price).toBeCloseTo(172.88 / 1.176014, 2);
     // Fondsumschichtung: Zugang → BUY, Abgang → SELL.
     expect(umschZu.type).toBe("BUY");
     expect(umschAb.type).toBe("SELL");
-    // Interner Übertrag (Abgang): negative Anteile → SELL.
-    expect(uebertragAb.type).toBe("SELL");
-    expect(uebertragAb.quantity).toBeCloseTo(0.049516, 6);
+    // Interner Übertrag (Abgang): same zero-Zahlungsbetrag fallback path.
+    expect(uebertragAbgang).toMatchObject({ type: "SELL", isin: "IE00BK5BQT80" });
+    expect(uebertragAbgang.quantity).toBeCloseTo(0.049516, 6);
+    expect(uebertragAbgang.price).toBeCloseTo(165.36 / 1.1664, 2);
   });
 
   it("deutsche bank transactions: BOM stripped, trades parse, cash rows skipped", () => {
-    const { format, rows, skipped } = parseCsv(DB_TX);
+    const { format, rows, skipped, invalid } = parseCsv(DB_TX);
     expect(format).toBe("dbtransactions");
     // 6 data rows: Kauf + Verkauf + Zeichnung + derived-price Kauf parse;
     // Dividende/Ausschüttung and Kapitalrückzahlung are cash-only → skipped.
     expect(rows).toHaveLength(4);
     expect(skipped).toBe(2);
+    expect(invalid).toBe(0);
     const [kauf, verkauf, zeichnung, derived] = rows;
     expect(kauf).toMatchObject({
       isin: "LU0425487740",
@@ -188,39 +242,73 @@ describe("csv parsers", () => {
 describe("csv parsers — full real exports", () => {
   const fnzPath = join(__dirname, "..", "Umsatzdaten_99134053488.csv");
   const dbTxPath = join(__dirname, "..", "Umsaetze_20260702_161243.csv");
+  const zeroOrdersPath = join(__dirname, "..", "ZERO-orders-29.06.2026.csv");
 
   it.skipIf(!existsSync(fnzPath))("fnz: all 382 share-moving rows import", () => {
     // The export is Windows-1252; the app's file reader decodes it the same way.
     const text = new TextDecoder("windows-1252").decode(readFileSync(fnzPath));
-    const { format, rows, skipped } = parseCsv(text);
+    const { format, rows, skipped, invalid } = parseCsv(text);
     expect(format).toBe("fnz");
-    // Every one of the 382 data rows moves shares — none are cash-only.
-    expect(rows.length + skipped).toBe(382);
-    expect(rows.length).toBeGreaterThan(350);
-    expect(rows).toHaveLength(382);
+    // Every one of the 382 data rows moves shares — none are cash-only. 18 of
+    // them book a zero "Zahlungsbetrag in ZW" (fee-covering Entgeltbelastung
+    // Verkauf sells and an in-kind Übertrag pair) but all 18 carry an
+    // Abrechnungskurs + Devisenkurs, so the settlement-price fallback
+    // resolves every one of them — none are rejected as invalid.
+    expect(rows.length + skipped + invalid).toBe(382);
     expect(skipped).toBe(0);
-    // Verified distribution: BOOKING = 9 VL + 134 Ansparplan + 34 Wiederanlage,
-    // SELL = 159 Verkauf + 15 Entgeltbelastung + 3 Umschichtung-Abgang +
-    // 1 Vorabpauschale + 1 Übertrag-Abgang, BUY = 22 Kauf + 3 Umschichtung-
-    // Zugang + 1 Übertrag-Zugang.
+    expect(invalid).toBe(0);
+    expect(rows).toHaveLength(382);
+    // Verified distribution: BOOKING = 9 VL + 134 Ansparplan + 34
+    // Wiederanlage, SELL = 159 Verkauf + 18 fee/transfer legs (settlement-
+    // price fallback) + 2 Umschichtung-Abgang, BUY = 22 Kauf + 2
+    // Umschichtung-Zugang + 2 Übertrag-Zugang.
     const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
     for (const r of rows) {
       byType[r.type]++;
       expect(r.quantity).toBeGreaterThan(0);
+      expect(r.price).toBeGreaterThan(0);
       expect(r.isin).toBeTruthy();
     }
     expect(byType).toEqual({ BUY: 26, SELL: 179, BOOKING: 177 });
   });
 
+  it.skipIf(!existsSync(zeroOrdersPath))(
+    "zeroorders: real export — 119 executed orders (88 buy, 31 sell), 38 skipped",
+    () => {
+      // BOM-prefixed UTF-8, like the app's file reader decodes it.
+      const text = new TextDecoder("utf-8").decode(readFileSync(zeroOrdersPath));
+      const { format, rows, skipped, invalid } = parseCsv(text);
+      expect(format).toBe("zeroorders");
+      // 157 data rows: 119 with Status "ausgeführt" become transactions (88
+      // Kauf, 31 Verkauf); the rest (gestrichen/abgelaufen/zurückgewiesen)
+      // are recognised non-transactions, counted as skipped not invalid.
+      expect(rows.length + skipped + invalid).toBe(157);
+      expect(skipped).toBe(38);
+      expect(invalid).toBe(0);
+      expect(rows).toHaveLength(119);
+      const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
+      for (const r of rows) {
+        byType[r.type]++;
+        expect(r.quantity).toBeGreaterThan(0);
+        expect(r.price).toBeGreaterThan(0);
+        expect(r.isin || r.wkn).toBeTruthy();
+      }
+      expect(byType).toEqual({ BUY: 88, SELL: 31, BOOKING: 0 });
+    },
+  );
+
   it.skipIf(!existsSync(dbTxPath))("deutsche bank transactions: 28 trades, 22 cash rows", () => {
     const text = readFileSync(dbTxPath, "utf8"); // keeps the BOM, like the app
-    const { format, rows, skipped } = parseCsv(text);
+    const { format, rows, skipped, invalid } = parseCsv(text);
     expect(format).toBe("dbtransactions");
     // 50 data rows: 24 Kauf + 2 Verkauf + 2 Zeichnung = 28 trades;
-    // 20 Dividende/Ausschüttung + 2 Kapitalrückzahlung = 22 cash rows.
-    expect(rows.length + skipped).toBe(50);
+    // 20 Dividende/Ausschüttung + 2 Kapitalrückzahlung = 22 cash rows. Every
+    // trade row carries a usable ISIN/WKN, date, quantity and price, so the
+    // guardrail rejects none of them.
+    expect(rows.length + skipped + invalid).toBe(50);
     expect(rows).toHaveLength(28);
     expect(skipped).toBe(22);
+    expect(invalid).toBe(0);
     const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
     for (const r of rows) {
       byType[r.type]++;
@@ -278,5 +366,80 @@ describe("reconcile", () => {
     const { rows } = parseCsv(TR);
     const rec = reconcile(rows, [], [], new Set());
     expect(rec[0].status).toBe("new");
+  });
+});
+
+describe("import validation guardrail (isValidTx)", () => {
+  // A row satisfying every criterion — each test below breaks exactly one.
+  const valid: ParsedTx = {
+    isin: "US0378331005",
+    wkn: null,
+    symbol: null,
+    name: "Apple",
+    type: "BUY",
+    quantity: 2,
+    price: 230,
+    fee: 1,
+    date: "2025-03-03T09:30:00",
+    currency: "EUR",
+    assetType: "STOCK",
+  };
+
+  it("accepts a fully valid row", () => {
+    expect(isValidTx(valid)).toBe(true);
+  });
+
+  it("rejects a row with neither ISIN nor WKN — a bare symbol is not enough, unless it's crypto", () => {
+    expect(isValidTx({ ...valid, isin: null, wkn: null, symbol: "AAPL" })).toBe(false);
+    // WKN alone (no ISIN) does satisfy the guardrail.
+    expect(isValidTx({ ...valid, isin: null, wkn: "865985" })).toBe(true);
+    // Crypto has no ISIN/WKN by nature — a bare symbol is enough for it.
+    expect(
+      isValidTx({ ...valid, isin: null, wkn: null, symbol: "BTC", assetType: "CRYPTO" }),
+    ).toBe(true);
+    // The relaxation is CRYPTO-specific: the same symbol-only row with any
+    // other assetType still fails.
+    expect(
+      isValidTx({ ...valid, isin: null, wkn: null, symbol: "BTC", assetType: "STOCK" }),
+    ).toBe(false);
+  });
+
+  it("rejects a row with an empty or unparseable date", () => {
+    expect(isValidTx({ ...valid, date: "" })).toBe(false);
+    expect(isValidTx({ ...valid, date: "not-a-date" })).toBe(false);
+    expect(isValidTx({ ...valid, date: "03.03.2025" })).toBe(false); // not ISO
+  });
+
+  it("rejects a row with a non-positive or non-finite quantity", () => {
+    expect(isValidTx({ ...valid, quantity: 0 })).toBe(false);
+    expect(isValidTx({ ...valid, quantity: -2 })).toBe(false);
+    expect(isValidTx({ ...valid, quantity: NaN })).toBe(false);
+    expect(isValidTx({ ...valid, quantity: Infinity })).toBe(false);
+  });
+
+  it("rejects a row with a non-positive or non-finite price", () => {
+    expect(isValidTx({ ...valid, price: 0 })).toBe(false);
+    expect(isValidTx({ ...valid, price: -230 })).toBe(false);
+    expect(isValidTx({ ...valid, price: NaN })).toBe(false);
+    expect(isValidTx({ ...valid, price: Infinity })).toBe(false);
+  });
+
+  it("parseCsv rejects and counts invalid rows while valid siblings still import", () => {
+    // Generic (unrecognised-broker) header-driven parse: one fully valid row,
+    // one with only a symbol (no ISIN/WKN) and one with a blank date column.
+    // The generic parser has no type column here, so it infers STOCK/ETF from
+    // the name (never CRYPTO) — the symbol-only "Bitcoin" row therefore stays
+    // invalid too, demonstrating the CRYPTO relaxation is CRYPTO-specific,
+    // not a blanket "symbol is enough" rule.
+    const generic = [
+      "date,isin,symbol,name,type,shares,price",
+      "2025-01-01,US0378331005,,Apple,BUY,2,150",
+      "2025-01-02,,BTC,Bitcoin,BUY,1,50000",
+      ",US0378331005,,Apple,BUY,1,150",
+    ].join("\n");
+    const { rows, invalid } = parseCsv(generic);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ isin: "US0378331005", name: "Apple", quantity: 2, price: 150 });
+    expect(invalid).toBe(2);
   });
 });
