@@ -266,6 +266,57 @@ export function betaAlpha(a: SeriesPoint[], b: SeriesPoint[], rf = 0.02): BetaAl
   return { beta, alpha };
 }
 
+export interface WeightedLevels {
+  levels: SeriesPoint[];
+  /** Market-value weight (need not be pre-normalised; renormalised internally). */
+  weight: number;
+}
+
+/**
+ * Value-weighted composite level series across several assets' own price
+ * histories, for measuring a *portfolio-level* beta/alpha on the exact same
+ * per-asset basis a per-asset table's `betaAlpha` calls use (rather than a
+ * separately-computed TWR/net-worth path).
+ *
+ * Series are aligned onto the INTERSECTION of their dates (only dates every
+ * included asset has a point for) — simple exact-match alignment, adequate
+ * here because callers pass same-source daily history series. Each asset is
+ * normalised to 1.0 at the window's first common date before being weighted,
+ * so assets contribute by relative performance, not absolute price level.
+ * Weights are renormalised over the assets that make it into the intersection.
+ *
+ * With a single asset this reduces to that asset's own levels rescaled to
+ * start at 1.0 — a pure scalar multiple of its raw levels. Since `betaAlpha`
+ * measures returns (ratios), it is scale-invariant, so
+ * `betaAlpha(compositeLevelSeries([{levels, weight}]), bench)` equals
+ * `betaAlpha(levels, bench)`: single-holding scope is bit-identical to that
+ * holding's own table-row beta/alpha.
+ */
+export function compositeLevelSeries(items: WeightedLevels[]): SeriesPoint[] {
+  const usable = items.filter((it) => it.levels.length > 0 && it.weight > 0);
+  if (usable.length === 0) return [];
+
+  const dateSets = usable.map((it) => new Set(it.levels.map((p) => p.date)));
+  const common = [...dateSets[0]]
+    .filter((d) => dateSets.every((s) => s.has(d)))
+    .sort();
+  if (common.length < 3) return [];
+
+  const maps = usable.map((it) => new Map(it.levels.map((p) => [p.date, p.value])));
+  const bases = maps.map((m) => m.get(common[0])!);
+  if (bases.some((b) => !(b > 0))) return [];
+  const totalWeight = usable.reduce((s, it) => s + it.weight, 0);
+  if (!(totalWeight > 0)) return [];
+
+  return common.map((d) => {
+    let value = 0;
+    for (let i = 0; i < usable.length; i++) {
+      value += (usable[i].weight / totalWeight) * (maps[i].get(d)! / bases[i]);
+    }
+    return { date: d, value };
+  });
+}
+
 export interface PeriodReturn {
   /** Sort/identity key, e.g. "2025-Q1" or "2025". */
   key: string;

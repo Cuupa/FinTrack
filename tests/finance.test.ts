@@ -6,6 +6,7 @@ import {
   riskMetrics,
   cumulativeReturnSeries,
   betaAlpha,
+  compositeLevelSeries,
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
@@ -305,6 +306,90 @@ describe("betaAlpha", () => {
     expect(res).not.toBeNull();
     expect(res!.beta).toBeCloseTo(1, 6);
     expect(res!.alpha).toBeCloseTo(0, 6);
+  });
+
+  it("is scale-invariant: rescaling series `a` by a constant leaves beta/alpha unchanged", () => {
+    // Both beta and alpha are computed from RETURNS (ratios of consecutive
+    // values), so a constant multiplicative rescale of `a` cancels out. This
+    // is the property the risk-view portfolio-level KPI tiles rely on: the
+    // composite series is `a`'s levels normalised to start at 1.0, and must
+    // still yield the exact same beta/alpha as `a`'s own (unnormalised) levels.
+    const days = 400;
+    const bm = series(days, (i) => 100 * Math.exp(0.00025 * i + 0.015 * Math.sin(i / 6)));
+    const a = series(days, (i) => 50 * Math.exp(0.0004 * i + 0.03 * Math.sin(i / 6 + 0.4)));
+    const scaled = a.map((p) => ({ date: p.date, value: p.value / a[0].value })); // normalised to 1.0
+    const raw = betaAlpha(a, bm);
+    const norm = betaAlpha(scaled, bm);
+    expect(raw).not.toBeNull();
+    expect(norm).not.toBeNull();
+    expect(norm!.beta).toBeCloseTo(raw!.beta, 9);
+    expect(norm!.alpha).toBeCloseTo(raw!.alpha, 9);
+  });
+});
+
+describe("compositeLevelSeries", () => {
+  function series(days: number, fn: (i: number) => number) {
+    const out: SeriesPoint[] = [];
+    const start = Date.UTC(2024, 0, 1);
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start + i * 86_400_000).toISOString().slice(0, 10);
+      out.push({ date: d, value: fn(i) });
+    }
+    return out;
+  }
+
+  it("returns empty for no usable (positive-weight, non-empty) items", () => {
+    expect(compositeLevelSeries([])).toEqual([]);
+    expect(compositeLevelSeries([{ levels: [], weight: 100 }])).toEqual([]);
+    expect(
+      compositeLevelSeries([{ levels: series(10, (i) => 100 + i), weight: 0 }]),
+    ).toEqual([]);
+  });
+
+  it("with one holding, equals that holding's own levels normalised to 1.0 at the start", () => {
+    // single-holding scope's betaAlpha is bit-identical to the table row's,
+    // backed by betaAlpha's scale invariance (see the betaAlpha describe block).
+    const levels = series(300, (i) => 50 * Math.exp(0.0003 * i + 0.02 * Math.sin(i / 9)));
+    const composite = compositeLevelSeries([{ levels, weight: 1234 }]);
+    expect(composite.length).toBe(levels.length);
+    const base = levels[0].value;
+    for (let i = 0; i < levels.length; i++) {
+      expect(composite[i].date).toBe(levels[i].date);
+      expect(composite[i].value).toBeCloseTo(levels[i].value / base, 9);
+    }
+
+    const bm = series(300, (i) => 100 * Math.exp(0.00025 * i + 0.015 * Math.sin(i / 6)));
+    const rowBA = betaAlpha(levels, bm);
+    const compositeBA = betaAlpha(composite, bm);
+    expect(rowBA).not.toBeNull();
+    expect(compositeBA).not.toBeNull();
+    expect(compositeBA!.beta).toBeCloseTo(rowBA!.beta, 9);
+    expect(compositeBA!.alpha).toBeCloseTo(rowBA!.alpha, 9);
+  });
+
+  it("value-weights two holdings and is dominated by the heavier one", () => {
+    const flat = series(60, () => 100); // constant: normalised level stays 1.0 always
+    const doubling = series(60, (i) => 100 * Math.exp((Math.log(2) / 59) * i)); // 100 -> 200
+    // 90% flat / 10% doubling: composite should end close to 1.0 + 0.1*(2-1) = 1.1
+    const composite = compositeLevelSeries([
+      { levels: flat, weight: 900 },
+      { levels: doubling, weight: 100 },
+    ]);
+    expect(composite.length).toBe(60);
+    expect(composite[0].value).toBeCloseTo(1, 9);
+    expect(composite[composite.length - 1].value).toBeCloseTo(1.1, 6);
+  });
+
+  it("aligns onto the intersection of dates when series have different windows", () => {
+    const full = series(60, (i) => 100 + i); // day 0..59
+    const shifted = full.slice(10, 50).map((p) => ({ ...p })); // day 10..49 only, same values/dates
+    const composite = compositeLevelSeries([
+      { levels: full, weight: 1 },
+      { levels: shifted, weight: 1 },
+    ]);
+    expect(composite.length).toBe(40); // days 10..49
+    expect(composite[0].date).toBe(full[10].date);
+    expect(composite[composite.length - 1].date).toBe(full[49].date);
   });
 });
 

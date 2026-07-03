@@ -17,7 +17,7 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { summarizeAll, twrSeries } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
-import { betaAlpha, riskMetrics } from "@/lib/finance/returns";
+import { betaAlpha, compositeLevelSeries, riskMetrics } from "@/lib/finance/returns";
 import { assetAnnualStats, estimatePortfolioModel, portfolioRiskStats } from "@/lib/finance/stats";
 import { assetPriceKey } from "@/lib/types";
 import type { Timeframe } from "@/lib/finance/dates";
@@ -151,29 +151,40 @@ export function RiskView() {
     ? Math.max(0, 1.645 * (pr.volatility / Math.sqrt(12)) - pr.annualReturn / 12)
     : null;
 
-  // The portfolio's own return path (trimmed to the scoped holdings' actual
-  // exposure span), used to measure the portfolio's own beta/alpha against
-  // the external MSCI World benchmark.
-  const portLevels = useMemo(
-    () => metricsSeries.map((p) => ({ date: p.date, value: 1 + p.value })),
-    [metricsSeries],
-  );
-  const portBA =
-    portLevels.length >= 3 && benchLevels.length >= 3
-      ? betaAlpha(portLevels, benchLevels, RF)
-      : null;
-
-  const assetRows = useMemo(() => {
+  // Per-asset price history normalised into the BASE currency — the SAME
+  // level series the table's per-asset betaAlpha uses. Shared between the
+  // table and the portfolio-level composite below so the KPI tiles and the
+  // table rows measure beta/alpha on one basis (parity with the Sharpe tiles).
+  const assetLevels = useMemo(() => {
     const fx = valuation.fx ?? {};
-    const rows = holdings.map((h) => {
-      const ann = assetAnnualStats(h.asset, histories, years);
+    return holdings.map((h) => {
       const key = assetPriceKey(h.asset);
       const hist = histories[key];
-      // Normalise the asset's price history into the BASE currency, then measure
-      // its beta/alpha against the external MSCI World benchmark.
       const cur = h.asset.currency ?? base;
       const rate = cur === base ? 1 : (fx[cur] ?? 1);
       const levels = hist ? hist.map((p) => ({ date: p.date, value: p.close * rate })) : [];
+      return { id: h.asset.id, levels, marketValue: h.marketValue };
+    });
+  }, [holdings, histories, valuation, base]);
+
+  // Portfolio-level composite: each scoped asset's own levels, value-weighted
+  // (same weights portfolioRiskStats uses) — not the exposure-trimmed TWR
+  // path, so a single-holding scope is bit-identical to that holding's row.
+  const compositeLevels = useMemo(
+    () => compositeLevelSeries(assetLevels.map((a) => ({ levels: a.levels, weight: a.marketValue }))),
+    [assetLevels],
+  );
+  const portBA =
+    compositeLevels.length >= 3 && benchLevels.length >= 3
+      ? betaAlpha(compositeLevels, benchLevels, RF)
+      : null;
+
+  const assetRows = useMemo(() => {
+    const levelsById = new Map(assetLevels.map((a) => [a.id, a.levels]));
+    const rows = holdings.map((h) => {
+      const ann = assetAnnualStats(h.asset, histories, years);
+      // Measure this asset's beta/alpha against the external MSCI World benchmark.
+      const levels = levelsById.get(h.asset.id) ?? [];
       const ba = levels.length >= 3 && benchLevels.length >= 3 ? betaAlpha(levels, benchLevels, RF) : null;
       return {
         id: h.asset.id,
@@ -195,7 +206,7 @@ export function RiskView() {
       if (va > vb) return 1 * sort.dir;
       return 0;
     });
-  }, [holdings, histories, years, benchLevels, total, sort, valuation, base]);
+  }, [holdings, assetLevels, histories, years, benchLevels, total, sort]);
 
   const model = useMemo(
     () =>
