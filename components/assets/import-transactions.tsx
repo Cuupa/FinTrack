@@ -119,7 +119,20 @@ function txTypeColor(type: TransactionType): string {
       : "text-red-600 dark:text-red-400";
 }
 
-export function ImportTransactions({ onDone }: { onDone?: () => void }) {
+export function ImportTransactions({
+  onDone,
+  onRun,
+}: {
+  onDone?: () => void;
+  /**
+   * When provided, Apply hands the import work off as a promise instead of
+   * running it inline: the caller (the dashboard) takes ownership of the
+   * promise — e.g. closing the modal immediately and showing a floating
+   * progress/result indicator — and this component unmounts right away, so
+   * nothing here may touch state once the promise settles.
+   */
+  onRun?: (job: Promise<void>) => void;
+}) {
   const {
     data,
     allTransactions,
@@ -216,82 +229,101 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
     newRows.filter((x) => included[x.i]).length +
     conflictRows.filter((x) => isMerged(resolutions[x.i])).length;
 
+  /**
+   * The actual import work: creates/reuses assets, applies merges or new
+   * transactions, and records fingerprints. Throws on failure, resolves on
+   * success — never touches component state, so it's safe to run after this
+   * component has unmounted (the `onRun` path hands this promise off to the
+   * caller and closes the modal immediately).
+   */
+  async function runImport(): Promise<void> {
+    // Cache asset ids by identifier so repeated rows reuse one asset (and
+    // assets created earlier in this same import).
+    const key = (isin: string | null, wkn: string | null, symbol: string | null) =>
+      (isin || wkn || symbol || "").toUpperCase();
+    const cache = new Map<string, string>();
+    for (const a of data.assets) {
+      const k = key(a.isin, a.wkn, a.symbol);
+      if (k) cache.set(k, a.id);
+    }
+
+    const recorded: { fingerprint: string; transactionId: string | null }[] = [];
+    for (let i = 0; i < reconciled.length; i++) {
+      const r = reconciled[i];
+      // Identical rows never got a merge card to act on — recording them
+      // against the existing transaction they matched is what stops them
+      // resurfacing as noise on the next import.
+      if (r.status === "conflict" && r.existing && isIdentical(r)) {
+        recorded.push({ fingerprint: r.fingerprint, transactionId: r.existing.id });
+        continue;
+      }
+      const res = resolutions[i];
+      const merge = r.status === "conflict" && r.existing && isMerged(res);
+      const importNew = r.status === "new" && included[i];
+      if (!merge && !importNew) continue;
+
+      const p = r.parsed;
+      const k = key(p.isin, p.wkn, p.symbol);
+      let assetId = cache.get(k);
+      if (!assetId) {
+        const created = await addAsset({
+          isin: p.isin,
+          wkn: p.wkn,
+          symbol: p.symbol,
+          name: p.name,
+          type: p.assetType as AssetType,
+          currency: p.currency,
+          notes: null,
+        });
+        assetId = created.id;
+        if (k) cache.set(k, assetId);
+      }
+      let transactionId: string;
+      if (merge && r.existing) {
+        // Field-wise merge: each field comes from the side the user accepted.
+        const ex = r.existing;
+        const pick = <F extends MergeField>(f: F): MergeValues[F] =>
+          (res[f] === "incoming" ? p : ex)[f];
+        await updateTransaction(ex.id, {
+          assetId,
+          portfolioId: ex.portfolioId,
+          type: pick("type"),
+          quantity: pick("quantity"),
+          price: pick("price"),
+          fee: pick("fee"),
+          date: pick("date"),
+        });
+        transactionId = ex.id;
+      } else {
+        const created = await addTransaction({
+          assetId,
+          portfolioId,
+          type: p.type,
+          quantity: p.quantity,
+          price: p.price,
+          fee: p.fee,
+          date: p.date,
+        });
+        transactionId = created.id;
+      }
+      recorded.push({ fingerprint: r.fingerprint, transactionId });
+    }
+    await addImportedFingerprints(recorded);
+  }
+
   async function apply() {
-    setBusy(true);
     setError(null);
+    if (onRun) {
+      // Start the import now and hand the promise off to the caller, which
+      // takes over reporting progress/outcome. Close the modal immediately —
+      // this component unmounts, so nothing below may run.
+      onRun(runImport());
+      onDone?.();
+      return;
+    }
+    setBusy(true);
     try {
-      // Cache asset ids by identifier so repeated rows reuse one asset (and
-      // assets created earlier in this same import).
-      const key = (isin: string | null, wkn: string | null, symbol: string | null) =>
-        (isin || wkn || symbol || "").toUpperCase();
-      const cache = new Map<string, string>();
-      for (const a of data.assets) {
-        const k = key(a.isin, a.wkn, a.symbol);
-        if (k) cache.set(k, a.id);
-      }
-
-      const recorded: { fingerprint: string; transactionId: string | null }[] = [];
-      for (let i = 0; i < reconciled.length; i++) {
-        const r = reconciled[i];
-        // Identical rows never got a merge card to act on — recording them
-        // against the existing transaction they matched is what stops them
-        // resurfacing as noise on the next import.
-        if (r.status === "conflict" && r.existing && isIdentical(r)) {
-          recorded.push({ fingerprint: r.fingerprint, transactionId: r.existing.id });
-          continue;
-        }
-        const res = resolutions[i];
-        const merge = r.status === "conflict" && r.existing && isMerged(res);
-        const importNew = r.status === "new" && included[i];
-        if (!merge && !importNew) continue;
-
-        const p = r.parsed;
-        const k = key(p.isin, p.wkn, p.symbol);
-        let assetId = cache.get(k);
-        if (!assetId) {
-          const created = await addAsset({
-            isin: p.isin,
-            wkn: p.wkn,
-            symbol: p.symbol,
-            name: p.name,
-            type: p.assetType as AssetType,
-            currency: p.currency,
-            notes: null,
-          });
-          assetId = created.id;
-          if (k) cache.set(k, assetId);
-        }
-        let transactionId: string;
-        if (merge && r.existing) {
-          // Field-wise merge: each field comes from the side the user accepted.
-          const ex = r.existing;
-          const pick = <F extends MergeField>(f: F): MergeValues[F] =>
-            (res[f] === "incoming" ? p : ex)[f];
-          await updateTransaction(ex.id, {
-            assetId,
-            portfolioId: ex.portfolioId,
-            type: pick("type"),
-            quantity: pick("quantity"),
-            price: pick("price"),
-            fee: pick("fee"),
-            date: pick("date"),
-          });
-          transactionId = ex.id;
-        } else {
-          const created = await addTransaction({
-            assetId,
-            portfolioId,
-            type: p.type,
-            quantity: p.quantity,
-            price: p.price,
-            fee: p.fee,
-            date: p.date,
-          });
-          transactionId = created.id;
-        }
-        recorded.push({ fingerprint: r.fingerprint, transactionId });
-      }
-      await addImportedFingerprints(recorded);
+      await runImport();
       onDone?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("import.applyError"));

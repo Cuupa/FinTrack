@@ -12,7 +12,14 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 
 type Tab = "manual" | "import";
 
-export function AddAssetPanel({ onDone }: { onDone?: () => void }) {
+export function AddAssetPanel({
+  onDone,
+  onRun,
+}: {
+  onDone?: () => void;
+  /** Forwarded to ImportTransactions — see its doc comment. */
+  onRun?: (job: Promise<void>) => void;
+}) {
   const [tab, setTab] = useState<Tab>("manual");
   const { t } = useI18n();
   const csvImport = useFeatureFlag("csvImport");
@@ -41,7 +48,7 @@ export function AddAssetPanel({ onDone }: { onDone?: () => void }) {
       </div>
       {csvImport && (
         <div className={activeTab === "import" ? "" : "hidden"}>
-          <ImportTransactions onDone={onDone} />
+          <ImportTransactions onDone={onDone} onRun={onRun} />
         </div>
       )}
     </Card>
