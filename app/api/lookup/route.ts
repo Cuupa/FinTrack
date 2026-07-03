@@ -1,40 +1,32 @@
-// Asset metadata lookup for auto-import, by ISIN or symbol, via Yahoo Finance.
-// Lets auto-import work for any listed security even when the local catalog is
-// empty (e.g. no Supabase configured). German WKNs aren't resolvable by free
-// data sources — the client should fall back to manual entry / the ISIN.
+// Asset metadata lookup for auto-import, by ISIN, WKN, or symbol. Fans out to
+// multiple sources (Yahoo + onvista — see lib/server/search.ts) so it works
+// even when the local catalog is empty (e.g. no Supabase configured), and —
+// unlike Yahoo alone — resolves German WKNs via onvista. See
+// SEARCH_DESIGN.md for the design.
 
-import { currencyOf, isISIN, searchAssets } from "@/lib/server/yahoo";
+import { pickBest, searchInstruments } from "@/lib/server/search";
 
 export const dynamic = "force-dynamic";
-
-const TYPE_MAP: Record<string, "STOCK" | "ETF" | "CRYPTO"> = {
-  EQUITY: "STOCK",
-  ETF: "ETF",
-  MUTUALFUND: "ETF",
-  CRYPTOCURRENCY: "CRYPTO",
-};
 
 export async function GET(req: Request): Promise<Response> {
   const q = new URL(req.url).searchParams.get("q")?.trim();
   if (!q) return Response.json({ found: false });
 
-  const matches = await searchAssets(q).catch(() => []);
-  // Prefer a recognised security type; else the first match.
-  const match = matches.find((m) => TYPE_MAP[m.quoteType]) ?? matches[0];
-  if (!match) return Response.json({ found: false });
+  const merged = await searchInstruments(q);
+  const best = pickBest(q, merged);
+  if (!best) return Response.json({ found: false });
 
-  const type = TYPE_MAP[match.quoteType] ?? "STOCK";
-  const currency = await currencyOf(match.symbol).catch(() => null);
-  const isin = isISIN(q) ? q.toUpperCase() : null;
+  const isCrypto = best.type === "CRYPTO";
 
   return Response.json({
     found: true,
-    name: match.name,
-    // Keep ISIN-identified securities symbol-less (priced by ISIN); for a
-    // symbol query, strip any exchange suffix (AAPL.TO -> AAPL).
-    symbol: isin ? null : match.symbol.split(".")[0],
-    type,
-    currency,
-    isin,
+    name: best.name,
+    // Keep ISIN-identified securities symbol-less (priced by ISIN); crypto
+    // has no ISIN in this app's model and keeps its symbol regardless.
+    symbol: best.isin && !isCrypto ? null : best.symbol,
+    type: best.type,
+    currency: best.currency,
+    isin: best.isin,
+    wkn: best.wkn,
   });
 }

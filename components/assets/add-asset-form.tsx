@@ -125,11 +125,13 @@ export function AddAssetForm({
     type?: AssetType;
     currency?: string | null;
     isin?: string | null;
+    wkn?: string | null;
   }
 
   function applyApiMatch(d: ApiMatch) {
     setName(d.name ?? "");
     setIsin(d.isin ?? "");
+    setWkn(d.wkn ?? "");
     setSymbol(d.symbol ?? "");
     setType(d.type ?? "ETF");
     setAssetCurrency(d.currency ?? base);
