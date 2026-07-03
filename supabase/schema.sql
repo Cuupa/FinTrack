@@ -166,7 +166,8 @@ create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),
   asset_id uuid not null references public.assets (id) on delete cascade,
   -- BOOKING = free crediting (Einbuchung), added at zero cost basis.
-  type text not null check (type in ('BUY', 'SELL', 'BOOKING')),
+  -- INTEREST = interest credited to a cash position, also zero cost basis.
+  type text not null check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST')),
   quantity numeric not null check (quantity > 0),
   price numeric not null check (price >= 0),
   fee numeric not null default 0 check (fee >= 0),
@@ -180,6 +181,12 @@ alter table public.transactions
   add column if not exists portfolio_id uuid references public.portfolios (id) on delete cascade;
 create index if not exists transactions_asset_id_idx on public.transactions (asset_id);
 create index if not exists transactions_portfolio_id_idx on public.transactions (portfolio_id);
+-- `create table if not exists` above is a no-op on an existing database, so
+-- re-apply the widened type check idempotently for upgrades too.
+alter table public.transactions
+  drop constraint if exists transactions_type_check;
+alter table public.transactions
+  add constraint transactions_type_check check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST'));
 
 -- Cached Monte Carlo simulation runs, keyed by a hash of the (seed-independent)
 -- parameters. Rerunning with identical params reuses the stored result instead
@@ -247,7 +254,8 @@ insert into public.schema_migrations (version) values
   ('0025_app_settings'),
   ('0026_imported_rows'),
   ('0027_feature_flags'),
-  ('0028_imported_rows_transaction')
+  ('0028_imported_rows_transaction'),
+  ('0029_transaction_interest')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

@@ -44,13 +44,14 @@ export function TransactionForm({
 
   const isBuy = type === "BUY";
   const isBooking = type === "BOOKING";
+  const isInterest = type === "INTEREST";
   const qtyNum = parseDecimal(quantity);
   const pxNum = isCash ? 1 : parseDecimal(price);
   const feeNum = parseDecimal(fee) || 0;
-  // Cash leaving (buy) / arriving (sell); a BOOKING costs nothing, so its "total"
-  // is the market value received.
+  // Cash leaving (buy) / arriving (sell); a BOOKING/INTEREST costs nothing, so
+  // its "total" is the market value / interest received.
   const gross = Number.isFinite(qtyNum) && Number.isFinite(pxNum) ? qtyNum * pxNum : 0;
-  const total = isBuy ? gross + feeNum : isBooking ? gross : gross - feeNum;
+  const total = isBuy ? gross + feeNum : isBooking || isInterest ? gross : gross - feeNum;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,13 +89,26 @@ export function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Buy / Sell / Booking segmented toggle */}
+      {/* Buy / Sell / Booking (or Interest, for cash) segmented toggle */}
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60">
-        {(["BUY", "SELL", "BOOKING"] as TransactionType[]).map((tt) => {
+        {(["BUY", "SELL", isCash ? "INTEREST" : "BOOKING"] as TransactionType[]).map((tt) => {
           const active = type === tt;
           const activeBg =
-            tt === "BUY" ? "bg-emerald-500" : tt === "SELL" ? "bg-red-500" : "bg-indigo-500";
-          const label = tt === "BUY" ? t("tx.buy") : tt === "SELL" ? t("tx.sell") : t("tx.booking");
+            tt === "BUY"
+              ? "bg-emerald-500"
+              : tt === "SELL"
+                ? "bg-red-500"
+                : tt === "INTEREST"
+                  ? "bg-amber-500"
+                  : "bg-indigo-500";
+          const label =
+            tt === "BUY"
+              ? t("tx.buy")
+              : tt === "SELL"
+                ? t("tx.sell")
+                : tt === "INTEREST"
+                  ? t("tx.interest")
+                  : t("tx.booking");
           return (
             <button
               key={tt}
@@ -116,9 +130,14 @@ export function TransactionForm({
           {t("tx.bookingHint")}
         </p>
       )}
+      {isInterest && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+          {t("tx.interestHint")}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label={isCash ? t("tx.amount") : t("tx.quantity")}>
+        <Field label={isInterest ? t("tx.interestAmount") : isCash ? t("tx.amount") : t("tx.quantity")}>
           <input
             type="text"
             inputMode="decimal"
@@ -221,7 +240,13 @@ export function TransactionForm({
       {/* Live total preview */}
       <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40">
         <span className="text-zinc-500">
-          {isBuy ? t("tx.totalCost") : isBooking ? t("tx.valueReceived") : t("tx.totalProceeds")}
+          {isBuy
+            ? t("tx.totalCost")
+            : isBooking
+              ? t("tx.valueReceived")
+              : isInterest
+                ? t("tx.interestReceived")
+                : t("tx.totalProceeds")}
         </span>
         <span
           className={`font-semibold tabular-nums ${
@@ -243,10 +268,20 @@ export function TransactionForm({
             ? "!bg-emerald-500 hover:!bg-emerald-600 !text-white dark:!bg-emerald-500"
             : isBooking
               ? "!bg-indigo-500 hover:!bg-indigo-600 !text-white dark:!bg-indigo-500"
-              : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
+              : isInterest
+                ? "!bg-amber-500 hover:!bg-amber-600 !text-white dark:!bg-amber-500"
+                : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
         }`}
       >
-        {busy ? t("tx.adding") : isBuy ? t("tx.addBuy") : isBooking ? t("tx.addBooking") : t("tx.addSell")}
+        {busy
+          ? t("tx.adding")
+          : isBuy
+            ? t("tx.addBuy")
+            : isBooking
+              ? t("tx.addBooking")
+              : isInterest
+                ? t("tx.addInterest")
+                : t("tx.addSell")}
       </Button>
     </form>
   );

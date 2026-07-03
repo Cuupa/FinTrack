@@ -47,6 +47,7 @@ export const en = {
   "dashboard.addAsset": "+ Add asset",
   "addAsset.manual": "Add manually",
   "addAsset.import": "Import CSV",
+  "addAsset.cashExists": "This portfolio already has a cash position.",
   "import.selectFile": "Choose CSV file",
   "import.detected": "Detected",
   "import.unknownFormat": "Unrecognised CSV format.",
@@ -204,6 +205,7 @@ export const en = {
   "asset.row.divReceived": "Dividends received",
   "asset.row.volatility": "Volatility (p.a.)",
   "asset.row.sharpe": "Sharpe ratio",
+  "asset.row.interestEarned": "Interest earned",
 
   // Transactions table + add form
   "tx.date": "Date",
@@ -237,6 +239,12 @@ export const en = {
   "tx.valueReceived": "Value received",
   "tx.bookingHint":
     "A free crediting (e.g. an employer contribution or gift). Added at zero cost — its full current value counts as profit.",
+  "tx.interest": "Interest",
+  "tx.addInterest": "Add interest",
+  "tx.interestAmount": "Interest amount",
+  "tx.interestReceived": "Interest received",
+  "tx.interestHint":
+    "Record the interest your bank credited, as the net amount on your statement. It is added to your cash balance and counts as return.",
 
   // Analysis
   "analysis.tab.distributions": "Distributions",
@@ -509,6 +517,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "dashboard.addAsset": "+ Position hinzufügen",
   "addAsset.manual": "Manuell hinzufügen",
   "addAsset.import": "CSV importieren",
+  "addAsset.cashExists": "Dieses Portfolio hat bereits eine Cash-Position.",
   "import.selectFile": "CSV-Datei wählen",
   "import.detected": "Erkannt",
   "import.unknownFormat": "Unbekanntes CSV-Format.",
@@ -665,6 +674,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "asset.row.divReceived": "Erhaltene Dividenden",
   "asset.row.volatility": "Volatilität (p.a.)",
   "asset.row.sharpe": "Sharpe-Ratio",
+  "asset.row.interestEarned": "Erhaltene Zinsen",
 
   // Transactions table + add form
   "tx.date": "Datum",
@@ -698,6 +708,12 @@ const de: Partial<Record<MessageKey, string>> = {
   "tx.valueReceived": "Erhaltener Wert",
   "tx.bookingHint":
     "Eine kostenlose Einbuchung (z. B. Arbeitgeberzuschuss oder Geschenk). Ohne Kosten gebucht — der volle aktuelle Wert zählt als Gewinn.",
+  "tx.interest": "Zinsen",
+  "tx.addInterest": "Zinsen hinzufügen",
+  "tx.interestAmount": "Zinsbetrag",
+  "tx.interestReceived": "Erhaltene Zinsen",
+  "tx.interestHint":
+    "Erfasse die von der Bank gutgeschriebenen Zinsen als Nettobetrag laut Abrechnung. Sie erhöhen den Cash-Bestand und zählen als Rendite.",
 
   // Analysis
   "analysis.tab.distributions": "Verteilungen",

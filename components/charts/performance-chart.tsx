@@ -26,7 +26,7 @@ export type ChartMode = "currency" | "percent";
 
 export interface ChartMarker {
   date: string;
-  type: "BUY" | "SELL" | "DIV" | "BOOKING";
+  type: "BUY" | "SELL" | "DIV" | "BOOKING" | "INTEREST";
 }
 
 export interface CompareSeries {
@@ -40,6 +40,7 @@ const MARKER_COLOR: Record<ChartMarker["type"], string> = {
   SELL: "#ef4444",
   DIV: "#f59e0b",
   BOOKING: "#6366f1",
+  INTEREST: "#f59e0b",
 };
 
 const MARKER_GLYPH: Record<ChartMarker["type"], string> = {
@@ -47,6 +48,7 @@ const MARKER_GLYPH: Record<ChartMarker["type"], string> = {
   SELL: "▼",
   DIV: "●",
   BOOKING: "★",
+  INTEREST: "%",
 };
 
 // A map-style pin whose tip sits ON the line at the event's data point: a small

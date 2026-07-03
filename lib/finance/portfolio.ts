@@ -47,10 +47,11 @@ export function computePosition(txs: Transaction[]): Position {
       const newShares = shares + t.quantity;
       avgCost = newShares > 0 ? (shares * avgCost + cost) / newShares : 0;
       shares = newShares;
-    } else if (t.type === "BOOKING") {
+    } else if (t.type === "BOOKING" || t.type === "INTEREST") {
       // Free crediting: add shares at zero cost so their whole
       // market value is profit. The recorded price is informational only; only
-      // any fee adds to basis.
+      // any fee adds to basis. INTEREST (cash interest) works the same way —
+      // credited at zero cost basis so it counts as return.
       const newShares = shares + t.quantity;
       avgCost = newShares > 0 ? (shares * avgCost + t.fee) / newShares : 0;
       shares = newShares;
@@ -281,13 +282,19 @@ export function twrSeries(
   const dates = dateRange(start, end);
   const byAsset = assets.map((a) => {
     const key = assetPriceKey(a);
+    const atxs = transactionsByAsset(a.id, txs);
     return {
-      txs: transactionsByAsset(a.id, txs),
+      txs: atxs,
       key,
       type: a.type,
       rate: rateFor(a, v),
       factor: liveFactor(a, v),
       hist: history?.[key] ?? null,
+      // Cash interest (CASH prices at a constant 1, so it's otherwise invisible
+      // to a price-based TWR) — injected as period income below.
+      interest: atxs
+        .filter((t) => t.type === "INTEREST")
+        .map((t) => ({ day: dateKey(t.date), amt: t.quantity })),
     };
   });
 
@@ -314,6 +321,12 @@ export function twrSeries(
     let baseVal = 0; // value of shares held at the START of the period
     let periodPnl = 0; // their price-only P&L over the period
     for (const b of byAsset) {
+      // Cash interest credited during this period counts as period income
+      // regardless of the price/shares guards below — cash has no price move
+      // of its own to carry it.
+      for (const ev of b.interest) {
+        if (ev.day > prevDate && ev.day <= curDate) periodPnl += ev.amt * b.rate;
+      }
       const shares = sharesAt(b.txs, prevDate); // shares at period start only
       if (shares === 0) continue;
       const pPrev = priceAt(b, prevDate);
@@ -407,6 +420,28 @@ export function holdingPeriodProfit(
   const abs = endValue - startValue - flows;
   const denom = startValue > 1e-6 ? startValue : flows > 1e-6 ? flows : 0;
   return { abs, pct: denom > 0 ? abs / denom : 0 };
+}
+
+/**
+ * Id of the CASH asset with a positive balance in the given portfolio, or
+ * null when there isn't one (no cash asset yet, or it's been fully withdrawn).
+ * Used to enforce one cash position per portfolio.
+ */
+export function cashAssetInPortfolio(
+  assets: Asset[],
+  txs: Transaction[],
+  portfolioId: string,
+): string | null {
+  for (const a of assets) {
+    if (a.type !== "CASH") continue;
+    let balance = 0;
+    for (const t of txs) {
+      if (t.assetId !== a.id || t.portfolioId !== portfolioId) continue;
+      balance += t.type === "SELL" ? -t.quantity : t.quantity;
+    }
+    if (balance > 1e-9) return a.id;
+  }
+  return null;
 }
 
 export { parseISODate };

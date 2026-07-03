@@ -260,7 +260,17 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             [
               ["BUY", t("tx.buy"), "text-emerald-500"],
               ["SELL", t("tx.sell"), "text-red-500"],
-              ["BOOKING", t("tx.booking"), "text-indigo-500"],
+              ...(asset.type === "CASH"
+                ? ([["INTEREST", t("tx.interest"), "text-amber-500"]] as [
+                    ChartMarker["type"],
+                    string,
+                    string,
+                  ][])
+                : ([["BOOKING", t("tx.booking"), "text-indigo-500"]] as [
+                    ChartMarker["type"],
+                    string,
+                    string,
+                  ][])),
               ["DIV", t("tx.dividend"), "text-amber-500"],
             ] as [ChartMarker["type"], string, string][]
           ).map(([type, label, color]) => (
@@ -350,6 +360,13 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
             <Row label={t("asset.row.currentPrice")} value={formatCurrency(summary.price, nativeCur)} />
             <Row label={t("asset.row.costBasis")} value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
+            {asset.type === "CASH" && (
+              <Row
+                label={t("asset.row.interestEarned")}
+                value={formatCurrency(summary.unrealizedPL, nativeCur)}
+                isPrivate
+              />
+            )}
             <Row label={t("asset.row.totalFees")} value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
             <Row label={t("asset.row.divYield")} value={yld > 0 ? formatPercent(yld) : "—"} />
             <Row
@@ -419,6 +436,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               txs={txs}
               currency={nativeCur}
               portfolios={portfolios}
+              isCash={asset.type === "CASH"}
               onUpdate={(id, patch) => void updateTransaction(id, patch)}
               onDelete={(tx) =>
                 setPending({
@@ -498,12 +516,14 @@ function TransactionsTable({
   txs,
   currency,
   portfolios,
+  isCash,
   onUpdate,
   onDelete,
 }: {
   txs: Transaction[];
   currency: string;
   portfolios: Portfolio[];
+  isCash: boolean;
   onUpdate: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
   onDelete: (t: Transaction) => void;
 }) {
@@ -552,6 +572,7 @@ function TransactionsTable({
                 tx={t}
                 portfolios={portfolios}
                 multiPortfolio={multiPortfolio}
+                isCash={isCash}
                 onSave={(patch) => {
                   onUpdate(t.id, patch);
                   setEditingId(null);
@@ -571,7 +592,9 @@ function TransactionsTable({
                         ? "text-emerald-600 dark:text-emerald-400"
                         : t.type === "BOOKING"
                           ? "text-indigo-600 dark:text-indigo-400"
-                          : "text-red-600 dark:text-red-400"
+                          : t.type === "INTEREST"
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-red-600 dark:text-red-400"
                     }
                   >
                     {t.type}
@@ -631,12 +654,14 @@ function TransactionEditRow({
   tx,
   portfolios,
   multiPortfolio,
+  isCash,
   onSave,
   onCancel,
 }: {
   tx: Transaction;
   portfolios: Portfolio[];
   multiPortfolio: boolean;
+  isCash: boolean;
   onSave: (patch: Partial<Omit<Transaction, "id">>) => void;
   onCancel: () => void;
 }) {
@@ -679,7 +704,7 @@ function TransactionEditRow({
           <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
             <option value="BUY">BUY</option>
             <option value="SELL">SELL</option>
-            <option value="BOOKING">BOOKING</option>
+            {isCash ? <option value="INTEREST">INTEREST</option> : <option value="BOOKING">BOOKING</option>}
           </select>
         </td>
         <td className="py-1.5 pr-2">

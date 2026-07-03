@@ -10,12 +10,14 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { lookupInstrumentByQuery, currentPrice } from "@/lib/finance/prices";
+import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import type { Instrument } from "@/lib/catalog/catalog";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
@@ -39,12 +41,18 @@ export function AddAssetForm({
 }) {
   const { addAsset, addTransaction, createPortfolio, data, portfolios, selectedPortfolioIds } =
     usePortfolio();
+  const { t: tr } = useI18n();
   const [portfolioId, setPortfolioId] = useState(
     selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
   const [newPortfolio, setNewPortfolio] = useState("");
   const [addingPortfolio, setAddingPortfolio] = useState(false);
   const base = data.profile.currency;
+  // A portfolio may hold only one cash position — once it has one, CASH is
+  // disabled in the type picker and blocked at submit (re-checked there too,
+  // since the portfolio can change mid-form).
+  const cashTaken =
+    !!portfolioId && !!cashAssetInPortfolio(data.assets, data.transactions, portfolioId);
 
   const [manual, setManual] = useState(false);
   const [query, setQuery] = useState("");
@@ -192,6 +200,12 @@ export function AddAssetForm({
       setError("Enter an ISIN, WKN, or symbol.");
       return;
     }
+    // Re-check on submit: the portfolio (and its cash position) can have
+    // changed since the type was picked.
+    if (isCash && cashAssetInPortfolio(data.assets, data.transactions, portfolioId)) {
+      setError(tr("addAsset.cashExists"));
+      return;
+    }
 
     setBusy(true);
     try {
@@ -312,20 +326,27 @@ export function AddAssetForm({
           <div>
             <label className="text-sm font-medium">Type</label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {ASSET_TYPES.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                    type === t
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                      : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+              {ASSET_TYPES.map((t) => {
+                const disabled = t === "CASH" && cashTaken;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => !disabled && setType(t)}
+                    disabled={disabled}
+                    title={disabled ? tr("addAsset.cashExists") : undefined}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                      type === t
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                        : disabled
+                          ? "cursor-not-allowed border-zinc-200 text-zinc-300 dark:border-zinc-800 dark:text-zinc-600"
+                          : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

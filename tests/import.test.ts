@@ -262,14 +262,14 @@ describe("csv parsers — full real exports", () => {
     // Wiederanlage, SELL = 159 Verkauf + 18 fee/transfer legs (settlement-
     // price fallback) + 2 Umschichtung-Abgang, BUY = 22 Kauf + 2
     // Umschichtung-Zugang + 2 Übertrag-Zugang.
-    const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
     for (const r of rows) {
       byType[r.type]++;
       expect(r.quantity).toBeGreaterThan(0);
       expect(r.price).toBeGreaterThan(0);
       expect(r.isin).toBeTruthy();
     }
-    expect(byType).toEqual({ BUY: 26, SELL: 179, BOOKING: 177 });
+    expect(byType).toEqual({ BUY: 26, SELL: 179, BOOKING: 177, INTEREST: 0 });
   });
 
   it.skipIf(!existsSync(zeroOrdersPath))(
@@ -286,14 +286,14 @@ describe("csv parsers — full real exports", () => {
       expect(skipped).toBe(38);
       expect(invalid).toBe(0);
       expect(rows).toHaveLength(119);
-      const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
+      const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
       for (const r of rows) {
         byType[r.type]++;
         expect(r.quantity).toBeGreaterThan(0);
         expect(r.price).toBeGreaterThan(0);
         expect(r.isin || r.wkn).toBeTruthy();
       }
-      expect(byType).toEqual({ BUY: 88, SELL: 31, BOOKING: 0 });
+      expect(byType).toEqual({ BUY: 88, SELL: 31, BOOKING: 0, INTEREST: 0 });
     },
   );
 
@@ -309,14 +309,14 @@ describe("csv parsers — full real exports", () => {
     expect(rows).toHaveLength(28);
     expect(skipped).toBe(22);
     expect(invalid).toBe(0);
-    const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
     for (const r of rows) {
       byType[r.type]++;
       expect(r.quantity).toBeGreaterThan(0);
       expect(r.price).toBeGreaterThan(0);
       expect(r.isin).toBeTruthy();
     }
-    expect(byType).toEqual({ BUY: 26, SELL: 2, BOOKING: 0 });
+    expect(byType).toEqual({ BUY: 26, SELL: 2, BOOKING: 0, INTEREST: 0 });
   });
 });
 
