@@ -246,6 +246,7 @@ export function RiskView() {
             </div>
           </div>
         </div>
+        <p className="mt-1.5 text-xs text-zinc-500">{t("risk.kpiScopeHint")}</p>
 
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <MetricCard
@@ -341,18 +342,47 @@ export function RiskView() {
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
                 <RiskTh label={t("risk.asset")} k="name" sort={sort} onSort={toggleSort} />
-                <RiskTh label={t("risk.volatility")} k="vol" align="right" sort={sort} onSort={toggleSort} />
+                <RiskTh
+                  label={t("risk.volatility")}
+                  tip={t("risk.volatilityTip")}
+                  k="vol"
+                  align="right"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
                 <RiskTh
                   label={t("risk.beta")}
                   suffix={t("risk.betaSuffix")}
+                  tip={t("risk.betaTip")}
                   k="beta"
                   align="right"
                   sort={sort}
                   onSort={toggleSort}
                 />
-                <RiskTh label={t("risk.alpha")} k="alpha" align="right" sort={sort} onSort={toggleSort} />
-                <RiskTh label={t("risk.sharpe")} k="sharpe" align="right" sort={sort} onSort={toggleSort} />
-                <RiskTh label={t("risk.weight")} k="weight" align="right" sort={sort} onSort={toggleSort} />
+                <RiskTh
+                  label={t("risk.alpha")}
+                  tip={t("risk.alphaTip")}
+                  k="alpha"
+                  align="right"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <RiskTh
+                  label={t("risk.sharpe")}
+                  tip={t("risk.sharpeTip")}
+                  k="sharpe"
+                  align="right"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <RiskTh
+                  label={t("risk.weight")}
+                  tip={t("risk.weightTip")}
+                  k="weight"
+                  align="right"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
               </tr>
             </thead>
             <tbody>
@@ -530,6 +560,7 @@ function MetricCard({
 function RiskTh({
   label,
   suffix,
+  tip,
   k,
   align = "left",
   sort,
@@ -538,6 +569,8 @@ function RiskTh({
   label: string;
   /** Muted, lowercase-style annotation appended after the label (e.g. the benchmark a beta/alpha is measured against). */
   suffix?: string;
+  /** Explanatory tooltip text shown via an (i) affordance next to the header. */
+  tip?: string;
   k: SortKey;
   align?: "left" | "right";
   sort: { key: SortKey; dir: 1 | -1 };
@@ -545,14 +578,19 @@ function RiskTh({
 }) {
   return (
     <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        {suffix && <span className="normal-case text-zinc-400 dark:text-zinc-500">({suffix})</span>}
-        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
+      <span className={`inline-flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}>
+        <button
+          onClick={() => onSort(k)}
+          className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+        >
+          {label}
+          {suffix && <span className="normal-case text-zinc-400 dark:text-zinc-500">({suffix})</span>}
+          <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+        </button>
+        {/* overlay: the table wrapper is overflow-x-auto, which would clip an
+            absolutely-positioned bubble — render it fixed at viewport coords. */}
+        {tip && <InfoTip text={tip} overlay />}
+      </span>
     </th>
   );
 }
