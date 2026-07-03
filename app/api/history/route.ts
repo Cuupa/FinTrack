@@ -4,8 +4,9 @@
 //   - Crypto:   CoinGecko market_chart in the base currency.
 // Missing series are omitted; the chart falls back to the synthetic series.
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
+import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -201,11 +202,10 @@ export async function POST(req: Request): Promise<Response> {
   // Equity history is shared, base-independent reference data → cache it in the
   // DB so we don't re-hit Yahoo on every load (this is the most-called, slowest
   // route). Crypto is priced per-base by CoinGecko, so it's always fetched live.
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabase = url && (service || anon) ? createClient(url, service || anon!) : null;
-  const canWrite = !!service;
+  // Writing instrument_history needs the secret key (RLS only grants select);
+  // without it we still read whatever's cached with the publishable key.
+  const supabase = supabaseSecret() ?? supabasePublishable();
+  const canWrite = !!secretKey();
 
   await Promise.all(
     items.map(async (item) => {

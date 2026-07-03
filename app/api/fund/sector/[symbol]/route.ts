@@ -2,17 +2,16 @@
 // (etf_breakdowns, filled by /api/cron/sync/etf-breakdowns) and only falls back
 // to a live Yahoo fetch when the fund isn't cached.
 
-import { createClient } from "@supabase/supabase-js";
+import { supabasePublishable } from "@/lib/server/supabase-keys";
 import { etfSectorWeights } from "@/lib/server/classify";
 
 export const dynamic = "force-dynamic";
 
 async function cached(key: string): Promise<unknown[] | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return null;
+  // etf_breakdowns is world-readable (select-only RLS policy) — no bypass needed.
+  const supabase = supabasePublishable();
+  if (!supabase) return null;
   try {
-    const supabase = createClient(url, anon);
     const { data } = await supabase
       .from("etf_breakdowns")
       .select("data")

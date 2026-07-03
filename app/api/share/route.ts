@@ -1,10 +1,11 @@
 // Create a shared portfolio snapshot. Stores the (already mode-appropriate)
 // payload server-side under a short random id, so the share link is short.
-// Requires the service role to write; without it the client falls back to the
-// URL-fragment link.
+// The publishable key is enough to write: shared_portfolios' RLS insert
+// policy is `with check (true)` (anyone may create a share — the point of a
+// share link), so no service-role bypass is needed.
 
-import { createClient } from "@supabase/supabase-js";
 import { normalizeShare } from "@/lib/share/share";
+import { supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,8 @@ function shortId(len = 10): string {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Prefer the service role, but fall back to the anon key — an RLS insert
-  // policy lets anyone create a share, so short links work without a service
-  // role configured (the common Vercel setup).
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
+  const supabase = supabasePublishable();
+  if (!supabase) {
     return Response.json({ error: "sharing not configured" }, { status: 503 });
   }
 
@@ -41,7 +38,6 @@ export async function POST(req: Request): Promise<Response> {
   const owner = typeof b.owner === "string" ? b.owner : null;
   const mode = b.mode === "live" ? "live" : "snapshot";
 
-  const supabase = createClient(url, key);
   // Retry a couple of times on the (astronomically unlikely) id collision.
   for (let attempt = 0; attempt < 3; attempt++) {
     const id = shortId();

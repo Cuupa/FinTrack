@@ -3,11 +3,13 @@
 // rows. Funds without a source (e.g. World ETFs, unless FMP_API_KEY is set) are
 // left as-is (their seeded data is kept).
 //
-// Schedule with `Authorization: Bearer $CRON_SECRET`. Requires the service role
-// key to write the global reference table.
+// Schedule with `Authorization: Bearer $CRON_SECRET`. Requires the secret key:
+// instrument_constituents has a select-only RLS policy, no insert/delete grant
+// for authenticated/anon (see supabase/schema.sql).
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchConstituents } from "@/lib/server/constituents";
+import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +45,10 @@ async function handle(req: Request): Promise<Response> {
   if (!authorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return Response.json({ error: "service role not configured" }, { status: 500 });
+  const supabase = supabaseSecret();
+  if (!supabase) {
+    return Response.json({ error: "secret key not configured" }, { status: 500 });
   }
-
-  const supabase = createClient(url, serviceKey);
   const { data, error } = await supabase
     .from("instruments")
     .select("symbol, isin")

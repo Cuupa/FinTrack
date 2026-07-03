@@ -3,9 +3,10 @@
 // Yahoo only when its cache is missing or stale — and only if the service role
 // is available to write; otherwise we return whatever is cached.
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN } from "@/lib/server/yahoo";
 import { BENCHMARKS } from "@/lib/finance/benchmarks";
+import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -101,10 +102,10 @@ async function latestDate(supabase: SupabaseClient, id: string): Promise<string 
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !(service || anon)) return Response.json({ benchmarks: {} });
+  // Writing benchmark_history needs the secret key (RLS only grants select);
+  // without it we still read whatever's cached with the publishable key.
+  const supabase = supabaseSecret() ?? supabasePublishable();
+  if (!supabase) return Response.json({ benchmarks: {} });
 
   const params = new URL(req.url).searchParams;
   const idsParam = params.get("ids");
@@ -113,8 +114,7 @@ export async function GET(req: Request): Promise<Response> {
   const wanted = idsParam ? idsParam.split(",") : BENCHMARKS.map((b) => b.id);
   const chosen = BENCHMARKS.filter((b) => wanted.includes(b.id));
 
-  const canWrite = !!service;
-  const supabase = createClient(url, service || anon!);
+  const canWrite = !!secretKey();
   const out: Record<string, { date: string; close: number }[]> = {};
 
   for (const b of chosen) {

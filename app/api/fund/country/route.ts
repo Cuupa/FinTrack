@@ -1,16 +1,15 @@
 // All cached fund country breakdowns, keyed by fund (ISIN/symbol). Read-only
 // from etf_breakdowns; populated by /api/cron/sync/etf-breakdowns.
 
-import { createClient } from "@supabase/supabase-js";
+import { supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return Response.json({ countries: {} });
+  // etf_breakdowns is world-readable (select-only RLS policy) — no bypass needed.
+  const supabase = supabasePublishable();
+  if (!supabase) return Response.json({ countries: {} });
   try {
-    const supabase = createClient(url, anon);
     const { data } = await supabase
       .from("etf_breakdowns")
       .select("etf_key, data")

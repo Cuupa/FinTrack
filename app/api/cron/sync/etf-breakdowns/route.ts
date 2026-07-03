@@ -1,15 +1,16 @@
 // Caches each catalog ETF's sector + region weightings in `etf_breakdowns`, so
 // the Analysis pies read from the DB instead of hitting Yahoo/onvista on every
 // view. POST only with `Authorization: Bearer $CRON_SECRET`; requires the
-// service role key. Keyed by the asset price key (ISIN, else symbol) the client
-// queries with.
+// secret key (etf_breakdowns' RLS is select-only, no upsert grant for
+// authenticated/anon). Keyed by the asset price key (ISIN, else symbol) the
+// client queries with.
 
-import { createClient } from "@supabase/supabase-js";
 import {
   etfSectorWeights,
   fetchEtfRegionWeights,
   fetchEtfCountryWeights,
 } from "@/lib/server/classify";
+import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -24,13 +25,10 @@ async function handle(req: Request): Promise<Response> {
   if (!authorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return Response.json({ error: "service role not configured" }, { status: 500 });
+  const supabase = supabaseSecret();
+  if (!supabase) {
+    return Response.json({ error: "secret key not configured" }, { status: 500 });
   }
-
-  const supabase = createClient(url, serviceKey);
   const { data, error } = await supabase
     .from("instruments")
     .select("isin, symbol")

@@ -5,12 +5,13 @@
 // data: everything is resolved from the asset's symbol/ISIN.
 //
 // POST only (mutates the catalog) with `Authorization: Bearer $CRON_SECRET`.
-// Requires the service role key. Processes a capped batch per call (Yahoo is
-// rate-limited); the response reports whether more rows remain, so re-run until
-// `remaining` is 0.
+// Requires the secret key: it updates instruments/instrument_constituents,
+// and RLS grants no update policy there for authenticated/anon. Processes a
+// capped batch per call (Yahoo is rate-limited); the response reports whether
+// more rows remain, so re-run until `remaining` is 0.
 
-import { createClient } from "@supabase/supabase-js";
 import { classify } from "@/lib/server/classify";
+import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -44,13 +45,10 @@ async function handle(req: Request): Promise<Response> {
   if (!authorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return Response.json({ error: "service role not configured" }, { status: 500 });
+  const supabase = supabaseSecret();
+  if (!supabase) {
+    return Response.json({ error: "secret key not configured" }, { status: 500 });
   }
-
-  const supabase = createClient(url, serviceKey);
 
   // ETF constituents missing a sector — the bulk of the look-through.
   const { data: consRows, error: consErr } = await supabase

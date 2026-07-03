@@ -2,10 +2,11 @@
 // has no constituents cached yet (globally — keyed by etf_symbol), fetch and
 // cache them. No-ops when they already exist, so it runs effectively once per
 // fund regardless of which user adds it. Writes the global reference table via
-// the service role.
+// the secret key (instrument_constituents' RLS is select-only, no upsert grant
+// for authenticated/anon).
 
-import { createClient } from "@supabase/supabase-js";
 import { fetchConstituents } from "@/lib/server/constituents";
+import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +34,10 @@ export async function POST(req: Request): Promise<Response> {
   }
   if (!symbol) return Response.json({ ok: false });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return Response.json({ ok: false, reason: "service role not configured" });
+  const supabase = supabaseSecret();
+  if (!supabase) {
+    return Response.json({ ok: false, reason: "secret key not configured" });
   }
-
-  const supabase = createClient(url, serviceKey);
 
   // Already cached globally? Then nothing to do.
   const { count } = await supabase

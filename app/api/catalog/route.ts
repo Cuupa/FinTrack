@@ -1,10 +1,10 @@
 // Serves the instruments catalog to the client. Reads the public `instruments`
-// table from Supabase server-side (anon key is enough — the table is
+// table from Supabase server-side (publishable key is enough — the table is
 // world-readable). Returns an empty catalog when Supabase isn't configured, so
 // the app still runs (auto-import is simply unavailable, synthetic pricing
 // covers the rest).
 
-import { createClient } from "@supabase/supabase-js";
+import { supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -39,14 +39,12 @@ interface ConstituentRow {
 }
 
 export async function GET(): Promise<Response> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
+  const supabase = supabasePublishable();
+  if (!supabase) {
     return Response.json({ instruments: [], constituents: [], fxRates: {} });
   }
 
   try {
-    const supabase = createClient(url, key);
     const [instRes, consRes, fxRes] = await Promise.all([
       supabase
         .from("instruments")

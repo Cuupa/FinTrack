@@ -4,7 +4,8 @@
 //
 // Schedule this (Vercel Cron, Supabase scheduled function, or any scheduler) to
 // POST /api/cron/sync-prices with `Authorization: Bearer $CRON_SECRET`.
-// Requires SUPABASE_SERVICE_ROLE_KEY to write the public reference tables.
+// Requires the secret key: it updates `instruments`/`fx_rates`, and RLS grants
+// no update/write policy there for authenticated/anon (see supabase/schema.sql).
 //
 // Caches:  equities (Yahoo, native currency), crypto (CoinGecko, USD),
 //          FX rates (Frankfurter, EUR-anchored).
@@ -14,8 +15,9 @@
 // quote_source/quote_id, so auto-imported assets (created without a listing)
 // start pricing without any manual catalog seeding.
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveQuote } from "@/lib/server/yahoo";
+import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -186,13 +188,10 @@ async function handle(req: Request): Promise<Response> {
   if (!authorized(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return Response.json({ error: "supabase service role not configured" }, { status: 500 });
+  const supabase = supabaseSecret();
+  if (!supabase) {
+    return Response.json({ error: "supabase secret key not configured" }, { status: 500 });
   }
-
-  const supabase = createClient(url, serviceKey);
   // All instruments — including user-added ones that have no quote listing yet.
   // Equities/ETFs are resolved by identifier (ISIN/WKN/symbol); crypto needs a
   // CoinGecko id, so only rows that already carry one are synced.

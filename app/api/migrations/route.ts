@@ -2,17 +2,16 @@
 // /system page can show which schema changes a database has. Empty when
 // Supabase isn't configured.
 
-import { createClient } from "@supabase/supabase-js";
+import { supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return Response.json({ migrations: [] });
+  // schema_migrations is world-readable (select-only RLS policy) — no bypass needed.
+  const supabase = supabasePublishable();
+  if (!supabase) return Response.json({ migrations: [] });
 
   try {
-    const supabase = createClient(url, key);
     const { data, error } = await supabase
       .from("schema_migrations")
       .select("version, applied_at")
