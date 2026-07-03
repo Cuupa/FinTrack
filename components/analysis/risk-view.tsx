@@ -1,11 +1,13 @@
 "use client";
 
 // Risk tab: portfolio-level risk metrics shown as modern metric cards (Sharpe,
-// Sortino, volatility, max drawdown, VaR), a sortable per-asset risk table
-// (including each holding's beta/alpha RELATIVE TO YOUR OWN PORTFOLIO — no
-// external benchmark), and a correlation heatmap. The primary control scopes
+// Sortino, volatility, portfolio beta/alpha, max drawdown, VaR), a sortable
+// per-asset risk table (including each holding's beta/alpha vs. the MSCI
+// World benchmark), and a correlation heatmap. The primary control scopes
 // everything to a selection of your own positions. Figures are measured from
-// real history where available (synthetic fallback).
+// real history where available (synthetic fallback), and the KPI tiles and
+// the per-asset table share one computation basis (portfolioRiskStats /
+// assetAnnualStats) so they never disagree.
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
@@ -16,7 +18,7 @@ import { summarizeAll, twrSeries } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { betaAlpha, riskMetrics } from "@/lib/finance/returns";
-import { assetAnnualStats, estimatePortfolioModel } from "@/lib/finance/stats";
+import { assetAnnualStats, estimatePortfolioModel, portfolioRiskStats } from "@/lib/finance/stats";
 import { assetPriceKey } from "@/lib/types";
 import type { Timeframe } from "@/lib/finance/dates";
 import { ScopeSelect } from "@/components/analysis/scope-select";
@@ -24,9 +26,17 @@ import { formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 
 const RF = 0.02; // risk-free rate used for Sharpe/Sortino/alpha
 const TF_OPTIONS: Timeframe[] = ["1Y", "5Y", "10Y", "MAX"];
+// This tab only offers the four timeframes above (not the full Timeframe
+// union), so the lookback/horizon years map is keyed by that narrower set —
+// `tf`'s declared type is the wider `Timeframe` (shared with the rest of the
+// app), so we cast at the lookup site below.
+type RiskTimeframe = "1Y" | "5Y" | "10Y" | "MAX";
+const YEARS_FOR_TF: Record<RiskTimeframe, number> = { "1Y": 1, "5Y": 5, "10Y": 10, MAX: 100 };
+const MSCI_WORLD = ["msci-world"];
 
 type SortKey = "name" | "vol" | "beta" | "alpha" | "sharpe" | "weight";
 
@@ -51,6 +61,7 @@ export function RiskView() {
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [scope, setScope] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "weight", dir: -1 });
+  const years = YEARS_FOR_TF[tf as RiskTimeframe];
 
   const allHoldings = useMemo(
     () =>
@@ -113,48 +124,57 @@ export function RiskView() {
   }, [returnSeries]);
   const risk = useMemo(() => riskMetrics(metricsSeries), [metricsSeries]);
 
-  // The portfolio's own return path is the reference "market" for the per-asset
-  // beta/alpha — an intrinsic measure of each holding vs the whole portfolio,
-  // with no external index involved.
-  const portLevels = useMemo(
-    () => returnSeries.map((p) => ({ date: p.date, value: 1 + p.value })),
-    [returnSeries],
+  // External benchmark for beta/alpha (both the portfolio-level KPI tiles and
+  // the per-asset table): the same overlay mechanism the performance chart
+  // uses, pinned to MSCI World and priced in the user's base currency.
+  const compare = useBenchmarkCompare(MSCI_WORLD, base);
+  const benchLevels = useMemo(
+    () => (compare[0]?.points ?? []).filter((p) => p.value > 0),
+    [compare],
   );
 
-  const portfolio = useMemo(() => {
-    // Annualise over the trimmed (exposure-only) span, not the raw timeframe
-    // span, so a holding bought partway through the window isn't penalised
-    // for the flat pre-purchase prefix it never actually earned a return over.
-    const n = metricsSeries.length;
-    const years =
-      n > 1
-        ? Math.max(
-            1 / 365,
-            (Date.parse(metricsSeries[n - 1].date) - Date.parse(metricsSeries[0].date)) /
-              (365 * 86_400_000),
-          )
-        : 1;
-    const annReturn = n > 1 && years > 0 ? (1 + risk.twr) ** (1 / years) - 1 : risk.twr;
-    const sharpe = risk.volatility > 0 ? (annReturn - RF) / risk.volatility : null;
-    const sortino =
-      risk.downsideDeviation > 0 ? (annReturn - RF) / risk.downsideDeviation : null;
-    const monthlyVol = risk.volatility / Math.sqrt(12);
-    const var95 = Math.max(0, 1.645 * monthlyVol - annReturn / 12);
-    return { annReturn, sharpe, sortino, var95 };
-  }, [metricsSeries, risk]);
+  // Unified computation basis: the KPI tiles and the risk-by-holding table
+  // both derive from portfolioRiskStats/assetAnnualStats — the same per-asset
+  // return series + measured correlations `estimatePortfolioModel` uses —
+  // instead of the old separate TWR-based path.
+  const pr = useMemo(
+    () =>
+      portfolioRiskStats(
+        holdings.map((h) => ({ asset: h.asset, marketValue: h.marketValue })),
+        years,
+        histories,
+        RF,
+      ),
+    [holdings, years, histories],
+  );
+  const var95 = pr
+    ? Math.max(0, 1.645 * (pr.volatility / Math.sqrt(12)) - pr.annualReturn / 12)
+    : null;
+
+  // The portfolio's own return path (trimmed to the scoped holdings' actual
+  // exposure span), used to measure the portfolio's own beta/alpha against
+  // the external MSCI World benchmark.
+  const portLevels = useMemo(
+    () => metricsSeries.map((p) => ({ date: p.date, value: 1 + p.value })),
+    [metricsSeries],
+  );
+  const portBA =
+    portLevels.length >= 3 && benchLevels.length >= 3
+      ? betaAlpha(portLevels, benchLevels, RF)
+      : null;
 
   const assetRows = useMemo(() => {
     const fx = valuation.fx ?? {};
     const rows = holdings.map((h) => {
-      const ann = assetAnnualStats(h.asset, histories, 5);
+      const ann = assetAnnualStats(h.asset, histories, years);
       const key = assetPriceKey(h.asset);
       const hist = histories[key];
       // Normalise the asset's price history into the BASE currency, then measure
-      // its beta/alpha against the portfolio's own return path (not an index).
+      // its beta/alpha against the external MSCI World benchmark.
       const cur = h.asset.currency ?? base;
       const rate = cur === base ? 1 : (fx[cur] ?? 1);
       const levels = hist ? hist.map((p) => ({ date: p.date, value: p.close * rate })) : [];
-      const ba = levels.length >= 3 && portLevels.length >= 3 ? betaAlpha(levels, portLevels, RF) : null;
+      const ba = levels.length >= 3 && benchLevels.length >= 3 ? betaAlpha(levels, benchLevels, RF) : null;
       return {
         id: h.asset.id,
         name: h.asset.name,
@@ -175,7 +195,7 @@ export function RiskView() {
       if (va > vb) return 1 * sort.dir;
       return 0;
     });
-  }, [holdings, histories, portLevels, total, sort, valuation, base]);
+  }, [holdings, histories, years, benchLevels, total, sort, valuation, base]);
 
   const model = useMemo(
     () =>
@@ -227,11 +247,11 @@ export function RiskView() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <MetricCard
             label={t("risk.sharpe")}
             info={t("risk.sharpeTip")}
-            value={portfolio.sharpe}
+            value={pr?.sharpe ?? null}
             min={-1}
             max={3}
             good={1}
@@ -242,7 +262,7 @@ export function RiskView() {
           <MetricCard
             label={t("risk.sortino")}
             info={t("risk.sortinoTip")}
-            value={portfolio.sortino}
+            value={pr?.sortino ?? null}
             min={-1}
             max={3}
             good={1}
@@ -253,12 +273,33 @@ export function RiskView() {
           <MetricCard
             label={t("risk.volatility")}
             info={t("risk.volatilityTip")}
-            value={risk.volatility}
+            value={pr?.volatility ?? null}
             min={0}
             max={0.4}
             good={0.15}
             ok={0.25}
             higherIsBetter={false}
+            format={(v) => formatPercent(v, 1)}
+          />
+          <MetricCard
+            label={t("risk.portfolioBeta")}
+            info={t("risk.portfolioBetaTip")}
+            value={portBA?.beta ?? null}
+            min={0}
+            max={2}
+            neutral
+            reference={1}
+            format={(v) => formatNumber(v, 2)}
+          />
+          <MetricCard
+            label={t("risk.portfolioAlpha")}
+            info={t("risk.portfolioAlphaTip")}
+            value={portBA?.alpha ?? null}
+            min={-0.1}
+            max={0.1}
+            good={0.02}
+            ok={0}
+            higherIsBetter
             format={(v) => formatPercent(v, 1)}
           />
           {/* Drawdown & VaR are losses — shown as NEGATIVE percentages. Closer to
@@ -278,7 +319,7 @@ export function RiskView() {
           <MetricCard
             label={t("risk.var")}
             info={t("risk.varTip")}
-            value={-portfolio.var95}
+            value={var95 != null ? -var95 : null}
             min={-0.3}
             max={0}
             good={-0.05}
@@ -384,6 +425,9 @@ function tier(value: number, good: number, ok: number, higherIsBetter: boolean):
 
 const TIER_COLOR = [RED, AMBER, GREEN];
 
+// Neutral (no inherent "good"/"bad" direction) marker/text color — zinc-500.
+const NEUTRAL_COLOR = "#71717a";
+
 function MetricCard({
   label,
   info,
@@ -395,29 +439,39 @@ function MetricCard({
   higherIsBetter,
   format,
   sub,
+  neutral = false,
+  reference,
 }: {
   label: string;
   info: string;
   value: number | null;
   min: number;
   max: number;
-  /** Value at/beyond which the metric is "good" (green). */
-  good: number;
-  /** Value at/beyond which it is "moderate" (amber); worse than this is poor. */
-  ok: number;
-  higherIsBetter: boolean;
+  /** Value at/beyond which the metric is "good" (green). Unused when `neutral`. */
+  good?: number;
+  /** Value at/beyond which it is "moderate" (amber); worse than this is poor. Unused when `neutral`. */
+  ok?: number;
+  higherIsBetter?: boolean;
   format: (v: number) => string;
   sub?: string;
+  /** No inherent "good"/"bad" direction (e.g. beta): suppresses the quality
+   *  chip and the good/ok ticks, shows a single `reference` tick instead, and
+   *  colors the marker/value a neutral zinc rather than red/amber/green. */
+  neutral?: boolean;
+  /** Tick position shown instead of good/ok when `neutral`. */
+  reference?: number;
 }) {
   const { t } = useI18n();
   const has = value != null && Number.isFinite(value);
   const clampFrac = (v: number) => Math.min(1, Math.max(0, (v - min) / (max - min)));
   const frac = has ? clampFrac(value as number) : 0;
-  const goodFrac = clampFrac(good);
-  const okFrac = clampFrac(ok);
-  const q = has ? tier(value as number, good, ok, higherIsBetter) : 0;
-  const color = has ? TIER_COLOR[q] : "#a1a1aa";
-  const word = !has ? "" : q === 2 ? t("risk.qGood") : q === 1 ? t("risk.qModerate") : t("risk.qPoor");
+  const goodFrac = !neutral && good != null ? clampFrac(good) : null;
+  const okFrac = !neutral && ok != null ? clampFrac(ok) : null;
+  const refFrac = neutral && reference != null ? clampFrac(reference) : null;
+  const q = !neutral && has && good != null && ok != null ? tier(value as number, good, ok, !!higherIsBetter) : 0;
+  const color = neutral ? NEUTRAL_COLOR : has ? TIER_COLOR[q] : "#a1a1aa";
+  const word =
+    neutral || !has ? "" : q === 2 ? t("risk.qGood") : q === 1 ? t("risk.qModerate") : t("risk.qPoor");
 
   return (
     <div
@@ -443,14 +497,24 @@ function MetricCard({
       </div>
       {/* neutral track + threshold ticks + colored marker at the value */}
       <div className="relative mt-3 h-1 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
-        <span
-          className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
-          style={{ left: `${okFrac * 100}%` }}
-        />
-        <span
-          className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
-          style={{ left: `${goodFrac * 100}%` }}
-        />
+        {okFrac != null && (
+          <span
+            className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
+            style={{ left: `${okFrac * 100}%` }}
+          />
+        )}
+        {goodFrac != null && (
+          <span
+            className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
+            style={{ left: `${goodFrac * 100}%` }}
+          />
+        )}
+        {refFrac != null && (
+          <span
+            className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-zinc-400/70 dark:bg-zinc-600"
+            style={{ left: `${refFrac * 100}%` }}
+          />
+        )}
         {has && (
           <span
             className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-zinc-900"

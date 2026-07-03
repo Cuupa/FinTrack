@@ -263,20 +263,26 @@ export const en = {
     "Annualised standard deviation of returns — how much the value swings. Lower means a smoother ride.",
   "risk.beta": "Beta",
   "risk.betaTip":
-    "Sensitivity to YOUR portfolio: 1 moves with it, >1 amplifies its swings, <1 dampens them, negative moves opposite (a hedge).",
-  "risk.betaSuffix": "vs. portfolio",
+    "Sensitivity of a holding to the MSCI World index: 1 tracks it, above 1 amplifies its swings, below 1 dampens them, negative moves opposite (a hedge). Measured over the recent overlapping window.",
+  "risk.betaSuffix": "vs. MSCI World",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
-    "Annualised return beyond what the holding's beta to your portfolio would predict. Positive = it added risk-adjusted value.",
+    "A holding's annualised return beyond what its beta to the MSCI World would predict (CAPM). Positive = beat the index risk-adjusted.",
+  "risk.portfolioBeta": "Beta",
+  "risk.portfolioBetaTip":
+    "How your whole portfolio moves relative to the MSCI World index: 1 tracks it, above 1 amplifies its swings, below 1 dampens them.",
+  "risk.portfolioAlpha": "Alpha",
+  "risk.portfolioAlphaTip":
+    "Your portfolio's annualised return beyond what its beta to the MSCI World would predict (CAPM).",
   "risk.maxDrawdown": "Max drawdown",
   "risk.maxDrawdownTip":
-    "Largest peak-to-trough drop over the window, with how long it lasted. Smaller is better.",
+    "Largest peak-to-trough drop over the window, with how long it lasted. Smaller is better. Measured from the actual daily holding-period path.",
   "risk.var": "VaR (95%, 1mo)",
   "risk.varTip":
     "Value at Risk: with 95% confidence, the most you'd expect to lose over one month (normal approximation). Lower is better.",
   "risk.days": "days",
   "risk.byAsset": "Risk by holding",
-  "risk.byAssetTip": "Per-holding volatility, beta & alpha vs. your own portfolio, Sharpe ratio and weight.",
+  "risk.byAssetTip": "Per-holding volatility, beta & alpha vs. the MSCI World index, Sharpe ratio and weight.",
   "risk.asset": "Asset",
   "risk.weight": "Weight",
   "risk.correlation": "Correlation matrix",
@@ -705,20 +711,26 @@ const de: Partial<Record<MessageKey, string>> = {
     "Annualisierte Standardabweichung der Renditen — wie stark der Wert schwankt. Niedriger bedeutet ruhigeren Verlauf.",
   "risk.beta": "Beta",
   "risk.betaTip":
-    "Empfindlichkeit gegenüber IHREM Portfolio: 1 läuft mit, >1 verstärkt, <1 dämpft, negativ läuft gegenläufig (Absicherung).",
-  "risk.betaSuffix": "ggü. Portfolio",
+    "Empfindlichkeit einer Position gegenüber dem MSCI World Index: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie, negativ läuft gegenläufig (Absicherung). Gemessen über das jüngste überlappende Fenster.",
+  "risk.betaSuffix": "ggü. MSCI World",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
-    "Annualisierte Rendite über das, was das Beta zu Ihrem Portfolio erwarten ließe. Positiv = risikobereinigter Mehrwert.",
+    "Die annualisierte Rendite einer Position über das hinaus, was ihr Beta zum MSCI World erwarten ließe (CAPM). Positiv = risikobereinigt besser als der Index.",
+  "risk.portfolioBeta": "Beta",
+  "risk.portfolioBetaTip":
+    "Wie sich Ihr gesamtes Portfolio relativ zum MSCI World Index bewegt: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie.",
+  "risk.portfolioAlpha": "Alpha",
+  "risk.portfolioAlphaTip":
+    "Die annualisierte Rendite Ihres Portfolios über das hinaus, was sein Beta zum MSCI World erwarten ließe (CAPM).",
   "risk.maxDrawdown": "Max. Drawdown",
   "risk.maxDrawdownTip":
-    "Größter Rückgang vom Hoch zum Tief im Zeitraum, mit Dauer. Kleiner ist besser.",
+    "Größter Rückgang vom Hoch zum Tief im Zeitraum, mit Dauer. Kleiner ist besser. Gemessen am tatsächlichen täglichen Verlauf im Anlagezeitraum.",
   "risk.var": "VaR (95%, 1M)",
   "risk.varTip":
     "Value at Risk: mit 95% Konfidenz der maximal erwartete Verlust über einen Monat (Normalverteilungs-Näherung). Niedriger ist besser.",
   "risk.days": "Tage",
   "risk.byAsset": "Risiko je Position",
-  "risk.byAssetTip": "Volatilität, Beta & Alpha zu Ihrem eigenen Portfolio, Sharpe-Ratio und Gewicht je Position.",
+  "risk.byAssetTip": "Volatilität, Beta & Alpha zum MSCI World Index, Sharpe-Ratio und Gewicht je Position.",
   "risk.asset": "Wert",
   "risk.weight": "Gewicht",
   "risk.correlation": "Korrelationsmatrix",

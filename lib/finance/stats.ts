@@ -306,6 +306,7 @@ export function estimatePortfolioModel(
   holdings: StatHolding[],
   years = 5,
   history?: HistoryMap,
+  horizonYears = years,
 ): PortfolioModel | null {
   const valued = holdings.filter((h) => h.marketValue > 0);
   if (valued.length === 0) return null;
@@ -323,7 +324,7 @@ export function estimatePortfolioModel(
     weight: h.marketValue / total,
     // `years` is both the lookback window and the projection horizon (the panel
     // couples them), so it drives the regression-to-mean shrinkage.
-    ...assetMeanVol(h.asset, series[i].rets, series[i].real, ppy, years),
+    ...assetMeanVol(h.asset, series[i].rets, series[i].real, ppy, horizonYears),
   }));
   const aligned = series.map((r) =>
     r.rets.length >= L ? r.rets.slice(r.rets.length - L) : new Array<number>(L).fill(0),
@@ -425,6 +426,78 @@ export function assetAnnualStats(
   const rets = assetDailyReturns(asset, years);
   const mv = assetMeanVol(asset, rets, false, DAILY_PPY);
   return { mean: mv.mean, vol: mv.vol, sharpe: sharpeRatio(mv.mean, mv.vol), years: mv.years, real: false };
+}
+
+export interface PortfolioRiskStats {
+  /** Value-weighted annualised return (pure measurement, no horizon shrinkage). */
+  annualReturn: number;
+  /** Annualised portfolio volatility from the per-asset σ + measured correlations. */
+  volatility: number;
+  /** Annualised downside deviation of the value-weighted return path. */
+  downsideDeviation: number;
+  sharpe: number | null;
+  sortino: number | null;
+  /** Length of the overlapping sample window actually used, in months. */
+  sampleMonths: number;
+  /** True when (some) real market history was used rather than synthetic. */
+  real: boolean;
+}
+
+/**
+ * Unified portfolio-level risk stats: reuses the exact same per-asset return
+ * series, μ/σ estimation and correlation machinery as `estimatePortfolioModel`
+ * (rather than a separate TWR-based path), so the KPI tiles and the
+ * risk-by-holding table share one computation basis.
+ */
+export function portfolioRiskStats(
+  holdings: StatHolding[],
+  years = 5,
+  history?: HistoryMap,
+  rf = RISK_FREE_RATE,
+): PortfolioRiskStats | null {
+  const valued = holdings.filter((h) => h.marketValue > 0);
+  if (valued.length === 0) return null;
+  const total = valued.reduce((s, h) => s + h.marketValue, 0);
+  const weights = valued.map((h) => h.marketValue / total);
+
+  const { series, ppy } = gatherReturns(valued, years, history);
+  // horizon 0 = pure measurement (no regression-to-mean), matching assetAnnualStats.
+  const stats = valued.map((h, i) => assetMeanVol(h.asset, series[i].rets, series[i].real, ppy, 0));
+  const annualReturn = weights.reduce((s, w, i) => s + w * stats[i].mean, 0);
+
+  const lengths = series.filter((r) => r.rets.length).map((r) => r.rets.length);
+  if (lengths.length === 0) return null;
+  const L = Math.min(...lengths);
+  const aligned = series.map((r) =>
+    r.rets.length >= L ? r.rets.slice(r.rets.length - L) : new Array<number>(L).fill(0),
+  );
+
+  const n = valued.length;
+  let variance = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      variance += weights[i] * weights[j] * stats[i].vol * stats[j].vol * corrcoef(aligned[i], aligned[j]);
+    }
+  }
+  const volatility = Math.sqrt(Math.max(0, variance));
+
+  const port: number[] = [];
+  for (let t = 0; t < L; t++) port.push(weights.reduce((s, w, i) => s + w * aligned[i][t], 0));
+  const downVar = mean(port.map((r) => (r < 0 ? r * r : 0)));
+  const downsideDeviation = Math.sqrt(downVar) * Math.sqrt(ppy);
+
+  const sharpe = sharpeRatio(annualReturn, volatility, rf);
+  const sortino = downsideDeviation > 0 ? (annualReturn - rf) / downsideDeviation : null;
+
+  return {
+    annualReturn,
+    volatility,
+    downsideDeviation,
+    sharpe,
+    sortino,
+    sampleMonths: Math.round((L / ppy) * MONTHLY_PPY),
+    real: series.some((s) => s.real),
+  };
 }
 
 // FTSE All-World — diversified default used when the user has no holdings yet.

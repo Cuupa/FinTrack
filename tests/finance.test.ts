@@ -10,8 +10,11 @@ import {
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
 import { twrSeries } from "../lib/finance/portfolio";
+import { assetAnnualStats, portfolioRiskStats } from "../lib/finance/stats";
+import { assetPriceKey } from "../lib/types";
 import type { Asset, Transaction } from "../lib/types";
 import type { HoldingSummary, SeriesPoint } from "../lib/finance/portfolio";
+import type { StatHolding } from "../lib/finance/stats";
 import type { HistoryMap } from "../lib/history/history";
 
 function asset(over: Partial<Asset> & Pick<Asset, "id">): Asset {
@@ -293,6 +296,101 @@ describe("betaAlpha", () => {
     expect(res).not.toBeNull();
     expect(res!.beta).toBeGreaterThan(1.5);
     expect(res!.beta).toBeLessThan(2.5);
+  });
+
+  it("recovers beta ~1 and alpha ~0 against itself", () => {
+    const days = 400;
+    const s = series(days, (i) => 100 * Math.exp(0.0003 * i + 0.01 * Math.sin(i / 7)));
+    const res = betaAlpha(s, s);
+    expect(res).not.toBeNull();
+    expect(res!.beta).toBeCloseTo(1, 6);
+    expect(res!.alpha).toBeCloseTo(0, 6);
+  });
+});
+
+describe("portfolioRiskStats", () => {
+  // Real monthly history for one asset, well above MIN_REAL_MONTHS so the
+  // real-history path (not the synthetic fallback) is exercised.
+  const realAsset = asset({ id: "real-a", isin: "IE00REALHISTA1" });
+  const realHistory: HistoryMap = {
+    [assetPriceKey(realAsset)]: Array.from({ length: 30 }, (_, i) => {
+      const y = 2022 + Math.floor(i / 12);
+      const m = (i % 12) + 1;
+      return {
+        date: `${y}-${String(m).padStart(2, "0")}-01`,
+        close: 100 * (1 + 0.15 * Math.sin(i / 2.3)) * (1 + i * 0.01),
+      };
+    }),
+  };
+
+  it("matches assetAnnualStats for a single asset with real history", () => {
+    const holdings: StatHolding[] = [{ asset: realAsset, marketValue: 1000 }];
+    const pr = portfolioRiskStats(holdings, 2, realHistory);
+    const ann = assetAnnualStats(realAsset, realHistory, 2);
+    expect(pr).not.toBeNull();
+    expect(pr!.volatility).toBeCloseTo(ann.vol, 9);
+    if (pr!.sharpe == null || ann.sharpe == null) {
+      expect(pr!.sharpe).toBeNull();
+      expect(ann.sharpe).toBeNull();
+    } else {
+      expect(pr!.sharpe).toBeCloseTo(ann.sharpe, 9);
+    }
+  });
+
+  it("matches assetAnnualStats for a single asset with no real history (synthetic)", () => {
+    const synthAsset = asset({ id: "synth-a", isin: "IE00SYNTHASSETA" });
+    const holdings: StatHolding[] = [{ asset: synthAsset, marketValue: 500 }];
+    const pr = portfolioRiskStats(holdings, 2);
+    const ann = assetAnnualStats(synthAsset, undefined, 2);
+    expect(pr).not.toBeNull();
+    expect(pr!.volatility).toBeCloseTo(ann.vol, 9);
+    if (pr!.sharpe == null || ann.sharpe == null) {
+      expect(pr!.sharpe).toBeNull();
+      expect(ann.sharpe).toBeNull();
+    } else {
+      expect(pr!.sharpe).toBeCloseTo(ann.sharpe, 9);
+    }
+  });
+
+  it("blends two assets' annualReturn between their individual returns, with bounded downside deviation", () => {
+    // Deterministic, roughly mean-zero oscillating price paths (real history,
+    // not the seeded synthetic walk) so the downside-vs-total-vol relationship
+    // is stable rather than dependent on an arbitrary drift baked into a given
+    // isin's synthetic series.
+    const a = asset({ id: "two-a", isin: "IE00TWOASSETAAA" });
+    const b = asset({ id: "two-b", isin: "IE00TWOASSETBBB" });
+    const mk = (phase: number) =>
+      Array.from({ length: 30 }, (_, i) => {
+        const y = 2022 + Math.floor(i / 12);
+        const m = (i % 12) + 1;
+        return {
+          date: `${y}-${String(m).padStart(2, "0")}-01`,
+          close: 100 * (1 + 0.08 * Math.sin(i / 2.3 + phase)),
+        };
+      });
+    const history: HistoryMap = {
+      [assetPriceKey(a)]: mk(0),
+      [assetPriceKey(b)]: mk(1.3),
+    };
+    const holdings: StatHolding[] = [
+      { asset: a, marketValue: 600 },
+      { asset: b, marketValue: 400 },
+    ];
+    const pr = portfolioRiskStats(holdings, 2, history);
+    const annA = assetAnnualStats(a, history, 2);
+    const annB = assetAnnualStats(b, history, 2);
+    expect(pr).not.toBeNull();
+    const lo = Math.min(annA.mean, annB.mean);
+    const hi = Math.max(annA.mean, annB.mean);
+    expect(pr!.annualReturn).toBeGreaterThanOrEqual(lo - 1e-9);
+    expect(pr!.annualReturn).toBeLessThanOrEqual(hi + 1e-9);
+    expect(pr!.downsideDeviation).toBeLessThanOrEqual(pr!.volatility + 1e-9);
+  });
+
+  it("returns null for no holdings or all-zero market value", () => {
+    expect(portfolioRiskStats([])).toBeNull();
+    const zero = asset({ id: "zero-a", isin: "IE00ZEROVALUEAA" });
+    expect(portfolioRiskStats([{ asset: zero, marketValue: 0 }])).toBeNull();
   });
 });
 
