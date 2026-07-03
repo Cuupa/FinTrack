@@ -3,12 +3,14 @@
 // Database-backed feature flags. Every feature has a global default in
 // `feature_flags` (world-readable) and an optional per-user override in
 // `user_feature_flags` (RLS: own rows), both maintained by the owner via
-// SQL/dashboard — see supabase/migrations/0027_feature_flags.sql. The
-// override wins over the global value; a flag missing from the DB counts as
-// enabled. Without Supabase (Guest Mode) every feature is simply on.
+// SQL/dashboard — see supabase/migrations/0027_feature_flags.sql. Flags are
+// closed by default: a feature is enabled only if the DB explicitly says so
+// (override wins over global); a flag row missing from the DB counts as
+// disabled, and so does a flag that hasn't loaded yet — no enabled-flash.
 //
-// Flags load asynchronously; until they arrive `isEnabled` returns the
-// default (on), so a disabled feature may flash briefly on first paint.
+// Deliberate exception: without Supabase (Guest/dev mode) there is no
+// database to return `true`, so every feature stays enabled — otherwise
+// Guest Mode would lose every gated feature outright.
 
 import {
   createContext,
@@ -48,7 +50,7 @@ interface FeatureFlagsValue {
 
 const FeatureFlagsContext = createContext<FeatureFlagsValue>({
   ready: !isSupabaseConfigured,
-  isEnabled: () => true,
+  isEnabled: () => !isSupabaseConfigured,
 });
 
 export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
@@ -104,7 +106,12 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
 
   const isEnabled = useCallback(
     (flag: FeatureFlag): boolean => {
-      const resolve = (f: FeatureFlag) => userFlags?.[f] ?? globals?.[f] ?? true;
+      // No database to consult in Guest/dev mode — everything stays on.
+      if (!isSupabaseConfigured) return true;
+      // Globals haven't loaded yet: resolve closed (no enabled-flash), not
+      // open-by-default.
+      const resolve = (f: FeatureFlag) =>
+        globals == null ? false : (userFlags?.[f] ?? globals[f] ?? false);
       // A sub-feature of the simulation is only available if the simulation is.
       if (SIMULATION_SUBFLAGS.includes(flag) && !resolve("simulation")) return false;
       return resolve(flag);
@@ -122,7 +129,7 @@ export function useFeatureFlags(): FeatureFlagsValue {
   return useContext(FeatureFlagsContext);
 }
 
-/** Whether a feature is enabled for the current user (override > global > on). */
+/** Whether a feature is enabled for the current user (override > global > off; no Supabase > on). */
 export function useFeatureFlag(flag: FeatureFlag): boolean {
   return useFeatureFlags().isEnabled(flag);
 }
