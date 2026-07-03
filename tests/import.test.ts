@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseCsv, detectFormat, fingerprint } from "../lib/import/csv";
 import { reconcile } from "../lib/import/reconcile";
@@ -25,12 +27,45 @@ const DB = [
   "310 1383611 00;22,00;DWS EUROPEAN OPPORTUNITIES;847415;DE0008474156;EUR;;434,93909;1,00;544,37;1,00;2.407,48;25,16;11.976,14;;6,46;2026-06-25;Investmentfonds;Aktien;4;",
 ].join("\n");
 
+// Real FNZ export excerpt (Depotnummer anonymized). Anteile is SIGNED: negative
+// for every share-reducing Umsatzart. The last row is a synthetic cash-only
+// variant (Anteile = 0) to exercise the skipped-row counting — the real export
+// has no such rows, but other FNZ exports do.
+const FNZ_FULL = [
+  "Depotnummer;Depotposition;Ref. Nr.;Buchungsdatum;Umsatzart;Teilumsatz;Fonds;ISIN;Zahlungsbetrag in ZW;Zahlungswährung (ZW);Anteile;Abrechnungskurs in FW;Fondswährung (FW);Kursdatum;Devisenkurs  (ZW/FW);Anlagebetrag in ZW;Vertriebsprovision in ZW (im Abrechnungskurs enthalten);KVG Einbehalt in ZW (im Abrechnungskurs enthalten);Gegenwert der Anteile in ZW;Anteile zum Bestandsdatum;Barausschüttung/Steuerliquidität je Anteil in EW;Ertragswährung (EW);Bestandsdatum;Devisenkurs (ZW/EW);Barausschüttung/Steuerliquidität in ZW;Bruttobetrag VAP je Anteil in EUR;Entgelt in ZW;Entgelt in EUR;Steuern in ZW;Steuern in EUR;Devisenkurs (EUR/ZW);Art des Steuereinbehalts;Steuereinbehalt in EUR",
+  "99000000000;26;0400059167/29052026;01.06.26;Kauf;vermögenswirksame Leistungen;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;40;EUR;0,242496;190,6;USD;29.05.26;1,157811;39,92;0;0;0;0;0;;;;0;0;0,08;0,08;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;26;0400229632/07102025;09.10.25;Kauf;;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;9,12;EUR;0,063282;166,08;USD;08.10.25;1,154929;9,1;0;0;0;0;0;;;;0;0;0,02;0,02;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;10;0400060397/06032026;09.03.26;Verkauf;Verkauf;DWS Top Dividende LD;DE0009848119;1.545,03;EUR;-9,631951;166,03;EUR;09.03.26;;1.599,19;0;0;0;0;0;;;;0;0;0;0;54,16;54,16;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;10;0400182326/30052025;02.06.25;Ansparplan;;DWS Top Dividende LD;DE0009848119;40;EUR;0,264866;151,02;EUR;02.06.25;;40;1,9;0;0;0;0;;;;0;0;0;0;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;10;0400221494/05122025;08.12.25;Wiederanlage Fondsertrag;;DWS Top Dividende LD;DE0009848119;47,9;EUR;0,32023;149,58;EUR;08.12.25;;47,9;0;0;0;0;0;;;;0;0;0;0;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;26;0400331797/05012026;07.01.26;Entgeltbelastung Verkauf;Verkauf;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;0;EUR;-0,082514;172,88;USD;06.01.26;1,176014;12,13;0;0;0;0;0;;;;0;0;12;12;0,13;0,13;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;27;0400067527/13082025;18.08.25;Fondsumschichtung (Zugang);;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;4,9;EUR;0,035881;158,32;USD;14.08.25;1,161688;4,89;0;0;0;0;0;;;;0;0;0,01;0,01;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;16;0400067527/13082025;18.08.25;Fondsumschichtung (Abgang);Verkauf;Vontobel Fund - Global Equity A-USD;LU0218910023;4,9;EUR;-0,012359;465,93;USD;14.08.25;1,175712;4,9;0;0;0;0;0;;;;0;0;0;0;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;27;0400363302/02102025;06.10.25;Interner Übertrag (Abgang);Übertrag der Anteile;Vanguard FTSE All-World UCITS ETF USD Acc;IE00BK5BQT80;0;EUR;-0,049516;165,36;USD;02.10.25;1,1664;0;0;0;7,02;0;0;;;;0;0;0;0;0;0;;Steuereinbehalt direkt am Umsatz;0",
+  "99000000000;10;0400000000/01012026;02.01.26;Entgeltbelastung;;DWS Top Dividende LD;DE0009848119;-12;EUR;0;;EUR;02.01.26;;0;0;0;0;0;0;;;;0;0;12;12;0;0;;Steuereinbehalt direkt am Umsatz;0",
+].join("\n");
+
+// Real Deutsche Bank PrivatDepot Umsätze excerpt (Depot-/Konto-Nr. anonymized),
+// BOM-prefixed like the real export. "Nominal / Stück" is signed; "Kurs" is
+// blank on cash rows. The last Kauf row is a variant of a real row with Kurs
+// blanked to exercise the derived-price path (|Ausmachender Betrag| / |Stück|).
+const DB_TX = "\uFEFF" + [
+  "Buchungsdatum;Schlusstag / Zahltag;Valuta;Depot-Nr.;Konto-Nr.;Umsatzart;Nominal / Stück;Bezeichnung;WKN;ISIN;Handelswährung;Kurs;Devisenkurs;Stückzinsen;Kapitalertragssteuer inkl. Solidaritätszuschlag;Ausländische Quellensteuer;Vergütete Steuern;Transaktionspreis inkl. sonstiger Kosten;Eigene Spesen;Fremde Spesen;Ausmachender Betrag;Depot-/Portfolioname",
+  "2026-05-12;2026-05-12;2026-05-15;310 0000000 00;310 0000000 01 (EUR);Kauf;400,00;SISF EURO CORP.BD ADEOSF FUNDS;A0RMZQ;LU0425487740;EUR;15,40;1,00;0,00;0,00;;;0,00;0,00;0,00;-6.160,64;PrivatDepot Comfort",
+  "2026-05-12;2026-05-12;2026-05-15;310 0000000 00;310 0000000 01 (EUR);Verkauf;-17,00;AGIF-A.GL.ART.INTEL.A EO FUNDS;A2DKAR;LU1548497186;EUR;364,22;1,00;0,00;-160,38;;;0,00;0,00;0,00;6.031,36;PrivatDepot Comfort",
+  "2025-01-21;2025-01-21;2025-01-23;310 0000000 00;310 0000000 00 (EUR);Zeichnung;100,00;EXPRESS Z 23.01.30 RUSSELL (DT.BANK)GK.23.01.26;DB2FTD;XS0460099756;USD;101,50;1,04;0,00;0,00;;;0,00;0,00;0,00;-9.721,76;PrivatDepot Comfort",
+  "2026-07-01;;2026-07-01;310 0000000 00;310 0000000 01 (EUR);Dividende/Ausschüttung;754,00;VAN.-L.40EQ ETF EOD FUNDS;A2P7TL;IE00BMVB5N38;EUR;;1,00;;-66,14;0,00;0,00;;0,00;0,00;228,93;PrivatDepot Comfort",
+  "2026-01-28;2026-01-28;2026-01-28;310 0000000 00;310 0000000 01 (EUR);Kapitalrückzahlung;-100,00;EXPRESS Z28.01.30 SX7E (BNP PARIBAS)GK.28.01.26;PC99BR;DE000PC99BR3;EUR;108,55;1,00;0,00;0,00;;;0,00;0,00;0,00;10.855,00;PrivatDepot Comfort",
+  "2026-05-04;2026-05-04;2026-05-06;310 0000000 00;310 0000000 01 (EUR);Kauf;400,00;SISF EURO CORP.BD ADEOSF FUNDS;A0RMZQ;LU0425487740;EUR;;1,00;0,00;0,00;;;0,00;0,00;0,00;-6.160,64;PrivatDepot Comfort",
+].join("\n");
+
 describe("csv detectFormat", () => {
   it("identifies each broker", () => {
     expect(detectFormat(ZERO)).toBe("zero");
     expect(detectFormat(FNZ)).toBe("fnz");
     expect(detectFormat(TR)).toBe("traderepublic");
     expect(detectFormat(DB)).toBe("deutschebank");
+    expect(detectFormat(DB_TX)).toBe("dbtransactions"); // despite the BOM
     expect(detectFormat("a,b,c\n1,2,3")).toBeNull();
   });
 });
@@ -81,6 +116,119 @@ describe("csv parsers", () => {
       quantity: 22,
       price: 434.93909,
     });
+  });
+
+  it("fnz: every share-moving Umsatzart parses; signed Anteile sets direction", () => {
+    const { rows, skipped } = parseCsv(FNZ_FULL);
+    // 10 data rows: 9 move shares, 1 synthetic cash-only row is skipped.
+    expect(rows).toHaveLength(9);
+    expect(skipped).toBe(1);
+    // Every quantity is stored positive; direction lives in the type.
+    for (const r of rows) expect(r.quantity).toBeGreaterThan(0);
+    const [vl, kauf, verkauf, plan, wieder, entgelt, umschZu, umschAb, uebertragAb] = rows;
+    // VL contribution and plan credits (Ansparplan, Wiederanlage) → BOOKING.
+    expect(vl).toMatchObject({ type: "BOOKING", isin: "IE00BK5BQT80" });
+    expect(vl.quantity).toBeCloseTo(0.242496, 6);
+    expect(vl.price).toBeCloseTo(40 / 0.242496, 2);
+    expect(vl.date).toBe("2026-06-01T00:00:00");
+    expect(plan.type).toBe("BOOKING");
+    expect(plan.quantity).toBeCloseTo(0.264866, 6);
+    expect(plan.price).toBeCloseTo(40 / 0.264866, 2);
+    expect(wieder.type).toBe("BOOKING");
+    expect(wieder.quantity).toBeCloseTo(0.32023, 6);
+    // Plain Kauf → BUY.
+    expect(kauf.type).toBe("BUY");
+    expect(kauf.quantity).toBeCloseTo(0.063282, 6);
+    expect(kauf.price).toBeCloseTo(9.12 / 0.063282, 2);
+    // Verkauf: negative Anteile → SELL with positive quantity.
+    expect(verkauf).toMatchObject({ type: "SELL", isin: "DE0009848119" });
+    expect(verkauf.quantity).toBeCloseTo(9.631951, 6);
+    expect(verkauf.price).toBeCloseTo(1545.03 / 9.631951, 2);
+    expect(verkauf.date).toBe("2026-03-09T00:00:00");
+    // Entgeltbelastung Verkauf sells shares to cover a fee → SELL.
+    expect(entgelt.type).toBe("SELL");
+    expect(entgelt.quantity).toBeCloseTo(0.082514, 6);
+    // Fondsumschichtung: Zugang → BUY, Abgang → SELL.
+    expect(umschZu.type).toBe("BUY");
+    expect(umschAb.type).toBe("SELL");
+    // Interner Übertrag (Abgang): negative Anteile → SELL.
+    expect(uebertragAb.type).toBe("SELL");
+    expect(uebertragAb.quantity).toBeCloseTo(0.049516, 6);
+  });
+
+  it("deutsche bank transactions: BOM stripped, trades parse, cash rows skipped", () => {
+    const { format, rows, skipped } = parseCsv(DB_TX);
+    expect(format).toBe("dbtransactions");
+    // 6 data rows: Kauf + Verkauf + Zeichnung + derived-price Kauf parse;
+    // Dividende/Ausschüttung and Kapitalrückzahlung are cash-only → skipped.
+    expect(rows).toHaveLength(4);
+    expect(skipped).toBe(2);
+    const [kauf, verkauf, zeichnung, derived] = rows;
+    expect(kauf).toMatchObject({
+      isin: "LU0425487740",
+      wkn: "A0RMZQ",
+      type: "BUY",
+      quantity: 400,
+      price: 15.4,
+      currency: "EUR",
+      date: "2026-05-12T00:00:00",
+    });
+    // Signed Nominal / Stück: -17 → SELL with positive quantity.
+    expect(verkauf).toMatchObject({ isin: "LU1548497186", type: "SELL", quantity: 17, price: 364.22 });
+    // Zeichnung (subscription) is a BUY; native currency preserved.
+    expect(zeichnung).toMatchObject({ isin: "XS0460099756", type: "BUY", quantity: 100, price: 101.5, currency: "USD" });
+    // Kurs blank on a trade → price derived from |Ausmachender Betrag| / |Stück|.
+    expect(derived.type).toBe("BUY");
+    expect(derived.price).toBeCloseTo(6160.64 / 400, 4);
+  });
+});
+
+// Full real broker exports sitting (uncommitted) in the repo root. These run
+// only on machines that have the files; CI without them skips gracefully.
+describe("csv parsers — full real exports", () => {
+  const fnzPath = join(__dirname, "..", "Umsatzdaten_99134053488.csv");
+  const dbTxPath = join(__dirname, "..", "Umsaetze_20260702_161243.csv");
+
+  it.skipIf(!existsSync(fnzPath))("fnz: all 382 share-moving rows import", () => {
+    // The export is Windows-1252; the app's file reader decodes it the same way.
+    const text = new TextDecoder("windows-1252").decode(readFileSync(fnzPath));
+    const { format, rows, skipped } = parseCsv(text);
+    expect(format).toBe("fnz");
+    // Every one of the 382 data rows moves shares — none are cash-only.
+    expect(rows.length + skipped).toBe(382);
+    expect(rows.length).toBeGreaterThan(350);
+    expect(rows).toHaveLength(382);
+    expect(skipped).toBe(0);
+    // Verified distribution: BOOKING = 9 VL + 134 Ansparplan + 34 Wiederanlage,
+    // SELL = 159 Verkauf + 15 Entgeltbelastung + 3 Umschichtung-Abgang +
+    // 1 Vorabpauschale + 1 Übertrag-Abgang, BUY = 22 Kauf + 3 Umschichtung-
+    // Zugang + 1 Übertrag-Zugang.
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
+    for (const r of rows) {
+      byType[r.type]++;
+      expect(r.quantity).toBeGreaterThan(0);
+      expect(r.isin).toBeTruthy();
+    }
+    expect(byType).toEqual({ BUY: 26, SELL: 179, BOOKING: 177 });
+  });
+
+  it.skipIf(!existsSync(dbTxPath))("deutsche bank transactions: 28 trades, 22 cash rows", () => {
+    const text = readFileSync(dbTxPath, "utf8"); // keeps the BOM, like the app
+    const { format, rows, skipped } = parseCsv(text);
+    expect(format).toBe("dbtransactions");
+    // 50 data rows: 24 Kauf + 2 Verkauf + 2 Zeichnung = 28 trades;
+    // 20 Dividende/Ausschüttung + 2 Kapitalrückzahlung = 22 cash rows.
+    expect(rows.length + skipped).toBe(50);
+    expect(rows).toHaveLength(28);
+    expect(skipped).toBe(22);
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0 };
+    for (const r of rows) {
+      byType[r.type]++;
+      expect(r.quantity).toBeGreaterThan(0);
+      expect(r.price).toBeGreaterThan(0);
+      expect(r.isin).toBeTruthy();
+    }
+    expect(byType).toEqual({ BUY: 26, SELL: 2, BOOKING: 0 });
   });
 });
 

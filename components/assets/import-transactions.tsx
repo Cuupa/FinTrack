@@ -136,6 +136,8 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [reconciled, setReconciled] = useState<ReconciledRow[]>([]);
+  // Recognised-but-cash-only rows (dividends, fees) the parser skipped.
+  const [skippedCount, setSkippedCount] = useState(0);
   // New rows: included by index (default all). Conflicts: per-field resolution.
   const [included, setIncluded] = useState<Record<number, boolean>>({});
   const [resolutions, setResolutions] = useState<Record<number, Resolution>>({});
@@ -151,13 +153,15 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
     setError(null);
     try {
       const text = await readFile(file);
-      const { rows: parsed } = parseCsv(text);
+      const { rows: parsed, skipped } = parseCsv(text);
       if (parsed.length === 0) {
         setError(t("import.noRows"));
         setReconciled([]);
         setFileName(null);
+        setSkippedCount(0);
         return;
       }
+      setSkippedCount(skipped);
       // Replace the broker's CSV name with the official instrument name
       // (catalog first, then a live lookup) so both the preview and the
       // assets created from it show the real name.
@@ -395,6 +399,11 @@ export function ImportTransactions({ onDone }: { onDone?: () => void }) {
             {importedCount > 0 && (
               <span className="text-zinc-400">
                 {importedCount} {t("import.alreadyImported")}
+              </span>
+            )}
+            {skippedCount > 0 && (
+              <span className="text-zinc-400">
+                {skippedCount} {t("import.skippedCash")}
               </span>
             )}
           </div>

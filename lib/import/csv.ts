@@ -1,7 +1,8 @@
-// Broker CSV transaction parsing. Four German broker exports are supported;
+// Broker CSV transaction parsing. Five German broker exports are supported;
 // the format is auto-detected from the header. Everything runs in the browser —
 // the CSV never leaves the device. No cash logic yet: pure deposits/withdrawals
-// and non-trade rows are dropped.
+// and non-trade rows are dropped (and, for formats that can tell them apart
+// from real trades, counted in `skipped`).
 
 import type { AssetType, TransactionType } from "../types";
 
@@ -20,7 +21,7 @@ export interface ParsedTx {
   assetType: AssetType;
 }
 
-export type BrokerFormat = "zero" | "fnz" | "traderepublic" | "deutschebank";
+export type BrokerFormat = "zero" | "fnz" | "traderepublic" | "deutschebank" | "dbtransactions";
 
 // --- helpers ----------------------------------------------------------------
 
@@ -91,6 +92,9 @@ export function detectFormat(text: string): BrokerFormat | null {
   if (h.includes("depotnummer") && h.includes("umsatzart")) return "fnz";
   if (h.includes("ausführung kurs") || h.includes("ausf") && h.includes("richtung")) return "zero";
   if (h.includes("bestand") && h.includes("einstandskurs")) return "deutschebank";
+  // Deutsche Bank "PrivatDepot" transaction export (distinct from the
+  // Bestandsaufstellung snapshot above): a real Umsatzart-keyed history.
+  if (h.includes("umsatzart") && h.includes("ausmachender betrag")) return "dbtransactions";
   return null;
 }
 
@@ -143,8 +147,18 @@ function parseZero(text: string): ParsedTx[] {
   return out;
 }
 
-/** FNZ fund savings plan. "vermögenswirksame Leistungen" rows are BOOKINGs. */
-function parseFnz(text: string): ParsedTx[] {
+/**
+ * FNZ fund transaction export. "Anteile" (shares) is SIGNED — negative for
+ * every share-reducing Umsatzart (Verkauf, Entgeltbelastung Verkauf, Verkauf
+ * wegen Vorabpauschale, Fondsumschichtung (Abgang), Interner Übertrag
+ * (Abgang), ...), positive for every share-adding one. Any row that actually
+ * moves shares becomes a transaction; pure-cash rows (Anteile is zero/blank —
+ * fees and cash-only entries with no unit movement) are skipped and counted.
+ * "vermögenswirksame Leistungen" (employer VL contributions) and the
+ * "Ansparplan" / "Wiederanlage Fondsertrag" Umsatzarten are cost-free
+ * creditings → BOOKING; everything else follows the sign of Anteile.
+ */
+function parseFnz(text: string): { rows: ParsedTx[]; skipped: number } {
   const lines = toLines(text);
   const header = splitLine(lines[0], ";");
   const c = {
@@ -157,23 +171,28 @@ function parseFnz(text: string): ParsedTx[] {
     anteile: idx(header, "Anteile"),
   };
   const out: ParsedTx[] = [];
+  let skipped = 0;
   for (let i = 1; i < lines.length; i++) {
     const r = splitLine(lines[i], ";");
+    if (!r[c.isin]) continue;
     const shares = deNum(r[c.anteile]);
+    if (!Number.isFinite(shares) || shares === 0) {
+      skipped++; // pure-cash row: no unit movement (fee/tax/cash dividend)
+      continue;
+    }
     const amount = deNum(r[c.betrag]);
-    if (!(shares > 0) || !r[c.isin]) continue;
     const art = (r[c.art] || "").toLowerCase();
-    if (!art.includes("kauf") && !art.includes("verkauf")) continue; // skip fees/taxes
-    // Employer VL contributions are a cost-free crediting → BOOKING.
+    // Employer VL contributions and cost-free plan creditings → BOOKING.
     const isVL = /verm.genswirksame/i.test(r[c.teil] ?? "");
-    const price = shares > 0 ? Math.abs(amount) / shares : 0;
+    const isPlanCredit = art.includes("ansparplan") || art.includes("wiederanlage fondsertrag");
+    const price = Math.abs(amount) / Math.abs(shares);
     out.push({
       isin: r[c.isin] || null,
       wkn: null,
       symbol: null,
       name: r[c.fonds] || r[c.isin] || "",
-      type: isVL ? "BOOKING" : art.includes("verkauf") ? "SELL" : "BUY",
-      quantity: shares,
+      type: isVL || isPlanCredit ? "BOOKING" : shares > 0 ? "BUY" : "SELL",
+      quantity: Math.abs(shares),
       price,
       fee: 0,
       date: deDate(r[c.date]),
@@ -181,7 +200,7 @@ function parseFnz(text: string): ParsedTx[] {
       assetType: "ETF",
     });
   }
-  return out;
+  return { rows: out, skipped };
 }
 
 /** Trade Republic transaction export (comma-delimited, "." decimals). */
@@ -265,6 +284,81 @@ function parseDeutscheBank(text: string): ParsedTx[] {
     });
   }
   return out;
+}
+
+/**
+ * Deutsche Bank "PrivatDepot" transaction export (Umsätze) — a real booking
+ * history, one row per Umsatzart. "Nominal / Stück" is SIGNED for Kauf/
+ * Verkauf/Zeichnung (negative = sell) but for Dividende/Ausschüttung and
+ * Kapitalrückzahlung it reflects the position size on record, not a share
+ * movement — those Umsatzarten never change the holding here, so they're
+ * skipped as cash-only rows regardless of that field's sign. "Kurs" is blank
+ * on cash-only rows; when it's missing on a real trade row it's derived from
+ * the settlement amount ("Ausmachender Betrag") divided by the quantity.
+ */
+function parseDbTransactions(text: string): { rows: ParsedTx[]; skipped: number } {
+  const lines = toLines(text);
+  const header = splitLine(lines[0], ";");
+  const c = {
+    date: idx(header, "Buchungsdatum"),
+    art: idx(header, "Umsatzart"),
+    nominal: idx(header, "Nominal"),
+    name: idx(header, "Bezeichnung"),
+    wkn: idx(header, "WKN"),
+    isin: idx(header, "ISIN"),
+    currency: idx(header, "Handelswährung"),
+    kurs: idxExact(header, "Kurs"),
+    betrag: idx(header, "Ausmachender Betrag"),
+    feeOwn: idx(header, "Eigene Spesen"),
+    feeForeign: idx(header, "Fremde Spesen"),
+  };
+  const out: ParsedTx[] = [];
+  let skipped = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const r = splitLine(lines[i], ";");
+    if (!r[c.isin] && !r[c.wkn]) continue;
+    const art = (r[c.art] || "").toLowerCase();
+    // Dividends and capital repayments never move units here — cash-only.
+    if (art.includes("dividende") || art.includes("ausschüttung") || art.includes("kapitalrückzahlung")) {
+      skipped++;
+      continue;
+    }
+    let type: TransactionType;
+    if (art.includes("verkauf")) type = "SELL";
+    else if (art.includes("kauf") || art.includes("zeichnung")) type = "BUY";
+    else {
+      skipped++; // unrecognised Umsatzart — treat as an unbooked cash row
+      continue;
+    }
+    const nominal = deNum(r[c.nominal]);
+    if (!Number.isFinite(nominal) || nominal === 0) {
+      skipped++;
+      continue;
+    }
+    const quantity = Math.abs(nominal);
+    const amount = deNum(r[c.betrag]);
+    let price = deNum(r[c.kurs]);
+    if (!Number.isFinite(price) || price === 0) {
+      price = Number.isFinite(amount) ? Math.abs(amount) / quantity : 0;
+    }
+    const fee =
+      (c.feeOwn >= 0 ? Math.abs(deNum(r[c.feeOwn])) || 0 : 0) +
+      (c.feeForeign >= 0 ? Math.abs(deNum(r[c.feeForeign])) || 0 : 0);
+    out.push({
+      isin: r[c.isin] || null,
+      wkn: r[c.wkn] || null,
+      symbol: null,
+      name: r[c.name] || r[c.isin] || "",
+      type,
+      quantity,
+      price,
+      fee,
+      date: (r[c.date] || "").slice(0, 10) + "T00:00:00",
+      currency: r[c.currency] || "EUR",
+      assetType: "ETF",
+    });
+  }
+  return { rows: out, skipped };
 }
 
 // --- generic (any-broker) parser --------------------------------------------
@@ -393,20 +487,31 @@ export function parseGeneric(text: string): ParsedTx[] {
   return out;
 }
 
-export function parseCsv(text: string, format?: BrokerFormat): { format: BrokerFormat | null; rows: ParsedTx[] } {
+export function parseCsv(
+  text: string,
+  format?: BrokerFormat,
+): { format: BrokerFormat | null; rows: ParsedTx[]; skipped: number } {
   const fmt = format ?? detectFormat(text);
   // Known broker formats parse precisely; anything else falls back to the
   // generic header-driven parser so files from other brokers still import.
+  // Only the formats with recognised-but-cash-only rows (FNZ, Deutsche Bank
+  // transactions) report a non-zero `skipped` count.
+  if (fmt === "fnz") {
+    const { rows, skipped } = parseFnz(text);
+    return { format: fmt, rows, skipped };
+  }
+  if (fmt === "dbtransactions") {
+    const { rows, skipped } = parseDbTransactions(text);
+    return { format: fmt, rows, skipped };
+  }
   const rows = !fmt
     ? parseGeneric(text)
     : fmt === "zero"
       ? parseZero(text)
-      : fmt === "fnz"
-        ? parseFnz(text)
-        : fmt === "traderepublic"
-          ? parseTradeRepublic(text)
-          : parseDeutscheBank(text);
-  return { format: fmt, rows };
+      : fmt === "traderepublic"
+        ? parseTradeRepublic(text)
+        : parseDeutscheBank(text);
+  return { format: fmt, rows, skipped: 0 };
 }
 
 /** Fuzzy fingerprint: identifier + type + day + rounded qty/price, so a row
