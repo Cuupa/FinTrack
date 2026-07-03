@@ -5,8 +5,10 @@
 // can still set name/currency — they persist to local storage via the store.
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useAuth } from "@/lib/auth/auth-context";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
 
@@ -14,8 +16,9 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 
 export function SettingsView() {
   const { data, updateProfile } = usePortfolio();
-  const { mode, updatePassword } = useAuth();
+  const { mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
+  const router = useRouter();
 
   const [name, setName] = useState(data.profile.name ?? "");
   const [currency, setCurrency] = useState(data.profile.currency);
@@ -26,6 +29,10 @@ export function SettingsView() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwStatus, setPwStatus] = useState<string | null>(null);
   const [savingPw, setSavingPw] = useState(false);
+
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const saveProfile = async () => {
     setSavingProfile(true);
@@ -56,6 +63,28 @@ export function SettingsView() {
     } finally {
       setSavingPw(false);
       setTimeout(() => setPwStatus(null), 4000);
+    }
+  };
+
+  const deleteAccount = async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error(t("settings.deleteAccountError"));
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(t("settings.deleteAccountError"));
+      await signOut();
+      router.push("/");
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : t("settings.deleteAccountError"));
+      setDeleting(false);
     }
   };
 
@@ -133,6 +162,38 @@ export function SettingsView() {
                 {savingPw ? "…" : t("settings.save")}
               </Button>
               {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {mode === "registered" && (
+        <Card className="border-red-300 dark:border-red-900">
+          <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">
+            {t("settings.dangerZone")}
+          </h2>
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-zinc-500">{t("settings.deleteAccountHint")}</p>
+            <Field label={t("settings.deleteAccountType")}>
+              <input
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder="delete"
+                autoComplete="off"
+                className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+              />
+            </Field>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="danger"
+                onClick={deleteAccount}
+                disabled={deleting || deleteConfirm.trim().toLowerCase() !== "delete"}
+              >
+                {deleting ? "…" : t("settings.deleteAccount")}
+              </Button>
+              {deleteError && (
+                <span className="text-sm text-red-600 dark:text-red-400">{deleteError}</span>
+              )}
             </div>
           </div>
         </Card>
