@@ -1,14 +1,16 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { LegalPage, LegalSection, Placeholder, LegalLink } from "@/components/legal/legal-page";
+import { LegalPage, LegalSection, LegalValue, LegalLink } from "@/components/legal/legal-page";
+import { useSiteConfig } from "@/lib/site-config";
 
 export default function DatenschutzPage() {
   const { locale } = useI18n();
-  return locale === "de" ? <DatenschutzDE /> : <DatenschutzEN />;
+  const config = useSiteConfig();
+  return locale === "de" ? <DatenschutzDE config={config} /> : <DatenschutzEN config={config} />;
 }
 
-function DatenschutzDE() {
+function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
   return (
     <LegalPage title="Datenschutzerklärung" updated="Stand: 4. Juli 2026">
       <LegalSection heading="1. Verantwortlicher">
@@ -17,13 +19,13 @@ function DatenschutzDE() {
           <LegalLink href="/impressum">Impressum</LegalLink> genannte Betreiber:
         </p>
         <p>
-          <Placeholder>[VOR- UND NACHNAME]</Placeholder>
+          <LegalValue value={config.legal_name} placeholder="[VOR- UND NACHNAME]" />
           <br />
-          <Placeholder>[STRASSE UND HAUSNUMMER]</Placeholder>
+          <LegalValue value={config.legal_street} placeholder="[STRASSE UND HAUSNUMMER]" />
           <br />
-          <Placeholder>[PLZ UND ORT]</Placeholder>
+          <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
           <br />
-          E-Mail: <Placeholder>[E-MAIL-ADRESSE]</Placeholder>
+          E-Mail: <LegalValue value={config.legal_email} placeholder="[E-MAIL-ADRESSE]" />
         </p>
       </LegalSection>
 
@@ -119,7 +121,7 @@ function DatenschutzDE() {
           Selbstbedienung offen: Unter <em>Einstellungen</em> können Sie Ihr Konto
           eigenständig und vollständig löschen sowie Ihre Daten als JSON oder CSV
           exportieren. Für alle anderen Anliegen wenden Sie sich an{" "}
-          <Placeholder>[E-MAIL-ADRESSE]</Placeholder>.
+          <LegalValue value={config.legal_email} placeholder="[E-MAIL-ADRESSE]" />.
         </p>
         <p>
           Sie haben außerdem das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu
@@ -140,7 +142,7 @@ function DatenschutzDE() {
   );
 }
 
-function DatenschutzEN() {
+function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
   return (
     <LegalPage title="Privacy Policy" updated="Last updated: 4 July 2026">
       <LegalSection heading="1. Controller">
@@ -149,13 +151,13 @@ function DatenschutzEN() {
           <LegalLink href="/impressum">Imprint</LegalLink>:
         </p>
         <p>
-          <Placeholder>[FIRST AND LAST NAME]</Placeholder>
+          <LegalValue value={config.legal_name} placeholder="[FIRST AND LAST NAME]" />
           <br />
-          <Placeholder>[STREET AND HOUSE NUMBER]</Placeholder>
+          <LegalValue value={config.legal_street} placeholder="[STREET AND HOUSE NUMBER]" />
           <br />
-          <Placeholder>[POSTAL CODE AND CITY]</Placeholder>
+          <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
           <br />
-          Email: <Placeholder>[EMAIL ADDRESS]</Placeholder>
+          Email: <LegalValue value={config.legal_email} placeholder="[EMAIL ADDRESS]" />
         </p>
       </LegalSection>
 
@@ -246,7 +248,7 @@ function DatenschutzEN() {
           Erasure and portability are available to you directly in the app, self-service:
           under <em>Settings</em> you can permanently delete your own account, and export
           your data as JSON or CSV. For any other request, contact{" "}
-          <Placeholder>[EMAIL ADDRESS]</Placeholder>.
+          <LegalValue value={config.legal_email} placeholder="[EMAIL ADDRESS]" />.
         </p>
         <p>
           You also have the right to lodge a complaint with a supervisory authority (Art. 77

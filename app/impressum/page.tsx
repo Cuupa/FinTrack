@@ -1,25 +1,27 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { LegalPage, LegalSection, Placeholder, LegalLink } from "@/components/legal/legal-page";
+import { LegalPage, LegalSection, LegalValue, LegalLink } from "@/components/legal/legal-page";
+import { useSiteConfig } from "@/lib/site-config";
 
 export default function ImpressumPage() {
   const { locale } = useI18n();
-  return locale === "de" ? <ImpressumDE /> : <ImpressumEN />;
+  const config = useSiteConfig();
+  return locale === "de" ? <ImpressumDE config={config} /> : <ImpressumEN config={config} />;
 }
 
-function ImpressumDE() {
+function ImpressumDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
   return (
     <LegalPage title="Impressum" updated="Stand: 4. Juli 2026">
       <LegalSection heading="Angaben gemäß § 5 DDG">
         <p>
           FinTrack
           <br />
-          <Placeholder>[VOR- UND NACHNAME]</Placeholder>
+          <LegalValue value={config.legal_name} placeholder="[VOR- UND NACHNAME]" />
           <br />
-          <Placeholder>[STRASSE UND HAUSNUMMER]</Placeholder>
+          <LegalValue value={config.legal_street} placeholder="[STRASSE UND HAUSNUMMER]" />
           <br />
-          <Placeholder>[PLZ UND ORT]</Placeholder>
+          <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
           <br />
           Deutschland
         </p>
@@ -27,17 +29,17 @@ function ImpressumDE() {
 
       <LegalSection heading="Kontakt">
         <p>
-          E-Mail: <Placeholder>[E-MAIL-ADRESSE]</Placeholder>
+          E-Mail: <LegalValue value={config.legal_email} placeholder="[E-MAIL-ADRESSE]" />
         </p>
       </LegalSection>
 
       <LegalSection heading="Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV">
         <p>
-          <Placeholder>[VOR- UND NACHNAME]</Placeholder>
+          <LegalValue value={config.legal_name} placeholder="[VOR- UND NACHNAME]" />
           <br />
-          <Placeholder>[STRASSE UND HAUSNUMMER]</Placeholder>
+          <LegalValue value={config.legal_street} placeholder="[STRASSE UND HAUSNUMMER]" />
           <br />
-          <Placeholder>[PLZ UND ORT]</Placeholder>
+          <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
         </p>
       </LegalSection>
 
@@ -85,7 +87,7 @@ function ImpressumDE() {
   );
 }
 
-function ImpressumEN() {
+function ImpressumEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
   return (
     <LegalPage title="Imprint" updated="Last updated: 4 July 2026">
       <p className="text-xs text-zinc-500">
@@ -101,11 +103,11 @@ function ImpressumEN() {
         <p>
           FinTrack
           <br />
-          <Placeholder>[FIRST AND LAST NAME]</Placeholder>
+          <LegalValue value={config.legal_name} placeholder="[FIRST AND LAST NAME]" />
           <br />
-          <Placeholder>[STREET AND HOUSE NUMBER]</Placeholder>
+          <LegalValue value={config.legal_street} placeholder="[STREET AND HOUSE NUMBER]" />
           <br />
-          <Placeholder>[POSTAL CODE AND CITY]</Placeholder>
+          <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
           <br />
           Germany
         </p>
@@ -113,17 +115,17 @@ function ImpressumEN() {
 
       <LegalSection heading="Contact">
         <p>
-          Email: <Placeholder>[EMAIL ADDRESS]</Placeholder>
+          Email: <LegalValue value={config.legal_email} placeholder="[EMAIL ADDRESS]" />
         </p>
       </LegalSection>
 
       <LegalSection heading="Responsible for content pursuant to § 18(2) MStV (German Interstate Media Treaty)">
         <p>
-          <Placeholder>[FIRST AND LAST NAME]</Placeholder>
+          <LegalValue value={config.legal_name} placeholder="[FIRST AND LAST NAME]" />
           <br />
-          <Placeholder>[STREET AND HOUSE NUMBER]</Placeholder>
+          <LegalValue value={config.legal_street} placeholder="[STREET AND HOUSE NUMBER]" />
           <br />
-          <Placeholder>[POSTAL CODE AND CITY]</Placeholder>
+          <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
         </p>
       </LegalSection>
 

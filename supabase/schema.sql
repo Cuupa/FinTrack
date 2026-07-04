@@ -286,7 +286,8 @@ insert into public.schema_migrations (version) values
   ('0029_transaction_interest'),
   ('0030_offline_mode'),
   ('0031_shared_portfolios_hardening'),
-  ('0032_instruments_dedupe')
+  ('0032_instruments_dedupe'),
+  ('0033_site_config')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -466,6 +467,26 @@ insert into public.feature_flags (flag, description) values
   ('simulationWithdrawal', 'Simulation — Withdrawal phase'),
   ('offline', 'Offline mode (read-only app shell + last-known data)')
 on conflict (flag) do nothing;
+
+-- Site-wide public config, starting with the operator identity shown on the
+-- legal pages (/impressum, /datenschutz). Same shape/policy as feature_flags:
+-- world-readable, owner writes only via SQL/dashboard. A key missing or empty
+-- means "not filled in yet"; the UI falls back to a placeholder.
+create table if not exists public.site_config (
+  key text primary key,
+  value text not null default '',
+  updated_at timestamptz not null default now()
+);
+alter table public.site_config enable row level security;
+drop policy if exists "site config readable" on public.site_config;
+create policy "site config readable" on public.site_config
+  for select using (true);
+insert into public.site_config (key, value) values
+  ('legal_name', ''),
+  ('legal_street', ''),
+  ('legal_city', ''),
+  ('legal_email', '')
+on conflict (key) do nothing;
 
 -- Seed the instruments catalog -----------------------------------------------
 insert into public.instruments

@@ -54,6 +54,15 @@ export function Placeholder({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Renders a DB-backed value (e.g. from `useSiteConfig()`) when present,
+ * falling back to the highlighted placeholder otherwise — covers "not loaded
+ * yet", "empty in the DB", and "no Supabase configured" in one check.
+ */
+export function LegalValue({ value, placeholder }: { value?: string; placeholder: ReactNode }) {
+  return value ? <>{value}</> : <Placeholder>{placeholder}</Placeholder>;
+}
+
 export function LegalLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a
