@@ -105,6 +105,11 @@ interface Props {
   returnSeries?: SeriesPoint[];
   /** Emphasise markers of this type (others dim); null = all normal. */
   highlightType?: ChartMarker["type"] | null;
+  /** Accessible summary of what the chart shows (WCAG 1.1.1 text alternative),
+   *  e.g. "Net worth chart, 1Y: from €10,000 to €12,500 (+25%)". Callers with
+   *  richer already-computed figures (period change, IRR, ...) should pass
+   *  their own; otherwise a generic summary is derived from the series. */
+  ariaLabel?: string;
 }
 
 function shortDate(iso: string): string {
@@ -158,6 +163,7 @@ export function PerformanceChart({
   mainLabel = "Value",
   highlightType = null,
   returnSeries,
+  ariaLabel,
 }: Props) {
   const { t } = useI18n();
   const comparing = compare.length > 0;
@@ -241,97 +247,117 @@ export function PerformanceChart({
         ? formatCurrency(v, currency, tickDecimals)
         : formatCompactCurrency(v, currency);
 
+  // Generic text alternative (WCAG 1.1.1) when the caller didn't pass a richer
+  // one: start/end of the plotted window in whatever unit is on screen.
+  const fallbackAriaLabel = (() => {
+    const first = series.find((p) => p.value > 0);
+    const last = series[series.length - 1];
+    if (!first || !last) return mainName;
+    const fmt = (v: number) => (pctMode ? formatPercent(v) : formatCurrency(v, currency));
+    const startVal = pctMode ? 0 : first.value;
+    const endVal = pctMode ? (returnSeries?.[returnSeries.length - 1]?.value ?? 0) : last.value;
+    return t("chart.performance.fallbackLabel", {
+      name: mainName,
+      start: shortDate(first.date),
+      end: shortDate(last.date),
+      startValue: fmt(startVal),
+      endValue: fmt(endVal),
+    });
+  })();
+
   return (
     <div>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={shortDate}
-            minTickGap={48}
-            tick={{ fontSize: 12 }}
-            stroke="currentColor"
-            className="text-zinc-400"
-          />
-          <YAxis
-            scale={useLog ? "log" : "linear"}
-            domain={
-              useLog
-                ? [logLo, logHi]
-                : linearTicks
-                  ? [linearTicks[0], linearTicks[linearTicks.length - 1]]
-                  : ["auto", "auto"]
-            }
-            ticks={linearTicks}
-            allowDataOverflow={useLog}
-            tickFormatter={formatY}
-            width={72}
-            tick={{ fontSize: 12 }}
-            stroke="currentColor"
-            className="text-zinc-400"
-          />
-          <Tooltip
-            cursor={{ stroke: "rgba(120,120,120,0.35)", strokeWidth: 1 }}
-            content={({ active, payload, label }) => (
-              <ChartTooltip
-                active={active}
-                payload={payload as ReadonlyArray<TooltipEntry> | undefined}
-                label={label as string}
-                pctMode={pctMode}
-                currency={currency}
-              />
-            )}
-          />
-          <Line
-            type="monotone"
-            dataKey="value"
-            name={mainName}
-            stroke={color}
-            strokeWidth={2}
-            dot={false}
-            isAnimationActive={false}
-          />
-          {compare.map((c, i) => (
+      <div role="img" aria-label={ariaLabel ?? fallbackAriaLabel}>
+        <ResponsiveContainer width="100%" height={height}>
+          <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={shortDate}
+              minTickGap={48}
+              tick={{ fontSize: 12 }}
+              stroke="currentColor"
+              className="text-zinc-400"
+            />
+            <YAxis
+              scale={useLog ? "log" : "linear"}
+              domain={
+                useLog
+                  ? [logLo, logHi]
+                  : linearTicks
+                    ? [linearTicks[0], linearTicks[linearTicks.length - 1]]
+                    : ["auto", "auto"]
+              }
+              ticks={linearTicks}
+              allowDataOverflow={useLog}
+              tickFormatter={formatY}
+              width={72}
+              tick={{ fontSize: 12 }}
+              stroke="currentColor"
+              className="text-zinc-400"
+            />
+            <Tooltip
+              cursor={{ stroke: "rgba(120,120,120,0.35)", strokeWidth: 1 }}
+              content={({ active, payload, label }) => (
+                <ChartTooltip
+                  active={active}
+                  payload={payload as ReadonlyArray<TooltipEntry> | undefined}
+                  label={label as string}
+                  pctMode={pctMode}
+                  currency={currency}
+                />
+              )}
+            />
             <Line
-              key={c.label}
               type="monotone"
-              dataKey={`b${i}`}
-              name={c.label}
-              stroke={c.color}
-              strokeWidth={1.5}
-              strokeOpacity={0.85}
+              dataKey="value"
+              name={mainName}
+              stroke={color}
+              strokeWidth={2}
               dot={false}
-              connectNulls
               isAnimationActive={false}
             />
-          ))}
-          {/* Pins paint last so they sit on top of the line. */}
-          {snappedMarkers.map((m, i) => {
-            const y = valueByDate.get(m.date);
-            if (y == null) return null;
-            const dimmed = highlightType != null && m.type !== highlightType;
-            const active = highlightType != null && m.type === highlightType;
-            // A pin whose tip sits on the line at the transaction/dividend point.
-            return (
-              <ReferenceDot
-                key={`${m.date}-${i}`}
-                x={m.date}
-                y={y}
-                r={0}
-                shape={
-                  <PinShape
-                    color={MARKER_COLOR[m.type]}
-                    glyph={MARKER_GLYPH[m.type]}
-                    active={active}
-                    dimmed={dimmed}
-                  />
-                }
+            {compare.map((c, i) => (
+              <Line
+                key={c.label}
+                type="monotone"
+                dataKey={`b${i}`}
+                name={c.label}
+                stroke={c.color}
+                strokeWidth={1.5}
+                strokeOpacity={0.85}
+                dot={false}
+                connectNulls
+                isAnimationActive={false}
               />
-            );
-          })}
-        </LineChart>
-      </ResponsiveContainer>
+            ))}
+            {/* Pins paint last so they sit on top of the line. */}
+            {snappedMarkers.map((m, i) => {
+              const y = valueByDate.get(m.date);
+              if (y == null) return null;
+              const dimmed = highlightType != null && m.type !== highlightType;
+              const active = highlightType != null && m.type === highlightType;
+              // A pin whose tip sits on the line at the transaction/dividend point.
+              return (
+                <ReferenceDot
+                  key={`${m.date}-${i}`}
+                  x={m.date}
+                  y={y}
+                  r={0}
+                  shape={
+                    <PinShape
+                      color={MARKER_COLOR[m.type]}
+                      glyph={MARKER_GLYPH[m.type]}
+                      active={active}
+                      dimmed={dimmed}
+                    />
+                  }
+                />
+              );
+            })}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
       {comparing && (
         <div className="mt-2 flex items-center gap-1.5 px-1 text-[11px] text-zinc-400">
           <InfoTip text={t("compare.hintFull")} />

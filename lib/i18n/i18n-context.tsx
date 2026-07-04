@@ -20,7 +20,7 @@ const STORAGE_KEY = "fintrack-locale";
 interface I18nContextValue {
   locale: Locale;
   setLocale: (l: Locale) => void;
-  t: (key: MessageKey) => string;
+  t: (key: MessageKey, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -54,7 +54,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const t = useCallback((key: MessageKey) => translate(locale, key), [locale]);
+  const t = useCallback(
+    (key: MessageKey, params?: Record<string, string | number>) => translate(locale, key, params),
+    [locale],
+  );
 
   const value = useMemo<I18nContextValue>(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
 

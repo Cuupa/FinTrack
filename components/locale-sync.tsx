@@ -23,5 +23,13 @@ export function LocaleSync() {
     void Promise.resolve().then(() => setLocale(pl as Locale));
   }, [data.profile.locale, locale, setLocale]);
 
+  // Keep the document's declared language (WCAG 3.1.1) in sync with whatever
+  // locale is active, whether it came from the profile above or a direct
+  // LocaleSwitcher click. Mutating the DOM directly, not React state, so this
+  // doesn't trip the no-sync-setState-in-effect rule.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   return null;
 }

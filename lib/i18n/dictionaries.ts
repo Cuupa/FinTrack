@@ -159,6 +159,26 @@ export const en = {
   "chart.wealth": "Wealth",
   "chart.return": "Return",
   "chart.loading": "Loading price history…",
+  "chart.performance.fallbackLabel":
+    "{name} chart from {start} to {end}: {startValue} to {endValue}.",
+  "chart.netWorth.ariaLabel":
+    "Net worth chart, {timeframe}: from {start} to {end} ({change}, {pct}).",
+  "chart.assetPrice.ariaLabel":
+    "{name} price chart, {timeframe}: from {start} to {end}, {startValue} to {endValue}.",
+  "chart.sharedPortfolio.ariaLabel":
+    "Portfolio chart, {timeframe}: from {start} to {end}, {startValue} to {endValue}.",
+  "chart.allocation.ariaLabel":
+    "{title} allocation donut chart, total {total}. Largest share: {label} at {pct}. Full breakdown listed below.",
+  "chart.returnsByPeriod.ariaLabel":
+    "Bar chart of returns by {period}, {start} to {end}, ranging from {min} to {max}.",
+  "chart.dividendsByPeriod.ariaLabel":
+    "Bar chart of dividends received by {period}, {start} to {end}, totaling {total}.",
+  "chart.dividendsByHolding.ariaLabel":
+    "Stacked bar chart of dividends received per holding by {period}, {count} holdings, totaling {total}.",
+  "chart.performanceMap.ariaLabel":
+    "Treemap of {count} holdings sized by value and colored by return over {timeframe}.",
+  "chart.realizedByMonth.ariaLabel":
+    "Bar chart of realized profit/loss by month, {start} to {end}, totaling {total}.",
   "empty.noHoldings": "No holdings yet",
   "empty.addFirst": "Add your first asset to see your net worth grow.",
 
@@ -678,6 +698,26 @@ const de: Partial<Record<MessageKey, string>> = {
   "chart.wealth": "Vermögen",
   "chart.return": "Rendite",
   "chart.loading": "Kursverlauf wird geladen…",
+  "chart.performance.fallbackLabel":
+    "{name}-Diagramm von {start} bis {end}: {startValue} auf {endValue}.",
+  "chart.netWorth.ariaLabel":
+    "Vermögensverlauf, {timeframe}: von {start} bis {end} ({change}, {pct}).",
+  "chart.assetPrice.ariaLabel":
+    "Kursverlauf {name}, {timeframe}: von {start} bis {end}, {startValue} auf {endValue}.",
+  "chart.sharedPortfolio.ariaLabel":
+    "Portfolioverlauf, {timeframe}: von {start} bis {end}, {startValue} auf {endValue}.",
+  "chart.allocation.ariaLabel":
+    "Kreisdiagramm Allokation {title}, Gesamt {total}. Größter Anteil: {label} mit {pct}. Vollständige Aufteilung siehe Liste unten.",
+  "chart.returnsByPeriod.ariaLabel":
+    "Balkendiagramm der Rendite je {period}, {start} bis {end}, Spanne {min} bis {max}.",
+  "chart.dividendsByPeriod.ariaLabel":
+    "Balkendiagramm der erhaltenen Dividenden je {period}, {start} bis {end}, insgesamt {total}.",
+  "chart.dividendsByHolding.ariaLabel":
+    "Gestapeltes Balkendiagramm der Dividenden je Position und {period}, {count} Positionen, insgesamt {total}.",
+  "chart.performanceMap.ariaLabel":
+    "Treemap von {count} Positionen, Größe nach Wert, Farbe nach Rendite über {timeframe}.",
+  "chart.realizedByMonth.ariaLabel":
+    "Balkendiagramm der realisierten Gewinne/Verluste je Monat, {start} bis {end}, insgesamt {total}.",
   "empty.noHoldings": "Noch keine Positionen",
   "empty.addFirst": "Fügen Sie Ihre erste Position hinzu, um Ihr Vermögen wachsen zu sehen.",
 
@@ -1048,7 +1088,15 @@ const de: Partial<Record<MessageKey, string>> = {
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };
 
-/** Look up a message, falling back to English, then the key itself. */
-export function translate(locale: Locale, key: MessageKey): string {
-  return DICTS[locale][key] ?? en[key] ?? (key as string);
+/** Look up a message, falling back to English, then the key itself. Optional
+ *  `params` fill `{placeholder}` tokens in the message (e.g. `{start}`) —
+ *  used for chart aria-labels that summarize already-computed values. */
+export function translate(
+  locale: Locale,
+  key: MessageKey,
+  params?: Record<string, string | number>,
+): string {
+  const raw = DICTS[locale][key] ?? en[key] ?? (key as string);
+  if (!params) return raw;
+  return raw.replace(/\{(\w+)\}/g, (m, name) => (name in params ? String(params[name]) : m));
 }

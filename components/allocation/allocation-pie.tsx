@@ -74,6 +74,7 @@ export function AllocationPie({
   currency,
   colors,
   showTotal = true,
+  title,
 }: {
   slices: Slice[];
   currency: string;
@@ -82,6 +83,9 @@ export function AllocationPie({
   /** Show the currency total/values in the centre. Off when slices are weights
    *  (e.g. an incognito shared view), where absolute amounts don't exist. */
   showTotal?: boolean;
+  /** Short name of what's being broken down (e.g. "Investment", "Currency"),
+   *  used only to build the chart's accessible label. */
+  title?: string;
 }) {
   const { t } = useI18n();
   const grouped = useMemo(
@@ -99,10 +103,23 @@ export function AllocationPie({
 
   const sel = active != null ? gSlices[active] : null;
 
+  // The full breakdown is already rendered as an accessible <ul> legend right
+  // next to the donut, so the chart's own label only needs to summarize
+  // (total + largest share) and point at the list for detail.
+  const top = [...gSlices].sort((a, b) => b.value - a.value)[0];
+  const ariaLabel = t("chart.allocation.ariaLabel", {
+    title: title ?? "",
+    total: showTotal ? formatCurrency(total, currency) : "100%",
+    label: top.label,
+    pct: `${formatNumber((top.value / total) * 100, 1)}%`,
+  });
+
   return (
     <div className="flex flex-col items-center justify-center gap-10 sm:flex-row sm:items-start sm:gap-14">
       {/* Donut with a centre readout */}
       <div
+        role="img"
+        aria-label={ariaLabel}
         className="relative h-72 w-72 shrink-0"
         onMouseLeave={() => setActive(null)}
       >

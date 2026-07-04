@@ -255,6 +255,43 @@ export function ReturnsView() {
   const cellFor = (year: number, q: number) =>
     heatReturns.find((r) => r.year === year && r.quarter === q);
 
+  // Chart accessible labels (WCAG 1.1.1): built from data already computed
+  // above rather than duplicated hidden tables.
+  const barPeriodLabel = barPeriod === "year" ? t("period.year") : t("period.quarter");
+  const barAriaLabel = t("chart.returnsByPeriod.ariaLabel", {
+    period: barPeriodLabel,
+    start: barData[0]?.label ?? "",
+    end: barData[barData.length - 1]?.label ?? "",
+    min: barData.length ? formatPercent(Math.min(...barData.map((d) => d.pct)) / 100, 1) : "0%",
+    max: barData.length ? formatPercent(Math.max(...barData.map((d) => d.pct)) / 100, 1) : "0%",
+  });
+  const divValPeriodLabel = divValPeriod === "year" ? t("period.year") : t("period.quarter");
+  const divValAriaLabel = t("chart.dividendsByPeriod.ariaLabel", {
+    period: divValPeriodLabel,
+    start: divValueData[0]?.label ?? "",
+    end: divValueData[divValueData.length - 1]?.label ?? "",
+    total: formatCurrency(
+      divValueData.reduce((s, d) => s + d.value, 0),
+      base,
+    ),
+  });
+  const divHoldPeriodLabel = divHoldPeriod === "year" ? t("period.year") : t("period.quarter");
+  const divHoldAriaLabel = t("chart.dividendsByHolding.ariaLabel", {
+    period: divHoldPeriodLabel,
+    count: divHoldData.rows.length,
+    total: formatCurrency(
+      divHoldData.rows.reduce(
+        (s, r) => s + divHoldData.bucketKeys.reduce((s2, k) => s2 + (Number(r[k]) || 0), 0),
+        0,
+      ),
+      base,
+    ),
+  });
+  const perfMapAriaLabel = t("chart.performanceMap.ariaLabel", {
+    count: tree.length,
+    timeframe: mapTf,
+  });
+
   return (
     <div className="space-y-6">
       <Card>
@@ -345,7 +382,7 @@ export function ReturnsView() {
             />
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-3" role="img" aria-label={barAriaLabel}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
@@ -394,7 +431,7 @@ export function ReturnsView() {
         {!hasDividends || divValueData.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("returns.noDividends")}</p>
         ) : (
-          <div className="mt-3" data-private>
+          <div className="mt-3" data-private role="img" aria-label={divValAriaLabel}>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={divValueData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
@@ -440,7 +477,7 @@ export function ReturnsView() {
         {!hasDividends || divHoldData.rows.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("returns.noDividends")}</p>
         ) : (
-          <div className="mt-3" data-private>
+          <div className="mt-3" data-private role="img" aria-label={divHoldAriaLabel}>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={divHoldData.rows} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
@@ -498,7 +535,7 @@ export function ReturnsView() {
             </div>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-3" role="img" aria-label={perfMapAriaLabel}>
           <ResponsiveContainer width="100%" height={320}>
             <Treemap data={tree} dataKey="size" stroke="#fff" isAnimationActive={false} content={<PerfCell />}>
               <Tooltip content={<MapTooltip currency={base} />} />

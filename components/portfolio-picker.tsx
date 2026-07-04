@@ -77,6 +77,8 @@ export function PortfolioPicker() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         className="inline-flex h-9 w-full max-w-[8rem] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:max-w-[12rem] dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         title="Portfolios"
       >

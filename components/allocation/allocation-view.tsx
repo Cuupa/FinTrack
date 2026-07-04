@@ -122,6 +122,7 @@ export function AllocationView() {
           <AllocationPie
             slices={charts[tab]}
             currency={base}
+            title={t(`alloc.${tab}`)}
             colors={
               tab === "custom"
                 ? charts.custom.map((s) =>

@@ -10,7 +10,7 @@ import Link from "next/link";
 import type { SharePayload, SharePt } from "@/lib/share/share";
 import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { formatCurrency, formatNumber, formatPercent, plColor } from "@/lib/format";
+import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
@@ -74,7 +74,7 @@ function shareTitle(name: string | null | undefined): string {
 }
 
 export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
-  useI18n(); // re-format figures on language change
+  const { t } = useI18n(); // also re-formats figures on language change
   const { incognito, currency, holdings, netWorth, irr, wealthSeries, twrSeries } = payload;
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [mode, setMode] = useState<ChartMode>(wealthSeries ? "currency" : "percent");
@@ -224,6 +224,23 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
             compare={compare}
             mainLabel="Portfolio"
             returnSeries={returnSlice}
+            ariaLabel={t("chart.sharedPortfolio.ariaLabel", {
+              timeframe: tf,
+              start: chartSeries[0] ? formatDate(chartSeries[0].date) : "",
+              end: chartSeries.length ? formatDate(chartSeries[chartSeries.length - 1].date) : "",
+              startValue:
+                mode === "currency" && chartSeries[0]
+                  ? formatCurrency(chartSeries[0].value, currency)
+                  : chartSeries[0]
+                    ? formatPercent(chartSeries[0].value)
+                    : "",
+              endValue:
+                mode === "currency" && chartSeries.length
+                  ? formatCurrency(chartSeries[chartSeries.length - 1].value, currency)
+                  : chartSeries.length
+                    ? formatPercent(chartSeries[chartSeries.length - 1].value)
+                    : "",
+            })}
           />
         </div>
       </Card>
@@ -234,7 +251,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
             Allocation
             <InfoTip text="Share of the portfolio by holding (by current value)." />
           </h2>
-          <AllocationPie slices={slices} currency={currency} showTotal={!incognito} />
+          <AllocationPie slices={slices} currency={currency} showTotal={!incognito} title="Allocation" />
         </Card>
       )}
 

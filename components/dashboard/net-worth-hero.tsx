@@ -24,7 +24,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
-import { formatCurrency, formatPercent, plColor } from "@/lib/format";
+import { formatCurrency, formatDate, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePrivacy } from "@/lib/privacy/privacy-context";
@@ -224,6 +224,13 @@ export function NetWorthHero({
             compare={compare}
             mainLabel="Net worth"
             returnSeries={returnSeries}
+            ariaLabel={t("chart.netWorth.ariaLabel", {
+              timeframe,
+              start: series[0] ? formatDate(series[0].date) : "",
+              end: series.length ? formatDate(series[series.length - 1].date) : "",
+              change: formatCurrency(periodChange.abs, currency),
+              pct: formatPercent(periodChange.pct),
+            })}
           />
         )}
       </div>

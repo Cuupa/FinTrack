@@ -4,7 +4,8 @@
 // close, scrolls when the content is tall. The child supplies its own surface
 // (e.g. a Card), so the modal just handles positioning and dismissal.
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { useFocusTrap } from "./use-focus-trap";
 
 export function Modal({
   open,
@@ -17,6 +18,8 @@ export function Modal({
   children: ReactNode;
   maxWidthClass?: string;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -32,6 +35,8 @@ export function Modal({
     };
   }, [open, onClose]);
 
+  useFocusTrap(panelRef, open);
+
   if (!open) return null;
 
   return (
@@ -42,9 +47,11 @@ export function Modal({
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
-        className={`relative z-10 my-8 flex max-h-[calc(100dvh-4rem)] w-full flex-col ${maxWidthClass}`}
+        tabIndex={-1}
+        className={`relative z-10 my-8 flex max-h-[calc(100dvh-4rem)] w-full flex-col outline-none ${maxWidthClass}`}
       >
         <button
           type="button"

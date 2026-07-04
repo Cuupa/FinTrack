@@ -19,6 +19,7 @@ import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
 import {
   formatCurrency,
+  formatDate,
   formatDateTime,
   formatNumber,
   formatPercent,
@@ -254,6 +255,16 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               compare={compare}
               mainLabel={asset.name}
               highlightType={highlight}
+              ariaLabel={t("chart.assetPrice.ariaLabel", {
+                name: asset.name,
+                timeframe,
+                start: series[0] ? formatDate(series[0].date) : "",
+                end: series.length ? formatDate(series[series.length - 1].date) : "",
+                startValue: series[0] ? formatCurrency(series[0].value, nativeCur) : "",
+                endValue: series.length
+                  ? formatCurrency(series[series.length - 1].value, nativeCur)
+                  : "",
+              })}
             />
           )}
         </div>
