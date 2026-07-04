@@ -507,6 +507,15 @@ export const en = {
   "disclaimer.more": "Details in our",
   "disclaimer.short":
     "Model output only — not investment advice, and no guarantee of future results.",
+
+  // Error boundaries & 404
+  "error.title": "Something went wrong",
+  "error.body": "An unexpected error occurred. You can try again, or head back to the dashboard.",
+  "error.tryAgain": "Try again",
+  "error.backHome": "Back to dashboard",
+  "notFound.title": "Page not found",
+  "notFound.body": "The page you're looking for doesn't exist or may have moved.",
+  "notFound.backHome": "Back to dashboard",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -1010,6 +1019,15 @@ const de: Partial<Record<MessageKey, string>> = {
   "disclaimer.more": "Details in unseren",
   "disclaimer.short":
     "Nur Modellwerte — keine Anlageberatung, keine Garantie für zukünftige Ergebnisse.",
+
+  // Error boundaries & 404
+  "error.title": "Etwas ist schiefgelaufen",
+  "error.body": "Ein unerwarteter Fehler ist aufgetreten. Sie können es erneut versuchen oder zur Übersicht zurückkehren.",
+  "error.tryAgain": "Erneut versuchen",
+  "error.backHome": "Zur Übersicht",
+  "notFound.title": "Seite nicht gefunden",
+  "notFound.body": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+  "notFound.backHome": "Zur Übersicht",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };
