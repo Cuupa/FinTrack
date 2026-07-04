@@ -166,6 +166,11 @@ form auto-imports name/ISIN/WKN **and the asset type** via
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/simulation` — Monte Carlo simulation
 - `/login` — Supabase email/password + Google/GitHub OAuth
+- `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
+  linked via `LegalFooter` in the root layout). The privacy policy makes
+  verifiable claims about the code (server-side market-data calls, no
+  analytics, essential-only storage) — **keep it accurate when data flows
+  change**.
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
 client pages (see `app/assets/[id]/page.tsx`).
@@ -179,3 +184,21 @@ client pages (see `app/assets/[id]/page.tsx`).
   (after `await`) or derive it instead of syncing via effect.
 - Log-scale charts apply only in currency mode (log of negative % is
   undefined) — handled in `performance-chart.tsx`.
+- **CSP** (`next.config.ts`, emitted in production only): `connect-src` allows
+  only `'self'` + `*.supabase.co`. Any new **client-side** fetch to an external
+  origin must be added there — or better, proxied through an API route
+  (market-data calls are server-side by design).
+- **All Yahoo traffic goes through `getJSON` in `lib/server/yahoo.ts`**, which
+  carries the concurrency semaphore, 429/503 backoff + cooldown breaker, and
+  TTL caches. Never fetch Yahoo endpoints directly from elsewhere.
+- `shared_portfolios` inserts are **server-only** (secret key via
+  `/api/share`; the anon RLS insert policy was dropped). The route enforces a
+  256 KB payload cap and DB-backed rate limits. `instruments` has unique
+  partial indexes on `isin`/`wkn` — `resolveInstrument` handles the 23505
+  race by re-selecting.
+- Synthetic-data labeling: `assetPriceSeries`/`netWorthSeries` return
+  `{ points, synthetic/containsSynthetic }` and `HoldingSummary.syntheticPrice`
+  feeds `EstimatedBadge` — new chart/price surfaces should keep the badge.
+- Dialogs use the shared `use-focus-trap` hook (`components/ui/`); charts get
+  `role="img"` + a dynamic localized `aria-label`; `t(key, params)` supports
+  interpolation.
