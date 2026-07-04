@@ -103,9 +103,13 @@ export function TransactionForm({
                   : "bg-indigo-500";
           const label =
             tt === "BUY"
-              ? t("tx.buy")
+              ? isCash
+                ? t("tx.deposit")
+                : t("tx.buy")
               : tt === "SELL"
-                ? t("tx.sell")
+                ? isCash
+                  ? t("tx.withdrawal")
+                  : t("tx.sell")
                 : tt === "INTEREST"
                   ? t("tx.interest")
                   : t("tx.booking");
@@ -241,12 +245,16 @@ export function TransactionForm({
       <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40">
         <span className="text-zinc-500">
           {isBuy
-            ? t("tx.totalCost")
+            ? isCash
+              ? t("tx.totalDeposit")
+              : t("tx.totalCost")
             : isBooking
               ? t("tx.valueReceived")
               : isInterest
                 ? t("tx.interestReceived")
-                : t("tx.totalProceeds")}
+                : isCash
+                  ? t("tx.totalWithdrawal")
+                  : t("tx.totalProceeds")}
         </span>
         <span
           className={`font-semibold tabular-nums ${
@@ -276,12 +284,16 @@ export function TransactionForm({
         {busy
           ? t("tx.adding")
           : isBuy
-            ? t("tx.addBuy")
+            ? isCash
+              ? t("tx.addDeposit")
+              : t("tx.addBuy")
             : isBooking
               ? t("tx.addBooking")
               : isInterest
                 ? t("tx.addInterest")
-                : t("tx.addSell")}
+                : isCash
+                  ? t("tx.addWithdrawal")
+                  : t("tx.addSell")}
       </Button>
     </form>
   );

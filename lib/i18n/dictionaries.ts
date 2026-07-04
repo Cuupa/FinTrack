@@ -257,6 +257,12 @@ export const en = {
   "tx.interestReceived": "Interest received",
   "tx.interestHint":
     "Record the interest your bank credited, as the net amount on your statement. It is added to your cash balance and counts as return.",
+  "tx.deposit": "Deposit",
+  "tx.withdrawal": "Withdrawal",
+  "tx.addDeposit": "Add deposit",
+  "tx.addWithdrawal": "Add withdrawal",
+  "tx.totalDeposit": "Amount deposited",
+  "tx.totalWithdrawal": "Amount withdrawn",
 
   // Analysis
   "analysis.tab.distributions": "Distributions",
@@ -738,6 +744,12 @@ const de: Partial<Record<MessageKey, string>> = {
   "tx.interestReceived": "Erhaltene Zinsen",
   "tx.interestHint":
     "Erfasse die von der Bank gutgeschriebenen Zinsen als Nettobetrag laut Abrechnung. Sie erhöhen den Cash-Bestand und zählen als Rendite.",
+  "tx.deposit": "Einzahlung",
+  "tx.withdrawal": "Auszahlung",
+  "tx.addDeposit": "Einzahlung hinzufügen",
+  "tx.addWithdrawal": "Auszahlung hinzufügen",
+  "tx.totalDeposit": "Eingezahlter Betrag",
+  "tx.totalWithdrawal": "Ausgezahlter Betrag",
 
   // Analysis
   "analysis.tab.distributions": "Verteilungen",

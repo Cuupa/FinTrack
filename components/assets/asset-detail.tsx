@@ -253,8 +253,8 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         >
           {(
             [
-              ["BUY", t("tx.buy"), "text-emerald-500"],
-              ["SELL", t("tx.sell"), "text-red-500"],
+              ["BUY", txTypeLabel(t, "BUY", asset.type === "CASH"), "text-emerald-500"],
+              ["SELL", txTypeLabel(t, "SELL", asset.type === "CASH"), "text-red-500"],
               ...(asset.type === "CASH"
                 ? ([["INTEREST", t("tx.interest"), "text-amber-500"]] as [
                     ChartMarker["type"],
@@ -460,6 +460,23 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   );
 }
 
+// Display-only relabeling for cash: BUY/SELL are stored as-is (the finance
+// layer never sees the difference) but read as Deposit/Withdrawal in the UI.
+function txTypeLabel(t: (key: MessageKey) => string, type: TransactionType, isCash: boolean): string {
+  switch (type) {
+    case "BUY":
+      return isCash ? t("tx.deposit") : t("tx.buy");
+    case "SELL":
+      return isCash ? t("tx.withdrawal") : t("tx.sell");
+    case "BOOKING":
+      return t("tx.booking");
+    case "INTEREST":
+      return t("tx.interest");
+    default:
+      return type;
+  }
+}
+
 type TxSortKey = "date" | "type" | "quantity" | "price" | "fee" | "total";
 
 function TxTh({
@@ -592,7 +609,7 @@ function TransactionsTable({
                             : "text-red-600 dark:text-red-400"
                     }
                   >
-                    {t.type}
+                    {isCash ? txTypeLabel(tr, t.type, true) : t.type}
                   </span>
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
@@ -697,9 +714,13 @@ function TransactionEditRow({
         </td>
         <td className="py-1.5 pr-2">
           <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
-            <option value="BUY">BUY</option>
-            <option value="SELL">SELL</option>
-            {isCash ? <option value="INTEREST">INTEREST</option> : <option value="BOOKING">BOOKING</option>}
+            <option value="BUY">{isCash ? txTypeLabel(tr, "BUY", true) : "BUY"}</option>
+            <option value="SELL">{isCash ? txTypeLabel(tr, "SELL", true) : "SELL"}</option>
+            {isCash ? (
+              <option value="INTEREST">{txTypeLabel(tr, "INTEREST", true)}</option>
+            ) : (
+              <option value="BOOKING">BOOKING</option>
+            )}
           </select>
         </td>
         <td className="py-1.5 pr-2">
