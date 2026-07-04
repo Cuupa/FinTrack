@@ -109,6 +109,17 @@ function rateFor(asset: Asset, v?: ValuationContext): number {
   return v.fx?.[cur] ?? 1;
 }
 
+/**
+ * True when the asset's current price has no live market quote behind it —
+ * i.e. it's the fabricated synthetic placeholder, not a real observed price.
+ * CASH is never flagged: it's fixed at 1 by definition, not an estimate.
+ */
+function isSyntheticPrice(asset: Asset, v?: ValuationContext): boolean {
+  if (asset.type === "CASH") return false;
+  const lp = v?.live?.[assetPriceKey(asset)];
+  return !(lp && lp > 0);
+}
+
 export interface HoldingSummary {
   asset: Asset;
   position: Position; // native currency
@@ -125,6 +136,12 @@ export interface HoldingSummary {
   realizedPL: number;
   /** Total return on still-held shares (currency-agnostic). */
   unrealizedPLPercent: number;
+  /**
+   * True when `price` has no live market quote backing it — a fabricated
+   * synthetic placeholder rather than a real observed price (never true for
+   * CASH, whose price is fixed at 1 by definition).
+   */
+  syntheticPrice: boolean;
 }
 
 export function summarizeHolding(
@@ -151,6 +168,7 @@ export function summarizeHolding(
     realizedPL: position.realizedPL * rate,
     unrealizedPLPercent:
       position.costBasis > 0 ? unrealizedNative / position.costBasis : 0,
+    syntheticPrice: isSyntheticPrice(asset, v),
   };
 }
 
@@ -217,6 +235,16 @@ function earliestTxDate(txs: Transaction[]): string | null {
   return min;
 }
 
+export interface NetWorthSeriesResult {
+  points: SeriesPoint[];
+  /**
+   * True when at least one sampled date/asset had no real historical price
+   * and fell back to the fabricated synthetic series — i.e. part of this
+   * chart is an estimate, not observed market data.
+   */
+  containsSynthetic: boolean;
+}
+
 /**
  * Net-worth time series over a timeframe: for each sampled date, sum every
  * asset's holding (shares on that date × historical price).
@@ -227,7 +255,7 @@ export function netWorthSeries(
   tf: Timeframe,
   v?: ValuationContext,
   history?: HistoryMap,
-): SeriesPoint[] {
+): NetWorthSeriesResult {
   const end = today();
   const start = timeframeStart(tf, end, earliestTxDate(txs));
   const dates = dateRange(start, end);
@@ -244,18 +272,21 @@ export function netWorthSeries(
     };
   });
 
-  return dates.map((date) => {
+  let containsSynthetic = false;
+  const points = dates.map((date) => {
     let value = 0;
     for (const { asset, txs: atxs, key, rate, factor, hist } of byAsset) {
       const shares = sharesAt(atxs, date);
       if (shares === 0) continue;
       // Prefer real historical price; fall back to the (live-anchored) synthetic.
       const real = hist ? priceAtFrom(hist, date) : null;
+      if (real == null) containsSynthetic = true;
       const native = real != null ? real : priceOn(key, asset.type, date) * factor;
       value += shares * native * rate;
     }
     return { date, value };
   });
+  return { points, containsSynthetic };
 }
 
 /**
@@ -343,6 +374,13 @@ export function twrSeries(
   return out;
 }
 
+export interface AssetPriceSeriesResult {
+  points: SeriesPoint[];
+  /** True when this asset has no real history at all — the whole series is
+   * the fabricated synthetic random walk, not observed market data. */
+  synthetic: boolean;
+}
+
 /**
  * Price series for a single asset over a timeframe (detail chart), in the
  * asset's native currency. Uses real history when available, else the
@@ -353,19 +391,20 @@ export function assetPriceSeries(
   tf: Timeframe,
   v?: ValuationContext,
   history?: HistoryMap,
-): SeriesPoint[] {
+): AssetPriceSeriesResult {
   const key = assetPriceKey(asset);
   const hist = history?.[key];
   if (hist && hist.length > 0) {
-    return hist.map((p) => ({ date: p.date, value: p.close }));
+    return { points: hist.map((p) => ({ date: p.date, value: p.close })), synthetic: false };
   }
   const end = today();
   const start = timeframeStart(tf, end, null);
   const factor = liveFactor(asset, v);
-  return dateRange(start, end).map((date) => ({
+  const points = dateRange(start, end).map((date) => ({
     date,
     value: priceOn(key, asset.type, date) * factor,
   }));
+  return { points, synthetic: true };
 }
 
 /**

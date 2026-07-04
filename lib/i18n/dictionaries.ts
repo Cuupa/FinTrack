@@ -148,6 +148,14 @@ export const en = {
   "tip.downsideVol": "Annualised semi-deviation — volatility of only the negative days (downside risk).",
   "tip.marketValue": "Current value of this holding.",
 
+  "data.estimatedBadge": "Estimated",
+  "data.estimatedTip":
+    "No real market data was available here — the figures are simulated estimates, not observed prices.",
+  "data.estimatedChartTip":
+    "Part of this chart is estimated: no real market history was available for one or more holdings, so those figures are simulated.",
+  "data.estimatedPriceTip":
+    "This price is estimated: no live market quote was available, so it's a simulated placeholder, not an observed price.",
+
   "chart.wealth": "Wealth",
   "chart.return": "Return",
   "chart.loading": "Loading price history…",
@@ -658,6 +666,14 @@ const de: Partial<Record<MessageKey, string>> = {
   "tip.drawdownDuration": "Längste Phase unterhalb eines vorherigen Hochs.",
   "tip.downsideVol": "Annualisierte Semi-Abweichung — Volatilität nur der negativen Tage (Abwärtsrisiko).",
   "tip.marketValue": "Aktueller Wert dieser Position",
+
+  "data.estimatedBadge": "Geschätzt",
+  "data.estimatedTip":
+    "Hierfür lagen keine echten Marktdaten vor – die Werte sind simulierte Schätzungen, keine beobachteten Kurse.",
+  "data.estimatedChartTip":
+    "Ein Teil dieses Charts ist geschätzt: Für mindestens eine Position lag kein echter Kursverlauf vor, diese Werte sind simuliert.",
+  "data.estimatedPriceTip":
+    "Dieser Preis ist geschätzt: Es lag kein Live-Kurs vor, der Wert ist ein simulierter Platzhalter, kein beobachteter Kurs.",
 
   "chart.wealth": "Vermögen",
   "chart.return": "Rendite",

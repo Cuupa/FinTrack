@@ -19,6 +19,7 @@ import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from
 import { assetIdentifier, type AssetType } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
+import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
 type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
 
@@ -157,6 +158,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                     <div className="truncate font-medium">{h.asset.name}</div>
                     <div className="mt-0.5 text-xs text-zinc-500">
                       {assetIdentifier(h.asset)} · {formatCurrency(h.price, nativeCur)}
+                      {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
                       {entry > 0 && (
                         <span className={`ml-1 ${plColor(gain)}`}>
                           {formatPercent(gain / entry)}
@@ -213,6 +215,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       {formatCurrency(h.price, nativeCur)}
+                      {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
                       {entry > 0 && (
                         <span className={`ml-1 text-xs ${plColor(gain)}`}>
                           ({formatPercent(gain / entry)})

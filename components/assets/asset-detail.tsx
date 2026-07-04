@@ -37,6 +37,7 @@ import { Button, Card, Stat } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CopyValue } from "@/components/ui/copy-value";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
+import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -99,8 +100,11 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     data.profile.currency,
   );
 
-  const series = useMemo(
-    () => (asset ? assetPriceSeries(asset, timeframe, valuation, histories) : []),
+  const { points: series, synthetic: syntheticSeries } = useMemo(
+    () =>
+      asset
+        ? assetPriceSeries(asset, timeframe, valuation, histories)
+        : { points: [], synthetic: false },
     [asset, timeframe, valuation, histories],
   );
 
@@ -198,6 +202,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             <span className="text-lg font-semibold tabular-nums">
               {formatCurrency(summary.price, nativeCur)}
             </span>
+            {summary.syntheticPrice && <EstimatedBadge tip={t("data.estimatedPriceTip")} />}
             <span className="text-zinc-500">
               {t("common.holdingValue")} <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
             </span>
@@ -224,7 +229,12 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           onMode={setMode}
           showMode={false}
         />
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex items-center justify-between gap-2">
+          {!historyLoading && syntheticSeries ? (
+            <EstimatedBadge tip={t("data.estimatedChartTip")} />
+          ) : (
+            <span />
+          )}
           <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
         </div>
         <div className="mt-4">

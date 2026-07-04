@@ -37,7 +37,7 @@ export function buildShareSource(args: {
     (h) => h.position.shares > 0,
   );
   const netWorth = holdings.reduce((s, h) => s + h.marketValue, 0);
-  const wealthSeries = netWorthSeries(assets, transactions, "MAX", valuation, histories);
+  const wealthSeries = netWorthSeries(assets, transactions, "MAX", valuation, histories).points;
   const twr = twrSeries(assets, transactions, "MAX", valuation, histories);
   const flows = netFlows(assets, transactions, valuation).map((f) => ({
     date: f.date,

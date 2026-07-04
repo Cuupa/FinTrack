@@ -21,6 +21,7 @@ import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
 import { netFlows, riskMetrics } from "@/lib/finance/returns";
 import { InfoTip } from "@/components/ui/info-tip";
+import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
@@ -71,7 +72,7 @@ export function NetWorthHero({
   );
   const { histories, loading: historyLoading } = useHistory(histItems, timeframe, currency);
 
-  const series = useMemo(
+  const { points: series, containsSynthetic } = useMemo(
     () => netWorthSeries(data.assets, data.transactions, timeframe, valuation, histories),
     [data.assets, data.transactions, timeframe, valuation, histories],
   );
@@ -200,7 +201,12 @@ export function NetWorthHero({
           showMode={!incognito}
         />
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex items-center justify-between gap-2">
+        {!historyLoading && containsSynthetic ? (
+          <EstimatedBadge tip={t("data.estimatedChartTip")} />
+        ) : (
+          <span />
+        )}
         <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
       </div>
 

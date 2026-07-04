@@ -178,9 +178,9 @@ export function ReturnsView() {
         scope.length === 0
           ? data.transactions
           : data.transactions.filter((x) => scope.includes(x.assetId));
-      const series = netWorthSeries(a, t, "MAX", valuation, histories);
+      const { points } = netWorthSeries(a, t, "MAX", valuation, histories);
       const flows = netFlows(a, t, valuation);
-      return periodReturns(series, flows, period);
+      return periodReturns(points, flows, period);
     },
     [data.assets, data.transactions, valuation, histories],
   );

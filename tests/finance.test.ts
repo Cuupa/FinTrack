@@ -10,7 +10,7 @@ import {
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
-import { twrSeries } from "../lib/finance/portfolio";
+import { assetPriceSeries, netWorthSeries, summarizeHolding, twrSeries } from "../lib/finance/portfolio";
 import { assetAnnualStats, portfolioRiskStats } from "../lib/finance/stats";
 import { assetPriceKey } from "../lib/types";
 import type { Asset, Transaction } from "../lib/types";
@@ -123,6 +123,79 @@ describe("twrSeries (price-based TWROR)", () => {
     const b = twrSeries(assets, withDeposit, "MAX", undefined, history);
     const last = (s: SeriesPoint[]) => s[s.length - 1].value;
     expect(last(b)).toBeCloseTo(last(a), 6); // deposit changes nothing
+  });
+});
+
+describe("assetPriceSeries: synthetic flag (trust labeling)", () => {
+  it("flags synthetic=true when the asset has no real history", () => {
+    const out = assetPriceSeries(asset({ id: "a" }), "1M", undefined, {});
+    expect(out.synthetic).toBe(true);
+    expect(out.points.length).toBeGreaterThan(0);
+  });
+
+  it("flags synthetic=false and returns the real series when history exists", () => {
+    const history: HistoryMap = {
+      A: [
+        { date: "2025-01-01", close: 100 },
+        { date: "2025-07-01", close: 200 },
+      ],
+    };
+    const out = assetPriceSeries(asset({ id: "a" }), "1M", undefined, history);
+    expect(out.synthetic).toBe(false);
+    expect(out.points).toEqual([
+      { date: "2025-01-01", value: 100 },
+      { date: "2025-07-01", value: 200 },
+    ]);
+  });
+});
+
+describe("netWorthSeries: containsSynthetic flag (trust labeling)", () => {
+  const history: HistoryMap = {
+    A: [
+      { date: "2025-01-01", close: 100 },
+      { date: "2025-07-01", close: 200 },
+    ],
+  };
+
+  it("is false when every held asset's price is backed by real history", () => {
+    const assets = [asset({ id: "a" })];
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-01" })];
+    const { containsSynthetic } = netWorthSeries(assets, txs, "MAX", undefined, history);
+    expect(containsSynthetic).toBe(false);
+  });
+
+  it("is true when a mix includes a holding with no real history", () => {
+    // "b" has no entry in `history` — the fabricated synthetic series backs it.
+    const assets = [asset({ id: "a" }), asset({ id: "b" })];
+    const txs = [
+      tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-01" }),
+      tx({ assetId: "b", type: "BUY", quantity: 5, price: 50, date: "2025-01-01" }),
+    ];
+    const { containsSynthetic } = netWorthSeries(assets, txs, "MAX", undefined, history);
+    expect(containsSynthetic).toBe(true);
+  });
+});
+
+describe("summarizeHolding: syntheticPrice flag (trust labeling)", () => {
+  it("is true when there's no live quote backing the current price", () => {
+    const a = asset({ id: "a" });
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-01" })];
+    const h = summarizeHolding(a, txs, { base: "EUR" });
+    expect(h.syntheticPrice).toBe(true);
+  });
+
+  it("is false when a live quote is present", () => {
+    const a = asset({ id: "a" });
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-01" })];
+    const h = summarizeHolding(a, txs, { base: "EUR", live: { A: 123.45 } });
+    expect(h.syntheticPrice).toBe(false);
+  });
+
+  it("is never true for CASH (its price of 1 is exact, not an estimate)", () => {
+    const a = asset({ id: "c", type: "CASH" });
+    const txs = [tx({ assetId: "c", type: "BUY", quantity: 100, price: 1, date: "2025-01-01" })];
+    const h = summarizeHolding(a, txs, { base: "EUR" });
+    expect(h.syntheticPrice).toBe(false);
   });
 });
 
