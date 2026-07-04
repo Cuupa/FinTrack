@@ -499,6 +499,14 @@ export const en = {
   "legal.terms": "Terms of Service",
   "legal.consent":
     "By creating an account you accept the Terms of Service and acknowledge the Privacy Policy.",
+
+  // Disclaimer (simulation & risk analysis — not investment advice)
+  "disclaimer.title": "Not investment advice",
+  "disclaimer.body":
+    "These results are hypothetical model output based on historical, simulated, or estimated data — not a forecast. Simulated or past performance is no guarantee of future results, and FinTrack provides information only, not investment advice or a recommendation to buy or sell any financial instrument.",
+  "disclaimer.more": "Details in our",
+  "disclaimer.short":
+    "Model output only — not investment advice, and no guarantee of future results.",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -994,6 +1002,14 @@ const de: Partial<Record<MessageKey, string>> = {
   "legal.terms": "Nutzungsbedingungen",
   "legal.consent":
     "Mit der Kontoerstellung akzeptieren Sie die Nutzungsbedingungen und nehmen die Datenschutzerklärung zur Kenntnis.",
+
+  // Disclaimer (simulation & risk analysis — not investment advice)
+  "disclaimer.title": "Keine Anlageberatung",
+  "disclaimer.body":
+    "Diese Ergebnisse sind hypothetische Modellwerte auf Basis historischer, simulierter oder geschätzter Daten — keine Prognose. Vergangene oder simulierte Wertentwicklung ist keine Garantie für zukünftige Ergebnisse; FinTrack stellt lediglich Informationen bereit, keine Anlageberatung und keine Empfehlung zum Kauf oder Verkauf von Finanzinstrumenten.",
+  "disclaimer.more": "Details in unseren",
+  "disclaimer.short":
+    "Nur Modellwerte — keine Anlageberatung, keine Garantie für zukünftige Ergebnisse.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };

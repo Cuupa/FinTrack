@@ -6,6 +6,7 @@ import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
+import { RiskDisclaimer } from "@/components/ui/risk-disclaimer";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 
 const TABS = ["distributions", "returns", "trades", "risks"] as const;
@@ -26,6 +27,8 @@ export default function AnalysisPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{tr("analysis.title")}</h1>
         <p className="text-sm text-zinc-500">{tr(`analysis.blurb.${tab}`)}</p>
       </div>
+
+      <RiskDisclaimer variant="compact" />
 
       {/* Primary tabs: underline style, visually distinct from the in-card
           breakdown pills. */}
