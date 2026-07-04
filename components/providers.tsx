@@ -6,6 +6,7 @@ import { FeatureFlagsProvider } from "@/lib/flags/flags-context";
 import { PortfolioProvider } from "@/lib/portfolio/portfolio-context";
 import { CatalogProvider } from "@/lib/catalog/catalog-context";
 import { LivePricesProvider } from "@/lib/live/live-prices-context";
+import { SyncProvider } from "@/lib/offline/sync-context";
 import { PrivacyProvider } from "@/lib/privacy/privacy-context";
 import { TagsProvider } from "@/lib/tags/tags-context";
 import { I18nProvider } from "@/lib/i18n/i18n-context";
@@ -18,14 +19,19 @@ export function Providers({ children }: { children: ReactNode }) {
         <FeatureFlagsProvider>
           <CatalogProvider>
             <PortfolioProvider>
-              <LivePricesProvider>
-                <PrivacyProvider>
-                  <TagsProvider>
-                    <LocaleSync />
-                    {children}
-                  </TagsProvider>
-                </PrivacyProvider>
-              </LivePricesProvider>
+              {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
+                  phase 3) — sits just inside it, same as every other provider
+                  here that depends on portfolio data. */}
+              <SyncProvider>
+                <LivePricesProvider>
+                  <PrivacyProvider>
+                    <TagsProvider>
+                      <LocaleSync />
+                      {children}
+                    </TagsProvider>
+                  </PrivacyProvider>
+                </LivePricesProvider>
+              </SyncProvider>
             </PortfolioProvider>
           </CatalogProvider>
         </FeatureFlagsProvider>

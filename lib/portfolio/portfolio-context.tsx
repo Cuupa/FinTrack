@@ -32,6 +32,15 @@ interface PortfolioContextValue {
   data: PortfolioData;
   loading: boolean;
   persistent: boolean;
+  /**
+   * The active store instance. Exposed so `SyncProvider`
+   * (lib/offline/sync-context.tsx) can narrow it to `OfflineStore` and drive
+   * its queue — the one deliberate exception to "UI/finance code never learn
+   * about connectivity" (OFFLINE_DESIGN.md §3), since sync orchestration has
+   * nowhere else to reach the store from. Everything else should keep using
+   * the mutation methods below, not this directly.
+   */
+  store: DataStore;
   reload(): Promise<void>;
   addAsset(input: AssetInput): Promise<Asset>;
   updateAsset(id: string, patch: Partial<AssetInput>): Promise<void>;
@@ -240,6 +249,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     data: scopedData,
     loading,
     persistent: store.persistent,
+    store,
     reload,
     addAsset,
     updateAsset,

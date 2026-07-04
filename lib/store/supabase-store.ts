@@ -17,6 +17,7 @@ import {
   type Profile,
   type Transaction,
 } from "../types";
+import { RowNotFoundError } from "./types";
 import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
 
 interface InstrumentEmbed {
@@ -208,12 +209,17 @@ export class SupabaseStore implements DataStore {
   async updateAsset(id: string, patch: Partial<AssetInput>): Promise<void> {
     // Only `notes` is asset-level; master data lives on the instrument.
     if (patch.notes === undefined) return;
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from("assets")
       .update({ notes: patch.notes })
       .eq("id", id)
-      .eq("user_id", this.userId);
+      .eq("user_id", this.userId)
+      .select("id");
     if (error) throw error;
+    // Postgres doesn't error on an UPDATE that matches zero rows — `.select()`
+    // the affected row(s) and throw distinctly so a phase-3 replay can tell
+    // "already gone" (drop the op) apart from "actually failed" (retry/queue).
+    if (!data || data.length === 0) throw new RowNotFoundError(`asset ${id} not found`);
   }
 
   async deleteAsset(id: string): Promise<void> {
@@ -265,8 +271,15 @@ export class SupabaseStore implements DataStore {
     if (patch.fee !== undefined) upd.fee = patch.fee;
     if (patch.date !== undefined) upd.executed_at = patch.date;
     if (Object.keys(upd).length === 0) return;
-    const { error } = await this.supabase.from("transactions").update(upd).eq("id", id);
+    const { data, error } = await this.supabase
+      .from("transactions")
+      .update(upd)
+      .eq("id", id)
+      .select("id");
     if (error) throw error;
+    // See updateAsset above: a zero-row match must be distinguishable from a
+    // real failure for the phase-3 replay to apply the LWW drop rule.
+    if (!data || data.length === 0) throw new RowNotFoundError(`transaction ${id} not found`);
   }
 
   async deleteTransaction(id: string): Promise<void> {

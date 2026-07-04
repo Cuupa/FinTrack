@@ -113,6 +113,13 @@ export const en = {
   "offline.bannerPrefix": "You're offline — showing data as of",
   "offline.bannerNoData": "You're offline — showing last-known data",
 
+  "sync.syncingLabel": "Syncing",
+  "sync.changesUnit": "changes…",
+  "sync.synced": "Synced",
+  "sync.paused": "Offline changes are waiting to sync",
+  "sync.pausedAction": "Log in to sync",
+  "sync.droppedUnit": "change(s) couldn't be synced — the item changed elsewhere",
+
   "privacy.showFigures": "Show figures",
   "privacy.hideFigures": "Hide figures",
 
@@ -586,6 +593,13 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "offline.bannerPrefix": "Sie sind offline — Stand der Daten:",
   "offline.bannerNoData": "Sie sind offline — letzter bekannter Datenstand wird angezeigt",
+
+  "sync.syncingLabel": "Synchronisiere",
+  "sync.changesUnit": "Änderungen…",
+  "sync.synced": "Synchronisiert",
+  "sync.paused": "Offline-Änderungen warten auf Synchronisierung",
+  "sync.pausedAction": "Zum Synchronisieren anmelden",
+  "sync.droppedUnit": "Änderung(en) konnten nicht synchronisiert werden — der Eintrag wurde anderswo geändert",
 
   "privacy.showFigures": "Beträge anzeigen",
   "privacy.hideFigures": "Beträge ausblenden",

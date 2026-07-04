@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
 import { OfflineBanner } from "@/components/offline/offline-banner";
+import { SyncPill } from "@/components/offline/sync-pill";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 const geistSans = Geist({
@@ -69,6 +70,10 @@ export default function RootLayout({
             </main>
           </div>
           <MobileNav />
+          {/* Global, not page-local (unlike the CSV-import pill in
+              app/page.tsx) — reconnect sync can finish while the user is on
+              any route. */}
+          <SyncPill />
         </Providers>
         <ServiceWorkerRegister />
       </body>

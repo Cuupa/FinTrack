@@ -21,6 +21,7 @@
 // lib/offline/connectivity.tsx for the equivalent read-side probe.
 
 import type { Asset, Portfolio, PortfolioData, Profile, Transaction } from "../types";
+import { drain, type DrainResult } from "../offline/sync";
 import { LocalStore, mirrorStorageKeys } from "./local-store";
 import { MutationQueue, type MutationOp } from "./mutation-queue";
 import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
@@ -241,5 +242,44 @@ export class OfflineStore implements DataStore {
       if (!isNetworkError(err)) throw err;
       // best-effort only — not queued.
     }
+  }
+
+  // --- Phase 3: reconnect sync (OFFLINE_DESIGN.md §2 phase 3) ---------------
+  //
+  // These are the "minimal accessors" the sync layer needs: `lib/offline/
+  // sync.ts` only knows about the plain `DataStore`/`MutationQueue` shapes, so
+  // this class is the seam that hands it *this* instance's queue + inner
+  // store, and — on a full drain — folds the result back into the mirror the
+  // same way `load()` does. `SyncProvider` (lib/offline/sync-context.tsx)
+  // reads the active store via `usePortfolio()`, narrows it to `OfflineStore`,
+  // and drives these two members; nothing else needs to know this class
+  // exists.
+
+  /** Ops still waiting to be replayed against the server. */
+  get pendingCount(): number {
+    return this.queue.length;
+  }
+
+  /**
+   * Drains the queue against `inner`, per OFFLINE_DESIGN.md §4. Refuses (see
+   * `DrainStatus`) if `currentUserId` doesn't match the queue this store was
+   * constructed for — a defence against a stale timer/effect firing after the
+   * signed-in user changed (§5.2). On a full drain, folds the freshly loaded
+   * server data into the mirror in the same pass `drain()` already fetched it
+   * in, so the caller doesn't need a second `load()` round trip.
+   */
+  async sync(currentUserId: string): Promise<DrainResult> {
+    if (currentUserId !== this.userId) {
+      return { applied: 0, dropped: 0, status: "refused" };
+    }
+    const result = await drain(this.queue, this.inner, currentUserId);
+    if (result.status === "synced" && result.data) {
+      try {
+        await this.mirror.replaceAll(result.data);
+      } catch {
+        /* best-effort — a later load() will reconcile the mirror. */
+      }
+    }
+    return result;
   }
 }

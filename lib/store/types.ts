@@ -55,6 +55,23 @@ export interface DataStore {
   ): Promise<void>;
 }
 
+/**
+ * Thrown by `updateAsset`/`updateTransaction` when the target row no longer
+ * exists server-side (e.g. deleted from another device/tab in the meantime).
+ * Distinguishing this from a generic error lets the phase-3 offline replay
+ * (`lib/offline/sync.ts`) apply the LWW rule from OFFLINE_DESIGN.md §4: a
+ * cross-device delete wins over a stale queued update, so the op is dropped
+ * rather than retried forever. `SupabaseStore` previously let a zero-row
+ * update pass silently (Postgres doesn't error on an UPDATE that matches no
+ * rows) — it now `.select()`s the affected row and throws this instead.
+ */
+export class RowNotFoundError extends Error {
+  constructor(message = "Row not found") {
+    super(message);
+    this.name = "RowNotFoundError";
+  }
+}
+
 export function newId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
