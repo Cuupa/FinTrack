@@ -4,9 +4,35 @@
 // the price via FX (Frankfurter) so the result is always in the requested
 // currency. The caller keeps the user's chosen currency — we never override it.
 
+import { after } from "next/server";
 import { resolveQuote } from "@/lib/server/yahoo";
+import { secretKey, supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
+
+// Optional write-through: when this resolves a live quote for an identifier
+// that already has a catalog row (an already-seeded/known instrument), persist
+// it the same way the price-sync cron does — so the next page load already
+// has a fresh instruments.last_price without waiting for the cron. Only
+// updates an existing row matched by the same identifier the cron resolves by
+// (isin/wkn/symbol); never inserts. Silently skipped without the secret key,
+// and never awaited on the response path — a write failure here must not
+// affect the price the add-asset form shows.
+function writeThroughPrice(q: string, currency: string, priceValue: number): void {
+  if (!secretKey()) return;
+  const supabase = supabaseSecret();
+  if (!supabase) return;
+  const escaped = q.replace(/[,()]/g, "");
+  if (!escaped) return;
+  supabase
+    .from("instruments")
+    .update({ last_price: priceValue, price_synced_at: new Date().toISOString() })
+    .or(`isin.eq.${escaped},wkn.eq.${escaped},symbol.eq.${escaped}`)
+    .then(
+      () => {},
+      () => {},
+    );
+}
 
 async function fxRate(from: string, to: string): Promise<number> {
   if (!from || !to || from === to) return 1;
@@ -43,5 +69,8 @@ export async function GET(req: Request): Promise<Response> {
     price = r.price * (await fxRate(r.currency, currency));
   }
 
-  return Response.json({ found: true, price, currency: currency || r.currency });
+  const resultCurrency = currency || r.currency;
+  after(() => writeThroughPrice(q, resultCurrency, price));
+
+  return Response.json({ found: true, price, currency: resultCurrency });
 }

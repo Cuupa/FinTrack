@@ -3,6 +3,15 @@
 // the listing whose currency matches AND whose exchange has good data — e.g.
 // for an EUR ETF, the Xetra (.DE) listing over a thin regional one (.SG), which
 // has a price but no usable history.
+//
+// Rate-limit protection: every Yahoo request funnels through getJSON(), which
+// wraps a shared concurrency throttle, 429/503 retry + a circuit breaker, and
+// in-process TTL caches sit in front of chart()/searchCandidates()/the
+// resolveQuote()+historyByQuery() listing resolution below. All of this is
+// module-level state, so it only helps within a single warm serverless
+// invocation — it is NOT durable caching (that's instruments.last_price /
+// instrument_history) and is allowed to be empty on cold start; it exists only
+// to shield Yahoo from bursts of concurrent/duplicate requests on one instance.
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
@@ -14,16 +23,168 @@ export interface YahooPoint {
   close: number;
 }
 
-async function getJSON(url: string): Promise<unknown | null> {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": UA },
-      signal: AbortSignal.timeout(TIMEOUT),
+// ---------------------------------------------------------------------------
+// Concurrency throttle: bounds the whole Yahoo fan-out on a warm instance to
+// MAX_CONCURRENT in-flight requests, queuing the rest FIFO.
+// ---------------------------------------------------------------------------
+
+export class ConcurrencyLimiter {
+  private active = 0;
+  private readonly queue: Array<() => void> = [];
+
+  constructor(private readonly max: number) {}
+
+  async acquire(): Promise<() => void> {
+    if (this.active < this.max) {
+      this.active++;
+      return () => this.release();
+    }
+    return new Promise((resolve) => {
+      this.queue.push(() => {
+        this.active++;
+        resolve(() => this.release());
+      });
     });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
+  }
+
+  private release(): void {
+    this.active--;
+    const next = this.queue.shift();
+    if (next) next();
+  }
+}
+
+const MAX_CONCURRENT = 5;
+const yahooLimiter = new ConcurrencyLimiter(MAX_CONCURRENT);
+
+// ---------------------------------------------------------------------------
+// In-process TTL cache: a simple Map<key, {value, expires}> with max-entries
+// eviction of the oldest entry. Best-effort only — see the module comment
+// above on why it's fine for this to be empty/reset at any time.
+// ---------------------------------------------------------------------------
+
+export class TTLCache<V> {
+  private readonly map = new Map<string, { value: V; expires: number }>();
+
+  constructor(private readonly maxEntries: number) {}
+
+  get(key: string): V | undefined {
+    const entry = this.map.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expires) {
+      this.map.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  set(key: string, value: V, ttlMs: number): void {
+    // Re-insert to keep Map insertion order (oldest-first) meaningful for
+    // eviction, whether this is a fresh key or a refresh of an existing one.
+    this.map.delete(key);
+    if (this.map.size >= this.maxEntries) {
+      const oldest = this.map.keys().next().value;
+      if (oldest !== undefined) this.map.delete(oldest);
+    }
+    this.map.set(key, { value, expires: Date.now() + ttlMs });
+  }
+
+  get size(): number {
+    return this.map.size;
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+}
+
+const CHART_CACHE_MAX = 1000;
+const SEARCH_CACHE_MAX = 500;
+const RESOLUTION_CACHE_MAX = 1000;
+const NEGATIVE_CACHE_MAX = 1000;
+
+const CHART_SHORT_TTL_MS = 60_000; // 1d/5d ranges — quotes move fast
+const CHART_LONG_TTL_MS = 10 * 60_000; // longer ranges — daily/weekly bars
+const SHORT_CHART_RANGES = new Set(["1d", "5d"]);
+const SEARCH_CANDIDATES_TTL_MS = 60 * 60_000; // 1h
+const RESOLUTION_TTL_MS = 10 * 60_000; // 10min
+const NEGATIVE_TTL_MS = 20 * 60_000; // 20min
+
+const chartCache = new TTLCache<{ points: YahooPoint[]; currency: string; volume: number } | null>(
+  CHART_CACHE_MAX,
+);
+const searchCandidatesCache = new TTLCache<string[]>(SEARCH_CACHE_MAX);
+const resolutionCache = new TTLCache<{ symbol: string; currency: string }>(RESOLUTION_CACHE_MAX);
+const unresolvableCache = new TTLCache<true>(NEGATIVE_CACHE_MAX);
+
+// ---------------------------------------------------------------------------
+// 429/503 retry + circuit breaker.
+// ---------------------------------------------------------------------------
+
+const RETRY_MAX = 2; // up to 2 retries (3 attempts total)
+const BASE_BACKOFF_MS = 300;
+const MAX_BACKOFF_MS = 2_000;
+const COOLDOWN_MS = 45_000;
+
+// Set once retries are exhausted on a 429; while in effect getJSON short-
+// circuits to null (callers already treat null as a miss → Stooq/synthetic
+// fallback) instead of hammering an already-limiting Yahoo.
+let yahooCooldownUntil = 0;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Exponential backoff with jitter, capped, honoring a sane Retry-After (secs). */
+function backoffDelayMs(attempt: number, retryAfterHeader: string | null): number {
+  const jitter = Math.random() * BASE_BACKOFF_MS;
+  const exponential = BASE_BACKOFF_MS * 2 ** attempt + jitter;
+  let delay = Math.min(exponential, MAX_BACKOFF_MS);
+  if (retryAfterHeader) {
+    const secs = Number(retryAfterHeader);
+    if (Number.isFinite(secs) && secs > 0) {
+      delay = Math.min(secs * 1000, MAX_BACKOFF_MS);
+    }
+  }
+  return delay;
+}
+
+export async function getJSON(url: string): Promise<unknown | null> {
+  // Circuit open: skip the network entirely (and the concurrency queue) until
+  // the cooldown expires.
+  if (Date.now() < yahooCooldownUntil) return null;
+
+  const release = await yahooLimiter.acquire();
+  try {
+    for (let attempt = 0; attempt <= RETRY_MAX; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: { "User-Agent": UA },
+          signal: AbortSignal.timeout(TIMEOUT),
+        });
+      } catch {
+        // Network error/timeout: behave exactly as before — a plain miss, no
+        // retry, no cooldown (transient/local issues aren't Yahoo rate-limiting).
+        return null;
+      }
+      if (res.ok) return await res.json();
+      if (res.status === 429 || res.status === 503) {
+        if (attempt < RETRY_MAX) {
+          await sleep(backoffDelayMs(attempt, res.headers.get("retry-after")));
+          continue;
+        }
+        if (res.status === 429) {
+          yahooCooldownUntil = Date.now() + COOLDOWN_MS;
+        }
+        return null;
+      }
+      // Any other non-ok status: behave exactly as before.
+      return null;
+    }
     return null;
+  } finally {
+    release();
   }
 }
 
@@ -148,6 +309,29 @@ export async function resolveQuote(
     }
   }
 
+  const resolutionKey = `${query.toUpperCase()}|${want}|${hint ?? ""}`;
+  const negativeKey = `${query.toUpperCase()}|${want}`;
+
+  // A cached resolution only remembers WHICH listing to use, never the price
+  // itself — the price is always re-derived from chart() (itself TTL-cached,
+  // so this still avoids a real network hit in the steady state while keeping
+  // the price fresh within chart()'s own TTL).
+  const cachedResolution = resolutionCache.get(resolutionKey);
+  if (cachedResolution) {
+    const c = await chart(cachedResolution.symbol, "5d", "1d");
+    if (c && c.points.length > 0) {
+      return {
+        symbol: cachedResolution.symbol,
+        currency: c.currency,
+        price: c.points[c.points.length - 1].close,
+      };
+    }
+    // Stale resolution (listing stopped returning data) — fall through and
+    // re-resolve from scratch below.
+  } else if (unresolvableCache.get(negativeKey)) {
+    return null;
+  }
+
   const candidates: string[] = [];
   if (hint) candidates.push(hint);
   for (const s of await searchCandidates(query, fallbackQuery)) {
@@ -167,11 +351,15 @@ export async function resolveQuote(
     if (!c || c.points.length === 0) continue;
     hits.push({ symbol: s, currency: c.currency, price: c.points[c.points.length - 1].close, volume: c.volume });
   }
-  if (hits.length === 0) return null;
+  if (hits.length === 0) {
+    unresolvableCache.set(negativeKey, true, NEGATIVE_TTL_MS);
+    return null;
+  }
   const matches = want ? hits.filter((h) => h.currency === want) : hits;
   const pool = matches.length > 0 ? matches : hits;
   pool.sort((a, b) => b.volume - a.volume);
   const best = pool[0];
+  resolutionCache.set(resolutionKey, { symbol: best.symbol, currency: best.currency }, RESOLUTION_TTL_MS);
   return { symbol: best.symbol, currency: best.currency, price: best.price };
 }
 
@@ -217,6 +405,22 @@ async function chart(
   // When true, use Yahoo's adjusted close (dividends reinvested = total return),
   // so a distributing fund/index is comparable to an accumulating one.
   total = false,
+): Promise<{ points: YahooPoint[]; currency: string; volume: number } | null> {
+  const cacheKey = `${symbol}|${range}|${interval}|${total}`;
+  const cached = chartCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const result = await chartUncached(symbol, range, interval, total);
+  const ttl = SHORT_CHART_RANGES.has(range) ? CHART_SHORT_TTL_MS : CHART_LONG_TTL_MS;
+  chartCache.set(cacheKey, result, ttl);
+  return result;
+}
+
+async function chartUncached(
+  symbol: string,
+  range: string,
+  interval: string,
+  total: boolean,
 ): Promise<{ points: YahooPoint[]; currency: string; volume: number } | null> {
   const data = (await getJSON(
     `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}${total ? "&events=div" : ""}`,
@@ -304,6 +508,16 @@ export function normalizeSecurityName(name: string): string {
  * Capped at three fallback attempts, each at least 3 characters long.
  */
 async function searchCandidates(query: string, fallbackQuery?: string): Promise<string[]> {
+  const cacheKey = `${query.toUpperCase()}|${(fallbackQuery ?? "").toUpperCase()}`;
+  const cached = searchCandidatesCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const result = await searchCandidatesUncached(query, fallbackQuery);
+  searchCandidatesCache.set(cacheKey, result, SEARCH_CANDIDATES_TTL_MS);
+  return result;
+}
+
+async function searchCandidatesUncached(query: string, fallbackQuery?: string): Promise<string[]> {
   const search = async (q: string): Promise<string[]> => {
     const data = (await getJSON(
       `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0`,
@@ -358,6 +572,23 @@ export async function historyByQuery(
     if (c && (!want || c.currency === want)) return c;
   }
 
+  // Resolution caching is shared with resolveQuote: both pick "the best
+  // listing for this query/currency" the same way, just at different chart
+  // granularities, so once either has resolved a query the other reuses it —
+  // skipping search + candidate scanning — and only re-fetches the chart
+  // (itself TTL-cached) at its own requested range/interval.
+  const resolutionKey = `${query.toUpperCase()}|${want}|${hint ?? ""}`;
+  const negativeKey = `${query.toUpperCase()}|${want}`;
+
+  const cachedResolution = resolutionCache.get(resolutionKey);
+  if (cachedResolution) {
+    const c = await chart(cachedResolution.symbol, range, interval, total);
+    if (c) return c;
+    // Stale resolution — fall through and re-resolve from scratch below.
+  } else if (unresolvableCache.get(negativeKey)) {
+    return null;
+  }
+
   const candidates: string[] = [];
   if (hint) candidates.push(hint);
   for (const s of await searchCandidates(query, fallbackQuery)) {
@@ -367,19 +598,29 @@ export async function historyByQuery(
   // Scan every candidate rather than stopping at the first currency match —
   // same reasoning as resolveQuote: prefer the most liquid same-currency
   // listing so quotes and history never settle on different lines.
-  type Hit = { currency: string; volume: number; series: { points: YahooPoint[]; currency: string } };
+  type Hit = {
+    symbol: string;
+    currency: string;
+    volume: number;
+    series: { points: YahooPoint[]; currency: string };
+  };
   const hits: Hit[] = [];
   for (const s of candidates.slice(0, 5)) {
     if (s === hint) continue; // already checked on the fast path above
     const c = await chart(s, range, interval, total);
     if (!c) continue;
-    hits.push({ currency: c.currency, volume: c.volume, series: c });
+    hits.push({ symbol: s, currency: c.currency, volume: c.volume, series: c });
   }
-  if (hits.length === 0) return null;
+  if (hits.length === 0) {
+    unresolvableCache.set(negativeKey, true, NEGATIVE_TTL_MS);
+    return null;
+  }
   const matches = want ? hits.filter((h) => h.currency === want) : hits;
   const pool = matches.length > 0 ? matches : hits;
   pool.sort((a, b) => b.volume - a.volume);
-  return pool[0].series;
+  const best = pool[0];
+  resolutionCache.set(resolutionKey, { symbol: best.symbol, currency: best.currency }, RESOLUTION_TTL_MS);
+  return best.series;
 }
 
 export interface DividendEvent {
@@ -451,4 +692,19 @@ export async function dividendsByQuery(
     if (!fallback) fallback = c;
   }
   return fallback;
+}
+
+/**
+ * Test-only: reset module-level caches + the circuit breaker between tests so
+ * one test's mocked-fetch state can't leak into the next (this module's
+ * throttle/cache/breaker state is otherwise deliberately long-lived across
+ * calls within a warm instance). Not used by production code.
+ */
+export function __resetForTests(): void {
+  chartCache.clear();
+  searchCandidatesCache.clear();
+  resolutionCache.clear();
+  unresolvableCache.clear();
+  symbolCache.clear();
+  yahooCooldownUntil = 0;
 }
