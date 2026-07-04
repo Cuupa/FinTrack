@@ -48,6 +48,21 @@ create unique index if not exists instruments_symbol_key
   on public.instruments (symbol) where symbol is not null;
 create index if not exists instruments_isin_idx on public.instruments (isin);
 create index if not exists instruments_wkn_idx on public.instruments (wkn);
+-- isin/wkn uniqueness (mirrors instruments_symbol_key above), closing the same
+-- race for the other two identifiers. `not valid` so a legacy value that
+-- fails the format check doesn't block the migration on existing rows.
+create unique index if not exists instruments_isin_key on public.instruments (isin) where isin is not null;
+create unique index if not exists instruments_wkn_key  on public.instruments (wkn)  where wkn is not null;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'instruments_isin_format') then
+    alter table public.instruments add constraint instruments_isin_format
+      check (isin is null or isin ~ '^[A-Z]{2}[A-Z0-9]{9}[0-9]$') not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'instruments_wkn_format') then
+    alter table public.instruments add constraint instruments_wkn_format
+      check (wkn is null or wkn ~ '^[A-Z0-9]{6}$') not valid;
+  end if;
+end $$;
 
 -- ETF/fund constituents for look-through ("X-ray") analysis.
 create table if not exists public.instrument_constituents (
@@ -126,10 +141,23 @@ create table if not exists public.shared_portfolios (
   payload jsonb not null,
   owner uuid,
   mode text not null default 'snapshot',
+  creator_ip text,
+  expires_at timestamptz,  -- null = never expires; TTL/cleanup deliberately NOT built (product decision deferred)
   created_at timestamptz not null default now()
 );
 alter table public.shared_portfolios add column if not exists owner uuid;
 alter table public.shared_portfolios add column if not exists mode text not null default 'snapshot';
+alter table public.shared_portfolios add column if not exists creator_ip text;
+alter table public.shared_portfolios add column if not exists expires_at timestamptz;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'shared_portfolios_payload_size') then
+    alter table public.shared_portfolios
+      add constraint shared_portfolios_payload_size
+      check (pg_column_size(payload) <= 262144) not valid;
+  end if;
+end $$;
+create index if not exists shared_portfolios_created_at_idx on public.shared_portfolios (created_at desc);
+create index if not exists shared_portfolios_creator_ip_idx on public.shared_portfolios (creator_ip, created_at desc);
 
 -- Assets ---------------------------------------------------------------------
 -- A user's holding: a link to an instrument (master data) plus user notes.
@@ -256,7 +284,9 @@ insert into public.schema_migrations (version) values
   ('0027_feature_flags'),
   ('0028_imported_rows_transaction'),
   ('0029_transaction_interest'),
-  ('0030_offline_mode')
+  ('0030_offline_mode'),
+  ('0031_shared_portfolios_hardening'),
+  ('0032_instruments_dedupe')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -285,7 +315,8 @@ create policy "instruments readable" on public.instruments
 drop policy if exists "own instruments write" on public.instruments;
 drop policy if exists "instruments insertable" on public.instruments;
 create policy "instruments insertable" on public.instruments
-  for insert to authenticated with check (true);
+  for insert to authenticated
+  with check (isin is not null or wkn is not null or symbol is not null);
 drop policy if exists "constituents readable" on public.instrument_constituents;
 create policy "constituents readable"
   on public.instrument_constituents for select using (true);
@@ -295,12 +326,13 @@ drop policy if exists "benchmark history readable" on public.benchmark_history;
 create policy "benchmark history readable" on public.benchmark_history for select using (true);
 drop policy if exists "instrument history readable" on public.instrument_history;
 create policy "instrument history readable" on public.instrument_history for select using (true);
--- Shared snapshots are world-readable by id (a share link), and anyone may
--- create one (so short links work without a service role). Ids are random.
+-- Shared snapshots are world-readable by id (a share link). Ids are random.
+-- Creation has no client-facing insert policy: app/api/share/route.ts writes
+-- with the secret key and enforces the size cap + rate limit itself
+-- (migration 0031 dropped the open `insert with check (true)` policy).
 drop policy if exists "shared portfolios readable" on public.shared_portfolios;
 create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
 drop policy if exists "shared portfolios insertable" on public.shared_portfolios;
-create policy "shared portfolios insertable" on public.shared_portfolios for insert with check (true);
 -- An owner may keep their own (live) shares current and delete them (so a new
 -- share can void the previous links).
 drop policy if exists "shared portfolios owner update" on public.shared_portfolios;

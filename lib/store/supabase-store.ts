@@ -161,12 +161,8 @@ export class SupabaseStore implements DataStore {
     if (input.symbol) ors.push(`symbol.eq.${input.symbol}`);
 
     if (ors.length > 0) {
-      const { data } = await this.supabase
-        .from("instruments")
-        .select("id")
-        .or(ors.join(","))
-        .limit(1);
-      if (data && data.length > 0) return (data[0] as { id: string }).id;
+      const existing = await this.selectInstrumentByIdentifier(ors);
+      if (existing) return existing;
     }
 
     const { data, error } = await this.supabase
@@ -181,8 +177,29 @@ export class SupabaseStore implements DataStore {
       })
       .select("id")
       .single();
-    if (error) throw error;
+    if (error) {
+      // Two concurrent imports of the same not-yet-cataloged security both
+      // pass the SELECT above, then race the unique isin/wkn/symbol indexes
+      // (migration 0032) — the loser gets a unique_violation here, not a
+      // real failure. Re-select and hand back the winner's row instead of
+      // throwing.
+      if ((error as { code?: string }).code === "23505" && ors.length > 0) {
+        const existing = await this.selectInstrumentByIdentifier(ors);
+        if (existing) return existing;
+      }
+      throw error;
+    }
     return (data as { id: string }).id;
+  }
+
+  private async selectInstrumentByIdentifier(ors: string[]): Promise<string | null> {
+    const { data } = await this.supabase
+      .from("instruments")
+      .select("id")
+      .or(ors.join(","))
+      .limit(1);
+    if (data && data.length > 0) return (data[0] as { id: string }).id;
+    return null;
   }
 
   async addAsset(input: AssetInput, id?: string): Promise<Asset> {

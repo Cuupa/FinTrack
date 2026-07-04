@@ -11,15 +11,17 @@
 //     authenticated/anon (see the "Row-level security" section of
 //     supabase/schema.sql) — e.g. the instruments/constituents/etf_breakdowns/
 //     instrument_history/benchmark_history caches, all written by crons or
-//     server-only endpoints, never by a client. Never import this from
-//     anything that can end up in a client bundle.
+//     server-only endpoints, never by a client; and `shared_portfolios`
+//     inserts (app/api/share/route.ts) — migration 0031 dropped the open
+//     `insert with check (true)` policy, so creating a share now needs the
+//     bypass, with the app itself enforcing a size cap + DB-backed rate
+//     limit. Never import this from anything that can end up in a client
+//     bundle.
 //   - publishableKey() / supabasePublishable()
 //     RLS-scoped — the same key the browser client uses. Safe everywhere:
 //     world-readable reads (catalog, breakdowns, migrations, shares) and
-//     user-scoped operations that rely on auth.uid() policies. Also correct
-//     for tables whose RLS *does* grant the needed write to anon/authenticated
-//     (e.g. `shared_portfolios`' `insert ... with check (true)` policy —
-//     that one needs no bypass at all).
+//     user-scoped operations that rely on auth.uid() policies (e.g.
+//     `shared_portfolios`' owner update/delete policies, still RLS-scoped).
 //
 // LEAK RESEARCH: Next.js only inlines env vars prefixed `NEXT_PUBLIC_` into
 // client bundles at build time; anything without that prefix (SUPABASE_SECRET_KEY,
