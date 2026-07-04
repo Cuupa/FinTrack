@@ -51,3 +51,5 @@ TODO.md
 # broker CSV exports / scratch data (never commit)
 *.csv
 PROD_READY.md
+OFFLINE_DESIGN.md
+SEARCH_DESIGN.md
