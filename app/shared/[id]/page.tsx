@@ -8,9 +8,11 @@ import { apiFetch } from "@/lib/api";
 import { normalizeShare, type SharePayload } from "@/lib/share/share";
 import { Card } from "@/components/ui/primitives";
 import { SharedPortfolioView } from "@/components/shared/shared-portfolio-view";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function SharedByIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useI18n();
   const [payload, setPayload] = useState<SharePayload | null | "missing">(null);
 
   useEffect(() => {
@@ -37,9 +39,9 @@ export default function SharedByIdPage({ params }: { params: Promise<{ id: strin
     return (
       <Card>
         <p className="text-sm text-zinc-500">
-          This shared portfolio could not be found or has expired.{" "}
+          {t("shared.notFound")}{" "}
           <Link href="/" className="text-emerald-600 hover:underline dark:text-emerald-400">
-            Go to FinTrack
+            {t("shared.goTo")}
           </Link>
         </p>
       </Card>

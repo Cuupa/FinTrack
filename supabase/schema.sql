@@ -142,7 +142,7 @@ create table if not exists public.shared_portfolios (
   owner uuid,
   mode text not null default 'snapshot',
   creator_ip text,
-  expires_at timestamptz,  -- null = never expires; TTL/cleanup deliberately NOT built (product decision deferred)
+  expires_at timestamptz,  -- null = never expires; enforced by RLS (migration 0034) + swept by cron
   created_at timestamptz not null default now()
 );
 alter table public.shared_portfolios add column if not exists owner uuid;
@@ -287,7 +287,8 @@ insert into public.schema_migrations (version) values
   ('0030_offline_mode'),
   ('0031_shared_portfolios_hardening'),
   ('0032_instruments_dedupe'),
-  ('0033_site_config')
+  ('0033_site_config'),
+  ('0034_shared_portfolios_expiry')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -327,12 +328,16 @@ drop policy if exists "benchmark history readable" on public.benchmark_history;
 create policy "benchmark history readable" on public.benchmark_history for select using (true);
 drop policy if exists "instrument history readable" on public.instrument_history;
 create policy "instrument history readable" on public.instrument_history for select using (true);
--- Shared snapshots are world-readable by id (a share link). Ids are random.
--- Creation has no client-facing insert policy: app/api/share/route.ts writes
--- with the secret key and enforces the size cap + rate limit itself
--- (migration 0031 dropped the open `insert with check (true)` policy).
+-- Shared snapshots are world-readable by id (a share link) as long as they
+-- haven't expired. Ids are random. Creation has no client-facing insert
+-- policy: app/api/share/route.ts writes with the secret key and enforces the
+-- size cap + rate limit itself (migration 0031 dropped the open
+-- `insert with check (true)` policy). expires_at null = never expires
+-- (migration 0034 — an expired row is simply invisible, no app-side branching
+-- needed); a cron sweep (app/api/cron/sync/shared-portfolios) later deletes it.
 drop policy if exists "shared portfolios readable" on public.shared_portfolios;
-create policy "shared portfolios readable" on public.shared_portfolios for select using (true);
+create policy "shared portfolios readable" on public.shared_portfolios
+  for select using (expires_at is null or expires_at > now());
 drop policy if exists "shared portfolios insertable" on public.shared_portfolios;
 -- An owner may keep their own (live) shares current and delete them (so a new
 -- share can void the previous links).

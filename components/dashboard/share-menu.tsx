@@ -11,8 +11,14 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { apiFetch } from "@/lib/api";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { nowDateTimeLocal } from "@/lib/finance/dates";
+import { formatInstant } from "@/lib/format";
 import { useShareSource } from "@/lib/share/use-share-source";
 import { buildSharePayload, encodeShare, type SharePayload } from "@/lib/share/share";
+import { SelectMenu } from "@/components/ui/select-menu";
+
+const inputCls =
+  "w-full rounded-lg border border-zinc-300 bg-transparent px-2 py-1.5 text-xs outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function ShareMenu() {
   const { user } = useAuth();
@@ -26,7 +32,11 @@ export function ShareMenu() {
   const [live, setLive] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [expiryMode, setExpiryMode] = useState<"never" | "at">("never");
+  const [expiryAt, setExpiryAt] = useState("");
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const expiryInvalid = expiryMode === "at" && !expiryAt;
 
   const togglePortfolio = (id: string) =>
     setChosenIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
@@ -43,6 +53,7 @@ export function ShareMenu() {
   const share = async (incognito: boolean) => {
     setCreating(true);
     setLink(null);
+    setExpiresAt(null);
     setCopied(false);
     // Live shares require an account (the owner keeps them refreshed).
     const isLive = live && !!user;
@@ -52,8 +63,14 @@ export function ShareMenu() {
       await supabase?.from("shared_portfolios").delete().eq("owner", user.id);
     }
     const payload = buildSharePayload(source, incognito, isLive);
-    const url = await createLink(payload, user?.id ?? null);
+    const wantExpiry = expiryMode === "at" && expiryAt ? new Date(expiryAt).toISOString() : null;
+    const { url, expiresAt: storedExpiresAt } = await createLink(
+      payload,
+      user?.id ?? null,
+      wantExpiry,
+    );
     setLink(url);
+    setExpiresAt(storedExpiresAt);
     setCreating(false);
   };
 
@@ -157,10 +174,35 @@ export function ShareMenu() {
             </div>
           )}
 
+          <div className="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+            <div className="mb-1.5 text-xs font-medium text-zinc-500">{t("share.expiry")}</div>
+            <div className="flex items-center gap-2">
+              <SelectMenu
+                className="w-36 shrink-0"
+                ariaLabel={t("share.expiry")}
+                value={expiryMode}
+                onChange={(v) => setExpiryMode(v === "at" ? "at" : "never")}
+                options={[
+                  { value: "never", label: t("share.expiryNever") },
+                  { value: "at", label: t("share.expiryAt") },
+                ]}
+              />
+              {expiryMode === "at" && (
+                <input
+                  type="datetime-local"
+                  value={expiryAt}
+                  min={nowDateTimeLocal()}
+                  onChange={(e) => setExpiryAt(e.target.value)}
+                  className={inputCls}
+                />
+              )}
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={() => share(false)}
-            disabled={chosenIds.length === 0}
+            disabled={chosenIds.length === 0 || expiryInvalid}
             className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
           >
             <span className="font-medium">{t("share.full")}</span>
@@ -169,7 +211,7 @@ export function ShareMenu() {
           <button
             type="button"
             onClick={() => share(true)}
-            disabled={chosenIds.length === 0}
+            disabled={chosenIds.length === 0 || expiryInvalid}
             className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
           >
             <span className="font-medium">{t("share.incognito")}</span>
@@ -217,6 +259,11 @@ export function ShareMenu() {
                   </div>
                 )
               )}
+              {!creating && link && expiresAt && (
+                <div className="mt-1.5 text-xs text-zinc-500">
+                  {t("share.expiresAt", { date: formatInstant(expiresAt) })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -226,19 +273,34 @@ export function ShareMenu() {
 }
 
 /** Store the snapshot server-side for a short link; fall back to a fragment link. */
-async function createLink(payload: SharePayload, owner: string | null): Promise<string> {
+async function createLink(
+  payload: SharePayload,
+  owner: string | null,
+  expiresAt: string | null,
+): Promise<{ url: string; expiresAt: string | null }> {
   try {
     const res = await apiFetch("/api/share", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload, owner, mode: payload.live ? "live" : "snapshot" }),
+      body: JSON.stringify({
+        payload,
+        owner,
+        mode: payload.live ? "live" : "snapshot",
+        expiresAt,
+      }),
     });
     if (res.ok) {
-      const { id } = (await res.json()) as { id?: string };
-      if (id) return `${location.origin}/shared/${id}`;
+      const data = (await res.json()) as { id?: string; expiresAt?: string | null };
+      if (data.id) {
+        return {
+          url: `${location.origin}/shared/${data.id}`,
+          expiresAt: data.expiresAt ?? null,
+        };
+      }
     }
   } catch {
     /* fall through to fragment link */
   }
-  return `${location.origin}/shared#${encodeShare(payload)}`;
+  // Fragment fallback carries no expiry — the link only exists client-side.
+  return { url: `${location.origin}/shared#${encodeShare(payload)}`, expiresAt: null };
 }

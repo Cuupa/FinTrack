@@ -7,7 +7,7 @@
 // service-role-equivalent client and the app enforces the size cap + rate
 // limit below itself.
 
-import { normalizeShare } from "@/lib/share/share";
+import { normalizeShare, validateExpiresAt } from "@/lib/share/share";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
-  const b = body as { payload?: unknown; owner?: unknown; mode?: unknown };
+  const b = body as { payload?: unknown; owner?: unknown; mode?: unknown; expiresAt?: unknown };
   const payload = normalizeShare(b?.payload);
   if (!payload) return Response.json({ error: "invalid payload" }, { status: 400 });
   if (JSON.stringify(payload).length > MAX_PAYLOAD_BYTES) {
@@ -46,6 +46,8 @@ export async function POST(req: Request): Promise<Response> {
   }
   const owner = typeof b.owner === "string" ? b.owner : null;
   const mode = b.mode === "live" ? "live" : "snapshot";
+  const expiresAt = validateExpiresAt(b.expiresAt);
+  if (expiresAt === undefined) return Response.json({ error: "invalid expiry" }, { status: 400 });
 
   // Best-effort rate limit, deliberately DB-side: an in-process counter is
   // worthless on serverless (every invocation can be a cold instance with its
@@ -75,8 +77,8 @@ export async function POST(req: Request): Promise<Response> {
     const id = shortId();
     const { error } = await supabase
       .from("shared_portfolios")
-      .insert({ id, payload, owner, mode, creator_ip: ip });
-    if (!error) return Response.json({ id });
+      .insert({ id, payload, owner, mode, creator_ip: ip, expires_at: expiresAt });
+    if (!error) return Response.json({ id, expiresAt });
     if (!/duplicate|unique/i.test(error.message)) {
       return Response.json({ error: error.message }, { status: 500 });
     }

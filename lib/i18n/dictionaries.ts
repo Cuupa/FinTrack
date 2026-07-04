@@ -207,8 +207,14 @@ export const en = {
   "share.creating": "Creating link…",
   "share.copy": "Copy link",
   "share.portfolios": "Portfolios to share",
+  "share.expiry": "Link expiry",
+  "share.expiryNever": "Never expires",
+  "share.expiryAt": "On date…",
+  "share.expiresAt": "Expires {date}",
   "shared.viewing": "You're viewing a shared portfolio",
   "shared.open": "Open FinTrack",
+  "shared.notFound": "This share link doesn't exist or has expired.",
+  "shared.goTo": "Go to FinTrack",
 
   "compare.hint": "Approximate comparison",
   "compare.hintFull":
@@ -746,8 +752,14 @@ const de: Partial<Record<MessageKey, string>> = {
   "share.creating": "Link wird erstellt…",
   "share.copy": "Link kopieren",
   "share.portfolios": "Zu teilende Portfolios",
+  "share.expiry": "Gültigkeit des Links",
+  "share.expiryNever": "Läuft nie ab",
+  "share.expiryAt": "Am …",
+  "share.expiresAt": "Läuft ab am {date}",
   "shared.viewing": "Sie sehen ein geteiltes Portfolio",
   "shared.open": "FinTrack öffnen",
+  "shared.notFound": "Dieser Freigabelink existiert nicht mehr oder ist abgelaufen.",
+  "shared.goTo": "Zu FinTrack",
 
   "compare.hint": "Ungefährer Vergleich",
   "compare.hintFull":

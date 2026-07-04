@@ -121,3 +121,18 @@ export function normalizeShare(p: unknown): SharePayload | null {
   if (!Array.isArray(o.holdings) || !Array.isArray(o.twrSeries)) return null;
   return o as SharePayload;
 }
+
+/**
+ * Validate an optional share link expiry. `undefined`/`null` (not provided)
+ * means "never expires" → `null`. A provided value must be a parseable date
+ * strictly in the future → returned as an ISO string to store. Anything else
+ * (unparseable, not in the future) is invalid → `undefined`, which callers
+ * should reject with a 400.
+ */
+export function validateExpiresAt(input: unknown, now: Date = new Date()): string | null | undefined {
+  if (input == null) return null;
+  if (typeof input !== "string") return undefined;
+  const t = Date.parse(input);
+  if (Number.isNaN(t) || t <= now.getTime()) return undefined;
+  return new Date(t).toISOString();
+}

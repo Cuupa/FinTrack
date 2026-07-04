@@ -112,6 +112,19 @@ export function formatDateTime(iso: string): string {
   }).format(local);
 }
 
+/**
+ * Date + time of a real instant (e.g. a share link's `expires_at`
+ * timestamptz) — unlike `formatDateTime`, this DOES convert to the viewer's
+ * local timezone, since the underlying value is an absolute point in time
+ * rather than a floating wall-clock entry.
+ */
+export function formatInstant(iso: string): string {
+  return new Intl.DateTimeFormat(intlLocale(), {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
 /** Tailwind text color class for a signed value. */
 export function plColor(value: number): string {
   if (value > 0) return "text-emerald-600 dark:text-emerald-400";
