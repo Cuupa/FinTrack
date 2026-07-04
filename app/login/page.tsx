@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -208,6 +209,30 @@ function LoginForm() {
             {tab === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>
+
+        {tab === "signup" && (
+          <p className="mt-3 text-xs text-zinc-500">
+            By creating an account you accept the{" "}
+            <Link href="/terms" className="underline underline-offset-2">
+              Terms of Service
+            </Link>{" "}
+            and acknowledge the{" "}
+            <Link href="/datenschutz" className="underline underline-offset-2">
+              Privacy Policy
+            </Link>
+            .
+            <br />
+            Mit der Kontoerstellung akzeptieren Sie die{" "}
+            <Link href="/terms" className="underline underline-offset-2">
+              Nutzungsbedingungen
+            </Link>{" "}
+            und nehmen die{" "}
+            <Link href="/datenschutz" className="underline underline-offset-2">
+              Datenschutzerklärung
+            </Link>{" "}
+            zur Kenntnis.
+          </p>
+        )}
 
         <div className="mt-3 flex gap-2">
           <Button

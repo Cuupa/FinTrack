@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/site-nav";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
+import { LegalFooter } from "@/components/legal-footer";
 import { OfflineBanner } from "@/components/offline/offline-banner";
 import { SyncPill } from "@/components/offline/sync-pill";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
@@ -67,6 +68,7 @@ export default function RootLayout({
             {/* Window-wide content. pb leaves room for the fixed mobile tab bar. */}
             <main className="min-w-0 flex-1 overflow-x-clip px-4 py-5 pb-24 sm:px-6 md:pb-8 lg:px-8">
               {children}
+              <LegalFooter />
             </main>
           </div>
           <MobileNav />

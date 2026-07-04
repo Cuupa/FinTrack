@@ -492,6 +492,13 @@ export const en = {
   "assetType.CRYPTO": "Cryptocurrency",
   "assetType.CASH": "Cash",
   "assetType.BOND": "Bond",
+
+  // Legal
+  "legal.impressum": "Imprint",
+  "legal.privacy": "Privacy Policy",
+  "legal.terms": "Terms of Service",
+  "legal.consent":
+    "By creating an account you accept the Terms of Service and acknowledge the Privacy Policy.",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -980,6 +987,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "assetType.CRYPTO": "Kryptowährung",
   "assetType.CASH": "Bargeld",
   "assetType.BOND": "Anleihe",
+
+  // Legal
+  "legal.impressum": "Impressum",
+  "legal.privacy": "Datenschutz",
+  "legal.terms": "Nutzungsbedingungen",
+  "legal.consent":
+    "Mit der Kontoerstellung akzeptieren Sie die Nutzungsbedingungen und nehmen die Datenschutzerklärung zur Kenntnis.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };
