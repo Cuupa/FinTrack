@@ -39,14 +39,20 @@ export function Stat({
   /** "sm" tightens the value font + spacing (used to keep the hero compact). */
   size?: "sm" | "md";
 }) {
-  const valueSize = size === "sm" ? "text-xl" : "text-2xl";
-  const labelMin = size === "sm" ? "min-h-[1.75rem]" : "min-h-[2.25rem]";
+  // "sm" is only used by the dashboard hero's 6-up KPI grid — shrink it
+  // further on mobile (where 6 stats otherwise cost several screens of
+  // scroll) and restore the original size at md: for a pixel-identical
+  // desktop.
+  const valueSize = size === "sm" ? "text-base md:text-xl" : "text-2xl";
+  const labelTextSize = size === "sm" ? "text-xs md:text-sm" : "text-sm";
+  const labelMin = size === "sm" ? "min-h-[1.25rem] md:min-h-[1.75rem]" : "min-h-[2.25rem]";
+  const subTextSize = size === "sm" ? "text-xs md:text-sm" : "text-sm";
   return (
     <div>
       {/* Inline (not flex) so the ⓘ flows right after the text and wraps with it;
           min-height reserves two lines so values stay aligned when a (e.g.
           German) label wraps. */}
-      <div className={`flex ${labelMin} items-start text-sm leading-snug text-zinc-500`}>
+      <div className={`flex ${labelMin} items-start ${labelTextSize} leading-snug text-zinc-500`}>
         <span>
           {label}
           {info && (
@@ -57,12 +63,12 @@ export function Stat({
         </span>
       </div>
       <div
-        className={`mt-1 ${valueSize} font-semibold tabular-nums ${valueClassName}`}
+        className={`mt-0.5 md:mt-1 ${valueSize} font-semibold tabular-nums ${valueClassName}`}
         {...(isPrivate ? { "data-private": "" } : {})}
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-sm text-zinc-500 tabular-nums">{sub}</div>}
+      {sub && <div className={`mt-0.5 ${subTextSize} text-zinc-500 tabular-nums`}>{sub}</div>}
     </div>
   );
 }
@@ -81,12 +87,20 @@ const VARIANTS: Record<Variant, string> = {
 
 export function Button({
   variant = "secondary",
+  size = "md",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: "sm" | "md" }) {
+  // "sm" tightens padding/font on mobile only, restoring the original "md"
+  // sizing at md: — used where a button would otherwise wrap on narrow
+  // screens (e.g. the dashboard's "+ Add position").
+  const sizeCls =
+    size === "sm"
+      ? "px-2.5 py-1.5 text-xs md:px-3.5 md:py-2 md:text-sm"
+      : "px-3.5 py-2 text-sm";
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeCls} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );

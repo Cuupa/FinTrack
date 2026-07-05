@@ -69,7 +69,12 @@ export default function DashboardPage() {
               menu) keep the standalone export button here. */}
           {mode !== "registered" && <ExportMenu />}
           {!adding && (
-            <Button variant="primary" onClick={() => setAdding(true)}>
+            <Button
+              variant="primary"
+              size="sm"
+              className="shrink-0 whitespace-nowrap"
+              onClick={() => setAdding(true)}
+            >
               {t("dashboard.addAsset")}
             </Button>
           )}

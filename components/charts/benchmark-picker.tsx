@@ -16,8 +16,12 @@ export function BenchmarkPicker({
   const { t } = useI18n();
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs font-medium text-zinc-500">{t("common.compare")}</span>
+    // Mobile: a single horizontally scrollable row (no page-level scroll,
+    // no wrapping over multiple lines) — `min-w-0` lets it shrink inside a
+    // flex row so overflow-x-auto actually kicks in instead of stretching
+    // the parent. Desktop restores the original wrapping row via md:.
+    <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto md:flex-wrap md:overflow-visible">
+      <span className="shrink-0 text-xs font-medium text-zinc-500">{t("common.compare")}</span>
       {BENCHMARKS.map((b) => {
         const on = selected.includes(b.id);
         return (
@@ -26,7 +30,7 @@ export function BenchmarkPicker({
             type="button"
             onClick={() => onToggle(b.id)}
             aria-pressed={on}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
               on
                 ? "border-transparent text-white"
                 : "border-zinc-300 text-zinc-500 hover:text-zinc-800 dark:border-zinc-700 dark:hover:text-zinc-200"

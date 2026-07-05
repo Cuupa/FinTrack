@@ -30,14 +30,14 @@ export function ChartControls({
 }: Props) {
   const { t } = useI18n();
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2 md:gap-3">
       <SegmentedControl
         size="sm"
         value={timeframe}
         onChange={onTimeframe}
         options={TIMEFRAMES.map((tf) => ({ label: tf, value: tf }))}
       />
-      <div className="ml-auto flex flex-wrap gap-3">
+      <div className="ml-auto flex flex-wrap gap-2 md:gap-3">
         {/* Log scale is undefined for percentages, so the toggle is hidden in
             percent mode. */}
         {mode === "currency" && (

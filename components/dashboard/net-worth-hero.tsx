@@ -136,7 +136,7 @@ export function NetWorthHero({
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
           <Stat
             label={t("stat.netWorth")}
             value={formatCurrency(totals.marketValue, currency)}
@@ -188,7 +188,7 @@ export function NetWorthHero({
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3 md:mt-4">
         <ChartControls
           timeframe={timeframe}
           onTimeframe={setTimeframe}
@@ -201,16 +201,18 @@ export function NetWorthHero({
           showMode={!incognito}
         />
       </div>
-      <div className="mt-3 flex items-center justify-between gap-2">
-        {!historyLoading && containsSynthetic ? (
-          <EstimatedBadge tip={t("data.estimatedChartTip")} />
-        ) : (
-          <span />
-        )}
-        <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
+      <div className="mt-2 flex items-center justify-between gap-2 md:mt-3">
+        <span className="shrink-0">
+          {!historyLoading && containsSynthetic && (
+            <EstimatedBadge tip={t("data.estimatedChartTip")} />
+          )}
+        </span>
+        <div className="min-w-0">
+          <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
+        </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3 md:mt-4">
         {totals.marketValue === 0 && data.assets.length === 0 ? (
           <EmptyChart />
         ) : historyLoading ? (
