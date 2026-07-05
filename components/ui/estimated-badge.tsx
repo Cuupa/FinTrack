@@ -5,8 +5,12 @@
 // requirement: fabricated series/prices must never look identical to real
 // market data in the UI). Visual language matches the "Estimate" badge in the
 // Monte Carlo per-asset model panel (components/simulation/monte-carlo-panel.tsx).
+// Globally toggleable via the `estimated-badge` feature flag (feature_flags
+// table) — gated here so every render site (hero chart, asset detail,
+// holdings table) is covered without each caller checking the flag itself.
 
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { InfoTip } from "@/components/ui/info-tip";
 
 export function EstimatedBadge({
@@ -24,7 +28,9 @@ export function EstimatedBadge({
   className?: string;
 }) {
   const { t } = useI18n();
+  const enabled = useFeatureFlag("estimated-badge");
   const tipText = tip ?? t("data.estimatedTip");
+  if (!enabled) return null;
   if (compact) {
     // Native `title` tooltip (rather than the InfoTip popover) keeps this
     // legible at table-row density; mirrors the compact "ⓘ" glyph used by

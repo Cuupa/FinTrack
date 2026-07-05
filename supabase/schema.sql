@@ -288,7 +288,8 @@ insert into public.schema_migrations (version) values
   ('0031_shared_portfolios_hardening'),
   ('0032_instruments_dedupe'),
   ('0033_site_config'),
-  ('0034_shared_portfolios_expiry')
+  ('0034_shared_portfolios_expiry'),
+  ('0035_estimated_badge_flag')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -470,7 +471,8 @@ insert into public.feature_flags (flag, description) values
   ('simulationPortfolio', 'Simulation — My portfolio mode'),
   ('simulationCustom', 'Simulation — Custom mode'),
   ('simulationWithdrawal', 'Simulation — Withdrawal phase'),
-  ('offline', 'Offline mode (read-only app shell + last-known data)')
+  ('offline', 'Offline mode (read-only app shell + last-known data)'),
+  ('estimated-badge', 'Estimated badge on synthetic/fabricated prices & charts')
 on conflict (flag) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the

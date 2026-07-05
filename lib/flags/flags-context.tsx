@@ -33,7 +33,8 @@ export type FeatureFlag =
   | "simulationPortfolio"
   | "simulationCustom"
   | "simulationWithdrawal"
-  | "offline";
+  | "offline"
+  | "estimated-badge";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

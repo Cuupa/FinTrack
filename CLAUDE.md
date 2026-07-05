@@ -199,6 +199,9 @@ client pages (see `app/assets/[id]/page.tsx`).
 - Synthetic-data labeling: `assetPriceSeries`/`netWorthSeries` return
   `{ points, synthetic/containsSynthetic }` and `HoldingSummary.syntheticPrice`
   feeds `EstimatedBadge` — new chart/price surfaces should keep the badge.
+  `EstimatedBadge` is globally toggleable via the `estimated-badge` feature
+  flag (`feature_flags` table, seeded enabled) — it renders nothing when
+  disabled, so gating lives in the component, not each call site.
 - Dialogs use the shared `use-focus-trap` hook (`components/ui/`); charts get
   `role="img"` + a dynamic localized `aria-label`; `t(key, params)` supports
   interpolation.
