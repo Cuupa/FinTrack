@@ -213,13 +213,23 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             </span>
           </h1>
           <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-            <span className="text-lg font-semibold tabular-nums">
-              {formatCurrency(summary.price, nativeCur)}
+            {/* CASH has no per-unit price (constant 1) — the headline is the
+                position's total value instead, same as the "Holding value"
+                subline uses for other asset types. */}
+            <span
+              className="text-lg font-semibold tabular-nums"
+              {...(asset.type === "CASH" ? { "data-private": "" } : {})}
+            >
+              {asset.type === "CASH"
+                ? formatCurrency(summary.marketValue, currency)
+                : formatCurrency(summary.price, nativeCur)}
             </span>
             {summary.syntheticPrice && <EstimatedBadge tip={t("data.estimatedPriceTip")} />}
-            <span className="text-zinc-500">
-              {t("common.holdingValue")} <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
-            </span>
+            {asset.type !== "CASH" && (
+              <span className="text-zinc-500">
+                {t("common.holdingValue")} <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -666,7 +676,7 @@ function TransactionsTable({
                   {formatNumber(t.quantity, 4)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {formatCurrency(t.price, currency)}
+                  {isCash ? <span className="text-zinc-400">—</span> : formatCurrency(t.price, currency)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
                   {formatCurrency(t.fee, currency)}

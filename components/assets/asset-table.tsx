@@ -159,7 +159,10 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                     <div className="truncate font-medium">{h.asset.name}</div>
                     <div className="mt-0.5 text-xs text-zinc-500">
                       {isCash ? (
-                        assetIdentifier(h.asset)
+                        <>
+                          {assetIdentifier(h.asset)} ·{" "}
+                          <span data-private>{formatCurrency(h.marketValue, currency)}</span>
+                        </>
                       ) : (
                         <>
                           {assetIdentifier(h.asset)} · {formatCurrency(h.price, nativeCur)}
@@ -221,9 +224,12 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                         <AssetIdentifiers asset={h.asset} />
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td
+                      className="px-4 py-3 text-right tabular-nums"
+                      {...(isCash ? { "data-private": "" } : {})}
+                    >
                       {isCash ? (
-                        <span className="text-zinc-400">—</span>
+                        formatCurrency(h.marketValue, currency)
                       ) : (
                         <>
                           {formatCurrency(h.price, nativeCur)}
@@ -351,8 +357,13 @@ function compare(a: Row, b: Row, key: SortKey): number {
   switch (key) {
     case "name":
       return a.h.asset.name.localeCompare(b.h.asset.name);
-    case "price":
-      return a.h.price - b.h.price;
+    case "price": {
+      // CASH has no per-unit price — sort by what's actually displayed (the
+      // position's total value) instead of the constant 1.
+      const av = a.h.asset.type === "CASH" ? a.h.marketValue : a.h.price;
+      const bv = b.h.asset.type === "CASH" ? b.h.marketValue : b.h.price;
+      return av - bv;
+    }
     case "entry":
       return a.entry - b.entry;
     case "value":
