@@ -183,9 +183,15 @@ export function AllocationPie({
 
       {/* Interactive legend — no forced scroll; flows into two columns when
           there are many slices so the donut stays prominent and everything is
-          visible. Exact € is shown in the donut centre on hover (not repeated). */}
+          visible. Exact € is shown in the donut centre on hover (not repeated).
+          `grid-cols-1` (not just an implicit column) is required here: an
+          implicit grid track sizes to its items' *max-content* width, which
+          ignores `truncate`/overflow-hidden — so a long name would force the
+          row (and the card) wider than the viewport. `grid-cols-*` utilities
+          emit `minmax(0, 1fr)`, which lets the column — and the name span's
+          truncation inside it — actually shrink to the container. */}
       <ul
-        className={`grid w-full gap-x-8 gap-y-0.5 text-sm ${
+        className={`grid w-full grid-cols-1 gap-x-8 gap-y-0.5 text-sm ${
           gSlices.length > 8 ? "sm:max-w-2xl sm:grid-cols-2" : "max-w-md"
         }`}
       >
@@ -197,7 +203,8 @@ export function AllocationPie({
               key={s.label}
               onMouseEnter={() => setActive(i)}
               onMouseLeave={() => setActive(null)}
-              className={`flex cursor-default items-center gap-3 rounded-lg px-3 py-1.5 transition-colors ${
+              title={s.label}
+              className={`flex min-w-0 cursor-default items-center gap-3 rounded-lg px-3 py-1.5 transition-colors ${
                 isActive ? "bg-zinc-100 dark:bg-zinc-800" : ""
               } ${dim ? "opacity-50" : ""}`}
             >
