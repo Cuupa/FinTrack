@@ -82,6 +82,35 @@ describe("netWorthSeries", () => {
     const { containsSynthetic } = netWorthSeries([stock], txs, "1Y");
     expect(containsSynthetic).toBe(true);
   });
+
+  it("does not flag a small head gap (window start on a non-trading day) as synthetic", () => {
+    // Window start (earliest tx, MAX timeframe) is a Saturday; the first real
+    // history candle is the following Monday — a 2-day gap that should be
+    // absorbed by the head tolerance, not flagged as an estimate.
+    const stock = asset({ id: "s1", type: "STOCK", name: "Stock" });
+    const txs = [
+      tx({ assetId: "s1", type: "BUY", quantity: 10, price: 100, date: "2025-01-04T00:00:00" }),
+    ];
+    const history = { STOCK: [{ date: "2025-01-06", close: 100 }, { date: "2025-01-07", close: 110 }] };
+    const { points, containsSynthetic } = netWorthSeries([stock], txs, "MAX", undefined, history);
+    expect(containsSynthetic).toBe(false);
+    // The window-start point (a date before the first real candle, within
+    // tolerance) is valued at the first real close, not a synthetic price.
+    expect(points[0].date).toBe("2025-01-04");
+    expect(points[0].value).toBeCloseTo(1000, 6); // 10 shares * 100 (first real close)
+  });
+
+  it("still flags a head gap larger than the tolerance as synthetic", () => {
+    const stock = asset({ id: "s1", type: "STOCK", name: "Stock" });
+    const txs = [
+      tx({ assetId: "s1", type: "BUY", quantity: 10, price: 100, date: "2025-01-01T00:00:00" }),
+    ];
+    // First real candle is 11 days after the window start — beyond the
+    // 7-day head tolerance, so the existing synthetic-fallback flag stands.
+    const history = { STOCK: [{ date: "2025-01-12", close: 100 }] };
+    const { containsSynthetic } = netWorthSeries([stock], txs, "MAX", undefined, history);
+    expect(containsSynthetic).toBe(true);
+  });
 });
 
 describe("assetValueSeries", () => {

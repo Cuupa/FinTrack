@@ -15,7 +15,7 @@ import {
   type Timeframe,
 } from "./dates";
 import { currentPrice, nativeCurrency, priceOn } from "./prices";
-import { priceAtFrom, type HistoryMap } from "../history/history";
+import { priceAtFrom, priceAtWithHeadTolerance, type HistoryMap } from "../history/history";
 
 export interface Position {
   /** Shares/units currently held. */
@@ -245,6 +245,12 @@ export interface NetWorthSeriesResult {
   containsSynthetic: boolean;
 }
 
+// A window start (e.g. "365 days ago") regularly lands on a non-trading day
+// (weekend/holiday); the first real history point is then a day or two
+// later. Within this many calendar days, use the first real close instead of
+// falling back to synthetic and flagging the whole chart as an estimate.
+const HEAD_GAP_TOLERANCE_DAYS = 7;
+
 /**
  * Net-worth time series over a timeframe: for each sampled date, sum every
  * asset's holding (shares on that date × historical price).
@@ -278,8 +284,9 @@ export function netWorthSeries(
     for (const { asset, txs: atxs, key, rate, factor, hist } of byAsset) {
       const shares = sharesAt(atxs, date);
       if (shares === 0) continue;
-      // Prefer real historical price; fall back to the (live-anchored) synthetic.
-      const real = hist ? priceAtFrom(hist, date) : null;
+      // Prefer real historical price (tolerating a small gap at the window's
+      // head); fall back to the (live-anchored) synthetic.
+      const real = hist ? priceAtWithHeadTolerance(hist, date, HEAD_GAP_TOLERANCE_DAYS) : null;
       // CASH is fixed at 1 by definition — never an estimate — so it never
       // trips the synthetic flag (mirrors isSyntheticPrice above).
       if (real == null && asset.type !== "CASH") containsSynthetic = true;

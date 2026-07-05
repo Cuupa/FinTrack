@@ -1,6 +1,8 @@
 // Real historical price series (native currency), fetched from /api/history.
 // Pure helpers only — the fetch lives in use-history.ts.
 
+import { daysBetween } from "../finance/dates";
+
 export interface HistoryPoint {
   date: string;
   close: number;
@@ -39,4 +41,23 @@ export function priceAtFrom(series: HistoryPoint[], isoDate: string): number | n
     }
   }
   return ans;
+}
+
+/**
+ * Like `priceAtFrom`, but tolerates a small gap before the series starts: if
+ * `isoDate` is up to `toleranceDays` before the first point, returns the
+ * first close instead of null. This absorbs window starts that land on a
+ * non-trading day (weekend/holiday) a day or two before the first real
+ * candle — e.g. a "365 days ago" boundary falling on a Saturday when the
+ * first fetched candle is the following Monday — without masking a genuine
+ * lack of history further back (still null beyond the tolerance).
+ */
+export function priceAtWithHeadTolerance(
+  series: HistoryPoint[],
+  isoDate: string,
+  toleranceDays: number,
+): number | null {
+  if (series.length === 0) return null;
+  if (isoDate >= series[0].date) return priceAtFrom(series, isoDate);
+  return daysBetween(isoDate, series[0].date) <= toleranceDays ? series[0].close : null;
 }
