@@ -147,6 +147,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         <ul className="divide-y divide-zinc-100 md:hidden dark:divide-zinc-800/60">
           {rows.map(({ h, allocation, entry, profit }) => {
             const nativeCur = h.currency || currency;
+            const isCash = h.asset.type === "CASH";
             const gain = h.price - entry;
             return (
               <li key={h.asset.id}>
@@ -157,12 +158,18 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                   <div className="min-w-0">
                     <div className="truncate font-medium">{h.asset.name}</div>
                     <div className="mt-0.5 text-xs text-zinc-500">
-                      {assetIdentifier(h.asset)} · {formatCurrency(h.price, nativeCur)}
-                      {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
-                      {entry > 0 && (
-                        <span className={`ml-1 ${plColor(gain)}`}>
-                          {formatPercent(gain / entry)}
-                        </span>
+                      {isCash ? (
+                        assetIdentifier(h.asset)
+                      ) : (
+                        <>
+                          {assetIdentifier(h.asset)} · {formatCurrency(h.price, nativeCur)}
+                          {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
+                          {entry > 0 && (
+                            <span className={`ml-1 ${plColor(gain)}`}>
+                              {formatPercent(gain / entry)}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -199,6 +206,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
             <tbody>
               {rows.map(({ h, allocation, entry, profit }) => {
                 const nativeCur = h.currency || currency;
+                const isCash = h.asset.type === "CASH";
                 const gain = h.price - entry;
                 return (
                   <tr
@@ -214,16 +222,22 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatCurrency(h.price, nativeCur)}
-                      {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
-                      {entry > 0 && (
-                        <span className={`ml-1 text-xs ${plColor(gain)}`}>
-                          ({formatPercent(gain / entry)})
-                        </span>
+                      {isCash ? (
+                        <span className="text-zinc-400">—</span>
+                      ) : (
+                        <>
+                          {formatCurrency(h.price, nativeCur)}
+                          {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
+                          {entry > 0 && (
+                            <span className={`ml-1 text-xs ${plColor(gain)}`}>
+                              ({formatPercent(gain / entry)})
+                            </span>
+                          )}
+                        </>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-zinc-500" data-private>
-                      {formatCurrency(entry, nativeCur)}
+                      {isCash ? "—" : formatCurrency(entry, nativeCur)}
                     </td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums" data-private>
                       {formatCurrency(h.marketValue, currency)}

@@ -11,6 +11,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { addDays, nowDateTimeLocal, today, type Timeframe } from "@/lib/finance/dates";
 import {
   assetPriceSeries,
+  assetValueSeries,
   summarizeHolding,
   transactionsByAsset,
 } from "@/lib/finance/portfolio";
@@ -90,8 +91,10 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     [asset, txs, valuation],
   );
 
+  // CASH has no market price history to fetch (its price is a constant 1,
+  // not something a data provider tracks) — never request it.
   const histItems = useMemo(() => {
-    const it = asset ? quoteItemFor(asset) : null;
+    const it = asset && asset.type !== "CASH" ? quoteItemFor(asset) : null;
     return it ? [it] : [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset, version]);
@@ -101,13 +104,17 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     data.profile.currency,
   );
 
-  const { points: series, synthetic: syntheticSeries } = useMemo(
-    () =>
-      asset
-        ? assetPriceSeries(asset, timeframe, valuation, histories)
-        : { points: [], synthetic: false },
-    [asset, timeframe, valuation, histories],
-  );
+  // CASH's price chart is meaningless (constant 1) — plot the position's
+  // total value over time (balance evolving with deposits/withdrawals/
+  // interest) instead, via the same replay logic as the net-worth chart.
+  const { points: series, synthetic: syntheticSeries } = useMemo(() => {
+    if (!asset) return { points: [], synthetic: false };
+    if (asset.type === "CASH") {
+      const { points, containsSynthetic } = assetValueSeries(asset, txs, timeframe, valuation, histories);
+      return { points, synthetic: containsSynthetic };
+    }
+    return assetPriceSeries(asset, timeframe, valuation, histories);
+  }, [asset, txs, timeframe, valuation, histories]);
 
   const irr = useMemo(
     () => (summary ? positionIRR(txs, summary.marketValue) : null),
@@ -120,12 +127,15 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     [asset, histories],
   );
 
-  // Real dividend events (accumulating funds return none → no phantom payouts).
+  // Real dividend events (accumulating funds return none → no phantom
+  // payouts; CASH isn't a security and never pays dividends — histItems is
+  // already empty for it above, so this fetches nothing).
   const divMap = useDividends(histItems);
   const dividends = useMemo(() => {
+    if (!asset || asset.type === "CASH") return [];
     const key = histItems[0]?.key;
     return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
-  }, [divMap, histItems, txs]);
+  }, [divMap, histItems, txs, asset]);
 
   // Chart markers: buys/sells plus a marker on each dividend pay date.
   const markers: ChartMarker[] = useMemo(
@@ -168,6 +178,9 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   // Per-asset figures are in the native trading currency; portfolio figures
   // (market value, P&L) are in the base currency.
   const nativeCur = summary.currency || currency;
+  // CASH's detail chart plots the position's total value (base currency, see
+  // assetValueSeries above), not a native-currency price — label it as such.
+  const chartCurrency = asset.type === "CASH" ? currency : nativeCur;
 
   function handleDelete() {
     setPending({
@@ -249,7 +262,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               series={series}
               scale={scale}
               mode={mode}
-              currency={nativeCur}
+              currency={chartCurrency}
               markers={markers}
               color="#6366f1"
               compare={compare}
@@ -260,9 +273,9 @@ export function AssetDetail({ assetId }: { assetId: string }) {
                 timeframe,
                 start: series[0] ? formatDate(series[0].date) : "",
                 end: series.length ? formatDate(series[series.length - 1].date) : "",
-                startValue: series[0] ? formatCurrency(series[0].value, nativeCur) : "",
+                startValue: series[0] ? formatCurrency(series[0].value, chartCurrency) : "",
                 endValue: series.length
-                  ? formatCurrency(series[series.length - 1].value, nativeCur)
+                  ? formatCurrency(series[series.length - 1].value, chartCurrency)
                   : "",
               })}
             />
@@ -287,7 +300,15 @@ export function AssetDetail({ assetId }: { assetId: string }) {
                     string,
                     string,
                   ][])),
-              ["DIV", t("tx.dividend"), "text-amber-500"],
+              // CASH never pays dividends (see the gated dividends/[]
+              // computation above) — no DIV legend entry to toggle.
+              ...(asset.type === "CASH"
+                ? []
+                : ([["DIV", t("tx.dividend"), "text-amber-500"]] as [
+                    ChartMarker["type"],
+                    string,
+                    string,
+                  ][])),
             ] as [ChartMarker["type"], string, string][]
           ).map(([type, label, color]) => (
             <button
@@ -373,8 +394,12 @@ export function AssetDetail({ assetId }: { assetId: string }) {
             )}
             <Row label={t("asset.row.currency")} value={nativeCur} />
             <Row label={t("asset.row.shares")} value={formatNumber(summary.position.shares, 4)} isPrivate />
-            <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
-            <Row label={t("asset.row.currentPrice")} value={formatCurrency(summary.price, nativeCur)} />
+            {asset.type !== "CASH" && (
+              <>
+                <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
+                <Row label={t("asset.row.currentPrice")} value={formatCurrency(summary.price, nativeCur)} />
+              </>
+            )}
             <Row label={t("asset.row.costBasis")} value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
             {asset.type === "CASH" && (
               <Row
@@ -384,12 +409,16 @@ export function AssetDetail({ assetId }: { assetId: string }) {
               />
             )}
             <Row label={t("asset.row.totalFees")} value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
-            <Row label={t("asset.row.divYield")} value={yld > 0 ? formatPercent(yld) : "—"} />
-            <Row
-              label={t("asset.row.divReceived")}
-              value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
-              isPrivate
-            />
+            {asset.type !== "CASH" && (
+              <>
+                <Row label={t("asset.row.divYield")} value={yld > 0 ? formatPercent(yld) : "—"} />
+                <Row
+                  label={t("asset.row.divReceived")}
+                  value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
+                  isPrivate
+                />
+              </>
+            )}
             <Row
               label={t("asset.row.volatility")}
               value={annual && annual.vol > 0 ? `${formatNumber(annual.vol * 100, 1)}%` : "—"}

@@ -280,12 +280,43 @@ export function netWorthSeries(
       if (shares === 0) continue;
       // Prefer real historical price; fall back to the (live-anchored) synthetic.
       const real = hist ? priceAtFrom(hist, date) : null;
-      if (real == null) containsSynthetic = true;
+      // CASH is fixed at 1 by definition — never an estimate — so it never
+      // trips the synthetic flag (mirrors isSyntheticPrice above).
+      if (real == null && asset.type !== "CASH") containsSynthetic = true;
       const native = real != null ? real : priceOn(key, asset.type, date) * factor;
       value += shares * native * rate;
     }
     return { date, value };
   });
+  return { points, containsSynthetic };
+}
+
+export interface AssetValueSeriesResult {
+  points: SeriesPoint[];
+  /**
+   * True when at least one sampled date had no real historical price and fell
+   * back to the fabricated synthetic series — never true for CASH, whose
+   * price is fixed at 1 by definition (see `netWorthSeries`).
+   */
+  containsSynthetic: boolean;
+}
+
+/**
+ * Value-over-time series for a single asset's position (shares × price ×
+ * rate, in the base currency). Used for CASH's detail chart: its price is a
+ * constant 1, so "current course" is meaningless, but the balance evolving
+ * with deposits/withdrawals/interest is exactly what a value chart should
+ * show. Thin wrapper over `netWorthSeries` scoped to one asset so the
+ * transaction replay isn't duplicated.
+ */
+export function assetValueSeries(
+  asset: Asset,
+  txs: Transaction[],
+  tf: Timeframe,
+  v?: ValuationContext,
+  history?: HistoryMap,
+): AssetValueSeriesResult {
+  const { points, containsSynthetic } = netWorthSeries([asset], txs, tf, v, history);
   return { points, containsSynthetic };
 }
 

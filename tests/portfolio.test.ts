@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { computePosition, sharesAt, portfolioTotals, type HoldingSummary } from "../lib/finance/portfolio";
-import type { Transaction } from "../lib/types";
+import {
+  computePosition,
+  sharesAt,
+  portfolioTotals,
+  netWorthSeries,
+  assetValueSeries,
+  type HoldingSummary,
+} from "../lib/finance/portfolio";
+import type { Asset, Transaction } from "../lib/types";
 
 function tx(p: Partial<Transaction> & Pick<Transaction, "type" | "quantity" | "price">): Transaction {
   return { id: "t", assetId: "a", portfolioId: "p1", fee: 0, date: "2025-01-01T00:00:00", ...p };
+}
+
+function asset(over: Partial<Asset> & Pick<Asset, "id" | "type">): Asset {
+  return { isin: null, wkn: null, symbol: null, name: "Test", currency: null, notes: null, ...over };
 }
 
 describe("computePosition", () => {
@@ -54,5 +65,35 @@ describe("portfolioTotals", () => {
     expect(totals.unrealizedPL).toBe(0);
     expect(totals.realizedPL).toBe(50);
     expect(totals.totalPL).toBe(50);
+  });
+});
+
+describe("netWorthSeries", () => {
+  it("does not flag a CASH-only portfolio as synthetic (its price 1 is exact)", () => {
+    const cash = asset({ id: "c1", type: "CASH", name: "Cash" });
+    const txs = [tx({ assetId: "c1", type: "BUY", quantity: 1000, price: 1 })];
+    const { containsSynthetic } = netWorthSeries([cash], txs, "1Y");
+    expect(containsSynthetic).toBe(false);
+  });
+
+  it("flags a portfolio holding a priced security with no real history as synthetic", () => {
+    const stock = asset({ id: "s1", type: "STOCK", name: "Stock" });
+    const txs = [tx({ assetId: "s1", type: "BUY", quantity: 10, price: 100 })];
+    const { containsSynthetic } = netWorthSeries([stock], txs, "1Y");
+    expect(containsSynthetic).toBe(true);
+  });
+});
+
+describe("assetValueSeries", () => {
+  it("plots a CASH position's evolving balance (never synthetic)", () => {
+    const cash = asset({ id: "c1", type: "CASH", name: "Cash" });
+    const txs = [
+      tx({ assetId: "c1", type: "BUY", quantity: 100, price: 1, date: "2025-01-01T00:00:00" }),
+      tx({ assetId: "c1", type: "INTEREST", quantity: 5, price: 1, date: "2025-02-01T00:00:00" }),
+    ];
+    const { points, containsSynthetic } = assetValueSeries(cash, txs, "MAX");
+    expect(containsSynthetic).toBe(false);
+    expect(points[0].value).toBeCloseTo(100, 6);
+    expect(points[points.length - 1].value).toBeCloseTo(105, 6);
   });
 });
