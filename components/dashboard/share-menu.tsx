@@ -24,8 +24,11 @@ export function ShareMenu() {
   const { user } = useAuth();
   const { t } = useI18n();
   const { portfolios, selectedPortfolioIds } = usePortfolio();
-  // Explicit portfolio choice for the share, seeded from the header selection.
-  const [chosenIds, setChosenIds] = useState<string[]>(selectedPortfolioIds);
+  // Explicit portfolio choice for the share. `null` means "follow the header
+  // selection" — once the user toggles a portfolio in the menu their choice
+  // wins until the menu is reopened with a fresh default.
+  const [userChosenIds, setUserChosenIds] = useState<string[] | null>(null);
+  const chosenIds = userChosenIds ?? selectedPortfolioIds;
   const { source, loading } = useShareSource(chosenIds);
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState<string | null>(null);
@@ -39,7 +42,10 @@ export function ShareMenu() {
   const expiryInvalid = expiryMode === "at" && !expiryAt;
 
   const togglePortfolio = (id: string) =>
-    setChosenIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+    setUserChosenIds((ids) => {
+      const base = ids ?? selectedPortfolioIds;
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
 
   useEffect(() => {
     if (!open) return;
@@ -85,7 +91,10 @@ export function ShareMenu() {
     }
   };
 
-  const disabled = source.holdings.length === 0 || loading;
+  // Trigger only reflects whether there's anything to share — never the
+  // in-flight MAX-range history fetch, or the button would read as
+  // "sometimes disabled" while data loads.
+  const disabled = source.holdings.length === 0;
 
   return (
     <div className="relative" ref={ref}>
@@ -202,7 +211,7 @@ export function ShareMenu() {
           <button
             type="button"
             onClick={() => share(false)}
-            disabled={chosenIds.length === 0 || expiryInvalid}
+            disabled={chosenIds.length === 0 || expiryInvalid || loading}
             className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
           >
             <span className="font-medium">{t("share.full")}</span>
@@ -211,7 +220,7 @@ export function ShareMenu() {
           <button
             type="button"
             onClick={() => share(true)}
-            disabled={chosenIds.length === 0 || expiryInvalid}
+            disabled={chosenIds.length === 0 || expiryInvalid || loading}
             className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-zinc-800"
           >
             <span className="font-medium">{t("share.incognito")}</span>
