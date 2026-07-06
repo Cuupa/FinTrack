@@ -22,7 +22,7 @@ import {
   type SavingsPlan,
   type SavingsPlanInterval,
 } from "@/lib/types";
-import { formatCurrency, formatDate, formatNumber, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
@@ -33,6 +33,19 @@ import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+
+const rowInputCls =
+  "w-24 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+
+/** Round to a fixed number of decimals (banker's-rounding-free, plain half-up). */
+function round(value: number, digits: number): number {
+  const f = 10 ** digits;
+  return Math.round(value * f) / f;
+}
+
+function rowKey(planId: string, date: string): string {
+  return `${planId}:${date}`;
+}
 
 const INTERVAL_KEY: Record<SavingsPlanInterval, MessageKey> = {
   WEEKLY: "sp.weekly",
@@ -48,6 +61,65 @@ interface DueRow {
   synthetic: boolean;
 }
 
+/** A user override for a single due row's price and/or quantity input. */
+interface RowEdit {
+  price?: string;
+  qty?: string;
+}
+
+interface EffectiveRow {
+  /** Text shown in the price input. */
+  priceInput: string;
+  /** Text shown in the qty input. */
+  qtyInput: string;
+  /** Parsed price used for validation/booking. */
+  effectivePrice: number;
+  /** Parsed quantity used for validation/booking. */
+  effectiveQty: number;
+  /** Value shown in the "value at buy" column. */
+  amount: number;
+  /** Whether the user touched either field. */
+  edited: boolean;
+}
+
+/**
+ * Derives the displayed/effective price, qty and amount for a due row given
+ * any user override. Price defaults to the fetched price (rounded to 2dp);
+ * qty defaults to plan.amount / price (rounded to 3dp) and tracks the price
+ * until the user edits qty directly, which decouples it from the amount.
+ */
+function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow {
+  const defaultPrice = round(row.price, 2);
+  const priceEdited = edit?.price !== undefined;
+  const qtyEdited = edit?.qty !== undefined;
+
+  const priceInput = priceEdited ? edit.price! : String(defaultPrice);
+  const effectivePrice = priceEdited ? parseDecimal(edit.price!) : defaultPrice;
+
+  let qtyInput: string;
+  let effectiveQty: number;
+  if (qtyEdited) {
+    qtyInput = edit.qty!;
+    effectiveQty = parseDecimal(edit.qty!);
+  } else {
+    const priceForQty = priceEdited ? effectivePrice : defaultPrice;
+    const qtyValue =
+      Number.isFinite(priceForQty) && priceForQty > 0
+        ? round(row.plan.amount / priceForQty, 3)
+        : NaN;
+    qtyInput = Number.isFinite(qtyValue) ? String(qtyValue) : "";
+    effectiveQty = qtyValue;
+  }
+
+  const edited = priceEdited || qtyEdited;
+  const amount =
+    edited && Number.isFinite(effectiveQty) && Number.isFinite(effectivePrice)
+      ? round(effectiveQty * effectivePrice, 2)
+      : row.plan.amount;
+
+  return { priceInput, qtyInput, effectivePrice, effectiveQty, amount, edited };
+}
+
 export function SavingsPlansCard() {
   const enabled = useFeatureFlag("savingsPlans");
   const { data, addSavingsPlan, updateSavingsPlan, deleteSavingsPlan, addTransaction } =
@@ -61,6 +133,22 @@ export function SavingsPlansCard() {
   const [deleting, setDeleting] = useState<SavingsPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Per-row user overrides for price/qty in the review dialog, keyed by
+  // `${plan.id}:${date}`. Reset on open/close (never via effect — see
+  // react-hooks/set-state-in-effect in CLAUDE.md).
+  const [rowEdits, setRowEdits] = useState<Map<string, { price?: string; qty?: string }>>(
+    new Map(),
+  );
+
+  function openReview() {
+    setRowEdits(new Map());
+    setReviewing(true);
+  }
+
+  function closeReview() {
+    setReviewing(false);
+    setRowEdits(new Map());
+  }
 
   const assetById = useMemo(() => new Map(data.assets.map((a) => [a.id, a])), [data.assets]);
   // A plan may live in a portfolio outside the current selection — use the
@@ -112,6 +200,31 @@ export function SavingsPlansCard() {
     [due, histories],
   );
 
+  // Effective price/qty/amount per row, folding in any user override.
+  const rowsWithEdits = useMemo(
+    () =>
+      dueRows.map((row) => ({
+        row,
+        derived: deriveRow(row, rowEdits.get(rowKey(row.plan.id, row.date))),
+      })),
+    [dueRows, rowEdits],
+  );
+  const hasInvalidRow = rowsWithEdits.some(
+    ({ derived }) =>
+      !Number.isFinite(derived.effectivePrice) ||
+      derived.effectivePrice <= 0 ||
+      !Number.isFinite(derived.effectiveQty) ||
+      derived.effectiveQty <= 0,
+  );
+
+  function setRowEdit(key: string, patch: RowEdit) {
+    setRowEdits((prev) => {
+      const next = new Map(prev);
+      next.set(key, { ...next.get(key), ...patch });
+      return next;
+    });
+  }
+
   if (!enabled) return null;
 
   async function confirmDue() {
@@ -122,13 +235,13 @@ export function SavingsPlansCard() {
       // transaction; a mid-way failure leaves lastRunDate un-advanced for the
       // affected plan, so the remaining occurrences simply surface again.
       const lastByPlan = new Map<string, string>();
-      for (const row of dueRows) {
+      for (const { row, derived } of rowsWithEdits) {
         await addTransaction({
           assetId: row.asset.id,
           portfolioId: row.plan.portfolioId,
           type: "BUY",
-          quantity: row.plan.amount / row.price,
-          price: row.price,
+          quantity: round(derived.effectiveQty, 3),
+          price: derived.effectivePrice,
           fee: 0,
           tax: 0,
           date: `${row.date}T00:00:00`,
@@ -138,7 +251,7 @@ export function SavingsPlansCard() {
       for (const [planId, lastRunDate] of lastByPlan) {
         await updateSavingsPlan(planId, { lastRunDate });
       }
-      setReviewing(false);
+      closeReview();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("sp.applyError"));
     } finally {
@@ -162,7 +275,7 @@ export function SavingsPlansCard() {
           <span className="text-sm text-amber-800 dark:text-amber-300">
             {t("sp.due", { count: due.length })}
           </span>
-          <Button size="sm" variant="primary" onClick={() => setReviewing(true)}>
+          <Button size="sm" variant="primary" onClick={openReview}>
             {t("sp.review")}
           </Button>
         </div>
@@ -233,7 +346,7 @@ export function SavingsPlansCard() {
       <Modal
         open={reviewing}
         onClose={() => {
-          if (!busy) setReviewing(false);
+          if (!busy) closeReview();
         }}
       >
         <div className="space-y-4">
@@ -251,26 +364,43 @@ export function SavingsPlansCard() {
                 </tr>
               </thead>
               <tbody>
-                {dueRows.map((row) => {
+                {rowsWithEdits.map(({ row, derived }) => {
                   const cur = row.asset.currency || base;
+                  const key = rowKey(row.plan.id, row.date);
                   return (
                     <tr
-                      key={`${row.plan.id}:${row.date}`}
+                      key={key}
                       className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
                     >
                       <td className="py-2 pr-3 whitespace-nowrap">{formatDate(row.date)}</td>
                       <td className="max-w-[16rem] truncate py-2 pr-3">{row.asset.name}</td>
                       <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                        {formatCurrency(row.plan.amount, cur)}
+                        {formatCurrency(derived.amount, cur)}
                       </td>
                       <td className="py-2 pr-3 text-right tabular-nums">
-                        {formatCurrency(row.price, cur)}
-                        {row.synthetic && !historyLoading && (
-                          <EstimatedBadge compact className="ml-1" />
-                        )}
+                        <span className="inline-flex items-center gap-1">
+                          <input
+                            inputMode="decimal"
+                            aria-label={t("tx.price")}
+                            value={derived.priceInput}
+                            onChange={(e) =>
+                              setRowEdit(key, { price: stripLeadingZero(e.target.value) })
+                            }
+                            className={rowInputCls}
+                          />
+                          {row.synthetic && !historyLoading && <EstimatedBadge compact />}
+                        </span>
                       </td>
                       <td className="py-2 text-right tabular-nums" data-private>
-                        {formatNumber(row.plan.amount / row.price, 4)}
+                        <input
+                          inputMode="decimal"
+                          aria-label={t("tx.qty")}
+                          value={derived.qtyInput}
+                          onChange={(e) =>
+                            setRowEdit(key, { qty: stripLeadingZero(e.target.value) })
+                          }
+                          className={rowInputCls}
+                        />
                       </td>
                     </tr>
                   );
@@ -281,12 +411,12 @@ export function SavingsPlansCard() {
           {historyLoading && <p className="text-xs text-zinc-400">{t("sp.loadingPrices")}</p>}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" disabled={busy} onClick={() => setReviewing(false)}>
+            <Button variant="secondary" disabled={busy} onClick={closeReview}>
               {t("tx.cancel")}
             </Button>
             <Button
               variant="primary"
-              disabled={busy || historyLoading || dueRows.length === 0}
+              disabled={busy || historyLoading || dueRows.length === 0 || hasInvalidRow}
               onClick={() => void confirmDue()}
             >
               {busy ? t("sp.applying") : t("sp.confirm", { count: dueRows.length })}
