@@ -2,7 +2,7 @@
 // estimate (no DOM measurement — pure computation from data already on hand)
 // so charts stop reserving a fixed wide gutter on the left, and a currency
 // tick formatter that keeps small-value axes fully precise but compacts large
-// ones ("€12.5K") so a 7-figure portfolio doesn't force the axis wide again.
+// ones ("€12.5k") so a 7-figure portfolio doesn't force the axis wide again.
 
 import { decimalPlaces, formatCompactCurrency, formatCurrency } from "@/lib/format";
 
@@ -32,7 +32,7 @@ export function yAxisWidth(labels: readonly string[]): number {
  * Currency tick formatter shared by every chart with a currency y-axis: below
  * 10k, ticks stay full-precision and aligned to the tick that needs the most
  * decimals (a whole 5 reads "5.00" beside "4.50"); at/above 10k they compact
- * ("€12.5K") instead of demanding ever more axis width.
+ * ("€12.5k") instead of demanding ever more axis width.
  */
 export function axisCurrencyFormatter(ticks: readonly number[], currency: string): (v: number) => string {
   const maxAbs = ticks.length ? Math.max(...ticks.map((v) => Math.abs(v))) : 0;

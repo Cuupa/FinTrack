@@ -52,13 +52,37 @@ export function decimalPlaces(v: number, cap = 2): number {
   return cap;
 }
 
+/**
+ * Short axis-style currency label ("€25k", "12,5k €"). Intl's own compact
+ * notation is NOT used because it doesn't shorten thousands in every locale —
+ * de-DE spells 25,000 out in full ("25.000,0 €") and only compacts at
+ * millions — so we scale the value ourselves and append a universal k/M/B
+ * magnitude suffix (deliberately locale-neutral for a technical axis, rather
+ * than "Tsd."/"Mrd."). Intl still formats the scaled number, so decimal
+ * separators and the currency symbol's position stay locale-correct.
+ * Values under 10k keep their full digits (4-digit values don't compact).
+ */
 export function formatCompactCurrency(value: number, currency = "EUR"): string {
-  return new Intl.NumberFormat(intlLocale(), {
+  const abs = Math.abs(value);
+  const [divisor, suffix] =
+    abs >= 1e9 ? [1e9, "B"] : abs >= 1e6 ? [1e6, "M"] : abs >= 1e4 ? [1e3, "k"] : [1, ""];
+  const parts = new Intl.NumberFormat(intlLocale(), {
     style: "currency",
     currency,
-    notation: "compact",
+    // Explicit 0 floor: leaving it unset would clamp the currency default (2)
+    // to maximumFractionDigits and force a junk trailing ",0" onto whole values.
+    minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  }).format(value);
+  }).formatToParts(value / divisor);
+  if (!suffix) return parts.map((p) => p.value).join("");
+  // Inject the suffix right after the last numeric part so the currency
+  // symbol keeps its locale position ("€25k" in en, "25k €" in de).
+  const NUMERIC = new Set(["integer", "group", "decimal", "fraction"]);
+  let last = -1;
+  parts.forEach((p, i) => {
+    if (NUMERIC.has(p.type)) last = i;
+  });
+  return parts.map((p, i) => (i === last ? p.value + suffix : p.value)).join("");
 }
 
 export function formatPercent(fraction: number, digits = 2): string {

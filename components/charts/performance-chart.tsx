@@ -246,7 +246,7 @@ export function PerformanceChart({
 
   // Small-value axes stay full precision, aligned to the tick that needs the
   // most decimals (a whole 5 reads "5.00" beside "4.50"); large ones compact
-  // ("€12.5K") instead of demanding ever more axis width.
+  // ("€12.5k") instead of demanding ever more axis width.
   const formatCurrencyTick = axisCurrencyFormatter(axisNums, currency);
 
   const formatY = (v: number) => (pctMode ? formatPercent(v, 0) : formatCurrencyTick(v));
