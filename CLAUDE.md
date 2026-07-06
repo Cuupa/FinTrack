@@ -225,3 +225,17 @@ client pages (see `app/assets/[id]/page.tsx`).
 - Dialogs use the shared `use-focus-trap` hook (`components/ui/`); charts get
   `role="img"` + a dynamic localized `aria-label`; `t(key, params)` supports
   interpolation.
+- Chart y-axes: never hardcode a `YAxis width` — compute it with `yAxisWidth`
+  + `axisCurrencyFormatter` (`components/charts/axis.ts`) so the left gutter
+  stays snug. `formatCompactCurrency` compacts with universal k/M/B suffixes
+  in **every** locale (Intl's compact notation doesn't compact thousands in
+  de-DE — that's why it exists).
+- Form submit buttons disable on *presence only* (empty required fields) via
+  `lib/forms/required.ts` (`useFormTouched` + amber `missingFieldCls`, hint key
+  `form.missingFields`); content validation (valid number, > 0, …) stays at
+  submit time. New forms should follow this pattern.
+- Official-name resolution (catalog → `/api/lookup`, batches of 4) is shared:
+  `lib/import/resolve-names.ts` serves both the CSV import and the Holdings
+  "Official names" bulk-rename review dialog.
+- `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
+  `footer` render prop (used for "+ New asset…" in the savings-plan form).
