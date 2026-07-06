@@ -9,7 +9,9 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
+import { lookupInstrument } from "@/lib/catalog/catalog";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { apiFetch } from "@/lib/api";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
 import { today } from "@/lib/finance/dates";
 import { priceOn, quoteItemFor } from "@/lib/finance/prices";
@@ -19,6 +21,7 @@ import {
   assetPriceKey,
   SAVINGS_PLAN_INTERVALS,
   type Asset,
+  type AssetType,
   type SavingsPlan,
   type SavingsPlanInterval,
 } from "@/lib/types";
@@ -52,6 +55,16 @@ const INTERVAL_KEY: Record<SavingsPlanInterval, MessageKey> = {
   MONTHLY: "sp.monthly",
   QUARTERLY: "sp.quarterly",
 };
+
+interface ApiMatch {
+  found: boolean;
+  name?: string;
+  symbol?: string | null;
+  type?: AssetType;
+  currency?: string | null;
+  isin?: string | null;
+  wkn?: string | null;
+}
 
 interface DueRow {
   plan: SavingsPlan;
@@ -451,7 +464,7 @@ function NewPlanForm({
   onCreate: (input: Omit<SavingsPlan, "id">) => Promise<void>;
   onDone: () => void;
 }) {
-  const { data, portfolios, selectedPortfolioIds } = usePortfolio();
+  const { data, portfolios, selectedPortfolioIds, addAsset } = usePortfolio();
   const { t } = useI18n();
   const base = data.profile.currency;
 
@@ -468,8 +481,93 @@ function NewPlanForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Inline "add a new asset" row, revealed from the asset SelectMenu's
+  // "+ New asset…" footer button — mirrors the watchlist card's resolution
+  // (catalog first, then /api/lookup), but creates a portfolio asset (no
+  // transaction booked; the plan itself will generate BUYs when due).
+  const [addingAsset, setAddingAsset] = useState(false);
+  const [newAssetQuery, setNewAssetQuery] = useState("");
+  const [newAssetBusy, setNewAssetBusy] = useState(false);
+  const [newAssetError, setNewAssetError] = useState<string | null>(null);
+
   const asset = eligible.find((a) => a.id === assetId);
   const cur = asset?.currency || base;
+
+  function openAddAsset() {
+    setNewAssetError(null);
+    setNewAssetQuery("");
+    setAddingAsset(true);
+  }
+
+  function closeAddAsset() {
+    setAddingAsset(false);
+    setNewAssetQuery("");
+    setNewAssetError(null);
+  }
+
+  async function handleResolveNewAsset() {
+    const q = newAssetQuery.trim();
+    if (!q) return;
+    setNewAssetError(null);
+    setNewAssetBusy(true);
+    try {
+      const query = q.toUpperCase();
+      // Catalog first (works offline / without a lookup round-trip), then the
+      // lookup API — the same resolution order as the watchlist card.
+      let input: Omit<Asset, "id"> | null = null;
+      const match = lookupInstrument(query);
+      if (match) {
+        input = {
+          isin: match.isin,
+          wkn: match.wkn,
+          symbol: match.symbol,
+          name: match.name,
+          type: match.type,
+          currency: match.currency,
+          notes: null,
+        };
+      } else {
+        const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(query)}`);
+        const d = res.ok ? ((await res.json()) as ApiMatch) : null;
+        if (d?.found && d.name) {
+          input = {
+            isin: d.isin ?? null,
+            wkn: d.wkn ?? null,
+            symbol: d.symbol ?? null,
+            name: d.name,
+            type: d.type ?? "STOCK",
+            currency: d.currency ?? null,
+            notes: null,
+          };
+        }
+      }
+      if (!input) {
+        setNewAssetError(t("watchlist.notFound"));
+        return;
+      }
+      // Plans are securities-only — shouldn't happen from a real lookup, but
+      // guard the same way `eligible` filters existing assets.
+      if (input.type === "CASH") {
+        setNewAssetError(t("sp.newAssetCash"));
+        return;
+      }
+      input = { ...input, symbol: input.symbol ? input.symbol.toUpperCase() : input.symbol };
+      const key = assetPriceKey(input);
+      const existing = data.assets.find((a) => assetPriceKey(a) === key);
+      if (existing) {
+        setAssetId(existing.id);
+        closeAddAsset();
+        return;
+      }
+      const created = await addAsset(input);
+      setAssetId(created.id);
+      closeAddAsset();
+    } catch (err) {
+      setNewAssetError(err instanceof Error ? err.message : t("watchlist.notFound"));
+    } finally {
+      setNewAssetBusy(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -501,10 +599,6 @@ function NewPlanForm({
     }
   }
 
-  if (eligible.length === 0) {
-    return <p className="mt-3 text-sm text-zinc-500">{t("sp.noAssets")}</p>;
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -519,7 +613,54 @@ function NewPlanForm({
             onChange={setAssetId}
             options={eligible.map((a) => ({ value: a.id, label: a.name }))}
             searchable
+            footer={(close) => (
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  openAddAsset();
+                }}
+                className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+              >
+                {t("sp.newAsset")}
+              </button>
+            )}
           />
+          {addingAsset && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
+              <input
+                type="text"
+                autoFocus
+                value={newAssetQuery}
+                onChange={(e) => setNewAssetQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleResolveNewAsset();
+                  }
+                  if (e.key === "Escape") closeAddAsset();
+                }}
+                placeholder={t("watchlist.placeholder")}
+                aria-label={t("watchlist.placeholder")}
+                className={`${inputCls} flex-1`}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={newAssetBusy || !newAssetQuery.trim()}
+                onClick={() => void handleResolveNewAsset()}
+              >
+                {newAssetBusy ? "…" : t("watchlist.add")}
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={closeAddAsset}>
+                {t("tx.cancel")}
+              </Button>
+            </div>
+          )}
+          {newAssetError && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{newAssetError}</p>
+          )}
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-zinc-500">{t("sp.amount")}</span>
