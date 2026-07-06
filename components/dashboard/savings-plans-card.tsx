@@ -388,6 +388,7 @@ function NewPlanForm({
             ariaLabel={t("sp.asset")}
             onChange={setAssetId}
             options={eligible.map((a) => ({ value: a.id, label: a.name }))}
+            searchable
           />
         </label>
         <label className="block">

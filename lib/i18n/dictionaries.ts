@@ -27,6 +27,9 @@ export const en = {
   "export.csv": "Download CSV",
   "export.json": "Download JSON",
 
+  "select.search": "Search…",
+  "select.noResults": "No matches",
+
   "watchlist.title": "Watchlist",
   "watchlist.empty": "Add instruments you want to follow without holding them.",
   "watchlist.add": "Add",
@@ -653,6 +656,9 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "export.csv": "CSV herunterladen",
   "export.json": "JSON herunterladen",
+
+  "select.search": "Suchen…",
+  "select.noResults": "Keine Treffer",
 
   "watchlist.title": "Watchlist",
   "watchlist.empty": "Fügen Sie Wertpapiere hinzu, die Sie beobachten möchten, ohne sie zu halten.",
