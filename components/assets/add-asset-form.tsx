@@ -18,6 +18,7 @@ import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
@@ -107,6 +108,15 @@ export function AddAssetForm({
   const isCash = type === "CASH";
   // A resolved import (or chosen manual type) reveals the rest of the form.
   const ready = importStatus === "found" || manual;
+
+  const { touched, touch } = useFormTouched();
+  // Presence-only gating for the "Add asset" submit button — mirrors the
+  // checks in handleSubmit exactly (content validity still happens there).
+  const quantityMissing = !quantity.trim();
+  const priceMissing = !isCash && !price.trim();
+  const identifierOrNameMissing =
+    !isCash && manual && !name.trim() && !isin.trim() && !wkn.trim() && !symbol.trim();
+  const formIncomplete = quantityMissing || priceMissing || identifierOrNameMissing;
 
   function applyMatch(match: Instrument) {
     setName(match.name);
@@ -360,9 +370,13 @@ export function AddAssetForm({
             <input
               id="name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                touch();
+                setName(e.target.value);
+              }}
+              onBlur={touch}
               placeholder={isCash ? "Cash, Savings…" : "Apple Inc."}
-              className={inputCls}
+              className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
             />
           </div>
 
@@ -375,9 +389,13 @@ export function AddAssetForm({
                 <input
                   id="symbol"
                   value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    touch();
+                    setSymbol(e.target.value.toUpperCase());
+                  }}
+                  onBlur={touch}
                   placeholder="BTC"
-                  className={inputCls}
+                  className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
                 />
               </div>
             ) : (
@@ -389,8 +407,12 @@ export function AddAssetForm({
                   <input
                     id="isin"
                     value={isin}
-                    onChange={(e) => setIsin(e.target.value.toUpperCase())}
-                    className={inputCls}
+                    onChange={(e) => {
+                      touch();
+                      setIsin(e.target.value.toUpperCase());
+                    }}
+                    onBlur={touch}
+                    className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
                   />
                 </div>
                 <div>
@@ -400,8 +422,12 @@ export function AddAssetForm({
                   <input
                     id="wkn"
                     value={wkn}
-                    onChange={(e) => setWkn(e.target.value.toUpperCase())}
-                    className={inputCls}
+                    onChange={(e) => {
+                      touch();
+                      setWkn(e.target.value.toUpperCase());
+                    }}
+                    onBlur={touch}
+                    className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
                   />
                 </div>
               </div>
@@ -448,8 +474,12 @@ export function AddAssetForm({
                 type="text"
                 inputMode="decimal"
                 value={quantity}
-                onChange={(e) => setQuantity(stripLeadingZero(e.target.value))}
-                className={inputCls}
+                onChange={(e) => {
+                  touch();
+                  setQuantity(stripLeadingZero(e.target.value));
+                }}
+                onBlur={touch}
+                className={`${inputCls}${missingFieldCls(quantityMissing, touched)}`}
               />
             </div>
             {!isCash && (
@@ -474,8 +504,12 @@ export function AddAssetForm({
                   type="text"
                   inputMode="decimal"
                   value={price}
-                  onChange={(e) => setPrice(stripLeadingZero(e.target.value))}
-                  className={inputCls}
+                  onChange={(e) => {
+                    touch();
+                    setPrice(stripLeadingZero(e.target.value));
+                  }}
+                  onBlur={touch}
+                  className={`${inputCls}${missingFieldCls(priceMissing, touched)}`}
                 />
               </div>
             )}
@@ -558,9 +592,12 @@ export function AddAssetForm({
           </div>
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {formIncomplete && touched && (
+            <p className="text-xs text-zinc-500">{tr("form.missingFields")}</p>
+          )}
 
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={busy}>
+            <Button type="submit" variant="primary" disabled={busy || formIncomplete}>
               {busy ? "Adding…" : "Add asset"}
             </Button>
             {onDone && (

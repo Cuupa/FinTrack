@@ -30,6 +30,8 @@ export const en = {
   "select.search": "Search…",
   "select.noResults": "No matches",
 
+  "form.missingFields": "Fill in the highlighted fields",
+
   "watchlist.title": "Watchlist",
   "watchlist.empty": "Add instruments you want to follow without holding them.",
   "watchlist.add": "Add",
@@ -673,6 +675,8 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "select.search": "Suchen…",
   "select.noResults": "Keine Treffer",
+
+  "form.missingFields": "Füllen Sie die markierten Felder aus",
 
   "watchlist.title": "Watchlist",
   "watchlist.empty": "Fügen Sie Wertpapiere hinzu, die Sie beobachten möchten, ohne sie zu halten.",

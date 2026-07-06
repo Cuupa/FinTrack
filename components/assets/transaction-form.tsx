@@ -11,6 +11,7 @@ import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -42,6 +43,12 @@ export function TransactionForm({
   const [executedAt, setExecutedAt] = useState(nowDateTimeLocal());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const { touched, touch } = useFormTouched();
+  // Presence-only gating for the submit button — mirrors handleSubmit's checks.
+  const quantityMissing = !quantity.trim();
+  const priceMissing = !isCash && !price.trim();
+  const formIncomplete = quantityMissing || priceMissing;
 
   const isBuy = type === "BUY";
   const isBooking = type === "BOOKING";
@@ -158,8 +165,12 @@ export function TransactionForm({
             inputMode="decimal"
             placeholder="0"
             value={quantity}
-            onChange={(e) => setQuantity(stripLeadingZero(e.target.value))}
-            className={inputCls}
+            onChange={(e) => {
+              touch();
+              setQuantity(stripLeadingZero(e.target.value));
+            }}
+            onBlur={touch}
+            className={`${inputCls}${missingFieldCls(quantityMissing, touched)}`}
           />
         </Field>
         {!isCash && (
@@ -169,8 +180,12 @@ export function TransactionForm({
                 type="text"
                 inputMode="decimal"
                 value={price}
-                onChange={(e) => setPrice(stripLeadingZero(e.target.value))}
-                className={`${inputCls} pr-12`}
+                onChange={(e) => {
+                  touch();
+                  setPrice(stripLeadingZero(e.target.value));
+                }}
+                onBlur={touch}
+                className={`${inputCls} pr-12${missingFieldCls(priceMissing, touched)}`}
               />
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
                 {cur}
@@ -294,10 +309,13 @@ export function TransactionForm({
       </div>
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {formIncomplete && touched && (
+        <p className="text-xs text-zinc-500">{t("form.missingFields")}</p>
+      )}
       <Button
         type="submit"
         variant="primary"
-        disabled={busy}
+        disabled={busy || formIncomplete}
         className={`w-full ${
           isBuy
             ? "!bg-emerald-500 hover:!bg-emerald-600 !text-white dark:!bg-emerald-500"

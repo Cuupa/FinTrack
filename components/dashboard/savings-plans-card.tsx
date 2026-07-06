@@ -33,6 +33,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
+import { useFormTouched, missingFieldCls, missingLabelCls } from "@/lib/forms/required";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -493,6 +494,12 @@ function NewPlanForm({
   const asset = eligible.find((a) => a.id === assetId);
   const cur = asset?.currency || base;
 
+  const { touched, touch } = useFormTouched();
+  // Presence-only gating for the "Create" button — mirrors handleSubmit's checks.
+  const assetMissing = !assetId;
+  const amountMissing = !amount.trim();
+  const formIncomplete = assetMissing || amountMissing;
+
   function openAddAsset() {
     setNewAssetError(null);
     setNewAssetQuery("");
@@ -606,11 +613,14 @@ function NewPlanForm({
     >
       <div className="grid grid-cols-2 gap-3">
         <label className="col-span-2 block">
-          <span className="mb-1 block text-xs font-medium text-zinc-500">{t("sp.asset")}</span>
+          <span className={missingLabelCls(assetMissing, touched)}>{t("sp.asset")}</span>
           <SelectMenu
             value={assetId}
             ariaLabel={t("sp.asset")}
-            onChange={setAssetId}
+            onChange={(v) => {
+              touch();
+              setAssetId(v);
+            }}
             options={eligible.map((a) => ({ value: a.id, label: a.name }))}
             searchable
             footer={(close) => (
@@ -670,8 +680,12 @@ function NewPlanForm({
               inputMode="decimal"
               placeholder="0"
               value={amount}
-              onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
-              className={`${inputCls} pr-12`}
+              onChange={(e) => {
+                touch();
+                setAmount(stripLeadingZero(e.target.value));
+              }}
+              onBlur={touch}
+              className={`${inputCls} pr-12${missingFieldCls(amountMissing, touched)}`}
             />
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
               {cur}
@@ -712,11 +726,14 @@ function NewPlanForm({
         )}
       </div>
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {formIncomplete && touched && (
+        <p className="text-xs text-zinc-500">{t("form.missingFields")}</p>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onDone}>
           {t("tx.cancel")}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={busy}>
+        <Button type="submit" variant="primary" size="sm" disabled={busy || formIncomplete}>
           {busy ? t("sp.applying") : t("sp.create")}
         </Button>
       </div>

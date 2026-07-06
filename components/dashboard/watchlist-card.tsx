@@ -17,6 +17,7 @@ import { formatCurrency } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 
 interface ApiMatch {
   found: boolean;
@@ -44,6 +45,9 @@ export function WatchlistCard() {
   const [fetched, setFetched] = useState<Record<string, number>>({});
 
   const watchlist = data.watchlist;
+
+  const { touched, touch } = useFormTouched();
+  const queryMissing = !query.trim();
 
   // Price per item: catalog cache first (instrument currency), then the
   // one-shot fetch (item currency). Null = no real price known.
@@ -171,17 +175,24 @@ export function WatchlistCard() {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              touch();
+              setQuery(e.target.value);
+            }}
+            onBlur={touch}
             placeholder={t("watchlist.placeholder")}
             aria-label={t("watchlist.placeholder")}
-            className="w-44 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 md:w-56 dark:border-zinc-700"
+            className={`w-44 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 md:w-56 dark:border-zinc-700${missingFieldCls(queryMissing, touched)}`}
           />
-          <Button type="submit" size="sm" variant="secondary" disabled={busy || !query.trim()}>
+          <Button type="submit" size="sm" variant="secondary" disabled={busy || queryMissing}>
             {busy ? "…" : t("watchlist.add")}
           </Button>
         </form>
       </div>
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {queryMissing && touched && (
+        <p className="mt-2 text-xs text-zinc-500">{t("form.missingFields")}</p>
+      )}
 
       {watchlist.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("watchlist.empty")}</p>
