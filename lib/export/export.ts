@@ -35,7 +35,7 @@ export function portfolioToCsv(data: PortfolioData): string {
 
   const txRows: (string | number | null)[][] = [
     ["# Transactions"],
-    ["id", "date", "asset", "isin", "type", "quantity", "price", "fee"],
+    ["id", "date", "asset", "isin", "type", "quantity", "price", "fee", "tax"],
     ...data.transactions
       .slice()
       .sort((a, b) => (a.date < b.date ? -1 : 1))
@@ -50,6 +50,7 @@ export function portfolioToCsv(data: PortfolioData): string {
           t.quantity,
           t.price,
           t.fee,
+          t.tax,
         ];
       }),
   ];

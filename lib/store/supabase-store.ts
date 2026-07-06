@@ -15,10 +15,19 @@ import {
   type Portfolio,
   type PortfolioData,
   type Profile,
+  type SavingsPlan,
   type Transaction,
+  type WatchlistItem,
 } from "../types";
 import { RowNotFoundError } from "./types";
-import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
+import type {
+  AssetInput,
+  DataStore,
+  SavingsPlanInput,
+  SimulationCacheEntry,
+  TransactionInput,
+  WatchlistInput,
+} from "./types";
 
 interface InstrumentEmbed {
   isin: string | null;
@@ -44,7 +53,32 @@ interface TxRow {
   quantity: number;
   price: number;
   fee: number;
+  tax: number;
   executed_at: string;
+}
+
+interface SavingsPlanRow {
+  id: string;
+  asset_id: string;
+  portfolio_id: string;
+  amount: number;
+  frequency: SavingsPlan["interval"];
+  start_date: string;
+  active: boolean;
+  last_run_date: string | null;
+}
+
+function planFromRow(r: SavingsPlanRow): SavingsPlan {
+  return {
+    id: r.id,
+    assetId: r.asset_id,
+    portfolioId: r.portfolio_id,
+    amount: Number(r.amount),
+    interval: r.frequency,
+    startDate: r.start_date,
+    active: r.active,
+    lastRunDate: r.last_run_date,
+  };
 }
 
 function embed(row: AssetRow): InstrumentEmbed | null {
@@ -61,7 +95,7 @@ export class SupabaseStore implements DataStore {
   ) {}
 
   async load(): Promise<PortfolioData> {
-    const [profileRes, portfoliosRes, assetsRes, txRes] = await Promise.all([
+    const [profileRes, portfoliosRes, assetsRes, txRes, watchRes, plansRes] = await Promise.all([
       this.supabase
         .from("profiles")
         .select("currency, display_name, locale")
@@ -81,11 +115,23 @@ export class SupabaseStore implements DataStore {
       // RLS scopes transactions to the user's assets — no user_id column.
       this.supabase
         .from("transactions")
-        .select("id, asset_id, portfolio_id, type, quantity, price, fee, executed_at"),
+        .select("id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at"),
+      this.supabase
+        .from("watchlist_items")
+        .select("id, instrument:instruments (isin, wkn, symbol, name, type, currency)")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
+        .from("savings_plans")
+        .select("id, asset_id, portfolio_id, amount, frequency, start_date, active, last_run_date")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
     ]);
 
     if (assetsRes.error) throw assetsRes.error;
     if (txRes.error) throw txRes.error;
+    if (watchRes.error) throw watchRes.error;
+    if (plansRes.error) throw plansRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.
@@ -134,10 +180,30 @@ export class SupabaseStore implements DataStore {
       quantity: Number(r.quantity),
       price: Number(r.price),
       fee: Number(r.fee),
+      tax: Number(r.tax ?? 0),
       date: r.executed_at,
     }));
 
-    return { profile, portfolios, assets, transactions };
+    const watchlist: WatchlistItem[] = (
+      (watchRes.data ?? []) as Pick<AssetRow, "id" | "instrument">[]
+    ).map((r) => {
+      const inst = embed(r as AssetRow);
+      return {
+        id: r.id,
+        isin: inst?.isin ?? null,
+        wkn: inst?.wkn ?? null,
+        symbol: inst?.symbol ?? null,
+        name: inst?.name ?? "",
+        type: inst?.type ?? "STOCK",
+        currency: inst?.currency ?? null,
+      };
+    });
+
+    const savingsPlans: SavingsPlan[] = ((plansRes.data ?? []) as SavingsPlanRow[]).map(
+      planFromRow,
+    );
+
+    return { profile, portfolios, assets, transactions, watchlist, savingsPlans };
   }
 
   async saveProfile(profile: Profile): Promise<void> {
@@ -154,7 +220,7 @@ export class SupabaseStore implements DataStore {
    * Find the (global) instrument matching the input's identifiers, or create
    * one. Instruments are shared reference data — assets just link to them.
    */
-  private async resolveInstrument(input: AssetInput): Promise<string> {
+  private async resolveInstrument(input: Omit<AssetInput, "notes">): Promise<string> {
     const ors: string[] = [];
     if (input.isin) ors.push(`isin.eq.${input.isin}`);
     if (input.wkn) ors.push(`wkn.eq.${input.wkn}`);
@@ -260,9 +326,10 @@ export class SupabaseStore implements DataStore {
         quantity: input.quantity,
         price: input.price,
         fee: input.fee,
+        tax: input.tax,
         executed_at: input.date,
       })
-      .select("id, asset_id, portfolio_id, type, quantity, price, fee, executed_at")
+      .select("id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at")
       .single();
     if (error) throw error;
     const r = data as TxRow;
@@ -274,6 +341,7 @@ export class SupabaseStore implements DataStore {
       quantity: Number(r.quantity),
       price: Number(r.price),
       fee: Number(r.fee),
+      tax: Number(r.tax ?? 0),
       date: r.executed_at,
     };
   }
@@ -286,6 +354,7 @@ export class SupabaseStore implements DataStore {
     if (patch.quantity !== undefined) upd.quantity = patch.quantity;
     if (patch.price !== undefined) upd.price = patch.price;
     if (patch.fee !== undefined) upd.fee = patch.fee;
+    if (patch.tax !== undefined) upd.tax = patch.tax;
     if (patch.date !== undefined) upd.executed_at = patch.date;
     if (Object.keys(upd).length === 0) return;
     const { data, error } = await this.supabase
@@ -305,6 +374,81 @@ export class SupabaseStore implements DataStore {
       .from("transactions")
       .delete()
       .eq("id", id);
+    if (error) throw error;
+  }
+
+  async addWatchlistItem(input: WatchlistInput, id?: string): Promise<WatchlistItem> {
+    // Watchlist items link to the shared instruments catalog, like assets.
+    const instrumentId = await this.resolveInstrument(input);
+    const { data, error } = await this.supabase
+      .from("watchlist_items")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        instrument_id: instrumentId,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async removeWatchlistItem(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("watchlist_items")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan> {
+    const { data, error } = await this.supabase
+      .from("savings_plans")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        asset_id: input.assetId,
+        portfolio_id: input.portfolioId,
+        amount: input.amount,
+        frequency: input.interval,
+        start_date: input.startDate,
+        active: input.active,
+        last_run_date: input.lastRunDate,
+      })
+      .select("id, asset_id, portfolio_id, amount, frequency, start_date, active, last_run_date")
+      .single();
+    if (error) throw error;
+    return planFromRow(data as SavingsPlanRow);
+  }
+
+  async updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.assetId !== undefined) upd.asset_id = patch.assetId;
+    if (patch.portfolioId !== undefined) upd.portfolio_id = patch.portfolioId;
+    if (patch.amount !== undefined) upd.amount = patch.amount;
+    if (patch.interval !== undefined) upd.frequency = patch.interval;
+    if (patch.startDate !== undefined) upd.start_date = patch.startDate;
+    if (patch.active !== undefined) upd.active = patch.active;
+    if (patch.lastRunDate !== undefined) upd.last_run_date = patch.lastRunDate;
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("savings_plans")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    // See updateAsset — a zero-row match must be distinguishable for replay.
+    if (!data || data.length === 0) throw new RowNotFoundError(`savings plan ${id} not found`);
+  }
+
+  async deleteSavingsPlan(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("savings_plans")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
     if (error) throw error;
   }
 

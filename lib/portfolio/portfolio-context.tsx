@@ -15,14 +15,22 @@ import {
 } from "react";
 import { getSupabaseClient } from "../supabase/client";
 import { createStore, type DataStore } from "../store";
-import type { AssetInput, SimulationCacheEntry, TransactionInput } from "../store/types";
+import type {
+  AssetInput,
+  SavingsPlanInput,
+  SimulationCacheEntry,
+  TransactionInput,
+  WatchlistInput,
+} from "../store/types";
 import {
   emptyPortfolio,
   type Asset,
   type Portfolio,
   type PortfolioData,
   type Profile,
+  type SavingsPlan,
   type Transaction,
+  type WatchlistItem,
 } from "../types";
 import { useAuth } from "../auth/auth-context";
 import { useFeatureFlag } from "../flags/flags-context";
@@ -48,6 +56,11 @@ interface PortfolioContextValue {
   addTransaction(input: TransactionInput): Promise<Transaction>;
   updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
+  addWatchlistItem(input: WatchlistInput): Promise<WatchlistItem>;
+  removeWatchlistItem(id: string): Promise<void>;
+  addSavingsPlan(input: SavingsPlanInput): Promise<SavingsPlan>;
+  updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void>;
+  deleteSavingsPlan(id: string): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
@@ -138,6 +151,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ...d,
         assets: d.assets.filter((a) => a.id !== id),
         transactions: d.transactions.filter((t) => t.assetId !== id),
+        savingsPlans: d.savingsPlans.filter((p) => p.assetId !== id),
       }));
     },
     [store],
@@ -169,6 +183,54 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setData((d) => ({
         ...d,
         transactions: d.transactions.filter((t) => t.id !== id),
+      }));
+    },
+    [store],
+  );
+
+  const addWatchlistItem = useCallback(
+    async (input: WatchlistInput) => {
+      const item = await store.addWatchlistItem(input);
+      setData((d) => ({ ...d, watchlist: [...d.watchlist, item] }));
+      return item;
+    },
+    [store],
+  );
+
+  const removeWatchlistItem = useCallback(
+    async (id: string) => {
+      await store.removeWatchlistItem(id);
+      setData((d) => ({ ...d, watchlist: d.watchlist.filter((w) => w.id !== id) }));
+    },
+    [store],
+  );
+
+  const addSavingsPlan = useCallback(
+    async (input: SavingsPlanInput) => {
+      const plan = await store.addSavingsPlan(input);
+      setData((d) => ({ ...d, savingsPlans: [...d.savingsPlans, plan] }));
+      return plan;
+    },
+    [store],
+  );
+
+  const updateSavingsPlan = useCallback(
+    async (id: string, patch: Partial<SavingsPlanInput>) => {
+      await store.updateSavingsPlan(id, patch);
+      setData((d) => ({
+        ...d,
+        savingsPlans: d.savingsPlans.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteSavingsPlan = useCallback(
+    async (id: string) => {
+      await store.deleteSavingsPlan(id);
+      setData((d) => ({
+        ...d,
+        savingsPlans: d.savingsPlans.filter((p) => p.id !== id),
       }));
     },
     [store],
@@ -257,6 +319,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    addWatchlistItem,
+    removeWatchlistItem,
+    addSavingsPlan,
+    updateSavingsPlan,
+    deleteSavingsPlan,
     setCurrency,
     updateProfile,
     loadSimulation,

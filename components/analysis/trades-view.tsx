@@ -28,7 +28,15 @@ import {
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useDividends } from "@/lib/history/use-dividends";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
-import { realizedByMonth, topMovers, type Mover, type MonthlyRealized } from "@/lib/finance/trades";
+import {
+  realizedByMonth,
+  taxYearReport,
+  topMovers,
+  type Mover,
+  type MonthlyRealized,
+  type TaxYearSummary,
+} from "@/lib/finance/trades";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { type Timeframe } from "@/lib/finance/dates";
 import { assetPriceKey, type Transaction } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
@@ -142,6 +150,12 @@ export function TradesView() {
     [data.assets, data.transactions, valuation],
   );
 
+  const taxReportEnabled = useFeatureFlag("taxReport");
+  const taxYears = useMemo(
+    () => (taxReportEnabled ? taxYearReport(data.assets, data.transactions, valuation) : []),
+    [taxReportEnabled, data.assets, data.transactions, valuation],
+  );
+
   const { wins, losses } = useMemo(
     () =>
       moversTf === "MAX"
@@ -250,6 +264,60 @@ export function TradesView() {
           </div>
         )}
       </Card>
+
+      {taxReportEnabled && taxYears.length > 0 && (
+        <Card>
+          <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+            {t("trades.taxReport")}
+            <InfoTip text={t("trades.taxReportTip")} />
+          </h2>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+                  <th className="py-2 pr-3 font-medium">{t("trades.taxYear")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("trades.realizedGross")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("trades.interest")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("trades.fees")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("trades.taxes")}</th>
+                  <th className="py-2 text-right font-medium">{t("trades.realizedNet")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {taxYears.map((y: TaxYearSummary) => (
+                  <tr
+                    key={y.year}
+                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+                  >
+                    <td className="py-2 pr-3 font-medium tabular-nums">{y.year}</td>
+                    <td
+                      className={`py-2 pr-3 text-right tabular-nums ${plColor(y.realizedGross)}`}
+                      data-private
+                    >
+                      {formatCurrency(y.realizedGross, currency)}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                      {formatCurrency(y.interest, currency)}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                      {formatCurrency(y.fees, currency)}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                      {formatCurrency(y.taxes, currency)}
+                    </td>
+                    <td
+                      className={`py-2 text-right tabular-nums ${plColor(y.realizedNet)}`}
+                      data-private
+                    >
+                      {formatCurrency(y.realizedNet, currency)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">

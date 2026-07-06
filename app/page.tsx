@@ -10,6 +10,8 @@ import { AddAssetPanel } from "@/components/assets/add-asset-panel";
 import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
+import { WatchlistCard } from "@/components/dashboard/watchlist-card";
+import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { Button } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -88,6 +90,8 @@ export default function DashboardPage() {
           <LiveShareSync />
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
           <AssetTable timeframe={timeframe} />
+          <SavingsPlansCard />
+          <WatchlistCard />
         </>
       )}
 

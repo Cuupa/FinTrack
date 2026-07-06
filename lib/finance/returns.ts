@@ -31,9 +31,9 @@ export function netFlows(assets: Asset[], txs: Transaction[], v?: ValuationConte
     // BOOKING (Einbuchung) is a free crediting — no external cash flows in.
     const amount =
       t.type === "BUY"
-        ? (gross + t.fee) * rate
+        ? (gross + t.fee + t.tax) * rate
         : t.type === "SELL"
-          ? -(gross - t.fee) * rate
+          ? -(gross - t.fee - t.tax) * rate
           : 0;
     flows.push({ date: t.date.slice(0, 10), amount });
   }

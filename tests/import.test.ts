@@ -339,6 +339,7 @@ describe("reconcile", () => {
     quantity: 2,
     price: 230,
     fee: 1,
+    tax: 0,
     date: "2025-03-03T09:30:00",
   };
 
@@ -380,6 +381,7 @@ describe("import validation guardrail (isValidTx)", () => {
     quantity: 2,
     price: 230,
     fee: 1,
+    tax: 0,
     date: "2025-03-03T09:30:00",
     currency: "EUR",
     assetType: "STOCK",

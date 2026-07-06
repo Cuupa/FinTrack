@@ -27,6 +27,7 @@ export interface Position {
   /** Realised P&L from sells to date. */
   realizedPL: number;
   totalFees: number;
+  totalTaxes: number;
 }
 
 const byDateAsc = (a: Transaction, b: Transaction) =>
@@ -39,11 +40,15 @@ export function computePosition(txs: Transaction[]): Position {
   let avgCost = 0;
   let realizedPL = 0;
   let totalFees = 0;
+  let totalTaxes = 0;
 
   for (const t of sorted) {
     totalFees += t.fee;
+    totalTaxes += t.tax;
+    // Tax mirrors fee throughout: a buy tax (transaction tax) is part of the
+    // acquisition cost, a sell tax (Abgeltungsteuer) reduces the proceeds.
     if (t.type === "BUY") {
-      const cost = t.quantity * t.price + t.fee;
+      const cost = t.quantity * t.price + t.fee + t.tax;
       const newShares = shares + t.quantity;
       avgCost = newShares > 0 ? (shares * avgCost + cost) / newShares : 0;
       shares = newShares;
@@ -53,10 +58,10 @@ export function computePosition(txs: Transaction[]): Position {
       // any fee adds to basis. INTEREST (cash interest) works the same way —
       // credited at zero cost basis so it counts as return.
       const newShares = shares + t.quantity;
-      avgCost = newShares > 0 ? (shares * avgCost + t.fee) / newShares : 0;
+      avgCost = newShares > 0 ? (shares * avgCost + t.fee + t.tax) / newShares : 0;
       shares = newShares;
     } else {
-      const proceeds = t.quantity * t.price - t.fee;
+      const proceeds = t.quantity * t.price - t.fee - t.tax;
       realizedPL += proceeds - t.quantity * avgCost;
       shares -= t.quantity;
       if (shares <= 1e-9) {
@@ -66,7 +71,7 @@ export function computePosition(txs: Transaction[]): Position {
     }
   }
 
-  return { shares, avgCost, costBasis: shares * avgCost, realizedPL, totalFees };
+  return { shares, avgCost, costBasis: shares * avgCost, realizedPL, totalFees, totalTaxes };
 }
 
 /** Signed quantity held on a given date (inclusive). */
@@ -484,13 +489,14 @@ export function holdingPeriodProfit(
   const endValue = sharesNow * priceNow * rate;
 
   // Net cash invested into THIS position during the window (base currency):
-  // buys add, sells subtract. Fees are part of the cash moved.
+  // buys add, sells subtract. Fees and taxes are part of the cash moved.
   let flows = 0;
   for (const t of atxs) {
     if (dateKey(t.date) <= start) continue;
     const cash = t.quantity * t.price;
     // BOOKING adds no cash (free crediting) → its value shows up as profit.
-    const flow = t.type === "BUY" ? cash + t.fee : t.type === "SELL" ? -(cash - t.fee) : 0;
+    const flow =
+      t.type === "BUY" ? cash + t.fee + t.tax : t.type === "SELL" ? -(cash - t.fee - t.tax) : 0;
     flows += flow * rate;
   }
 

@@ -20,11 +20,26 @@
 // `navigator.onLine` alone (wrong behind captive portals / flaky VPNs) — see
 // lib/offline/connectivity.tsx for the equivalent read-side probe.
 
-import type { Asset, Portfolio, PortfolioData, Profile, Transaction } from "../types";
+import type {
+  Asset,
+  Portfolio,
+  PortfolioData,
+  Profile,
+  SavingsPlan,
+  Transaction,
+  WatchlistItem,
+} from "../types";
 import { drain, type DrainResult } from "../offline/sync";
 import { LocalStore, mirrorStorageKeys } from "./local-store";
 import { MutationQueue, type MutationOp } from "./mutation-queue";
-import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
+import type {
+  AssetInput,
+  DataStore,
+  SavingsPlanInput,
+  SimulationCacheEntry,
+  TransactionInput,
+  WatchlistInput,
+} from "./types";
 import { newId } from "./types";
 
 /**
@@ -166,6 +181,55 @@ export class OfflineStore implements DataStore {
       await this.inner.deleteTransaction(id);
     } catch (err) {
       await this.handleFailure(err, "deleteTransaction", id, null);
+    }
+  }
+
+  async addWatchlistItem(input: WatchlistInput, id?: string): Promise<WatchlistItem> {
+    const itemId = id ?? newId();
+    const item = await this.mirror.addWatchlistItem(input, itemId);
+    try {
+      await this.inner.addWatchlistItem(input, itemId);
+    } catch (err) {
+      await this.handleFailure(err, "addWatchlistItem", itemId, input);
+    }
+    return item;
+  }
+
+  async removeWatchlistItem(id: string): Promise<void> {
+    await this.mirror.removeWatchlistItem(id);
+    try {
+      await this.inner.removeWatchlistItem(id);
+    } catch (err) {
+      await this.handleFailure(err, "removeWatchlistItem", id, null);
+    }
+  }
+
+  async addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan> {
+    const planId = id ?? newId();
+    const plan = await this.mirror.addSavingsPlan(input, planId);
+    try {
+      await this.inner.addSavingsPlan(input, planId);
+    } catch (err) {
+      await this.handleFailure(err, "addSavingsPlan", planId, input);
+    }
+    return plan;
+  }
+
+  async updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void> {
+    await this.mirror.updateSavingsPlan(id, patch);
+    try {
+      await this.inner.updateSavingsPlan(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateSavingsPlan", id, patch);
+    }
+  }
+
+  async deleteSavingsPlan(id: string): Promise<void> {
+    await this.mirror.deleteSavingsPlan(id);
+    try {
+      await this.inner.deleteSavingsPlan(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteSavingsPlan", id, null);
     }
   }
 

@@ -15,6 +15,8 @@ export interface ParsedTx {
   quantity: number;
   price: number;
   fee: number;
+  /** Tax withheld on the transaction (0 when the export has no tax column). */
+  tax: number;
   /** ISO datetime, e.g. 2025-04-16T20:53:24. */
   date: string;
   currency: string;
@@ -138,6 +140,7 @@ function parseZeroOrders(text: string): { rows: ParsedTx[]; skipped: number } {
     execPrice: idx(header, "Ausführung Kurs"),
     execQty: idx(header, "Anzahl ausgeführt"),
     fee: idx(header, "Mindermengenzuschlag"),
+    tax: idx(header, "Steuern"),
   };
   const out: ParsedTx[] = [];
   let skipped = 0;
@@ -157,6 +160,7 @@ function parseZeroOrders(text: string): { rows: ParsedTx[]; skipped: number } {
       quantity: deNum(r[c.execQty]),
       price: deNum(r[c.execPrice]),
       fee: c.fee >= 0 ? Math.abs(deNum(r[c.fee])) || 0 : 0,
+      tax: c.tax >= 0 ? Math.abs(deNum(r[c.tax])) || 0 : 0,
       date: deDate(r[c.execDate], r[c.execTime]),
       currency: "EUR",
       assetType: inferAssetType(name),
@@ -230,6 +234,7 @@ function parseFnz(text: string): { rows: ParsedTx[]; skipped: number } {
       quantity: Math.abs(shares),
       price,
       fee: 0,
+      tax: 0,
       date: deDate(r[c.date]),
       currency: "EUR",
       assetType: "ETF",
@@ -254,6 +259,7 @@ function parseTradeRepublic(text: string): ParsedTx[] {
     shares: idxExact(header, "shares"),
     price: idxExact(header, "price"),
     fee: idxExact(header, "fee"),
+    tax: idxExact(header, "tax"),
     currency: idxExact(header, "currency"),
   };
   const out: ParsedTx[] = [];
@@ -273,6 +279,7 @@ function parseTradeRepublic(text: string): ParsedTx[] {
       quantity: shares,
       price,
       fee: Math.abs(parseFloat(r[c.fee]) || 0),
+      tax: c.tax >= 0 ? Math.abs(parseFloat(r[c.tax]) || 0) : 0,
       date: isoDate(r[c.dt], r[c.date]),
       currency: r[c.currency] || "EUR",
       assetType: assetTypeFromClass(r[c.assetClass]),
@@ -313,6 +320,7 @@ function parseDeutscheBank(text: string): ParsedTx[] {
       quantity: qty,
       price,
       fee: 0,
+      tax: 0,
       date: (r[c.date] || "").slice(0, 10) + "T00:00:00",
       currency: r[c.currency] || "EUR",
       assetType,
@@ -346,6 +354,7 @@ function parseDbTransactions(text: string): { rows: ParsedTx[]; skipped: number 
     betrag: idx(header, "Ausmachender Betrag"),
     feeOwn: idx(header, "Eigene Spesen"),
     feeForeign: idx(header, "Fremde Spesen"),
+    tax: idx(header, "Steuern"),
   };
   const out: ParsedTx[] = [];
   let skipped = 0;
@@ -388,6 +397,7 @@ function parseDbTransactions(text: string): { rows: ParsedTx[]; skipped: number 
       quantity,
       price,
       fee,
+      tax: c.tax >= 0 ? Math.abs(deNum(r[c.tax])) || 0 : 0,
       date: (r[c.date] || "").slice(0, 10) + "T00:00:00",
       currency: r[c.currency] || "EUR",
       assetType: "ETF",
@@ -487,6 +497,7 @@ export function parseGeneric(text: string): ParsedTx[] {
     qty: find(["quantity", "anzahl", "shares", "anteile", "stück", "stueck", "menge", "nominal", "bestand", "units"]),
     price: find(["price", "kurs", "preis", "rate"]),
     fee: find(["fee", "gebühr", "gebuehr", "provision", "kosten", "commission"]),
+    tax: find(["tax", "steuer", "kest", "abgeltung"]),
     currency: find(["currency", "währung", "waehrung", "ccy"]),
   };
   // Needs at least a quantity, a price and some identifier column to be a trade
@@ -515,6 +526,7 @@ export function parseGeneric(text: string): ParsedTx[] {
       quantity: qty,
       price,
       fee: c.fee >= 0 ? Math.abs(anyNum(r[c.fee]) || 0) : 0,
+      tax: c.tax >= 0 ? Math.abs(anyNum(r[c.tax]) || 0) : 0,
       date: c.date >= 0 ? anyDate(r[c.date]) : new Date().toISOString().slice(0, 19),
       currency: (c.currency >= 0 && r[c.currency]) || "EUR",
       assetType: inferAssetType(name),

@@ -23,13 +23,13 @@ import type { AssetType, TransactionType } from "@/lib/types";
 // A conflict is resolved field by field: each mergeable field takes its value
 // from the existing transaction ("current") or the CSV row ("incoming"). New
 // rows use a simple include/exclude instead.
-const MERGE_FIELDS = ["type", "quantity", "price", "fee", "date"] as const;
+const MERGE_FIELDS = ["type", "quantity", "price", "fee", "tax", "date"] as const;
 type MergeField = (typeof MERGE_FIELDS)[number];
 type MergeSide = "current" | "incoming";
 type Resolution = Record<MergeField, MergeSide>;
 
 function allFrom(side: MergeSide): Resolution {
-  return { type: side, quantity: side, price: side, fee: side, date: side };
+  return { type: side, quantity: side, price: side, fee: side, tax: side, date: side };
 }
 
 /** The five mergeable values, whichever object they come from. */
@@ -54,6 +54,7 @@ function isIdentical(row: ReconciledRow): boolean {
     ex.quantity === p.quantity &&
     ex.price === p.price &&
     ex.fee === p.fee &&
+    ex.tax === p.tax &&
     ex.date.slice(0, 10) === p.date.slice(0, 10)
   );
 }
@@ -319,6 +320,7 @@ export function ImportTransactions({
           quantity: pick("quantity"),
           price: pick("price"),
           fee: pick("fee"),
+          tax: pick("tax"),
           date: pick("date"),
         });
         transactionId = ex.id;
@@ -330,6 +332,7 @@ export function ImportTransactions({
           quantity: p.quantity,
           price: p.price,
           fee: p.fee,
+          tax: p.tax,
           date: p.date,
         });
         transactionId = created.id;
@@ -643,6 +646,7 @@ function ConflictMerge({
     quantity: t("tx.quantity"),
     price: t("tx.price"),
     fee: t("tx.fee"),
+    tax: t("tx.tax"),
     date: t("tx.date"),
   };
   const fmt = (v: MergeValues, f: MergeField) => {
@@ -655,6 +659,8 @@ function ConflictMerge({
         return formatCurrency(v.price, cur);
       case "fee":
         return formatCurrency(v.fee, cur);
+      case "tax":
+        return formatCurrency(v.tax, cur);
       case "date":
         return formatDateTime(v.date);
     }

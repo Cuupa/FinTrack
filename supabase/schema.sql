@@ -199,6 +199,10 @@ create table if not exists public.transactions (
   quantity numeric not null check (quantity > 0),
   price numeric not null check (price >= 0),
   fee numeric not null default 0 check (fee >= 0),
+  -- Tax withheld on the transaction (Abgeltungsteuer on sells, transaction
+  -- tax on some buys). Mirrors fee: buy tax raises basis, sell tax reduces
+  -- proceeds.
+  tax numeric not null default 0 check (tax >= 0),
   -- Trade date + time of day as a floating wall-clock (no time zone) — what
   -- the user picked, shown verbatim; avoids UTC reinterpretation/shifting.
   executed_at timestamp not null,
@@ -207,6 +211,8 @@ create table if not exists public.transactions (
 );
 alter table public.transactions
   add column if not exists portfolio_id uuid references public.portfolios (id) on delete cascade;
+alter table public.transactions
+  add column if not exists tax numeric not null default 0 check (tax >= 0);
 create index if not exists transactions_asset_id_idx on public.transactions (asset_id);
 create index if not exists transactions_portfolio_id_idx on public.transactions (portfolio_id);
 -- `create table if not exists` above is a no-op on an existing database, so
@@ -215,6 +221,38 @@ alter table public.transactions
   drop constraint if exists transactions_type_check;
 alter table public.transactions
   add constraint transactions_type_check check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST'));
+
+-- Watchlist -------------------------------------------------------------------
+-- Instruments the user follows without holding them; links to the shared
+-- instruments catalog like assets do.
+create table if not exists public.watchlist_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  instrument_id uuid not null references public.instruments (id),
+  created_at timestamptz not null default now()
+);
+create index if not exists watchlist_items_user_id_idx on public.watchlist_items (user_id);
+create unique index if not exists watchlist_items_user_instrument_key
+  on public.watchlist_items (user_id, instrument_id);
+
+-- Savings plans ---------------------------------------------------------------
+-- Recurring buy rules (Sparpläne). Due occurrences are materialized client-side
+-- as ordinary BUY transactions after an explicit user review; `last_run_date`
+-- advances so each occurrence happens once. `frequency` (not `interval`) to
+-- steer clear of the reserved type name.
+create table if not exists public.savings_plans (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  asset_id uuid not null references public.assets (id) on delete cascade,
+  portfolio_id uuid not null references public.portfolios (id) on delete cascade,
+  amount numeric not null check (amount > 0),
+  frequency text not null check (frequency in ('WEEKLY', 'MONTHLY', 'QUARTERLY')),
+  start_date date not null,
+  active boolean not null default true,
+  last_run_date date,
+  created_at timestamptz not null default now()
+);
+create index if not exists savings_plans_user_id_idx on public.savings_plans (user_id);
 
 -- Cached Monte Carlo simulation runs, keyed by a hash of the (seed-independent)
 -- parameters. Rerunning with identical params reuses the stored result instead
@@ -289,7 +327,11 @@ insert into public.schema_migrations (version) values
   ('0032_instruments_dedupe'),
   ('0033_site_config'),
   ('0034_shared_portfolios_expiry'),
-  ('0035_estimated_badge_flag')
+  ('0035_estimated_badge_flag'),
+  ('0036_transaction_tax'),
+  ('0037_watchlist'),
+  ('0038_savings_plans'),
+  ('0039_dividend_dashboard_flag')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -298,6 +340,8 @@ alter table public.schema_migrations enable row level security;
 alter table public.assets enable row level security;
 alter table public.portfolios enable row level security;
 alter table public.transactions enable row level security;
+alter table public.watchlist_items enable row level security;
+alter table public.savings_plans enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
 alter table public.instruments enable row level security;
@@ -364,6 +408,14 @@ create policy "own portfolios" on public.portfolios
 
 drop policy if exists "own assets" on public.assets;
 create policy "own assets" on public.assets
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own watchlist" on public.watchlist_items;
+create policy "own watchlist" on public.watchlist_items
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own savings plans" on public.savings_plans;
+create policy "own savings plans" on public.savings_plans
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own simulations" on public.simulation_runs;
@@ -472,7 +524,11 @@ insert into public.feature_flags (flag, description) values
   ('simulationCustom', 'Simulation — Custom mode'),
   ('simulationWithdrawal', 'Simulation — Withdrawal phase'),
   ('offline', 'Offline mode (read-only app shell + last-known data)'),
-  ('estimated-badge', 'Estimated badge on synthetic/fabricated prices & charts')
+  ('estimated-badge', 'Estimated badge on synthetic/fabricated prices & charts'),
+  ('taxReport', 'Analysis — annual tax report (realized gains, fees, taxes per year)'),
+  ('watchlist', 'Watchlist card on the dashboard'),
+  ('savingsPlans', 'Savings plans (recurring buys) card on the dashboard'),
+  ('dividends', 'Dividend dashboard (/dividends)')
 on conflict (flag) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the

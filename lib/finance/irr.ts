@@ -82,9 +82,9 @@ export function positionIRR(
     date: t.date,
     amount:
       t.type === "BUY"
-        ? -(t.quantity * t.price + t.fee)
+        ? -(t.quantity * t.price + t.fee + t.tax)
         : t.type === "SELL"
-          ? t.quantity * t.price - t.fee
+          ? t.quantity * t.price - t.fee - t.tax
           : 0, // BOOKING: nothing paid in (free crediting)
   }));
   if (currentValue > 0) flows.push({ amount: currentValue, date: today() });

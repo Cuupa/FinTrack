@@ -51,6 +51,7 @@ const TX_INPUT: TransactionInput = {
   quantity: 1,
   price: 100,
   fee: 0,
+  tax: 0,
   date: "2026-01-01T00:00:00.000Z",
 };
 
@@ -109,6 +110,32 @@ function makeInner(initial: PortfolioData) {
     },
     async deleteTransaction() {
       calls.push("deleteTransaction");
+      guard();
+    },
+    async addWatchlistItem(input, id) {
+      calls.push("addWatchlistItem");
+      guard();
+      const item = { ...input, id: id ?? "server-generated-id" };
+      data.watchlist.push(item);
+      return item;
+    },
+    async removeWatchlistItem() {
+      calls.push("removeWatchlistItem");
+      guard();
+    },
+    async addSavingsPlan(input, id) {
+      calls.push("addSavingsPlan");
+      guard();
+      const plan = { ...input, id: id ?? "server-generated-id" };
+      data.savingsPlans.push(plan);
+      return plan;
+    },
+    async updateSavingsPlan() {
+      calls.push("updateSavingsPlan");
+      guard();
+    },
+    async deleteSavingsPlan() {
+      calls.push("deleteSavingsPlan");
       guard();
     },
     async createPortfolio(name, id) {

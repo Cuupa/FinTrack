@@ -31,7 +31,7 @@ function asset(over: Partial<Asset> & Pick<Asset, "id">): Asset {
   };
 }
 function tx(p: Partial<Transaction> & Pick<Transaction, "assetId" | "type" | "quantity" | "price" | "date">): Transaction {
-  return { id: Math.random().toString(36), portfolioId: "p1", fee: 0, ...p };
+  return { id: Math.random().toString(36), portfolioId: "p1", fee: 0, tax: 0, ...p };
 }
 
 describe("xirr / portfolioIRR", () => {

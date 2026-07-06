@@ -43,6 +43,7 @@ const TX_INPUT: TransactionInput = {
   quantity: 1,
   price: 100,
   fee: 0,
+  tax: 0,
   date: "2026-01-01T00:00:00.000Z",
 };
 
@@ -140,6 +141,37 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       calls.push(`deleteTransaction:${id}`);
       maybeFail();
       data.transactions = data.transactions.filter((t) => t.id !== id);
+    },
+    async addWatchlistItem(input, id) {
+      calls.push(`addWatchlistItem:${id}`);
+      maybeFail();
+      if (id && duplicateIds.has(id)) throw uniqueViolationError();
+      const item = { ...input, id: id ?? "server-id" };
+      data.watchlist.push(item);
+      return item;
+    },
+    async removeWatchlistItem(id) {
+      calls.push(`removeWatchlistItem:${id}`);
+      maybeFail();
+      data.watchlist = data.watchlist.filter((w) => w.id !== id);
+    },
+    async addSavingsPlan(input, id) {
+      calls.push(`addSavingsPlan:${id}`);
+      maybeFail();
+      if (id && duplicateIds.has(id)) throw uniqueViolationError();
+      const plan = { ...input, id: id ?? "server-id" };
+      data.savingsPlans.push(plan);
+      return plan;
+    },
+    async updateSavingsPlan(id) {
+      calls.push(`updateSavingsPlan:${id}`);
+      maybeFail();
+      if (missingIds.has(id)) throw new RowNotFoundError(`savings plan ${id} not found`);
+    },
+    async deleteSavingsPlan(id) {
+      calls.push(`deleteSavingsPlan:${id}`);
+      maybeFail();
+      data.savingsPlans = data.savingsPlans.filter((p) => p.id !== id);
     },
     async createPortfolio(name, id) {
       calls.push(`createPortfolio:${id}`);

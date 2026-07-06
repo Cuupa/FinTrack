@@ -15,6 +15,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
   { href: "/", key: "nav.dashboard", icon: <path d="M3 12l9-9 9 9M5 10v10h14V10" /> },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
+    href: "/dividends",
+    key: "nav.dividends",
+    // Coin/payout glyph: circle + € strokes.
+    icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15 9.5A3.5 3.5 0 0 0 9 12a3.5 3.5 0 0 0 6 2.5M7.5 11h4m-4 2h4" />,
+    flag: "dividends",
+  },
+  {
     href: "/xray",
     key: "nav.xray",
     icon: <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,

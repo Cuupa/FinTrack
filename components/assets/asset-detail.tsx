@@ -537,7 +537,7 @@ function txTypeLabel(t: (key: MessageKey) => string, type: TransactionType, isCa
   }
 }
 
-type TxSortKey = "date" | "type" | "quantity" | "price" | "fee" | "total";
+type TxSortKey = "date" | "type" | "quantity" | "price" | "fee" | "tax" | "total";
 
 function TxTh({
   label,
@@ -579,6 +579,8 @@ function txCompare(a: Transaction, b: Transaction, key: TxSortKey): number {
       return a.price - b.price;
     case "fee":
       return a.fee - b.fee;
+    case "tax":
+      return a.tax - b.tax;
     case "total":
       return a.quantity * a.price - b.quantity * b.price;
   }
@@ -632,6 +634,9 @@ function TransactionsTable({
             <TxTh label={tr("tx.qty")} k="quantity" align="right" sort={sort} onSort={toggle} />
             <TxTh label={tr("tx.price")} k="price" align="right" sort={sort} onSort={toggle} />
             <TxTh label={tr("tx.fee")} k="fee" align="right" sort={sort} onSort={toggle} />
+            {!isCash && (
+              <TxTh label={tr("tx.tax")} k="tax" align="right" sort={sort} onSort={toggle} />
+            )}
             <TxTh label={tr("tx.total")} k="total" align="right" sort={sort} onSort={toggle} />
             <th className="py-2"></th>
           </tr>
@@ -681,6 +686,11 @@ function TransactionsTable({
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
                   {formatCurrency(t.fee, currency)}
                 </td>
+                {!isCash && (
+                  <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                    {formatCurrency(t.tax, currency)}
+                  </td>
+                )}
                 <td
                   className={`py-2 pr-3 text-right tabular-nums ${
                     t.type === "BUY"
@@ -741,6 +751,7 @@ function TransactionEditRow({
   const [quantity, setQuantity] = useState(String(tx.quantity));
   const [price, setPrice] = useState(String(tx.price));
   const [fee, setFee] = useState(String(tx.fee));
+  const [tax, setTax] = useState(String(tx.tax));
   const [date, setDate] = useState(tx.date.slice(0, 16));
   const [portfolioId, setPortfolioId] = useState(tx.portfolioId);
 
@@ -755,6 +766,7 @@ function TransactionEditRow({
       quantity: Number.isFinite(qty) && qty > 0 ? qty : tx.quantity,
       price: Number.isFinite(px) && px >= 0 ? px : tx.price,
       fee: parseDecimal(fee) || 0,
+      tax: isCash ? tx.tax : parseDecimal(tax) || 0,
       date,
       portfolioId,
     });
@@ -792,6 +804,11 @@ function TransactionEditRow({
         <td className="py-1.5 pr-2">
           <input inputMode="decimal" value={fee} onChange={(e) => setFee(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
         </td>
+        {!isCash && (
+          <td className="py-1.5 pr-2">
+            <input inputMode="decimal" value={tax} onChange={(e) => setTax(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+          </td>
+        )}
         <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
         <td className="py-1.5 text-right whitespace-nowrap">
           <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label={tr("tx.save")} title={tr("tx.save")}>
@@ -805,7 +822,7 @@ function TransactionEditRow({
       {/* The portfolio is only surfaced (and editable) while editing. */}
       {multiPortfolio && (
         <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
-          <td colSpan={7} className="px-2 pb-2">
+          <td colSpan={isCash ? 7 : 8} className="px-2 pb-2">
             <label className="flex items-center gap-2 text-xs text-zinc-500">
               <span className="shrink-0">{tr("tx.portfolio")}</span>
               <select

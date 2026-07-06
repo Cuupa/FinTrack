@@ -10,7 +10,7 @@ import {
 import type { Asset, Transaction } from "../lib/types";
 
 function tx(p: Partial<Transaction> & Pick<Transaction, "type" | "quantity" | "price">): Transaction {
-  return { id: "t", assetId: "a", portfolioId: "p1", fee: 0, date: "2025-01-01T00:00:00", ...p };
+  return { id: "t", assetId: "a", portfolioId: "p1", fee: 0, tax: 0, date: "2025-01-01T00:00:00", ...p };
 }
 
 function asset(over: Partial<Asset> & Pick<Asset, "id" | "type">): Asset {
@@ -38,6 +38,17 @@ describe("computePosition", () => {
     // basis 1010 → avg 101; proceeds 1000-5=995; realised = 995 - 1010 = -15
     expect(pos.realizedPL).toBeCloseTo(-15, 6);
     expect(pos.shares).toBe(0);
+  });
+
+  it("treats tax like fee: buy tax raises basis, sell tax reduces proceeds", () => {
+    const pos = computePosition([
+      tx({ type: "BUY", quantity: 10, price: 100, fee: 10, tax: 5 }),
+      tx({ type: "SELL", quantity: 10, price: 120, fee: 5, tax: 30 }),
+    ]);
+    // basis 1015; proceeds 1200-5-30=1165; realised = 1165 - 1015 = 150
+    expect(pos.realizedPL).toBeCloseTo(150, 6);
+    expect(pos.totalFees).toBe(15);
+    expect(pos.totalTaxes).toBe(35);
   });
 });
 

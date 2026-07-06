@@ -4,10 +4,20 @@
 // The active implementation is chosen by auth state in store/index.ts, so UI
 // and finance code never branch on the mode.
 
-import type { Asset, Portfolio, PortfolioData, Profile, Transaction } from "../types";
+import type {
+  Asset,
+  Portfolio,
+  PortfolioData,
+  Profile,
+  SavingsPlan,
+  Transaction,
+  WatchlistItem,
+} from "../types";
 
 export type AssetInput = Omit<Asset, "id">;
 export type TransactionInput = Omit<Transaction, "id">;
+export type WatchlistInput = Omit<WatchlistItem, "id">;
+export type SavingsPlanInput = Omit<SavingsPlan, "id">;
 
 /** A cached Monte Carlo run, keyed by a hash of its (seed-independent) params. */
 export interface SimulationCacheEntry {
@@ -35,6 +45,11 @@ export interface DataStore {
   addTransaction(input: TransactionInput, id?: string): Promise<Transaction>;
   updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
+  addWatchlistItem(input: WatchlistInput, id?: string): Promise<WatchlistItem>;
+  removeWatchlistItem(id: string): Promise<void>;
+  addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan>;
+  updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void>;
+  deleteSavingsPlan(id: string): Promise<void>;
   createPortfolio(name: string, id?: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
   /** Deletes the portfolio, its transactions, and assets held only in it. */

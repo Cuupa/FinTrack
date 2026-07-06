@@ -4,7 +4,14 @@
 // truly ephemeral sessions.
 
 import { emptyPortfolio, MAX_PORTFOLIOS, type PortfolioData, type Profile } from "../types";
-import type { AssetInput, DataStore, SimulationCacheEntry, TransactionInput } from "./types";
+import type {
+  AssetInput,
+  DataStore,
+  SavingsPlanInput,
+  SimulationCacheEntry,
+  TransactionInput,
+  WatchlistInput,
+} from "./types";
 import { newId } from "./types";
 
 const STORAGE_KEY = "fintrack:portfolio:v1";
@@ -72,7 +79,12 @@ export class LocalStore implements DataStore {
         transactions: (parsed.transactions ?? []).map((t) => ({
           ...t,
           portfolioId: t.portfolioId ?? fallbackId,
+          // Backfill transactions saved before the tax field existed.
+          tax: t.tax ?? 0,
         })),
+        // Backfill portfolios saved before the watchlist / savings plans existed.
+        watchlist: parsed.watchlist ?? [],
+        savingsPlans: parsed.savingsPlans ?? [],
       };
     } catch {
       return emptyPortfolio();
@@ -123,6 +135,8 @@ export class LocalStore implements DataStore {
     data.assets = data.assets.filter((a) => a.id !== id);
     const removedIds = data.transactions.filter((t) => t.assetId === id).map((t) => t.id);
     data.transactions = data.transactions.filter((t) => t.assetId !== id);
+    // Cascade: a plan without its asset can never execute again.
+    data.savingsPlans = data.savingsPlans.filter((p) => p.assetId !== id);
     this.write(data);
     this.pruneImportedFingerprints(removedIds);
   }
@@ -149,6 +163,43 @@ export class LocalStore implements DataStore {
     data.transactions = data.transactions.filter((t) => t.id !== id);
     this.write(data);
     this.pruneImportedFingerprints([id]);
+  }
+
+  async addWatchlistItem(input: WatchlistInput, id?: string) {
+    const data = this.read();
+    const item = { ...input, id: id ?? newId() };
+    data.watchlist.push(item);
+    this.write(data);
+    return item;
+  }
+
+  async removeWatchlistItem(id: string) {
+    const data = this.read();
+    data.watchlist = data.watchlist.filter((w) => w.id !== id);
+    this.write(data);
+  }
+
+  async addSavingsPlan(input: SavingsPlanInput, id?: string) {
+    const data = this.read();
+    const plan = { ...input, id: id ?? newId() };
+    data.savingsPlans.push(plan);
+    this.write(data);
+    return plan;
+  }
+
+  async updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>) {
+    const data = this.read();
+    const idx = data.savingsPlans.findIndex((p) => p.id === id);
+    if (idx >= 0) {
+      data.savingsPlans[idx] = { ...data.savingsPlans[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteSavingsPlan(id: string) {
+    const data = this.read();
+    data.savingsPlans = data.savingsPlans.filter((p) => p.id !== id);
+    this.write(data);
   }
 
   async createPortfolio(name: string, id?: string) {
@@ -186,6 +237,11 @@ export class LocalStore implements DataStore {
     data.transactions = data.transactions.filter((t) => t.portfolioId !== id);
     const stillUsed = new Set(data.transactions.map((t) => t.assetId));
     data.assets = data.assets.filter((a) => !doomed.has(a.id) || stillUsed.has(a.id));
+    // Cascade savings plans of the deleted portfolio (and of assets it took).
+    const assetIds = new Set(data.assets.map((a) => a.id));
+    data.savingsPlans = data.savingsPlans.filter(
+      (p) => p.portfolioId !== id && assetIds.has(p.assetId),
+    );
     this.write(data);
     // Prune fingerprints for the removed transactions so re-importing the same
     // CSV after deleting a portfolio doesn't skip rows as "already imported".

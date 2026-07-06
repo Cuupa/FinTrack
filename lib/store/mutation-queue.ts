@@ -19,6 +19,11 @@ export type MutationOp =
   | "addTransaction"
   | "updateTransaction"
   | "deleteTransaction"
+  | "addWatchlistItem"
+  | "removeWatchlistItem"
+  | "addSavingsPlan"
+  | "updateSavingsPlan"
+  | "deleteSavingsPlan"
   | "createPortfolio"
   | "renamePortfolio"
   | "deletePortfolio";

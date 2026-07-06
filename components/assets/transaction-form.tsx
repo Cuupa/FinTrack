@@ -36,6 +36,7 @@ export function TransactionForm({
     isCash ? "1" : String(round(currentPrice(assetPriceKey(asset), asset.type))),
   );
   const [fee, setFee] = useState("0");
+  const [tax, setTax] = useState("0");
   const [addingPortfolio, setAddingPortfolio] = useState(false);
   const [newPortfolio, setNewPortfolio] = useState("");
   const [executedAt, setExecutedAt] = useState(nowDateTimeLocal());
@@ -48,10 +49,18 @@ export function TransactionForm({
   const qtyNum = parseDecimal(quantity);
   const pxNum = isCash ? 1 : parseDecimal(price);
   const feeNum = parseDecimal(fee) || 0;
+  // Tax only applies to real trades (Abgeltungsteuer on sells, transaction
+  // tax on some buys) — never to cash deposits/withdrawals or creditings.
+  const showTax = !isCash && (isBuy || type === "SELL");
+  const taxNum = showTax ? parseDecimal(tax) || 0 : 0;
   // Cash leaving (buy) / arriving (sell); a BOOKING/INTEREST costs nothing, so
   // its "total" is the market value / interest received.
   const gross = Number.isFinite(qtyNum) && Number.isFinite(pxNum) ? qtyNum * pxNum : 0;
-  const total = isBuy ? gross + feeNum : isBooking || isInterest ? gross : gross - feeNum;
+  const total = isBuy
+    ? gross + feeNum + taxNum
+    : isBooking || isInterest
+      ? gross
+      : gross - feeNum - taxNum;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,10 +84,12 @@ export function TransactionForm({
         quantity: qty,
         price: px,
         fee: parseDecimal(fee) || 0,
+        tax: showTax ? parseDecimal(tax) || 0 : 0,
         date: executedAt,
       });
       setQuantity("");
       setFee("0");
+      setTax("0");
       onDone?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("tx.errFail"));
@@ -181,7 +192,23 @@ export function TransactionForm({
             </span>
           </div>
         </Field>
-        <Field label={t("tx.dateTime")}>
+        {showTax && (
+          <Field label={t("tx.tax")}>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={tax}
+                onChange={(e) => setTax(stripLeadingZero(e.target.value))}
+                className={`${inputCls} pr-12`}
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+                {cur}
+              </span>
+            </div>
+          </Field>
+        )}
+        <Field label={t("tx.dateTime")} className={showTax ? "col-span-2" : ""}>
           <input
             type="datetime-local"
             value={executedAt}

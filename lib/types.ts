@@ -39,18 +39,37 @@ export interface Asset {
   notes: string | null;
 }
 
+/** The identifier fields shared by assets and watchlist items. */
+export type InstrumentRef = Pick<Asset, "isin" | "wkn" | "symbol" | "name">;
+
 /**
  * Stable key used to look up prices for an asset. Prefers ISIN, then WKN, then
  * symbol, then name — so two assets that share an ISIN share a price series.
  */
-export function assetPriceKey(asset: Asset): string {
+export function assetPriceKey(asset: InstrumentRef): string {
   return (asset.isin || asset.wkn || asset.symbol || asset.name || "").toUpperCase();
 }
 
 /** Human-facing identifier shown in tables and headers. */
-export function assetIdentifier(asset: Asset): string {
+export function assetIdentifier(asset: InstrumentRef): string {
   if (asset.wkn && asset.isin) return `${asset.wkn} · ${asset.isin}`;
   return asset.isin || asset.wkn || asset.symbol || "—";
+}
+
+/**
+ * An instrument the user watches without holding it. Shares the asset's
+ * master-data shape (so price lookup and display helpers work unchanged) but
+ * never carries transactions.
+ */
+export interface WatchlistItem {
+  id: string;
+  isin: string | null;
+  wkn: string | null;
+  symbol: string | null;
+  name: string;
+  type: AssetType;
+  /** Native trading currency (null = portfolio base currency). */
+  currency: string | null;
 }
 
 /** A named portfolio. A user can hold several; transactions belong to one. */
@@ -75,8 +94,42 @@ export interface Transaction {
   price: number;
   /** Transaction fee in the base currency. */
   fee: number;
+  /**
+   * Tax withheld on this transaction in the base currency (Abgeltungsteuer on
+   * sells, transaction tax on some buys). Mirrors `fee` in the cash math: a
+   * buy tax raises the cost basis, a sell tax reduces the proceeds.
+   */
+  tax: number;
   /** ISO date (YYYY-MM-DD). */
   date: string;
+}
+
+export type SavingsPlanInterval = "WEEKLY" | "MONTHLY" | "QUARTERLY";
+
+export const SAVINGS_PLAN_INTERVALS: SavingsPlanInterval[] = [
+  "WEEKLY",
+  "MONTHLY",
+  "QUARTERLY",
+];
+
+/**
+ * A recurring buy rule (Sparplan). Plans never change the finance core: due
+ * occurrences are materialized as ordinary BUY transactions after an explicit
+ * user review, and `lastRunDate` advances so each occurrence happens once.
+ */
+export interface SavingsPlan {
+  id: string;
+  assetId: string;
+  portfolioId: string;
+  /** Amount invested per execution, in the asset's currency. */
+  amount: number;
+  interval: SavingsPlanInterval;
+  /** First execution day (YYYY-MM-DD). */
+  startDate: string;
+  /** Paused plans accrue no new occurrences. */
+  active: boolean;
+  /** Day of the last materialized occurrence (YYYY-MM-DD), or null. */
+  lastRunDate: string | null;
 }
 
 /** The complete persisted state for one user (or guest session). */
@@ -85,6 +138,8 @@ export interface PortfolioData {
   portfolios: Portfolio[];
   assets: Asset[];
   transactions: Transaction[];
+  watchlist: WatchlistItem[];
+  savingsPlans: SavingsPlan[];
 }
 
 export const DEFAULT_PROFILE: Profile = { currency: "EUR", name: null, locale: null };
@@ -95,5 +150,7 @@ export function emptyPortfolio(): PortfolioData {
     portfolios: [{ id: DEFAULT_PORTFOLIO_ID, name: "Main" }],
     assets: [],
     transactions: [],
+    watchlist: [],
+    savingsPlans: [],
   };
 }

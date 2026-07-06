@@ -227,6 +227,7 @@ export function AddAssetForm({
         quantity: qty,
         price: px,
         fee: parseDecimal(fee) || 0,
+        tax: 0,
         date: executedAt,
       });
       // Constituents are populated server-side by the sync-constituents cron

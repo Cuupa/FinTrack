@@ -18,7 +18,13 @@
 
 import type { PortfolioData, Profile } from "../types";
 import { RowNotFoundError } from "../store/types";
-import type { AssetInput, DataStore, TransactionInput } from "../store/types";
+import type {
+  AssetInput,
+  DataStore,
+  SavingsPlanInput,
+  TransactionInput,
+  WatchlistInput,
+} from "../store/types";
 import type { MutationQueue, QueuedMutation } from "../store/mutation-queue";
 
 export type DrainStatus =
@@ -96,6 +102,21 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       return;
     case "deleteTransaction":
       await inner.deleteTransaction(op.id);
+      return;
+    case "addWatchlistItem":
+      await inner.addWatchlistItem(op.payload as WatchlistInput, op.id);
+      return;
+    case "removeWatchlistItem":
+      await inner.removeWatchlistItem(op.id);
+      return;
+    case "addSavingsPlan":
+      await inner.addSavingsPlan(op.payload as SavingsPlanInput, op.id);
+      return;
+    case "updateSavingsPlan":
+      await inner.updateSavingsPlan(op.id, op.payload as Partial<SavingsPlanInput>);
+      return;
+    case "deleteSavingsPlan":
+      await inner.deleteSavingsPlan(op.id);
       return;
     case "createPortfolio": {
       const { name } = op.payload as { name: string };
