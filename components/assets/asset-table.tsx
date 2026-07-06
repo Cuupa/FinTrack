@@ -5,7 +5,7 @@
 // page. Per-asset prices are in the native currency; value is in the base
 // currency (so allocation is comparable across currencies).
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
@@ -17,7 +17,14 @@ import {
 import { dateKey, type Timeframe } from "@/lib/finance/dates";
 import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { assetIdentifier, type AssetType } from "@/lib/types";
+import {
+  officialNameRenames,
+  resolveOfficialNames,
+  type RenameCandidate,
+} from "@/lib/import/resolve-names";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { Button, Card } from "@/components/ui/primitives";
+import { Modal } from "@/components/ui/modal";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
@@ -38,7 +45,7 @@ interface Row {
 }
 
 export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
-  const { data } = usePortfolio();
+  const { data, updateAsset } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
   const currency = data.profile.currency;
@@ -81,6 +88,71 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     dir: -1,
   });
 
+  // "Official names": resolve every asset's official instrument name and,
+  // after an explicit review dialog, rename the checked ones. Names only —
+  // the resolver also returns a type, but existing assets keep theirs.
+  const [namesBusy, setNamesBusy] = useState(false);
+  const [upToDate, setUpToDate] = useState(false);
+  const upToDateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [renames, setRenames] = useState<RenameCandidate[] | null>(null);
+  const [renameChecked, setRenameChecked] = useState<Record<string, boolean>>({});
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  async function checkNames() {
+    setNamesBusy(true);
+    setUpToDate(false);
+    if (upToDateTimer.current) clearTimeout(upToDateTimer.current);
+    try {
+      // All assets, including fully liquidated past holdings — CASH and
+      // identifier-less assets are skipped by the diff helper anyway.
+      const ids = data.assets
+        .map((a) => (a.isin || a.wkn || a.symbol || "").toUpperCase())
+        .filter(Boolean);
+      const resolved = await resolveOfficialNames(ids);
+      const candidates = officialNameRenames(data.assets, resolved);
+      if (candidates.length === 0) {
+        setUpToDate(true);
+        upToDateTimer.current = setTimeout(() => setUpToDate(false), 4000);
+      } else {
+        const checked: Record<string, boolean> = {};
+        for (const c of candidates) checked[c.asset.id] = true;
+        setRenameChecked(checked);
+        setRenameError(null);
+        setRenames(candidates);
+      }
+    } catch {
+      /* resolver failed entirely (offline etc.) — nothing to review */
+    } finally {
+      setNamesBusy(false);
+    }
+  }
+
+  const checkedCount = useMemo(
+    () => (renames ?? []).filter((c) => renameChecked[c.asset.id]).length,
+    [renames, renameChecked],
+  );
+
+  async function applyRenames() {
+    if (!renames) return;
+    setRenameBusy(true);
+    setRenameError(null);
+    try {
+      // Sequential on purpose (same idiom as the savings-plans review): a
+      // mid-way failure leaves the remaining assets unrenamed and the dialog
+      // open, so the user can simply retry.
+      for (const c of renames) {
+        if (!renameChecked[c.asset.id]) continue;
+        await updateAsset(c.asset.id, { name: c.officialName });
+      }
+      setRenames(null);
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : t("names.applyError"));
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
   const rows = useMemo<Row[]>(() => {
     const q = query.trim().toLowerCase();
     const list = holdings
@@ -116,6 +188,26 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">{t("table.holdings")}</h2>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={namesBusy}
+          onClick={() => void checkNames()}
+          className="relative"
+        >
+          {/* Busy label overlays the idle one so the button keeps its width. */}
+          <span className={namesBusy ? "invisible" : undefined}>{t("names.update")}</span>
+          {namesBusy && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              {t("names.updating")}
+            </span>
+          )}
+        </Button>
+        {upToDate && (
+          <span className="text-xs text-emerald-600 dark:text-emerald-400" role="status">
+            {t("names.upToDate")}
+          </span>
+        )}
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -322,6 +414,77 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         </div>
       </details>
     )}
+
+    {/* Review dialog: nothing is renamed until the user applies explicitly. */}
+    <Modal
+      open={renames !== null}
+      onClose={() => {
+        if (!renameBusy) setRenames(null);
+      }}
+    >
+      <Card>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">{t("names.reviewTitle")}</h3>
+          <p className="text-sm text-zinc-500">{t("names.reviewHint")}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+                  <th className="py-2 pr-3" />
+                  <th className="py-2 pr-3 font-medium">{t("names.current")}</th>
+                  <th className="py-2 font-medium">{t("names.official")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(renames ?? []).map(({ asset, officialName }) => (
+                  <tr
+                    key={asset.id}
+                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+                  >
+                    <td className="py-2 pr-3">
+                      <input
+                        type="checkbox"
+                        checked={renameChecked[asset.id] ?? false}
+                        disabled={renameBusy}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setRenameChecked((prev) => ({ ...prev, [asset.id]: checked }));
+                        }}
+                        aria-label={`${asset.name} → ${officialName}`}
+                      />
+                    </td>
+                    <td className="max-w-[14rem] py-2 pr-3">
+                      <span className="block truncate">{asset.name}</span>
+                      <span className="block truncate text-xs text-zinc-500">
+                        {assetIdentifier(asset)}
+                      </span>
+                    </td>
+                    <td className="max-w-[14rem] py-2">
+                      <span className="block truncate font-medium">{officialName}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {renameError && (
+            <p className="text-sm text-red-600 dark:text-red-400">{renameError}</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" disabled={renameBusy} onClick={() => setRenames(null)}>
+              {t("tx.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={renameBusy || checkedCount === 0}
+              onClick={() => void applyRenames()}
+            >
+              {renameBusy ? t("names.applying") : t("names.apply", { count: checkedCount })}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </Modal>
     </>
   );
 }

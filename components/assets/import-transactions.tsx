@@ -12,12 +12,11 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { parseCsv, type ParsedTx } from "@/lib/import/csv";
 import { reconcile, type ReconciledRow } from "@/lib/import/reconcile";
+import { resolveOfficialNames } from "@/lib/import/resolve-names";
 import { formatCurrency, formatNumber, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { apiFetch } from "@/lib/api";
-import { lookupInstrumentByQuery } from "@/lib/finance/prices";
 import type { AssetType, TransactionType } from "@/lib/types";
 
 // A conflict is resolved field by field: each mergeable field takes its value
@@ -78,59 +77,21 @@ function rowIdentifier(p: Pick<ParsedTx, "isin" | "wkn" | "symbol">): string {
   return (p.isin || p.wkn || p.symbol || "").toUpperCase();
 }
 
-interface ResolvedInstrument {
-  name?: string;
-  /** Only set when the lookup returned a concrete, known type — a real
-   *  lookup beats the generic parser's name-based ETF/STOCK guess. */
-  type?: AssetType;
-}
-
-/** /api/lookup requests are throttled to this many concurrent in-flight
- *  calls: Yahoo (the resolver behind it) rate-limits large bursts, which a
- *  ~30-identifier import would otherwise fire all at once. */
-const LOOKUP_BATCH_SIZE = 4;
-
 /**
  * Resolve the official instrument name (and, when known, the real asset
  * type) for every unique identifier in a parsed CSV, so the preview and the
  * assets created from it show accurate data instead of whatever the broker
  * export happened to print — or, for the generic parser, had to guess from
- * the name. Tries the in-memory catalog first (synchronous, unthrottled);
- * identifiers the catalog misses fall back to the live /api/lookup route in
- * throttled batches. A row's CSV name/type is kept if neither resolves.
+ * the name. A row's CSV name/type is kept if neither the catalog nor the
+ * live lookup resolves it (see `resolveOfficialNames`).
  */
-async function resolveNames(rows: ParsedTx[]): Promise<Map<string, ResolvedInstrument>> {
+async function resolveNames(rows: ParsedTx[]) {
   const ids = new Set<string>();
   for (const p of rows) {
     const id = rowIdentifier(p);
     if (id) ids.add(id);
   }
-  const resolved = new Map<string, ResolvedInstrument>();
-  const remaining: string[] = [];
-  for (const id of ids) {
-    const match = lookupInstrumentByQuery(id);
-    if (match?.name) {
-      resolved.set(id, { name: match.name, type: match.type });
-    } else {
-      remaining.push(id);
-    }
-  }
-  for (let i = 0; i < remaining.length; i += LOOKUP_BATCH_SIZE) {
-    const batch = remaining.slice(i, i + LOOKUP_BATCH_SIZE);
-    await Promise.all(
-      batch.map(async (id) => {
-        try {
-          const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(id)}`);
-          if (!res.ok) return;
-          const d = (await res.json()) as { found?: boolean; name?: string; type?: AssetType };
-          if (d.found) resolved.set(id, { name: d.name, type: d.type });
-        } catch {
-          /* live lookup failed — keep the CSV name/type for this identifier */
-        }
-      }),
-    );
-  }
-  return resolved;
+  return resolveOfficialNames([...ids]);
 }
 
 function txTypeColor(type: TransactionType): string {

@@ -268,6 +268,18 @@ export const en = {
   "table.pastHoldings": "Past holdings",
   "table.lastTransaction": "Last transaction",
 
+  "names.update": "Official names",
+  "names.updating": "Checking…",
+  "names.upToDate": "All names up to date.",
+  "names.reviewTitle": "Update to official instrument names",
+  "names.reviewHint":
+    "Each row renames an asset to the official instrument name looked up by its ISIN/WKN/symbol. Only the name changes — type and holdings are untouched. Nothing is renamed until you apply.",
+  "names.current": "Current name",
+  "names.official": "Official name",
+  "names.apply": "Update {count} name(s)",
+  "names.applying": "Updating…",
+  "names.applyError": "Update failed.",
+
   "share.button": "Share",
   "share.snapshot": "Snapshot",
   "share.live": "Live",
@@ -896,6 +908,18 @@ const de: Partial<Record<MessageKey, string>> = {
   "table.noMatch": "Keine Positionen entsprechen Ihrem Filter.",
   "table.pastHoldings": "Frühere Positionen",
   "table.lastTransaction": "Letzte Transaktion",
+
+  "names.update": "Offizielle Namen",
+  "names.updating": "Wird geprüft…",
+  "names.upToDate": "Alle Namen sind aktuell.",
+  "names.reviewTitle": "Auf offizielle Instrumentennamen aktualisieren",
+  "names.reviewHint":
+    "Jede Zeile benennt eine Position in den offiziellen Instrumentennamen um, der über ISIN/WKN/Symbol ermittelt wurde. Nur der Name ändert sich — Typ und Bestände bleiben unberührt. Erst mit Übernehmen wird umbenannt.",
+  "names.current": "Aktueller Name",
+  "names.official": "Offizieller Name",
+  "names.apply": "{count} Name(n) aktualisieren",
+  "names.applying": "Wird aktualisiert…",
+  "names.applyError": "Aktualisierung fehlgeschlagen.",
 
   "share.button": "Teilen",
   "share.snapshot": "Momentaufnahme",
