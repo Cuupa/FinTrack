@@ -19,6 +19,7 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 import type { ChartMode, ChartScale } from "./performance-chart";
+import { axisCurrencyFormatter, yAxisWidth } from "./axis";
 
 export function DistributionChart({
   result,
@@ -69,15 +70,36 @@ export function DistributionChart({
 
   // Log scale is only meaningful for positive absolute values (currency mode).
   const useLog = scale === "log" && mode === "currency";
-  const positives = data
-    .flatMap((d) => [d.median, ...d.rangeFull, ...d.range80, ...d.range50])
-    .filter((v) => v > 0);
+  const allValues = data.flatMap((d) => [
+    d.median,
+    d.contributed,
+    ...d.rangeFull,
+    ...d.range80,
+    ...d.range50,
+  ]);
+  const positives = allValues.filter((v) => v > 0);
   const logLo = positives.length ? Math.min(...positives) : 1;
   const logHi = positives.length ? Math.max(...positives) : 1;
 
+  // Approximate axis extremes — feeds both the currency formatter's
+  // compact/precise decision and the snug axis width below. Not the exact
+  // tick set Recharts will draw (it auto-generates those), but min/max of the
+  // plotted values is a good proxy for the widest label.
+  const axisNums = useLog
+    ? [logLo, logHi]
+    : allValues.length
+      ? [Math.min(...allValues), Math.max(...allValues)]
+      : [0, 0];
+  // Same compact-for-large/precise-for-small currency formatting as the main
+  // performance chart, so large (e.g. 7-figure) projections don't force a
+  // wide axis; reused rather than duplicated.
+  const formatCurrencyTick = axisCurrencyFormatter(axisNums, currency);
+  const formatYTick = (v: number) => (mode === "percent" ? formatPercent(v, 0) : formatCurrencyTick(v));
+  const yWidth = yAxisWidth(axisNums.map(formatYTick));
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
         <XAxis
           dataKey="year"
@@ -97,10 +119,8 @@ export function DistributionChart({
           scale={useLog ? "log" : "linear"}
           domain={useLog ? [logLo, logHi] : ["auto", "auto"]}
           allowDataOverflow={useLog}
-          // Full values (no K/Tsd. abbreviation) so it reads consistently across
-          // locales.
-          tickFormatter={(v) => (mode === "percent" ? formatPercent(v, 0) : formatCurrency(v, currency))}
-          width={104}
+          tickFormatter={formatYTick}
+          width={yWidth}
           tick={{ fontSize: 12 }}
           stroke="currentColor"
           className="text-zinc-400"

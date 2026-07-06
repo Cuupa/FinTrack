@@ -16,10 +16,11 @@ import {
   YAxis,
 } from "recharts";
 import type { SeriesPoint } from "@/lib/finance/portfolio";
-import { decimalPlaces, formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { niceTicks } from "@/lib/ticks";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { InfoTip } from "@/components/ui/info-tip";
+import { axisCurrencyFormatter, yAxisWidth } from "./axis";
 
 export type ChartScale = "linear" | "log";
 export type ChartMode = "currency" | "percent";
@@ -232,20 +233,25 @@ export function PerformanceChart({
     return t.length >= 2 ? t : undefined;
   })();
 
-  // Align every currency tick to the same number of decimals as the tick that
-  // needs the most, so a whole 5 reads "5.00" beside "4.50" (not a bare "5").
-  // Only for small-value axes; large ones stay compact ("€12.5K").
-  const tickDecimals =
-    linearTicks && Math.max(...linearTicks.map((v) => Math.abs(v))) < 10_000
-      ? Math.max(0, ...linearTicks.map((v) => decimalPlaces(v)))
-      : null;
+  // The actual values that will be rendered as ticks (or their proxy on the
+  // log axis, whose ticks Recharts generates itself between these bounds) —
+  // feeds both the currency formatter's compact/precise decision and the
+  // snug axis width below.
+  const axisNums = useLog
+    ? [logLo, logHi]
+    : (linearTicks ??
+      data
+        .map((d) => (typeof d.value === "number" ? d.value : null))
+        .filter((v): v is number => v != null));
 
-  const formatY = (v: number) =>
-    pctMode
-      ? formatPercent(v, 0)
-      : tickDecimals != null
-        ? formatCurrency(v, currency, tickDecimals)
-        : formatCompactCurrency(v, currency);
+  // Small-value axes stay full precision, aligned to the tick that needs the
+  // most decimals (a whole 5 reads "5.00" beside "4.50"); large ones compact
+  // ("€12.5K") instead of demanding ever more axis width.
+  const formatCurrencyTick = axisCurrencyFormatter(axisNums, currency);
+
+  const formatY = (v: number) => (pctMode ? formatPercent(v, 0) : formatCurrencyTick(v));
+
+  const yWidth = yAxisWidth(axisNums.map(formatY));
 
   // Generic text alternative (WCAG 1.1.1) when the caller didn't pass a richer
   // one: start/end of the plotted window in whatever unit is on screen.
@@ -269,7 +275,7 @@ export function PerformanceChart({
     <div>
       <div role="img" aria-label={ariaLabel ?? fallbackAriaLabel}>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 8 }}>
+          <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
             <XAxis
               dataKey="date"
@@ -291,7 +297,7 @@ export function PerformanceChart({
               ticks={linearTicks}
               allowDataOverflow={useLog}
               tickFormatter={formatY}
-              width={72}
+              width={yWidth}
               tick={{ fontSize: 12 }}
               stroke="currentColor"
               className="text-zinc-400"

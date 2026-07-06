@@ -36,6 +36,7 @@ import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { ScopeSelect } from "@/components/analysis/scope-select";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { yAxisWidth } from "@/components/charts/axis";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
@@ -292,6 +293,31 @@ export function ReturnsView() {
     timeframe: mapTf,
   });
 
+  // Snug y-axis widths from the actual (approximate) tick extremes instead of
+  // a fixed guess, so mobile doesn't waste a quarter of the width on margin.
+  const formatBarPctTick = (v: number) => `${v.toFixed(0)}%`;
+  const barPctWidth = yAxisWidth(
+    barData.length
+      ? [Math.min(...barData.map((d) => d.pct)), Math.max(...barData.map((d) => d.pct))].map(formatBarPctTick)
+      : [],
+  );
+  const formatDivValTick = (v: number) => formatCurrency(v, base);
+  const divValWidth = yAxisWidth(
+    divValueData.length
+      ? [Math.min(...divValueData.map((d) => d.value)), Math.max(...divValueData.map((d) => d.value))].map(
+          formatDivValTick,
+        )
+      : [],
+  );
+  const divHoldRowTotals = divHoldData.rows.map((r) =>
+    divHoldData.bucketKeys.reduce((s, k) => s + (Number(r[k]) || 0), 0),
+  );
+  const divHoldWidth = yAxisWidth(
+    divHoldRowTotals.length
+      ? [Math.min(...divHoldRowTotals, 0), Math.max(...divHoldRowTotals, 0)].map(formatDivValTick)
+      : [],
+  );
+
   return (
     <div className="space-y-6">
       <Card>
@@ -384,12 +410,12 @@ export function ReturnsView() {
         </div>
         <div className="mt-3" role="img" aria-label={barAriaLabel}>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+            <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="currentColor" className="text-zinc-400" />
               <YAxis
-                tickFormatter={(v) => `${v.toFixed(0)}%`}
-                width={44}
+                tickFormatter={formatBarPctTick}
+                width={barPctWidth}
                 tick={{ fontSize: 11 }}
                 stroke="currentColor"
                 className="text-zinc-400"
@@ -433,12 +459,12 @@ export function ReturnsView() {
         ) : (
           <div className="mt-3" data-private role="img" aria-label={divValAriaLabel}>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={divValueData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <BarChart data={divValueData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="currentColor" className="text-zinc-400" />
                 <YAxis
-                  tickFormatter={(v) => formatCurrency(Number(v), base)}
-                  width={64}
+                  tickFormatter={(v) => formatDivValTick(Number(v))}
+                  width={divValWidth}
                   tick={{ fontSize: 11 }}
                   stroke="currentColor"
                   className="text-zinc-400"
@@ -479,12 +505,12 @@ export function ReturnsView() {
         ) : (
           <div className="mt-3" data-private role="img" aria-label={divHoldAriaLabel}>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={divHoldData.rows} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <BarChart data={divHoldData.rows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="currentColor" className="text-zinc-400" />
                 <YAxis
-                  tickFormatter={(v) => formatCurrency(Number(v), base)}
-                  width={64}
+                  tickFormatter={(v) => formatDivValTick(Number(v))}
+                  width={divHoldWidth}
                   tick={{ fontSize: 11 }}
                   stroke="currentColor"
                   className="text-zinc-400"

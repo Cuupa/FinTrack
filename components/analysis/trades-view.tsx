@@ -43,6 +43,7 @@ import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { yAxisWidth } from "@/components/charts/axis";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
@@ -190,6 +191,16 @@ export function TradesView() {
     ),
   });
 
+  // Snug y-axis width from the actual tick extremes instead of a fixed guess.
+  const formatBarValueTick = (v: number) => formatCurrency(v, currency);
+  const barValueWidth = yAxisWidth(
+    barData.length
+      ? [Math.min(...barData.map((d) => d.value)), Math.max(...barData.map((d) => d.value))].map(
+          formatBarValueTick,
+        )
+      : [],
+  );
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -233,7 +244,7 @@ export function TradesView() {
         ) : (
           <div className="mt-3" data-private role="img" aria-label={realizedAriaLabel}>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
                 <XAxis
                   dataKey="label"
@@ -244,8 +255,8 @@ export function TradesView() {
                   className="text-zinc-400"
                 />
                 <YAxis
-                  tickFormatter={(v) => formatCurrency(Number(v), currency)}
-                  width={64}
+                  tickFormatter={(v) => formatBarValueTick(Number(v))}
+                  width={barValueWidth}
                   tick={{ fontSize: 11 }}
                   stroke="currentColor"
                   className="text-zinc-400"
