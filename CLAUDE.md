@@ -132,6 +132,18 @@ the Stooq + synthetic fallbacks.
 - `lib/finance/stats.ts` + portfolio Monte Carlo — per-asset μ/σ + correlation
   (Cholesky) drive the "My portfolio" simulation mode (`/simulation`).
 
+### Watchlist & savings plans
+
+`PortfolioData` also carries `watchlist` (instruments followed without
+transactions; `watchlist_items` links to the instruments catalog like assets)
+and `savingsPlans` (recurring buy rules; `savings_plans`, column `frequency`
+since `interval` is a reserved type name). Both ride the full store seam —
+LocalStore backfills, OfflineStore mirrors + queues, `lib/offline/sync.ts`
+replays. Savings plans never touch the finance core:
+`lib/finance/savings-plans.ts` derives due occurrences (pure), and the
+dashboard card books them as ordinary BUY transactions only after an explicit
+review dialog, advancing `lastRunDate`.
+
 ### Asset identity
 
 Assets are identified by **ISIN/WKN** (not ticker). `symbol` is a nullable
@@ -148,6 +160,9 @@ form auto-imports name/ISIN/WKN **and the asset type** via
   basis (average-cost), realised/unrealised P&L, and the net-worth time series
   are all computed by replaying the transaction log. Holding reconstruction
   compares transactions by **day** (`dateKey`) since they carry a time.
+  Transactions carry `fee` **and `tax`** — tax mirrors fee in all cash math
+  (buy tax raises basis, sell tax reduces proceeds); `trades.ts` also builds
+  the per-calendar-year tax report on /analysis (flag `taxReport`).
 - `prices.ts` — **deterministic synthetic price provider** (seeded random walk
   keyed by the price key + a curated registry searchable by WKN/ISIN/symbol).
   Stands in for a real market-data API; the `PriceProvider` interface is the
@@ -162,8 +177,13 @@ form auto-imports name/ISIN/WKN **and the asset type** via
 
 ### Routes
 
-- `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable table
+- `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable
+  table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
+  (flag `watchlist`)
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
+- `/dividends` — dividend dashboard: income by month/year, personal yield +
+  yield-on-cost, per-holding breakdown, 12-month forecast from trailing
+  payouts (flag `dividends`)
 - `/simulation` — Monte Carlo simulation
 - `/login` — Supabase email/password + Google/GitHub OAuth
 - `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
