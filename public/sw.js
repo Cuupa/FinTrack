@@ -1,15 +1,26 @@
 // FinTrack service worker — offline app shell + reference-data cache.
 //
 // Strategy:
-//   * Navigations (HTML)     -> network-first, falling back to the cached
+//   * Navigations (HTML) -> network-first, falling back to the cached HTML
 //     copy of that exact route, then to the cached "/" app shell, so the
-//     installed PWA opens while offline.
+//     installed PWA opens while offline. This branch only ever reads/writes
+//     HTML-keyed cache entries (see key scheme below) — it can never resolve
+//     to an RSC flight body.
 //   * RSC flight requests (the payloads client-side <Link> navigation fetches
 //     under the hood — identified by a `_rsc` query param or an
-//     `Accept: text/x-component` header) -> same network-first / cached-copy
-//     strategy, keyed on the URL with `_rsc` stripped (that param is a
-//     per-navigation cache-buster, not part of the resource's identity) so a
-//     route visited once is reachable offline via client-side nav too.
+//     `Accept: text/x-component` header) -> network-first, cached under a
+//     dedicated key so a route visited once is reachable offline via
+//     client-side nav too. On a cache miss offline this branch returns a
+//     failed response rather than substituting the HTML shell — Next
+//     detects the RSC fetch failure and performs a hard navigation instead,
+//     which is handled by the navigate branch above.
+//   * Key scheme (why two requests to the same route never collide): a plain
+//     navigation caches under the route's own URL untouched. An RSC request
+//     is cached under that same URL plus a stable `__rsc=1` marker query
+//     param (the real `_rsc` cache-buster is stripped first, since it's a
+//     per-request timestamp, not part of the resource's identity). Distinct
+//     keys mean a navigate fallback can never match an RSC entry, and an
+//     online RSC prefetch can never overwrite the precached HTML shell.
 //   * Same-origin static assets (/_next/*, fonts, icons) -> stale-while-
 //     revalidate: serve the cached copy instantly if present, refresh it in
 //     the background.
@@ -26,7 +37,7 @@
 // previous deploy's cache (§5.1: stale precached shells/chunks after a
 // deploy are the main risk this guards against).
 
-const SW_VERSION = "2";
+const SW_VERSION = "3";
 const CACHE = `fintrack-v${SW_VERSION}`;
 
 // Routes that prerender as a static shell (the "○" marks in `next build`
@@ -74,19 +85,31 @@ function isRscRequest(request, url) {
   return accept.includes("text/x-component");
 }
 
-/** Cache key for an RSC flight request with the `_rsc` cache-buster stripped. */
+/**
+ * Cache key for an RSC flight request: the `_rsc` cache-buster (a
+ * per-request timestamp, not part of the resource's identity) is stripped,
+ * and a stable `__rsc=1` marker is added in its place. The marker is what
+ * keeps this key from ever colliding with the HTML cache entry for the same
+ * route — the navigate branch below caches/matches that route's plain URL,
+ * untouched. Without the marker, both request types would cache under the
+ * same key and a fallback lookup could return either response type for
+ * either kind of request.
+ */
 function rscCacheKey(request, url) {
-  const stripped = new URL(url);
-  stripped.searchParams.delete("_rsc");
-  return new Request(stripped.toString(), { headers: request.headers });
+  const marked = new URL(url);
+  marked.searchParams.delete("_rsc");
+  marked.searchParams.set("__rsc", "1");
+  return new Request(marked.toString(), { headers: request.headers });
 }
 
 // Next sends `Vary` on HTML/RSC responses (varying on its own router headers)
 // so the Cache API's default match — which respects `Vary` — silently misses
 // on a fallback lookup whose request headers differ from whatever request
-// originally populated the cache (e.g. a plain navigation falling back to a
-// shell that was cached from an RSC prefetch, or vice versa). Every match
-// here is an intentional same-URL fallback, so ignore Vary throughout.
+// originally populated the cache, even though the URL (cache key) is exactly
+// the same. Every match here is an intentional same-key fallback, so ignore
+// Vary throughout. This is safe from cross-type bleed: HTML and RSC entries
+// now live under distinct keys (see rscCacheKey above), so ignoring Vary can
+// only ever match a same-type entry.
 const MATCH_OPTS = { ignoreVary: true };
 
 self.addEventListener("fetch", (event) => {
@@ -120,11 +143,36 @@ self.addEventListener("fetch", (event) => {
     return; // every other /api/* route (mutations, lookup, cron, …) also passes straight through
   }
 
-  // App-shell navigations and RSC flight payloads: network-first with a
-  // same-resource cache fallback, then the "/" app shell so the installed
-  // PWA always opens offline.
-  if (request.mode === "navigate" || isRscRequest(request, url)) {
-    const cacheKey = isRscRequest(request, url) ? rscCacheKey(request, url) : request;
+  // App-shell navigations (HTML): network-first, falling back to the cached
+  // HTML copy of this exact route, then to the cached "/" app shell so the
+  // installed PWA always opens offline. Cached and matched only under the
+  // route's own URL (an RSC request for the same route never writes here —
+  // see rscCacheKey above), so this can never resolve to an RSC flight body.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          return res;
+        })
+        .catch(() =>
+          caches.match(request, MATCH_OPTS).then((cached) => cached || caches.match("/", MATCH_OPTS)),
+        ),
+    );
+    return;
+  }
+
+  // RSC flight payloads (client-side <Link> navigation fetches): network-
+  // first, cached under the dedicated `__rsc=1` key so a route visited once
+  // is reachable offline via client-side nav too. On a cache miss, do NOT
+  // fall back to the HTML shell — an RSC response and an HTML response are
+  // not interchangeable, and Next's router already handles a failed RSC
+  // fetch by performing a hard navigation (which the navigate branch above
+  // serves from cache). Returning a failed response here is what lets that
+  // fallback kick in instead of rendering a flight body as a page.
+  if (isRscRequest(request, url)) {
+    const cacheKey = rscCacheKey(request, url);
     event.respondWith(
       fetch(request)
         .then((res) => {
@@ -132,11 +180,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((cache) => cache.put(cacheKey, copy));
           return res;
         })
-        .catch(() =>
-          caches
-            .match(cacheKey, MATCH_OPTS)
-            .then((cached) => cached || caches.match("/", MATCH_OPTS)),
-        ),
+        .catch(() => caches.match(cacheKey, MATCH_OPTS).then((cached) => cached || Response.error())),
     );
     return;
   }
