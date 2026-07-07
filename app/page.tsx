@@ -12,6 +12,7 @@ import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
 import { WatchlistCard } from "@/components/dashboard/watchlist-card";
 import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Button } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -84,7 +85,7 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <div className="h-[420px] animate-pulse rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+        <DashboardSkeleton />
       ) : (
         <>
           <LiveShareSync />

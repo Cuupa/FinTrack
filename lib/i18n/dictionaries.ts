@@ -187,6 +187,7 @@ export const en = {
   "common.compare": "Compare",
   "common.other": "Other",
   "common.copy": "Copy",
+  "common.loading": "Loading…",
 
   "offline.bannerPrefix": "You're offline — showing data as of",
   "offline.bannerNoData": "You're offline — showing last-known data",
@@ -832,6 +833,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "common.compare": "Vergleichen",
   "common.other": "Andere",
   "common.copy": "Kopieren",
+  "common.loading": "Wird geladen…",
 
   "offline.bannerPrefix": "Sie sind offline — Stand der Daten:",
   "offline.bannerNoData": "Sie sind offline — letzter bekannter Datenstand wird angezeigt",

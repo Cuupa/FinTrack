@@ -51,6 +51,7 @@ import {
 } from "@/components/charts/performance-chart";
 import { TransactionForm } from "./transaction-form";
 import { AssetTags } from "./asset-tags";
+import { AssetDetailSkeleton } from "./asset-detail-skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
@@ -154,7 +155,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
   );
 
   if (loading) {
-    return <div className="h-96 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900" />;
+    return <AssetDetailSkeleton />;
   }
 
   if (!asset || !summary) {
