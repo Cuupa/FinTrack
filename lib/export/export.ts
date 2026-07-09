@@ -56,7 +56,7 @@ export function portfolioToCsv(data: PortfolioData): string {
   ];
 
   return [
-    `# FinTrack export — base currency ${data.profile.currency}`,
+    `# FinTrack export: base currency ${data.profile.currency}`,
     toCsvRows(assetRows),
     "",
     toCsvRows(txRows),

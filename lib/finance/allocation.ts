@@ -229,7 +229,7 @@ export function bySector(
 }
 
 export function byVolatility(holdings: HoldingSummary[]): Slice[] {
-  const order = ["Low (<15%)", "Medium (15–30%)", "High (30–60%)", "Very high (>60%)"];
+  const order = ["Low (<15%)", "Medium (15-30%)", "High (30-60%)", "Very high (>60%)"];
   const slices = group(holdings, (h) => {
     const v = volForAsset(h);
     if (v < 0.15) return order[0];

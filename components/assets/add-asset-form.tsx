@@ -290,7 +290,7 @@ export function AddAssetForm({
           {importStatus === "notfound" && (
             <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
               {/^[A-Z0-9]{6}$/.test(query.trim()) && !/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(query.trim())
-                ? "Not found. WKN lookup isn’t supported by the data source — try the ISIN instead, or "
+                ? "Not found. WKN lookup isn’t supported by the data source. Try the ISIN instead, or "
                 : "Not found. "}
               <button
                 type="button"
@@ -454,7 +454,7 @@ export function AddAssetForm({
             />
           </div>
           <p className="mt-1 text-xs text-zinc-500">
-            Prices use the listing in this currency — pick {base} if you trade on
+            Prices use the listing in this currency. Pick {base} if you trade on
             your home exchange.
           </p>
         </div>

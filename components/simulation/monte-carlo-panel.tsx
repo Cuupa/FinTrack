@@ -513,7 +513,7 @@ export function MonteCarloPanel() {
               </li>
             </ul>
             <p className="mt-1.5">
-              Runs 1,000–10,000 paths with monthly compounding and
+              Runs 1,000-10,000 paths with monthly compounding and
               normally-distributed returns.
             </p>
           </div>

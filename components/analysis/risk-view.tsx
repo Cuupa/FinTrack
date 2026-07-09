@@ -516,7 +516,7 @@ function MetricCard({
 
   return (
     <div
-      title={`${label} — ${info}`}
+      title={`${label}: ${info}`}
       className="group rounded-xl border border-zinc-200/70 bg-white p-3.5 transition-shadow hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
     >
       <div className="flex items-center gap-1 text-xs font-medium text-zinc-500">

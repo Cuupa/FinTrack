@@ -202,7 +202,7 @@ function ChartTooltip({
 }) {
   const d = payload?.[0]?.payload;
   if (!active || !d) return null;
-  const range = (r: [number, number]) => `${fmtVal(r[0])} – ${fmtVal(r[1])}`;
+  const range = (r: [number, number]) => `${fmtVal(r[0])} - ${fmtVal(r[1])}`;
   return (
     <div className="min-w-[15rem] rounded-lg border border-zinc-200 bg-white p-3 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
       <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">

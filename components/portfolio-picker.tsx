@@ -197,7 +197,7 @@ export function PortfolioPicker() {
       <ConfirmDialog
         open={confirmDelete !== null}
         title={t("nav.deletePortfolioTitle")}
-        message={confirmDelete ? `“${confirmDelete.name}” — ${t("nav.deletePortfolioMsg")}` : undefined}
+        message={confirmDelete ? `“${confirmDelete.name}”. ${t("nav.deletePortfolioMsg")}` : undefined}
         confirmLabel={t("tx.deleteTitle")}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => {

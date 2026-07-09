@@ -213,7 +213,7 @@ function LoginForm() {
 
           {tab === "signup" && signupOpen === false && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-              Registrations are currently closed — the app has reached its user
+              Registrations are currently closed. The app has reached its user
               limit. You can still use everything in Guest Mode.
             </div>
           )}

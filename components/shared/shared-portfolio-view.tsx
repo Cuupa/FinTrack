@@ -132,7 +132,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
           <h1 className="text-2xl font-semibold tracking-tight">{shareTitle(payload.ownerName)}</h1>
           <p className="text-sm text-zinc-500">
             A read-only {payload.live ? "live view" : "snapshot"}
-            {incognito ? " (incognito — amounts hidden)" : ""}.
+            {incognito ? " (incognito, amounts hidden)" : ""}.
           </p>
         </div>
         <div className="flex items-center gap-2">

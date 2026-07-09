@@ -33,7 +33,7 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
         <p>
           FinTrack kann ohne Registrierung im „Gastmodus“ genutzt werden. In diesem Modus
           verlassen Ihre Portfoliodaten (Positionen, Transaktionen, Einstellungen) Ihren
-          Browser zu keinem Zeitpunkt — sie werden ausschließlich im{" "}
+          Browser zu keinem Zeitpunkt. Sie werden ausschließlich im{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>{" "}
@@ -59,8 +59,8 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
         <p>
           Sie können sich mit E-Mail/Passwort oder über die Anbieter <strong>Google</strong>{" "}
           bzw. <strong>GitHub</strong> (OAuth) anmelden. Bei der OAuth-Anmeldung werden Sie
-          auf die Seite des jeweiligen Anbieters weitergeleitet und melden sich dort an —
-          welche Daten dabei verarbeitet werden, unterliegt der Datenschutzerklärung des
+          auf die Seite des jeweiligen Anbieters weitergeleitet und melden sich dort an.
+          Welche Daten dabei verarbeitet werden, unterliegt der Datenschutzerklärung des
           jeweiligen Anbieters (Google bzw. GitHub), nicht dieser Erklärung. Wir erhalten
           von diesen Anbietern lediglich die zur Kontoerstellung nötigen Basisdaten (z. B.
           E-Mail-Adresse).
@@ -70,14 +70,14 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
       <LegalSection heading="4. Marktdaten: Kurse und Wechselkurse">
         <p>
           FinTrack zeigt Kurse, Kursverläufe und Wechselkurse an. Diese Daten werden von
-          unserem Server abgerufen — <strong>nicht von Ihrem Browser</strong> — bei den
+          unserem Server, <strong>nicht von Ihrem Browser</strong>, abgerufen: bei den
           Anbietern Yahoo Finance, Stooq, CoinGecko und Frankfurter (EZB-Wechselkurse).
         </p>
         <p>
           Das bedeutet konkret: Ihr Browser sendet eine Anfrage an unseren eigenen Server
           (z. B. „aktuellen Kurs für dieses ISIN/Symbol abrufen“); erst unser Server
           kontaktiert die genannten Drittanbieter. <strong>Ihre IP-Adresse wird diesen
-          Anbietern dabei nicht offengelegt</strong> — sie sehen nur die IP-Adresse unseres
+          Anbietern dabei nicht offengelegt</strong>. Sie sehen nur die IP-Adresse unseres
           Servers. Übermittelt werden ausschließlich Instrumentenkennungen (ISIN, Symbol
           bzw. Kryptowährungs-ID) und ggf. die Zielwährung, keine auf Sie persönlich
           beziehbaren Daten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes
@@ -87,7 +87,7 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
 
       <LegalSection heading="5. Speicherung, Cookies und lokaler Speicher">
         <p>
-          Wir setzen ausschließlich technisch notwendige Cookies und lokalen Speicher ein —
+          Wir setzen ausschließlich technisch notwendige Cookies und lokalen Speicher ein,
           <strong> keine Analyse-, Marketing- oder Tracking-Cookies</strong> Dritter:
         </p>
         <ul className="list-disc space-y-1 pl-5">
@@ -134,7 +134,7 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
         <p>
           Wir speichern Ihre Daten, solange Ihr Konto besteht. Löschen Sie Ihr Konto (siehe
           oben), werden Ihr Profil, alle Portfolios, Assets, Transaktionen und geteilten
-          Links unwiderruflich und vollständig entfernt — die Löschung kaskadiert
+          Links unwiderruflich und vollständig entfernt. Die Löschung kaskadiert
           datenbankseitig über alle zugehörigen Tabellen.
         </p>
       </LegalSection>
@@ -165,7 +165,7 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
         <p>
           FinTrack can be used without registration in &ldquo;Guest Mode&rdquo;. In this
           mode your portfolio data (holdings, transactions, settings) never leaves your
-          browser — it is stored exclusively in your device&rsquo;s{" "}
+          browser. It is stored exclusively in your device&rsquo;s{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>
@@ -189,7 +189,7 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
         <p>
           You may sign in with email/password or via <strong>Google</strong> or{" "}
           <strong>GitHub</strong> (OAuth). During OAuth sign-in you are redirected to the
-          respective provider&rsquo;s site and authenticate there — what data is processed
+          respective provider&rsquo;s site and authenticate there. What data is processed
           during that step is governed by that provider&rsquo;s own privacy policy (Google
           or GitHub), not this one. We only receive the basic data needed to create your
           account (e.g. your email address).
@@ -199,23 +199,23 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
       <LegalSection heading="4. Market data: quotes and exchange rates">
         <p>
           FinTrack displays quotes, price history, and exchange rates. This data is fetched
-          by our server — <strong>not by your browser</strong> — from Yahoo Finance, Stooq,
+          by our server, <strong>not by your browser</strong>, from Yahoo Finance, Stooq,
           CoinGecko, and Frankfurter (ECB exchange rates).
         </p>
         <p>
           Concretely: your browser sends a request to our own server (e.g. &ldquo;fetch the
           current price for this ISIN/symbol&rdquo;); only our server then contacts these
           third-party providers. <strong>Your IP address is never disclosed to these
-          providers</strong> — they only see our server&rsquo;s IP address. Only instrument
+          providers</strong>. They only see our server&rsquo;s IP address. Only instrument
           identifiers (ISIN, symbol, or crypto id) and, where relevant, a target currency
-          are sent — no data that identifies you personally. The legal basis is Art. 6(1)(f)
+          are sent. No data that identifies you personally is transmitted. The legal basis is Art. 6(1)(f)
           GDPR (legitimate interest in providing the app&rsquo;s core function).
         </p>
       </LegalSection>
 
       <LegalSection heading="5. Storage, cookies and local storage">
         <p>
-          We use only technically necessary cookies and local storage —{" "}
+          We use only technically necessary cookies and local storage,{" "}
           <strong>no third-party analytics, marketing, or tracking cookies</strong>:
         </p>
         <ul className="list-disc space-y-1 pl-5">
@@ -260,7 +260,7 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
         <p>
           We keep your data for as long as your account exists. Deleting your account (see
           above) permanently and completely removes your profile, all portfolios, assets,
-          transactions, and share links — the deletion cascades at the database level
+          transactions, and share links. The deletion cascades at the database level
           across all related tables.
         </p>
       </LegalSection>
