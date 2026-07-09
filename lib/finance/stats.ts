@@ -17,6 +17,19 @@ const MONTHLY_PPY = 12;
 // exists; the window is then sliced to the requested (horizon) length.
 const MIN_REAL_MONTHS = 6;
 
+// Commodities/precious metals (e.g. a gold ETC, or an asset typed COMMODITY
+// directly) have an equity-like vol but a far lower long-run real return —
+// nowhere near 10% over decades. A COMMODITY-typed asset is caught directly;
+// a commodity ETC/ETF typed ETF/STOCK is caught by name (the asset record
+// carries no sector). Used as the prior for such holdings instead of the
+// equity-like ETF assumption.
+const COMMODITY = { mean: 0.03, vol: 0.16 };
+const COMMODITY_RE = /\b(gold|silver|platin|palladium|silber|commodit|rohstoff|edelmetall|bullion|precious\s*metal)/i;
+
+function isCommodity(asset: Asset): boolean {
+  return asset.type === "COMMODITY" || COMMODITY_RE.test(asset.name || "");
+}
+
 // General long-run capital-market assumptions per asset type (annualised
 // NOMINAL fractions), used as the prior an asset's measured return regresses
 // toward — and the sole source when there's no usable real history. These are
@@ -25,19 +38,9 @@ const GENERAL: Record<AssetType, { mean: number; vol: number }> = {
   ETF: { mean: 0.07, vol: 0.16 },
   STOCK: { mean: 0.07, vol: 0.2 },
   CRYPTO: { mean: 0.08, vol: 0.7 },
+  COMMODITY,
   CASH: { mean: 0.02, vol: 0.005 },
 };
-
-// Commodities/precious metals (e.g. a gold ETC) have an equity-like vol but a
-// far lower long-run real return — nowhere near 10% over decades. Detected by
-// name since the asset record carries no sector. Used as the prior for such
-// holdings instead of the equity-like ETF assumption.
-const COMMODITY = { mean: 0.03, vol: 0.16 };
-const COMMODITY_RE = /\b(gold|silver|platin|palladium|silber|commodit|rohstoff|edelmetall|bullion|precious\s*metal)/i;
-
-function isCommodity(asset: Asset): boolean {
-  return COMMODITY_RE.test(asset.name || "");
-}
 
 export interface AssetStat {
   name: string;

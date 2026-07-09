@@ -86,7 +86,7 @@ export function AddAssetForm({
    */
   async function fetchPrice(q: string, currency: string, t: AssetType) {
     const query = q.trim();
-    if (!query || t === "CASH" || t === "CRYPTO") return; // crypto needs a catalog id
+    if (!query || t === "CASH" || t === "CRYPTO" || t === "COMMODITY") return; // crypto/commodity need a catalog id
     setFetchingPrice(true);
     try {
       const res = await fetch(
@@ -381,7 +381,7 @@ export function AddAssetForm({
           </div>
 
           {!isCash &&
-            (type === "CRYPTO" ? (
+            (type === "CRYPTO" || type === "COMMODITY" ? (
               <div>
                 <label className="text-sm font-medium" htmlFor="symbol">
                   Symbol

@@ -625,6 +625,7 @@ export const en = {
   "assetType.ETF": "ETF",
   "assetType.FUND": "Fund",
   "assetType.CRYPTO": "Cryptocurrency",
+  "assetType.COMMODITY": "Commodity",
   "assetType.CASH": "Cash",
   "assetType.BOND": "Bond",
 
@@ -1272,6 +1273,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "assetType.ETF": "ETF",
   "assetType.FUND": "Fonds",
   "assetType.CRYPTO": "Kryptowährung",
+  "assetType.COMMODITY": "Rohstoff",
   "assetType.CASH": "Bargeld",
   "assetType.BOND": "Anleihe",
 

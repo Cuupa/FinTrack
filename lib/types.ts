@@ -1,13 +1,13 @@
 // Core domain types shared across the app and both storage backends.
 
-export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "CASH";
+export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "COMMODITY" | "CASH";
 // BOOKING is a cost-free crediting of shares — e.g. an
 // employer's vermögenswirksame Leistung or a gift. It adds shares at ZERO cost
 // basis, so their full current value counts as profit. INTEREST is interest
 // credited to a cash position — also zero cost basis, and counts as return.
 export type TransactionType = "BUY" | "SELL" | "BOOKING" | "INTEREST";
 
-export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "CASH"];
+export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "COMMODITY", "CASH"];
 
 /** Per-user configuration (PRD: `profiles`). */
 export interface Profile {

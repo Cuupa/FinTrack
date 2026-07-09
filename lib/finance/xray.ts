@@ -31,7 +31,7 @@ export interface XrayResult {
   total: number;
   /** Value decomposed into individual stocks. */
   classified: number;
-  /** ETF remainder not in the catalog + non-equity (crypto/cash). */
+  /** ETF remainder not in the catalog + non-equity (crypto/commodity/cash). */
   unclassified: number;
 }
 
@@ -92,7 +92,7 @@ export function xrayPortfolio(holdings: HoldingSummary[]): XrayResult {
         viaEtf: false,
       });
     } else {
-      // Crypto / cash aren't equities — not part of stock look-through.
+      // Crypto / commodity / cash aren't equities — not part of stock look-through.
       unclassified += marketValue;
     }
   }

@@ -116,7 +116,9 @@ function volForAsset(h: HoldingSummary): number {
   if (h.asset.type === "CASH") return 0;
   const inst = lookupInstrument(assetPriceKey(h.asset));
   if (inst) return inst.vol;
-  return h.asset.type === "CRYPTO" ? 0.7 : h.asset.type === "ETF" ? 0.16 : 0.3;
+  if (h.asset.type === "CRYPTO") return 0.7;
+  if (h.asset.type === "ETF" || h.asset.type === "COMMODITY") return 0.16;
+  return 0.3;
 }
 
 /**
@@ -174,6 +176,8 @@ function lookThrough(
       add(inst?.[field] || overrides?.[key]?.[field], h.marketValue);
     } else if (type === "CRYPTO") {
       add(field === "region" ? "Crypto" : "Digital Assets", h.marketValue);
+    } else if (type === "COMMODITY") {
+      add("Commodities", h.marketValue);
     } else {
       add("Cash", h.marketValue);
     }
