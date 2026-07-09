@@ -26,7 +26,7 @@ create table if not exists public.instruments (
   wkn text,
   symbol text,
   name text not null,
-  type text not null check (type in ('ETF', 'STOCK', 'CRYPTO', 'CASH')),
+  type text not null check (type in ('ETF', 'STOCK', 'CRYPTO', 'CASH', 'COMMODITY')),
   currency text,
   country text,
   sector text,
@@ -34,6 +34,10 @@ create table if not exists public.instruments (
   quote_source text check (quote_source in ('yahoo', 'stooq', 'coingecko')),
   quote_id text,
   base_price numeric not null default 100,
+  -- Multiplier applied to a resolved market price to convert provider units
+  -- into the instrument's native display units (e.g. gold quotes per troy
+  -- ounce, held per gram, so quote_scale = 1/31.1034768).
+  quote_scale numeric not null default 1,
   drift numeric not null default 0.07,
   vol numeric not null default 0.2,
   dividend_yield numeric not null default 0,
@@ -43,6 +47,12 @@ create table if not exists public.instruments (
   price_synced_at timestamptz,
   created_at timestamptz not null default now()
 );
+alter table public.instruments add column if not exists quote_scale numeric not null default 1;
+-- `create table if not exists` above is a no-op on an existing database, so
+-- re-apply the widened type check idempotently for upgrades too.
+alter table public.instruments drop constraint if exists instruments_type_check;
+alter table public.instruments
+  add constraint instruments_type_check check (type in ('ETF', 'STOCK', 'CRYPTO', 'CASH', 'COMMODITY'));
 -- Symbol uniqueness across the (global) instruments catalog.
 create unique index if not exists instruments_symbol_key
   on public.instruments (symbol) where symbol is not null;
@@ -566,6 +576,16 @@ values
   (null,           null,     'BTC',  'Bitcoin',                  'CRYPTO', 'USD', 'Crypto',        'coingecko', 'bitcoin', 64000, 0.35, 0.7, 0),
   (null,           null,     'ETH',  'Ethereum',                 'CRYPTO', 'USD', 'Crypto',        'coingecko', 'ethereum', 3400, 0.30, 0.8, 0),
   (null,           null,     'SOL',  'Solana',                   'CRYPTO', 'USD', 'Crypto',        'coingecko', 'solana',  150,   0.40, 1.0, 0)
+on conflict (symbol) where symbol is not null do nothing;
+
+-- Gold seed, kept as a separate insert so the shared column list above (which
+-- has no quote_scale) doesn't have to be widened for every existing row.
+-- Quoted per troy ounce (XAUEUR=X); quote_scale converts to per-gram
+-- (1 / 31.1034768 ~= 0.0321507466), the instrument's native display unit.
+insert into public.instruments
+  (symbol, name, type, currency, quote_source, quote_id, base_price, drift, vol, dividend_yield, quote_scale)
+values
+  ('XAU', 'Gold', 'COMMODITY', 'EUR', 'yahoo', 'XAUEUR=X', 115, 0.03, 0.16, 0, 0.0321507466)
 on conflict (symbol) where symbol is not null do nothing;
 
 -- Seed approximate FX rates (units per 1 EUR); the cron refreshes them.
