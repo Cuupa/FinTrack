@@ -20,6 +20,7 @@ interface InstrumentRow {
   region: string | null;
   quote_source: string | null;
   quote_id: string | null;
+  quote_scale: number | string | null;
   base_price: number | string;
   drift: number | string;
   vol: number | string;
@@ -49,7 +50,7 @@ export async function GET(): Promise<Response> {
       supabase
         .from("instruments")
         .select(
-          "isin, wkn, symbol, name, type, currency, country, sector, region, quote_source, quote_id, base_price, drift, vol, dividend_yield, last_price, price_synced_at",
+          "isin, wkn, symbol, name, type, currency, country, sector, region, quote_source, quote_id, quote_scale, base_price, drift, vol, dividend_yield, last_price, price_synced_at",
         ),
       supabase
         .from("instrument_constituents")
@@ -72,6 +73,7 @@ export async function GET(): Promise<Response> {
       region: r.region,
       quoteSource: r.quote_source,
       quoteId: r.quote_id,
+      quoteScale: r.quote_scale != null ? Number(r.quote_scale) : 1,
       basePrice: Number(r.base_price),
       drift: Number(r.drift),
       vol: Number(r.vol),

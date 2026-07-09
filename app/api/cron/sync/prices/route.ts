@@ -30,6 +30,7 @@ interface InstrumentRow {
   type: string;
   quote_source: string | null;
   quote_id: string | null;
+  quote_scale: number | string | null;
   last_price: number | string | null;
 }
 
@@ -100,6 +101,10 @@ async function syncEquities(
         if (r.currency && resolved && resolved.currency && resolved.currency !== r.currency) {
           p = p * (await fxRate(resolved.currency, r.currency));
         }
+        // after FX, per-instrument unit scale (e.g. Yahoo's per-ounce gold
+        // price -> the user's per-gram holding). No-op when scale is 1.
+        const scale = Number(r.quote_scale ?? 1);
+        if (scale !== 1) p = p * scale;
         // Auto-imported instruments are created without a quote listing, so the
         // cron resolves one (by ISIN/WKN/symbol — never hardcoded) and persists
         // it. Also re-persists when the resolved listing differs from the stored
@@ -197,7 +202,7 @@ async function handle(req: Request): Promise<Response> {
   // CoinGecko id, so only rows that already carry one are synced.
   const { data, error } = await supabase
     .from("instruments")
-    .select("id, isin, wkn, symbol, currency, type, quote_source, quote_id, last_price");
+    .select("id, isin, wkn, symbol, currency, type, quote_source, quote_id, quote_scale, last_price");
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const rows = (data ?? []) as InstrumentRow[];
@@ -208,7 +213,8 @@ async function handle(req: Request): Promise<Response> {
       supabase,
       rows.filter(
         (r) =>
-          (r.type === "STOCK" || r.type === "ETF") && r.quote_source !== "coingecko",
+          (r.type === "STOCK" || r.type === "ETF" || r.type === "COMMODITY") &&
+          r.quote_source !== "coingecko",
       ),
       syncedAt,
     ),

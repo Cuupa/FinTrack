@@ -12,6 +12,7 @@
 // client falls back to its synthetic price.
 
 import { isISIN, resolveQuote } from "@/lib/server/yahoo";
+import { applyScale } from "@/lib/server/scale";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ interface QuoteItem {
   // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
   // up nothing (some real ISINs aren't in Yahoo's search index).
   name?: string;
+  /** Provider-unit to native-unit multiplier, applied after FX; default 1. */
+  scale?: number;
 }
 
 interface RequestBody {
@@ -87,10 +90,12 @@ async function priceViaYahoo(item: QuoteItem): Promise<number | null> {
   // in the asset's currency is available — convert so the result is always
   // in the asset's own currency (matches /api/price and the cron sync).
   const want = (item.currency || "").toUpperCase();
-  if (want && r.currency && r.currency !== want) {
-    return r.price * (await fxRate(r.currency, want));
-  }
-  return r.price;
+  const adjusted =
+    want && r.currency && r.currency !== want
+      ? r.price * (await fxRate(r.currency, want))
+      : r.price;
+  // after FX, per-instrument unit scale.
+  return applyScale(adjusted, item.scale);
 }
 
 async function fetchStooq(

@@ -15,6 +15,8 @@ export interface QuoteRef {
   id: string;
   /** Native currency the provider returns (empty = base, for crypto). */
   currency: string;
+  /** Provider-unit to native-unit multiplier, applied after FX; default 1. */
+  scale: number;
 }
 
 interface Descriptor {
@@ -154,12 +156,17 @@ export function quoteRefFor(asset: Asset): QuoteRef | null {
     lookupInstrument(assetPriceKey(asset)) ??
     (asset.symbol ? lookupInstrument(asset.symbol) : null);
   if (inst?.quoteSource && inst.quoteId) {
-    return { source: inst.quoteSource, id: inst.quoteId, currency: inst.currency ?? "" };
+    return {
+      source: inst.quoteSource,
+      id: inst.quoteId,
+      currency: inst.currency ?? "",
+      scale: inst.quoteScale ?? 1,
+    };
   }
   // Catalog miss: equities can still be resolved by ISIN (or symbol) on Yahoo.
   if (asset.type === "STOCK" || asset.type === "ETF") {
     if (asset.isin || asset.symbol) {
-      return { source: "yahoo", id: asset.symbol ?? "", currency: asset.currency ?? "" };
+      return { source: "yahoo", id: asset.symbol ?? "", currency: asset.currency ?? "", scale: 1 };
     }
   }
   return null;
@@ -168,12 +175,26 @@ export function quoteRefFor(asset: Asset): QuoteRef | null {
 /** Build a live-quote item for an asset (for /api/quotes and /api/history). */
 export function quoteItemFor(
   asset: Asset,
-): { key: string; source: QuoteRef["source"]; id: string; currency: string; name?: string } | null {
+): {
+  key: string;
+  source: QuoteRef["source"];
+  id: string;
+  currency: string;
+  scale: number;
+  name?: string;
+} | null {
   const ref = quoteRefFor(asset);
   if (!ref) return null;
   // `name` lets the server fall back to a Yahoo name search when the ISIN/WKN
   // itself has no search hit (some real ISINs aren't in Yahoo's index).
-  return { key: assetPriceKey(asset), source: ref.source, id: ref.id, currency: ref.currency, name: asset.name };
+  return {
+    key: assetPriceKey(asset),
+    source: ref.source,
+    id: ref.id,
+    currency: ref.currency,
+    scale: ref.scale,
+    name: asset.name,
+  };
 }
 
 export { parseISODate, addDays };

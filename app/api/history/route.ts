@@ -7,6 +7,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
 import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
+import { scalePoints } from "@/lib/server/scale";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,8 @@ interface HistItem {
   // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
   // up nothing (some real ISINs aren't in Yahoo's search index).
   name?: string;
+  /** Provider-unit to native-unit multiplier, applied after FX; default 1. */
+  scale?: number;
 }
 
 interface RequestBody {
@@ -146,15 +149,16 @@ async function yahooHistory(item: HistItem, range: string): Promise<YahooPoint[]
   );
   if (!result) return null;
 
+  const scale = item.scale ?? 1;
+  let factor = scale;
   const want = (item.currency || "").toUpperCase();
   // Fell back to a different-currency listing → convert to the asset currency.
   if (want && result.currency && result.currency !== want) {
-    const rate = await fxRate(result.currency, want);
-    if (rate !== 1) {
-      return result.points.map((p) => ({ date: p.date, close: p.close * rate }));
-    }
+    factor *= await fxRate(result.currency, want);
   }
-  return result.points;
+  // after FX, per-instrument unit scale (e.g. Yahoo's per-ounce gold price ->
+  // the user's per-gram holding).
+  return scalePoints(result.points, factor);
 }
 
 function ytdDays(): number {

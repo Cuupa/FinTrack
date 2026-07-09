@@ -24,6 +24,8 @@ export interface Instrument {
   region: string | null;
   quoteSource: QuoteSource | null;
   quoteId: string | null;
+  /** Provider-unit to native-unit multiplier, applied after FX; default 1. */
+  quoteScale: number;
   // Synthetic-price fallback parameters.
   basePrice: number;
   drift: number;
