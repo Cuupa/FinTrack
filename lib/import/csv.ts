@@ -23,7 +23,13 @@ export interface ParsedTx {
   assetType: AssetType;
 }
 
-export type BrokerFormat = "zeroorders" | "fnz" | "traderepublic" | "deutschebank" | "dbtransactions";
+export type BrokerFormat =
+  | "zeroorders"
+  | "fnz"
+  | "traderepublic"
+  | "deutschebank"
+  | "dbtransactions"
+  | "bitpanda";
 
 // --- helpers ----------------------------------------------------------------
 
@@ -99,6 +105,16 @@ export function detectFormat(text: string): BrokerFormat | null {
   // Deutsche Bank "PrivatDepot" transaction export (distinct from the
   // Bestandsaufstellung snapshot above): a real Umsatzart-keyed history.
   if (h.includes("umsatzart") && h.includes("ausmachender betrag")) return "dbtransactions";
+  // Bitpanda export: a personal-data preamble (name, email, account info,
+  // venue) precedes the real header, so the signature is scanned across the
+  // first several lines rather than assumed to be line 0.
+  const preamble = toLines(text).slice(0, 8).join("\n").toLowerCase();
+  if (
+    (preamble.includes("transaction id") && preamble.includes("asset market price")) ||
+    preamble.includes("venue: bitpanda")
+  ) {
+    return "bitpanda";
+  }
   return null;
 }
 
@@ -107,6 +123,7 @@ export function detectFormat(text: string): BrokerFormat | null {
 function assetTypeFromClass(s: string): AssetType {
   const t = (s || "").toLowerCase();
   if (t.includes("crypto")) return "CRYPTO";
+  if (t.includes("metal")) return "COMMODITY";
   if (t.includes("stock") || t.includes("aktie")) return "STOCK";
   return "ETF";
 }
@@ -406,6 +423,86 @@ function parseDbTransactions(text: string): { rows: ParsedTx[]; skipped: number 
   return { rows: out, skipped };
 }
 
+/**
+ * Bitpanda transaction export. The file carries a personal-data preamble
+ * (name, email, account-opened date, venue) before the real header, so the
+ * header row is located by content rather than assumed to be line 0. Only
+ * "Cryptocurrency" and "Metal" (gold) rows become transactions; "Fiat" rows
+ * are pure cash deposits/withdrawals (Asset = EUR, Amount Asset = "-") and
+ * are skipped, counted like the other parsers' cash-only rows. Direction
+ * comes from Transaction Type: buy/deposit increase the holding (BUY),
+ * sell/withdrawal decrease it (SELL). A fee denominated in the row's own
+ * asset (e.g. a small BTC fee on a BTC deposit) is converted to fiat via the
+ * row's market price; a fee already in fiat (EUR) is used as-is. Gold is
+ * booked under the catalog's "XAU" symbol at its native gram quantity — no
+ * unit conversion, since the market price is already EUR per gram.
+ */
+function parseBitpanda(text: string): { rows: ParsedTx[]; skipped: number } {
+  const lines = toLines(text);
+  const headerIdx = lines.findIndex((l) => {
+    const h = l.toLowerCase();
+    return h.includes("transaction id") && h.includes("asset market price");
+  });
+  if (headerIdx < 0) return { rows: [], skipped: 0 };
+  const header = splitLine(lines[headerIdx], ",");
+  const c = {
+    timestamp: idxExact(header, "Timestamp"),
+    type: idxExact(header, "Transaction Type"),
+    amountAsset: idxExact(header, "Amount Asset"),
+    asset: idxExact(header, "Asset"),
+    marketPrice: idxExact(header, "Asset market price"),
+    marketPriceCurrency: idxExact(header, "Asset market price currency"),
+    assetClass: idxExact(header, "Asset class"),
+    fee: idxExact(header, "Fee"),
+    feeAsset: idxExact(header, "Fee asset"),
+    tax: idxExact(header, "Tax Fiat"),
+  };
+  const out: ParsedTx[] = [];
+  let skipped = 0;
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const r = splitLine(lines[i], ",");
+    if (r.length <= 1) continue;
+    const assetClass = (r[c.assetClass] || "").toLowerCase();
+    if (assetClass.includes("fiat")) {
+      skipped++; // pure cash deposit/withdrawal — no unit movement
+      continue;
+    }
+    const txTypeRaw = (r[c.type] || "").toLowerCase();
+    let type: TransactionType;
+    if (txTypeRaw === "buy" || txTypeRaw === "deposit") type = "BUY";
+    else if (txTypeRaw === "sell" || txTypeRaw === "withdrawal") type = "SELL";
+    else {
+      skipped++; // unrecognised transaction type — treat as an unbooked row
+      continue;
+    }
+    const assetSymbol = r[c.asset] || "";
+    const isGold = assetClass.includes("metal");
+    const price = anyNum(r[c.marketPrice]);
+    const feeAmount = Math.abs(anyNum(r[c.fee])) || 0;
+    const feeAssetSym = (r[c.feeAsset] || "").trim().toUpperCase();
+    const fee =
+      feeAssetSym && feeAssetSym === assetSymbol.toUpperCase()
+        ? feeAmount * (Number.isFinite(price) ? price : 0)
+        : feeAmount;
+    const taxRaw = anyNum(r[c.tax]);
+    out.push({
+      isin: null,
+      wkn: null,
+      symbol: isGold ? "XAU" : assetSymbol,
+      name: isGold ? "Gold" : assetSymbol,
+      type,
+      quantity: anyNum(r[c.amountAsset]),
+      price,
+      fee,
+      tax: Number.isFinite(taxRaw) ? taxRaw : 0,
+      date: isoDate(r[c.timestamp], r[c.timestamp]),
+      currency: r[c.marketPriceCurrency] || "EUR",
+      assetType: assetTypeFromClass(r[c.assetClass]),
+    });
+  }
+  return { rows: out, skipped };
+}
+
 // --- generic (any-broker) parser --------------------------------------------
 
 /** Number tolerant of both decimal comma and decimal point, plus thousands
@@ -541,13 +638,15 @@ export function parseGeneric(text: string): ParsedTx[] {
  * without one of those we can't reliably match it against the catalog or
  * existing holdings — a parseable date, a positive share count and a
  * positive, finite price. A bare `symbol` is not enough *unless* the row is
- * crypto (`assetType === "CRYPTO"`): crypto has no ISIN/WKN by nature, so a
- * symbol (e.g. "BTC") is the only identifier it can ever carry. This runs
- * centrally in `parseCsv` after every per-broker parser, so no individual
- * parser needs to duplicate it.
+ * crypto or a commodity (`assetType === "CRYPTO" | "COMMODITY"`): neither has
+ * an ISIN/WKN by nature, so a symbol (e.g. "BTC", "XAU") is the only
+ * identifier they can ever carry. This runs centrally in `parseCsv` after
+ * every per-broker parser, so no individual parser needs to duplicate it.
  */
 export function isValidTx(tx: ParsedTx): boolean {
-  const hasIdentifier = Boolean(tx.isin || tx.wkn) || (tx.assetType === "CRYPTO" && Boolean(tx.symbol));
+  const hasIdentifier =
+    Boolean(tx.isin || tx.wkn) ||
+    ((tx.assetType === "CRYPTO" || tx.assetType === "COMMODITY") && Boolean(tx.symbol));
   return (
     hasIdentifier &&
     /^\d{4}-\d{2}-\d{2}/.test(tx.date || "") &&
@@ -566,7 +665,8 @@ export function parseCsv(
   // Known broker formats parse precisely; anything else falls back to the
   // generic header-driven parser so files from other brokers still import.
   // Only the formats with recognised-but-cash-only or unexecuted rows (FNZ,
-  // Deutsche Bank transactions, ZERO orders) report a non-zero `skipped` count.
+  // Deutsche Bank transactions, ZERO orders, Bitpanda) report a non-zero
+  // `skipped` count.
   let rows: ParsedTx[];
   let skipped: number;
   if (fmt === "fnz") {
@@ -575,6 +675,8 @@ export function parseCsv(
     ({ rows, skipped } = parseDbTransactions(text));
   } else if (fmt === "zeroorders") {
     ({ rows, skipped } = parseZeroOrders(text));
+  } else if (fmt === "bitpanda") {
+    ({ rows, skipped } = parseBitpanda(text));
   } else {
     rows = !fmt
       ? parseGeneric(text)

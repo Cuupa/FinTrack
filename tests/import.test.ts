@@ -80,6 +80,29 @@ const DB_TX = "\uFEFF" + [
   "2026-05-04;2026-05-04;2026-05-06;310 0000000 00;310 0000000 01 (EUR);Kauf;400,00;SISF EURO CORP.BD ADEOSF FUNDS;A0RMZQ;LU0425487740;EUR;;1,00;0,00;0,00;;;0,00;0,00;0,00;-6.160,64;PrivatDepot Comfort",
 ].join("\n");
 
+// Anonymized excerpt of a real Bitpanda transaction export. The six-line
+// preamble (disclaimer, name+birthdate, email, account-opened, venue) is
+// reproduced with the two PII lines replaced by placeholders — the real
+// header only appears on line 6, which is exactly what forces detectFormat
+// to scan rather than assume line 0. Rows: a crypto deposit whose fee is
+// denominated in the asset itself (BTC, not EUR), a crypto buy with a plain
+// EUR fee, a crypto sell, a gold buy (Metal asset class), and a Fiat deposit
+// + withdrawal pair (pure cash movements with no asset amount).
+const BITPANDA = [
+  '"Disclaimer: All data is without guarantee, errors and changes are reserved."',
+  '"Anon User, 1900-01-01"',
+  "anon@example.com",
+  '"Account opened at: 2024-02-29T12:14:38+01:00"',
+  '"Venue: Bitpanda"',
+  '"Transaction ID",Timestamp,"Transaction Type",In/Out,"Amount Fiat",Fiat,"Amount Asset",Asset,"Asset market price","Asset market price currency","Asset class","Product ID",Fee,"Fee asset","Fee percent",Spread,"Spread Currency","Tax Fiat"',
+  "C1,2025-05-05T09:22:18+02:00,deposit,incoming,15.03,EUR,0.00017939,BTC,83770.76,EUR,Cryptocurrency,1,0.00006000,BTC,-,-,-,-",
+  "T1,2025-05-31T08:20:41+02:00,buy,outgoing,25.00,EUR,0.00026887,BTC,92981.74,EUR,Cryptocurrency,1,0.25000000,EUR,0.99,-,-,0.00",
+  "T2,2025-05-05T10:04:41+02:00,sell,incoming,355.74,EUR,0.00430285,BTC,82675.44,EUR,Cryptocurrency,1,3.51000000,EUR,0.99,-,-,0.00",
+  "T3,2025-12-05T09:07:15+01:00,buy,outgoing,25.00,EUR,0.21283109,Gold,117.46,EUR,Metal,28,-,-,-,-,-,0.00",
+  "F1,2025-05-22T07:46:00+02:00,deposit,incoming,20.00,EUR,-,EUR,-,-,Fiat,-,0.00000000,EUR,-,-,-,0.00",
+  "F2,2025-05-05T17:50:09+02:00,withdrawal,outgoing,355.74,EUR,-,EUR,-,-,Fiat,-,0.00000000,EUR,-,-,-,0.00",
+].join("\n");
+
 describe("csv detectFormat", () => {
   it("identifies each broker", () => {
     expect(detectFormat(ZERO)).toBe("zeroorders");
@@ -87,6 +110,7 @@ describe("csv detectFormat", () => {
     expect(detectFormat(TR)).toBe("traderepublic");
     expect(detectFormat(DB)).toBe("deutschebank");
     expect(detectFormat(DB_TX)).toBe("dbtransactions"); // despite the BOM
+    expect(detectFormat(BITPANDA)).toBe("bitpanda"); // header on line 6, not 0
     expect(detectFormat("a,b,c\n1,2,3")).toBeNull();
   });
 });
@@ -235,6 +259,39 @@ describe("csv parsers", () => {
     expect(derived.type).toBe("BUY");
     expect(derived.price).toBeCloseTo(6160.64 / 400, 4);
   });
+
+  it("bitpanda: fiat rows skipped, crypto/gold rows mapped with fee conversion", () => {
+    const { format, rows, skipped, invalid } = parseCsv(BITPANDA);
+    expect(format).toBe("bitpanda");
+    expect(rows).toHaveLength(4); // deposit, buy, sell (BTC) + buy (Gold)
+    expect(skipped).toBe(2); // the Fiat deposit + withdrawal
+    expect(invalid).toBe(0);
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+    for (const r of rows) byType[r.type]++;
+    expect(byType).toEqual({ BUY: 3, SELL: 1, BOOKING: 0, INTEREST: 0 });
+
+    const [deposit, buy, sell, gold] = rows;
+    // Deposit: fee is denominated in BTC itself (the row's own asset) →
+    // converted to fiat via the row's market price (0.00006 * 83770.76).
+    expect(deposit).toMatchObject({ symbol: "BTC", assetType: "CRYPTO", type: "BUY" });
+    expect(deposit.quantity).toBeCloseTo(0.00017939, 8);
+    expect(deposit.price).toBeCloseTo(83770.76, 2);
+    expect(deposit.fee).toBeCloseTo(0.00006 * 83770.76, 4);
+    expect(deposit.date).toBe("2025-05-05T09:22:18");
+
+    // Buy: plain EUR fee, used as-is.
+    expect(buy).toMatchObject({ symbol: "BTC", assetType: "CRYPTO", type: "BUY", fee: 0.25 });
+    expect(buy.quantity).toBeCloseTo(0.00026887, 8);
+    expect(buy.price).toBeCloseTo(92981.74, 2);
+
+    expect(sell).toMatchObject({ symbol: "BTC", assetType: "CRYPTO", type: "SELL", fee: 3.51 });
+
+    // Gold: mapped to the catalog's XAU symbol, COMMODITY asset type, no
+    // unit conversion (grams stay grams).
+    expect(gold).toMatchObject({ symbol: "XAU", name: "Gold", assetType: "COMMODITY", type: "BUY", fee: 0 });
+    expect(gold.quantity).toBeCloseTo(0.21283109, 8);
+    expect(gold.price).toBeCloseTo(117.46, 2);
+  });
 });
 
 // Full real broker exports sitting (uncommitted) in the repo root. These run
@@ -243,6 +300,7 @@ describe("csv parsers — full real exports", () => {
   const fnzPath = join(__dirname, "..", "Umsatzdaten_99134053488.csv");
   const dbTxPath = join(__dirname, "..", "Umsaetze_20260702_161243.csv");
   const zeroOrdersPath = join(__dirname, "..", "ZERO-orders-29.06.2026.csv");
+  const bitpandaPath = join(__dirname, "..", "bitpanda_export_1783021441399.csv");
 
   it.skipIf(!existsSync(fnzPath))("fnz: all 382 share-moving rows import", () => {
     // The export is Windows-1252; the app's file reader decodes it the same way.
@@ -318,6 +376,35 @@ describe("csv parsers — full real exports", () => {
     }
     expect(byType).toEqual({ BUY: 26, SELL: 2, BOOKING: 0, INTEREST: 0 });
   });
+
+  it.skipIf(!existsSync(bitpandaPath))(
+    "bitpanda: real export — 24 valid (23 buy, 1 sell), 22 fiat rows skipped",
+    () => {
+      const text = readFileSync(bitpandaPath, "utf8");
+      const { format, rows, skipped, invalid } = parseCsv(text);
+      expect(format).toBe("bitpanda");
+      // 46 data rows: 22 Fiat deposit/withdrawal rows carry no asset amount
+      // and are skipped; the remaining 24 are real crypto/gold trades, all
+      // of which pass the validation guardrail (symbol-only identifier is
+      // allowed for CRYPTO/COMMODITY).
+      expect(rows.length + skipped + invalid).toBe(46);
+      expect(skipped).toBe(22);
+      expect(invalid).toBe(0);
+      expect(rows).toHaveLength(24);
+      const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+      const byAssetType: Record<string, number> = {};
+      for (const r of rows) {
+        byType[r.type]++;
+        byAssetType[r.assetType] = (byAssetType[r.assetType] || 0) + 1;
+        expect(r.quantity).toBeGreaterThan(0);
+        expect(r.price).toBeGreaterThan(0);
+        expect(r.symbol).toBeTruthy();
+      }
+      expect(byType).toEqual({ BUY: 23, SELL: 1, BOOKING: 0, INTEREST: 0 });
+      // 3 Gold buys (COMMODITY) + 21 BTC trades (20 buy + 1 sell, CRYPTO).
+      expect(byAssetType).toEqual({ COMMODITY: 3, CRYPTO: 21 });
+    },
+  );
 });
 
 describe("reconcile", () => {
