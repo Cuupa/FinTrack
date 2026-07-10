@@ -21,7 +21,7 @@ export interface InstrumentHit {
   symbol: string | null;
   name: string;
   /** null = unsupported type (e.g. BOND) — the hit is dropped, never surfaced. */
-  type: "STOCK" | "ETF" | "CRYPTO" | null;
+  type: "STOCK" | "ETF" | "CRYPTO" | "COMMODITY" | null;
   /** Best-effort trading currency (Yahoo only; onvista doesn't return one). */
   currency: string | null;
   source: SourceId;
@@ -55,6 +55,18 @@ const YAHOO_TYPE_MAP: Record<string, InstrumentHit["type"]> = {
   ETF: "ETF",
   MUTUALFUND: "ETF",
   CRYPTOCURRENCY: "CRYPTO",
+  // NOTE: quoteType "FUTURE" is deliberately NOT mapped to COMMODITY here.
+  // Yahoo's free-text search for a bare metal ticker (e.g. "XAU") can match
+  // an unrelated futures contract (observed: "XAU=F", an E-mini Utilities
+  // Select Sector future, not gold) just as easily as the intended precious-
+  // metal future (GC=F, SI=F, ...) — quoteType alone can't tell them apart.
+  // Mapping FUTURE -> COMMODITY here made such mismatches carry the same
+  // type as an authoritative COMMODITY import row, defeating the type-
+  // mismatch guard in applyResolvedInstrument (lib/import/resolve-names.ts)
+  // and corrupting the row's name with the wrong instrument. Verified live
+  // against /api/lookup?q=XAU during the Bitpanda-gold-import fix. Until
+  // lookup can disambiguate futures reliably (e.g. by identifier match, not
+  // free-text symbol search), FUTURE hits stay type null (dropped) like BOND.
 };
 
 /**

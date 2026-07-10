@@ -12,7 +12,7 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { parseCsv, type ParsedTx } from "@/lib/import/csv";
 import { reconcile, type ReconciledRow } from "@/lib/import/reconcile";
-import { resolveOfficialNames } from "@/lib/import/resolve-names";
+import { resolveOfficialNames, applyResolvedInstrument } from "@/lib/import/resolve-names";
 import { formatCurrency, formatNumber, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -169,9 +169,7 @@ export function ImportTransactions({
       // text or the generic parser's name-based type guess.
       const resolvedById = await resolveNames(parsed);
       for (const p of parsed) {
-        const resolved = resolvedById.get(rowIdentifier(p));
-        if (resolved?.name) p.name = resolved.name;
-        if (resolved?.type) p.assetType = resolved.type;
+        applyResolvedInstrument(p, resolvedById.get(rowIdentifier(p)));
       }
       const imported = new Set(await loadImportedFingerprints());
       const rec = reconcile(parsed, data.assets, allTransactions, imported);

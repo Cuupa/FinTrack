@@ -59,6 +59,24 @@ export async function resolveOfficialNames(
   return resolved;
 }
 
+/**
+ * Apply a resolved official name/type onto a parsed row IN PLACE. A COMMODITY
+ * type is authoritative: it only ever comes from a broker's explicit asset
+ * class (e.g. Bitpanda "Metal") or the seeded catalog. The live /api/lookup
+ * fallback cannot represent commodities and mis-resolves metal tickers (e.g.
+ * "XAU" resolves to Tether Gold, a crypto), so a lookup that disagrees with an
+ * already-COMMODITY row is ignored (both name and type kept).
+ */
+export function applyResolvedInstrument(
+  row: { name: string; assetType: AssetType },
+  resolved: ResolvedInstrument | undefined,
+): void {
+  if (!resolved) return;
+  if (row.assetType === "COMMODITY" && resolved.type && resolved.type !== "COMMODITY") return;
+  if (resolved.name) row.name = resolved.name;
+  if (resolved.type) row.assetType = resolved.type;
+}
+
 /** A rename candidate surfaced by {@link officialNameRenames}. */
 export interface RenameCandidate {
   asset: Asset;
