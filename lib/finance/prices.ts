@@ -197,21 +197,4 @@ export function quoteItemFor(
   };
 }
 
-/**
- * Quote items for dividend fetching: dividend fetching is gated per
- * instrument by the catalog's pays_dividends flag; instruments unknown to
- * the catalog fetch as before.
- */
-export function dividendItemsFor(assets: Asset[]) {
-  return assets
-    .filter((a) => {
-      const inst =
-        lookupInstrument(assetPriceKey(a)) ??
-        (a.symbol ? lookupInstrument(a.symbol) : null);
-      return !(inst && inst.paysDividends === false);
-    })
-    .map(quoteItemFor)
-    .filter((x): x is NonNullable<typeof x> => x !== null);
-}
-
 export { parseISODate, addDays };

@@ -25,7 +25,7 @@ import {
   type HoldingSummary,
   type ValuationContext,
 } from "@/lib/finance/portfolio";
-import { dividendItemsFor } from "@/lib/finance/prices";
+import { quoteItemFor } from "@/lib/finance/prices";
 import { useDividends } from "@/lib/history/use-dividends";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import {
@@ -123,12 +123,15 @@ export function TradesView() {
 
   const totals = useMemo(() => portfolioTotals(holdings), [holdings]);
 
-  const divItems = useMemo(
-    () => dividendItemsFor(data.assets),
+  const histItems = useMemo(
+    () =>
+      data.assets
+        .map(quoteItemFor)
+        .filter((x): x is NonNullable<typeof x> => x !== null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const divMap = useDividends(divItems);
+  const divMap = useDividends(histItems);
   const dividendsReceived = useMemo(() => {
     const fx = valuation.fx ?? {};
     let total = 0;

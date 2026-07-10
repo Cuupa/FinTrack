@@ -38,10 +38,6 @@ create table if not exists public.instruments (
   -- into the instrument's native display units (e.g. gold quotes per troy
   -- ounce, held per gram, so quote_scale = 1/31.1034768).
   quote_scale numeric not null default 1,
-  -- The app only fetches real dividend events for rows where this is true;
-  -- crypto/commodity/cash rows default it false (name-fallback search once
-  -- surfaced an unrelated payer's events as phantom gold dividends).
-  pays_dividends boolean not null default true,
   drift numeric not null default 0.07,
   vol numeric not null default 0.2,
   dividend_yield numeric not null default 0,
@@ -55,7 +51,6 @@ create table if not exists public.instruments (
 );
 alter table public.instruments add column if not exists quote_scale numeric not null default 1;
 alter table public.instruments add column if not exists name_synced_at timestamptz;
-alter table public.instruments add column if not exists pays_dividends boolean not null default true;
 -- `create table if not exists` above is a no-op on an existing database, so
 -- re-apply the widened type check idempotently for upgrades too.
 alter table public.instruments drop constraint if exists instruments_type_check;
@@ -408,8 +403,7 @@ insert into public.schema_migrations (version) values
   ('0044_reset_commodity_quote'),
   ('0045_fk_indexes'),
   ('0046_history_cache_flag'),
-  ('0047_export_flags'),
-  ('0048_instrument_pays_dividends')
+  ('0047_export_flags')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -657,19 +651,11 @@ on conflict (symbol) where symbol is not null do nothing;
 -- has no quote_scale) doesn't have to be widened for every existing row.
 -- Quoted per troy ounce (XAUEUR=X); quote_scale converts to per-gram
 -- (1 / 31.1034768 ~= 0.0321507466), the instrument's native display unit.
--- pays_dividends is false: gold never pays one, and its name-fallback
--- dividend search ("Gold") would otherwise surface an unrelated payer.
 insert into public.instruments
-  (symbol, name, type, currency, quote_source, quote_id, base_price, drift, vol, dividend_yield, quote_scale, pays_dividends)
+  (symbol, name, type, currency, quote_source, quote_id, base_price, drift, vol, dividend_yield, quote_scale)
 values
-  ('XAU', 'Gold', 'COMMODITY', 'EUR', 'yahoo', 'XAUEUR=X', 115, 0.03, 0.16, 0, 0.0321507466, false)
+  ('XAU', 'Gold', 'COMMODITY', 'EUR', 'yahoo', 'XAUEUR=X', 115, 0.03, 0.16, 0, 0.0321507466)
 on conflict (symbol) where symbol is not null do nothing;
-
--- Backfill: no CRYPTO/COMMODITY/CASH row pays dividends, whether seeded
--- above or added earlier by a broker import. Idempotent, converges on rerun.
-update public.instruments
-set pays_dividends = false
-where type in ('CRYPTO', 'COMMODITY', 'CASH') and pays_dividends;
 
 -- Seed approximate FX rates (units per 1 EUR); the cron refreshes them.
 insert into public.fx_rates (currency, rate) values

@@ -32,7 +32,7 @@ import { assetPriceKey, type Portfolio, type Transaction, type TransactionType }
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor, lookupInstrument } from "@/lib/catalog/catalog";
-import { dividendItemsFor, nativeCurrency, quoteItemFor } from "@/lib/finance/prices";
+import { nativeCurrency, quoteItemFor } from "@/lib/finance/prices";
 import { instrumentToAsset, watchlistItemToAsset } from "@/lib/finance/instrument-asset";
 import { assetAnnualStats } from "@/lib/finance/stats";
 import { useHistory } from "@/lib/history/use-history";
@@ -197,21 +197,15 @@ export function AssetDetail({
     [asset, histories],
   );
 
-  const divItems = useMemo(
-    () => (asset ? dividendItemsFor([asset]) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [asset, version],
-  );
-
   // Real dividend events (accumulating funds return none → no phantom
-  // payouts; dividends fetch only for instruments the catalog does not mark
-  // pays_dividends=false. CASH has no quote ref so it drops out naturally.
-  const divMap = useDividends(divItems);
+  // payouts; CASH isn't a security and never pays dividends — histItems is
+  // already empty for it above, so this fetches nothing).
+  const divMap = useDividends(histItems);
   const dividends = useMemo(() => {
     if (!asset || asset.type === "CASH") return [];
-    const key = divItems[0]?.key;
+    const key = histItems[0]?.key;
     return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
-  }, [divMap, divItems, txs, asset]);
+  }, [divMap, histItems, txs, asset]);
 
   // Chart markers: buys/sells plus a marker on each dividend pay date.
   const markers: ChartMarker[] = useMemo(

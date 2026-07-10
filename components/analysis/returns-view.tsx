@@ -24,7 +24,7 @@ import {
   summarizeAll,
   transactionsByAsset,
 } from "@/lib/finance/portfolio";
-import { dividendItemsFor, quoteItemFor } from "@/lib/finance/prices";
+import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { useDividends } from "@/lib/history/use-dividends";
 import { dividendsFromEvents } from "@/lib/finance/dividends";
@@ -103,16 +103,10 @@ export function ReturnsView() {
   );
   const { histories } = useHistory(histItems, "MAX", base);
 
-  const divItems = useMemo(
-    () => dividendItemsFor(data.assets),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.assets, version],
-  );
-
   // Real dividend payments per holding, converted to the base currency. Each
   // entry: { id, name, payments: [{ date, value }] }. Empty for accumulating
   // funds (no events).
-  const divMap = useDividends(divItems);
+  const divMap = useDividends(histItems);
   const dividendsByAsset = useMemo(() => {
     const fx = valuation.fx ?? {};
     return allHoldings

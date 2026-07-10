@@ -19,7 +19,7 @@ import {
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { dividendItemsFor } from "@/lib/finance/prices";
+import { quoteItemFor } from "@/lib/finance/prices";
 import { useDividends } from "@/lib/history/use-dividends";
 import { dividendsFromEvents, type DividendPayment } from "@/lib/finance/dividends";
 import {
@@ -73,12 +73,15 @@ export function DividendsView() {
 
   const [range, setRange] = useState<"12m" | "years">("12m");
 
-  const divItems = useMemo(
-    () => dividendItemsFor(data.assets),
+  const histItems = useMemo(
+    () =>
+      data.assets
+        .map(quoteItemFor)
+        .filter((x): x is NonNullable<typeof x> => x !== null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const divMap = useDividends(divItems);
+  const divMap = useDividends(histItems);
 
   const holdings = useMemo(
     () => summarizeAll(data.assets, data.transactions, valuation),
