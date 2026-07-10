@@ -93,10 +93,11 @@ function assetLookupKey(asset: Asset): string {
 /**
  * Pure diff: given the current assets and a resolved-name map (as returned by
  * {@link resolveOfficialNames}), return the assets whose name should be
- * updated to the official instrument name — CASH (no instrument identity),
- * assets with no ISIN/WKN/symbol, and assets with no resolved name are all
- * skipped, as are assets whose resolved name (after trimming) already
- * matches the current name.
+ * updated to the official instrument name. CASH (no instrument identity) and
+ * COMMODITY (its name is authoritative, and the live lookup mis-resolves metal
+ * tickers like "XAU" to Tether Gold, a crypto) are skipped, as are assets with
+ * no ISIN/WKN/symbol, assets with no resolved name, and assets whose resolved
+ * name already matches the current one after trimming.
  */
 export function officialNameRenames(
   assets: Asset[],
@@ -104,7 +105,7 @@ export function officialNameRenames(
 ): RenameCandidate[] {
   const out: RenameCandidate[] = [];
   for (const asset of assets) {
-    if (asset.type === "CASH") continue;
+    if (asset.type === "CASH" || asset.type === "COMMODITY") continue;
     const key = assetLookupKey(asset);
     if (!key) continue;
     const officialName = resolved.get(key)?.name?.trim();

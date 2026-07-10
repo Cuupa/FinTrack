@@ -57,6 +57,15 @@ describe("officialNameRenames", () => {
     expect(officialNameRenames([a], resolved)).toEqual([]);
   });
 
+  it("skips COMMODITY assets so a mis-resolved metal ticker can't rename gold", () => {
+    const a = asset({ id: "a1", symbol: "XAU", name: "Gold", type: "COMMODITY" });
+    const resolved = new Map<string, ResolvedInstrument>([
+      ["XAU", { name: "Tether Gold USD", type: "CRYPTO" }],
+    ]);
+
+    expect(officialNameRenames([a], resolved)).toEqual([]);
+  });
+
   it("skips an asset with no ISIN/WKN/symbol (nothing to look up by)", () => {
     const a = asset({ id: "a1", name: "Mystery Fund" });
     const resolved = new Map<string, ResolvedInstrument>([
