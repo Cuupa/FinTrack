@@ -12,6 +12,7 @@ import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
 import { assetPriceSeries, netWorthSeries, summarizeHolding, twrSeries } from "../lib/finance/portfolio";
 import { assetAnnualStats, portfolioRiskStats } from "../lib/finance/stats";
+import { dividendItemsFor } from "../lib/finance/prices";
 import { assetPriceKey } from "../lib/types";
 import type { Asset, Transaction } from "../lib/types";
 import type { HoldingSummary, SeriesPoint } from "../lib/finance/portfolio";
@@ -571,5 +572,40 @@ describe("monte carlo withdrawal phase", () => {
     // Flat during accumulation (no return, no contribution), then depletes.
     expect(res.bands[5].median).toBeCloseTo(100000, 0);
     expect(res.bands[15].median).toBe(0); // 10y * 12k > 100k → depleted
+  });
+});
+
+describe("dividendItemsFor", () => {
+  it("includes STOCK and ETF assets", () => {
+    const stock = asset({ id: "s1", type: "STOCK", isin: "US0378331005" });
+    const etf = asset({ id: "e1", type: "ETF", isin: "IE00B4L5Y983" });
+
+    const items = dividendItemsFor([stock, etf]);
+
+    expect(items.map((i) => i.key)).toEqual([assetPriceKey(stock), assetPriceKey(etf)]);
+  });
+
+  it("excludes CRYPTO, COMMODITY and CASH assets (they never pay dividends)", () => {
+    const crypto = asset({ id: "c1", type: "CRYPTO", symbol: "BTC" });
+    const gold = asset({ id: "g1", type: "COMMODITY", symbol: "XAU" });
+    const cash = asset({ id: "cash1", type: "CASH", symbol: "EUR" });
+
+    expect(dividendItemsFor([crypto, gold, cash])).toEqual([]);
+  });
+
+  it("keeps only the equities from a mixed array", () => {
+    const stock = asset({ id: "s1", type: "STOCK", isin: "US0378331005" });
+    const gold = asset({ id: "g1", type: "COMMODITY", symbol: "XAU" });
+    const crypto = asset({ id: "c1", type: "CRYPTO", symbol: "BTC" });
+
+    const items = dividendItemsFor([stock, gold, crypto]);
+
+    expect(items.map((i) => i.key)).toEqual([assetPriceKey(stock)]);
+  });
+
+  it("drops an equity quoteItemFor can't resolve (no catalog, no isin/symbol)", () => {
+    const mystery = asset({ id: "m1", type: "STOCK", isin: null, wkn: null, symbol: null });
+
+    expect(dividendItemsFor([mystery])).toEqual([]);
   });
 });

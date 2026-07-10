@@ -197,4 +197,14 @@ export function quoteItemFor(
   };
 }
 
+/** Quote items for dividend fetching: only STOCK and ETF can pay dividends.
+ *  CRYPTO, COMMODITY and CASH never do; asking anyway once surfaced a
+ *  mis-resolved gold listing's payouts as phantom XAU dividends. */
+export function dividendItemsFor(assets: Asset[]) {
+  return assets
+    .filter((a) => a.type === "STOCK" || a.type === "ETF")
+    .map(quoteItemFor)
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+}
+
 export { parseISODate, addDays };
