@@ -213,16 +213,16 @@ export function AddAssetForm({
     const qty = parseDecimal(quantity);
     const px = isCash ? 1 : parseDecimal(price);
     if (!Number.isFinite(qty) || qty <= 0) {
-      setError(isCash ? "Enter a positive amount." : "Enter a positive quantity.");
+      setError(isCash ? tr("addAsset.errAmount") : tr("addAsset.errQuantity"));
       return;
     }
     if (!isCash && (!Number.isFinite(px) || px < 0)) {
-      setError("Enter a valid price.");
+      setError(tr("addAsset.errPrice"));
       return;
     }
     const hasIdentifier = isin.trim() || wkn.trim() || symbol.trim();
     if (!isCash && !hasIdentifier && !name.trim()) {
-      setError("Enter an ISIN, WKN, or symbol.");
+      setError(tr("addAsset.errIdentifier"));
       return;
     }
     // Re-check on submit: the portfolio (and its cash position) can have
@@ -257,20 +257,20 @@ export function AddAssetForm({
       // (the ensure endpoint is now secret-gated), so nothing to trigger here.
       onDone?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add asset.");
+      setError(err instanceof Error ? err.message : tr("addAsset.errFailed"));
       setBusy(false);
     }
   }
 
   const body = (
     <>
-      {!embedded && <h2 className="text-lg font-semibold">Add asset</h2>}
+      {!embedded && <h2 className="text-lg font-semibold">{tr("addAsset.title")}</h2>}
 
       {/* Import field */}
       {!manual && (
         <div className="mt-4">
           <label className="text-sm font-medium" htmlFor="import">
-            WKN / ISIN / Symbol
+            {tr("addAsset.identifierLabel")}
           </label>
           <div className="flex gap-2">
             <input
@@ -286,7 +286,7 @@ export function AddAssetForm({
                   void handleImport();
                 }
               }}
-              placeholder="A2PKXG, IE00BK5BQT80, BTC…"
+              placeholder={tr("addAsset.identifierPlaceholder")}
               className={inputCls}
               autoFocus
             />
@@ -297,20 +297,20 @@ export function AddAssetForm({
               onClick={handleImport}
               disabled={importing || !query.trim()}
             >
-              {importing ? "…" : "Import"}
+              {importing ? "…" : tr("addAsset.importBtn")}
             </Button>
           </div>
           {importStatus === "notfound" && (
             <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
               {/^[A-Z0-9]{6}$/.test(query.trim()) && !/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(query.trim())
-                ? "Not found. WKN lookup isn’t supported by the data source. Try the ISIN instead, or "
-                : "Not found. "}
+                ? tr("addAsset.notFoundWkn")
+                : tr("addAsset.notFound")}
               <button
                 type="button"
                 onClick={startManual}
                 className="font-medium underline underline-offset-2"
               >
-                enter details manually
+                {tr("addAsset.enterManually")}
               </button>
               .
             </p>
@@ -321,7 +321,7 @@ export function AddAssetForm({
               onClick={startManual}
               className="mt-2 text-xs text-zinc-500 underline underline-offset-2"
             >
-              Or enter an asset manually (incl. cash)
+              {tr("addAsset.orManual")}
             </button>
           )}
         </div>
@@ -337,10 +337,10 @@ export function AddAssetForm({
             </span>
           </div>
           <div className="mt-1 text-xs text-zinc-500">
-            {wkn && <>WKN {wkn}</>}
+            {wkn && <>{tr("addAsset.wkn")} {wkn}</>}
             {wkn && isin && " · "}
-            {isin && <>ISIN {isin}</>}
-            {symbol && !isin && !wkn && <>Symbol {symbol}</>}
+            {isin && <>{tr("addAsset.isin")} {isin}</>}
+            {symbol && !isin && !wkn && <>{tr("addAsset.symbol")} {symbol}</>}
             {!isCash && <> · {assetCurrency}</>}
           </div>
         </div>
@@ -350,7 +350,7 @@ export function AddAssetForm({
       {manual && (
         <div className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium">Type</label>
+            <label className="text-sm font-medium">{tr("addAsset.type")}</label>
             <div className="mt-1 flex flex-wrap gap-2">
               {ASSET_TYPES.map((t) => {
                 const disabled = t === "CASH" && cashTaken;
@@ -378,7 +378,7 @@ export function AddAssetForm({
 
           <div>
             <label className="text-sm font-medium" htmlFor="name">
-              Name
+              {tr("addAsset.name")}
             </label>
             <input
               id="name"
@@ -388,7 +388,7 @@ export function AddAssetForm({
                 setName(e.target.value);
               }}
               onBlur={touch}
-              placeholder={isCash ? "Cash, Savings…" : "Apple Inc."}
+              placeholder={isCash ? tr("addAsset.namePlaceholderCash") : tr("addAsset.namePlaceholder")}
               className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
             />
           </div>
@@ -397,7 +397,7 @@ export function AddAssetForm({
             (type === "CRYPTO" || type === "COMMODITY" ? (
               <div>
                 <label className="text-sm font-medium" htmlFor="symbol">
-                  Symbol
+                  {tr("addAsset.symbol")}
                 </label>
                 <input
                   id="symbol"
@@ -407,7 +407,7 @@ export function AddAssetForm({
                     setSymbol(e.target.value.toUpperCase());
                   }}
                   onBlur={touch}
-                  placeholder="BTC"
+                  placeholder={tr("addAsset.symbolPlaceholder")}
                   className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
                 />
               </div>
@@ -415,7 +415,7 @@ export function AddAssetForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium" htmlFor="isin">
-                    ISIN
+                    {tr("addAsset.isin")}
                   </label>
                   <input
                     id="isin"
@@ -430,7 +430,7 @@ export function AddAssetForm({
                 </div>
                 <div>
                   <label className="text-sm font-medium" htmlFor="wkn">
-                    WKN
+                    {tr("addAsset.wkn")}
                   </label>
                   <input
                     id="wkn"
@@ -451,11 +451,11 @@ export function AddAssetForm({
       {/* Trading currency — drives which listing the price comes from. */}
       {ready && !isCash && (
         <div className="mt-4">
-          <label className="text-sm font-medium">Trading currency</label>
+          <label className="text-sm font-medium">{tr("addAsset.tradingCurrency")}</label>
           <div className="mt-1 max-w-[10rem]">
             <SelectMenu
               value={assetCurrency}
-              ariaLabel="Trading currency"
+              ariaLabel={tr("addAsset.tradingCurrency")}
               onChange={(c) => {
                 setAssetCurrency(c);
                 void fetchPrice(isin || symbol, c, type);
@@ -467,8 +467,7 @@ export function AddAssetForm({
             />
           </div>
           <p className="mt-1 text-xs text-zinc-500">
-            Prices use the listing in this currency. Pick {base} if you trade on
-            your home exchange.
+            {tr("addAsset.tradingCurrencyHint", { base })}
           </p>
         </div>
       )}
@@ -476,11 +475,11 @@ export function AddAssetForm({
       {/* Opening transaction */}
       {ready && (
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-          <h3 className="text-sm font-semibold">Opening transaction</h3>
+          <h3 className="text-sm font-semibold">{tr("addAsset.openingTx")}</h3>
           <div className="grid gap-4 sm:grid-cols-4">
             <div>
               <label className="text-sm font-medium" htmlFor="quantity">
-                {isCash ? "Amount" : "Quantity"}
+                {isCash ? tr("addAsset.amount") : tr("addAsset.quantity")}
               </label>
               <input
                 id="quantity"
@@ -499,7 +498,7 @@ export function AddAssetForm({
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium" htmlFor="price">
-                    Price ({assetCurrency})
+                    {tr("addAsset.price", { currency: assetCurrency })}
                   </label>
                   {(type === "STOCK" || type === "ETF") && (isin || symbol) && (
                     <button
@@ -508,7 +507,7 @@ export function AddAssetForm({
                       disabled={fetchingPrice}
                       className="text-xs text-zinc-500 underline underline-offset-2 disabled:opacity-50"
                     >
-                      {fetchingPrice ? "…" : "↻ live"}
+                      {fetchingPrice ? "…" : tr("addAsset.live")}
                     </button>
                   )}
                 </div>
@@ -528,7 +527,7 @@ export function AddAssetForm({
             )}
             <div>
               <label className="text-sm font-medium" htmlFor="fee">
-                Fee
+                {tr("addAsset.fee")}
               </label>
               <input
                 id="fee"
@@ -541,7 +540,7 @@ export function AddAssetForm({
             </div>
             <div>
               <label className="text-sm font-medium" htmlFor="date">
-                Date &amp; time
+                {tr("addAsset.dateTime")}
               </label>
               <input
                 id="date"
@@ -553,11 +552,11 @@ export function AddAssetForm({
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Portfolio</label>
+              <label className="text-sm font-medium">{tr("addAsset.portfolio")}</label>
               <div className="mt-1">
                 <SelectMenu
                   value={portfolioId}
-                  ariaLabel="Portfolio"
+                  ariaLabel={tr("addAsset.portfolio")}
                   onChange={setPortfolioId}
                   options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
                   footer={(close) =>
@@ -565,7 +564,7 @@ export function AddAssetForm({
                       <input
                         autoFocus
                         value={newPortfolio}
-                        placeholder="Portfolio name"
+                        placeholder={tr("addAsset.portfolioNamePlaceholder")}
                         onChange={(e) => setNewPortfolio(e.target.value)}
                         onKeyDown={async (e) => {
                           if (e.key === "Enter") {
@@ -595,7 +594,7 @@ export function AddAssetForm({
                         onClick={() => setAddingPortfolio(true)}
                         className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                       >
-                        + New portfolio
+                        {tr("nav.newPortfolio")}
                       </button>
                     )
                   }
@@ -611,11 +610,11 @@ export function AddAssetForm({
 
           <div className="flex gap-2">
             <Button type="submit" variant="primary" disabled={busy || formIncomplete}>
-              {busy ? "Adding…" : "Add asset"}
+              {busy ? tr("addAsset.adding") : tr("addAsset.title")}
             </Button>
             {onDone && (
               <Button type="button" variant="ghost" onClick={onDone} disabled={busy}>
-                Cancel
+                {tr("tx.cancel")}
               </Button>
             )}
           </div>
@@ -625,7 +624,7 @@ export function AddAssetForm({
       {!ready && onDone && (
         <div className="mt-4">
           <Button type="button" variant="ghost" onClick={onDone}>
-            Cancel
+            {tr("tx.cancel")}
           </Button>
         </div>
       )}
