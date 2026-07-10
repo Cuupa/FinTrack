@@ -291,7 +291,7 @@ function LoginForm() {
             </Link>
             .
             <br />
-            Mit der Kontoerstellung akzeptieren Sie die{" "}
+            Mit der Kontoerstellung akzeptierst du die{" "}
             <Link href="/terms" className="underline underline-offset-2">
               Nutzungsbedingungen
             </Link>{" "}

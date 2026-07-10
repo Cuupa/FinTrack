@@ -68,11 +68,11 @@ function ImpressumDE({
       <LegalSection heading="EU-Streitschlichtung">
         <p>
           Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS)
-          bereit, die Sie unter{" "}
+          bereit, die du unter{" "}
           <LegalLink href="https://ec.europa.eu/consumers/odr/">
             https://ec.europa.eu/consumers/odr/
           </LegalLink>{" "}
-          finden. Unsere E-Mail-Adresse finden Sie oben unter „Kontakt“. Wir sind nicht
+          findest. Unsere E-Mail-Adresse findest du oben unter „Kontakt“. Wir sind nicht
           verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
           Verbraucherschlichtungsstelle teilzunehmen.
         </p>

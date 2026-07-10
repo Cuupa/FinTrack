@@ -74,7 +74,7 @@ export default function GlobalError({
             <br />
             <br />
             Ein unerwarteter Fehler ist aufgetreten, die App konnte nicht fortfahren. Bitte
-            versuchen Sie es erneut oder laden Sie die Seite neu.
+            versuche es erneut oder lade die Seite neu.
           </p>
 
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>

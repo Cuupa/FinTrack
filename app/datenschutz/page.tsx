@@ -54,34 +54,34 @@ function DatenschutzDE({
       <LegalSection heading="2. Gastmodus: Daten bleiben im Browser">
         <p>
           FinTrack kann ohne Registrierung im „Gastmodus“ genutzt werden. In diesem Modus
-          verlassen Ihre Portfoliodaten (Positionen, Transaktionen, Einstellungen) Ihren
+          verlassen deine Portfoliodaten (Positionen, Transaktionen, Einstellungen) deinen
           Browser zu keinem Zeitpunkt. Sie werden ausschließlich im{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>{" "}
-          Ihres Geräts gespeichert. Wir haben keinen Zugriff darauf, und es wird nichts an
-          einen Server übertragen. Löschen Sie den Browserspeicher, sind die Daten
+          deines Geräts gespeichert. Wir haben keinen Zugriff darauf, und es wird nichts an
+          einen Server übertragen. Löschst du den Browserspeicher, sind die Daten
           unwiderruflich weg.
         </p>
       </LegalSection>
 
       <LegalSection heading="3. Registrierter Modus: Hosting, Datenbank und Konto">
         <p>
-          Im registrierten Modus verarbeiten wir Ihre Portfoliodaten sowie Ihre
+          Im registrierten Modus verarbeiten wir deine Portfoliodaten sowie deine
           Konto-Anmeldedaten über <strong>Supabase</strong> (Authentifizierung und
           PostgreSQL-Datenbank). Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Erfüllung
-          des Nutzungsvertrags, den Sie durch die Registrierung mit uns eingehen).
+          des Nutzungsvertrags, den du durch die Registrierung mit uns eingehst).
         </p>
         <p>
-          Zur Anmeldung setzen wir technisch notwendige Auth-Cookies von Supabase, die Ihre
+          Zur Anmeldung setzen wir technisch notwendige Auth-Cookies von Supabase, die deine
           Sitzung verwalten. Diese Cookies sind für den Betrieb des Kontos zwingend
           erforderlich und unterliegen keinem Einwilligungsvorbehalt (§ 25 Abs. 2 Nr. 2
           TTDSG/DDG, Art. 6 Abs. 1 lit. b DSGVO).
         </p>
         <p>
-          Sie können sich mit E-Mail/Passwort oder über die Anbieter <strong>Google</strong>{" "}
-          bzw. <strong>GitHub</strong> (OAuth) anmelden. Bei der OAuth-Anmeldung werden Sie
-          auf die Seite des jeweiligen Anbieters weitergeleitet und melden sich dort an.
+          Du kannst dich mit E-Mail/Passwort oder über die Anbieter <strong>Google</strong>{" "}
+          bzw. <strong>GitHub</strong> (OAuth) anmelden. Bei der OAuth-Anmeldung wirst du
+          auf die Seite des jeweiligen Anbieters weitergeleitet und meldest dich dort an.
           Welche Daten dabei verarbeitet werden, unterliegt der Datenschutzerklärung des
           jeweiligen Anbieters (Google bzw. GitHub), nicht dieser Erklärung. Wir erhalten
           von diesen Anbietern lediglich die zur Kontoerstellung nötigen Basisdaten (z. B.
@@ -92,16 +92,16 @@ function DatenschutzDE({
       <LegalSection heading="4. Marktdaten: Kurse und Wechselkurse">
         <p>
           FinTrack zeigt Kurse, Kursverläufe und Wechselkurse an. Diese Daten werden von
-          unserem Server, <strong>nicht von Ihrem Browser</strong>, abgerufen: bei den
+          unserem Server, <strong>nicht von deinem Browser</strong>, abgerufen: bei den
           Anbietern Yahoo Finance, Stooq, CoinGecko und Frankfurter (EZB-Wechselkurse).
         </p>
         <p>
-          Das bedeutet konkret: Ihr Browser sendet eine Anfrage an unseren eigenen Server
+          Das bedeutet konkret: Dein Browser sendet eine Anfrage an unseren eigenen Server
           (z. B. „aktuellen Kurs für dieses ISIN/Symbol abrufen“); erst unser Server
-          kontaktiert die genannten Drittanbieter. <strong>Ihre IP-Adresse wird diesen
+          kontaktiert die genannten Drittanbieter. <strong>Deine IP-Adresse wird diesen
           Anbietern dabei nicht offengelegt</strong>. Sie sehen nur die IP-Adresse unseres
           Servers. Übermittelt werden ausschließlich Instrumentenkennungen (ISIN, Symbol
-          bzw. Kryptowährungs-ID) und ggf. die Zielwährung, keine auf Sie persönlich
+          bzw. Kryptowährungs-ID) und ggf. die Zielwährung, keine auf dich persönlich
           beziehbaren Daten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes
           Interesse an der Bereitstellung der Kernfunktion der App).
         </p>
@@ -119,7 +119,7 @@ function DatenschutzDE({
               localStorage
             </code>{" "}
             für: Portfoliodaten im Gastmodus, die gewählte Sprache, den Anzeige-Modus
-            (Beträge ein-/ausblenden), Ihre eigenen Tags sowie einen Zwischenspeicher des
+            (Beträge ein-/ausblenden), deine eigenen Tags sowie einen Zwischenspeicher des
             Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten). Auch
             historische Kursverläufe werden lokal zwischengespeichert, damit Diagramme
             schneller laden; dieser Zwischenspeicher wird bei der Abmeldung gelöscht. Die auf
@@ -135,19 +135,19 @@ function DatenschutzDE({
         </p>
       </LegalSection>
 
-      <LegalSection heading="6. Ihre Rechte">
-        <p>Nach der DSGVO haben Sie insbesondere folgende Rechte:</p>
+      <LegalSection heading="6. Deine Rechte">
+        <p>Nach der DSGVO hast du insbesondere folgende Rechte:</p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>Auskunft über die zu Ihrer Person gespeicherten Daten (Art. 15 DSGVO),</li>
+          <li>Auskunft über die zu deiner Person gespeicherten Daten (Art. 15 DSGVO),</li>
           <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO),</li>
-          <li>Löschung Ihrer Daten (Art. 17 DSGVO) sowie</li>
+          <li>Löschung deiner Daten (Art. 17 DSGVO) sowie</li>
           <li>Datenübertragbarkeit (Art. 20 DSGVO).</li>
         </ul>
         <p>
-          Löschung und Datenübertragbarkeit stehen Ihnen direkt in der App zur
-          Selbstbedienung offen: Unter <em>Einstellungen</em> können Sie Ihr Konto
-          eigenständig und vollständig löschen sowie Ihre Daten als JSON oder CSV
-          exportieren. Für alle anderen Anliegen wenden Sie sich an{" "}
+          Löschung und Datenübertragbarkeit stehen dir direkt in der App zur
+          Selbstbedienung offen: Unter <em>Einstellungen</em> kannst du dein Konto
+          eigenständig und vollständig löschen sowie deine Daten als JSON oder CSV
+          exportieren. Für alle anderen Anliegen wende dich an{" "}
           <EmailImage
             value={config.legal_email}
             loaded={loaded}
@@ -157,16 +157,16 @@ function DatenschutzDE({
           .
         </p>
         <p>
-          Sie haben außerdem das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu
-          beschweren (Art. 77 DSGVO), z. B. bei der für Ihren Wohnsitz zuständigen
+          Du hast außerdem das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu
+          beschweren (Art. 77 DSGVO), z. B. bei der für deinen Wohnsitz zuständigen
           Landesdatenschutzbehörde.
         </p>
       </LegalSection>
 
       <LegalSection heading="7. Speicherdauer">
         <p>
-          Wir speichern Ihre Daten, solange Ihr Konto besteht. Löschen Sie Ihr Konto (siehe
-          oben), werden Ihr Profil, alle Portfolios, Assets, Transaktionen und geteilten
+          Wir speichern deine Daten, solange dein Konto besteht. Löschst du dein Konto (siehe
+          oben), werden dein Profil, alle Portfolios, Assets, Transaktionen und geteilten
           Links unwiderruflich und vollständig entfernt. Die Löschung kaskadiert
           datenbankseitig über alle zugehörigen Tabellen.
         </p>

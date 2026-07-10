@@ -15,7 +15,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 
 const FALLBACK = {
   title: "Something went wrong / Etwas ist schiefgelaufen",
-  body: "An unexpected error occurred. You can try again, or head back to the dashboard. / Ein unerwarteter Fehler ist aufgetreten. Sie können es erneut versuchen oder zur Übersicht zurückkehren.",
+  body: "An unexpected error occurred. You can try again, or head back to the dashboard. / Ein unerwarteter Fehler ist aufgetreten. Du kannst es erneut versuchen oder zur Übersicht zurückkehren.",
   tryAgain: "Try again / Erneut versuchen",
   backHome: "Back to dashboard / Zur Übersicht",
 };

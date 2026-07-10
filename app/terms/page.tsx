@@ -29,8 +29,8 @@ function TermsDE() {
           und ist nicht als Empfehlung zum Kauf oder Verkauf von Finanzinstrumenten zu
           verstehen. Simulationen (z. B. die Monte-Carlo-Projektion) sind mathematische
           Modelle auf Basis historischer bzw. angenommener Kennzahlen und keine Prognose
-          künftiger Ergebnisse. Treffen Sie Anlageentscheidungen eigenverantwortlich oder
-          ziehen Sie einen unabhängigen Berater hinzu.
+          künftiger Ergebnisse. Triff Anlageentscheidungen eigenverantwortlich oder
+          ziehe einen unabhängigen Berater hinzu.
         </p>
       </LegalSection>
 
@@ -56,16 +56,16 @@ function TermsDE() {
 
       <LegalSection heading="5. Pflichten der Nutzer">
         <p>
-          Sie sind verantwortlich für die Vertraulichkeit Ihrer Zugangsdaten und für alle
-          Aktivitäten unter Ihrem Konto. Sie verpflichten sich, die App nicht missbräuchlich
-          oder rechtswidrig zu nutzen und nur Daten einzugeben, zu deren Verarbeitung Sie
-          berechtigt sind.
+          Du bist verantwortlich für die Vertraulichkeit deiner Zugangsdaten und für alle
+          Aktivitäten unter deinem Konto. Du verpflichtest dich, die App nicht missbräuchlich
+          oder rechtswidrig zu nutzen und nur Daten einzugeben, zu deren Verarbeitung du
+          berechtigt bist.
         </p>
       </LegalSection>
 
       <LegalSection heading="6. Kündigung und Löschung">
         <p>
-          Sie können die Nutzung jederzeit beenden und Ihr Konto samt aller Daten
+          Du kannst die Nutzung jederzeit beenden und dein Konto samt aller Daten
           eigenständig unter <em>Einstellungen</em> löschen. Wir behalten uns vor, Konten
           bei missbräuchlicher Nutzung oder Verstoß gegen diese Bedingungen zu sperren oder
           zu löschen.
@@ -75,14 +75,14 @@ function TermsDE() {
       <LegalSection heading="7. Anwendbares Recht">
         <p>
           Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts,
-          soweit zwingende verbraucherschützende Vorschriften Ihres gewöhnlichen
+          soweit zwingende verbraucherschützende Vorschriften deines gewöhnlichen
           Aufenthaltsorts dem nicht entgegenstehen.
         </p>
       </LegalSection>
 
       <LegalSection heading="8. Kontakt">
         <p>
-          Fragen zu diesen Bedingungen richten Sie an die im{" "}
+          Fragen zu diesen Bedingungen richtest du an die im{" "}
           <LegalLink href="/impressum">Impressum</LegalLink> genannten Kontaktdaten.
         </p>
       </LegalSection>
