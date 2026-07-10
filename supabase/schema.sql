@@ -385,7 +385,8 @@ insert into public.schema_migrations (version) values
   ('0040_commodity_type'),
   ('0041_watchlist_currency'),
   ('0042_instrument_name_sync'),
-  ('0043_rate_limit')
+  ('0043_rate_limit'),
+  ('0044_reset_commodity_quote')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

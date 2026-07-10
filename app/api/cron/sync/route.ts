@@ -38,8 +38,10 @@ async function handle(req: Request): Promise<Response> {
     }
   };
 
-  // Each resource sync is secret-gated; the secret is forwarded.
-  await post("/api/cron/sync/prices");
+  // Each resource sync is secret-gated; the secret is forwarded. The query
+  // string (e.g. ?revalidate=1) is forwarded only to prices, whose daily
+  // self-heal / re-resolve behavior it controls.
+  await post("/api/cron/sync/prices" + new URL(req.url).search);
   await post("/api/cron/sync/constituents");
   await post("/api/cron/sync/classifications");
   await post("/api/cron/sync/names");

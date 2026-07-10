@@ -19,6 +19,7 @@ import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { pickWatchlistPrice } from "@/lib/live/watchlist-price";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
@@ -40,20 +41,17 @@ export function WatchlistCard() {
 
   const watchlist = data.watchlist;
 
-  // Price per item: catalog cache first (instrument currency), then the
-  // one-shot fetch (item currency). Null = no real price known.
+  // Price per item: the item's own currency override beats the cron-cached
+  // catalog price when they disagree (see lib/live/watchlist-price.ts - this
+  // is the GME 2.23-instead-of-22 fix), otherwise falls back to the one-shot
+  // fetch in the display currency.
   const priced = useMemo(
     () =>
       watchlist.map((item) => {
         const key = assetPriceKey(item);
         const inst = lookupInstrument(key);
-        if (inst?.lastPrice != null) {
-          return { item, key, price: inst.lastPrice, currency: inst.currency ?? base };
-        }
-        if (fetched[key] != null) {
-          return { item, key, price: fetched[key], currency: item.currency ?? base };
-        }
-        return { item, key, price: null as number | null, currency: item.currency ?? base };
+        const { price, currency, wantsFetch } = pickWatchlistPrice(item, inst, fetched[key], base);
+        return { item, key, price, currency, wantsFetch };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [watchlist, base, version, fetched],
@@ -61,24 +59,24 @@ export function WatchlistCard() {
 
   // Fetch prices for uncached equities, one shot per item (not polled).
   const uncachedSig = priced
-    .filter((p) => p.price === null && (p.item.type === "STOCK" || p.item.type === "ETF"))
+    .filter((p) => p.wantsFetch && (p.item.type === "STOCK" || p.item.type === "ETF"))
     .map((p) => p.key)
     .join(",");
   useEffect(() => {
     if (!uncachedSig) return;
     let cancelled = false;
     const targets = priced.filter(
-      (p) => p.price === null && (p.item.type === "STOCK" || p.item.type === "ETF"),
+      (p) => p.wantsFetch && (p.item.type === "STOCK" || p.item.type === "ETF"),
     );
     const run = async () => {
       const results = await Promise.all(
-        targets.map(async ({ item, key }) => {
+        targets.map(async ({ item, key, currency }) => {
           const q = item.isin || item.symbol;
           if (!q) return null;
           try {
             const res = await fetch(
               `/api/price?q=${encodeURIComponent(q)}&currency=${encodeURIComponent(
-                item.currency ?? base,
+                currency,
               )}&name=${encodeURIComponent(item.name)}`,
             );
             if (!res.ok) return null;

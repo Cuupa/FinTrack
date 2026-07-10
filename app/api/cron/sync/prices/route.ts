@@ -81,15 +81,32 @@ async function syncEquities(
   supabase: SupabaseClient,
   rows: InstrumentRow[],
   syncedAt: string,
+  revalidate: boolean,
 ): Promise<number> {
   let updated = 0;
   await Promise.all(
     rows.map(async (r) => {
       const query = r.isin || r.wkn || r.symbol;
       if (!query) return;
-      const hint = r.quote_source === "yahoo" && r.quote_id ? r.quote_id : undefined;
+      const hasHint = r.quote_source === "yahoo" && !!r.quote_id;
+      const isCommodity = r.type === "COMMODITY";
+      // COMMODITY listings are seeded and authoritative (e.g. gold's
+      // XAUEUR=X + quote_scale) - a bare metal ticker mis-resolves via Yahoo
+      // search (this put gold at 1.42 EUR: the cron learned a ~44 EUR
+      // listing and then applied quote_scale on top of it). Rows with a
+      // hint always reuse it and never fall back to search; rows without
+      // one (not yet seeded) keep resolving normally. Non-COMMODITY rows
+      // are excluded from this and instead self-heal daily below.
+      const hint = hasHint && (isCommodity || !revalidate) ? (r.quote_id as string) : undefined;
       try {
         const resolved = await resolveQuote(query, r.currency || "", hint);
+        if (isCommodity && hasHint && (!resolved || resolved.symbol !== hint)) {
+          // The hinted listing failed (no data / currency mismatch) or
+          // resolveQuote fell through to search and picked a different one -
+          // either way, never trust it for a commodity. Skip until the
+          // seeded row is fixed manually.
+          return;
+        }
         const symbol = resolved?.symbol;
         let p = resolved ? resolved.price : null;
         if (p == null) return;
@@ -208,6 +225,15 @@ async function handle(req: Request): Promise<Response> {
   const rows = (data ?? []) as InstrumentRow[];
   const syncedAt = new Date().toISOString();
 
+  // Hint-less resolution costs a full Yahoo search per instrument, so it
+  // only runs in the 03:00 UTC hour (once a day) or on an explicit
+  // ?revalidate=1 - this heals a stuck mis-resolved quote_id (the GME
+  // 2.23 case) within a day instead of never, while keeping every other
+  // sync on the cheap hinted fast path.
+  const revalidate =
+    new URL(req.url).searchParams.get("revalidate") === "1" ||
+    new Date(syncedAt).getUTCHours() === 3;
+
   const [equities, crypto, fx] = await Promise.all([
     syncEquities(
       supabase,
@@ -217,6 +243,7 @@ async function handle(req: Request): Promise<Response> {
           r.quote_source !== "coingecko",
       ),
       syncedAt,
+      revalidate,
     ),
     syncCrypto(
       supabase,
