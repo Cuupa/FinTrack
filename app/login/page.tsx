@@ -7,6 +7,18 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Button, Card } from "@/components/ui/primitives";
 
+const BACKOFF_KEY = "fintrack_login_backoff";
+function readBackoff(): { fails: number; until: number } {
+  if (typeof window === "undefined") return { fails: 0, until: 0 };
+  try {
+    const raw = window.sessionStorage.getItem(BACKOFF_KEY);
+    if (raw) return JSON.parse(raw) as { fails: number; until: number };
+  } catch {
+    /* ignore */
+  }
+  return { fails: 0, until: 0 };
+}
+
 /** Whether new registrations are currently allowed (below the user cap). */
 async function checkRegistrationOpen(): Promise<boolean> {
   const supabase = getSupabaseClient();
@@ -52,10 +64,26 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   // null = not yet checked; false = registrations closed (user cap reached).
   const [signupOpen, setSignupOpen] = useState<boolean | null>(null);
+  // Exponential-backoff cooldown after repeated failed sign-in attempts.
+  const [fails, setFails] = useState<number>(() => readBackoff().fails);
+  const [cooldownUntil, setCooldownUntil] = useState<number>(
+    () => readBackoff().until,
+  );
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+  const cooldownRemaining = Math.max(
+    0,
+    Math.ceil((cooldownUntil - nowTick) / 1000),
+  );
 
   useEffect(() => {
     if (user) router.replace("/");
   }, [user, router]);
+
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [cooldownUntil]);
 
   useEffect(() => {
     if (!authAvailable) return;
@@ -68,14 +96,32 @@ function LoginForm() {
     };
   }, [authAvailable]);
 
+  function persistBackoff(nextFails: number, until: number) {
+    setFails(nextFails);
+    setCooldownUntil(until);
+    try {
+      window.sessionStorage.setItem(
+        BACKOFF_KEY,
+        JSON.stringify({ fails: nextFails, until }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cooldownRemaining > 0) {
+      setError(`Too many attempts. Try again in ${cooldownRemaining}s.`);
+      return;
+    }
     setError(null);
     setMessage(null);
     setBusy(true);
     try {
       if (tab === "signin") {
         await signInWithPassword(email, password);
+        persistBackoff(0, 0);
         router.replace("/");
       } else {
         if (password.length < 6) {
@@ -98,6 +144,14 @@ function LoginForm() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
+      if (tab === "signin") {
+        const nextFails = fails + 1;
+        const until =
+          nextFails >= 3
+            ? Date.now() + Math.min(300, 5 * 2 ** (nextFails - 3)) * 1000
+            : 0;
+        persistBackoff(nextFails, until);
+      }
     } finally {
       setBusy(false);
     }
@@ -205,6 +259,11 @@ function LoginForm() {
           {message && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
           )}
+          {tab === "signin" && cooldownRemaining > 0 && (
+            <p className="text-xs text-zinc-500">
+              Too many attempts. Try again in {cooldownRemaining}s.
+            </p>
+          )}
           <Button
             type="submit"
             variant="primary"
@@ -212,6 +271,7 @@ function LoginForm() {
             disabled={
               !authAvailable ||
               busy ||
+              cooldownRemaining > 0 ||
               (tab === "signup" && signupOpen === false)
             }
           >
