@@ -686,6 +686,9 @@ export const en = {
   "notFound.title": "Page not found",
   "notFound.body": "The page you're looking for doesn't exist or may have moved.",
   "notFound.backHome": "Back to dashboard",
+
+  "common.loadError": "Your data could not be loaded. Check your connection and try again.",
+  "common.retry": "Retry",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -1368,6 +1371,9 @@ const de: Partial<Record<MessageKey, string>> = {
   "notFound.title": "Seite nicht gefunden",
   "notFound.body": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
   "notFound.backHome": "Zur Übersicht",
+
+  "common.loadError": "Deine Daten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+  "common.retry": "Erneut versuchen",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };

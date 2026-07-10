@@ -15,10 +15,11 @@ import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Button } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
+import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function DashboardPage() {
-  const { loading } = usePortfolio();
+  const { loading, loadError, reload } = usePortfolio();
   const { mode } = useAuth();
   const { t } = useI18n();
   const [adding, setAdding] = useState(false);
@@ -86,6 +87,8 @@ export default function DashboardPage() {
 
       {loading ? (
         <DashboardSkeleton />
+      ) : loadError ? (
+        <LoadError onRetry={reload} />
       ) : (
         <>
           <LiveShareSync />

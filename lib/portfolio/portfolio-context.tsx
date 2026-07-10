@@ -39,6 +39,11 @@ interface PortfolioContextValue {
   /** Portfolio data scoped to the currently-selected portfolios. */
   data: PortfolioData;
   loading: boolean;
+  /** True when the last load/reload attempt failed. Existing `data` is kept
+   * as-is (never wiped) so a stale-but-present portfolio survives a failed
+   * refresh; UI should show an error state and offer `reload()` instead of
+   * hanging on the loading skeleton forever. */
+  loadError: boolean;
   persistent: boolean;
   /**
    * The active store instance. Exposed so `SyncProvider`
@@ -88,6 +93,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<PortfolioData>(emptyPortfolio());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   // null = all portfolios selected; otherwise the explicit selection.
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
 
@@ -102,24 +108,52 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   );
 
   const reload = useCallback(async () => {
+    // A normal async callback (invoked from event handlers, e.g. a Retry
+    // button), not a useEffect body, so setting state synchronously here is
+    // fine — only effects are constrained to async continuations.
     setLoading(true);
+    setLoadError(false);
     try {
-      setData(await store.load());
+      const loaded = await store.load();
+      setData(loaded);
+      setLoadError(false);
+    } catch (err) {
+      // Keep whatever `data` already holds — never fall back to an empty
+      // portfolio on a failed refresh — and surface the failure instead.
+      console.error("Failed to reload portfolio", err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   }, [store]);
 
   // Load whenever the active store changes (mount, sign-in, sign-out). State
-  // is set in the async continuation, after awaiting the external store.
+  // is set in async continuations, never synchronously in the effect body
+  // (Next 16's react-hooks/set-state-in-effect lint rule fails the build on
+  // that) — clearing a stale error from a previous store is deferred via a
+  // resolved-promise continuation, same trick as useOnlineStatus.
   useEffect(() => {
     if (authLoading) return;
     let active = true;
-    store.load().then((loaded) => {
-      if (!active) return;
-      setData(loaded);
-      setLoading(false);
+    void Promise.resolve().then(() => {
+      if (active) setLoadError(false);
     });
+    store.load().then(
+      (loaded) => {
+        if (!active) return;
+        setData(loaded);
+        setLoadError(false);
+        setLoading(false);
+      },
+      (err: unknown) => {
+        if (!active) return;
+        // Same rule as `reload`: don't wipe existing data, just surface the
+        // failure so the UI can stop hanging on the loading skeleton.
+        console.error("Failed to load portfolio", err);
+        setLoadError(true);
+        setLoading(false);
+      },
+    );
     return () => {
       active = false;
     };
@@ -322,6 +356,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const value: PortfolioContextValue = {
     data: scopedData,
     loading,
+    loadError,
     persistent: store.persistent,
     store,
     reload,

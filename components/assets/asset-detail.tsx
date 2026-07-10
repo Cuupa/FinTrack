@@ -52,11 +52,12 @@ import {
 import { TransactionForm } from "./transaction-form";
 import { AssetTags } from "./asset-tags";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
+import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
 export function AssetDetail({ assetId }: { assetId: string }) {
-  const { data, loading, deleteAsset, deleteTransaction, updateTransaction, portfolios } =
+  const { data, loading, loadError, reload, deleteAsset, deleteTransaction, updateTransaction, portfolios } =
     usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
@@ -156,6 +157,10 @@ export function AssetDetail({ assetId }: { assetId: string }) {
 
   if (loading) {
     return <AssetDetailSkeleton />;
+  }
+
+  if (loadError) {
+    return <LoadError onRetry={reload} />;
   }
 
   if (!asset || !summary) {
