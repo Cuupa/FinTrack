@@ -6,8 +6,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Button, Card } from "@/components/ui/primitives";
-import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
-import { useI18n } from "@/lib/i18n/i18n-context";
 
 /** Whether new registrations are currently allowed (below the user cap). */
 async function checkRegistrationOpen(): Promise<boolean> {
@@ -39,7 +37,6 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useI18n();
   const { user, authAvailable, signInWithPassword, signUp, signInWithOAuth } =
     useAuth();
   // Open the register tab when arriving via /login?tab=signup.
@@ -55,14 +52,6 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   // null = not yet checked; false = registrations closed (user cap reached).
   const [signupOpen, setSignupOpen] = useState<boolean | null>(null);
-
-  const { touched, touch } = useFormTouched();
-  // Presence-only gating for the submit button — mirrors handleSubmit's checks
-  // (password length / match is still validated at submit).
-  const emailMissing = !email.trim();
-  const passwordMissing = !password.trim();
-  const confirmMissing = tab === "signup" && !confirmPassword.trim();
-  const formIncomplete = emailMissing || passwordMissing || confirmMissing;
 
   useEffect(() => {
     if (user) router.replace("/");
@@ -155,11 +144,9 @@ function LoginForm() {
               value={email}
               disabled={!authAvailable || busy}
               onChange={(e) => {
-                touch();
                 setEmail(e.target.value);
               }}
-              onBlur={touch}
-              className={`mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700${missingFieldCls(emailMissing, touched)}`}
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700"
             />
           </div>
           <div>
@@ -177,11 +164,9 @@ function LoginForm() {
               value={password}
               disabled={!authAvailable || busy}
               onChange={(e) => {
-                touch();
                 setPassword(e.target.value);
               }}
-              onBlur={touch}
-              className={`mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700${missingFieldCls(passwordMissing, touched)}`}
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700"
             />
             {tab === "signup" && (
               <p className="mt-1 text-xs text-zinc-500">At least 6 characters.</p>
@@ -202,11 +187,9 @@ function LoginForm() {
                 value={confirmPassword}
                 disabled={!authAvailable || busy}
                 onChange={(e) => {
-                  touch();
                   setConfirmPassword(e.target.value);
                 }}
-                onBlur={touch}
-                className={`mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700${missingFieldCls(confirmMissing, touched)}`}
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700"
               />
             </div>
           )}
@@ -222,10 +205,6 @@ function LoginForm() {
           {message && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
           )}
-          {formIncomplete && touched && (
-            <p className="text-xs text-zinc-500">{t("form.missingFields")}</p>
-          )}
-
           <Button
             type="submit"
             variant="primary"
@@ -233,8 +212,7 @@ function LoginForm() {
             disabled={
               !authAvailable ||
               busy ||
-              (tab === "signup" && signupOpen === false) ||
-              formIncomplete
+              (tab === "signup" && signupOpen === false)
             }
           >
             {tab === "signin" ? "Sign in" : "Create account"}
