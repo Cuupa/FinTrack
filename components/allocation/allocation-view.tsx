@@ -27,6 +27,7 @@ import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
 import { useEtfCountries } from "@/lib/finance/use-etf-countries";
 import { Card } from "@/components/ui/primitives";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { AllocationPie } from "./allocation-pie";
 
 const TABS = [
@@ -41,6 +42,7 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number];
+type OtherTabKey = Exclude<TabKey, "custom">;
 
 export function AllocationView() {
   const { data } = usePortfolio();
@@ -67,7 +69,15 @@ export function AllocationView() {
   const { groups, assignments } = useTags();
   const { t } = useI18n();
 
-  const charts = useMemo<Record<TabKey, Slice[]>>(
+  // Which tag group backs the Custom breakdown. Derived rather than synced
+  // via effect: falls back to the first group whenever the selection is
+  // empty or points at a group that's since been deleted.
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const activeGroupId = groups.some((g) => g.id === selectedGroupId)
+    ? selectedGroupId
+    : (groups[0]?.id ?? "");
+
+  const charts = useMemo<Record<OtherTabKey, Slice[]>>(
     () => ({
       investment: byInvestment(holdings),
       assetClass: byAssetClass(holdings),
@@ -76,13 +86,19 @@ export function AllocationView() {
       country: byCountryLookThrough(holdings, classMap, etfCountries),
       currency: byCurrency(holdings, base),
       volatility: byVolatility(holdings),
-      // Real per-group switching lands in the next commit; wire the first
-      // group (if any) so the build stays green in the meantime.
-      custom: byCustom(holdings, assignments, groups[0]?.id ?? ""),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries, assignments, groups],
+    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries],
   );
+
+  // Kept separate from `charts`: it depends on the selected tag group instead
+  // of the catalog/classification data the other breakdowns depend on.
+  const customSlices = useMemo(
+    () => byCustom(holdings, assignments, activeGroupId),
+    [holdings, assignments, activeGroupId],
+  );
+
+  const activeSlices = tab === "custom" ? customSlices : charts[tab];
 
   if (holdings.length === 0) {
     return (
@@ -113,21 +129,32 @@ export function AllocationView() {
         ))}
       </div>
 
+      {tab === "custom" && groups.length > 0 && (
+        <div className="mt-4 max-w-xs">
+          <SelectMenu
+            value={activeGroupId}
+            ariaLabel={t("alloc.selectGroup")}
+            onChange={setSelectedGroupId}
+            options={groups.map((g) => ({ value: g.id, label: g.name }))}
+          />
+        </div>
+      )}
+
       <div className="mt-8">
-        {tab === "custom" && charts.custom.every((s) => s.label === "Untagged") ? (
+        {tab === "custom" && customSlices.every((s) => s.label === "Untagged") ? (
           <p className="py-6 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
-        ) : charts[tab].length === 0 ? (
+        ) : activeSlices.length === 0 ? (
           <p className="py-12 text-center text-sm text-zinc-500">
             {tab === "region" || tab === "country" ? t("alloc.noGeo") : t("alloc.noData")}
           </p>
         ) : (
           <AllocationPie
-            slices={charts[tab]}
+            slices={activeSlices}
             currency={base}
             title={t(`alloc.${tab}`)}
             colors={
               tab === "custom"
-                ? charts.custom.map((s) =>
+                ? customSlices.map((s) =>
                     s.label === "Untagged" ? "#a1a1aa" : colorForLabel(s.label),
                   )
                 : undefined

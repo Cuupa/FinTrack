@@ -46,6 +46,15 @@ export const en = {
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "View details",
 
+  "tags.group": "Group",
+  "tags.valuePlaceholder": "Value…",
+  "tags.newGroup": "+ New group",
+  "tags.groupNamePlaceholder": "Group name",
+  "tags.manageGroups": "Manage groups",
+  "tags.deleteGroup": "Delete group",
+  "tags.deleteGroupConfirm": "Delete group “{name}” and all its assignments?",
+  "tags.addTag": "+ Tag",
+
   "sp.title": "Savings plans",
   "sp.new": "+ New plan",
   "sp.empty": "Set up a recurring buy. Due executions appear here for review.",
@@ -507,6 +516,7 @@ export const en = {
   "alloc.currency": "Currencies",
   "alloc.volatility": "Volatility",
   "alloc.custom": "Custom",
+  "alloc.selectGroup": "Breakdown group",
   "alloc.addHoldings": "Add holdings to see your allocation.",
   "alloc.noTags": "No tags yet. Open an asset and add tags to build a custom breakdown.",
   "alloc.noGeo":
@@ -744,6 +754,15 @@ const de: Partial<Record<MessageKey, string>> = {
   "watchlist.currency": "Währung",
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Details ansehen",
+
+  "tags.group": "Gruppe",
+  "tags.valuePlaceholder": "Wert…",
+  "tags.newGroup": "+ Neue Gruppe",
+  "tags.groupNamePlaceholder": "Gruppenname",
+  "tags.manageGroups": "Gruppen verwalten",
+  "tags.deleteGroup": "Gruppe löschen",
+  "tags.deleteGroupConfirm": "Gruppe “{name}” und alle ihre Zuordnungen löschen?",
+  "tags.addTag": "+ Tag",
 
   "sp.title": "Sparpläne",
   "sp.new": "+ Neuer Sparplan",
@@ -1205,6 +1224,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "alloc.currency": "Währungen",
   "alloc.volatility": "Volatilität",
   "alloc.custom": "Eigene",
+  "alloc.selectGroup": "Aufteilungsgruppe",
   "alloc.addHoldings": "Füge Positionen hinzu, um deine Aufteilung zu sehen.",
   "alloc.noTags":
     "Noch keine Tags. Öffne eine Position und füge Tags hinzu, um eine eigene Aufteilung zu erstellen.",
