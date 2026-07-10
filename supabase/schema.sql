@@ -401,7 +401,8 @@ insert into public.schema_migrations (version) values
   ('0042_instrument_name_sync'),
   ('0043_rate_limit'),
   ('0044_reset_commodity_quote'),
-  ('0045_fk_indexes')
+  ('0045_fk_indexes'),
+  ('0046_history_cache_flag')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -602,7 +603,8 @@ insert into public.feature_flags (flag, description) values
   ('taxReport', 'Analysis — annual tax report (realized gains, fees, taxes per year)'),
   ('watchlist', 'Watchlist card on the dashboard'),
   ('savingsPlans', 'Savings plans (recurring buys) card on the dashboard'),
-  ('dividends', 'Dividend dashboard (/dividends)')
+  ('dividends', 'Dividend dashboard (/dividends)'),
+  ('historyCache', 'Client-side stale-while-revalidate cache of historical price series (instant chart repaint on repeat visits)')
 on conflict (flag) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the

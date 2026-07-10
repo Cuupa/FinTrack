@@ -38,7 +38,8 @@ export type FeatureFlag =
   | "taxReport"
   | "watchlist"
   | "savingsPlans"
-  | "dividends";
+  | "dividends"
+  | "historyCache";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",
