@@ -32,7 +32,7 @@ import { assetPriceKey, type Portfolio, type Transaction, type TransactionType }
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor, lookupInstrument } from "@/lib/catalog/catalog";
-import { dividendItemsFor, nativeCurrency, quoteItemFor } from "@/lib/finance/prices";
+import { nativeCurrency, quoteItemFor } from "@/lib/finance/prices";
 import { instrumentToAsset, watchlistItemToAsset } from "@/lib/finance/instrument-asset";
 import { assetAnnualStats } from "@/lib/finance/stats";
 import { useHistory } from "@/lib/history/use-history";
@@ -174,14 +174,6 @@ export function AssetDetail({
     data.profile.currency,
   );
 
-  // Dividend-eligible items: only STOCK/ETF can pay dividends (dividendItemsFor
-  // excludes CRYPTO/COMMODITY/CASH), so this fetches nothing for those types.
-  const divItems = useMemo(
-    () => (asset ? dividendItemsFor([asset]) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [asset, version],
-  );
-
   // CASH's price chart is meaningless (constant 1) — plot the position's
   // total value over time (balance evolving with deposits/withdrawals/
   // interest) instead, via the same replay logic as the net-worth chart.
@@ -206,14 +198,14 @@ export function AssetDetail({
   );
 
   // Real dividend events (accumulating funds return none → no phantom
-  // payouts; CRYPTO/COMMODITY/CASH never pay dividends — divItems is already
-  // empty for those above, so this fetches nothing).
-  const divMap = useDividends(divItems);
+  // payouts; CASH isn't a security and never pays dividends — histItems is
+  // already empty for it above, so this fetches nothing).
+  const divMap = useDividends(histItems);
   const dividends = useMemo(() => {
     if (!asset || asset.type === "CASH") return [];
-    const key = divItems[0]?.key;
+    const key = histItems[0]?.key;
     return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
-  }, [divMap, divItems, txs, asset]);
+  }, [divMap, histItems, txs, asset]);
 
   // Chart markers: buys/sells plus a marker on each dividend pay date.
   const markers: ChartMarker[] = useMemo(
