@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return;
     await supabase.auth.signOut();
     // The history cache's keys are derived from the held instruments' price
-    // keys (ISIN/WKN/symbol) — clear it so a shared device never surfaces one
+    // keys (ISIN/WKN/symbol) - clear it so a shared device never surfaces one
     // user's chart data after another signs in.
     clearHistoryCache();
   }, [supabase]);

@@ -70,7 +70,7 @@ export function useHistory(
           if (historyCacheEnabled) {
             writeHistoryCache(sig, usable);
             // Only re-render if the revalidated data actually differs from
-            // what's already painted (the cache hit) — avoids a pointless
+            // what's already painted (the cache hit) - avoids a pointless
             // re-render on every visit when nothing changed.
             const unchanged = cached != null && JSON.stringify(usable) === JSON.stringify(cached);
             if (!unchanged) setState({ sig, histories: usable });

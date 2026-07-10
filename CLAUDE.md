@@ -153,7 +153,11 @@ Instrument resolution is shared: all three add surfaces (add-asset form,
 watchlist add, savings-plan inline new-asset) call `resolveInstrumentByQuery`
 (`lib/import/resolve-instrument.ts`, catalog -> `/api/lookup`); the add-asset
 identifier input auto-imports on blur/Enter. Watchlist items carry an optional
-per-item `currency` override and link to `/instruments/[key]` (price key), the
+per-item `currency` override chosen in the add form ("Auto" = resolved native
+currency); row pricing goes through the pure `pickWatchlistPrice`
+(`lib/live/watchlist-price.ts`): the cron-cached catalog price is used only
+when it agrees with the override, otherwise a one-shot `/api/price` fetch in
+the override currency wins. Items link to `/instruments/[key]` (price key), the
 shared detail view for non-held instruments: `AssetDetail` takes
 `assetId | instrumentKey`, synthesizes an `Asset` from the watchlist item or
 catalog row (`lib/finance/instrument-asset.ts`, sentinel ids `wl:`/`cat:`), and
@@ -191,6 +195,14 @@ transaction prices) in the price cron, `/api/history`, and `/api/quotes` via
 `lib/server/scale.ts`. Runtime live price = `instruments.last_price` (cron,
 already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
 (STOCK/ETF only).
+
+The prices cron treats a COMMODITY row's stored `quote_id` as **authoritative**
+(never re-resolved via search, row skipped if the hinted listing does not
+resolve to itself) — Yahoo search on a bare metal ticker mis-resolves and once
+put gold at 1.42 EUR. STOCK/ETF rows instead self-heal: once a day (03 UTC
+hour) or on `?revalidate=1` the cron drops the stored hint so a stuck
+mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
+`/api/cron/sync` forwards its query string to the prices sub-sync.
 
 ### Finance core (`lib/finance/`) — pure, no React
 
@@ -230,8 +242,11 @@ already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
 - `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
   linked via `LegalFooter` in the root layout). The privacy policy makes
   verifiable claims about the code (server-side market-data calls, no
-  analytics, essential-only storage) — **keep it accurate when data flows
-  change**.
+  analytics, essential-only storage, local history caching) — **keep it
+  accurate when data flows change**. The legal contact email renders via
+  `EmailImage` (`components/legal/legal-page.tsx`): drawn onto a canvas so the
+  address never appears in the DOM (anti-scraping, user request) — never
+  reintroduce it as text, a `mailto:` link, or an ARIA attribute.
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
 client pages (see `app/assets/[id]/page.tsx`).
@@ -257,6 +272,14 @@ client pages (see `app/assets/[id]/page.tsx`).
   256 KB payload cap and DB-backed rate limits. `instruments` has unique
   partial indexes on `isin`/`wkn` — `resolveInstrument` handles the 23505
   race by re-selecting.
+- Historical series ride two cache layers: server-side `instrument_history`
+  (per price key + range, 24h/7d staleness, inside `/api/history`) and a
+  browser-local stale-while-revalidate layer (`lib/history/history-cache.ts`,
+  used by `use-history.ts` behind the `historyCache` flag: cache hit paints
+  immediately, a background fetch always revalidates; flag off = plain fetch).
+  Cleared on sign-out; disclosed in `/datenschutz`. Heavy computation stays
+  live and client-side on purpose — the finance math is cheap, the network
+  round trip was the visible wait (round-13 caching decision).
 - Synthetic-data labeling: `assetPriceSeries`/`netWorthSeries` return
   `{ points, synthetic/containsSynthetic }` and `HoldingSummary.syntheticPrice`
   feeds `EstimatedBadge` — new chart/price surfaces should keep the badge.
