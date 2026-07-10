@@ -42,6 +42,7 @@ async function handle(req: Request): Promise<Response> {
   await post("/api/cron/sync/prices");
   await post("/api/cron/sync/constituents");
   await post("/api/cron/sync/classifications");
+  await post("/api/cron/sync/names");
   await post("/api/cron/sync/etf-breakdowns");
   await post("/api/cron/sync/benchmarks");
   await post("/api/cron/sync/shared-portfolios");

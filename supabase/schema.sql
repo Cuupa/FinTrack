@@ -45,9 +45,12 @@ create table if not exists public.instruments (
   -- Live price cached by the price-sync cron (see /api/cron/sync-prices).
   last_price numeric,
   price_synced_at timestamptz,
+  -- Official-name resolution staleness marker for the names-sync cron.
+  name_synced_at timestamptz,
   created_at timestamptz not null default now()
 );
 alter table public.instruments add column if not exists quote_scale numeric not null default 1;
+alter table public.instruments add column if not exists name_synced_at timestamptz;
 -- `create table if not exists` above is a no-op on an existing database, so
 -- re-apply the widened type check idempotently for upgrades too.
 alter table public.instruments drop constraint if exists instruments_type_check;
@@ -347,7 +350,8 @@ insert into public.schema_migrations (version) values
   ('0038_savings_plans'),
   ('0039_dividend_dashboard_flag'),
   ('0040_commodity_type'),
-  ('0041_watchlist_currency')
+  ('0041_watchlist_currency'),
+  ('0042_instrument_name_sync')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
