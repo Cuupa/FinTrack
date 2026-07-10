@@ -149,6 +149,19 @@ replays. Savings plans never touch the finance core:
 dashboard card books them as ordinary BUY transactions only after an explicit
 review dialog, advancing `lastRunDate`.
 
+Instrument resolution is shared: all three add surfaces (add-asset form,
+watchlist add, savings-plan inline new-asset) call `resolveInstrumentByQuery`
+(`lib/import/resolve-instrument.ts`, catalog -> `/api/lookup`); the add-asset
+identifier input auto-imports on blur/Enter. Watchlist items carry an optional
+per-item `currency` override and link to `/instruments/[key]` (price key), the
+shared detail view for non-held instruments: `AssetDetail` takes
+`assetId | instrumentKey`, synthesizes an `Asset` from the watchlist item or
+catalog row (`lib/finance/instrument-asset.ts`, sentinel ids `wl:`/`cat:`), and
+offers "Add to portfolio" (embedded add-asset form) which flips the page to
+the held view. The transaction form prefills from `valuation.live` and
+refreshes equities via `/api/price` when the cached price is older than 1h
+(`lib/live/fetch-price.ts` `isPriceFresh`/`fetchLivePrice`).
+
 ### Asset identity
 
 Assets are identified by **ISIN/WKN** (not ticker). `symbol` is a nullable
@@ -206,6 +219,9 @@ already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
   table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
   (flag `watchlist`)
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
+- `/instruments/[key]` — same detail view for non-held instruments (watchlist
+  click-through / catalog), reduced to master data + chart + look-through,
+  with an embedded "Add to portfolio" form
 - `/dividends` — dividend dashboard: income by month/year, personal yield +
   yield-on-cost, per-holding breakdown, 12-month forecast from trailing
   payouts (flag `dividends`)
@@ -259,8 +275,14 @@ client pages (see `app/assets/[id]/page.tsx`).
   `lib/forms/required.ts` (`useFormTouched` + amber `missingFieldCls`, hint key
   `form.missingFields`); content validation (valid number, > 0, …) stays at
   submit time. New forms should follow this pattern.
-- Official-name resolution (catalog → `/api/lookup`, batches of 4) is shared:
-  `lib/import/resolve-names.ts` serves both the CSV import and the Holdings
-  "Official names" bulk-rename review dialog.
+- Official-name resolution (catalog → `/api/lookup`, batches of 4,
+  `lib/import/resolve-names.ts`) serves the CSV import; the former Holdings
+  "Official names" button is gone — catalog names are re-synced by the
+  `/api/cron/sync/names` job (marker `instruments.name_synced_at`).
+- The login form deliberately has no required-field gating (user decision);
+  after 3 consecutive failed sign-ins, submit is disabled with an exponential
+  backoff countdown. Market-data APIs are DB-rate-limited per IP
+  (`lib/server/rate-limit.ts`, fail-open without Supabase); `/api/cron/*`
+  requires `CRON_SECRET` at the middleware edge.
 - `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
   `footer` render prop (used for "+ New asset…" in the savings-plan form).
