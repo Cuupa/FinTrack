@@ -46,20 +46,25 @@ export function byInvestment(holdings: HoldingSummary[]): Slice[] {
 }
 
 /**
- * Group by the user's custom tags. An asset with multiple tags splits its value
- * equally across them so the pie still sums to the whole; untagged holdings
- * bucket together.
+ * Group by the user's custom tag values within a single tag group. An asset
+ * with multiple values in that group splits its value equally across them so
+ * the pie still sums to the whole; holdings with no value in the group bucket
+ * together under "Untagged".
  */
-export function byCustom(holdings: HoldingSummary[], tags: Record<string, string[]>): Slice[] {
+export function byCustom(
+  holdings: HoldingSummary[],
+  assignments: Record<string, Record<string, string[]>>,
+  groupId: string,
+): Slice[] {
   const map = new Map<string, number>();
   const add = (label: string, v: number) => map.set(label, (map.get(label) ?? 0) + v);
   for (const h of holdings) {
     if (h.marketValue <= 0) continue;
-    const ts = (tags[h.asset.id] ?? []).filter(Boolean);
-    if (ts.length === 0) add("Untagged", h.marketValue);
+    const values = (assignments[h.asset.id]?.[groupId] ?? []).filter(Boolean);
+    if (values.length === 0) add("Untagged", h.marketValue);
     else {
-      const share = h.marketValue / ts.length;
-      for (const t of ts) add(t, share);
+      const share = h.marketValue / values.length;
+      for (const v of values) add(v, share);
     }
   }
   return Array.from(map, ([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);

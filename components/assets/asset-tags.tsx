@@ -9,42 +9,46 @@ import { useTags } from "@/lib/tags/tags-context";
 import { colorForLabel } from "@/lib/colors";
 
 export function AssetTags({ assetId }: { assetId: string }) {
-  const { tagsFor, allTags, addTag, removeTag } = useTags();
-  const tags = tagsFor(assetId);
+  // Temporary compile-safe wiring against the new grouped-tags API; the real
+  // group-aware editor (group picker, group manager) lands in the next commit.
+  const { groups, entriesFor, addValue, removeValue } = useTags();
+  const entries = entriesFor(assetId);
+  const groupId = groups[0]?.id ?? "";
   const [input, setInput] = useState("");
   const [adding, setAdding] = useState(false);
 
   const commit = () => {
     const t = input.trim();
-    if (t) addTag(assetId, t);
+    if (t && groupId) addValue(assetId, groupId, t);
     setInput("");
     setAdding(false);
   };
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white"
-          style={{ backgroundColor: colorForLabel(tag) }}
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={() => removeTag(assetId, tag)}
-            aria-label={`Remove tag ${tag}`}
-            className="text-white/80 hover:text-white"
+      {entries.flatMap(({ group, values }) =>
+        values.map((value) => (
+          <span
+            key={`${group.id}:${value}`}
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white"
+            style={{ backgroundColor: colorForLabel(value) }}
           >
-            ✕
-          </button>
-        </span>
-      ))}
+            {group.name}: {value}
+            <button
+              type="button"
+              onClick={() => removeValue(assetId, group.id, value)}
+              aria-label={`Remove tag ${value}`}
+              className="text-white/80 hover:text-white"
+            >
+              ✕
+            </button>
+          </span>
+        )),
+      )}
 
       {adding ? (
         <input
           autoFocus
-          list="asset-tag-suggestions"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -67,11 +71,6 @@ export function AssetTags({ assetId }: { assetId: string }) {
           + Tag
         </button>
       )}
-      <datalist id="asset-tag-suggestions">
-        {allTags.map((t) => (
-          <option key={t} value={t} />
-        ))}
-      </datalist>
     </div>
   );
 }

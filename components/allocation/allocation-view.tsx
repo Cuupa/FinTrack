@@ -64,7 +64,7 @@ export function AllocationView() {
   const etfSectors = useEtfSectors(holdings, version);
   const etfRegions = useEtfRegions(holdings, version);
   const etfCountries = useEtfCountries(holdings, version);
-  const { tags } = useTags();
+  const { groups, assignments } = useTags();
   const { t } = useI18n();
 
   const charts = useMemo<Record<TabKey, Slice[]>>(
@@ -76,10 +76,12 @@ export function AllocationView() {
       country: byCountryLookThrough(holdings, classMap, etfCountries),
       currency: byCurrency(holdings, base),
       volatility: byVolatility(holdings),
-      custom: byCustom(holdings, tags),
+      // Real per-group switching lands in the next commit; wire the first
+      // group (if any) so the build stays green in the meantime.
+      custom: byCustom(holdings, assignments, groups[0]?.id ?? ""),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries, tags],
+    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries, assignments, groups],
   );
 
   if (holdings.length === 0) {
