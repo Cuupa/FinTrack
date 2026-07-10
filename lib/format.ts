@@ -52,6 +52,19 @@ export function decimalPlaces(v: number, cap = 2): number {
   return cap;
 }
 
+export type CompactUnit = { divisor: number; suffix: string };
+
+/**
+ * Pick a single compact magnitude (k / M / B) for a whole axis from its
+ * largest absolute tick, so every tick on that axis abbreviates the same way.
+ */
+export function compactUnitFor(maxAbs: number): CompactUnit {
+  if (maxAbs >= 1e9) return { divisor: 1e9, suffix: "B" };
+  if (maxAbs >= 1e6) return { divisor: 1e6, suffix: "M" };
+  if (maxAbs >= 1e4) return { divisor: 1e3, suffix: "k" };
+  return { divisor: 1, suffix: "" };
+}
+
 /**
  * Short axis-style currency label ("€25k", "12,5k €"). Intl's own compact
  * notation is NOT used because it doesn't shorten thousands in every locale —
@@ -61,11 +74,11 @@ export function decimalPlaces(v: number, cap = 2): number {
  * than "Tsd."/"Mrd."). Intl still formats the scaled number, so decimal
  * separators and the currency symbol's position stay locale-correct.
  * Values under 10k keep their full digits (4-digit values don't compact).
+ * Pass `unit` (from `compactUnitFor`) to force a single magnitude across a
+ * whole axis instead of picking one per value.
  */
-export function formatCompactCurrency(value: number, currency = "EUR"): string {
-  const abs = Math.abs(value);
-  const [divisor, suffix] =
-    abs >= 1e9 ? [1e9, "B"] : abs >= 1e6 ? [1e6, "M"] : abs >= 1e4 ? [1e3, "k"] : [1, ""];
+export function formatCompactCurrency(value: number, currency = "EUR", unit?: CompactUnit): string {
+  const { divisor, suffix } = unit ?? compactUnitFor(Math.abs(value));
   const parts = new Intl.NumberFormat(intlLocale(), {
     style: "currency",
     currency,
@@ -74,7 +87,7 @@ export function formatCompactCurrency(value: number, currency = "EUR"): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   }).formatToParts(value / divisor);
-  if (!suffix) return parts.map((p) => p.value).join("");
+  if (!suffix || value === 0) return parts.map((p) => p.value).join("");
   // Inject the suffix right after the last numeric part so the currency
   // symbol keeps its locale position ("€25k" in en, "25k €" in de).
   const NUMERIC = new Set(["integer", "group", "decimal", "fraction"]);

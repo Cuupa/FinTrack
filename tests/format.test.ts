@@ -65,3 +65,18 @@ describe("formatCompactCurrency", () => {
     expect(formatCompactCurrency(-25_000).replace(/[\u00A0\u202F]/g, " ")).toBe("-25k €");
   });
 });
+
+describe("formatCompactCurrency with a forced unit", () => {
+  afterEach(() => setActiveLocale("en"));
+
+  it("uses the forced unit instead of picking one per value", () => {
+    setActiveLocale("en");
+    expect(formatCompactCurrency(900, "EUR", { divisor: 1e3, suffix: "k" })).toBe("€0.9k");
+    expect(formatCompactCurrency(4_000, "EUR", { divisor: 1e3, suffix: "k" })).toBe("€4k");
+  });
+
+  it("keeps an exact zero as €0 even with a forced unit", () => {
+    setActiveLocale("en");
+    expect(formatCompactCurrency(0, "EUR", { divisor: 1e3, suffix: "k" })).toBe("€0");
+  });
+});

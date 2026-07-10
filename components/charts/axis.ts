@@ -4,7 +4,7 @@
 // tick formatter that keeps small-value axes fully precise but compacts large
 // ones ("€12.5k") so a 7-figure portfolio doesn't force the axis wide again.
 
-import { decimalPlaces, formatCompactCurrency, formatCurrency } from "@/lib/format";
+import { compactUnitFor, decimalPlaces, formatCompactCurrency, formatCurrency } from "@/lib/format";
 
 // Calibrated against actual rendered tick-label bounding boxes at fontSize 12
 // (Geist): width ≈ 6px/char plus a fixed cost for the currency symbol/sign,
@@ -32,7 +32,9 @@ export function yAxisWidth(labels: readonly string[]): number {
  * Currency tick formatter shared by every chart with a currency y-axis: below
  * 10k, ticks stay full-precision and aligned to the tick that needs the most
  * decimals (a whole 5 reads "5.00" beside "4.50"); at/above 10k they compact
- * ("€12.5k") instead of demanding ever more axis width.
+ * ("€12.5k") instead of demanding ever more axis width. The magnitude (k/M/B)
+ * is chosen once from the axis's largest tick, so every tick on the axis
+ * shares the same unit rather than each abbreviating on its own.
  */
 export function axisCurrencyFormatter(ticks: readonly number[], currency: string): (v: number) => string {
   const maxAbs = ticks.length ? Math.max(...ticks.map((v) => Math.abs(v))) : 0;
@@ -40,5 +42,6 @@ export function axisCurrencyFormatter(ticks: readonly number[], currency: string
     const digits = Math.max(0, ...ticks.map((v) => decimalPlaces(v)));
     return (v: number) => formatCurrency(v, currency, digits);
   }
-  return (v: number) => formatCompactCurrency(v, currency);
+  const unit = compactUnitFor(maxAbs);
+  return (v: number) => formatCompactCurrency(v, currency, unit);
 }

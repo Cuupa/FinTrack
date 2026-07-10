@@ -63,4 +63,12 @@ describe("axisCurrencyFormatter", () => {
     // The exact boundary (>=10_000) should not be the long fully-spelled form.
     expect(fmtAt(10_000)).not.toContain("10,000.00");
   });
+
+  it("uses one magnitude for the whole axis (no mixed abbreviation)", () => {
+    const fmt = axisCurrencyFormatter([0, 4_000, 8_000, 12_000, 16_000], "EUR");
+    // maxAbs 16k => every non-zero tick uses "k", none is spelled out in full.
+    expect(fmt(4_000)).toContain("k");
+    expect(fmt(12_000)).toContain("k");
+    expect(fmt(4_000)).not.toMatch(/000/); // not the full "4,000" form
+  });
 });
