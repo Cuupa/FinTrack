@@ -378,6 +378,11 @@ export const en = {
   "asset.row.sharpe": "Sharpe ratio",
   "asset.row.interestEarned": "Interest earned",
 
+  // Non-held instrument detail (watchlist item or catalog-only lookup)
+  "instrument.notHeld": "You follow this instrument but don't hold it.",
+  "instrument.addToPortfolio": "Add to portfolio",
+  "instrument.notFound": "Instrument not found.",
+
   // Transactions table + add form
   "tx.date": "Date",
   "tx.type": "Type",
@@ -1061,6 +1066,11 @@ const de: Partial<Record<MessageKey, string>> = {
   "asset.row.volatility": "Volatilität (p.a.)",
   "asset.row.sharpe": "Sharpe-Ratio",
   "asset.row.interestEarned": "Erhaltene Zinsen",
+
+  // Nicht gehaltenes Instrument (Watchlist-Eintrag oder reiner Katalog-Treffer)
+  "instrument.notHeld": "Du beobachtest dieses Instrument, hältst es aber nicht.",
+  "instrument.addToPortfolio": "Zum Portfolio hinzufügen",
+  "instrument.notFound": "Instrument nicht gefunden.",
 
   // Transactions table + add form
   "tx.date": "Datum",

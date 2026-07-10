@@ -6,7 +6,7 @@
 // identifiers fall back to manual entry. The opening transaction carries a
 // full date+time.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { currentPrice } from "@/lib/finance/prices";
 import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
@@ -32,9 +32,13 @@ function round(n: number): number {
 export function AddAssetForm({
   onDone,
   embedded = false,
+  initialQuery,
 }: {
   onDone?: () => void;
   embedded?: boolean;
+  /** Pre-fills the identifier field and runs the import flow once on mount
+   * (e.g. when embedded from a non-held instrument's "Add to portfolio"). */
+  initialQuery?: string;
 }) {
   const { addAsset, addTransaction, createPortfolio, data, portfolios, selectedPortfolioIds } =
     usePortfolio();
@@ -105,16 +109,16 @@ export function AddAssetForm({
     !isCash && manual && !name.trim() && !isin.trim() && !wkn.trim() && !symbol.trim();
   const formIncomplete = quantityMissing || priceMissing || identifierOrNameMissing;
 
-  async function handleImport() {
-    const q = query.trim();
-    if (!q) return;
+  async function importFor(q: string) {
+    const query = q.trim();
+    if (!query) return;
     setImporting(true);
     setError(null);
     try {
       // Local catalog first (DB), then the live lookup API (resolves any
       // ISIN/symbol via Yahoo) — shared with the watchlist and savings-plan
       // "add asset" flows.
-      const m = await resolveInstrumentByQuery(q);
+      const m = await resolveInstrumentByQuery(query);
       if (m) {
         setName(m.name);
         setIsin(m.isin ?? "");
@@ -126,7 +130,7 @@ export function AddAssetForm({
         if (m.type !== "CASH") setAssetCurrency(base);
         setImportStatus("found");
         setManual(false);
-        void fetchPrice(m.isin || m.symbol || q, base, m.type);
+        void fetchPrice(m.isin || m.symbol || query, base, m.type);
       } else {
         setImportStatus("notfound");
       }
@@ -134,6 +138,28 @@ export function AddAssetForm({
       setImporting(false);
     }
   }
+
+  async function handleImport() {
+    await importFor(query);
+  }
+
+  // Prefill + auto-run the import flow once, when embedded with a known
+  // identifier (e.g. "Add to portfolio" on a non-held instrument's detail
+  // page). Guarded by a ref so it only ever fires once per mount, and the
+  // state updates happen in an async continuation (after an await), not
+  // synchronously in the effect body, per the set-state-in-effect rule.
+  const initialQueryRan = useRef(false);
+  useEffect(() => {
+    if (!initialQuery || initialQueryRan.current) return;
+    initialQueryRan.current = true;
+    const run = async () => {
+      await Promise.resolve();
+      setQuery(initialQuery);
+      await importFor(initialQuery);
+    };
+    void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   function selectType(next: AssetType) {
     setType(next);
