@@ -728,16 +728,16 @@ const de: Partial<Record<MessageKey, string>> = {
   "select.search": "Suchen…",
   "select.noResults": "Keine Treffer",
 
-  "form.missingFields": "Füllen Sie die markierten Felder aus",
+  "form.missingFields": "Fülle die markierten Felder aus",
 
   "watchlist.title": "Watchlist",
-  "watchlist.empty": "Fügen Sie Wertpapiere hinzu, die Sie beobachten möchten, ohne sie zu halten.",
+  "watchlist.empty": "Füge Wertpapiere hinzu, die du beobachten möchtest, ohne sie zu halten.",
   "watchlist.add": "Hinzufügen",
   "watchlist.placeholder": "ISIN, WKN oder Symbol",
   "watchlist.notFound": "Zu dieser Kennung wurde nichts gefunden.",
-  "watchlist.exists": "Steht bereits auf Ihrer Watchlist.",
+  "watchlist.exists": "Steht bereits auf deiner Watchlist.",
   "watchlist.removeTitle": "Von der Watchlist entfernen?",
-  "watchlist.removeMsg": "{name} wird von Ihrer Watchlist entfernt.",
+  "watchlist.removeMsg": "{name} wird von deiner Watchlist entfernt.",
   "watchlist.removeConfirm": "Entfernen",
   "watchlist.currency": "Währung",
   "watchlist.currencyAuto": "Auto",
@@ -745,8 +745,8 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "sp.title": "Sparpläne",
   "sp.new": "+ Neuer Sparplan",
-  "sp.empty": "Richten Sie einen wiederkehrenden Kauf ein. Fällige Ausführungen erscheinen hier zur Prüfung.",
-  "sp.noAssets": "Fügen Sie zuerst ein Wertpapier hinzu. Sparpläne kaufen in eine bestehende Position.",
+  "sp.empty": "Richte einen wiederkehrenden Kauf ein. Fällige Ausführungen erscheinen hier zur Prüfung.",
+  "sp.noAssets": "Füge zuerst ein Wertpapier hinzu. Sparpläne kaufen in eine bestehende Position.",
   "sp.asset": "Wertpapier",
   "sp.newAsset": "+ Neues Wertpapier…",
   "sp.newAssetCash": "Bargeld ist kein Wertpapier. Sparpläne kaufen Aktien, ETFs oder Krypto.",
@@ -768,27 +768,27 @@ const de: Partial<Record<MessageKey, string>> = {
   "sp.review": "Prüfen",
   "sp.reviewTitle": "Fällige Sparplan-Ausführungen",
   "sp.reviewHint":
-    "Jede Zeile wird zu einer gewöhnlichen Kauftransaktion zum angezeigten Kurs (dem echten Schlusskurs des Tages, sofern verfügbar). Gebucht wird erst nach Ihrer Bestätigung.",
+    "Jede Zeile wird zu einer gewöhnlichen Kauftransaktion zum angezeigten Kurs (dem echten Schlusskurs des Tages, sofern verfügbar). Gebucht wird erst nach deiner Bestätigung.",
   "sp.confirm": "{count} Kauf/Käufe buchen",
   "sp.applying": "Wird gebucht…",
   "sp.applyError": "Buchung fehlgeschlagen.",
   "sp.loadingPrices": "Historische Kurse werden geladen…",
-  "sp.errAsset": "Wählen Sie ein Wertpapier.",
-  "sp.errAmount": "Geben Sie einen positiven Betrag ein.",
+  "sp.errAsset": "Wähle ein Wertpapier.",
+  "sp.errAmount": "Gib einen positiven Betrag ein.",
 
   "div.title": "Dividenden",
   "div.subtitle": "Ausschüttungen über alle Positionen: Historie, Rendite und Ausblick.",
-  "div.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Dividendeneinnahmen zu sehen.",
+  "div.addHoldings": "Füge Positionen hinzu, um deine Dividendeneinnahmen zu sehen.",
   "div.none": "Noch keine Ausschüttungen. Thesaurierende Fonds schütten nicht aus.",
   "div.dividends": "Dividenden",
   "div.received12m": "Erhalten (12 Monate)",
-  "div.received12mTip": "In den letzten 12 Monaten über alle Positionen erhaltene Dividenden, in Ihrer Basiswährung.",
+  "div.received12mTip": "In den letzten 12 Monaten über alle Positionen erhaltene Dividenden, in deiner Basiswährung.",
   "div.receivedTotal": "Erhalten (gesamt)",
-  "div.receivedTotalTip": "Alle Dividenden, die Ihre Positionen gezahlt haben, seit Sie sie halten (bis zu 10 Jahre zurück).",
+  "div.receivedTotalTip": "Alle Dividenden, die deine Positionen gezahlt haben, seit du sie hältst (bis zu 10 Jahre zurück).",
   "div.yield": "Dividendenrendite",
-  "div.yieldTip": "Einnahmen der letzten 12 Monate geteilt durch den aktuellen Marktwert des Portfolios. Das ist IHRE Rendite, basierend auf Ihrem tatsächlichen Bestand.",
+  "div.yieldTip": "Einnahmen der letzten 12 Monate geteilt durch den aktuellen Marktwert des Portfolios. Das ist DEINE Rendite, basierend auf deinem tatsächlichen Bestand.",
   "div.yieldOnCost": "Rendite auf Einstand",
-  "div.yieldOnCostTip": "Einnahmen der letzten 12 Monate geteilt durch den Einstandswert Ihrer Positionen. Das ist die Rendite auf das tatsächlich Bezahlte.",
+  "div.yieldOnCostTip": "Einnahmen der letzten 12 Monate geteilt durch den Einstandswert deiner Positionen. Das ist die Rendite auf das tatsächlich Bezahlte.",
   "div.income": "Einnahmen",
   "div.incomeTip": "Gutgeschriebene Dividenden je Periode, aus echten Ausschüttungsterminen, skaliert mit den am Zahltag gehaltenen Anteilen.",
   "div.range12m": "12 Monate",
@@ -800,7 +800,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "div.colYield": "Rendite",
   "div.colYoC": "RaE",
   "div.forecast": "Nächste 12 Monate",
-  "div.forecastTip": "Jede Ausschüttung des letzten Jahres, ein Jahr nach vorn projiziert mit Ihrem aktuellen Anteilsbestand. Eine Schätzung: Ausschüttungen ändern sich und sind nie garantiert.",
+  "div.forecastTip": "Jede Ausschüttung des letzten Jahres, ein Jahr nach vorn projiziert mit deinem aktuellen Anteilsbestand. Eine Schätzung: Ausschüttungen ändern sich und sind nie garantiert.",
   "div.forecastMore": "+ {count} weitere erwartete Ausschüttungen",
   "div.forecastDisclaimer": "Projektion aus den Ausschüttungen des letzten Jahres mit aktuellem Bestand. Keine Garantie.",
   "div.chart.ariaLabel": "Balkendiagramm der Dividendeneinnahmen je Periode, insgesamt {total}.",
@@ -817,14 +817,14 @@ const de: Partial<Record<MessageKey, string>> = {
   "settings.dangerZone": "Gefahrenzone",
   "settings.deleteAccount": "Konto löschen",
   "settings.deleteAccountHint":
-    "Löscht Ihr Konto und alle Daten dauerhaft: Portfolios, Wertpapiere und Transaktionen. Dies kann nicht rückgängig gemacht werden.",
-  "settings.deleteAccountType": 'Geben Sie "delete" zur Bestätigung ein',
+    "Löscht dein Konto und alle Daten dauerhaft: Portfolios, Wertpapiere und Transaktionen. Dies kann nicht rückgängig gemacht werden.",
+  "settings.deleteAccountType": 'Gib "delete" zur Bestätigung ein',
   "settings.deleteAccountPassword": "Aktuelles Passwort",
   "settings.deleteAccountWrongPassword": "Falsches Passwort.",
   "settings.deleteAccountError": "Löschen fehlgeschlagen.",
 
   "dashboard.title": "Übersicht",
-  "dashboard.subtitle": "Ihr Portfolio auf einen Blick.",
+  "dashboard.subtitle": "Dein Portfolio auf einen Blick.",
   "dashboard.addAsset": "+ Position hinzufügen",
   "addAsset.manual": "Manuell hinzufügen",
   "addAsset.import": "CSV importieren",
@@ -834,7 +834,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "addAsset.identifierPlaceholder": "A2PKXG, IE00BK5BQT80, BTC…",
   "addAsset.importBtn": "Importieren",
   "addAsset.notFound": "Nicht gefunden. ",
-  "addAsset.notFoundWkn": "Nicht gefunden. Die WKN-Suche wird von der Datenquelle nicht unterstützt. Versuchen Sie stattdessen die ISIN, oder ",
+  "addAsset.notFoundWkn": "Nicht gefunden. Die WKN-Suche wird von der Datenquelle nicht unterstützt. Versuche stattdessen die ISIN, oder ",
   "addAsset.enterManually": "Daten manuell eingeben",
   "addAsset.orManual": "Oder Position manuell eingeben (inkl. Cash)",
   "addAsset.type": "Typ",
@@ -846,7 +846,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "addAsset.isin": "ISIN",
   "addAsset.wkn": "WKN",
   "addAsset.tradingCurrency": "Handelswährung",
-  "addAsset.tradingCurrencyHint": "Preise stammen von der Notierung in dieser Währung. Wählen Sie {base}, wenn Sie an Ihrer Heimatbörse handeln.",
+  "addAsset.tradingCurrencyHint": "Preise stammen von der Notierung in dieser Währung. Wähle {base}, wenn du an deiner Heimatbörse handelst.",
   "addAsset.openingTx": "Eröffnungsbuchung",
   "addAsset.amount": "Betrag",
   "addAsset.quantity": "Anzahl",
@@ -890,8 +890,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "import.noRows": "Keine Transaktionen in dieser Datei gefunden.",
   "import.newSection": "Neue Transaktionen",
   "import.conflictSection": "Konflikte lösen",
-  "import.identicalSection": "Bereits in Ihrem Portfolio",
-  "import.inPortfolio": "In Ihrem Portfolio",
+  "import.identicalSection": "Bereits in deinem Portfolio",
+  "import.inPortfolio": "In deinem Portfolio",
   "import.fromFile": "Aus dieser Datei",
   "import.keepCurrent": "Aktuelles behalten",
   "import.useIncoming": "Datei übernehmen",
@@ -922,8 +922,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "common.copy": "Kopieren",
   "common.loading": "Wird geladen…",
 
-  "offline.bannerPrefix": "Sie sind offline, Stand der Daten:",
-  "offline.bannerNoData": "Sie sind offline. Letzter bekannter Datenstand wird angezeigt.",
+  "offline.bannerPrefix": "Du bist offline, Stand der Daten:",
+  "offline.bannerNoData": "Du bist offline. Letzter bekannter Datenstand wird angezeigt.",
 
   "sync.syncingLabel": "Synchronisiere",
   "sync.changesUnit": "Änderungen…",
@@ -947,7 +947,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "stat.drawdownDuration": "Drawdown-Dauer",
   "stat.downsideVol": "Abwärtsvolatilität",
 
-  "tip.netWorth": "Aktueller Gesamtwert all Ihrer Positionen, umgerechnet in Ihre Basiswährung.",
+  "tip.netWorth": "Aktueller Gesamtwert all deiner Positionen, umgerechnet in deine Basiswährung.",
   "tip.change": "Absolute Veränderung des Nettovermögens im Zeitraum; der Prozentwert ist die zeitgewichtete (einzahlungsbereinigte) Rendite.",
   "tip.unrealized": "Buchgewinn/-verlust auf noch gehaltene Anteile.",
   "tip.realized": "Realisierter Gewinn/Verlust aus verkauften Anteilen.",
@@ -992,7 +992,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "chart.realizedByMonth.ariaLabel":
     "Balkendiagramm der realisierten Gewinne/Verluste je Monat, {start} bis {end}, insgesamt {total}.",
   "empty.noHoldings": "Noch keine Positionen",
-  "empty.addFirst": "Fügen Sie Ihre erste Position hinzu, um Ihr Vermögen wachsen zu sehen.",
+  "empty.addFirst": "Füge deine erste Position hinzu, um dein Vermögen wachsen zu sehen.",
 
   "table.holdings": "Positionen",
   "table.filter": "Nach Name, Symbol, ISIN, WKN filtern…",
@@ -1002,7 +1002,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "table.currentValue": "Aktueller Wert",
   "table.profit": "Gewinn",
   "table.allocation": "Gewichtung",
-  "table.noMatch": "Keine Positionen entsprechen Ihrem Filter.",
+  "table.noMatch": "Keine Positionen entsprechen deinem Filter.",
   "table.pastHoldings": "Frühere Positionen",
   "table.lastTransaction": "Letzte Transaktion",
 
@@ -1022,7 +1022,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "share.snapshot": "Momentaufnahme",
   "share.live": "Live",
   "share.snapshotDesc": "Eine eingefrorene Kopie zum Zeitpunkt.",
-  "share.liveDesc": "Aktualisiert sich, wenn sich Ihr Portfolio ändert.",
+  "share.liveDesc": "Aktualisiert sich, wenn sich dein Portfolio ändert.",
   "share.liveHint": "Zum Live-Teilen anmelden",
   "share.full": "Vollständiges Portfolio teilen",
   "share.fullDesc": "Enthält absolute Beträge.",
@@ -1035,14 +1035,14 @@ const de: Partial<Record<MessageKey, string>> = {
   "share.expiryNever": "Läuft nie ab",
   "share.expiryAt": "Am …",
   "share.expiresAt": "Läuft ab am {date}",
-  "shared.viewing": "Sie sehen ein geteiltes Portfolio",
+  "shared.viewing": "Du siehst ein geteiltes Portfolio",
   "shared.open": "FinTrack öffnen",
   "shared.notFound": "Dieser Freigabelink existiert nicht mehr oder ist abgelaufen.",
   "shared.goTo": "Zu FinTrack",
 
   "compare.hint": "Ungefährer Vergleich",
   "compare.hintFull":
-    "Benchmarks werden als Total Return (Dividenden reinvestiert) dargestellt und mit historischen Wechselkursen in Ihre Währung umgerechnet; Währungs- und Thesaurierend-vs-Ausschüttend-Unterschiede können kleine Abweichungen verursachen.",
+    "Benchmarks werden als Total Return (Dividenden reinvestiert) dargestellt und mit historischen Wechselkursen in deine Währung umgerechnet; Währungs- und Thesaurierend-vs-Ausschüttend-Unterschiede können kleine Abweichungen verursachen.",
 
   // Asset detail page
   "asset.delete": "Löschen",
@@ -1078,7 +1078,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "asset.row.interestEarned": "Erhaltene Zinsen",
 
   // Nicht gehaltenes Instrument (Watchlist-Eintrag oder reiner Katalog-Treffer)
-  "instrument.notHeld": "Sie beobachten dieses Instrument, halten es aber nicht.",
+  "instrument.notHeld": "Du beobachtest dieses Instrument, hältst es aber nicht.",
   "instrument.addToPortfolio": "Zum Portfolio hinzufügen",
   "instrument.notFound": "Instrument nicht gefunden.",
 
@@ -1105,8 +1105,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "tx.addBuy": "Kauf hinzufügen",
   "tx.addSell": "Verkauf hinzufügen",
   "tx.adding": "Wird hinzugefügt…",
-  "tx.errQty": "Geben Sie eine positive Anzahl ein.",
-  "tx.errPrice": "Geben Sie einen gültigen Kurs ein.",
+  "tx.errQty": "Gib eine positive Anzahl ein.",
+  "tx.errPrice": "Gib einen gültigen Kurs ein.",
   "tx.errFail": "Transaktion konnte nicht hinzugefügt werden.",
   "tx.deleteConfirmTitle": "Transaktion löschen?",
   "tx.booking": "Einbuchung",
@@ -1134,18 +1134,18 @@ const de: Partial<Record<MessageKey, string>> = {
   "analysis.tab.trades": "Trades",
   "analysis.tab.risks": "Risiken",
   "analysis.blurb.distributions":
-    "Wie sich Ihr Portfolio auf Investments, Klassen, Sektoren, Regionen und Risiko verteilt.",
+    "Wie sich dein Portfolio auf Investments, Klassen, Sektoren, Regionen und Risiko verteilt.",
   "analysis.blurb.returns":
-    "Ihre einzahlungsbereinigten Renditen je Quartal und Jahr sowie eine Performance-Karte je Position.",
-  "analysis.blurb.trades": "Realisierter G/V im Zeitverlauf und Ihre besten und schlechtesten Positionen.",
+    "Deine einzahlungsbereinigten Renditen je Quartal und Jahr sowie eine Performance-Karte je Position.",
+  "analysis.blurb.trades": "Realisierter G/V im Zeitverlauf und deine besten und schlechtesten Positionen.",
   "analysis.blurb.risks":
-    "Risikobereinigte Rendite, Volatilität, Drawdowns und wie sich Ihre Positionen gemeinsam bewegen.",
+    "Risikobereinigte Rendite, Volatilität, Drawdowns und wie sich deine Positionen gemeinsam bewegen.",
 
   // Risk tab
-  "risk.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Risikokennzahlen zu sehen.",
+  "risk.addHoldings": "Füge Positionen hinzu, um deine Risikokennzahlen zu sehen.",
   "risk.portfolioTitle": "Portfolio-Risiko",
   "risk.portfolioTip":
-    "Risikokennzahlen aus der echten Renditehistorie Ihres Portfolios im gewählten Zeitraum (synthetischer Rückfall).",
+    "Risikokennzahlen aus der echten Renditehistorie deines Portfolios im gewählten Zeitraum (synthetischer Rückfall).",
   "risk.kpiScopeHint":
     "Diese Kennzahlen beschreiben die gewählte Auswahl als ein Gesamtportfolio. Diversifikation senkt dessen Volatilität, daher kann die Sharpe-Ratio über der jedes einzelnen Wertes liegen.",
   "risk.benchmark": "Benchmark",
@@ -1171,10 +1171,10 @@ const de: Partial<Record<MessageKey, string>> = {
     "Die annualisierte Rendite einer Position über das hinaus, was ihr Beta zum MSCI World erwarten ließe (CAPM). Positiv = risikobereinigt besser als der Index.",
   "risk.portfolioBeta": "Beta",
   "risk.portfolioBetaTip":
-    "Wie sich Ihr gesamtes Portfolio relativ zum MSCI World Index bewegt: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie.",
+    "Wie sich dein gesamtes Portfolio relativ zum MSCI World Index bewegt: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie.",
   "risk.portfolioAlpha": "Alpha",
   "risk.portfolioAlphaTip":
-    "Die annualisierte Rendite Ihres Portfolios über das hinaus, was sein Beta zum MSCI World erwarten ließe (CAPM).",
+    "Die annualisierte Rendite deines Portfolios über das hinaus, was sein Beta zum MSCI World erwarten ließe (CAPM).",
   "risk.maxDrawdown": "Max. Drawdown",
   "risk.maxDrawdownTip":
     "Größter Rückgang vom Hoch zum Tief im Zeitraum, mit Dauer. Kleiner ist besser. Gemessen am tatsächlichen täglichen Verlauf im Anlagezeitraum.",
@@ -1191,7 +1191,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.correlation": "Korrelationsmatrix",
   "risk.correlationTip":
     "Wie sich Positionen gemeinsam bewegen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",
-  "risk.correlationNeed": "Fügen Sie mindestens zwei Positionen mit Historie hinzu, um Korrelationen zu sehen.",
+  "risk.correlationNeed": "Füge mindestens zwei Positionen mit Historie hinzu, um Korrelationen zu sehen.",
   "risk.correlationHighPairs": "Paare über 0,8 bewegen sich im Gleichschritt, dies schränkt die Diversifikation ein.",
 
   // Allocation / distributions
@@ -1203,11 +1203,11 @@ const de: Partial<Record<MessageKey, string>> = {
   "alloc.currency": "Währungen",
   "alloc.volatility": "Volatilität",
   "alloc.custom": "Eigene",
-  "alloc.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Aufteilung zu sehen.",
+  "alloc.addHoldings": "Füge Positionen hinzu, um deine Aufteilung zu sehen.",
   "alloc.noTags":
-    "Noch keine Tags. Öffnen Sie eine Position und fügen Sie Tags hinzu, um eine eigene Aufteilung zu erstellen.",
+    "Noch keine Tags. Öffne eine Position und füge Tags hinzu, um eine eigene Aufteilung zu erstellen.",
   "alloc.noGeo":
-    "Noch keine Geodaten. Führen Sie die ETF-Breakdowns-Synchronisierung aus, um die Ländergewichtungen je Fonds zu laden.",
+    "Noch keine Geodaten. Führe die ETF-Breakdowns-Synchronisierung aus, um die Ländergewichtungen je Fonds zu laden.",
   "alloc.noData": "Noch keine Daten für diese Aufteilung.",
 
   // Returns
@@ -1218,11 +1218,11 @@ const de: Partial<Record<MessageKey, string>> = {
   "returns.byYear": "Rendite je Jahr",
   "returns.perfMap": "Performance-Karte",
   "returns.perfMapTip":
-    "Jede Position ist nach ihrem aktuellen Wert dimensioniert und nach ihrer Rendite im gewählten Zeitraum eingefärbt (grün = hoch, rot = runter). MAX zeigt die Gesamtrendite gegenüber Ihrem Einstand.",
-  "returns.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Renditen zu sehen.",
+    "Jede Position ist nach ihrem aktuellen Wert dimensioniert und nach ihrer Rendite im gewählten Zeitraum eingefärbt (grün = hoch, rot = runter). MAX zeigt die Gesamtrendite gegenüber deinem Einstand.",
+  "returns.addHoldings": "Füge Positionen hinzu, um deine Renditen zu sehen.",
   "returns.divByValue": "Erhaltene Dividenden",
   "returns.divTip":
-    "Tatsächlich erhaltene Dividendenzahlungen, in Ihre Basiswährung umgerechnet und je Periode summiert.",
+    "Tatsächlich erhaltene Dividendenzahlungen, in deine Basiswährung umgerechnet und je Periode summiert.",
   "returns.divByHolding": "Dividenden je Position",
   "returns.divByHoldingTip":
     "Erhaltene Dividenden je Position, gestapelt nach Periode. Höhere Balken zahlten mehr. Thesaurierende Fonds zeigen nichts (sie legen intern wieder an).",
@@ -1234,18 +1234,18 @@ const de: Partial<Record<MessageKey, string>> = {
   "trades.byMonth": "Realisierter G/V je Monat",
   "trades.byMonthTip":
     "Realisierter Gewinn/Verlust aus Verkäufen, dem Monat des jeweiligen Verkaufs zugeordnet (Durchschnittskosten).",
-  "trades.noSells": "Noch keine Verkäufe. Realisierter G/V erscheint hier, sobald Sie verkaufen.",
+  "trades.noSells": "Noch keine Verkäufe. Realisierter G/V erscheint hier, sobald du verkaufst.",
   "trades.realized": "Realisiert",
   "trades.topMoversTitle": "Top-Bewegungen",
   "trades.topWinners": "Top-Gewinner",
   "trades.topLosers": "Top-Verlierer",
   "trades.moverTip":
-    "Sortiert nach Gewinn/Verlust im gewählten Zeitraum (realisiert plus nicht realisiert) in Ihrer Basiswährung.",
+    "Sortiert nach Gewinn/Verlust im gewählten Zeitraum (realisiert plus nicht realisiert) in deiner Basiswährung.",
   "trades.nothing": "Hier ist noch nichts.",
-  "trades.addHoldings": "Fügen Sie Positionen hinzu, um Ihre Handelshistorie zu sehen.",
+  "trades.addHoldings": "Füge Positionen hinzu, um deine Handelshistorie zu sehen.",
   "trades.taxReport": "Steuerreport",
   "trades.taxReportTip":
-    "Pro Kalenderjahr: realisierte Gewinne aus Verkäufen (brutto, vor Gebühren und Steuern; das ist die Zahl, die das Finanzamt interessiert), erhaltene Zinsen sowie die auf Ihren Transaktionen erfassten Gebühren und Steuern. Dividenden sind hier nicht enthalten; Ausschüttungen finden Sie auf den Asset-Seiten.",
+    "Pro Kalenderjahr: realisierte Gewinne aus Verkäufen (brutto, vor Gebühren und Steuern; das ist die Zahl, die das Finanzamt interessiert), erhaltene Zinsen sowie die auf deinen Transaktionen erfassten Gebühren und Steuern. Dividenden sind hier nicht enthalten; Ausschüttungen findest du auf den Asset-Seiten.",
   "trades.taxYear": "Jahr",
   "trades.realizedGross": "Realisiert (brutto)",
   "trades.realizedNet": "Realisiert (netto)",
@@ -1254,12 +1254,12 @@ const de: Partial<Record<MessageKey, string>> = {
   "trades.taxes": "Steuern",
 
   // X-Ray
-  "xray.subtitle": "Ihr tatsächliches Engagement in Einzelaktien, durch Ihre Fonds hindurch.",
-  "xray.addHoldings": "Fügen Sie Positionen hinzu, um Ihr Durchschau-Engagement zu sehen.",
+  "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
+  "xray.addHoldings": "Füge Positionen hinzu, um dein Durchschau-Engagement zu sehen.",
   "xray.noData":
-    "Keine Ihrer Positionen hat bisher Durchschau-Daten (keine Aktien oder erkannten ETFs).",
+    "Keine deiner Positionen hat bisher Durchschau-Daten (keine Aktien oder erkannten ETFs).",
   "xray.noCatalog":
-    "Bestandteildaten sind nicht verfügbar. Verbinden Sie Supabase und befüllen Sie den Katalog, um die Durchschau zu aktivieren.",
+    "Bestandteildaten sind nicht verfügbar. Verbinde Supabase und befülle den Katalog, um die Durchschau zu aktivieren.",
   "xray.stockExposure": "Aktien-Engagement (Durchschau)",
   "xray.inEquities": "in Aktien",
   "xray.otherNonEquity": "sonstige / nicht-Aktien",
@@ -1272,11 +1272,11 @@ const de: Partial<Record<MessageKey, string>> = {
 
   // Rebalancing
   "rebalancing.subtitle":
-    "Vergleichen Sie Ihre aktuelle Aufteilung mit einem Ziel und sehen Sie die nötigen Trades.",
-  "rebalance.addHoldings": "Fügen Sie Positionen hinzu, um eine Umschichtung zu planen.",
+    "Vergleiche deine aktuelle Aufteilung mit einem Ziel und sieh die nötigen Trades.",
+  "rebalance.addHoldings": "Füge Positionen hinzu, um eine Umschichtung zu planen.",
   "rebalance.current": "Aktuell",
   "rebalance.target": "Ziel",
-  "rebalance.setWeights": "Legen Sie unten die Zielgewichtungen fest.",
+  "rebalance.setWeights": "Lege unten die Zielgewichtungen fest.",
   "rebalance.targetAllocation": "Zielaufteilung",
   "rebalance.total": "Gesamt",
   "rebalance.normalise": "Auf 100 % normieren",
@@ -1295,7 +1295,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "rebalance.removePosition": "Position entfernen",
 
   // Simulation
-  "sim.subtitle": "Projizieren Sie Ihr langfristiges Vermögen mit einer Monte-Carlo-Simulation.",
+  "sim.subtitle": "Projiziere dein langfristiges Vermögen mit einer Monte-Carlo-Simulation.",
   "sim.parameters": "Parameter",
   "sim.model": "Modell",
   "sim.myPortfolio": "Mein Portfolio",
@@ -1311,7 +1311,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.monthlyWithdrawal": "Monatliche Entnahme",
   "sim.withdrawalRate": "Jährliche Entnahmerate",
   "sim.withdrawalRateHint":
-    "Sie entnehmen jährlich diesen Prozentsatz des Portfoliowerts zu Rentenbeginn (danach fest). ~4% gilt als klassische sichere Rate; der real entnehmbare Betrag hängt vom Portfoliowachstum ab.",
+    "Du entnimmst jährlich diesen Prozentsatz des Portfoliowerts zu Rentenbeginn (danach fest). ~4% gilt als klassische sichere Rate; der real entnehmbare Betrag hängt vom Portfoliowachstum ab.",
   "sim.withdrawalTitle": "Entnahme-Einkommen",
   "sim.withdrawalMetricsTip":
     "Wie viel dieser Plan in der Entnahmephase ausschüttet: vom pessimistischen (10. Perzentil) bis zum optimistischen (90. Perzentil) Verlauf.",
@@ -1338,13 +1338,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.contributed": "Insgesamt eingezahlt",
   "sim.growth": "Projiziertes Wachstum (Median)",
   "sim.multiple": "Vielfaches",
-  "sim.configurePrompt": "Konfigurieren Sie Ihren Plan und starten Sie eine Simulation",
+  "sim.configurePrompt": "Konfiguriere deinen Plan und starte eine Simulation",
   "sim.configureHint":
-    "Passen Sie die Parameter links an, um zu projizieren, wie Ihr Vermögen unter tausenden Marktszenarien wachsen könnte.",
+    "Passe die Parameter links an, um zu projizieren, wie dein Vermögen unter tausenden Marktszenarien wachsen könnte.",
   "sim.edit": "Bearbeiten aktivieren",
   "sim.lock": "Parameter sperren",
-  "sim.capitalLocked": "Das Anfangskapital stammt aus Ihrem Nettovermögen, zum Überschreiben klicken",
-  "sim.capitalUnlocked": "Anfangskapital auf Ihr Nettovermögen zurücksetzen",
+  "sim.capitalLocked": "Das Anfangskapital stammt aus deinem Nettovermögen, zum Überschreiben klicken",
+  "sim.capitalUnlocked": "Anfangskapital auf dein Nettovermögen zurücksetzen",
   "sim.band50": "25.-75. Perzentil",
   "sim.band80": "10.-90. Perzentil",
   "sim.bandFull": "Schlechtester bis Bester",
@@ -1355,8 +1355,8 @@ const de: Partial<Record<MessageKey, string>> = {
   "sim.tipBand50": "Die mittleren 50% aller simulierten Ergebnisse (25.-75. Perzentil): ein Viertel endete unterhalb des Bandes, ein Viertel oberhalb.",
   "sim.tipBand80": "Die mittleren 80% aller simulierten Ergebnisse (10.-90. Perzentil): nur 10% endeten darunter und 10% darüber.",
   "sim.tipBandFull": "Die volle Spanne: vom einzeln schlechtesten bis zum einzeln besten aller simulierten Pfade.",
-  "sim.tipContributed": "Summe Ihrer Einzahlungen (Anfangskapital + Sparbeträge), ohne Wachstum.",
-  "sim.tipOptimistic": "Das 90. Perzentil: Sie schlagen 90% der simulierten Ergebnisse. Nur 10% waren besser.",
+  "sim.tipContributed": "Summe deiner Einzahlungen (Anfangskapital + Sparbeträge), ohne Wachstum.",
+  "sim.tipOptimistic": "Das 90. Perzentil: Du schlägst 90% der simulierten Ergebnisse. Nur 10% waren besser.",
   "sim.tipPessimistic": "Das 10. Perzentil: ein schlechter Fall. 90% der Ergebnisse waren besser, nur 10% schlechter.",
 
   "assetType.ALL": "Alles",
@@ -1373,7 +1373,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "legal.privacy": "Datenschutz",
   "legal.terms": "Nutzungsbedingungen",
   "legal.consent":
-    "Mit der Kontoerstellung akzeptieren Sie die Nutzungsbedingungen und nehmen die Datenschutzerklärung zur Kenntnis.",
+    "Mit der Kontoerstellung akzeptierst du die Nutzungsbedingungen und nimmst die Datenschutzerklärung zur Kenntnis.",
 
   // Disclaimer (simulation & risk analysis — not investment advice)
   "disclaimer.title": "Keine Anlageberatung",
@@ -1385,20 +1385,20 @@ const de: Partial<Record<MessageKey, string>> = {
 
   // Error boundaries & 404
   "error.title": "Etwas ist schiefgelaufen",
-  "error.body": "Ein unerwarteter Fehler ist aufgetreten. Sie können es erneut versuchen oder zur Übersicht zurückkehren.",
+  "error.body": "Ein unerwarteter Fehler ist aufgetreten. Du kannst es erneut versuchen oder zur Übersicht zurückkehren.",
   "error.tryAgain": "Erneut versuchen",
   "error.backHome": "Zur Übersicht",
   "notFound.title": "Seite nicht gefunden",
   "notFound.body": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
   "notFound.backHome": "Zur Übersicht",
 
-  "common.loadError": "Ihre Daten konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+  "common.loadError": "Deine Daten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
   "common.retry": "Erneut versuchen",
 
   // Guest mode banner
   "guestBanner.title": "Gastmodus:",
   "guestBanner.body":
-    "Ihre Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn Sie Ihre Browserdaten leeren.",
+    "Deine Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn du deine Browserdaten leerst.",
   "guestBanner.cta": "Registrieren, um sie zu speichern",
 };
 
