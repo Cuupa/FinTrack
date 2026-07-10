@@ -7,12 +7,11 @@
 // full date+time.
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { lookupInstrumentByQuery, currentPrice } from "@/lib/finance/prices";
+import { currentPrice } from "@/lib/finance/prices";
 import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
-import type { Instrument } from "@/lib/catalog/catalog";
+import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
@@ -24,10 +23,6 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
-
-function keyOf(a: { isin: string | null; wkn: string | null; symbol: string | null; name: string }) {
-  return (a.isin || a.wkn || a.symbol || a.name || "").toUpperCase();
-}
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
@@ -118,61 +113,28 @@ export function AddAssetForm({
     !isCash && manual && !name.trim() && !isin.trim() && !wkn.trim() && !symbol.trim();
   const formIncomplete = quantityMissing || priceMissing || identifierOrNameMissing;
 
-  function applyMatch(match: Instrument) {
-    setName(match.name);
-    setIsin(match.isin ?? "");
-    setWkn(match.wkn ?? "");
-    setSymbol(match.symbol ?? "");
-    setType(match.type);
-    setAssetCurrency(match.currency ?? base);
-    setPrice(String(round(currentPrice(keyOf(match), match.type))));
-  }
-
-  interface ApiMatch {
-    found: boolean;
-    name?: string;
-    symbol?: string | null;
-    type?: AssetType;
-    currency?: string | null;
-    isin?: string | null;
-    wkn?: string | null;
-  }
-
-  function applyApiMatch(d: ApiMatch) {
-    setName(d.name ?? "");
-    setIsin(d.isin ?? "");
-    setWkn(d.wkn ?? "");
-    setSymbol(d.symbol ?? "");
-    setType(d.type ?? "ETF");
-    setAssetCurrency(d.currency ?? base);
-  }
-
   async function handleImport() {
     const q = query.trim();
     if (!q) return;
     setImporting(true);
     setError(null);
     try {
-      // 1. Local catalog (DB).
-      const match = lookupInstrumentByQuery(q);
-      if (match) {
-        applyMatch(match);
-        setImportStatus("found");
-        setManual(false);
+      // Local catalog first (DB), then the live lookup API (resolves any
+      // ISIN/symbol via Yahoo) — shared with the watchlist and savings-plan
+      // "add asset" flows.
+      const m = await resolveInstrumentByQuery(q);
+      if (m) {
+        setName(m.name);
+        setIsin(m.isin ?? "");
+        setWkn(m.wkn ?? "");
+        setSymbol(m.symbol ?? "");
+        setType(m.type);
         // Default to the user's base currency; price is prefilled to match.
-        if (match.type !== "CASH") setAssetCurrency(base);
-        void fetchPrice(match.isin || match.symbol || q, base, match.type);
-        return;
-      }
-      // 2. Live lookup API (resolves any ISIN/symbol via Yahoo).
-      const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(q)}`);
-      const data = (res.ok ? await res.json() : { found: false }) as ApiMatch;
-      if (data.found) {
-        applyApiMatch(data);
+        setAssetCurrency(m.currency ?? base);
+        if (m.type !== "CASH") setAssetCurrency(base);
         setImportStatus("found");
         setManual(false);
-        if ((data.type ?? "ETF") !== "CASH") setAssetCurrency(base);
-        void fetchPrice(data.isin || data.symbol || q, base, data.type ?? "ETF");
+        void fetchPrice(m.isin || m.symbol || q, base, m.type);
       } else {
         setImportStatus("notfound");
       }
@@ -286,11 +248,22 @@ export function AddAssetForm({
                   void handleImport();
                 }
               }}
+              onBlur={(e) => {
+                if (
+                  (e.relatedTarget as HTMLElement | null)?.id !== "import-submit" &&
+                  query.trim() &&
+                  importStatus !== "found" &&
+                  !importing
+                ) {
+                  void handleImport();
+                }
+              }}
               placeholder={tr("addAsset.identifierPlaceholder")}
               className={inputCls}
               autoFocus
             />
             <Button
+              id="import-submit"
               type="button"
               variant="primary"
               className="mt-1 shrink-0"

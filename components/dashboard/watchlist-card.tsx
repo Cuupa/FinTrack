@@ -11,8 +11,8 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { lookupInstrument } from "@/lib/catalog/catalog";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
-import { apiFetch } from "@/lib/api";
-import { assetIdentifier, assetPriceKey, type AssetType, type WatchlistItem } from "@/lib/types";
+import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
+import { assetIdentifier, assetPriceKey, type WatchlistItem } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -21,16 +21,6 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
-
-interface ApiMatch {
-  found: boolean;
-  name?: string;
-  symbol?: string | null;
-  type?: AssetType;
-  currency?: string | null;
-  isin?: string | null;
-  wkn?: string | null;
-}
 
 export function WatchlistCard() {
   const enabled = useFeatureFlag("watchlist");
@@ -139,38 +129,13 @@ export function WatchlistCard() {
     if (!q) return;
     setBusy(true);
     try {
-      // Catalog first (works offline / without a lookup round-trip), then the
-      // lookup API — the same resolution order as the add-asset form.
-      let input: Omit<WatchlistItem, "id"> | null = null;
-      const match = lookupInstrument(q.toUpperCase());
-      if (match) {
-        input = {
-          isin: match.isin,
-          wkn: match.wkn,
-          symbol: match.symbol,
-          name: match.name,
-          type: match.type,
-          currency: match.currency,
-        };
-      } else {
-        const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(q)}`);
-        const d = res.ok ? ((await res.json()) as ApiMatch) : null;
-        if (d?.found && d.name) {
-          input = {
-            isin: d.isin ?? null,
-            wkn: d.wkn ?? null,
-            symbol: d.symbol ?? null,
-            name: d.name,
-            type: d.type ?? "STOCK",
-            currency: d.currency ?? null,
-          };
-        }
-      }
-      if (!input) {
+      const m = await resolveInstrumentByQuery(q);
+      if (!m) {
         setError(t("watchlist.notFound"));
         return;
       }
-      const key = assetPriceKey(input as WatchlistItem);
+      const input: Omit<WatchlistItem, "id"> = m;
+      const key = assetPriceKey(input);
       if (watchlist.some((w) => assetPriceKey(w) === key)) {
         setError(t("watchlist.exists"));
         return;

@@ -9,9 +9,8 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { lookupInstrument } from "@/lib/catalog/catalog";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
-import { apiFetch } from "@/lib/api";
+import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
 import { today } from "@/lib/finance/dates";
 import { priceOn, quoteItemFor } from "@/lib/finance/prices";
@@ -21,7 +20,6 @@ import {
   assetPriceKey,
   SAVINGS_PLAN_INTERVALS,
   type Asset,
-  type AssetType,
   type SavingsPlan,
   type SavingsPlanInterval,
 } from "@/lib/types";
@@ -56,16 +54,6 @@ const INTERVAL_KEY: Record<SavingsPlanInterval, MessageKey> = {
   MONTHLY: "sp.monthly",
   QUARTERLY: "sp.quarterly",
 };
-
-interface ApiMatch {
-  found: boolean;
-  name?: string;
-  symbol?: string | null;
-  type?: AssetType;
-  currency?: string | null;
-  isin?: string | null;
-  wkn?: string | null;
-}
 
 interface DueRow {
   plan: SavingsPlan;
@@ -518,47 +506,18 @@ function NewPlanForm({
     setNewAssetError(null);
     setNewAssetBusy(true);
     try {
-      const query = q.toUpperCase();
-      // Catalog first (works offline / without a lookup round-trip), then the
-      // lookup API — the same resolution order as the watchlist card.
-      let input: Omit<Asset, "id"> | null = null;
-      const match = lookupInstrument(query);
-      if (match) {
-        input = {
-          isin: match.isin,
-          wkn: match.wkn,
-          symbol: match.symbol,
-          name: match.name,
-          type: match.type,
-          currency: match.currency,
-          notes: null,
-        };
-      } else {
-        const res = await apiFetch(`/api/lookup?q=${encodeURIComponent(query)}`);
-        const d = res.ok ? ((await res.json()) as ApiMatch) : null;
-        if (d?.found && d.name) {
-          input = {
-            isin: d.isin ?? null,
-            wkn: d.wkn ?? null,
-            symbol: d.symbol ?? null,
-            name: d.name,
-            type: d.type ?? "STOCK",
-            currency: d.currency ?? null,
-            notes: null,
-          };
-        }
-      }
-      if (!input) {
+      const m = await resolveInstrumentByQuery(q);
+      if (!m) {
         setNewAssetError(t("watchlist.notFound"));
         return;
       }
       // Plans are securities-only — shouldn't happen from a real lookup, but
       // guard the same way `eligible` filters existing assets.
-      if (input.type === "CASH") {
+      if (m.type === "CASH") {
         setNewAssetError(t("sp.newAssetCash"));
         return;
       }
-      input = { ...input, symbol: input.symbol ? input.symbol.toUpperCase() : input.symbol };
+      const input: Omit<Asset, "id"> = { ...m, notes: null };
       const key = assetPriceKey(input);
       const existing = data.assets.find((a) => assetPriceKey(a) === key);
       if (existing) {
