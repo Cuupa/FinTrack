@@ -99,6 +99,13 @@ id** — deleting the transaction/asset/portfolio cascades the fingerprint, so
 re-imports surface correctly. UI rule: every destructive action gets a
 `ConfirmDialog` first.
 
+The app's own CSV export (`lib/export/export.ts`, "# FinTrack export" marker
+line, assets + transactions sections) round-trips through the same seam: a
+`fintrack` `BrokerFormat` in `csv.ts` parses it back, enriching rows from the
+assets section (JSON re-import deliberately not implemented yet). Export
+surfaces (dashboard `ExportMenu` + profile menu) are gated per format by the
+`exportCsv` / `exportJson` feature flags.
+
 ### Live prices, FX & multi-currency
 
 Real quotes come from `/api/quotes`: equities via **Yahoo Finance resolved by
@@ -134,6 +141,15 @@ the Stooq + synthetic fallbacks.
   exposure (`/xray`).
 - `lib/finance/allocation.ts` — pie-chart breakdowns by investment / class /
   currency / country / volatility (`/allocation`).
+- Tags are grouped key-value pairs (e.g. `Strategie=gamble`): `TagsProvider`
+  (`lib/tags/tags-context.tsx`) holds `groups` (customizable names, stable ids,
+  rename/delete via the manager modal) and `assignments[assetId][groupId] =
+  string[]`, persisted **localStorage-only** under `fintrack-tags` (versioned,
+  lossless legacy migration into a default "Tags" group; disclosed in
+  `/datenschutz`, deliberately not in the store seam). The Analysis "Custom"
+  breakdown is switchable per group: `byCustom(holdings, assignments, groupId)`
+  buckets holdings without a value in that group as "Untagged" (hardcoded
+  sentinel, gray slice).
 - `lib/finance/stats.ts` + portfolio Monte Carlo — per-asset μ/σ + correlation
   (Cholesky) drive the "My portfolio" simulation mode (`/simulation`).
 
@@ -213,6 +229,10 @@ mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
   Transactions carry `fee` **and `tax`** — tax mirrors fee in all cash math
   (buy tax raises basis, sell tax reduces proceeds); `trades.ts` also builds
   the per-calendar-year tax report on /analysis (flag `taxReport`).
+  `holdingPeriodProfit` divides by the capital exposed over the window
+  (start-of-window value plus in-window BUY inflows), never by the
+  start value alone: at tf=max the window starts at the first transaction,
+  and a tiny day-one buy as sole denominator once produced +953%.
 - `prices.ts` — **deterministic synthetic price provider** (seeded random walk
   keyed by the price key + a curated registry searchable by WKN/ISIN/symbol).
   Stands in for a real market-data API; the `PriceProvider` interface is the
@@ -246,13 +266,24 @@ mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
   accurate when data flows change**. The legal contact email renders via
   `EmailImage` (`components/legal/legal-page.tsx`): drawn onto a canvas so the
   address never appears in the DOM (anti-scraping, user request) — never
-  reintroduce it as text, a `mailto:` link, or an ARIA attribute.
+  reintroduce it as text, a `mailto:` link, or an ARIA attribute. Operator
+  identity (`site_config`) is served through a localStorage
+  stale-while-revalidate mirror (`lib/site-config-cache.ts`,
+  `useSyncExternalStore`, stable snapshot refs): cached values paint on the
+  first client render, and the amber `Placeholder` chips appear only once
+  loading has settled with the value still missing (`loaded` flag from
+  `useSiteConfig`), so registered visitors never see a placeholder flash.
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
 client pages (see `app/assets/[id]/page.tsx`).
 
 ## Conventions & gotchas
 
+- **German copy always uses the informal du-register** (user rule, absolute:
+  applies to the dictionary, legal pages, and error pages alike; the earlier
+  formal-"Sie" convention was explicitly overridden). Capitalized "Sie" is
+  only acceptable as a genuine third-person pronoun at sentence start. No
+  em-dashes in any user-facing copy.
 - **Dates** are timezone-stable `YYYY-MM-DD` strings throughout; use the
   helpers in `lib/finance/dates.ts`, not raw `Date` math.
 - Next 16's `react-hooks/set-state-in-effect` lint rule **fails the build** on
