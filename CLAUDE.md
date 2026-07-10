@@ -245,11 +245,13 @@ mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
 - `dividends.ts` — dividends from **real events** (`/api/dividends`, Yahoo)
   scaled by shares held on each pay date; accumulating funds show none. The
-  fetch is gated per instrument by `instruments.pays_dividends` (catalog flag,
-  default true; crypto/commodity/cash rows seeded false) via `dividendItemsFor`
-  (`prices.ts`) — **never by asset type in code**. The gate is load-bearing:
-  `dividendsByQuery`'s name-fallback search can surface an unrelated payer's
-  events for symbol-only assets (the phantom gold-dividends case).
+  hinted listing (the quote symbol the app prices the asset with) is
+  **authoritative in `dividendsByQuery`**: if it resolves, its event list is
+  returned even when empty — never fall back to search candidates past a
+  resolved hint, and never gate dividends by asset type or a flag (both were
+  explicitly rejected). Scanning past an empty hint once imported an unrelated
+  payer's events via the name-fallback search (the phantom gold-dividends
+  case).
 
 ### Routes
 
