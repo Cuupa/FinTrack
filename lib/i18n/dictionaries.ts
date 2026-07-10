@@ -1076,7 +1076,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "asset.row.interestEarned": "Erhaltene Zinsen",
 
   // Nicht gehaltenes Instrument (Watchlist-Eintrag oder reiner Katalog-Treffer)
-  "instrument.notHeld": "Du beobachtest dieses Instrument, hältst es aber nicht.",
+  "instrument.notHeld": "Sie beobachten dieses Instrument, halten es aber nicht.",
   "instrument.addToPortfolio": "Zum Portfolio hinzufügen",
   "instrument.notFound": "Instrument nicht gefunden.",
 
@@ -1390,7 +1390,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "notFound.body": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
   "notFound.backHome": "Zur Übersicht",
 
-  "common.loadError": "Deine Daten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+  "common.loadError": "Ihre Daten konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "common.retry": "Erneut versuchen",
 
   // Guest mode banner
