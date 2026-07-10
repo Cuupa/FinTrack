@@ -243,7 +243,13 @@ mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
 - `irr.ts` — money-weighted XIRR (Newton + bisection fallback).
 - `monte-carlo.ts` — pure simulation, run off-thread via
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
-- `dividends.ts` — synthetic dividend history (yields keyed by ISIN).
+- `dividends.ts` — dividends from **real events** (`/api/dividends`, Yahoo)
+  scaled by shares held on each pay date; accumulating funds show none. The
+  fetch is gated per instrument by `instruments.pays_dividends` (catalog flag,
+  default true; crypto/commodity/cash rows seeded false) via `dividendItemsFor`
+  (`prices.ts`) — **never by asset type in code**. The gate is load-bearing:
+  `dividendsByQuery`'s name-fallback search can surface an unrelated payer's
+  events for symbol-only assets (the phantom gold-dividends case).
 
 ### Routes
 
