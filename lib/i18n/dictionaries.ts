@@ -41,6 +41,7 @@ export const en = {
   "watchlist.removeTitle": "Remove from watchlist?",
   "watchlist.removeMsg": "{name} will be removed from your watchlist.",
   "watchlist.removeConfirm": "Remove",
+  "watchlist.currency": "Currency",
 
   "sp.title": "Savings plans",
   "sp.new": "+ New plan",
@@ -722,6 +723,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "watchlist.removeTitle": "Von der Watchlist entfernen?",
   "watchlist.removeMsg": "{name} wird von Ihrer Watchlist entfernt.",
   "watchlist.removeConfirm": "Entfernen",
+  "watchlist.currency": "Währung",
 
   "sp.title": "Sparpläne",
   "sp.new": "+ Neuer Sparplan",

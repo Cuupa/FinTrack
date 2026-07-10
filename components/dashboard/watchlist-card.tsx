@@ -16,8 +16,11 @@ import { assetIdentifier, assetPriceKey, type AssetType, type WatchlistItem } fr
 import { formatCurrency } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
+
+const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
 interface ApiMatch {
   found: boolean;
@@ -31,7 +34,7 @@ interface ApiMatch {
 
 export function WatchlistCard() {
   const enabled = useFeatureFlag("watchlist");
-  const { data, addWatchlistItem, removeWatchlistItem } = usePortfolio();
+  const { data, addWatchlistItem, removeWatchlistItem, updateWatchlistItem } = usePortfolio();
   const { version } = useCatalog();
   const { t } = useI18n();
   const base = data.profile.currency;
@@ -114,6 +117,20 @@ export function WatchlistCard() {
   }, [uncachedSig]);
 
   if (!enabled) return null;
+
+  async function changeCurrency(item: WatchlistItem, currency: string) {
+    // Drop any cached one-shot price so it re-fetches in the new currency.
+    setFetched((prev) => {
+      const next = { ...prev };
+      delete next[assetPriceKey(item)];
+      return next;
+    });
+    try {
+      await updateWatchlistItem(item.id, { currency });
+    } catch {
+      /* the row keeps its previous currency on failure */
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -207,6 +224,16 @@ export function WatchlistCard() {
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-2">
+                <SelectMenu
+                  value={currency}
+                  ariaLabel={t("watchlist.currency")}
+                  onChange={(c) => void changeCurrency(item, c)}
+                  options={Array.from(new Set([base, ...CURRENCIES])).map((c) => ({
+                    value: c,
+                    label: c,
+                  }))}
+                  className="w-20"
+                />
                 <span className="text-sm tabular-nums">
                   {price != null ? (
                     formatCurrency(price, currency)
