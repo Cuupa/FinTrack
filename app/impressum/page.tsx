@@ -1,7 +1,13 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { LegalPage, LegalSection, LegalValue, LegalLink } from "@/components/legal/legal-page";
+import {
+  LegalPage,
+  LegalSection,
+  LegalValue,
+  EmailImage,
+  LegalLink,
+} from "@/components/legal/legal-page";
 import { useSiteConfig } from "@/lib/site-config";
 
 export default function ImpressumPage() {
@@ -29,7 +35,12 @@ function ImpressumDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
 
       <LegalSection heading="Kontakt">
         <p>
-          E-Mail: <LegalValue value={config.legal_email} placeholder="[E-MAIL-ADRESSE]" />
+          E-Mail:{" "}
+          <EmailImage
+            value={config.legal_email}
+            placeholder="[E-MAIL-ADRESSE]"
+            label="E-Mail-Adresse (als Bild angezeigt zum Schutz vor Spam)"
+          />
         </p>
       </LegalSection>
 
@@ -115,7 +126,12 @@ function ImpressumEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
 
       <LegalSection heading="Contact">
         <p>
-          Email: <LegalValue value={config.legal_email} placeholder="[EMAIL ADDRESS]" />
+          Email:{" "}
+          <EmailImage
+            value={config.legal_email}
+            placeholder="[EMAIL ADDRESS]"
+            label="Email address (shown as an image to prevent spam)"
+          />
         </p>
       </LegalSection>
 

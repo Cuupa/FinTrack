@@ -1,7 +1,13 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { LegalPage, LegalSection, LegalValue, LegalLink } from "@/components/legal/legal-page";
+import {
+  LegalPage,
+  LegalSection,
+  LegalValue,
+  EmailImage,
+  LegalLink,
+} from "@/components/legal/legal-page";
 import { useSiteConfig } from "@/lib/site-config";
 
 export default function DatenschutzPage() {
@@ -25,7 +31,12 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
           <br />
           <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
           <br />
-          E-Mail: <LegalValue value={config.legal_email} placeholder="[E-MAIL-ADRESSE]" />
+          E-Mail:{" "}
+          <EmailImage
+            value={config.legal_email}
+            placeholder="[E-MAIL-ADRESSE]"
+            label="E-Mail-Adresse (als Bild angezeigt zum Schutz vor Spam)"
+          />
         </p>
       </LegalSection>
 
@@ -121,7 +132,12 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
           Selbstbedienung offen: Unter <em>Einstellungen</em> können Sie Ihr Konto
           eigenständig und vollständig löschen sowie Ihre Daten als JSON oder CSV
           exportieren. Für alle anderen Anliegen wenden Sie sich an{" "}
-          <LegalValue value={config.legal_email} placeholder="[E-MAIL-ADRESSE]" />.
+          <EmailImage
+            value={config.legal_email}
+            placeholder="[E-MAIL-ADRESSE]"
+            label="E-Mail-Adresse (als Bild angezeigt zum Schutz vor Spam)"
+          />
+          .
         </p>
         <p>
           Sie haben außerdem das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu
@@ -157,7 +173,12 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
           <br />
           <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
           <br />
-          Email: <LegalValue value={config.legal_email} placeholder="[EMAIL ADDRESS]" />
+          Email:{" "}
+          <EmailImage
+            value={config.legal_email}
+            placeholder="[EMAIL ADDRESS]"
+            label="Email address (shown as an image to prevent spam)"
+          />
         </p>
       </LegalSection>
 
@@ -248,7 +269,12 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
           Erasure and portability are available to you directly in the app, self-service:
           under <em>Settings</em> you can permanently delete your own account, and export
           your data as JSON or CSV. For any other request, contact{" "}
-          <LegalValue value={config.legal_email} placeholder="[EMAIL ADDRESS]" />.
+          <EmailImage
+            value={config.legal_email}
+            placeholder="[EMAIL ADDRESS]"
+            label="Email address (shown as an image to prevent spam)"
+          />
+          .
         </p>
         <p>
           You also have the right to lodge a complaint with a supervisory authority (Art. 77
