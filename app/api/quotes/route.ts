@@ -13,6 +13,7 @@
 
 import { isISIN, resolveQuote } from "@/lib/server/yahoo";
 import { applyScale } from "@/lib/server/scale";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,7 @@ async function fetchEquities(
 }
 
 export async function POST(req: Request): Promise<Response> {
+  if (!(await rateLimit("quotes", req, 60))) return tooManyRequests();
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;

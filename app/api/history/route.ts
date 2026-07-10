@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
 import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
 import { scalePoints } from "@/lib/server/scale";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -202,6 +203,7 @@ async function coingeckoHistory(
 }
 
 export async function POST(req: Request): Promise<Response> {
+  if (!(await rateLimit("history", req, 30))) return tooManyRequests();
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;

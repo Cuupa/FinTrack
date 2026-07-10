@@ -5,10 +5,12 @@
 // SEARCH_DESIGN.md for the design.
 
 import { pickBest, searchInstruments } from "@/lib/server/search";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request): Promise<Response> {
+  if (!(await rateLimit("lookup", req, 30))) return tooManyRequests();
   const q = new URL(req.url).searchParams.get("q")?.trim();
   if (!q) return Response.json({ found: false });
 

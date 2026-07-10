@@ -7,6 +7,7 @@
 import { after } from "next/server";
 import { resolveQuote } from "@/lib/server/yahoo";
 import { secretKey, supabaseSecret } from "@/lib/server/supabase-keys";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ async function fxRate(from: string, to: string): Promise<number> {
 }
 
 export async function GET(req: Request): Promise<Response> {
+  if (!(await rateLimit("price", req, 60))) return tooManyRequests();
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim();
   const currency = (url.searchParams.get("currency") || "").toUpperCase();

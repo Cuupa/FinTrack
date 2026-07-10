@@ -6,9 +6,12 @@
 // invert each rate to get source→base. Missing/failed currencies are omitted
 // (the client treats them as rate 1).
 
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request): Promise<Response> {
+  if (!(await rateLimit("fx", req, 120))) return tooManyRequests();
   const url = new URL(req.url);
   const base = (url.searchParams.get("base") || "EUR").toUpperCase();
   const symbols = (url.searchParams.get("symbols") || "")
