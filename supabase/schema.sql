@@ -403,7 +403,8 @@ insert into public.schema_migrations (version) values
   ('0044_reset_commodity_quote'),
   ('0045_fk_indexes'),
   ('0046_history_cache_flag'),
-  ('0047_export_flags')
+  ('0047_export_flags'),
+  ('0049_drop_pays_dividends')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

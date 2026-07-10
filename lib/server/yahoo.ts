@@ -663,8 +663,16 @@ async function dividendChart(
 /**
  * Dividend events for a query (ISIN/symbol), preferring a listing in
  * `wantCurrency`. An accumulating fund resolves to a listing with an empty
- * event list (no payouts) — distinct from "no listing found" (null). The caller
+ * event list (no payouts), distinct from "no listing found" (null). The caller
  * FX-converts when the listing currency differs.
+ *
+ * `hint` is the exact listing the app already prices this asset with (the
+ * quote symbol picked by ISIN/currency resolution elsewhere), so its dividend
+ * event list is authoritative for this asset, even when empty: accumulating
+ * funds, FX lines and spot commodities legitimately pay nothing. Scanning
+ * search candidates further once surfaced an unrelated payer's events for a
+ * symbol-only asset (phantom dividends on gold), so a resolved hint chart
+ * short-circuits the search loop entirely instead of only seeding it.
  */
 export async function dividendsByQuery(
   query: string,
@@ -676,14 +684,14 @@ export async function dividendsByQuery(
   fallbackQuery?: string,
 ): Promise<{ events: DividendEvent[]; currency: string } | null> {
   const want = (wantCurrency || "").toUpperCase();
-  const candidates: string[] = [];
-  if (hint) candidates.push(hint);
-  for (const s of await searchCandidates(query, fallbackQuery)) {
-    if (!candidates.includes(s)) candidates.push(s);
+
+  if (hint) {
+    const hinted = await dividendChart(hint, range);
+    if (hinted) return hinted;
   }
 
   let fallback: { events: DividendEvent[]; currency: string } | null = null;
-  for (const s of candidates.slice(0, 5)) {
+  for (const s of (await searchCandidates(query, fallbackQuery)).slice(0, 5)) {
     const c = await dividendChart(s, range);
     if (!c) continue;
     // Prefer a currency-matching listing that actually has events; otherwise

@@ -4,7 +4,7 @@
 // backoff sleeps are driven with fake timers so nothing here is flaky.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConcurrencyLimiter, TTLCache, __resetForTests, getJSON } from "../lib/server/yahoo";
+import { ConcurrencyLimiter, TTLCache, __resetForTests, dividendsByQuery, getJSON } from "../lib/server/yahoo";
 
 describe("ConcurrencyLimiter", () => {
   it("caps concurrent acquisitions at max and drains the FIFO queue in order", async () => {
@@ -165,5 +165,91 @@ describe("getJSON: 429/503 retry + circuit breaker", () => {
 
     await expect(getJSON("https://example.test/x")).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("dividendsByQuery", () => {
+  beforeEach(() => {
+    __resetForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetForTests();
+  });
+
+  function chartResponse(currency: string, dividends?: Record<string, { amount: number; date: number }>) {
+    return new Response(
+      JSON.stringify({
+        chart: { result: [{ meta: { currency }, events: dividends ? { dividends } : {} }] },
+      }),
+      { status: 200 },
+    );
+  }
+
+  it("trusts the hinted listing's empty event list and fetches nothing else", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(chartResponse("EUR"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    // XAUEUR=X: gold's real Yahoo listing, which never pays dividends.
+    const result = await dividendsByQuery("XAU", "EUR", "XAUEUR=X", "5y", "Gold");
+    expect(result).toEqual({ events: [], currency: "EUR" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/chart/XAUEUR%3DX");
+  });
+
+  it("returns the hinted listing's real events when it has them", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(chartResponse("USD", { "1": { amount: 0.5, date: 1700000000 } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await dividendsByQuery("US0000000000", "USD", "AAPL", "5y");
+    expect(result?.currency).toBe("USD");
+    expect(result?.events).toEqual([{ date: "2023-11-14", amount: 0.5 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls through to the search-candidate loop when the hint does not resolve", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/chart/BADHINT")) return Promise.resolve(new Response(null, { status: 404 }));
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(new Response(JSON.stringify({ quotes: [{ symbol: "REAL.DE" }] }), { status: 200 }));
+      }
+      if (u.includes("/chart/REAL.DE")) {
+        return Promise.resolve(chartResponse("EUR", { "1": { amount: 1.2, date: 1700000000 } }));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await dividendsByQuery("DE0000000000", "EUR", "BADHINT", "5y", "Real Corp");
+    expect(result?.currency).toBe("EUR");
+    expect(result?.events).toEqual([{ date: "2023-11-14", amount: 1.2 }]);
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/chart/BADHINT"))).toBe(true);
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+    expect(urls.some((u) => u.includes("/chart/REAL.DE"))).toBe(true);
+  });
+
+  it("with no hint, scans search candidates as before", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(new Response(JSON.stringify({ quotes: [{ symbol: "REAL.DE" }] }), { status: 200 }));
+      }
+      if (u.includes("/chart/REAL.DE")) {
+        return Promise.resolve(chartResponse("EUR", { "1": { amount: 1.2, date: 1700000000 } }));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await dividendsByQuery("DE0000000000", "EUR", undefined, "5y", "Real Corp");
+    expect(result?.currency).toBe("EUR");
+    expect(result?.events).toEqual([{ date: "2023-11-14", amount: 1.2 }]);
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/chart/BADHINT"))).toBe(false);
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
   });
 });
