@@ -19,18 +19,18 @@ import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
 export function WatchlistCard() {
   const enabled = useFeatureFlag("watchlist");
-  const { data, addWatchlistItem, removeWatchlistItem, updateWatchlistItem } = usePortfolio();
+  const { data, addWatchlistItem, removeWatchlistItem } = usePortfolio();
   const { version } = useCatalog();
   const { t } = useI18n();
   const base = data.profile.currency;
 
   const [query, setQuery] = useState("");
+  const [addCurrency, setAddCurrency] = useState("auto");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<WatchlistItem | null>(null);
@@ -39,9 +39,6 @@ export function WatchlistCard() {
   const [fetched, setFetched] = useState<Record<string, number>>({});
 
   const watchlist = data.watchlist;
-
-  const { touched, touch } = useFormTouched();
-  const queryMissing = !query.trim();
 
   // Price per item: catalog cache first (instrument currency), then the
   // one-shot fetch (item currency). Null = no real price known.
@@ -109,20 +106,6 @@ export function WatchlistCard() {
 
   if (!enabled) return null;
 
-  async function changeCurrency(item: WatchlistItem, currency: string) {
-    // Drop any cached one-shot price so it re-fetches in the new currency.
-    setFetched((prev) => {
-      const next = { ...prev };
-      delete next[assetPriceKey(item)];
-      return next;
-    });
-    try {
-      await updateWatchlistItem(item.id, { currency });
-    } catch {
-      /* the row keeps its previous currency on failure */
-    }
-  }
-
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -135,7 +118,8 @@ export function WatchlistCard() {
         setError(t("watchlist.notFound"));
         return;
       }
-      const input: Omit<WatchlistItem, "id"> = m;
+      const currency = addCurrency === "auto" ? m.currency : addCurrency;
+      const input: Omit<WatchlistItem, "id"> = { ...m, currency };
       const key = assetPriceKey(input);
       if (watchlist.some((w) => assetPriceKey(w) === key)) {
         setError(t("watchlist.exists"));
@@ -143,6 +127,7 @@ export function WatchlistCard() {
       }
       await addWatchlistItem(input);
       setQuery("");
+      setAddCurrency("auto");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("watchlist.notFound"));
     } finally {
@@ -158,24 +143,27 @@ export function WatchlistCard() {
           <input
             type="text"
             value={query}
-            onChange={(e) => {
-              touch();
-              setQuery(e.target.value);
-            }}
-            onBlur={touch}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder={t("watchlist.placeholder")}
             aria-label={t("watchlist.placeholder")}
-            className={`w-44 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 md:w-56 dark:border-zinc-700${missingFieldCls(queryMissing, touched)}`}
+            className="w-44 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 md:w-56 dark:border-zinc-700"
           />
-          <Button type="submit" size="sm" variant="secondary" disabled={busy || queryMissing}>
+          <SelectMenu
+            value={addCurrency}
+            ariaLabel={t("watchlist.currency")}
+            onChange={setAddCurrency}
+            options={[
+              { value: "auto", label: t("watchlist.currencyAuto") },
+              ...Array.from(new Set([base, ...CURRENCIES])).map((c) => ({ value: c, label: c })),
+            ]}
+            className="w-24"
+          />
+          <Button type="submit" size="sm" variant="secondary" disabled={busy || !query.trim()}>
             {busy ? "…" : t("watchlist.add")}
           </Button>
         </form>
       </div>
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {queryMissing && touched && (
-        <p className="mt-2 text-xs text-zinc-500">{t("form.missingFields")}</p>
-      )}
 
       {watchlist.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("watchlist.empty")}</p>
@@ -194,16 +182,6 @@ export function WatchlistCard() {
                 </span>
               </Link>
               <span className="flex shrink-0 items-center gap-2">
-                <SelectMenu
-                  value={currency}
-                  ariaLabel={t("watchlist.currency")}
-                  onChange={(c) => void changeCurrency(item, c)}
-                  options={Array.from(new Set([base, ...CURRENCIES])).map((c) => ({
-                    value: c,
-                    label: c,
-                  }))}
-                  className="w-20"
-                />
                 <span className="text-sm tabular-nums">
                   {price != null ? (
                     formatCurrency(price, currency)

@@ -42,6 +42,7 @@ export const en = {
   "watchlist.removeMsg": "{name} will be removed from your watchlist.",
   "watchlist.removeConfirm": "Remove",
   "watchlist.currency": "Currency",
+  "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "View details",
 
   "sp.title": "Savings plans",
@@ -699,7 +700,7 @@ export const en = {
   // Guest mode banner
   "guestBanner.title": "Guest Mode:",
   "guestBanner.body":
-    "your data is stored only in this browser and will be lost if you clear it.",
+    "your data is stored only in this browser and will be lost if you delete your browser data.",
   "guestBanner.cta": "Sign up to save it",
 } as const;
 
@@ -739,6 +740,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "watchlist.removeMsg": "{name} wird von Ihrer Watchlist entfernt.",
   "watchlist.removeConfirm": "Entfernen",
   "watchlist.currency": "Währung",
+  "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Details ansehen",
 
   "sp.title": "Sparpläne",
@@ -1396,7 +1398,7 @@ const de: Partial<Record<MessageKey, string>> = {
   // Guest mode banner
   "guestBanner.title": "Gastmodus:",
   "guestBanner.body":
-    "Ihre Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn Sie ihn leeren.",
+    "Ihre Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn Sie Ihre Browserdaten leeren.",
   "guestBanner.cta": "Registrieren, um sie zu speichern",
 };
 
