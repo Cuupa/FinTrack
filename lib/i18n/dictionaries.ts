@@ -695,6 +695,12 @@ export const en = {
 
   "common.loadError": "Your data could not be loaded. Check your connection and try again.",
   "common.retry": "Retry",
+
+  // Guest mode banner
+  "guestBanner.title": "Guest Mode:",
+  "guestBanner.body":
+    "your data is stored only in this browser and will be lost if you clear it.",
+  "guestBanner.cta": "Sign up to save it",
 } as const;
 
 const de: Partial<Record<MessageKey, string>> = {
@@ -1386,6 +1392,12 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "common.loadError": "Deine Daten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
   "common.retry": "Erneut versuchen",
+
+  // Guest mode banner
+  "guestBanner.title": "Gastmodus:",
+  "guestBanner.body":
+    "Ihre Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn Sie ihn leeren.",
+  "guestBanner.cta": "Registrieren, um sie zu speichern",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de };

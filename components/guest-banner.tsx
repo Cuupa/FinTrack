@@ -5,10 +5,12 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function GuestBanner() {
   const { mode, authAvailable } = useAuth();
   const { persistent } = usePortfolio();
+  const { t } = useI18n();
 
   if (mode === "registered" || persistent) return null;
 
@@ -17,12 +19,11 @@ export function GuestBanner() {
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
         <span aria-hidden>⚠️</span>
         <span>
-          <strong>Guest Mode:</strong> your data is stored only in this browser
-          and will be lost if you clear it.
+          <strong>{t("guestBanner.title")}</strong> {t("guestBanner.body")}
         </span>
         {authAvailable && (
           <Link href="/login" className="font-semibold underline underline-offset-2">
-            Sign up to save it
+            {t("guestBanner.cta")}
           </Link>
         )}
       </div>
