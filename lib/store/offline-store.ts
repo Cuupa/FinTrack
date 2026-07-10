@@ -204,6 +204,15 @@ export class OfflineStore implements DataStore {
     }
   }
 
+  async updateWatchlistItem(id: string, patch: Partial<WatchlistInput>): Promise<void> {
+    await this.mirror.updateWatchlistItem(id, patch);
+    try {
+      await this.inner.updateWatchlistItem(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateWatchlistItem", id, patch);
+    }
+  }
+
   async addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan> {
     const planId = id ?? newId();
     const plan = await this.mirror.addSavingsPlan(input, planId);

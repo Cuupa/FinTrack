@@ -47,6 +47,7 @@ export interface DataStore {
   deleteTransaction(id: string): Promise<void>;
   addWatchlistItem(input: WatchlistInput, id?: string): Promise<WatchlistItem>;
   removeWatchlistItem(id: string): Promise<void>;
+  updateWatchlistItem(id: string, patch: Partial<WatchlistInput>): Promise<void>;
   addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan>;
   updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void>;
   deleteSavingsPlan(id: string): Promise<void>;

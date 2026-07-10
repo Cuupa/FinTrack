@@ -179,6 +179,15 @@ export class LocalStore implements DataStore {
     this.write(data);
   }
 
+  async updateWatchlistItem(id: string, patch: Partial<WatchlistInput>) {
+    const data = this.read();
+    const idx = data.watchlist.findIndex((w) => w.id === id);
+    if (idx >= 0) {
+      data.watchlist[idx] = { ...data.watchlist[idx], ...patch };
+      this.write(data);
+    }
+  }
+
   async addSavingsPlan(input: SavingsPlanInput, id?: string) {
     const data = this.read();
     const plan = { ...input, id: id ?? newId() };

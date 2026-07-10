@@ -58,6 +58,7 @@ interface PortfolioContextValue {
   deleteTransaction(id: string): Promise<void>;
   addWatchlistItem(input: WatchlistInput): Promise<WatchlistItem>;
   removeWatchlistItem(id: string): Promise<void>;
+  updateWatchlistItem(id: string, patch: Partial<WatchlistInput>): Promise<void>;
   addSavingsPlan(input: SavingsPlanInput): Promise<SavingsPlan>;
   updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void>;
   deleteSavingsPlan(id: string): Promise<void>;
@@ -205,6 +206,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const updateWatchlistItem = useCallback(
+    async (id: string, patch: Partial<WatchlistInput>) => {
+      await store.updateWatchlistItem(id, patch);
+      setData((d) => ({
+        ...d,
+        watchlist: d.watchlist.map((w) => (w.id === id ? { ...w, ...patch } : w)),
+      }));
+    },
+    [store],
+  );
+
   const addSavingsPlan = useCallback(
     async (input: SavingsPlanInput) => {
       const plan = await store.addSavingsPlan(input);
@@ -321,6 +333,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     deleteTransaction,
     addWatchlistItem,
     removeWatchlistItem,
+    updateWatchlistItem,
     addSavingsPlan,
     updateSavingsPlan,
     deleteSavingsPlan,

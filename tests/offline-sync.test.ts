@@ -155,6 +155,13 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       maybeFail();
       data.watchlist = data.watchlist.filter((w) => w.id !== id);
     },
+    async updateWatchlistItem(id, patch) {
+      calls.push(`updateWatchlistItem:${id}`);
+      maybeFail();
+      if (missingIds.has(id)) throw new RowNotFoundError(`watchlist item ${id} not found`);
+      const idx = data.watchlist.findIndex((w) => w.id === id);
+      if (idx >= 0) data.watchlist[idx] = { ...data.watchlist[idx], ...patch };
+    },
     async addSavingsPlan(input, id) {
       calls.push(`addSavingsPlan:${id}`);
       maybeFail();

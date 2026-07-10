@@ -118,7 +118,7 @@ export class SupabaseStore implements DataStore {
         .select("id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at"),
       this.supabase
         .from("watchlist_items")
-        .select("id, instrument:instruments (isin, wkn, symbol, name, type, currency)")
+        .select("id, currency, instrument:instruments (isin, wkn, symbol, name, type, currency)")
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
@@ -185,7 +185,7 @@ export class SupabaseStore implements DataStore {
     }));
 
     const watchlist: WatchlistItem[] = (
-      (watchRes.data ?? []) as Pick<AssetRow, "id" | "instrument">[]
+      (watchRes.data ?? []) as Pick<AssetRow, "id" | "currency" | "instrument">[]
     ).map((r) => {
       const inst = embed(r as AssetRow);
       return {
@@ -195,7 +195,8 @@ export class SupabaseStore implements DataStore {
         symbol: inst?.symbol ?? null,
         name: inst?.name ?? "",
         type: inst?.type ?? "STOCK",
-        currency: inst?.currency ?? null,
+        // The user's own override wins; fall back to the instrument's.
+        currency: r.currency ?? inst?.currency ?? null,
       };
     });
 
@@ -386,6 +387,7 @@ export class SupabaseStore implements DataStore {
         id, // see addAsset — undefined lets the DB default generate one
         user_id: this.userId,
         instrument_id: instrumentId,
+        currency: input.currency, // the user's per-item currency override
       })
       .select("id")
       .single();
@@ -400,6 +402,21 @@ export class SupabaseStore implements DataStore {
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) throw error;
+  }
+
+  async updateWatchlistItem(id: string, patch: Partial<WatchlistInput>): Promise<void> {
+    // Only `currency` is item-level; master data lives on the instrument.
+    if (patch.currency === undefined) return;
+    const { data, error } = await this.supabase
+      .from("watchlist_items")
+      .update({ currency: patch.currency })
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    // See updateAsset above: a zero-row match must be distinguishable from a
+    // real failure for the phase-3 replay to apply the LWW drop rule.
+    if (!data || data.length === 0) throw new RowNotFoundError(`watchlist item ${id} not found`);
   }
 
   async addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan> {

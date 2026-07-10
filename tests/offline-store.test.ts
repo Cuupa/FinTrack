@@ -123,6 +123,10 @@ function makeInner(initial: PortfolioData) {
       calls.push("removeWatchlistItem");
       guard();
     },
+    async updateWatchlistItem() {
+      calls.push("updateWatchlistItem");
+      guard();
+    },
     async addSavingsPlan(input, id) {
       calls.push("addSavingsPlan");
       guard();

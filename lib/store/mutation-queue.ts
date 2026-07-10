@@ -21,6 +21,7 @@ export type MutationOp =
   | "deleteTransaction"
   | "addWatchlistItem"
   | "removeWatchlistItem"
+  | "updateWatchlistItem"
   | "addSavingsPlan"
   | "updateSavingsPlan"
   | "deleteSavingsPlan"

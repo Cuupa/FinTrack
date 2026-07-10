@@ -239,11 +239,15 @@ create table if not exists public.watchlist_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   instrument_id uuid not null references public.instruments (id),
+  -- Per-item currency override, same idea as assets.currency above; null
+  -- falls back to the shared instrument's currency.
+  currency text,
   created_at timestamptz not null default now()
 );
 create index if not exists watchlist_items_user_id_idx on public.watchlist_items (user_id);
 create unique index if not exists watchlist_items_user_instrument_key
   on public.watchlist_items (user_id, instrument_id);
+alter table public.watchlist_items add column if not exists currency text;
 
 -- Savings plans ---------------------------------------------------------------
 -- Recurring buy rules (Sparpläne). Due occurrences are materialized client-side
@@ -341,7 +345,9 @@ insert into public.schema_migrations (version) values
   ('0036_transaction_tax'),
   ('0037_watchlist'),
   ('0038_savings_plans'),
-  ('0039_dividend_dashboard_flag')
+  ('0039_dividend_dashboard_flag'),
+  ('0040_commodity_type'),
+  ('0041_watchlist_currency')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

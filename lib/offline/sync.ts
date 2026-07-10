@@ -109,6 +109,9 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
     case "removeWatchlistItem":
       await inner.removeWatchlistItem(op.id);
       return;
+    case "updateWatchlistItem":
+      await inner.updateWatchlistItem(op.id, op.payload as Partial<WatchlistInput>);
+      return;
     case "addSavingsPlan":
       await inner.addSavingsPlan(op.payload as SavingsPlanInput, op.id);
       return;
