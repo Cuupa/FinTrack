@@ -2,7 +2,7 @@
 
 // Add a buy/sell event to an existing asset (PRD §3.1 transaction history).
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { currentPrice } from "@/lib/finance/prices";
@@ -12,6 +12,10 @@ import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
+import { useCatalog } from "@/lib/catalog/catalog-context";
+import { lookupInstrument } from "@/lib/catalog/catalog";
+import { useLivePrices } from "@/lib/live/live-prices-context";
+import { fetchLivePrice, isPriceFresh } from "@/lib/live/fetch-price";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -28,14 +32,26 @@ export function TransactionForm({
   const isCash = asset.type === "CASH";
   const cur = asset.currency || "EUR";
 
+  // Prefer the live valuation price (already in the holding's currency); fall
+  // back to the synthetic walk. `inst.lastPrice` is in the instrument's NATIVE
+  // currency and can mismatch the holding's currency, so it's only read below
+  // for its `priceSyncedAt` staleness timestamp, never as a price value.
+  const { valuation } = useLivePrices();
+  useCatalog(); // subscribe so a late catalog load re-renders
+  const inst = lookupInstrument(assetPriceKey(asset));
+  const cachedLive = valuation.live?.[assetPriceKey(asset)];
+  const initialPrice = isCash
+    ? "1"
+    : cachedLive != null
+      ? String(round(cachedLive))
+      : String(round(currentPrice(assetPriceKey(asset), asset.type)));
+
   const [type, setType] = useState<TransactionType>("BUY");
   const [portfolioId, setPortfolioId] = useState(
     selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
   const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState(
-    isCash ? "1" : String(round(currentPrice(assetPriceKey(asset), asset.type))),
-  );
+  const [price, setPrice] = useState(initialPrice);
   const [fee, setFee] = useState("0");
   const [tax, setTax] = useState("0");
   const [addingPortfolio, setAddingPortfolio] = useState(false);
@@ -43,6 +59,27 @@ export function TransactionForm({
   const [executedAt, setExecutedAt] = useState(nowDateTimeLocal());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Tracks whether the user has edited the price input, so the background
+  // refresh below never clobbers a value they've already changed.
+  const priceDirtyRef = useRef(false);
+
+  // Pull a fresh price when editing if the cached one is stale (older than 1h)
+  // or unknown. Equities only (the /api/price proxy resolves via Yahoo).
+  useEffect(() => {
+    if (asset.type !== "STOCK" && asset.type !== "ETF") return;
+    if (isPriceFresh(inst?.priceSyncedAt ?? null)) return; // cached price is under an hour old
+    const q = asset.isin || asset.symbol || asset.wkn;
+    if (!q) return;
+    let cancelled = false;
+    (async () => {
+      const p = await fetchLivePrice(q, cur, asset.name);
+      if (!cancelled && p != null && !priceDirtyRef.current) setPrice(String(round(p)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asset.id]);
 
   const { touched, touch } = useFormTouched();
   // Presence-only gating for the submit button — mirrors handleSubmit's checks.
@@ -182,6 +219,7 @@ export function TransactionForm({
                 value={price}
                 onChange={(e) => {
                   touch();
+                  priceDirtyRef.current = true;
                   setPrice(stripLeadingZero(e.target.value));
                 }}
                 onBlur={touch}

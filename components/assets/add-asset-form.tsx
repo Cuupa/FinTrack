@@ -12,6 +12,7 @@ import { currentPrice } from "@/lib/finance/prices";
 import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
+import { fetchLivePrice } from "@/lib/live/fetch-price";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
@@ -84,17 +85,8 @@ export function AddAssetForm({
     if (!query || t === "CASH" || t === "CRYPTO" || t === "COMMODITY") return; // crypto/commodity need a catalog id
     setFetchingPrice(true);
     try {
-      const res = await fetch(
-        `/api/price?q=${encodeURIComponent(query)}&currency=${encodeURIComponent(currency)}`,
-      );
-      if (res.ok) {
-        const d = (await res.json()) as { found?: boolean; price?: number };
-        if (d.found && typeof d.price === "number" && d.price > 0) {
-          setPrice(String(round(d.price)));
-        }
-      }
-    } catch {
-      /* ignore — the user can type the price */
+      const p = await fetchLivePrice(query, currency);
+      if (p != null) setPrice(String(round(p)));
     } finally {
       setFetchingPrice(false);
     }
