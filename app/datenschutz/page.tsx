@@ -12,11 +12,21 @@ import { useSiteConfig } from "@/lib/site-config";
 
 export default function DatenschutzPage() {
   const { locale } = useI18n();
-  const config = useSiteConfig();
-  return locale === "de" ? <DatenschutzDE config={config} /> : <DatenschutzEN config={config} />;
+  const { config, loaded } = useSiteConfig();
+  return locale === "de" ? (
+    <DatenschutzDE config={config} loaded={loaded} />
+  ) : (
+    <DatenschutzEN config={config} loaded={loaded} />
+  );
 }
 
-function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
+function DatenschutzDE({
+  config,
+  loaded,
+}: {
+  config: ReturnType<typeof useSiteConfig>["config"];
+  loaded: boolean;
+}) {
   return (
     <LegalPage title="Datenschutzerklärung" updated="Stand: 4. Juli 2026">
       <LegalSection heading="1. Verantwortlicher">
@@ -25,15 +35,16 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
           <LegalLink href="/impressum">Impressum</LegalLink> genannte Betreiber:
         </p>
         <p>
-          <LegalValue value={config.legal_name} placeholder="[VOR- UND NACHNAME]" />
+          <LegalValue value={config.legal_name} loaded={loaded} placeholder="[VOR- UND NACHNAME]" />
           <br />
-          <LegalValue value={config.legal_street} placeholder="[STRASSE UND HAUSNUMMER]" />
+          <LegalValue value={config.legal_street} loaded={loaded} placeholder="[STRASSE UND HAUSNUMMER]" />
           <br />
-          <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
+          <LegalValue value={config.legal_city} loaded={loaded} placeholder="[PLZ UND ORT]" />
           <br />
           E-Mail:{" "}
           <EmailImage
             value={config.legal_email}
+            loaded={loaded}
             placeholder="[E-MAIL-ADRESSE]"
             label="E-Mail-Adresse (als Bild angezeigt zum Schutz vor Spam)"
           />
@@ -111,7 +122,10 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
             (Beträge ein-/ausblenden), Ihre eigenen Tags sowie einen Zwischenspeicher des
             Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten). Auch
             historische Kursverläufe werden lokal zwischengespeichert, damit Diagramme
-            schneller laden; dieser Zwischenspeicher wird bei der Abmeldung gelöscht.
+            schneller laden; dieser Zwischenspeicher wird bei der Abmeldung gelöscht. Die auf
+            den rechtlichen Seiten (Impressum, Datenschutzerklärung) angezeigten öffentlichen
+            Kontaktdaten des Betreibers werden ebenfalls lokal zwischengespeichert, damit sie
+            sofort sichtbar sind.
           </li>
         </ul>
         <p>
@@ -136,6 +150,7 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
           exportieren. Für alle anderen Anliegen wenden Sie sich an{" "}
           <EmailImage
             value={config.legal_email}
+            loaded={loaded}
             placeholder="[E-MAIL-ADRESSE]"
             label="E-Mail-Adresse (als Bild angezeigt zum Schutz vor Spam)"
           />
@@ -160,7 +175,13 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
   );
 }
 
-function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
+function DatenschutzEN({
+  config,
+  loaded,
+}: {
+  config: ReturnType<typeof useSiteConfig>["config"];
+  loaded: boolean;
+}) {
   return (
     <LegalPage title="Privacy Policy" updated="Last updated: 4 July 2026">
       <LegalSection heading="1. Controller">
@@ -169,15 +190,16 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
           <LegalLink href="/impressum">Imprint</LegalLink>:
         </p>
         <p>
-          <LegalValue value={config.legal_name} placeholder="[FIRST AND LAST NAME]" />
+          <LegalValue value={config.legal_name} loaded={loaded} placeholder="[FIRST AND LAST NAME]" />
           <br />
-          <LegalValue value={config.legal_street} placeholder="[STREET AND HOUSE NUMBER]" />
+          <LegalValue value={config.legal_street} loaded={loaded} placeholder="[STREET AND HOUSE NUMBER]" />
           <br />
-          <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
+          <LegalValue value={config.legal_city} loaded={loaded} placeholder="[POSTAL CODE AND CITY]" />
           <br />
           Email:{" "}
           <EmailImage
             value={config.legal_email}
+            loaded={loaded}
             placeholder="[EMAIL ADDRESS]"
             label="Email address (shown as an image to prevent spam)"
           />
@@ -251,7 +273,9 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
             preference (show/hide figures), your custom tags, and a cache of the
             instrument catalog (faster loading, no personal data). Historical price
             series are also cached locally to speed up chart loading; this cache is
-            deleted when you sign out.
+            deleted when you sign out. The public operator contact data shown on the
+            legal pages (Imprint, Privacy Policy) is also cached locally so it
+            displays immediately.
           </li>
         </ul>
         <p>
@@ -275,6 +299,7 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
           your data as JSON or CSV. For any other request, contact{" "}
           <EmailImage
             value={config.legal_email}
+            loaded={loaded}
             placeholder="[EMAIL ADDRESS]"
             label="Email address (shown as an image to prevent spam)"
           />

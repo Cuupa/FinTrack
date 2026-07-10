@@ -5,22 +5,34 @@
 // supabase/migrations/0033_site_config.sql) instead of being hardcoded. Same
 // spirit as feature_flags: the owner fills it in via SQL/dashboard only.
 //
-// A key that's missing, still empty, or hasn't loaded yet resolves to
-// `undefined` here — callers render their existing placeholder in that case,
-// same as a flag row missing from the DB counts as disabled. Without
-// Supabase configured (Guest/dev mode) there's no database to read, so this
-// always resolves empty and the placeholders stay.
+// A localStorage mirror (lib/site-config-cache.ts) removes the loading flash
+// on repeat visits: useSyncExternalStore reads the cached map synchronously
+// on the very first client render, then the Supabase fetch below still runs
+// once in the background and updates the store + localStorage only when the
+// payload actually differs.
+//
+// `loaded` tells callers whether the *current* fetch has settled: true right
+// away when Supabase isn't configured (nothing will ever arrive - Guest/dev
+// mode, the placeholders are correct operator to-dos), true once the fetch
+// resolves (success or error). Callers use it to tell "still loading" (render
+// nothing) apart from "loaded and genuinely empty" (render the placeholder);
+// a cached value renders immediately either way, regardless of `loaded`.
 
-import { useEffect, useState } from "react";
-import { getSupabaseClient } from "./supabase/client";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getSupabaseClient, isSupabaseConfigured } from "./supabase/client";
+import { siteConfigStore, type SiteConfigKey, type SiteConfigMap } from "./site-config-cache";
 
-export type SiteConfigKey = "legal_name" | "legal_street" | "legal_city" | "legal_email";
+export type { SiteConfigKey, SiteConfigMap };
 
-type SiteConfigMap = Partial<Record<SiteConfigKey, string>>;
-
-/** Loads the operator-identity keys from `site_config` once, client-side. */
-export function useSiteConfig(): SiteConfigMap {
-  const [config, setConfig] = useState<SiteConfigMap>({});
+/** Loads the operator-identity keys from `site_config`, painting a cached
+ *  value immediately and revalidating once from Supabase in the background. */
+export function useSiteConfig(): { config: SiteConfigMap; loaded: boolean } {
+  const config = useSyncExternalStore(
+    siteConfigStore.subscribe,
+    siteConfigStore.getSnapshot,
+    siteConfigStore.getServerSnapshot,
+  );
+  const [loaded, setLoaded] = useState(!isSupabaseConfigured);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -29,18 +41,21 @@ export function useSiteConfig(): SiteConfigMap {
     supabase
       .from("site_config")
       .select("key, value")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!active) return;
-        const map: SiteConfigMap = {};
-        for (const row of (data ?? []) as { key: string; value: string }[]) {
-          if (row.value) map[row.key as SiteConfigKey] = row.value;
+        if (!error) {
+          const map: SiteConfigMap = {};
+          for (const row of (data ?? []) as { key: string; value: string }[]) {
+            if (row.value) map[row.key as SiteConfigKey] = row.value;
+          }
+          siteConfigStore.update(map);
         }
-        setConfig(map);
+        setLoaded(true);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  return config;
+  return { config, loaded };
 }

@@ -55,12 +55,24 @@ export function Placeholder({ children }: { children: ReactNode }) {
 }
 
 /**
- * Renders a DB-backed value (e.g. from `useSiteConfig()`) when present,
- * falling back to the highlighted placeholder otherwise — covers "not loaded
- * yet", "empty in the DB", and "no Supabase configured" in one check.
+ * Renders a DB-backed value (e.g. from `useSiteConfig()`) when present. While
+ * `loaded` is false (the fetch - or its cache-free first run - hasn't settled
+ * yet) a missing value renders nothing, so there's no placeholder flash; once
+ * `loaded` is true a still-missing value falls back to the highlighted
+ * placeholder ("empty in the DB" or "no Supabase configured").
  */
-export function LegalValue({ value, placeholder }: { value?: string; placeholder: ReactNode }) {
-  return value ? <>{value}</> : <Placeholder>{placeholder}</Placeholder>;
+export function LegalValue({
+  value,
+  loaded,
+  placeholder,
+}: {
+  value?: string;
+  loaded: boolean;
+  placeholder: ReactNode;
+}) {
+  if (value) return <>{value}</>;
+  if (!loaded) return null;
+  return <Placeholder>{placeholder}</Placeholder>;
 }
 
 /**
@@ -75,13 +87,19 @@ export function LegalValue({ value, placeholder }: { value?: string; placeholder
  * theme; this app has no `.dark` class toggle (see globals.css), theming is
  * purely `prefers-color-scheme`, so a `matchMedia` listener alone covers
  * theme switches.
+ *
+ * Like `LegalValue`, renders nothing while `loaded` is false and the value is
+ * still missing (no placeholder flash); falls back to the `Placeholder` chip
+ * once `loaded` is true and the value is still missing.
  */
 export function EmailImage({
   value,
+  loaded,
   placeholder,
   label = "Email address (shown as an image to prevent spam)",
 }: {
   value?: string;
+  loaded: boolean;
   placeholder: ReactNode;
   /** Localized, generic (non-address-revealing) label for the canvas. */
   label?: string;
@@ -135,7 +153,10 @@ export function EmailImage({
     return () => media.removeEventListener("change", onChange);
   }, [value]);
 
-  if (!value) return <Placeholder>{placeholder}</Placeholder>;
+  if (!value) {
+    if (!loaded) return null;
+    return <Placeholder>{placeholder}</Placeholder>;
+  }
 
   return (
     <canvas

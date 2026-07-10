@@ -12,22 +12,32 @@ import { useSiteConfig } from "@/lib/site-config";
 
 export default function ImpressumPage() {
   const { locale } = useI18n();
-  const config = useSiteConfig();
-  return locale === "de" ? <ImpressumDE config={config} /> : <ImpressumEN config={config} />;
+  const { config, loaded } = useSiteConfig();
+  return locale === "de" ? (
+    <ImpressumDE config={config} loaded={loaded} />
+  ) : (
+    <ImpressumEN config={config} loaded={loaded} />
+  );
 }
 
-function ImpressumDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
+function ImpressumDE({
+  config,
+  loaded,
+}: {
+  config: ReturnType<typeof useSiteConfig>["config"];
+  loaded: boolean;
+}) {
   return (
     <LegalPage title="Impressum" updated="Stand: 4. Juli 2026">
       <LegalSection heading="Angaben gemäß § 5 DDG">
         <p>
           FinTrack
           <br />
-          <LegalValue value={config.legal_name} placeholder="[VOR- UND NACHNAME]" />
+          <LegalValue value={config.legal_name} loaded={loaded} placeholder="[VOR- UND NACHNAME]" />
           <br />
-          <LegalValue value={config.legal_street} placeholder="[STRASSE UND HAUSNUMMER]" />
+          <LegalValue value={config.legal_street} loaded={loaded} placeholder="[STRASSE UND HAUSNUMMER]" />
           <br />
-          <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
+          <LegalValue value={config.legal_city} loaded={loaded} placeholder="[PLZ UND ORT]" />
           <br />
           Deutschland
         </p>
@@ -38,6 +48,7 @@ function ImpressumDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
           E-Mail:{" "}
           <EmailImage
             value={config.legal_email}
+            loaded={loaded}
             placeholder="[E-MAIL-ADRESSE]"
             label="E-Mail-Adresse (als Bild angezeigt zum Schutz vor Spam)"
           />
@@ -46,11 +57,11 @@ function ImpressumDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
 
       <LegalSection heading="Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV">
         <p>
-          <LegalValue value={config.legal_name} placeholder="[VOR- UND NACHNAME]" />
+          <LegalValue value={config.legal_name} loaded={loaded} placeholder="[VOR- UND NACHNAME]" />
           <br />
-          <LegalValue value={config.legal_street} placeholder="[STRASSE UND HAUSNUMMER]" />
+          <LegalValue value={config.legal_street} loaded={loaded} placeholder="[STRASSE UND HAUSNUMMER]" />
           <br />
-          <LegalValue value={config.legal_city} placeholder="[PLZ UND ORT]" />
+          <LegalValue value={config.legal_city} loaded={loaded} placeholder="[PLZ UND ORT]" />
         </p>
       </LegalSection>
 
@@ -98,7 +109,13 @@ function ImpressumDE({ config }: { config: ReturnType<typeof useSiteConfig> }) {
   );
 }
 
-function ImpressumEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
+function ImpressumEN({
+  config,
+  loaded,
+}: {
+  config: ReturnType<typeof useSiteConfig>["config"];
+  loaded: boolean;
+}) {
   return (
     <LegalPage title="Imprint" updated="Last updated: 4 July 2026">
       <p className="text-xs text-zinc-500">
@@ -114,11 +131,11 @@ function ImpressumEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
         <p>
           FinTrack
           <br />
-          <LegalValue value={config.legal_name} placeholder="[FIRST AND LAST NAME]" />
+          <LegalValue value={config.legal_name} loaded={loaded} placeholder="[FIRST AND LAST NAME]" />
           <br />
-          <LegalValue value={config.legal_street} placeholder="[STREET AND HOUSE NUMBER]" />
+          <LegalValue value={config.legal_street} loaded={loaded} placeholder="[STREET AND HOUSE NUMBER]" />
           <br />
-          <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
+          <LegalValue value={config.legal_city} loaded={loaded} placeholder="[POSTAL CODE AND CITY]" />
           <br />
           Germany
         </p>
@@ -129,6 +146,7 @@ function ImpressumEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
           Email:{" "}
           <EmailImage
             value={config.legal_email}
+            loaded={loaded}
             placeholder="[EMAIL ADDRESS]"
             label="Email address (shown as an image to prevent spam)"
           />
@@ -137,11 +155,11 @@ function ImpressumEN({ config }: { config: ReturnType<typeof useSiteConfig> }) {
 
       <LegalSection heading="Responsible for content pursuant to § 18(2) MStV (German Interstate Media Treaty)">
         <p>
-          <LegalValue value={config.legal_name} placeholder="[FIRST AND LAST NAME]" />
+          <LegalValue value={config.legal_name} loaded={loaded} placeholder="[FIRST AND LAST NAME]" />
           <br />
-          <LegalValue value={config.legal_street} placeholder="[STREET AND HOUSE NUMBER]" />
+          <LegalValue value={config.legal_street} loaded={loaded} placeholder="[STREET AND HOUSE NUMBER]" />
           <br />
-          <LegalValue value={config.legal_city} placeholder="[POSTAL CODE AND CITY]" />
+          <LegalValue value={config.legal_city} loaded={loaded} placeholder="[POSTAL CODE AND CITY]" />
         </p>
       </LegalSection>
 

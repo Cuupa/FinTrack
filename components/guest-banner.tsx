@@ -8,11 +8,13 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function GuestBanner() {
-  const { mode, authAvailable } = useAuth();
+  const { mode, authAvailable, loading } = useAuth();
   const { persistent } = usePortfolio();
   const { t } = useI18n();
 
-  if (mode === "registered" || persistent) return null;
+  // While the Supabase session is still being fetched, `mode` defaults to
+  // "guest" - don't flash the banner for a signed-in user on every load.
+  if (loading || mode === "registered" || persistent) return null;
 
   return (
     <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
