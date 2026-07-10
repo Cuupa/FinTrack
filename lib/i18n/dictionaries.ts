@@ -1190,7 +1190,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "risk.correlationTip":
     "Wie sich Positionen gemeinsam bewegen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",
   "risk.correlationNeed": "Fügen Sie mindestens zwei Positionen mit Historie hinzu, um Korrelationen zu sehen.",
-  "risk.correlationHighPairs": "Paare über 0,8 bewegen sich im Gleichschritt, das schränkt die Diversifikation ein.",
+  "risk.correlationHighPairs": "Paare über 0,8 bewegen sich im Gleichschritt, dies schränkt die Diversifikation ein.",
 
   // Allocation / distributions
   "alloc.investment": "Investments",
