@@ -5,9 +5,12 @@ import {
   portfolioTotals,
   netWorthSeries,
   assetValueSeries,
+  holdingPeriodProfit,
   type HoldingSummary,
+  type ValuationContext,
 } from "../lib/finance/portfolio";
-import type { Asset, Transaction } from "../lib/types";
+import { today, addDays } from "../lib/finance/dates";
+import { assetPriceKey, type Asset, type Transaction } from "../lib/types";
 
 function tx(p: Partial<Transaction> & Pick<Transaction, "type" | "quantity" | "price">): Transaction {
   return { id: "t", assetId: "a", portfolioId: "p1", fee: 0, tax: 0, date: "2025-01-01T00:00:00", ...p };
@@ -135,5 +138,122 @@ describe("assetValueSeries", () => {
     expect(containsSynthetic).toBe(false);
     expect(points[0].value).toBeCloseTo(100, 6);
     expect(points[points.length - 1].value).toBeCloseTo(105, 6);
+  });
+});
+
+describe("holdingPeriodProfit", () => {
+  it("regression: a tiny day-one buy plus larger later buys no longer blows up pct off the day-one sliver", () => {
+    // Day-one buy is 1 share at 1 EUR; two much larger buys follow inside the
+    // window. Before the fix, pct was abs/startValue (1 EUR), so a 9.5 EUR
+    // gain read as +950%. It must now read against start value + invested.
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock1" });
+    const D0 = addDays(today(), -400);
+    const txs = [
+      tx({ type: "BUY", quantity: 1, price: 1, date: `${D0}T00:00:00` }),
+      tx({ type: "BUY", quantity: 100, price: 10, date: `${addDays(D0, 100)}T00:00:00` }),
+      tx({ type: "BUY", quantity: 100, price: 11, date: `${addDays(D0, 200)}T00:00:00` }),
+    ];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 1 },
+        { date: today(), close: 10.5 },
+      ],
+    };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "MAX", undefined, history);
+    const startValue = 1 * 1;
+    const invested = 100 * 10 + 100 * 11;
+    expect(pct).toBeCloseTo(abs / (startValue + invested), 6);
+    expect(pct).toBeLessThan(0.2);
+  });
+
+  it("common case: no in-window buys keeps the denominator equal to the start value", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock2" });
+    const D0 = addDays(today(), -400);
+    const txs = [tx({ type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: today(), close: 150 },
+      ],
+    };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "MAX", undefined, history);
+    const startValue = 10 * 100;
+    const endValue = 10 * 150;
+    expect(abs).toBeCloseTo(endValue - startValue, 6);
+    expect(pct).toBeCloseTo((endValue - startValue) / startValue, 6);
+  });
+
+  it("buy-only-in-window: a position opened mid-window makes pct equal abs/invested", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock3" });
+    const end = today();
+    const buyDate = addDays(end, -15);
+    const txs = [tx({ type: "BUY", quantity: 10, price: 100, date: `${buyDate}T00:00:00` })];
+    const history = { [assetPriceKey(stock)]: [{ date: end, close: 120 }] };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "1M", undefined, history);
+    const invested = 10 * 100;
+    expect(pct).toBeCloseTo(abs / invested, 6);
+  });
+
+  it("fully sold mid-window: pct stays finite and equals abs/(startValue+invested)", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock4" });
+    const D0 = addDays(today(), -400);
+    const txs = [
+      tx({ type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` }),
+      tx({ type: "BUY", quantity: 5, price: 120, date: `${addDays(D0, 50)}T00:00:00` }),
+      tx({ type: "SELL", quantity: 15, price: 130, date: `${addDays(D0, 100)}T00:00:00` }),
+    ];
+    const history = { [assetPriceKey(stock)]: [{ date: D0, close: 100 }] };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "MAX", undefined, history);
+    const startValue = 10 * 100;
+    const invested = 5 * 120;
+    expect(Number.isFinite(pct)).toBe(true);
+    expect(pct).toBeCloseTo(abs / (startValue + invested), 6);
+  });
+
+  it("sell-only window on a pre-existing position: the denominator stays the start value", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock5" });
+    const D0 = addDays(today(), -400);
+    const txs = [
+      tx({ type: "BUY", quantity: 20, price: 50, date: `${D0}T00:00:00` }),
+      tx({ type: "SELL", quantity: 5, price: 60, date: `${addDays(D0, 30)}T00:00:00` }),
+    ];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 50 },
+        { date: today(), close: 70 },
+      ],
+    };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "MAX", undefined, history);
+    const startValue = 20 * 50;
+    expect(pct).toBeCloseTo(abs / startValue, 6);
+  });
+
+  it("degenerate denominator: a booking-only window with no prior position gives pct 0, not NaN or Infinity", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock6" });
+    const end = today();
+    const bookingDate = addDays(end, -10);
+    const txs = [tx({ type: "BOOKING", quantity: 5, price: 100, date: `${bookingDate}T00:00:00` })];
+    const history = { [assetPriceKey(stock)]: [{ date: end, close: 50 }] };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "1M", undefined, history);
+    expect(Number.isFinite(abs)).toBe(true);
+    expect(pct).toBe(0);
+  });
+
+  it("multi-currency: pct is invariant to the FX rate while abs scales with it", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock7", currency: "USD" });
+    const D0 = addDays(today(), -400);
+    const txs = [tx({ type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: today(), close: 150 },
+      ],
+    };
+    const v1: ValuationContext = { base: "EUR", fx: { USD: 1 } };
+    const v2: ValuationContext = { base: "EUR", fx: { USD: 2.5 } };
+    const r1 = holdingPeriodProfit(stock, txs, "MAX", v1, history);
+    const r2 = holdingPeriodProfit(stock, txs, "MAX", v2, history);
+    expect(r2.pct).toBeCloseTo(r1.pct, 6);
+    expect(r2.abs).toBeCloseTo(r1.abs * 2.5, 6);
   });
 });

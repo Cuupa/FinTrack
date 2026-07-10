@@ -457,8 +457,9 @@ export function assetPriceSeries(
  * live-anchored synthetic price for the start-of-window value, which is enough
  * for a relative period figure in the holdings table.
  *
- * `abs` is the gain in base currency; `pct` is relative to the value held at the
- * window start (or to the amount invested when the position started near zero).
+ * `abs` is the gain in base currency; `pct` is relative to the capital exposed
+ * over the window: the value held at the window start plus fresh buy inflows
+ * during the window.
  */
 export function holdingPeriodProfit(
   asset: Asset,
@@ -490,19 +491,25 @@ export function holdingPeriodProfit(
 
   // Net cash invested into THIS position during the window (base currency):
   // buys add, sells subtract. Fees and taxes are part of the cash moved.
+  // `invested` tracks only in-window BUY inflows, the denominator capital.
   let flows = 0;
+  let invested = 0;
   for (const t of atxs) {
     if (dateKey(t.date) <= start) continue;
     const cash = t.quantity * t.price;
     // BOOKING adds no cash (free crediting) → its value shows up as profit.
-    const flow =
-      t.type === "BUY" ? cash + t.fee + t.tax : t.type === "SELL" ? -(cash - t.fee - t.tax) : 0;
-    flows += flow * rate;
+    if (t.type === "BUY") {
+      const inflow = (cash + t.fee + t.tax) * rate;
+      flows += inflow;
+      invested += inflow;
+    } else if (t.type === "SELL") {
+      flows += -(cash - t.fee - t.tax) * rate;
+    }
   }
 
   const abs = endValue - startValue - flows;
-  const denom = startValue > 1e-6 ? startValue : flows > 1e-6 ? flows : 0;
-  return { abs, pct: denom > 0 ? abs / denom : 0 };
+  const denom = startValue + invested;
+  return { abs, pct: denom > 1e-6 ? abs / denom : 0 };
 }
 
 /**
