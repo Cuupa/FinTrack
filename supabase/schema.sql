@@ -61,6 +61,10 @@ create unique index if not exists instruments_symbol_key
   on public.instruments (symbol) where symbol is not null;
 create index if not exists instruments_isin_idx on public.instruments (isin);
 create index if not exists instruments_wkn_idx on public.instruments (wkn);
+-- Matches the names-sync cron's batch scan (order by name_synced_at asc
+-- nulls first, limited); see app/api/cron/sync/names/route.ts.
+create index if not exists instruments_name_synced_at_idx
+  on public.instruments (name_synced_at asc nulls first);
 -- isin/wkn uniqueness (mirrors instruments_symbol_key above), closing the same
 -- race for the other two identifiers. `not valid` so a legacy value that
 -- fails the format check doesn't block the migration on existing rows.
@@ -281,6 +285,8 @@ create table if not exists public.watchlist_items (
   created_at timestamptz not null default now()
 );
 create index if not exists watchlist_items_user_id_idx on public.watchlist_items (user_id);
+-- FK integrity checks against instruments.
+create index if not exists watchlist_items_instrument_id_idx on public.watchlist_items (instrument_id);
 create unique index if not exists watchlist_items_user_instrument_key
   on public.watchlist_items (user_id, instrument_id);
 alter table public.watchlist_items add column if not exists currency text;
@@ -303,6 +309,10 @@ create table if not exists public.savings_plans (
   created_at timestamptz not null default now()
 );
 create index if not exists savings_plans_user_id_idx on public.savings_plans (user_id);
+-- Cascade path from assets deletes.
+create index if not exists savings_plans_asset_id_idx on public.savings_plans (asset_id);
+-- Cascade path from portfolios deletes.
+create index if not exists savings_plans_portfolio_id_idx on public.savings_plans (portfolio_id);
 
 -- Cached Monte Carlo simulation runs, keyed by a hash of the (seed-independent)
 -- parameters. Rerunning with identical params reuses the stored result instead
@@ -333,6 +343,10 @@ create table if not exists public.imported_rows (
 -- because rows recorded before migration 0028 have no link.
 alter table public.imported_rows
   add column if not exists transaction_id uuid references public.transactions (id) on delete cascade;
+-- Every transaction delete cascades onto imported_rows via transaction_id;
+-- unindexed, that cascade scans the whole table.
+create index if not exists imported_rows_transaction_id_idx
+  on public.imported_rows (transaction_id);
 
 -- Applied-migrations registry (system table) --------------------------------
 create table if not exists public.schema_migrations (
@@ -386,7 +400,8 @@ insert into public.schema_migrations (version) values
   ('0041_watchlist_currency'),
   ('0042_instrument_name_sync'),
   ('0043_rate_limit'),
-  ('0044_reset_commodity_quote')
+  ('0044_reset_commodity_quote'),
+  ('0045_fk_indexes')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -558,6 +573,10 @@ create table if not exists public.user_feature_flags (
   updated_at timestamptz not null default now(),
   primary key (user_id, flag)
 );
+-- Cascade path from feature_flags deletes; the primary key (user_id, flag)
+-- does not cover flag-leading lookups.
+create index if not exists user_feature_flags_flag_idx
+  on public.user_feature_flags (flag);
 
 alter table public.feature_flags enable row level security;
 alter table public.user_feature_flags enable row level security;
