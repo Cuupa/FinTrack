@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseCsv, detectFormat, fingerprint, isValidTx, type ParsedTx } from "../lib/import/csv";
 import { reconcile } from "../lib/import/reconcile";
-import type { Asset, Transaction } from "../lib/types";
+import { portfolioToCsv } from "../lib/export/export";
+import type { Asset, Transaction, PortfolioData } from "../lib/types";
 
 const ZERO = [
   "Name;ISIN;WKN;Anzahl;Anzahl storniert;Status;Orderart;Limit;Stop;Erstellt Datum;Erstellt Zeit;Gültig bis;Richtung;Wert;Wert storniert;Mindermengenzuschlag;Ausführung Datum;Ausführung Zeit;Ausführung Kurs;Anzahl ausgeführt;Anzahl offen;Gestrichen Datum;Gestrichen Zeit",
@@ -103,6 +104,22 @@ const BITPANDA = [
   "F2,2025-05-05T17:50:09+02:00,withdrawal,outgoing,355.74,EUR,-,EUR,-,-,Fiat,-,0.00000000,EUR,-,-,-,0.00",
 ].join("\n");
 
+// Minimal FinTrack self-export sample (see lib/export/export.ts), used to
+// exercise detectFormat and the parser without going through a full
+// PortfolioData round trip.
+const FINTRACK_SAMPLE = [
+  "# FinTrack export: base currency EUR",
+  "# Assets",
+  "id,name,type,isin,wkn,symbol,currency,notes",
+  "a1,Apple,STOCK,US0378331005,,,USD,",
+  "",
+  "# Transactions",
+  "id,date,asset,isin,type,quantity,price,fee,tax",
+  "t1,2024-01-15T10:30:00,Apple,US0378331005,BUY,2,150,1,0",
+  "t2,2024-01-20T10:30:00,Apple,US0378331005,DIVIDEND,1,150,0,0",
+  "",
+].join("\n");
+
 describe("csv detectFormat", () => {
   it("identifies each broker", () => {
     expect(detectFormat(ZERO)).toBe("zeroorders");
@@ -111,6 +128,7 @@ describe("csv detectFormat", () => {
     expect(detectFormat(DB)).toBe("deutschebank");
     expect(detectFormat(DB_TX)).toBe("dbtransactions"); // despite the BOM
     expect(detectFormat(BITPANDA)).toBe("bitpanda"); // header on line 6, not 0
+    expect(detectFormat(FINTRACK_SAMPLE)).toBe("fintrack");
     expect(detectFormat("a,b,c\n1,2,3")).toBeNull();
   });
 });
@@ -405,6 +423,143 @@ describe("csv parsers — full real exports", () => {
       expect(byAssetType).toEqual({ COMMODITY: 3, CRYPTO: 21 });
     },
   );
+});
+
+describe("csv parsers — fintrack (self re-import)", () => {
+  it("maps known transaction types 1:1 and skips+counts an unknown type", () => {
+    const { format, rows, skipped, invalid } = parseCsv(FINTRACK_SAMPLE);
+    expect(format).toBe("fintrack");
+    expect(rows).toHaveLength(1); // the DIVIDEND row is unrecognised
+    expect(skipped).toBe(1);
+    expect(invalid).toBe(0);
+    expect(rows[0]).toMatchObject({
+      isin: "US0378331005",
+      name: "Apple",
+      type: "BUY",
+      quantity: 2,
+      price: 150,
+      fee: 1,
+      tax: 0,
+      currency: "USD",
+      assetType: "STOCK",
+      date: "2024-01-15T10:30:00",
+    });
+  });
+
+  it("round-trips a PortfolioData through portfolioToCsv and back", () => {
+    const assets: Asset[] = [
+      {
+        id: "a1",
+        isin: "US0378331005",
+        wkn: null,
+        symbol: null,
+        name: "Apple Inc.",
+        type: "STOCK",
+        currency: "USD",
+        notes: null,
+      },
+      {
+        id: "a2",
+        isin: "IE00BK5BQT80",
+        wkn: null,
+        symbol: null,
+        // Comma in the name exercises RFC 4180 quoting on export + parsing.
+        name: "Vanguard, FTSE All-World UCITS ETF",
+        type: "ETF",
+        currency: "EUR",
+        notes: null,
+      },
+      {
+        id: "a3",
+        isin: null,
+        wkn: null,
+        symbol: "BTC",
+        name: "Bitcoin",
+        type: "CRYPTO",
+        currency: "EUR",
+        notes: null,
+      },
+    ];
+    const transactions: Transaction[] = [
+      {
+        id: "t1",
+        assetId: "a1",
+        portfolioId: "p1",
+        type: "BUY",
+        quantity: 2,
+        price: 150,
+        fee: 1,
+        tax: 0,
+        date: "2024-01-15T10:30:00",
+      },
+      {
+        id: "t2",
+        assetId: "a1",
+        portfolioId: "p1",
+        type: "SELL",
+        quantity: 1,
+        price: 160,
+        fee: 0.5,
+        tax: 2,
+        date: "2024-02-20T09:00:00",
+      },
+      {
+        id: "t3",
+        assetId: "a2",
+        portfolioId: "p1",
+        type: "BUY",
+        quantity: 5,
+        price: 100,
+        fee: 0,
+        tax: 0,
+        date: "2024-03-01T00:00:00",
+      },
+      {
+        id: "t4",
+        assetId: "a3",
+        portfolioId: "p1",
+        type: "BUY",
+        quantity: 0.01,
+        price: 50000,
+        fee: 5,
+        tax: 0,
+        date: "2024-04-10T12:00:00",
+      },
+    ];
+    const data: PortfolioData = {
+      profile: { currency: "EUR", name: null, locale: null },
+      portfolios: [{ id: "p1", name: "Main" }],
+      assets,
+      transactions,
+      watchlist: [],
+      savingsPlans: [],
+    };
+
+    const csv = portfolioToCsv(data);
+    const { format, rows, skipped, invalid } = parseCsv(csv);
+    expect(format).toBe("fintrack");
+    expect(skipped).toBe(0);
+    expect(invalid).toBe(0);
+    expect(rows).toHaveLength(4);
+
+    // portfolioToCsv sorts transactions by date ascending, which already
+    // matches the order they were declared in above.
+    for (let i = 0; i < transactions.length; i++) {
+      const original = transactions[i];
+      const asset = assets.find((a) => a.id === original.assetId)!;
+      expect(rows[i]).toMatchObject({
+        date: original.date,
+        type: original.type,
+        quantity: original.quantity,
+        price: original.price,
+        fee: original.fee,
+        tax: original.tax,
+        assetType: asset.type,
+      });
+      expect(rows[i].isin).toBe(asset.isin);
+      expect(rows[i].symbol).toBe(asset.symbol);
+    }
+  });
 });
 
 describe("reconcile", () => {

@@ -1,8 +1,10 @@
-// Broker CSV transaction parsing. Five German broker exports are supported;
-// the format is auto-detected from the header. Everything runs in the browser —
-// the CSV never leaves the device. No cash logic yet: pure deposits/withdrawals
-// and non-trade rows are dropped (and, for formats that can tell them apart
-// from real trades, counted in `skipped`).
+// Broker CSV transaction parsing. Five German broker exports are supported,
+// plus FinTrack's own CSV export (lib/export/export.ts) so a downloaded
+// portfolio can be re-imported elsewhere; the format is auto-detected from
+// the header. Everything runs in the browser — the CSV never leaves the
+// device. No cash logic yet: pure deposits/withdrawals and non-trade rows are
+// dropped (and, for formats that can tell them apart from real trades,
+// counted in `skipped`).
 
 import type { AssetType, TransactionType } from "../types";
 
@@ -29,7 +31,8 @@ export type BrokerFormat =
   | "traderepublic"
   | "deutschebank"
   | "dbtransactions"
-  | "bitpanda";
+  | "bitpanda"
+  | "fintrack";
 
 // --- helpers ----------------------------------------------------------------
 
@@ -102,6 +105,13 @@ export function detectFormat(text: string): BrokerFormat | null {
     return "zeroorders";
   }
   if (h.includes("bestand") && h.includes("einstandskurs")) return "deutschebank";
+  // FinTrack's own export (lib/export/export.ts): a single marker line "#
+  // FinTrack export: ...". Scanned across the first few lines like the
+  // Bitpanda preamble below, for robustness, even though today it's always
+  // line 0.
+  if (toLines(text).slice(0, 3).join("\n").toLowerCase().includes("# fintrack export")) {
+    return "fintrack";
+  }
   // Deutsche Bank "PrivatDepot" transaction export (distinct from the
   // Bestandsaufstellung snapshot above): a real Umsatzart-keyed history.
   if (h.includes("umsatzart") && h.includes("ausmachender betrag")) return "dbtransactions";
@@ -503,6 +513,103 @@ function parseBitpanda(text: string): { rows: ParsedTx[]; skipped: number } {
   return { rows: out, skipped };
 }
 
+const VALID_TX_TYPES = new Set<TransactionType>(["BUY", "SELL", "BOOKING", "INTEREST"]);
+
+/**
+ * FinTrack's own CSV export (lib/export/export.ts), re-imported. The file has
+ * an assets section (`# Assets`, columns id,name,type,isin,wkn,symbol,
+ * currency,notes) followed by a transactions section (`# Transactions`,
+ * columns id,date,asset,isin,type,quantity,price,fee,tax) — the transaction
+ * row's own "isin" column only ever carries an ISIN, so the assets section is
+ * used to enrich every row with wkn, symbol, currency and assetType. The
+ * "asset" column holds the asset's name, except when the export itself had no
+ * name to write (a lookup miss) — then it falls back to the raw asset id — so
+ * rows are matched against the assets section by id first, then by name.
+ * Transaction types map 1:1 onto `TransactionType`; a row with any other
+ * value (e.g. a type added by a future export version) is unrecognised and
+ * skipped, counted like the other parsers' cash-only/unusable rows.
+ */
+function parseFinTrack(text: string): { rows: ParsedTx[]; skipped: number } {
+  const lines = toLines(text);
+  const assetsIdx = lines.findIndex((l) => l.trim() === "# Assets");
+  const txIdx = lines.findIndex((l) => l.trim() === "# Transactions");
+  if (assetsIdx < 0 || txIdx < 0) return { rows: [], skipped: 0 };
+
+  interface FinTrackAsset {
+    name: string;
+    type: string;
+    isin: string | null;
+    wkn: string | null;
+    symbol: string | null;
+    currency: string | null;
+  }
+  const assetsById = new Map<string, FinTrackAsset>();
+  const assetsByName = new Map<string, FinTrackAsset>();
+  const assetHeader = splitLine(lines[assetsIdx + 1] ?? "", ",");
+  const ac = {
+    id: idxExact(assetHeader, "id"),
+    name: idxExact(assetHeader, "name"),
+    type: idxExact(assetHeader, "type"),
+    isin: idxExact(assetHeader, "isin"),
+    wkn: idxExact(assetHeader, "wkn"),
+    symbol: idxExact(assetHeader, "symbol"),
+    currency: idxExact(assetHeader, "currency"),
+  };
+  for (let i = assetsIdx + 2; i < txIdx; i++) {
+    const r = splitLine(lines[i], ",");
+    const row: FinTrackAsset = {
+      name: r[ac.name] || "",
+      type: r[ac.type] || "",
+      isin: r[ac.isin] || null,
+      wkn: r[ac.wkn] || null,
+      symbol: r[ac.symbol] || null,
+      currency: r[ac.currency] || null,
+    };
+    const id = r[ac.id] || "";
+    if (id) assetsById.set(id, row);
+    if (row.name) assetsByName.set(row.name, row);
+  }
+
+  const txHeader = splitLine(lines[txIdx + 1] ?? "", ",");
+  const tc = {
+    date: idxExact(txHeader, "date"),
+    asset: idxExact(txHeader, "asset"),
+    isin: idxExact(txHeader, "isin"),
+    type: idxExact(txHeader, "type"),
+    quantity: idxExact(txHeader, "quantity"),
+    price: idxExact(txHeader, "price"),
+    fee: idxExact(txHeader, "fee"),
+    tax: idxExact(txHeader, "tax"),
+  };
+  const out: ParsedTx[] = [];
+  let skipped = 0;
+  for (let i = txIdx + 2; i < lines.length; i++) {
+    const r = splitLine(lines[i], ",");
+    const assetField = r[tc.asset] || "";
+    const asset = assetsById.get(assetField) ?? assetsByName.get(assetField);
+    const rawType = (r[tc.type] || "").toUpperCase() as TransactionType;
+    if (!VALID_TX_TYPES.has(rawType)) {
+      skipped++; // unrecognised transaction type — not one this app writes
+      continue;
+    }
+    out.push({
+      isin: r[tc.isin] || asset?.isin || null,
+      wkn: asset?.wkn || null,
+      symbol: asset?.symbol || null,
+      name: asset?.name || assetField,
+      type: rawType,
+      quantity: Number(r[tc.quantity]),
+      price: Number(r[tc.price]),
+      fee: Number(r[tc.fee]) || 0,
+      tax: Number(r[tc.tax]) || 0,
+      date: r[tc.date] || "",
+      currency: asset?.currency || "EUR",
+      assetType: (asset?.type as AssetType) || inferAssetType(assetField),
+    });
+  }
+  return { rows: out, skipped };
+}
+
 // --- generic (any-broker) parser --------------------------------------------
 
 /** Number tolerant of both decimal comma and decimal point, plus thousands
@@ -665,8 +772,8 @@ export function parseCsv(
   // Known broker formats parse precisely; anything else falls back to the
   // generic header-driven parser so files from other brokers still import.
   // Only the formats with recognised-but-cash-only or unexecuted rows (FNZ,
-  // Deutsche Bank transactions, ZERO orders, Bitpanda) report a non-zero
-  // `skipped` count.
+  // Deutsche Bank transactions, ZERO orders, Bitpanda, FinTrack) report a
+  // non-zero `skipped` count.
   let rows: ParsedTx[];
   let skipped: number;
   if (fmt === "fnz") {
@@ -677,6 +784,8 @@ export function parseCsv(
     ({ rows, skipped } = parseZeroOrders(text));
   } else if (fmt === "bitpanda") {
     ({ rows, skipped } = parseBitpanda(text));
+  } else if (fmt === "fintrack") {
+    ({ rows, skipped } = parseFinTrack(text));
   } else {
     rows = !fmt
       ? parseGeneric(text)

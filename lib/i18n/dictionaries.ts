@@ -24,6 +24,7 @@ export const en = {
   "nav.deletePortfolioMsg":
     "Its transactions and any assets held only in this portfolio are deleted permanently.",
 
+  "export.menu": "Export",
   "export.csv": "Download CSV",
   "export.json": "Download JSON",
 
@@ -722,6 +723,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.deletePortfolioMsg":
     "Seine Transaktionen und alle nur in diesem Portfolio gehaltenen Assets werden endgültig gelöscht.",
 
+  "export.menu": "Export",
   "export.csv": "CSV herunterladen",
   "export.json": "JSON herunterladen",
 

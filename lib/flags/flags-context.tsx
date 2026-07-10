@@ -39,7 +39,9 @@ export type FeatureFlag =
   | "watchlist"
   | "savingsPlans"
   | "dividends"
-  | "historyCache";
+  | "historyCache"
+  | "exportCsv"
+  | "exportJson";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

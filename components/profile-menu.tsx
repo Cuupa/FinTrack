@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { exportPortfolioCsv, exportPortfolioJson } from "@/lib/export/export";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 
 function initials(name: string | null, email: string | null): string {
   const src = (name ?? "").trim() || (email ?? "").trim();
@@ -24,6 +25,8 @@ export function ProfileMenu() {
   const { user, signOut } = useAuth();
   const { data } = usePortfolio();
   const { t } = useI18n();
+  const csvEnabled = useFeatureFlag("exportCsv");
+  const jsonEnabled = useFeatureFlag("exportJson");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -65,29 +68,37 @@ export function ProfileMenu() {
           >
             {t("nav.settings")}
           </Link>
-          <div className="border-t border-zinc-200 dark:border-zinc-800" />
-          <button
-            type="button"
-            disabled={exportDisabled}
-            onClick={() => {
-              exportPortfolioCsv(data);
-              setOpen(false);
-            }}
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
-          >
-            {t("export.csv")}
-          </button>
-          <button
-            type="button"
-            disabled={exportDisabled}
-            onClick={() => {
-              exportPortfolioJson(data);
-              setOpen(false);
-            }}
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
-          >
-            {t("export.json")}
-          </button>
+          {(csvEnabled || jsonEnabled) && (
+            <>
+              <div className="border-t border-zinc-200 dark:border-zinc-800" />
+              {csvEnabled && (
+                <button
+                  type="button"
+                  disabled={exportDisabled}
+                  onClick={() => {
+                    exportPortfolioCsv(data);
+                    setOpen(false);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
+                >
+                  {t("export.csv")}
+                </button>
+              )}
+              {jsonEnabled && (
+                <button
+                  type="button"
+                  disabled={exportDisabled}
+                  onClick={() => {
+                    exportPortfolioJson(data);
+                    setOpen(false);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
+                >
+                  {t("export.json")}
+                </button>
+              )}
+            </>
+          )}
           <div className="border-t border-zinc-200 dark:border-zinc-800" />
           <button
             type="button"
