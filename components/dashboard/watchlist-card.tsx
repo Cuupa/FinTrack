@@ -7,6 +7,7 @@
 // when disabled.
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { lookupInstrument } from "@/lib/catalog/catalog";
@@ -182,12 +183,16 @@ export function WatchlistCard() {
         <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
           {priced.map(({ item, price, currency }) => (
             <li key={item.id} className="flex items-center justify-between gap-3 py-2">
-              <span className="min-w-0">
+              <Link
+                href={`/instruments/${encodeURIComponent(assetPriceKey(item))}`}
+                title={t("watchlist.viewDetails")}
+                className="min-w-0 hover:underline"
+              >
                 <span className="block truncate text-sm font-medium">{item.name}</span>
                 <span className="block truncate font-mono text-xs text-zinc-500">
                   {assetIdentifier(item)}
                 </span>
-              </span>
+              </Link>
               <span className="flex shrink-0 items-center gap-2">
                 <SelectMenu
                   value={currency}
