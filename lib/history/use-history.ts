@@ -3,9 +3,16 @@
 // Fetches real historical price series for a set of assets over a timeframe
 // and caches them per (items, range). Charts fall back to the synthetic series
 // for anything not returned.
+//
+// Behind the "historyCache" feature flag, a browser-local
+// stale-while-revalidate layer (lib/history/history-cache.ts) removes the
+// visible network wait on repeat visits: a cache hit paints immediately, then
+// a background fetch still runs and refreshes the state if the data changed.
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useFeatureFlag } from "../flags/flags-context";
+import { readHistoryCache, writeHistoryCache } from "./history-cache";
 import type { HistItem, HistoryMap } from "./history";
 
 export function useHistory(
@@ -32,10 +39,19 @@ export function useHistory(
     histories: {},
   });
 
+  const historyCacheEnabled = useFeatureFlag("historyCache");
+
   useEffect(() => {
     if (items.length === 0) return;
     let cancelled = false;
     const run = async () => {
+      // Cache hit: paint immediately (flips the derived `loading` to false),
+      // then still fetch below to revalidate in the background.
+      let cached: HistoryMap | null = null;
+      if (historyCacheEnabled) {
+        cached = readHistoryCache(sig);
+        if (cached && !cancelled) setState({ sig, histories: cached });
+      }
       try {
         const res = await apiFetch("/api/history", {
           method: "POST",
@@ -50,10 +66,25 @@ export function useHistory(
         for (const [k, pts] of Object.entries(raw)) {
           if (Array.isArray(pts) && pts.length >= 2) usable[k] = pts;
         }
-        if (!cancelled) setState({ sig, histories: usable });
+        if (!cancelled) {
+          if (historyCacheEnabled) {
+            writeHistoryCache(sig, usable);
+            // Only re-render if the revalidated data actually differs from
+            // what's already painted (the cache hit) — avoids a pointless
+            // re-render on every visit when nothing changed.
+            const unchanged = cached != null && JSON.stringify(usable) === JSON.stringify(cached);
+            if (!unchanged) setState({ sig, histories: usable });
+          } else {
+            setState({ sig, histories: usable });
+          }
+        }
       } catch {
-        // Mark this sig done (empty) so we don't spin forever.
-        if (!cancelled) setState({ sig, histories: {} });
+        if (!cancelled) {
+          // On failure, keep a cache hit's data on screen rather than
+          // blanking it; without a hit, fall back to today's behavior (mark
+          // this sig done/empty so we don't spin forever).
+          if (!(historyCacheEnabled && cached)) setState({ sig, histories: {} });
+        }
       }
     };
     // Defer out of the effect body (no synchronous setState in the effect).
@@ -63,7 +94,7 @@ export function useHistory(
       clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig]);
+  }, [sig, historyCacheEnabled]);
 
   const loading = items.length > 0 && state.sig !== sig;
   // While loading, don't hand back the previous range's histories — callers that

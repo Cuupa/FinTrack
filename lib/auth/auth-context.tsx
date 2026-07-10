@@ -15,6 +15,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
+import { clearHistoryCache } from "../history/history-cache";
 
 export type Mode = "guest" | "registered";
 
@@ -106,6 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    // The history cache's keys are derived from the held instruments' price
+    // keys (ISIN/WKN/symbol) — clear it so a shared device never surfaces one
+    // user's chart data after another signs in.
+    clearHistoryCache();
   }, [supabase]);
 
   const updatePassword = useCallback(

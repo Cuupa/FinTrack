@@ -109,7 +109,9 @@ function DatenschutzDE({ config }: { config: ReturnType<typeof useSiteConfig> })
             </code>{" "}
             für: Portfoliodaten im Gastmodus, die gewählte Sprache, den Anzeige-Modus
             (Beträge ein-/ausblenden), Ihre eigenen Tags sowie einen Zwischenspeicher des
-            Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten).
+            Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten). Auch
+            historische Kursverläufe werden lokal zwischengespeichert, damit Diagramme
+            schneller laden; dieser Zwischenspeicher wird bei der Abmeldung gelöscht.
           </li>
         </ul>
         <p>
@@ -247,7 +249,9 @@ function DatenschutzEN({ config }: { config: ReturnType<typeof useSiteConfig> })
             </code>{" "}
             for: portfolio data in Guest Mode, your chosen language, your display
             preference (show/hide figures), your custom tags, and a cache of the
-            instrument catalog (faster loading, no personal data).
+            instrument catalog (faster loading, no personal data). Historical price
+            series are also cached locally to speed up chart loading; this cache is
+            deleted when you sign out.
           </li>
         </ul>
         <p>
