@@ -181,6 +181,19 @@ export function AddAssetForm({
     }
   }
 
+  function selectType(next: AssetType) {
+    setType(next);
+    // Gold (XAU) is currently the only commodity the app can price, so prefill the
+    // ISO gold code to make adding it one click. Non-destructive: only fills blank
+    // fields, never overwrites what the user already typed. The authoritative name
+    // and live price still come from the seeded catalog in production.
+    if (next === "COMMODITY") {
+      if (!symbol.trim()) setSymbol("XAU");
+      if (!name.trim()) setName("Gold");
+      if (!price.trim()) setPrice(String(round(currentPrice("XAU", "COMMODITY"))));
+    }
+  }
+
   function startManual() {
     setManual(true);
     setImportStatus(null);
@@ -345,7 +358,7 @@ export function AddAssetForm({
                   <button
                     key={t}
                     type="button"
-                    onClick={() => !disabled && setType(t)}
+                    onClick={() => !disabled && selectType(t)}
                     disabled={disabled}
                     title={disabled ? tr("addAsset.cashExists") : undefined}
                     className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
@@ -356,7 +369,7 @@ export function AddAssetForm({
                           : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
                     }`}
                   >
-                    {t}
+                    {tr(`assetType.${t}`)}
                   </button>
                 );
               })}
