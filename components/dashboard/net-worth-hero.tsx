@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { quoteItemFor } from "@/lib/finance/prices";
+import { dividendItemsFor, quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import type { Timeframe } from "@/lib/finance/dates";
 import {
@@ -71,6 +71,11 @@ export function NetWorthHero({
     [data.assets, version],
   );
   const { histories, loading: historyLoading } = useHistory(histItems, timeframe, currency);
+  const divItems = useMemo(
+    () => dividendItemsFor(data.assets),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.assets, version],
+  );
 
   const { points: series, containsSynthetic } = useMemo(
     () => netWorthSeries(data.assets, data.transactions, timeframe, valuation, histories),
@@ -100,7 +105,7 @@ export function NetWorthHero({
   }, [data.assets, data.transactions, valuation, totals.marketValue]);
 
   // Real dividends received across all holdings, converted to the base currency.
-  const divMap = useDividends(histItems);
+  const divMap = useDividends(divItems);
   const dividendsReceived = useMemo(() => {
     const fx = valuation.fx ?? {};
     let total = 0;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { xirr, portfolioIRR } from "../lib/finance/irr";
 import {
   netFlows,
@@ -12,6 +12,8 @@ import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
 import { assetPriceSeries, netWorthSeries, summarizeHolding, twrSeries } from "../lib/finance/portfolio";
 import { assetAnnualStats, portfolioRiskStats } from "../lib/finance/stats";
+import { dividendItemsFor } from "../lib/finance/prices";
+import { setCatalog, type Instrument } from "../lib/catalog/catalog";
 import { assetPriceKey } from "../lib/types";
 import type { Asset, Transaction } from "../lib/types";
 import type { HoldingSummary, SeriesPoint } from "../lib/finance/portfolio";
@@ -27,6 +29,29 @@ function asset(over: Partial<Asset> & Pick<Asset, "id">): Asset {
     type: "STOCK",
     currency: "EUR",
     notes: null,
+    ...over,
+  };
+}
+
+function instrument(over: Partial<Instrument> & Pick<Instrument, "symbol" | "type">): Instrument {
+  return {
+    isin: null,
+    wkn: null,
+    name: over.symbol ?? "instrument",
+    currency: null,
+    country: null,
+    sector: null,
+    region: null,
+    quoteSource: null,
+    quoteId: null,
+    quoteScale: 1,
+    paysDividends: true,
+    basePrice: 100,
+    drift: 0.05,
+    vol: 0.2,
+    dividendYield: 0,
+    lastPrice: null,
+    priceSyncedAt: null,
     ...over,
   };
 }
@@ -571,5 +596,41 @@ describe("monte carlo withdrawal phase", () => {
     // Flat during accumulation (no return, no contribution), then depletes.
     expect(res.bands[5].median).toBeCloseTo(100000, 0);
     expect(res.bands[15].median).toBe(0); // 10y * 12k > 100k → depleted
+  });
+});
+
+describe("dividendItemsFor", () => {
+  afterEach(() => setCatalog([]));
+
+  it("skips an asset whose catalog instrument has paysDividends: false", () => {
+    setCatalog([instrument({ symbol: "XAU", type: "COMMODITY", paysDividends: false })]);
+    const gold = asset({ id: "g1", type: "COMMODITY", symbol: "XAU" });
+
+    expect(dividendItemsFor([gold])).toEqual([]);
+  });
+
+  it("includes an asset whose catalog instrument has paysDividends: true", () => {
+    setCatalog([instrument({ symbol: "VWCE", type: "ETF", paysDividends: true })]);
+    const etf = asset({ id: "e1", type: "ETF", symbol: "VWCE" });
+
+    const items = dividendItemsFor([etf]);
+
+    expect(items.map((i) => i.key)).toEqual([assetPriceKey(etf)]);
+  });
+
+  it("includes an asset with no catalog row that quoteItemFor can still resolve (STOCK by ISIN)", () => {
+    setCatalog([]);
+    const stock = asset({ id: "s1", type: "STOCK", isin: "US0378331005" });
+
+    const items = dividendItemsFor([stock]);
+
+    expect(items.map((i) => i.key)).toEqual([assetPriceKey(stock)]);
+  });
+
+  it("drops an asset quoteItemFor can't resolve (no catalog row, no isin/symbol)", () => {
+    setCatalog([]);
+    const mystery = asset({ id: "m1", type: "STOCK", isin: null, wkn: null, symbol: null });
+
+    expect(dividendItemsFor([mystery])).toEqual([]);
   });
 });

@@ -26,6 +26,8 @@ export interface Instrument {
   quoteId: string | null;
   /** Provider-unit to native-unit multiplier, applied after FX; default 1. */
   quoteScale: number;
+  /** Whether the app fetches real dividend events for this instrument; default true. */
+  paysDividends: boolean;
   // Synthetic-price fallback parameters.
   basePrice: number;
   drift: number;
