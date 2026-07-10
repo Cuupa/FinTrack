@@ -84,9 +84,14 @@ Flags SDK (explicitly rejected).
 
 ### CSV import & fingerprints
 
-`lib/import/csv.ts` parses broker exports (known German brokers precisely, a
-header-driven generic parser otherwise); names are replaced by the official
-instrument name looked up via catalog → `/api/lookup`. `lib/import/reconcile.ts`
+`lib/import/csv.ts` parses broker exports (known German brokers + Bitpanda
+precisely, a header-driven generic parser otherwise); names are replaced by the
+official instrument name looked up via catalog → `/api/lookup`. Bitpanda's
+header sits behind a PII preamble (detect by scanning the first lines); it maps
+asset class Cryptocurrency→CRYPTO, Metal→COMMODITY (gold as `XAU`, grams kept),
+Fiat→skipped, and in-asset fees convert to fiat via the row's market price. The
+real broker CSVs at the repo root are **gitignored** (contain PII); tests use
+inline anonymized fixtures plus `existsSync`-guarded full-file assertions. `lib/import/reconcile.ts`
 fuzzy-matches rows against existing transactions; identical matches are filed
 away silently, real conflicts go through a three-pane field-level merge.
 Applied rows record a fingerprint (`imported_rows`) **tied to the transaction
@@ -147,12 +152,32 @@ review dialog, advancing `lastRunDate`.
 ### Asset identity
 
 Assets are identified by **ISIN/WKN** (not ticker). `symbol` is a nullable
-field used only for assets without ISIN/WKN (crypto, e.g. "BTC"). Two helpers
-in `lib/types.ts`: `assetPriceKey(asset)` (= `isin ?? wkn ?? symbol ?? name`,
-the price-lookup key) and `assetIdentifier(asset)` (display). The add-asset
-form auto-imports name/ISIN/WKN **and the asset type** via
+field used only for assets without ISIN/WKN (crypto "BTC", commodities "XAU").
+Two helpers in `lib/types.ts`: `assetPriceKey(asset)` (= `isin ?? wkn ?? symbol
+?? name`, the price-lookup key) and `assetIdentifier(asset)` (display). The
+add-asset form auto-imports name/ISIN/WKN **and the asset type** via
 `lookupAsset(wkn|isin|symbol)`. Transactions store a full timestamp
 (`Transaction.date` is an ISO datetime; DB column `transactions.executed_at`).
+
+`AssetType` is `ETF | STOCK | CRYPTO | COMMODITY | CASH`. **COMMODITY** (e.g.
+gold, symbol `XAU`) is symbol-only like crypto and prices like a normal
+dividend-free security. It only ever comes from an explicit broker asset class
+(Bitpanda "Metal") or the seeded catalog — the live `/api/lookup` cannot
+represent it (`search.ts` drops Yahoo `FUTURE` hits; a bare metal ticker
+mis-resolves to Tether Gold / an E-mini future), so `applyResolvedInstrument`
+and `officialNameRenames` (`lib/import/resolve-names.ts`) **never let a lookup
+override an authoritative COMMODITY name/type**. Adding a new `AssetType` breaks
+`Record<AssetType,…>` sites at compile time (stats.ts `GENERAL`, allocation
+buckets) — follow the compiler.
+
+Market quotes may be in different **units** than the holding (gold: Yahoo
+`XAUEUR=X` is per troy ounce, the user holds grams). `instruments.quote_scale`
+(default 1) is the per-instrument multiplier, applied **after any FX** and
+**only to the resolved market price** (never the synthetic series or stored
+transaction prices) in the price cron, `/api/history`, and `/api/quotes` via
+`lib/server/scale.ts`. Runtime live price = `instruments.last_price` (cron,
+already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
+(STOCK/ETF only).
 
 ### Finance core (`lib/finance/`) — pure, no React
 
