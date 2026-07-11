@@ -4,6 +4,7 @@
 // (investments, asset classes, currencies, countries, volatility).
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
@@ -28,7 +29,6 @@ import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
 import { useEtfCountries } from "@/lib/finance/use-etf-countries";
 import { Card } from "@/components/ui/primitives";
-import { SelectMenu } from "@/components/ui/select-menu";
 import { AllocationPie } from "./allocation-pie";
 
 const TABS = [
@@ -45,13 +45,34 @@ const TABS = [
 type TabKey = (typeof TABS)[number];
 type OtherTabKey = Exclude<TabKey, "custom">;
 
+function isTabKey(value: string | null): value is TabKey {
+  return value !== null && (TABS as readonly string[]).includes(value);
+}
+
 export function AllocationView() {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const base = data.profile.currency;
 
-  const [tab, setTab] = useState<TabKey>("investment");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // The URL (`?breakdown=`) mirrors the client state, read once on mount;
+  // state stays authoritative and pushes to the URL on change (see
+  // selectTab), so there's no URL -> state sync loop.
+  const requestedBreakdown = searchParams.get("breakdown");
+  const [tab, setTab] = useState<TabKey>(
+    isTabKey(requestedBreakdown) ? requestedBreakdown : "investment",
+  );
+
+  const selectTab = (key: TabKey) => {
+    setTab(key);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("breakdown", key);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const holdings = useMemo(
     () =>
@@ -69,14 +90,6 @@ export function AllocationView() {
   const etfCountries = useEtfCountries(holdings, version);
   const { groups, assignments } = useTags();
   const { t } = useI18n();
-
-  // Which tag group backs the Custom breakdown. Derived rather than synced
-  // via effect: falls back to the first group whenever the selection is
-  // empty or points at a group that's since been deleted.
-  const [selectedGroupId, setSelectedGroupId] = useState("");
-  const activeGroupId = groups.some((g) => g.id === selectedGroupId)
-    ? selectedGroupId
-    : (groups[0]?.id ?? "");
 
   const charts = useMemo<Record<OtherTabKey, Slice[]>>(() => {
     // The finance layer is pure and locale-agnostic (English canonical
@@ -97,24 +110,30 @@ export function AllocationView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries, t]);
 
-  // Kept separate from `charts`: it depends on the selected tag group instead
-  // of the catalog/classification data the other breakdowns depend on.
-  const customSlices = useMemo(
-    () => byCustom(holdings, assignments, activeGroupId),
-    [holdings, assignments, activeGroupId],
-  );
-
-  // Only the "Untagged" sentinel is translated; user tag values are real data
-  // and must never be run through the label vocabulary. The empty-state and
-  // gray-color checks below stay against `customSlices` (canonical, untranslated)
-  // on purpose, so they keep matching regardless of locale.
-  const translatedCustomSlices = useMemo(
+  // One breakdown per tag group instead of a single selectable pie: every
+  // group gets its own byCustom() slice set. A group is "empty" (hidden) when
+  // no holding has a value in it, i.e. its only slice is the Untagged
+  // sentinel (or it has none at all). Only the "Untagged" sentinel is
+  // translated; user tag values are real data and must never be run through
+  // the label vocabulary. The empty check stays against the canonical,
+  // untranslated slices on purpose, so it keeps matching regardless of locale.
+  const customGroupCharts = useMemo(
     () =>
-      customSlices.map((s) => (s.label === "Untagged" ? { ...s, label: t("alloc.untagged") } : s)),
-    [customSlices, t],
+      groups
+        .map((group) => {
+          const slices = byCustom(holdings, assignments, group.id);
+          const empty = slices.every((s) => s.label === "Untagged");
+          const translated = slices.map((s) =>
+            s.label === "Untagged" ? { ...s, label: t("alloc.untagged") } : s,
+          );
+          const colors = slices.map((s) =>
+            s.label === "Untagged" ? "#a1a1aa" : colorForLabel(s.label),
+          );
+          return { group, slices: translated, colors, empty };
+        })
+        .filter((c) => !c.empty),
+    [groups, holdings, assignments, t],
   );
-
-  const activeSlices = tab === "custom" ? translatedCustomSlices : charts[tab];
 
   if (holdings.length === 0) {
     return (
@@ -125,59 +144,57 @@ export function AllocationView() {
   }
 
   return (
-    <Card>
-      {/* Breakdown selector: a contained pill group, distinct from the page's
-          primary underline tabs. */}
-      <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
-        {TABS.map((key) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            aria-pressed={tab === key}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === key
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-            }`}
-          >
-            {t(`alloc.${key}`)}
-          </button>
-        ))}
-      </div>
-
-      {tab === "custom" && groups.length > 0 && (
-        <div className="mt-4 max-w-xs">
-          <SelectMenu
-            value={activeGroupId}
-            ariaLabel={t("alloc.selectGroup")}
-            onChange={setSelectedGroupId}
-            options={groups.map((g) => ({ value: g.id, label: g.name }))}
-          />
+    <div className="space-y-6">
+      <Card>
+        {/* Breakdown selector: a contained pill group, distinct from the page's
+            primary underline tabs. */}
+        <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
+          {TABS.map((key) => (
+            <button
+              key={key}
+              onClick={() => selectTab(key)}
+              aria-pressed={tab === key}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                tab === key
+                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              {t(`alloc.${key}`)}
+            </button>
+          ))}
         </div>
-      )}
 
-      <div className="mt-8">
-        {tab === "custom" && customSlices.every((s) => s.label === "Untagged") ? (
-          <p className="py-6 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
-        ) : activeSlices.length === 0 ? (
-          <p className="py-12 text-center text-sm text-zinc-500">
-            {tab === "region" || tab === "country" ? t("alloc.noGeo") : t("alloc.noData")}
-          </p>
-        ) : (
-          <AllocationPie
-            slices={activeSlices}
-            currency={base}
-            title={t(`alloc.${tab}`)}
-            colors={
-              tab === "custom"
-                ? customSlices.map((s) =>
-                    s.label === "Untagged" ? "#a1a1aa" : colorForLabel(s.label),
-                  )
-                : undefined
-            }
-          />
+        {tab !== "custom" && (
+          <div className="mt-8">
+            {charts[tab].length === 0 ? (
+              <p className="py-12 text-center text-sm text-zinc-500">
+                {tab === "region" || tab === "country" ? t("alloc.noGeo") : t("alloc.noData")}
+              </p>
+            ) : (
+              <AllocationPie slices={charts[tab]} currency={base} title={t(`alloc.${tab}`)} />
+            )}
+          </div>
         )}
-      </div>
-    </Card>
+      </Card>
+
+      {tab === "custom" &&
+        (customGroupCharts.length === 0 ? (
+          <Card>
+            <p className="py-6 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {customGroupCharts.map(({ group, slices, colors }) => (
+              <Card key={group.id}>
+                <h3 className="text-sm font-semibold">{group.name}</h3>
+                <div className="mt-4">
+                  <AllocationPie slices={slices} currency={base} title={group.name} colors={colors} />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ))}
+    </div>
   );
 }

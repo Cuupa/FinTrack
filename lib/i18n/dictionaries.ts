@@ -346,10 +346,6 @@ export const en = {
     "{title} allocation donut chart, total {total}. Largest share: {label} at {pct}. Full breakdown listed below.",
   "chart.returnsByPeriod.ariaLabel":
     "Bar chart of returns by {period}, {start} to {end}, ranging from {min} to {max}.",
-  "chart.dividendsByPeriod.ariaLabel":
-    "Bar chart of dividends received by {period}, {start} to {end}, totaling {total}.",
-  "chart.dividendsByHolding.ariaLabel":
-    "Stacked bar chart of dividends received per holding by {period}, {count} holdings, totaling {total}.",
   "chart.performanceMap.ariaLabel":
     "Treemap of {count} holdings sized by value and colored by return over {timeframe}.",
   "chart.realizedByMonth.ariaLabel":
@@ -570,7 +566,6 @@ export const en = {
   "alloc.currency": "Currencies",
   "alloc.volatility": "Volatility",
   "alloc.custom": "Custom",
-  "alloc.selectGroup": "Breakdown group",
   "alloc.addHoldings": "Add holdings to see your allocation.",
   "alloc.noTags": "No tags yet. Open an asset and add tags to build a custom breakdown.",
   "alloc.noGeo":
@@ -637,13 +632,6 @@ export const en = {
   "returns.perfMapTip":
     "Each holding sized by its current value and coloured by its return over the selected timeframe (green = up, red = down). MAX shows the all-time return vs. your cost basis.",
   "returns.addHoldings": "Add holdings to see your returns.",
-  "returns.divByValue": "Dividends received",
-  "returns.divTip":
-    "Real dividend payments you received, converted to your base currency and totalled per period.",
-  "returns.divByHolding": "Dividends by holding",
-  "returns.divByHoldingTip":
-    "Dividends received per holding, stacked by period. Taller bars paid you more. Accumulating funds show nothing (they reinvest internally).",
-  "returns.noDividends": "No dividend payments recorded for the selected holdings.",
   "period.quarter": "Quarter",
   "period.year": "Year",
 
@@ -1330,10 +1318,6 @@ const de: Partial<Record<MessageKey, string>> = {
     "Kreisdiagramm Allokation {title}, Gesamt {total}. Größter Anteil: {label} mit {pct}. Vollständige Aufteilung siehe Liste unten.",
   "chart.returnsByPeriod.ariaLabel":
     "Balkendiagramm der Rendite je {period}, {start} bis {end}, Spanne {min} bis {max}.",
-  "chart.dividendsByPeriod.ariaLabel":
-    "Balkendiagramm der erhaltenen Dividenden je {period}, {start} bis {end}, insgesamt {total}.",
-  "chart.dividendsByHolding.ariaLabel":
-    "Gestapeltes Balkendiagramm der Dividenden je Position und {period}, {count} Positionen, insgesamt {total}.",
   "chart.performanceMap.ariaLabel":
     "Treemap von {count} Positionen, Größe nach Wert, Farbe nach Rendite über {timeframe}.",
   "chart.realizedByMonth.ariaLabel":
@@ -1555,7 +1539,6 @@ const de: Partial<Record<MessageKey, string>> = {
   "alloc.currency": "Währungen",
   "alloc.volatility": "Volatilität",
   "alloc.custom": "Eigene",
-  "alloc.selectGroup": "Aufteilungsgruppe",
   "alloc.addHoldings": "Füge Positionen hinzu, um deine Aufteilung zu sehen.",
   "alloc.noTags":
     "Noch keine Tags. Öffne eine Position und füge Tags hinzu, um eine eigene Aufteilung zu erstellen.",
@@ -1623,13 +1606,6 @@ const de: Partial<Record<MessageKey, string>> = {
   "returns.perfMapTip":
     "Jede Position ist nach ihrem aktuellen Wert dimensioniert und nach ihrer Rendite im gewählten Zeitraum eingefärbt (grün = hoch, rot = runter). MAX zeigt die Gesamtrendite gegenüber deinem Einstand.",
   "returns.addHoldings": "Füge Positionen hinzu, um deine Renditen zu sehen.",
-  "returns.divByValue": "Erhaltene Dividenden",
-  "returns.divTip":
-    "Tatsächlich erhaltene Dividendenzahlungen, in deine Basiswährung umgerechnet und je Periode summiert.",
-  "returns.divByHolding": "Dividenden je Position",
-  "returns.divByHoldingTip":
-    "Erhaltene Dividenden je Position, gestapelt nach Periode. Höhere Balken zahlten mehr. Thesaurierende Fonds zeigen nichts (sie legen intern wieder an).",
-  "returns.noDividends": "Keine Dividendenzahlungen für die gewählten Positionen erfasst.",
   "period.quarter": "Quartal",
   "period.year": "Jahr",
 

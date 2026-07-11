@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
@@ -14,8 +15,23 @@ const TABS = ["distributions", "returns", "trades", "risks", "tax"] as const;
 
 type TabKey = (typeof TABS)[number];
 
+function isTabKey(value: string | null): value is TabKey {
+  return value !== null && (TABS as readonly string[]).includes(value);
+}
+
 export default function AnalysisPage() {
-  const [tab, setTab] = useState<TabKey>("distributions");
+  // useSearchParams requires a Suspense boundary for prerendering.
+  return (
+    <Suspense fallback={null}>
+      <AnalysisPageInner />
+    </Suspense>
+  );
+}
+
+function AnalysisPageInner() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { t: tr } = useI18n();
 
   // The Risk and Tax tabs are behind feature flags.
@@ -24,6 +40,22 @@ export default function AnalysisPage() {
   const tabs = TABS.filter((key) => key !== "risks" || riskEnabled).filter(
     (key) => key !== "tax" || taxReportEnabled,
   );
+
+  // The URL is a mirror of the client state, not the other way round: the
+  // initial tab is read once from `?tab=`, invalid or flag-hidden values fall
+  // back to "distributions". Later changes flow state -> URL (via
+  // router.replace below), never URL -> state, so there's no sync loop.
+  const requestedTab = searchParams.get("tab");
+  const initialTab: TabKey =
+    isTabKey(requestedTab) && tabs.includes(requestedTab) ? requestedTab : "distributions";
+  const [tab, setTab] = useState<TabKey>(initialTab);
+
+  const selectTab = (key: TabKey) => {
+    setTab(key);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", key);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="space-y-6">
@@ -41,7 +73,7 @@ export default function AnalysisPage() {
           {tabs.map((key) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => selectTab(key)}
               aria-pressed={tab === key}
               className={`border-b-2 pb-2.5 text-sm font-medium transition-colors ${
                 tab === key
