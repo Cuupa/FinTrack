@@ -358,7 +358,7 @@ describe("holdingPeriodProfit", () => {
         { date: today(), close: 150 },
       ],
     };
-    // fxHistory only covers USD, not this GBP-priced asset — falls back to
+    // fxHistory only covers USD, not this GBP-priced asset, so it falls back to
     // the constant v.fx.GBP spot rate for every date, same as rateFor.
     const v: ValuationContext = {
       base: "EUR",

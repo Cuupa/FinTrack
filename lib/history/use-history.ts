@@ -104,8 +104,8 @@ export function useHistory(
   }, [sig, historyCacheEnabled]);
 
   const loading = items.length > 0 && state.sig !== sig;
-  // While loading, don't hand back the previous range's histories/fx — callers
-  // that ignore `loading` would otherwise mix them with the new timeframe.
+  // While loading, don't hand back the previous range's histories/fx, since
+  // callers that ignore `loading` would otherwise mix them with the new timeframe.
   return {
     histories: loading ? {} : state.histories,
     fx: loading ? {} : state.fx,
