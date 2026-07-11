@@ -194,7 +194,7 @@ export function AssetDetail({
       const { points, containsSynthetic } = assetValueSeries(asset, txs, timeframe, chartValuation, histories);
       return { points, synthetic: containsSynthetic };
     }
-    return assetPriceSeries(asset, timeframe, chartValuation, histories);
+    return assetPriceSeries(asset, timeframe, chartValuation, histories, txs);
   }, [asset, txs, timeframe, chartValuation, histories]);
 
   const irr = useMemo(

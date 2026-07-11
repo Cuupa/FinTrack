@@ -102,13 +102,41 @@ export interface ValuationContext {
   fxHistory?: Record<string, [string, number][]>;
 }
 
-/** live/synthetic continuity factor: rescales the synthetic series so it ends
- * at the live price (keeps charts continuous). 1 when no live price. */
-function liveFactor(asset: Asset, v?: ValuationContext): number {
-  const lp = v?.live?.[assetPriceKey(asset)];
-  if (!lp || lp <= 0) return 1;
-  const synth = currentPrice(assetPriceKey(asset), asset.type);
-  return synth > 0 ? lp / synth : 1;
+/** Most-recent transaction usable as a synthetic price anchor: a real
+ * execution/booking with a positive price. BUY/SELL carry genuine market
+ * prices; BOOKING's price is a real market observation of a free credit.
+ * INTEREST is excluded (a cash concept; CASH is handled separately). */
+function anchorTx(txs: Transaction[]): { date: string; price: number } | null {
+  let best: { date: string; price: number } | null = null;
+  for (const t of txs) {
+    if (t.type !== "BUY" && t.type !== "SELL" && t.type !== "BOOKING") continue;
+    if (!Number.isFinite(t.price) || t.price <= 0) continue;
+    const date = dateKey(t.date);
+    if (best === null || date > best.date) best = { date, price: t.price };
+  }
+  return best;
+}
+
+/** Synthetic-series continuity factor. A live quote wins (rescale so the series
+ * ends at it, keeps charts continuous); with no live quote, anchor to the
+ * asset's own most-recent transaction price so an unpriceable instrument
+ * (e.g. a knock-out warrant) is valued near its real trade price, not the
+ * hash-random synthetic base. 1 when neither is available (raw synthetic:
+ * watchlist/catalog assets with no transactions keep today's behavior). */
+function priceFactor(asset: Asset, txs: Transaction[], v?: ValuationContext): number {
+  if (asset.type === "CASH") return 1;
+  const key = assetPriceKey(asset);
+  const lp = v?.live?.[key];
+  if (lp && lp > 0) {
+    const synth = currentPrice(key, asset.type);
+    return synth > 0 ? lp / synth : 1;
+  }
+  const anchor = anchorTx(txs);
+  if (anchor) {
+    const synthAt = priceOn(key, asset.type, anchor.date);
+    return synthAt > 0 ? anchor.price / synthAt : 1;
+  }
+  return 1;
 }
 
 /** Native-currency → base-currency rate for an asset. */
@@ -200,7 +228,7 @@ export function summarizeHolding(
   v?: ValuationContext,
 ): HoldingSummary {
   const position = computePosition(txs);
-  const factor = liveFactor(asset, v);
+  const factor = priceFactor(asset, txs, v);
   const price = currentPrice(assetPriceKey(asset), asset.type) * factor;
   // Deliberately spot (rateFor), not date-aware: position/basis accounting is
   // a point-in-time snapshot, not a chart series, so there's no per-point
@@ -324,12 +352,13 @@ export function netWorthSeries(
   // pinned to one spot value for every historical point.
   const byAsset = assets.map((a) => {
     const key = assetPriceKey(a);
+    const atxs = transactionsByAsset(a.id, txs);
     return {
       asset: a,
-      txs: transactionsByAsset(a.id, txs),
+      txs: atxs,
       key,
       cur: v ? nativeCurrency(a, v.base) : (a.currency ?? ""),
-      factor: liveFactor(a, v),
+      factor: priceFactor(a, atxs, v),
       hist: history?.[key] ?? null,
     };
   });
@@ -413,7 +442,7 @@ export function twrSeries(
       key,
       type: a.type,
       cur: v ? nativeCurrency(a, v.base) : (a.currency ?? ""),
-      factor: liveFactor(a, v),
+      factor: priceFactor(a, atxs, v),
       hist: history?.[key] ?? null,
       // Cash interest (CASH prices at a constant 1, so it's otherwise invisible
       // to a price-based TWR) — injected as period income below.
@@ -479,13 +508,15 @@ export interface AssetPriceSeriesResult {
 /**
  * Price series for a single asset over a timeframe (detail chart), in the
  * asset's native currency. Uses real history when available, else the
- * synthetic series rescaled to end at the live price.
+ * synthetic series rescaled to end at the live price, or (with no live price)
+ * anchored to the asset's own most-recent transaction price via `txs`.
  */
 export function assetPriceSeries(
   asset: Asset,
   tf: Timeframe,
   v?: ValuationContext,
   history?: HistoryMap,
+  txs: Transaction[] = [],
 ): AssetPriceSeriesResult {
   const key = assetPriceKey(asset);
   const hist = history?.[key];
@@ -494,7 +525,7 @@ export function assetPriceSeries(
   }
   const end = today();
   const start = timeframeStart(tf, end, null);
-  const factor = liveFactor(asset, v);
+  const factor = priceFactor(asset, txs, v);
   const points = dateRange(start, end).map((date) => ({
     date,
     value: priceOn(key, asset.type, date) * factor,
@@ -525,7 +556,7 @@ export function holdingPeriodProfit(
   const key = assetPriceKey(asset);
   const end = today();
   const start = timeframeStart(tf, end, earliestTxDate(atxs));
-  const factor = liveFactor(asset, v);
+  const factor = priceFactor(asset, atxs, v);
   const cur = v ? nativeCurrency(asset, v.base) : (asset.currency ?? "");
   const hist = history?.[key] ?? null;
 

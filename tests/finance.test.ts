@@ -11,6 +11,7 @@ import {
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
 import { assetPriceSeries, netWorthSeries, summarizeHolding, twrSeries } from "../lib/finance/portfolio";
+import { priceOn } from "../lib/finance/prices";
 import { assetAnnualStats, portfolioRiskStats } from "../lib/finance/stats";
 import { assetPriceKey } from "../lib/types";
 import type { Asset, Transaction } from "../lib/types";
@@ -196,6 +197,82 @@ describe("summarizeHolding: syntheticPrice flag (trust labeling)", () => {
     const txs = [tx({ assetId: "c", type: "BUY", quantity: 100, price: 1, date: "2025-01-01" })];
     const h = summarizeHolding(a, txs, { base: "EUR" });
     expect(h.syntheticPrice).toBe(false);
+  });
+});
+
+describe("synthetic price anchored to the asset's own trade price (no live quote)", () => {
+  it("netWorthSeries: an unpriceable instrument doesn't spike to the hash-random synthetic base", () => {
+    // The real-world case: a German knock-out warrant with no live quote,
+    // traded around 0.35 EUR. The synthetic base for its price key is a
+    // hash-random 20-500 EUR — unanchored, 200 shares would spike to 4k-100k
+    // for its one day of being held.
+    const w = asset({ id: "w", isin: "DE000HT47722" });
+    const txs = [
+      tx({ assetId: "w", type: "BUY", quantity: 200, price: 0.35, date: "2025-05-28T10:00:00" }),
+      tx({ assetId: "w", type: "SELL", quantity: 200, price: 0.32, date: "2025-05-29T10:00:00" }),
+    ];
+    const { points } = netWorthSeries([w], txs, "MAX");
+    const peak = Math.max(...points.map((p) => p.value));
+    expect(peak).toBeGreaterThan(0);
+    expect(peak).toBeLessThan(200);
+  });
+
+  it("summarizeHolding: a still-held synthetic asset values near its trade price, and stays flagged synthetic", () => {
+    const a = asset({ id: "a" });
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 100, price: 2, date: "2025-01-01" })];
+    const h = summarizeHolding(a, txs, { base: "EUR" });
+    expect(h.marketValue).toBeGreaterThan(50);
+    expect(h.marketValue).toBeLessThan(1000);
+    expect(h.syntheticPrice).toBe(true);
+  });
+
+  it("netWorthSeries: real history is never rescaled by the anchor", () => {
+    const history: HistoryMap = {
+      A: [
+        { date: "2025-01-01", close: 100 },
+        { date: "2025-07-01", close: 200 },
+      ],
+    };
+    const a = asset({ id: "a" });
+    // A trade price wildly off the history's scale — must not leak in.
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 0.35, date: "2025-01-01" })];
+    const { points } = netWorthSeries([a], txs, "MAX", undefined, history);
+    expect(points[0].value).toBeCloseTo(10 * 100, 6);
+    expect(points[points.length - 1].value).toBeCloseTo(10 * 200, 6);
+  });
+
+  it("summarizeHolding: a live quote wins over the trade-price anchor", () => {
+    const a = asset({ id: "a" });
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 2, date: "2025-01-01" })];
+    const h = summarizeHolding(a, txs, { base: "EUR", live: { A: 123.45 } });
+    expect(h.price).toBeCloseTo(123.45, 6);
+  });
+
+  it("assetPriceSeries: without txs, behavior is unchanged (raw synthetic, no anchor)", () => {
+    const a = asset({ id: "a" });
+    const out = assetPriceSeries(a, "1M", undefined, {});
+    const key = assetPriceKey(a);
+    const last = out.points[out.points.length - 1];
+    expect(last.value).toBeCloseTo(priceOn(key, a.type, last.date), 6);
+    // No live quote, no txs: currentPrice's own scale, i.e. factor === 1.
+    expect(out.points[0].value).toBeCloseTo(priceOn(key, a.type, out.points[0].date), 6);
+  });
+
+  it("assetPriceSeries: with txs, the series is rescaled to anchor at the trade price", () => {
+    const a = asset({ id: "a" });
+    const key = assetPriceKey(a);
+    const anchorDate = "2025-01-01";
+    const anchorPrice = 2;
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: anchorPrice, date: anchorDate })];
+    const out = assetPriceSeries(a, "1M", undefined, {}, txs);
+    const synthAtAnchor = priceOn(key, a.type, anchorDate);
+    const factor = synthAtAnchor > 0 ? anchorPrice / synthAtAnchor : 1;
+    for (const p of out.points) {
+      expect(p.value).toBeCloseTo(priceOn(key, a.type, p.date) * factor, 6);
+    }
+    // Sanity: the anchor genuinely changed the scale vs. the un-anchored series.
+    const unanchored = assetPriceSeries(a, "1M", undefined, {});
+    expect(out.points[0].value).not.toBeCloseTo(unanchored.points[0].value, 6);
   });
 });
 
