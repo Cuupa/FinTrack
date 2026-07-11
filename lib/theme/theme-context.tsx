@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Hydrate the saved preference + current system preference (deferred so
   // it's not a sync setState in an effect, and so SSR/first paint always
-  // render the default — same idiom as I18nProvider's locale hydration).
+  // render the default (same idiom as I18nProvider's locale hydration).
   useEffect(() => {
     void Promise.resolve().then(() => {
       try {

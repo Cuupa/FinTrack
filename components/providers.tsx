@@ -23,7 +23,7 @@ export function Providers({ children }: { children: ReactNode }) {
             <CatalogProvider>
               <PortfolioProvider>
                 {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
-                    phase 3) — sits just inside it, same as every other provider
+                    phase 3), sits just inside it, same as every other provider
                     here that depends on portfolio data. */}
                 <SyncProvider>
                   <LivePricesProvider>

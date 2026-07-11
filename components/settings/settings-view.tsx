@@ -1,7 +1,7 @@
 "use client";
 
 // Account settings: display name, base currency, language, and password
-// change (registered users). Guests can still set name/currency/language —
+// change (registered users). Guests can still set name/currency/language,
 // they persist to local storage via the store.
 
 import { useState } from "react";
