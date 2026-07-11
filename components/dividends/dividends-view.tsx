@@ -237,7 +237,7 @@ export function DividendsView() {
   );
 
   // The portfolio is loaded (data.assets.length > 0 above) but the real
-  // dividend events for it are still in flight — show placeholders instead of
+  // dividend events for it are still in flight, show placeholders instead of
   // the zero-value stats/chart/table that would otherwise flash before the
   // real numbers land. Nothing to wait for if there's nothing quotable.
   const showSkeleton = loading && histItems.length > 0;

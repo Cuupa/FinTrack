@@ -8,7 +8,7 @@
 // the current one (same pattern as lib/history/use-history.ts) rather than set
 // synchronously in the effect, since Next 16's react-hooks/set-state-in-effect
 // lint rule fails the build on that. Unlike useHistory, the previous map is
-// always returned even while loading — callers that show stale data during a
+// always returned even while loading; callers that show stale data during a
 // sig change (rather than blanking it) can do so; components that want a
 // loading skeleton read `loading` explicitly.
 

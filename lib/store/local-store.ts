@@ -97,7 +97,7 @@ export class LocalStore implements DataStore {
     // to drop), a portfolio-data write failure must never be silently
     // swallowed: silently ignoring it here would mean localStorage keeps the
     // OLD data while the in-memory PortfolioData the caller just mutated
-    // moves on as if the write succeeded — a guest reloading the page would
+    // moves on as if the write succeeded, so a guest reloading the page would
     // then lose the change with no warning. So on quota, throw a tagged
     // `StorageFullError` that propagates through every mutation method
     // (addAsset, addTransaction, …) to the caller; any other error rethrows

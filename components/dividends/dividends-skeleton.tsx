@@ -12,7 +12,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 
 // Exported so DividendsView can reuse them for the finer-grained loading
 // state while events are being fetched (data.assets already loaded, just
-// waiting on /api/dividends) — see components/dividends/dividends-view.tsx.
+// waiting on /api/dividends), see components/dividends/dividends-view.tsx.
 export function StatCardSkeleton() {
   return (
     <Card>

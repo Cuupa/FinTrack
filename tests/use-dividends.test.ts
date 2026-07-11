@@ -23,7 +23,7 @@ function deferred<T>() {
   });
   // The hook consumes this via `await` from inside its own try/catch once its
   // setTimeout(run, 0) fires, but that's a macrotask later than a synchronous
-  // `.reject()` call in a test — attach a no-op catch now so Node doesn't
+  // `.reject()` call in a test, attach a no-op catch now so Node doesn't
   // flag it as unhandled in the gap before the hook's own await attaches.
   promise.catch(() => {});
   return { promise, resolve, reject };

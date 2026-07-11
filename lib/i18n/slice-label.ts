@@ -2,14 +2,14 @@
 // (lib/finance/allocation.ts) into the active locale. The finance layer is
 // pure and locale-agnostic, so it always returns English canonical labels
 // (asset types, sector/region names, sentinel buckets); this module maps the
-// known ones to dictionary keys and passes anything else through verbatim —
+// known ones to dictionary keys and passes anything else through verbatim:
 // country names, investment names, and user tag values are real data, not
 // vocabulary, and must never be "translated" into nonsense.
 
 import type { MessageKey } from "./dictionaries";
 
 const LABEL_KEYS: Record<string, MessageKey> = {
-  // Asset classes (lib/finance/allocation.ts byAssetClass — raw AssetType).
+  // Asset classes (lib/finance/allocation.ts byAssetClass, raw AssetType).
   STOCK: "assetType.STOCK",
   ETF: "assetType.ETF",
   CRYPTO: "assetType.CRYPTO",
@@ -18,7 +18,7 @@ const LABEL_KEYS: Record<string, MessageKey> = {
 
   // Sentinel buckets (byCustom, byCountry, lookThrough). "Cash" (title case,
   // the lookThrough sector/region bucket) is a distinct string from "CASH"
-  // (the byAssetClass raw AssetType above) — both reuse assetType.CASH.
+  // (the byAssetClass raw AssetType above), both reuse assetType.CASH.
   Untagged: "alloc.untagged",
   Unknown: "alloc.unknown",
   Other: "common.other",

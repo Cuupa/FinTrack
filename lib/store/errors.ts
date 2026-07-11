@@ -1,10 +1,10 @@
 // Tagged error for a Guest Mode (`LocalStore`) write that failed because the
-// browser's localStorage quota (~5MB) was exceeded — e.g. a large CSV import.
+// browser's localStorage quota (~5MB) was exceeded, e.g. a large CSV import.
 // `LocalStore.write()` (local-store.ts) catches the native `QuotaExceededError`
 // and rethrows this instead, so callers (forms awaiting a mutation) can show a
 // clear message rather than crash on an uncaught DOMException or silently lose
-// the change. Detection matches on the native error's `name`/`code` — never on
-// message text, which is inconsistent across browsers/locales — and this
+// the change. Detection matches on the native error's `name`/`code`, never on
+// message text, which is inconsistent across browsers/locales, and this
 // class's own `name` is likewise the stable tag `isStorageFullError` checks,
 // not the message.
 
@@ -20,8 +20,8 @@ export function isNativeQuotaError(err: unknown): boolean {
 
 /**
  * Thrown by `LocalStore` in place of the native quota error. localStorage
- * still holds whatever it had before the failed write — the caller's
- * in-memory change was NOT persisted — so this must propagate to the
+ * still holds whatever it had before the failed write (the caller's
+ * in-memory change was NOT persisted), so this must propagate to the
  * mutation's caller rather than be swallowed.
  */
 export class StorageFullError extends Error {

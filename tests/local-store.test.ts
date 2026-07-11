@@ -1,6 +1,6 @@
 // Guest Mode storage-quota handling (PROD_READY.md "Guest portfolio write can
 // throw and lose data"): LocalStore.write() must never let a quota failure
-// crash uncaught, nor silently swallow it — it tags the error so callers know
+// crash uncaught, nor silently swallow it, it tags the error so callers know
 // the mutation did not persist. See lib/store/errors.ts.
 
 import { describe, expect, it } from "vitest";
@@ -99,7 +99,7 @@ describe("LocalStore quota handling", () => {
     const first = await store.addAsset(ASSET_INPUT);
     expect(first).toBeTruthy();
 
-    // Second write throws (once-throwing stub) — the add must reject and the
+    // Second write throws (once-throwing stub); the add must reject and the
     // stored snapshot from the first successful write must be unchanged.
     const before = storage.getItem("fintrack:portfolio:v1");
     await expect(

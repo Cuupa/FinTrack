@@ -579,7 +579,7 @@ export const en = {
 
   // Sector labels (allocation/x-ray breakdowns). Two source vocabularies feed
   // the same breakdown (Yahoo's raw sector names and the GICS-style names our
-  // own classifier maps them to) — both are covered, kept as distinct labels.
+  // own classifier maps them to), both are covered, kept as distinct labels.
   "sector.informationTechnology": "Information Technology",
   "sector.technology": "Technology",
   "sector.consumerDiscretionary": "Consumer Discretionary",
@@ -1377,7 +1377,7 @@ const de: Partial<Record<MessageKey, string>> = {
 
   // Sector labels (allocation/x-ray breakdowns). Two source vocabularies feed
   // the same breakdown (Yahoo's raw sector names and the GICS-style names our
-  // own classifier maps them to) — both are covered, kept as distinct labels.
+  // own classifier maps them to), both are covered, kept as distinct labels.
   "sector.informationTechnology": "Informationstechnologie",
   "sector.technology": "Technologie",
   "sector.consumerDiscretionary": "Zyklische Konsumgüter",
