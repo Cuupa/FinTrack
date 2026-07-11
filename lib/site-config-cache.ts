@@ -22,6 +22,11 @@ const KEYS: readonly SiteConfigKey[] = [
   "legal_email",
 ];
 
+/** The known `site_config` keys, exported for callers that need to validate
+ *  or enumerate them (the admin site-config editor and its API route) rather
+ *  than duplicating this list. */
+export const SITE_CONFIG_KEYS: readonly SiteConfigKey[] = KEYS;
+
 export interface SiteConfigCacheOptions {
   /** Storage to use; defaults to window.localStorage. */
   storage?: Storage;

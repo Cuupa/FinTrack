@@ -23,6 +23,22 @@ export default function AdminOverviewPage() {
               {t("admin.nav.flags")}
             </Link>
           </li>
+          <li>
+            <Link
+              href="/admin/site"
+              className="text-emerald-600 hover:underline dark:text-emerald-400"
+            >
+              {t("admin.nav.site")}
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/admin/prices"
+              className="text-emerald-600 hover:underline dark:text-emerald-400"
+            >
+              {t("admin.nav.prices")}
+            </Link>
+          </li>
         </ul>
       </Card>
     </div>
