@@ -800,6 +800,32 @@ export const en = {
   "common.storageFull":
     "Storage is full. Your last change was not saved. Register to store your data online.",
 
+  // Admin
+  "admin.menuItem": "Admin",
+  "admin.nav.overview": "Overview",
+  "admin.nav.flags": "Flags",
+  "admin.overview.title": "Admin",
+  "admin.overview.subtitle": "Operator tools for this FinTrack instance.",
+  "admin.overview.linksTitle": "Sections",
+  "admin.flags.title": "Feature flags",
+  "admin.flags.subtitle": "Global defaults and per-user overrides.",
+  "admin.flags.globalTitle": "Global flags",
+  "admin.flags.colName": "Flag",
+  "admin.flags.colDescription": "Description",
+  "admin.flags.colEnabled": "Enabled",
+  "admin.flags.overridesTitle": "Per-user overrides",
+  "admin.flags.overridesSubtitle": "Overrides win over the global value for that user.",
+  "admin.flags.userId": "User id",
+  "admin.flags.userIdPlaceholder": "auth.users uuid",
+  "admin.flags.enabled": "Enabled",
+  "admin.flags.disabled": "Disabled",
+  "admin.flags.addOverride": "Add override",
+  "admin.flags.noOverrides": "No per-user overrides yet.",
+  "admin.flags.remove": "Remove",
+  "admin.flags.removeConfirmTitle": "Remove override?",
+  "admin.flags.removeConfirmMsg": 'Remove the "{flag}" override for this user?',
+  "admin.flags.error": "That didn't work. Try again.",
+
   // Guest mode banner
   "guestBanner.title": "Guest Mode:",
   "guestBanner.body":
@@ -1597,6 +1623,32 @@ const de: Partial<Record<MessageKey, string>> = {
   "common.retry": "Erneut versuchen",
   "common.storageFull":
     "Der Speicher ist voll. Deine letzte Änderung wurde nicht gespeichert. Registriere dich, um deine Daten online zu speichern.",
+
+  // Admin
+  "admin.menuItem": "Admin",
+  "admin.nav.overview": "Übersicht",
+  "admin.nav.flags": "Flags",
+  "admin.overview.title": "Admin",
+  "admin.overview.subtitle": "Werkzeuge für Betreiber dieser FinTrack-Instanz.",
+  "admin.overview.linksTitle": "Bereiche",
+  "admin.flags.title": "Feature-Flags",
+  "admin.flags.subtitle": "Globale Standardwerte und Overrides pro Nutzer.",
+  "admin.flags.globalTitle": "Globale Flags",
+  "admin.flags.colName": "Flag",
+  "admin.flags.colDescription": "Beschreibung",
+  "admin.flags.colEnabled": "Aktiviert",
+  "admin.flags.overridesTitle": "Overrides pro Nutzer",
+  "admin.flags.overridesSubtitle": "Overrides gewinnen für diesen Nutzer gegenüber dem globalen Wert.",
+  "admin.flags.userId": "Nutzer-ID",
+  "admin.flags.userIdPlaceholder": "auth.users uuid",
+  "admin.flags.enabled": "Aktiviert",
+  "admin.flags.disabled": "Deaktiviert",
+  "admin.flags.addOverride": "Override hinzufügen",
+  "admin.flags.noOverrides": "Noch keine Overrides pro Nutzer.",
+  "admin.flags.remove": "Entfernen",
+  "admin.flags.removeConfirmTitle": "Override entfernen?",
+  "admin.flags.removeConfirmMsg": 'Den Override "{flag}" für diesen Nutzer entfernen?',
+  "admin.flags.error": "Das hat nicht geklappt. Versuch es erneut.",
 
   // Guest mode banner
   "guestBanner.title": "Gastmodus:",
