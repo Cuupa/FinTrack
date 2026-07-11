@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# generated at build time (scripts/generate-sw-version.mjs), see public/sw.js
+/public/sw-version.js
+
 # local screenshots / scratch (never commit)
 Bildschirmfoto*.png
 screenshot*.png

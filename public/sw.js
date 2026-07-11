@@ -32,12 +32,25 @@
 //     must always be live, never served from the cache.
 //
 // public/sw.js is a static file Turbopack does not bundle (no imports, no
-// build step — see OFFLINE_DESIGN.md §5.3) — bump SW_VERSION by hand
-// whenever the cached asset set or logic changes so `activate` drops the
-// previous deploy's cache (§5.1: stale precached shells/chunks after a
-// deploy are the main risk this guards against).
-
-const SW_VERSION = "3";
+// build step, see OFFLINE_DESIGN.md §5.3), so it stays dependency-free
+// vanilla JS. SW_VERSION itself is no longer bumped by hand: it's derived at
+// build time (scripts/generate-sw-version.mjs, run via npm's "prebuild" hook)
+// into the generated, gitignored public/sw-version.js, which this file pulls
+// in via importScripts (the one loading mechanism a static, unbundled SW
+// has available). That keeps `CACHE` unique per deploy so `activate` always
+// drops the previous deploy's cache (OFFLINE_DESIGN.md §5 risk 1: stale
+// precached shells/chunks after a deploy are the main risk this guards
+// against), without hand-editing this file on every shell-affecting change.
+// If sw-version.js hasn't been generated (no build has run yet, e.g. a fresh
+// checkout only ever run through `next dev`), fall back to a static version:
+// offline behavior still works, only the auto-bump on deploy is skipped.
+self.SW_BUILD_VERSION = undefined;
+try {
+  importScripts("/sw-version.js");
+} catch {
+  // Missing/unreachable, use the fallback below.
+}
+const SW_VERSION = typeof self.SW_BUILD_VERSION === "string" ? self.SW_BUILD_VERSION : "dev";
 const CACHE = `fintrack-v${SW_VERSION}`;
 
 // Routes that prerender as a static shell (the "○" marks in `next build`
