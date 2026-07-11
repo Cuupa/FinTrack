@@ -5,7 +5,12 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
+
+// Only new passwords (signup, change-password) are floored at this length;
+// sign-in never enforces a minLength so existing shorter passwords still work.
+const NEW_PASSWORD_MIN_LENGTH = 8;
 
 const BACKOFF_KEY = "fintrack_login_backoff";
 function readBackoff(): { fails: number; until: number } {
@@ -49,6 +54,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const { user, authAvailable, signInWithPassword, signUp, signInWithOAuth } =
     useAuth();
   // Open the register tab when arriving via /login?tab=signup.
@@ -112,7 +118,7 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cooldownRemaining > 0) {
-      setError(`Too many attempts. Try again in ${cooldownRemaining}s.`);
+      setError(t("login.tooManyAttempts", { s: cooldownRemaining }));
       return;
     }
     setError(null);
@@ -124,26 +130,28 @@ function LoginForm() {
         persistBackoff(0, 0);
         router.replace("/");
       } else {
-        if (password.length < 6) {
-          throw new Error("Password must be at least 6 characters.");
+        if (password.length < NEW_PASSWORD_MIN_LENGTH) {
+          throw new Error(
+            t("login.passwordTooShort", { n: NEW_PASSWORD_MIN_LENGTH }),
+          );
         }
         if (password !== confirmPassword) {
-          throw new Error("Passwords do not match.");
+          throw new Error(t("login.passwordMismatch"));
         }
         // Re-check the cap at submit time (it may have filled since page load).
         if (!(await checkRegistrationOpen())) {
           setSignupOpen(false);
-          throw new Error("Registrations are currently closed.");
+          throw new Error(t("login.registrationsClosedShort"));
         }
         const { needsConfirmation } = await signUp(email, password);
         if (needsConfirmation) {
-          setMessage("Check your email to confirm your account, then sign in.");
+          setMessage(t("login.confirmEmail"));
         } else {
           router.replace("/");
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : t("login.genericError"));
       if (tab === "signin") {
         const nextFails = fails + 1;
         const until =
@@ -162,7 +170,7 @@ function LoginForm() {
     try {
       await signInWithOAuth(provider);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : t("login.genericError"));
     }
   }
 
@@ -170,25 +178,24 @@ function LoginForm() {
     <div className="mx-auto max-w-md py-8">
       <Card>
         <h1 className="text-2xl font-semibold">
-          {tab === "signin" ? "Sign in" : "Create account"}
+          {tab === "signin" ? t("login.signIn") : t("login.createAccount")}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Registered Mode syncs your portfolio across devices.
-        </p>
+        <p className="mt-1 text-sm text-zinc-500">{t("login.subtitle")}</p>
 
         {!authAvailable && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-            Authentication is not configured. Add{" "}
-            <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-            <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to
-            enable sign-in. You can still use everything in Guest Mode.
+            {t("login.authUnavailablePrefix")}{" "}
+            <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code>{" "}
+            {t("login.authUnavailableMiddle")}{" "}
+            <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
+            {t("login.authUnavailableSuffix")}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-3">
           <div>
             <label className="text-sm font-medium" htmlFor="email">
-              Email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -205,15 +212,15 @@ function LoginForm() {
           </div>
           <div>
             <label className="text-sm font-medium" htmlFor="password">
-              Password
+              {t("login.password")}
             </label>
             <input
               id="password"
               type="password"
               required
-              // The 6-character minimum only applies when creating an account;
-              // sign-in accepts whatever the user already has.
-              minLength={tab === "signup" ? 6 : undefined}
+              // The minimum only applies when creating an account; sign-in
+              // accepts whatever the user already has.
+              minLength={tab === "signup" ? NEW_PASSWORD_MIN_LENGTH : undefined}
               autoComplete={tab === "signin" ? "current-password" : "new-password"}
               value={password}
               disabled={!authAvailable || busy}
@@ -223,20 +230,22 @@ function LoginForm() {
               className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700"
             />
             {tab === "signup" && (
-              <p className="mt-1 text-xs text-zinc-500">At least 6 characters.</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {t("login.passwordHint", { n: NEW_PASSWORD_MIN_LENGTH })}
+              </p>
             )}
           </div>
 
           {tab === "signup" && (
             <div>
               <label className="text-sm font-medium" htmlFor="confirm-password">
-                Retype password
+                {t("login.retypePassword")}
               </label>
               <input
                 id="confirm-password"
                 type="password"
                 required
-                minLength={6}
+                minLength={NEW_PASSWORD_MIN_LENGTH}
                 autoComplete="new-password"
                 value={confirmPassword}
                 disabled={!authAvailable || busy}
@@ -250,8 +259,7 @@ function LoginForm() {
 
           {tab === "signup" && signupOpen === false && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-              Registrations are currently closed. The app has reached its user
-              limit. You can still use everything in Guest Mode.
+              {t("login.registrationsClosedBanner")}
             </div>
           )}
 
@@ -261,7 +269,7 @@ function LoginForm() {
           )}
           {tab === "signin" && cooldownRemaining > 0 && (
             <p className="text-xs text-zinc-500">
-              Too many attempts. Try again in {cooldownRemaining}s.
+              {t("login.tooManyAttempts", { s: cooldownRemaining })}
             </p>
           )}
           <Button
@@ -275,31 +283,21 @@ function LoginForm() {
               (tab === "signup" && signupOpen === false)
             }
           >
-            {tab === "signin" ? "Sign in" : "Create account"}
+            {tab === "signin" ? t("login.signIn") : t("login.createAccount")}
           </Button>
         </form>
 
         {tab === "signup" && (
           <p className="mt-3 text-xs text-zinc-500">
-            By creating an account you accept the{" "}
+            {t("login.consentPrefix")}{" "}
             <Link href="/terms" className="underline underline-offset-2">
-              Terms of Service
+              {t("legal.terms")}
             </Link>{" "}
-            and acknowledge the{" "}
+            {t("login.consentMiddle")}{" "}
             <Link href="/datenschutz" className="underline underline-offset-2">
-              Privacy Policy
+              {t("login.privacyPolicyLink")}
             </Link>
-            .
-            <br />
-            Mit der Kontoerstellung akzeptierst du die{" "}
-            <Link href="/terms" className="underline underline-offset-2">
-              Nutzungsbedingungen
-            </Link>{" "}
-            und nehmen die{" "}
-            <Link href="/datenschutz" className="underline underline-offset-2">
-              Datenschutzerklärung
-            </Link>{" "}
-            zur Kenntnis.
+            {t("login.consentSuffix")}
           </p>
         )}
 
@@ -310,7 +308,7 @@ function LoginForm() {
             disabled={!authAvailable}
             onClick={() => handleOAuth("google")}
           >
-            Google
+            {t("login.google")}
           </Button>
           <Button
             variant="secondary"
@@ -318,12 +316,12 @@ function LoginForm() {
             disabled={!authAvailable}
             onClick={() => handleOAuth("github")}
           >
-            GitHub
+            {t("login.github")}
           </Button>
         </div>
 
         <p className="mt-5 text-center text-sm text-zinc-500">
-          {tab === "signin" ? "No account yet?" : "Already have an account?"}{" "}
+          {tab === "signin" ? t("login.noAccountYet") : t("login.alreadyHaveAccount")}{" "}
           <button
             className="font-medium text-zinc-900 underline underline-offset-2 dark:text-zinc-100"
             onClick={() => {
@@ -333,7 +331,7 @@ function LoginForm() {
               setConfirmPassword("");
             }}
           >
-            {tab === "signin" ? "Create one" : "Sign in"}
+            {tab === "signin" ? t("login.createOne") : t("login.signIn")}
           </button>
         </p>
       </Card>

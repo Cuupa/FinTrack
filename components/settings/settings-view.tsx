@@ -14,6 +14,10 @@ import { Button, Card } from "@/components/ui/primitives";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 
+// Only a NEW password (this change-password form) is floored at this length;
+// existing accounts can still sign in with a shorter one.
+const NEW_PASSWORD_MIN_LENGTH = 8;
+
 export function SettingsView() {
   const { data, updateProfile } = usePortfolio();
   const { user, mode, updatePassword, signOut } = useAuth();
@@ -46,12 +50,12 @@ export function SettingsView() {
   };
 
   const savePassword = async () => {
-    if (password.length < 6) {
-      setPwStatus("Password must be at least 6 characters.");
+    if (password.length < NEW_PASSWORD_MIN_LENGTH) {
+      setPwStatus(t("settings.passwordTooShort", { n: NEW_PASSWORD_MIN_LENGTH }));
       return;
     }
     if (password !== confirmPassword) {
-      setPwStatus("Passwords do not match.");
+      setPwStatus(t("settings.passwordMismatch"));
       return;
     }
     setSavingPw(true);
@@ -62,7 +66,7 @@ export function SettingsView() {
       setConfirmPassword("");
       setPwStatus(t("settings.saved"));
     } catch (e) {
-      setPwStatus(e instanceof Error ? e.message : "Could not update password.");
+      setPwStatus(e instanceof Error ? e.message : t("settings.passwordUpdateFailed"));
     } finally {
       setSavingPw(false);
       setTimeout(() => setPwStatus(null), 4000);
@@ -107,7 +111,7 @@ export function SettingsView() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Simon"
+              placeholder={t("settings.namePlaceholder")}
               className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
           </Field>
@@ -149,7 +153,7 @@ export function SettingsView() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
-                minLength={6}
+                minLength={NEW_PASSWORD_MIN_LENGTH}
                 className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </Field>
@@ -159,7 +163,7 @@ export function SettingsView() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
-                minLength={6}
+                minLength={NEW_PASSWORD_MIN_LENGTH}
                 className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </Field>
