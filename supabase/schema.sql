@@ -135,6 +135,10 @@ create table if not exists public.instrument_history (
 );
 create index if not exists instrument_history_key_range_date_idx
   on public.instrument_history (price_key, range, date desc);
+-- Supports the retention prune scan (app/api/cron/sync/retention), which
+-- deletes rows past a synced_at cutoff.
+create index if not exists instrument_history_synced_at_idx
+  on public.instrument_history (synced_at);
 
 -- Cached ETF sector/region weightings, so Analysis reads from the DB instead of
 -- hitting Yahoo/onvista on every view. Refreshed by /api/cron/sync-etf-breakdowns.
@@ -326,6 +330,10 @@ create table if not exists public.simulation_runs (
   created_at timestamptz not null default now(),
   primary key (user_id, params_hash)
 );
+-- Supports the retention prune scan (app/api/cron/sync/retention), which
+-- deletes rows past a created_at cutoff.
+create index if not exists simulation_runs_created_at_idx
+  on public.simulation_runs (created_at);
 
 -- Fingerprints of broker-CSV rows already imported, so re-uploading the same
 -- export doesn't surface already-merged transactions as conflicts again.
@@ -406,7 +414,8 @@ insert into public.schema_migrations (version) values
   ('0047_export_flags'),
   ('0049_drop_pays_dividends'),
   ('0050_admin_authz'),
-  ('0051_error_logs')
+  ('0051_error_logs'),
+  ('0052_retention_indexes')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
