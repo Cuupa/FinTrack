@@ -131,7 +131,7 @@ export function TradesView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const divMap = useDividends(histItems);
+  const { dividends: divMap } = useDividends(histItems);
   const dividendsReceived = useMemo(() => {
     const fx = valuation.fx ?? {};
     let total = 0;

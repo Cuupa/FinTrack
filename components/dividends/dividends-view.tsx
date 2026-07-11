@@ -32,6 +32,8 @@ import { assetPriceKey, type Asset } from "@/lib/types";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCardSkeleton, ListRowSkeleton } from "@/components/dividends/dividends-skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { yAxisWidth } from "@/components/charts/axis";
 
@@ -81,7 +83,7 @@ export function DividendsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const divMap = useDividends(histItems);
+  const { dividends: divMap, loading } = useDividends(histItems);
 
   const holdings = useMemo(
     () => summarizeAll(data.assets, data.transactions, valuation),
@@ -234,39 +236,56 @@ export function DividendsView() {
       : [],
   );
 
+  // The portfolio is loaded (data.assets.length > 0 above) but the real
+  // dividend events for it are still in flight — show placeholders instead of
+  // the zero-value stats/chart/table that would otherwise flash before the
+  // real numbers land. Nothing to wait for if there's nothing quotable.
+  const showSkeleton = loading && histItems.length > 0;
+
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      role={showSkeleton ? "status" : undefined}
+      aria-busy={showSkeleton || undefined}
+      aria-label={showSkeleton ? t("common.loading") : undefined}
+    >
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Card>
-          <Stat
-            label={t("div.received12m")}
-            value={formatCurrency(stats.t12m, currency)}
-            info={t("div.received12mTip")}
-            isPrivate
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("div.receivedTotal")}
-            value={formatCurrency(stats.allTime, currency)}
-            info={t("div.receivedTotalTip")}
-            isPrivate
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("div.yield")}
-            value={formatPercent(stats.yield)}
-            info={t("div.yieldTip")}
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("div.yieldOnCost")}
-            value={formatPercent(stats.yieldOnCost)}
-            info={t("div.yieldOnCostTip")}
-          />
-        </Card>
+        {showSkeleton ? (
+          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <Card>
+              <Stat
+                label={t("div.received12m")}
+                value={formatCurrency(stats.t12m, currency)}
+                info={t("div.received12mTip")}
+                isPrivate
+              />
+            </Card>
+            <Card>
+              <Stat
+                label={t("div.receivedTotal")}
+                value={formatCurrency(stats.allTime, currency)}
+                info={t("div.receivedTotalTip")}
+                isPrivate
+              />
+            </Card>
+            <Card>
+              <Stat
+                label={t("div.yield")}
+                value={formatPercent(stats.yield)}
+                info={t("div.yieldTip")}
+              />
+            </Card>
+            <Card>
+              <Stat
+                label={t("div.yieldOnCost")}
+                value={formatPercent(stats.yieldOnCost)}
+                info={t("div.yieldOnCostTip")}
+              />
+            </Card>
+          </>
+        )}
       </div>
 
       <Card>
@@ -285,7 +304,11 @@ export function DividendsView() {
             ]}
           />
         </div>
-        {barData.every((d) => d.value === 0) ? (
+        {showSkeleton ? (
+          <div className="mt-3">
+            <Skeleton className="h-[260px] w-full rounded-lg" />
+          </div>
+        ) : barData.every((d) => d.value === 0) ? (
           <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
         ) : (
           <div className="mt-3" data-private role="img" aria-label={chartAriaLabel}>
@@ -324,7 +347,13 @@ export function DividendsView() {
             {t("div.byHolding")}
             <InfoTip text={t("div.byHoldingTip")} />
           </h2>
-          {rows.length === 0 ? (
+          {showSkeleton ? (
+            <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <ListRowSkeleton key={i} />
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
             <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
@@ -384,7 +413,13 @@ export function DividendsView() {
               </span>
             )}
           </div>
-          {forecast.length === 0 ? (
+          {showSkeleton ? (
+            <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <ListRowSkeleton key={i} />
+              ))}
+            </div>
+          ) : forecast.length === 0 ? (
             <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
           ) : (
             <>

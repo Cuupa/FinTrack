@@ -106,7 +106,7 @@ export function ReturnsView() {
   // Real dividend payments per holding, converted to the base currency. Each
   // entry: { id, name, payments: [{ date, value }] }. Empty for accumulating
   // funds (no events).
-  const divMap = useDividends(histItems);
+  const { dividends: divMap } = useDividends(histItems);
   const dividendsByAsset = useMemo(() => {
     const fx = valuation.fx ?? {};
     return allHoldings

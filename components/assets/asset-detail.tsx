@@ -200,7 +200,7 @@ export function AssetDetail({
   // Real dividend events (accumulating funds return none → no phantom
   // payouts; CASH isn't a security and never pays dividends — histItems is
   // already empty for it above, so this fetches nothing).
-  const divMap = useDividends(histItems);
+  const { dividends: divMap } = useDividends(histItems);
   const dividends = useMemo(() => {
     if (!asset || asset.type === "CASH") return [];
     const key = histItems[0]?.key;

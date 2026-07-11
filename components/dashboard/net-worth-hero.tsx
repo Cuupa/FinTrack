@@ -100,7 +100,7 @@ export function NetWorthHero({
   }, [data.assets, data.transactions, valuation, totals.marketValue]);
 
   // Real dividends received across all holdings, converted to the base currency.
-  const divMap = useDividends(histItems);
+  const { dividends: divMap } = useDividends(histItems);
   const dividendsReceived = useMemo(() => {
     const fx = valuation.fx ?? {};
     let total = 0;

@@ -10,7 +10,10 @@ import { Card } from "@/components/ui/primitives";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
-function StatCardSkeleton() {
+// Exported so DividendsView can reuse them for the finer-grained loading
+// state while events are being fetched (data.assets already loaded, just
+// waiting on /api/dividends) — see components/dividends/dividends-view.tsx.
+export function StatCardSkeleton() {
   return (
     <Card>
       <SkeletonText className="h-3 w-24" />
@@ -19,7 +22,7 @@ function StatCardSkeleton() {
   );
 }
 
-function ListRowSkeleton() {
+export function ListRowSkeleton() {
   return (
     <div className="flex items-center justify-between gap-3 py-2">
       <SkeletonText className="h-4 w-32" />
