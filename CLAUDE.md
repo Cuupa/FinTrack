@@ -115,11 +115,23 @@ currencies (VWCE → EUR Xetra, not the USD London line). Stooq is the equity
 fallback, CoinGecko prices crypto in the base currency. `/api/fx` (Frankfurter)
 converts native→base. Each asset has a native `currency`; the finance layer
 values everything in the base currency through a `ValuationContext`
-({base, live, fx}) threaded into
+({base, live, fx, fxHistory}) threaded into
 `summarizeHolding`/`summarizeAll`/`netWorthSeries`/`assetPriceSeries`. Live
 prices rescale the synthetic series so charts stay continuous (factor =
 live/synthetic). Yahoo's endpoint is unofficial/keyless (can rate-limit), hence
 the Stooq + synthetic fallbacks.
+
+**Historical FX**: `/api/history` returns `{ histories, fx }` — one historical
+rate series per unique native currency (`lib/server/fx-history.ts`, Frankfurter
+timeseries, 12h in-memory TTL, shared with the benchmarks route). The chart
+series functions (`netWorthSeries`/`twrSeries`/`holdingPeriodProfit`) look the
+rate up per point date (`rateOn`, carry-forward; falls back to the spot `fx`
+when no series is present), so a USD holding's multi-year EUR chart reflects
+FX drift instead of today's spot everywhere. `summarizeHolding` (position,
+basis, P&L snapshot) deliberately stays on spot; `instrument_history` stays
+native-currency (convert-on-read — the base is per-user). The finance core
+keeps zero `lib/server` imports (`rateAtCarryForward` is deliberately
+duplicated, not imported).
 
 ### Real prices, history & lookup (shared `lib/server/yahoo.ts`)
 
@@ -251,7 +263,9 @@ mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
   resolved hint, and never gate dividends by asset type or a flag (both were
   explicitly rejected). Scanning past an empty hint once imported an unrelated
   payer's events via the name-fallback search (the phantom gold-dividends
-  case).
+  case). Client-side, `useDividends` returns `{ dividends, loading }` (loading
+  derived from the settled fetch signature, stale map kept meanwhile); the
+  /dividends page shows skeletons while events are in flight.
 
 ### Routes
 
@@ -343,8 +357,23 @@ client pages (see `app/assets/[id]/page.tsx`).
   `/api/cron/sync/names` job (marker `instruments.name_synced_at`).
 - The login form deliberately has no required-field gating (user decision);
   after 3 consecutive failed sign-ins, submit is disabled with an exponential
-  backoff countdown. Market-data APIs are DB-rate-limited per IP
+  backoff countdown. New-password minimum is **8 chars** (signup +
+  change-password only — sign-in never enforces a minLength, existing shorter
+  passwords still work). Market-data APIs are DB-rate-limited per IP
   (`lib/server/rate-limit.ts`, fail-open without Supabase); `/api/cron/*`
   requires `CRON_SECRET` at the middleware edge.
+- Allocation slice labels leave the pure finance layer as canonical English;
+  the view translates the fixed vocabulary (asset classes, sectors in both
+  Yahoo and GICS spellings, regions, volatility bands, sentinel buckets) via
+  `translateSliceLabel` (`lib/i18n/slice-label.ts`) — unknown labels (country
+  names, investment names, user tag values) pass through verbatim, never
+  "translate" user data.
+- `<html lang>` follows the active locale: SSR default `en`, an effect in the
+  i18n provider stamps `document.documentElement.lang` on locale change.
+- Guest-mode quota: `LocalStore.write` throws a tagged `StorageFullError`
+  (`lib/store/errors.ts`, matched by name/code, never message text) when
+  localStorage is full; every mutation surface shows the localized
+  `common.storageFull` message instead of crashing. Keep new mutation call
+  sites handling it.
 - `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
   `footer` render prop (used for "+ New asset…" in the savings-plan form).
