@@ -150,9 +150,9 @@ export function TransactionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="max-w-2xl space-y-4">
       {/* Buy / Sell / Booking (or Interest, for cash) segmented toggle */}
-      <div className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60">
+      <div className="grid w-full grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60 sm:inline-flex sm:w-fit">
         {(["BUY", "SELL", isCash ? "INTEREST" : "BOOKING"] as TransactionType[]).map((tt) => {
           const active = type === tt;
           const activeBg =
@@ -180,7 +180,7 @@ export function TransactionForm({
               key={tt}
               type="button"
               onClick={() => setType(tt)}
-              className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
+              className={`rounded-lg py-2 text-sm font-semibold transition-colors sm:px-4 lg:px-6 ${
                 active
                   ? `${activeBg} text-white shadow-sm`
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -202,7 +202,7 @@ export function TransactionForm({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Field label={isInterest ? t("tx.interestAmount") : isCash ? t("tx.amount") : t("tx.quantity")}>
           <input
             type="text"
@@ -268,7 +268,10 @@ export function TransactionForm({
             </div>
           </Field>
         )}
-        <Field label={t("tx.dateTime")} className={showTax ? "col-span-2" : ""}>
+        <Field
+          label={t("tx.dateTime")}
+          className={`lg:col-span-2 ${showTax ? "col-span-2" : ""}`}
+        >
           <input
             type="datetime-local"
             value={executedAt}
@@ -328,63 +331,66 @@ export function TransactionForm({
         )}
       </div>
 
-      {/* Live total preview */}
-      <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40">
-        <span className="text-zinc-500">
-          {isBuy
-            ? isCash
-              ? t("tx.totalDeposit")
-              : t("tx.totalCost")
-            : isBooking
-              ? t("tx.valueReceived")
-              : isInterest
-                ? t("tx.interestReceived")
-                : isCash
-                  ? t("tx.totalWithdrawal")
-                  : t("tx.totalProceeds")}
-        </span>
-        <span
-          className={`font-semibold tabular-nums ${
-            isBuy ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
-          }`}
-        >
-          {isBuy ? "−" : "+"}
-          {formatCurrency(Math.max(0, total), cur)}
-        </span>
-      </div>
-
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {formIncomplete && touched && (
         <p className="text-xs text-zinc-500">{t("form.missingFields")}</p>
       )}
-      <Button
-        type="submit"
-        variant="primary"
-        disabled={busy || formIncomplete}
-        className={`w-full ${
-          isBuy
-            ? "!bg-emerald-500 hover:!bg-emerald-600 !text-white dark:!bg-emerald-500"
-            : isBooking
-              ? "!bg-indigo-500 hover:!bg-indigo-600 !text-white dark:!bg-indigo-500"
-              : isInterest
-                ? "!bg-amber-500 hover:!bg-amber-600 !text-white dark:!bg-amber-500"
-                : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
-        }`}
-      >
-        {busy
-          ? t("tx.adding")
-          : isBuy
-            ? isCash
-              ? t("tx.addDeposit")
-              : t("tx.addBuy")
-            : isBooking
-              ? t("tx.addBooking")
-              : isInterest
-                ? t("tx.addInterest")
-                : isCash
-                  ? t("tx.addWithdrawal")
-                  : t("tx.addSell")}
-      </Button>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Live total preview */}
+        <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40 sm:flex-1">
+          <span className="text-zinc-500">
+            {isBuy
+              ? isCash
+                ? t("tx.totalDeposit")
+                : t("tx.totalCost")
+              : isBooking
+                ? t("tx.valueReceived")
+                : isInterest
+                  ? t("tx.interestReceived")
+                  : isCash
+                    ? t("tx.totalWithdrawal")
+                    : t("tx.totalProceeds")}
+          </span>
+          <span
+            className={`font-semibold tabular-nums ${
+              isBuy ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          >
+            {isBuy ? "−" : "+"}
+            {formatCurrency(Math.max(0, total), cur)}
+          </span>
+        </div>
+
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={busy || formIncomplete}
+          className={`w-full sm:w-auto sm:px-6 ${
+            isBuy
+              ? "!bg-emerald-500 hover:!bg-emerald-600 !text-white dark:!bg-emerald-500"
+              : isBooking
+                ? "!bg-indigo-500 hover:!bg-indigo-600 !text-white dark:!bg-indigo-500"
+                : isInterest
+                  ? "!bg-amber-500 hover:!bg-amber-600 !text-white dark:!bg-amber-500"
+                  : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
+          }`}
+        >
+          {busy
+            ? t("tx.adding")
+            : isBuy
+              ? isCash
+                ? t("tx.addDeposit")
+                : t("tx.addBuy")
+              : isBooking
+                ? t("tx.addBooking")
+                : isInterest
+                  ? t("tx.addInterest")
+                  : isCash
+                    ? t("tx.addWithdrawal")
+                    : t("tx.addSell")}
+        </Button>
+      </div>
     </form>
   );
 }
