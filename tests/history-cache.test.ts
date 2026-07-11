@@ -37,12 +37,13 @@ const SAMPLE: HistoryMap = {
     { date: "2026-01-02", close: 101 },
   ],
 };
+const SAMPLE_DATA = { histories: SAMPLE, fx: {} };
 
 describe("history-cache", () => {
   it("round-trips a write then read", () => {
     const storage = makeStorage();
-    writeHistoryCache("sig-a", SAMPLE, { storage, now: 1_000 });
-    expect(readHistoryCache("sig-a", { storage, now: 1_000 })).toEqual(SAMPLE);
+    writeHistoryCache("sig-a", SAMPLE_DATA, { storage, now: 1_000 });
+    expect(readHistoryCache("sig-a", { storage, now: 1_000 })).toEqual(SAMPLE_DATA);
   });
 
   it("misses on an absent sig", () => {
@@ -53,16 +54,16 @@ describe("history-cache", () => {
   it("expires entries older than the 7 day TTL", () => {
     const storage = makeStorage();
     const writtenAt = 1_000;
-    writeHistoryCache("sig-a", SAMPLE, { storage, now: writtenAt });
+    writeHistoryCache("sig-a", SAMPLE_DATA, { storage, now: writtenAt });
     const justUnderTtl = writtenAt + 7 * 24 * 60 * 60 * 1000 - 1;
-    expect(readHistoryCache("sig-a", { storage, now: justUnderTtl })).toEqual(SAMPLE);
+    expect(readHistoryCache("sig-a", { storage, now: justUnderTtl })).toEqual(SAMPLE_DATA);
     const overTtl = writtenAt + 7 * 24 * 60 * 60 * 1000 + 1;
     expect(readHistoryCache("sig-a", { storage, now: overTtl })).toBeNull();
   });
 
   it("evicts the expired entry on read", () => {
     const storage = makeStorage();
-    writeHistoryCache("sig-a", SAMPLE, { storage, now: 0 });
+    writeHistoryCache("sig-a", SAMPLE_DATA, { storage, now: 0 });
     const overTtl = 8 * 24 * 60 * 60 * 1000;
     expect(readHistoryCache("sig-a", { storage, now: overTtl })).toBeNull();
     expect(storage.getItem("fintrack:histcache:v1:sig-a")).toBeNull();
@@ -71,13 +72,13 @@ describe("history-cache", () => {
   it("caps at 24 entries, evicting the oldest first (LRU by write time)", () => {
     const storage = makeStorage();
     for (let i = 0; i < 24; i++) {
-      writeHistoryCache(`sig-${i}`, SAMPLE, { storage, now: i });
+      writeHistoryCache(`sig-${i}`, SAMPLE_DATA, { storage, now: i });
     }
     // 25th entry should evict sig-0 (the oldest).
-    writeHistoryCache("sig-24", SAMPLE, { storage, now: 24 });
+    writeHistoryCache("sig-24", SAMPLE_DATA, { storage, now: 24 });
     expect(readHistoryCache("sig-0", { storage, now: 24 })).toBeNull();
-    expect(readHistoryCache("sig-1", { storage, now: 24 })).toEqual(SAMPLE);
-    expect(readHistoryCache("sig-24", { storage, now: 24 })).toEqual(SAMPLE);
+    expect(readHistoryCache("sig-1", { storage, now: 24 })).toEqual(SAMPLE_DATA);
+    expect(readHistoryCache("sig-24", { storage, now: 24 })).toEqual(SAMPLE_DATA);
 
     let count = 0;
     for (let i = 0; i < storage.length; i++) {
@@ -100,7 +101,7 @@ describe("history-cache", () => {
 
   it("evicts oldest entries and retries once on QuotaExceededError, then gives up silently", () => {
     const storage = makeStorage();
-    writeHistoryCache("sig-old", SAMPLE, { storage, now: 0 });
+    writeHistoryCache("sig-old", SAMPLE_DATA, { storage, now: 0 });
     // Simulate quota exceeded on the first setItem attempt for the new key
     // only; the retry (after eviction) goes through to the real stub. All
     // other methods (including the live `length` getter) delegate straight
@@ -123,21 +124,21 @@ describe("history-cache", () => {
       },
     } as Storage;
     expect(() =>
-      writeHistoryCache("sig-new", SAMPLE, { storage: failingStorage, now: 1 }),
+      writeHistoryCache("sig-new", SAMPLE_DATA, { storage: failingStorage, now: 1 }),
     ).not.toThrow();
     // The retry succeeded after eviction freed room.
-    expect(readHistoryCache("sig-new", { storage, now: 1 })).toEqual(SAMPLE);
+    expect(readHistoryCache("sig-new", { storage, now: 1 })).toEqual(SAMPLE_DATA);
   });
 
   it("gives up silently when setItem always throws QuotaExceededError", () => {
     const storage = makeStorage({ failAlways: true });
-    expect(() => writeHistoryCache("sig-a", SAMPLE, { storage, now: 0 })).not.toThrow();
+    expect(() => writeHistoryCache("sig-a", SAMPLE_DATA, { storage, now: 0 })).not.toThrow();
   });
 
   it("clearHistoryCache removes only prefixed keys", () => {
     const storage = makeStorage();
-    writeHistoryCache("sig-a", SAMPLE, { storage, now: 0 });
-    writeHistoryCache("sig-b", SAMPLE, { storage, now: 1 });
+    writeHistoryCache("sig-a", SAMPLE_DATA, { storage, now: 0 });
+    writeHistoryCache("sig-b", SAMPLE_DATA, { storage, now: 1 });
     storage.setItem("fintrack:portfolio:v1", "{\"unrelated\":true}");
     clearHistoryCache(storage);
     expect(readHistoryCache("sig-a", { storage })).toBeNull();
@@ -149,7 +150,7 @@ describe("history-cache", () => {
     // No storage passed and vitest runs in a node environment (no window),
     // so this exercises the SSR-safe fallback path.
     expect(readHistoryCache("sig-a")).toBeNull();
-    expect(() => writeHistoryCache("sig-a", SAMPLE)).not.toThrow();
+    expect(() => writeHistoryCache("sig-a", SAMPLE_DATA)).not.toThrow();
     expect(() => clearHistoryCache()).not.toThrow();
   });
 });

@@ -30,7 +30,16 @@ export function LiveShareSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const { histories, loading } = useHistory(histItems, "MAX", currency);
+  const { histories, fx, loading } = useHistory(histItems, "MAX", currency);
+
+  // Layers the fetched historical FX series onto the live valuation so
+  // buildShareSource's netWorthSeries/twrSeries convert each historical point
+  // at the FX rate of ITS OWN date instead of today's spot rate (rateOn in
+  // portfolio.ts). Referentially equal to `valuation` when there's no fx yet.
+  const effectiveValuation = useMemo(() => {
+    if (!fx || Object.keys(fx).length === 0) return valuation;
+    return { ...valuation, fxHistory: fx };
+  }, [valuation, fx]);
 
   const txSig = allTransactions
     .map((t) => `${t.id}:${t.quantity}:${t.price}:${t.portfolioId}`)
@@ -63,7 +72,7 @@ export function LiveShareSync() {
         const source = buildShareSource({
           assets: data.assets,
           transactions,
-          valuation,
+          valuation: effectiveValuation,
           histories,
           ownerName: data.profile.name ?? null,
           currency,

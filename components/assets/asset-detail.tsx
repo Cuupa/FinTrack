@@ -168,11 +168,22 @@ export function AssetDetail({
     return it ? [it] : [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset, version]);
-  const { histories, loading: historyLoading } = useHistory(
+  const { histories, fx, loading: historyLoading } = useHistory(
     histItems,
     timeframe,
     data.profile.currency,
   );
+
+  // Layers the fetched historical FX series on top of effectiveValuation so
+  // the value/price chart series below convert each historical point at the
+  // FX rate of ITS OWN date instead of today's spot rate (rateOn in
+  // portfolio.ts). Kept separate from effectiveValuation (used above for
+  // summarizeHolding, which stays spot on purpose) so summarizeHolding's
+  // referential-equality guarantees are unaffected.
+  const chartValuation = useMemo(() => {
+    if (!fx || Object.keys(fx).length === 0) return effectiveValuation;
+    return { ...effectiveValuation, fxHistory: fx };
+  }, [effectiveValuation, fx]);
 
   // CASH's price chart is meaningless (constant 1) — plot the position's
   // total value over time (balance evolving with deposits/withdrawals/
@@ -180,11 +191,11 @@ export function AssetDetail({
   const { points: series, synthetic: syntheticSeries } = useMemo(() => {
     if (!asset) return { points: [], synthetic: false };
     if (asset.type === "CASH") {
-      const { points, containsSynthetic } = assetValueSeries(asset, txs, timeframe, effectiveValuation, histories);
+      const { points, containsSynthetic } = assetValueSeries(asset, txs, timeframe, chartValuation, histories);
       return { points, synthetic: containsSynthetic };
     }
-    return assetPriceSeries(asset, timeframe, effectiveValuation, histories);
-  }, [asset, txs, timeframe, effectiveValuation, histories]);
+    return assetPriceSeries(asset, timeframe, chartValuation, histories);
+  }, [asset, txs, timeframe, chartValuation, histories]);
 
   const irr = useMemo(
     () => (summary ? positionIRR(txs, summary.marketValue) : null),

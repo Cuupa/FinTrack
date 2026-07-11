@@ -11,6 +11,15 @@ export interface HistoryPoint {
 /** Native-currency history per asset price key. */
 export type HistoryMap = Record<string, HistoryPoint[]>;
 
+/**
+ * Historical FX rate series per native currency: ascending
+ * `[date, rateToBase]` pairs, from /api/history's `fx` field. Used for
+ * date-aware conversion of historical chart series (see
+ * lib/finance/portfolio.ts's `rateOn`); the base currency itself is never a
+ * key (its own rate is always 1).
+ */
+export type FxHistoryMap = Record<string, [string, number][]>;
+
 export interface HistItem {
   key: string;
   source: "yahoo" | "stooq" | "coingecko";

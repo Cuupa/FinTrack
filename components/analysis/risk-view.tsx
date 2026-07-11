@@ -103,11 +103,20 @@ export function RiskView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const { histories } = useHistory(histItems, tf, base);
+  const { histories, fx } = useHistory(histItems, tf, base);
+
+  // Layers the fetched historical FX series onto the live valuation so
+  // twrSeries (the risk.twr KPI) converts each historical point at the FX
+  // rate of ITS OWN date instead of today's spot rate (rateOn in
+  // portfolio.ts). Referentially equal to `valuation` when there's no fx yet.
+  const effectiveValuation = useMemo(() => {
+    if (!fx || Object.keys(fx).length === 0) return valuation;
+    return { ...valuation, fxHistory: fx };
+  }, [valuation, fx]);
 
   const returnSeries = useMemo(
-    () => twrSeries(scopedAssets, scopedTxs, tf, valuation, histories),
-    [scopedAssets, scopedTxs, tf, valuation, histories],
+    () => twrSeries(scopedAssets, scopedTxs, tf, effectiveValuation, histories),
+    [scopedAssets, scopedTxs, tf, effectiveValuation, histories],
   );
   // twrSeries emits a flat 0-value prefix for every day before the scoped
   // holding(s) had any shares (periods with zero shares are skipped, so `cum`

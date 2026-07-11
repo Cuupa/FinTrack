@@ -88,13 +88,18 @@ export function sharesAt(txs: Transaction[], isoDate: string): number {
 /**
  * Valuation context: how to turn native-currency prices into base-currency
  * values. `live` holds live native prices keyed by assetPriceKey; `fx` holds
- * native-currency → base rates. Omit it to value everything 1:1 in native
- * currency (used by currency-agnostic callers).
+ * native-currency → base spot rates. `fxHistory` optionally holds a dated
+ * series per native currency (ascending `[date, rateToBase]` pairs) for
+ * date-aware conversion of historical chart series; when absent for a
+ * currency, callers fall back to the constant `fx` spot rate. Omit the whole
+ * context to value everything 1:1 in native currency (used by
+ * currency-agnostic callers).
  */
 export interface ValuationContext {
   base: string;
   live?: Record<string, number>;
   fx?: Record<string, number>;
+  fxHistory?: Record<string, [string, number][]>;
 }
 
 /** live/synthetic continuity factor: rescales the synthetic series so it ends
@@ -112,6 +117,46 @@ function rateFor(asset: Asset, v?: ValuationContext): number {
   const cur = nativeCurrency(asset, v.base);
   if (!cur || cur === v.base) return 1;
   return v.fx?.[cur] ?? 1;
+}
+
+/**
+ * Rate on/just before `date` from an ascending `[date, rate]` series (step
+ * function, carry-forward). Before the series' first point, uses that first
+ * point's rate rather than extrapolating further back. Duplicated from
+ * lib/server/fx-history.ts's `rateAt` rather than imported: this module is
+ * the pure finance core and deliberately has no dependency on lib/server.
+ */
+function rateAtCarryForward(series: [string, number][], date: string): number {
+  if (series.length === 0) return 1;
+  if (date < series[0][0]) return series[0][1];
+  let lo = 0;
+  let hi = series.length - 1;
+  let ans = series[0][1];
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (series[mid][0] <= date) {
+      ans = series[mid][1];
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return ans;
+}
+
+/**
+ * Date-aware native-currency → base-currency rate: when `v.fxHistory` has a
+ * series for `currency`, carry-forward from it (the rate as of `date`, not
+ * today's); otherwise falls back to the constant `v.fx` spot rate (identical
+ * to `rateFor`'s behavior). Currencies equal to the base are always rate 1.
+ * Used by the date-aware chart series below (netWorthSeries, twrSeries,
+ * holdingPeriodProfit); `summarizeHolding` stays on the spot `rateFor` (see
+ * its own comment).
+ */
+function rateOn(currency: string, date: string, v?: ValuationContext): number {
+  if (!v) return 1;
+  if (!currency || currency === v.base) return 1;
+  const series = v.fxHistory?.[currency];
+  if (series && series.length > 0) return rateAtCarryForward(series, date);
+  return v.fx?.[currency] ?? 1;
 }
 
 /**
@@ -157,6 +202,9 @@ export function summarizeHolding(
   const position = computePosition(txs);
   const factor = liveFactor(asset, v);
   const price = currentPrice(assetPriceKey(asset), asset.type) * factor;
+  // Deliberately spot (rateFor), not date-aware: position/basis accounting is
+  // a point-in-time snapshot, not a chart series, so there's no per-point
+  // date to look a historical rate up against.
   const rate = rateFor(asset, v);
   const currency = v ? nativeCurrency(asset, v.base) : asset.currency ?? "";
   const marketValueNative = position.shares * price;
@@ -270,14 +318,17 @@ export function netWorthSeries(
   const end = today();
   const start = timeframeStart(tf, end, earliestTxDate(txs));
   const dates = dateRange(start, end);
-  // Per-asset FX rate, live-continuity factor and real history, precomputed.
+  // Per-asset native currency, live-continuity factor and real history,
+  // precomputed. The FX rate itself is looked up per-date below (rateOn), not
+  // precomputed here, so it can vary across the series instead of being
+  // pinned to one spot value for every historical point.
   const byAsset = assets.map((a) => {
     const key = assetPriceKey(a);
     return {
       asset: a,
       txs: transactionsByAsset(a.id, txs),
       key,
-      rate: rateFor(a, v),
+      cur: v ? nativeCurrency(a, v.base) : (a.currency ?? ""),
       factor: liveFactor(a, v),
       hist: history?.[key] ?? null,
     };
@@ -286,7 +337,7 @@ export function netWorthSeries(
   let containsSynthetic = false;
   const points = dates.map((date) => {
     let value = 0;
-    for (const { asset, txs: atxs, key, rate, factor, hist } of byAsset) {
+    for (const { asset, txs: atxs, key, cur, factor, hist } of byAsset) {
       const shares = sharesAt(atxs, date);
       if (shares === 0) continue;
       // Prefer real historical price (tolerating a small gap at the window's
@@ -296,7 +347,7 @@ export function netWorthSeries(
       // trips the synthetic flag (mirrors isSyntheticPrice above).
       if (real == null && asset.type !== "CASH") containsSynthetic = true;
       const native = real != null ? real : priceOn(key, asset.type, date) * factor;
-      value += shares * native * rate;
+      value += shares * native * rateOn(cur, date, v);
     }
     return { date, value };
   });
@@ -361,7 +412,7 @@ export function twrSeries(
       txs: atxs,
       key,
       type: a.type,
-      rate: rateFor(a, v),
+      cur: v ? nativeCurrency(a, v.base) : (a.currency ?? ""),
       factor: liveFactor(a, v),
       hist: history?.[key] ?? null,
       // Cash interest (CASH prices at a constant 1, so it's otherwise invisible
@@ -378,12 +429,13 @@ export function twrSeries(
   // the real one, or the seam shows up as a huge fake return (the early "jump").
   // Only assets with no real history at all use the synthetic series.
   const priceAt = (b: (typeof byAsset)[number], date: string): number | null => {
+    const rate = rateOn(b.cur, date, v);
     if (b.hist && b.hist.length > 0) {
       const real = priceAtFrom(b.hist, date);
-      return real != null && real > 0 ? real * b.rate : null;
+      return real != null && real > 0 ? real * rate : null;
     }
     const synth = priceOn(b.key, b.type, date) * b.factor;
-    return synth > 0 ? synth * b.rate : null;
+    return synth > 0 ? synth * rate : null;
   };
 
   if (dates.length === 0) return [];
@@ -399,7 +451,7 @@ export function twrSeries(
       // regardless of the price/shares guards below — cash has no price move
       // of its own to carry it.
       for (const ev of b.interest) {
-        if (ev.day > prevDate && ev.day <= curDate) periodPnl += ev.amt * b.rate;
+        if (ev.day > prevDate && ev.day <= curDate) periodPnl += ev.amt * rateOn(b.cur, ev.day, v);
       }
       const shares = sharesAt(b.txs, prevDate); // shares at period start only
       if (shares === 0) continue;
@@ -474,7 +526,7 @@ export function holdingPeriodProfit(
   const end = today();
   const start = timeframeStart(tf, end, earliestTxDate(atxs));
   const factor = liveFactor(asset, v);
-  const rate = rateFor(asset, v);
+  const cur = v ? nativeCurrency(asset, v.base) : (asset.currency ?? "");
   const hist = history?.[key] ?? null;
 
   const priceAt = (date: string): number => {
@@ -483,19 +535,22 @@ export function holdingPeriodProfit(
   };
 
   const sharesStart = sharesAt(atxs, start);
-  const startValue = sharesStart * priceAt(start) * rate;
+  const startValue = sharesStart * priceAt(start) * rateOn(cur, start, v);
 
   const sharesNow = sharesAt(atxs, end);
   const priceNow = hist ? priceAt(end) : currentPrice(key, asset.type) * factor;
-  const endValue = sharesNow * priceNow * rate;
+  const endValue = sharesNow * priceNow * rateOn(cur, end, v);
 
   // Net cash invested into THIS position during the window (base currency):
-  // buys add, sells subtract. Fees and taxes are part of the cash moved.
-  // `invested` tracks only in-window BUY inflows, the denominator capital.
+  // buys add, sells subtract. Fees and taxes are part of the cash moved. Each
+  // flow converts at the FX rate on ITS OWN date, not the window's start/end
+  // rate. `invested` tracks only in-window BUY inflows, the denominator capital.
   let flows = 0;
   let invested = 0;
   for (const t of atxs) {
-    if (dateKey(t.date) <= start) continue;
+    const day = dateKey(t.date);
+    if (day <= start) continue;
+    const rate = rateOn(cur, day, v);
     const cash = t.quantity * t.price;
     // BOOKING adds no cash (free crediting) → its value shows up as profit.
     if (t.type === "BUY") {

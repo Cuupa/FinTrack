@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN } from "@/lib/server/yahoo";
 import { BENCHMARKS } from "@/lib/finance/benchmarks";
 import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
+import { convertPoints } from "@/lib/server/fx-history";
 
 export const dynamic = "force-dynamic";
 
@@ -26,70 +27,7 @@ function daysSince(isoDate: string): number {
   return (Date.now() - new Date(isoDate + "T00:00:00Z").getTime()) / 86_400_000;
 }
 
-// Module-level cache for historic FX series so converting benchmark history to a
-// user's base currency doesn't hit Frankfurter on every chart view.
-const fxSeriesCache = new Map<string, { at: number; series: [string, number][] }>();
-const FX_TTL_MS = 12 * 60 * 60 * 1000;
-async function fxSeriesCached(from: string, to: string, start: string): Promise<[string, number][]> {
-  const key = `${from}|${to}`;
-  const hit = fxSeriesCache.get(key);
-  if (hit && Date.now() - hit.at < FX_TTL_MS) return hit.series;
-  const series = await fxSeries(from, to, start);
-  if (series.length > 0) fxSeriesCache.set(key, { at: Date.now(), series });
-  return series;
-}
-
-/**
- * Historic FX series (1 unit of `from` in `to`) keyed by date, ascending, via
- * Frankfurter's time-series endpoint. Used to convert a benchmark's native
- * price history into the home currency so returns are comparable to home-
- * currency holdings (the conversion changes returns when FX drifts over time).
- */
-async function fxSeries(from: string, to: string, start: string): Promise<[string, number][]> {
-  try {
-    const res = await fetch(`https://api.frankfurter.dev/v1/${start}..?from=${from}&to=${to}`, {
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { rates?: Record<string, Record<string, number>> };
-    return Object.entries(data.rates ?? {})
-      .map(([date, r]) => [date, r[to]] as [string, number])
-      .filter(([, v]) => typeof v === "number" && v > 0)
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1));
-  } catch {
-    return [];
-  }
-}
-
 type Point = { date: string; close: number };
-
-/** Convert a native price series into `to` via historic FX. null if no FX. */
-async function convertPoints(points: Point[], from: string, to: string): Promise<Point[] | null> {
-  if (from === to) return points;
-  if (points.length === 0) return points;
-  const fx = await fxSeriesCached(from, to, points[0].date);
-  if (fx.length === 0) return null;
-  return points.map((p) => {
-    const rate = rateAt(fx, p.date);
-    return rate ? { date: p.date, close: p.close * rate } : p;
-  });
-}
-
-/** Rate on/just before `date` from an ascending [date, rate] series. */
-function rateAt(series: [string, number][], date: string): number | null {
-  if (series.length === 0 || date < series[0][0]) return series[0]?.[1] ?? null;
-  let lo = 0;
-  let hi = series.length - 1;
-  let ans = series[0][1];
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (series[mid][0] <= date) {
-      ans = series[mid][1];
-      lo = mid + 1;
-    } else hi = mid - 1;
-  }
-  return ans;
-}
 
 async function latestDate(supabase: SupabaseClient, id: string): Promise<string | null> {
   const { data } = await supabase

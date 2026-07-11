@@ -101,7 +101,16 @@ export function ReturnsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const { histories } = useHistory(histItems, "MAX", base);
+  const { histories, fx } = useHistory(histItems, "MAX", base);
+
+  // Layers the fetched historical FX series onto the live valuation so
+  // netWorthSeries (feeding period returns below) converts each historical
+  // point at the FX rate of ITS OWN date instead of today's spot rate (rateOn
+  // in portfolio.ts). Referentially equal to `valuation` when there's no fx yet.
+  const effectiveValuation = useMemo(() => {
+    if (!fx || Object.keys(fx).length === 0) return valuation;
+    return { ...valuation, fxHistory: fx };
+  }, [valuation, fx]);
 
   // Real dividend payments per holding, converted to the base currency. Each
   // entry: { id, name, payments: [{ date, value }] }. Empty for accumulating
@@ -179,11 +188,11 @@ export function ReturnsView() {
         scope.length === 0
           ? data.transactions
           : data.transactions.filter((x) => scope.includes(x.assetId));
-      const { points } = netWorthSeries(a, t, "MAX", valuation, histories);
+      const { points } = netWorthSeries(a, t, "MAX", effectiveValuation, histories);
       const flows = netFlows(a, t, valuation);
       return periodReturns(points, flows, period);
     },
-    [data.assets, data.transactions, valuation, histories],
+    [data.assets, data.transactions, effectiveValuation, valuation, histories],
   );
 
   const heatReturns = useMemo(

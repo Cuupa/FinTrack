@@ -9,6 +9,7 @@ import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
 import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
 import { scalePoints } from "@/lib/server/scale";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+import { convertPoints, fxSeriesCached } from "@/lib/server/fx-history";
 
 export const dynamic = "force-dynamic";
 
@@ -151,15 +152,26 @@ async function yahooHistory(item: HistItem, range: string): Promise<YahooPoint[]
   if (!result) return null;
 
   const scale = item.scale ?? 1;
-  let factor = scale;
   const want = (item.currency || "").toUpperCase();
-  // Fell back to a different-currency listing → convert to the asset currency.
+  let points = result.points;
+  // Fell back to a different-currency listing → convert to the asset currency
+  // using the HISTORICAL FX rate for each point's own date (not one spot rate
+  // applied to the whole series), so old points reflect the FX of that day.
   if (want && result.currency && result.currency !== want) {
-    factor *= await fxRate(result.currency, want);
+    const converted = await convertPoints(result.points, result.currency, want);
+    if (converted) {
+      points = converted;
+    } else {
+      // Last-resort fallback if the historical FX timeseries fetch failed:
+      // apply today's spot rate to the whole series rather than show nothing.
+      const spot = await fxRate(result.currency, want);
+      points = scalePoints(result.points, spot);
+    }
   }
-  // after FX, per-instrument unit scale (e.g. Yahoo's per-ounce gold price ->
-  // the user's per-gram holding).
-  return scalePoints(result.points, factor);
+  // Scale strictly AFTER FX, never folded into the FX factor: the per-
+  // instrument unit scale (e.g. Yahoo's per-ounce gold price -> the user's
+  // per-gram holding) is independent of currency conversion.
+  return scalePoints(points, scale);
 }
 
 function ytdDays(): number {
@@ -260,5 +272,36 @@ export async function POST(req: Request): Promise<Response> {
     }),
   );
 
-  return Response.json({ histories });
+  // One historical FX series per unique native currency actually returned
+  // (skip the base currency and coingecko items, which are already priced IN
+  // base by the provider, not native currency). Callers (netWorthSeries,
+  // twrSeries, holdingPeriodProfit) use this to convert each historical point
+  // at the FX rate of ITS OWN date instead of one spot rate for the whole
+  // series. Window per currency is [earliest returned point .. today], via
+  // Frankfurter's open-ended time-series endpoint.
+  const fx: Record<string, [string, number][]> = {};
+  const currencies = new Set<string>();
+  for (const item of items) {
+    const cur = (item.currency || "").toUpperCase();
+    if (cur && cur !== base && item.source !== "coingecko" && histories[item.key]?.length) {
+      currencies.add(cur);
+    }
+  }
+  await Promise.all(
+    Array.from(currencies).map(async (cur) => {
+      let earliest: string | null = null;
+      for (const item of items) {
+        if ((item.currency || "").toUpperCase() !== cur || item.source === "coingecko") continue;
+        const pts = histories[item.key];
+        if (pts && pts.length > 0 && (earliest === null || pts[0].date < earliest)) {
+          earliest = pts[0].date;
+        }
+      }
+      if (!earliest) return;
+      const series = await fxSeriesCached(cur, base, earliest);
+      if (series.length > 0) fx[cur] = series;
+    }),
+  );
+
+  return Response.json({ histories, fx });
 }

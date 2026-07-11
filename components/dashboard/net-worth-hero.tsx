@@ -70,17 +70,27 @@ export function NetWorthHero({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.assets, version],
   );
-  const { histories, loading: historyLoading } = useHistory(histItems, timeframe, currency);
+  const { histories, fx, loading: historyLoading } = useHistory(histItems, timeframe, currency);
+
+  // Layers the fetched historical FX series onto the live valuation so
+  // netWorthSeries/twrSeries convert each historical point at the FX rate of
+  // ITS OWN date instead of today's spot rate (rateOn in portfolio.ts).
+  // Referentially equal to `valuation` when there's no fx yet, so nothing
+  // downstream re-renders differently than before.
+  const effectiveValuation = useMemo(() => {
+    if (!fx || Object.keys(fx).length === 0) return valuation;
+    return { ...valuation, fxHistory: fx };
+  }, [valuation, fx]);
 
   const { points: series, containsSynthetic } = useMemo(
-    () => netWorthSeries(data.assets, data.transactions, timeframe, valuation, histories),
-    [data.assets, data.transactions, timeframe, valuation, histories],
+    () => netWorthSeries(data.assets, data.transactions, timeframe, effectiveValuation, histories),
+    [data.assets, data.transactions, timeframe, effectiveValuation, histories],
   );
   // True time-weighted cumulative return (price-based, deposits never counted),
   // for "Return" mode — what brokers plot as TWROR.
   const returnSeries = useMemo(
-    () => twrSeries(data.assets, data.transactions, timeframe, valuation, histories),
-    [data.assets, data.transactions, timeframe, valuation, histories],
+    () => twrSeries(data.assets, data.transactions, timeframe, effectiveValuation, histories),
+    [data.assets, data.transactions, timeframe, effectiveValuation, histories],
   );
   // Risk metrics over the selected window (TWR, vol, drawdown, downside vol).
   const risk = useMemo(() => riskMetrics(returnSeries), [returnSeries]);

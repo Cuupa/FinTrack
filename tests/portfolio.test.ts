@@ -6,6 +6,7 @@ import {
   netWorthSeries,
   assetValueSeries,
   holdingPeriodProfit,
+  twrSeries,
   type HoldingSummary,
   type ValuationContext,
 } from "../lib/finance/portfolio";
@@ -124,6 +125,96 @@ describe("netWorthSeries", () => {
     const history = { STOCK: [{ date: "2025-01-12", close: 100 }] };
     const { containsSynthetic } = netWorthSeries([stock], txs, "MAX", undefined, history);
     expect(containsSynthetic).toBe(true);
+  });
+
+  it("with no fxHistory, every point uses the constant spot fx rate (behavior-identical to before)", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock8", currency: "USD" });
+    const D0 = addDays(today(), -100);
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: today(), close: 100 },
+      ],
+    };
+    const v: ValuationContext = { base: "EUR", fx: { USD: 2 } };
+    const { points } = netWorthSeries([stock], txs, "MAX", v, history);
+    for (const p of points) {
+      if (p.value > 0) expect(p.value).toBeCloseTo(10 * 100 * 2, 6);
+    }
+  });
+
+  it("a drifting fxHistory series values old points at the historical rate, not today's spot", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock9", currency: "USD" });
+    const D0 = addDays(today(), -100);
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: today(), close: 100 },
+      ],
+    };
+    const spotOnly: ValuationContext = { base: "EUR", fx: { USD: 2 } };
+    const withHistory: ValuationContext = {
+      base: "EUR",
+      fx: { USD: 2 },
+      fxHistory: { USD: [[D0, 0.5], [today(), 2]] },
+    };
+    const a = netWorthSeries([stock], txs, "MAX", spotOnly, history);
+    const b = netWorthSeries([stock], txs, "MAX", withHistory, history);
+    // At the window start, spot-only always uses today's rate (2); the
+    // fxHistory-based series uses the historical rate at that date (0.5) instead.
+    expect(a.points[0].value).toBeCloseTo(10 * 100 * 2, 6);
+    expect(b.points[0].value).toBeCloseTo(10 * 100 * 0.5, 6);
+    // At the window end, both rate sources agree (fxHistory's last point is
+    // also 2), so the two valuations converge.
+    expect(b.points[b.points.length - 1].value).toBeCloseTo(
+      a.points[a.points.length - 1].value,
+      6,
+    );
+  });
+});
+
+describe("twrSeries: historical FX (rateOn)", () => {
+  it("with no fxHistory, TWR is unchanged from the spot-only path", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock10", currency: "USD" });
+    const D0 = addDays(today(), -100);
+    const end = today();
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: end, close: 200 },
+      ],
+    };
+    const v: ValuationContext = { base: "EUR", fx: { USD: 1.3 } };
+    const out = twrSeries([stock], txs, "MAX", v, history);
+    expect(out[out.length - 1].value).toBeCloseTo(1.0, 6); // +100% price return, FX is a no-op constant
+  });
+
+  it("a drifting fxHistory series can produce a materially different TWR than the spot rate", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock11", currency: "USD" });
+    const D0 = addDays(today(), -100);
+    const end = today();
+    const txs = [tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: end, close: 200 },
+      ],
+    };
+    const spotOnly: ValuationContext = { base: "EUR", fx: { USD: 1 } };
+    // FX halves over the window (2 -> 1), exactly offsetting the native-price
+    // doubling once converted to the base currency.
+    const withHistory: ValuationContext = {
+      base: "EUR",
+      fx: { USD: 1 },
+      fxHistory: { USD: [[D0, 2], [end, 1]] },
+    };
+    const spotTwr = twrSeries([stock], txs, "MAX", spotOnly, history);
+    const histTwr = twrSeries([stock], txs, "MAX", withHistory, history);
+    expect(spotTwr[spotTwr.length - 1].value).toBeCloseTo(1.0, 6); // +100%
+    expect(histTwr[histTwr.length - 1].value).toBeCloseTo(0, 6); // FX drift cancels it out
   });
 });
 
@@ -255,5 +346,29 @@ describe("holdingPeriodProfit", () => {
     const r2 = holdingPeriodProfit(stock, txs, "MAX", v2, history);
     expect(r2.pct).toBeCloseTo(r1.pct, 6);
     expect(r2.abs).toBeCloseTo(r1.abs * 2.5, 6);
+  });
+
+  it("rateOn falls back to the spot fx rate when fxHistory has no series for the asset's own currency", () => {
+    const stock = asset({ id: "a", type: "STOCK", name: "Stock8", currency: "GBP" });
+    const D0 = addDays(today(), -400);
+    const txs = [tx({ type: "BUY", quantity: 10, price: 100, date: `${D0}T00:00:00` })];
+    const history = {
+      [assetPriceKey(stock)]: [
+        { date: D0, close: 100 },
+        { date: today(), close: 150 },
+      ],
+    };
+    // fxHistory only covers USD, not this GBP-priced asset — falls back to
+    // the constant v.fx.GBP spot rate for every date, same as rateFor.
+    const v: ValuationContext = {
+      base: "EUR",
+      fx: { GBP: 1.15 },
+      fxHistory: { USD: [[D0, 1], [today(), 1]] },
+    };
+    const { abs, pct } = holdingPeriodProfit(stock, txs, "MAX", v, history);
+    const startValue = 10 * 100 * 1.15;
+    const endValue = 10 * 150 * 1.15;
+    expect(abs).toBeCloseTo(endValue - startValue, 6);
+    expect(pct).toBeCloseTo((endValue - startValue) / startValue, 6);
   });
 });

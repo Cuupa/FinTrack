@@ -18,16 +18,27 @@
 // window.localStorage) so tests can pass an in-memory Storage stub, matching
 // the pattern in lib/store/local-store.ts.
 
-import type { HistoryMap } from "./history";
+import type { FxHistoryMap, HistoryMap } from "./history";
 
 const PREFIX = "fintrack:histcache:v1:";
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_ENTRIES = 24;
 
+/** Cached payload for a signature: real price history plus the historical FX
+ *  series needed to convert it. `fx` is optional on read so a v1 entry
+ *  written before FX history existed still parses (defaults to `{}`); no
+ *  version bump needed since the always-on background revalidation
+ *  (use-history.ts) replaces it with a real `fx` moments later regardless. */
 interface HistoryCacheEntry {
   sig: string;
   histories: HistoryMap;
+  fx?: FxHistoryMap;
   at: number;
+}
+
+export interface HistoryCacheData {
+  histories: HistoryMap;
+  fx: FxHistoryMap;
 }
 
 export interface HistoryCacheOptions {
@@ -87,11 +98,11 @@ function enforceCap(storage: Storage, cap: number): void {
 }
 
 /**
- * Read a cached history map for `sig`. Returns null when there is no entry,
- * the entry is malformed, or it is older than the 7-day TTL (an expired
- * entry is evicted as a side effect of the read).
+ * Read a cached history+fx payload for `sig`. Returns null when there is no
+ * entry, the entry is malformed, or it is older than the 7-day TTL (an
+ * expired entry is evicted as a side effect of the read).
  */
-export function readHistoryCache(sig: string, opts?: HistoryCacheOptions): HistoryMap | null {
+export function readHistoryCache(sig: string, opts?: HistoryCacheOptions): HistoryCacheData | null {
   const storage = resolveStorage(opts?.storage);
   if (!storage) return null;
   const key = PREFIX + sig;
@@ -113,20 +124,21 @@ export function readHistoryCache(sig: string, opts?: HistoryCacheOptions): Histo
       storage.removeItem(key);
       return null;
     }
-    return parsed.histories;
+    return { histories: parsed.histories, fx: parsed.fx ?? {} };
   } catch {
     return null;
   }
 }
 
 /**
- * Write a history map for `sig`, LRU-capped at 24 entries (one localStorage
- * key per sig). On QuotaExceededError, evict the oldest entries and retry
- * once; if that still fails, give up silently - the cache is best effort.
+ * Write a history+fx payload for `sig`, LRU-capped at 24 entries (one
+ * localStorage key per sig). On QuotaExceededError, evict the oldest entries
+ * and retry once; if that still fails, give up silently - the cache is best
+ * effort.
  */
 export function writeHistoryCache(
   sig: string,
-  histories: HistoryMap,
+  data: HistoryCacheData,
   opts?: HistoryCacheOptions,
 ): void {
   const storage = resolveStorage(opts?.storage);
@@ -135,7 +147,12 @@ export function writeHistoryCache(
   const key = PREFIX + sig;
   let serialized: string;
   try {
-    serialized = JSON.stringify({ sig, histories, at: now } satisfies HistoryCacheEntry);
+    serialized = JSON.stringify({
+      sig,
+      histories: data.histories,
+      fx: data.fx,
+      at: now,
+    } satisfies HistoryCacheEntry);
   } catch {
     return;
   }

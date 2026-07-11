@@ -12,14 +12,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useFeatureFlag } from "../flags/flags-context";
-import { readHistoryCache, writeHistoryCache } from "./history-cache";
-import type { HistItem, HistoryMap } from "./history";
+import { readHistoryCache, writeHistoryCache, type HistoryCacheData } from "./history-cache";
+import type { FxHistoryMap, HistItem, HistoryMap } from "./history";
 
 export function useHistory(
   items: HistItem[],
   range: string,
   base: string,
-): { histories: HistoryMap; loading: boolean } {
+): { histories: HistoryMap; fx: FxHistoryMap; loading: boolean } {
   const sig = useMemo(
     () =>
       range +
@@ -30,13 +30,14 @@ export function useHistory(
     [items, range, base],
   );
 
-  // Store the signature the cached histories belong to. `loading` is then
+  // Store the signature the cached histories/fx belong to. `loading` is then
   // DERIVED (state.sig !== sig), so switching timeframe is immediately "loading"
   // — we never report loading:false while still holding the previous range's
   // histories (the race that showed wrong values on fast timeframe clicks).
-  const [state, setState] = useState<{ sig: string; histories: HistoryMap }>({
+  const [state, setState] = useState<{ sig: string; histories: HistoryMap; fx: FxHistoryMap }>({
     sig: "",
     histories: {},
+    fx: {},
   });
 
   const historyCacheEnabled = useFeatureFlag("historyCache");
@@ -47,10 +48,10 @@ export function useHistory(
     const run = async () => {
       // Cache hit: paint immediately (flips the derived `loading` to false),
       // then still fetch below to revalidate in the background.
-      let cached: HistoryMap | null = null;
+      let cached: HistoryCacheData | null = null;
       if (historyCacheEnabled) {
         cached = readHistoryCache(sig);
-        if (cached && !cancelled) setState({ sig, histories: cached });
+        if (cached && !cancelled) setState({ sig, histories: cached.histories, fx: cached.fx });
       }
       try {
         const res = await apiFetch("/api/history", {
@@ -58,7 +59,9 @@ export function useHistory(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ base, range, items }),
         });
-        const json = res.ok ? ((await res.json()) as { histories?: HistoryMap }) : null;
+        const json = res.ok
+          ? ((await res.json()) as { histories?: HistoryMap; fx?: FxHistoryMap })
+          : null;
         // A single (or zero) point isn't a usable series — drop it so the chart
         // falls back to the full synthetic line instead of a flat/blank one.
         const raw = json?.histories ?? {};
@@ -66,16 +69,20 @@ export function useHistory(
         for (const [k, pts] of Object.entries(raw)) {
           if (Array.isArray(pts) && pts.length >= 2) usable[k] = pts;
         }
+        const fx = json?.fx ?? {};
         if (!cancelled) {
           if (historyCacheEnabled) {
-            writeHistoryCache(sig, usable);
+            writeHistoryCache(sig, { histories: usable, fx });
             // Only re-render if the revalidated data actually differs from
             // what's already painted (the cache hit) - avoids a pointless
             // re-render on every visit when nothing changed.
-            const unchanged = cached != null && JSON.stringify(usable) === JSON.stringify(cached);
-            if (!unchanged) setState({ sig, histories: usable });
+            const unchanged =
+              cached != null &&
+              JSON.stringify(usable) === JSON.stringify(cached.histories) &&
+              JSON.stringify(fx) === JSON.stringify(cached.fx);
+            if (!unchanged) setState({ sig, histories: usable, fx });
           } else {
-            setState({ sig, histories: usable });
+            setState({ sig, histories: usable, fx });
           }
         }
       } catch {
@@ -83,7 +90,7 @@ export function useHistory(
           // On failure, keep a cache hit's data on screen rather than
           // blanking it; without a hit, fall back to today's behavior (mark
           // this sig done/empty so we don't spin forever).
-          if (!(historyCacheEnabled && cached)) setState({ sig, histories: {} });
+          if (!(historyCacheEnabled && cached)) setState({ sig, histories: {}, fx: {} });
         }
       }
     };
@@ -97,7 +104,11 @@ export function useHistory(
   }, [sig, historyCacheEnabled]);
 
   const loading = items.length > 0 && state.sig !== sig;
-  // While loading, don't hand back the previous range's histories — callers that
-  // ignore `loading` would otherwise mix them with the new timeframe.
-  return { histories: loading ? {} : state.histories, loading };
+  // While loading, don't hand back the previous range's histories/fx — callers
+  // that ignore `loading` would otherwise mix them with the new timeframe.
+  return {
+    histories: loading ? {} : state.histories,
+    fx: loading ? {} : state.fx,
+    loading,
+  };
 }
