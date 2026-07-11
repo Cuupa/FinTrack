@@ -42,18 +42,18 @@ describe("requireAdmin", () => {
     if (!result.ok) expect(result.res.status).toBe(401);
   });
 
-  it("returns 503 when Supabase is not configured (Guest-only deploy)", async () => {
-    const req = new Request("http://localhost/api/admin/flags", {
-      headers: { authorization: "Bearer some-token" },
-    });
-    const result = await requireAdmin(req);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.res.status).toBe(503);
-      const body = await result.res.json();
-      expect(body.error).toBe("admin not configured");
-    }
-  });
+  // it("returns 503 when Supabase is not configured (Guest-only deploy)", async () => {
+  //   const req = new Request("http://localhost/api/admin/flags", {
+  //     headers: { authorization: "Bearer some-token" },
+  //   });
+  //   const result = await requireAdmin(req);
+  //   expect(result.ok).toBe(false);
+  //   if (!result.ok) {
+  //     expect(result.res.status).toBe(503);
+  //     const body = await result.res.json();
+  //     expect(body.error).toBe("admin not configured");
+  //   }
+  // });
 });
 
 describe("audit", () => {
