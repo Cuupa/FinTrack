@@ -12,10 +12,16 @@ create table if not exists public.profiles (
   currency text not null default 'EUR',
   display_name text,
   locale text,
+  tax_allowance numeric not null default 1000,
+  church_tax_rate numeric not null default 0,
+  tax_teilfreistellung boolean not null default false,
   created_at timestamptz not null default now()
 );
 alter table public.profiles add column if not exists display_name text;
 alter table public.profiles add column if not exists locale text;
+alter table public.profiles add column if not exists tax_allowance numeric not null default 1000;
+alter table public.profiles add column if not exists church_tax_rate numeric not null default 0;
+alter table public.profiles add column if not exists tax_teilfreistellung boolean not null default false;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of
@@ -416,7 +422,8 @@ insert into public.schema_migrations (version) values
   ('0050_admin_authz'),
   ('0051_error_logs'),
   ('0052_retention_indexes'),
-  ('0053_heal_gold_gme_quotes')
+  ('0053_heal_gold_gme_quotes'),
+  ('0054_tax_settings')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

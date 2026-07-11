@@ -11,8 +11,10 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
+const CHURCH_TAX_RATES = [0, 0.08, 0.09];
 
 // Only a NEW password (this change-password form) is floored at this length;
 // existing accounts can still sign in with a shorter one.
@@ -28,6 +30,12 @@ export function SettingsView() {
   const [currency, setCurrency] = useState(data.profile.currency);
   const [savedProfile, setSavedProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const [taxAllowance, setTaxAllowance] = useState(String(data.profile.taxAllowance));
+  const [churchTaxRate, setChurchTaxRate] = useState(data.profile.churchTaxRate);
+  const [teilfreistellung, setTeilfreistellung] = useState(data.profile.taxTeilfreistellung);
+  const [savedTax, setSavedTax] = useState(false);
+  const [savingTax, setSavingTax] = useState(false);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,6 +55,19 @@ export function SettingsView() {
     setSavingProfile(false);
     setSavedProfile(true);
     setTimeout(() => setSavedProfile(false), 2000);
+  };
+
+  const saveTaxSettings = async () => {
+    setSavingTax(true);
+    const allowance = Number(taxAllowance);
+    await updateProfile({
+      taxAllowance: Number.isFinite(allowance) ? allowance : data.profile.taxAllowance,
+      churchTaxRate,
+      taxTeilfreistellung: teilfreistellung,
+    });
+    setSavingTax(false);
+    setSavedTax(true);
+    setTimeout(() => setSavedTax(false), 2000);
   };
 
   const savePassword = async () => {
@@ -143,6 +164,58 @@ export function SettingsView() {
         </div>
       </Card>
 
+      <Card>
+        <h2 className="text-lg font-semibold">{t("settings.taxSection")}</h2>
+        <div className="mt-4 space-y-4">
+          <Field label={t("settings.taxAllowance")} hint={t("settings.taxAllowanceHint")}>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={taxAllowance}
+              onChange={(e) => setTaxAllowance(e.target.value)}
+              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+            />
+          </Field>
+
+          <Field label={t("settings.churchTax")}>
+            <SelectMenu
+              value={String(churchTaxRate)}
+              onChange={(v) => setChurchTaxRate(Number(v))}
+              ariaLabel={t("settings.churchTax")}
+              options={CHURCH_TAX_RATES.map((r) => ({
+                value: String(r),
+                label: r === 0 ? t("settings.churchTaxNone") : `${Math.round(r * 100)} %`,
+              }))}
+            />
+          </Field>
+
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={teilfreistellung}
+              onChange={(e) => setTeilfreistellung(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+            />
+            <span>
+              <span className="block text-sm font-medium">{t("settings.teilfreistellung")}</span>
+              <span className="block text-xs text-zinc-500">{t("settings.teilfreistellungHint")}</span>
+            </span>
+          </label>
+
+          <div className="flex items-center gap-3">
+            <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax}>
+              {savingTax ? "…" : t("settings.save")}
+            </Button>
+            {savedTax && (
+              <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                {t("settings.saved")}
+              </span>
+            )}
+          </div>
+        </div>
+      </Card>
+
       {mode === "registered" && (
         <Card>
           <h2 className="text-lg font-semibold">{t("settings.changePassword")}</h2>
@@ -231,11 +304,20 @@ export function SettingsView() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium">{label}</label>
       {children}
+      {hint && <p className="mt-1.5 text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }

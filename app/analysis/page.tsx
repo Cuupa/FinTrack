@@ -6,10 +6,11 @@ import { AllocationView } from "@/components/allocation/allocation-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
+import { TaxView } from "@/components/analysis/tax-view";
 import { RiskDisclaimer } from "@/components/ui/risk-disclaimer";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 
-const TABS = ["distributions", "returns", "trades", "risks"] as const;
+const TABS = ["distributions", "returns", "trades", "risks", "tax"] as const;
 
 type TabKey = (typeof TABS)[number];
 
@@ -17,9 +18,12 @@ export default function AnalysisPage() {
   const [tab, setTab] = useState<TabKey>("distributions");
   const { t: tr } = useI18n();
 
-  // The Risk tab is behind a feature flag.
+  // The Risk and Tax tabs are behind feature flags.
   const riskEnabled = useFeatureFlag("risk");
-  const tabs = TABS.filter((key) => key !== "risks" || riskEnabled);
+  const taxReportEnabled = useFeatureFlag("taxReport");
+  const tabs = TABS.filter((key) => key !== "risks" || riskEnabled).filter(
+    (key) => key !== "tax" || taxReportEnabled,
+  );
 
   return (
     <div className="space-y-6">
@@ -45,7 +49,7 @@ export default function AnalysisPage() {
                   : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
-              {tr(`analysis.tab.${key}`)}
+              {tr(key === "tax" ? "tax.tabLabel" : `analysis.tab.${key}`)}
             </button>
           ))}
         </div>
@@ -55,6 +59,7 @@ export default function AnalysisPage() {
       {tab === "returns" && <ReturnsView />}
       {tab === "trades" && <TradesView />}
       {tab === "risks" && riskEnabled && <RiskView />}
+      {tab === "tax" && taxReportEnabled && <TaxView />}
     </div>
   );
 }

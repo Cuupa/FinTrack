@@ -1,0 +1,223 @@
+// German capital-gains tax report (Kapitalertragsteuer / Abgeltungsteuer),
+// legible to a private investor: per calendar year, the Sparerpauschbetrag
+// (allowance), Kirchensteuer (church tax) and Teilfreistellung (partial
+// exemption for equity funds) are folded into a waterfall from raw gains down
+// to an estimated tax bill. This supersedes the old flat gross/net
+// `taxYearReport` in trades.ts, which mirrors the same average-cost replay of
+// the transaction log but does not model the German tax pots at all. Real
+// dividend events are supplied by the caller (from /api/dividends) via
+// `dividendsByYear`; this module has no network/React access.
+//
+// Pure, no React. This is an estimate for orientation only, not tax advice:
+// German capital-gains tax has many special cases (loss carryforwards across
+// years, Vorabpauschale on accumulating funds, per-broker Freistellungsauftrag
+// allocation, ...) that are deliberately out of scope; see `privateSale` and
+// `vorab`-related fields, which are informational only.
+
+import type { Asset, Transaction } from "../types";
+import type { ValuationContext } from "./portfolio";
+
+/** Native-currency → base-currency spot rate for an asset (mirrors trades.ts). */
+function rateOf(asset: Asset, v?: ValuationContext): number {
+  const cur = asset.currency ?? v?.base ?? "";
+  if (!v || !cur || cur === v.base) return 1;
+  return v.fx?.[cur] ?? 1;
+}
+
+const byDateAsc = (a: Transaction, b: Transaction) =>
+  a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+
+export interface TaxSettings {
+  /** Sparerpauschbetrag, base currency (1000 single / 2000 joint filing). */
+  allowance: number;
+  /** Kirchensteuer rate: 0, 0.08 or 0.09. */
+  churchTaxRate: number;
+  /** Apply the 30% Teilfreistellung for equity fund (ETF) gains/dividends. */
+  applyTeilfreistellung: boolean;
+}
+
+/** Real dividend income for a year, split by the pot it feeds (Aktien vs. sonstige Kapitalerträge). */
+export interface YearDividends {
+  stock: number;
+  fund: number;
+}
+
+export interface TaxYearBreakdown {
+  year: string;
+  /** STOCK sells: (proceeds - sell fee) - average-cost basis, base currency. */
+  stockGains: number;
+  /** ETF sells, same formula, BEFORE Teilfreistellung. */
+  fundGains: number;
+  dividendsStock: number;
+  /** Fund dividends, AFTER Teilfreistellung when applied (feeds the pots below). */
+  dividendsFund: number;
+  interest: number;
+  /** CRYPTO + COMMODITY realized gains (private sale, §23 EStG); informational only, never in kapitalertraege. */
+  privateSale: number;
+  teilfreistellungApplied: boolean;
+  /** Aktien-Topf (floored at 0) + sonstige-Topf (floored at 0). */
+  kapitalertraege: number;
+  allowanceUsed: number;
+  taxableAfterAllowance: number;
+  /** Abgeltungsteuer incl. Soli + Kirchensteuer, as a fraction. */
+  effectiveRate: number;
+  estimatedTax: number;
+  /** Sum of tax withheld (t.tax) on STOCK/ETF sells that year. */
+  taxWithheld: number;
+}
+
+/**
+ * Abgeltungsteuer rate including the 5.5% solidarity surcharge and, if
+ * applicable, Kirchensteuer at rate `churchTaxRate` (0, 0.08 or 0.09). With
+ * church tax the base 25% itself is reduced by the standard formula so the
+ * combined burden stays commensurate: 0 -> 26.375%, 0.08 -> ~27.819%,
+ * 0.09 -> ~27.995%.
+ */
+export function abgeltungRate(churchTaxRate: number): number {
+  const k = churchTaxRate;
+  return k > 0 ? (1 / (4 + k)) * (1 + 0.055 + k) : 0.25 * 1.055;
+}
+
+interface YearAccum {
+  stockGains: number;
+  fundGains: number;
+  interest: number;
+  privateSale: number;
+  taxWithheld: number;
+}
+
+function emptyAccum(): YearAccum {
+  return { stockGains: 0, fundGains: 0, interest: 0, privateSale: 0, taxWithheld: 0 };
+}
+
+/**
+ * Per-calendar-year German tax breakdown, replaying the transaction log with
+ * average-cost basis per asset (same replay as trades.ts). Only years with at
+ * least one contributing event (a sell, interest credit, or real dividend) are
+ * returned, sorted newest first.
+ */
+export function taxYearBreakdown(
+  assets: Asset[],
+  txs: Transaction[],
+  dividendsByYear: Record<string, YearDividends>,
+  settings: TaxSettings,
+  v?: ValuationContext,
+): TaxYearBreakdown[] {
+  const byId = new Map(assets.map((a) => [a.id, a]));
+  const byAsset = new Map<string, Transaction[]>();
+  for (const t of txs) {
+    const list = byAsset.get(t.assetId);
+    if (list) list.push(t);
+    else byAsset.set(t.assetId, [t]);
+  }
+
+  const years = new Map<string, YearAccum>();
+  const yearOf = (t: Transaction) => t.date.slice(0, 4);
+  const bucket = (year: string): YearAccum => {
+    let b = years.get(year);
+    if (!b) {
+      b = emptyAccum();
+      years.set(year, b);
+    }
+    return b;
+  };
+
+  for (const [assetId, atxs] of byAsset) {
+    const asset = byId.get(assetId);
+    if (!asset) continue;
+    const rate = rateOf(asset, v);
+    let shares = 0;
+    let avgCost = 0;
+    for (const t of [...atxs].sort(byDateAsc)) {
+      if (t.type === "BUY" || t.type === "BOOKING" || t.type === "INTEREST") {
+        if (t.type === "INTEREST") {
+          // Cash interest: the credited amount is income in the year received
+          // (mirrors trades.ts's taxYearReport bucketing).
+          bucket(yearOf(t)).interest += t.quantity * t.price * rate;
+        }
+        // BOOKING (free crediting) and INTEREST both add shares at zero cost
+        // basis; only a fee/tax (if any) raises it.
+        const cost = t.type === "BUY" ? t.quantity * t.price + t.fee + t.tax : t.fee + t.tax;
+        const ns = shares + t.quantity;
+        avgCost = ns > 0 ? (shares * avgCost + cost) / ns : 0;
+        shares = ns;
+      } else {
+        // SELL. CASH sells are withdrawals, not taxable events: no bucket
+        // contribution, but shares/avgCost still advance below.
+        if (asset.type !== "CASH") {
+          // Sell fee reduces the taxable gain; tax withheld does NOT (it is
+          // tracked separately in taxWithheld to compare against the
+          // estimated bill).
+          const taxableGain = (t.quantity * t.price - t.fee - t.quantity * avgCost) * rate;
+          const b = bucket(yearOf(t));
+          if (asset.type === "STOCK") {
+            b.stockGains += taxableGain;
+            b.taxWithheld += t.tax * rate;
+          } else if (asset.type === "ETF") {
+            b.fundGains += taxableGain;
+            b.taxWithheld += t.tax * rate;
+          } else if (asset.type === "CRYPTO" || asset.type === "COMMODITY") {
+            b.privateSale += taxableGain;
+          }
+        }
+        shares -= t.quantity;
+        if (shares <= 1e-9) {
+          shares = 0;
+          avgCost = 0;
+        }
+      }
+    }
+  }
+
+  const allYears = new Set<string>([...years.keys(), ...Object.keys(dividendsByYear)]);
+  const rate = abgeltungRate(settings.churchTaxRate);
+  const out: TaxYearBreakdown[] = [];
+
+  for (const year of allYears) {
+    const acc = years.get(year) ?? emptyAccum();
+    const div = dividendsByYear[year] ?? { stock: 0, fund: 0 };
+
+    const hasEvent =
+      acc.stockGains !== 0 ||
+      acc.fundGains !== 0 ||
+      acc.interest !== 0 ||
+      acc.privateSale !== 0 ||
+      acc.taxWithheld !== 0 ||
+      div.stock !== 0 ||
+      div.fund !== 0;
+    if (!hasEvent) continue;
+
+    // Teilfreistellung applies to fund gains AND fund dividends alike, before
+    // pooling, including losses (a fund loss is reduced by 30% too).
+    const fundGainsAfterTF = settings.applyTeilfreistellung ? acc.fundGains * 0.7 : acc.fundGains;
+    const dividendsFundAfterTF = settings.applyTeilfreistellung ? div.fund * 0.7 : div.fund;
+
+    const aktienPos = Math.max(0, acc.stockGains);
+    const sonstige = fundGainsAfterTF + dividendsFundAfterTF + div.stock + acc.interest;
+    const sonstigePos = Math.max(0, sonstige);
+    const kapitalertraege = aktienPos + sonstigePos;
+
+    const allowanceUsed = Math.min(settings.allowance, kapitalertraege);
+    const taxableAfterAllowance = Math.max(0, kapitalertraege - settings.allowance);
+    const estimatedTax = taxableAfterAllowance * rate;
+
+    out.push({
+      year,
+      stockGains: acc.stockGains,
+      fundGains: acc.fundGains,
+      dividendsStock: div.stock,
+      dividendsFund: dividendsFundAfterTF,
+      interest: acc.interest,
+      privateSale: acc.privateSale,
+      teilfreistellungApplied: settings.applyTeilfreistellung,
+      kapitalertraege,
+      allowanceUsed,
+      taxableAfterAllowance,
+      effectiveRate: rate,
+      estimatedTax,
+      taxWithheld: acc.taxWithheld,
+    });
+  }
+
+  return out.sort((a, b) => (a.year < b.year ? 1 : -1));
+}

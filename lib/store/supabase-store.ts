@@ -98,7 +98,7 @@ export class SupabaseStore implements DataStore {
     const [profileRes, portfoliosRes, assetsRes, txRes, watchRes, plansRes] = await Promise.all([
       this.supabase
         .from("profiles")
-        .select("currency, display_name, locale")
+        .select("currency, display_name, locale, tax_allowance, church_tax_rate, tax_teilfreistellung")
         .eq("id", this.userId)
         .maybeSingle(),
       this.supabase
@@ -154,6 +154,10 @@ export class SupabaseStore implements DataStore {
           currency: profileRes.data.currency,
           name: profileRes.data.display_name ?? null,
           locale: profileRes.data.locale ?? null,
+          taxAllowance: profileRes.data.tax_allowance ?? DEFAULT_PROFILE.taxAllowance,
+          churchTaxRate: profileRes.data.church_tax_rate ?? DEFAULT_PROFILE.churchTaxRate,
+          taxTeilfreistellung:
+            profileRes.data.tax_teilfreistellung ?? DEFAULT_PROFILE.taxTeilfreistellung,
         }
       : { ...DEFAULT_PROFILE };
 
@@ -213,6 +217,9 @@ export class SupabaseStore implements DataStore {
       currency: profile.currency,
       display_name: profile.name,
       locale: profile.locale,
+      tax_allowance: profile.taxAllowance,
+      church_tax_rate: profile.churchTaxRate,
+      tax_teilfreistellung: profile.taxTeilfreistellung,
     });
     if (error) throw error;
   }

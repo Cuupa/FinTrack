@@ -17,6 +17,12 @@ export interface Profile {
   name: string | null;
   /** Preferred UI locale ("en" | "de"); null = use the device/last choice. */
   locale: string | null;
+  /** Sparerpauschbetrag: tax-free capital income allowance, base currency. */
+  taxAllowance: number;
+  /** Kirchensteuer rate applied on top of Abgeltungsteuer: 0 | 0.08 | 0.09. */
+  churchTaxRate: number;
+  /** Apply the 30% Teilfreistellung to equity fund (ETF) gains/dividends. */
+  taxTeilfreistellung: boolean;
 }
 
 /**
@@ -142,7 +148,14 @@ export interface PortfolioData {
   savingsPlans: SavingsPlan[];
 }
 
-export const DEFAULT_PROFILE: Profile = { currency: "EUR", name: null, locale: null };
+export const DEFAULT_PROFILE: Profile = {
+  currency: "EUR",
+  name: null,
+  locale: null,
+  taxAllowance: 1000,
+  churchTaxRate: 0,
+  taxTeilfreistellung: false,
+};
 
 export function emptyPortfolio(): PortfolioData {
   return {

@@ -125,6 +125,13 @@ export const en = {
   "settings.namePlaceholder": "e.g. Simon",
   "settings.language": "Language",
   "settings.currency": "Base currency",
+  "settings.taxSection": "Tax",
+  "settings.taxAllowance": "Allowance (Sparerpauschbetrag)",
+  "settings.taxAllowanceHint": "1000 Euro if filing alone, 2000 Euro for joint filing.",
+  "settings.churchTax": "Church tax",
+  "settings.churchTaxNone": "None",
+  "settings.teilfreistellung": "Teilfreistellung",
+  "settings.teilfreistellungHint": "Only enable this if your funds and ETFs are mostly equity funds.",
   "settings.changePassword": "Change password",
   "settings.newPassword": "New password",
   "settings.confirmPassword": "Confirm password",
@@ -496,6 +503,7 @@ export const en = {
   "analysis.blurb.trades": "Realized P&L over time and your best and worst positions.",
   "analysis.blurb.risks":
     "Risk-adjusted return, volatility, drawdowns and how your holdings move together.",
+  "analysis.blurb.tax": "An estimate of your German capital-gains tax, year by year.",
 
   // Risk tab
   "risk.addHoldings": "Add holdings to see your risk metrics.",
@@ -649,15 +657,42 @@ export const en = {
     "Ranked by profit/loss over the selected period (realised plus unrealised), in your base currency.",
   "trades.nothing": "Nothing here yet.",
   "trades.addHoldings": "Add holdings to see your trade history.",
-  "trades.taxReport": "Tax report",
-  "trades.taxReportTip":
-    "Per calendar year: realized gains from sells (gross, before fees and taxes; this is the figure the tax office cares about), cash interest received, and the fees and taxes recorded on your transactions. Dividends are not included here; see the asset pages for payouts.",
-  "trades.taxYear": "Year",
-  "trades.realizedGross": "Realized (gross)",
-  "trades.realizedNet": "Realized (net)",
-  "trades.interest": "Interest",
-  "trades.fees": "Fees",
-  "trades.taxes": "Taxes",
+
+  // Tax (Steuern tab)
+  "tax.tabLabel": "Tax",
+  "tax.disclaimer": "This is a rough estimate for orientation only, not tax advice.",
+  "tax.settingsLink": "Adjust your allowance, church tax and Teilfreistellung in Settings",
+  "tax.capitalIncome": "Capital income",
+  "tax.stockGains": "Stock gains",
+  "tax.stockGainsTip":
+    "Realized gains and losses from stock sells, average-cost basis. Losses can only offset stock gains, never other capital income: this simplified loss pot ignores carryforwards across years.",
+  "tax.fundGains": "Fund gains",
+  "tax.tfSuffix": "(Teilfreistellung, 30% applied)",
+  "tax.dividends": "Dividends",
+  "tax.interest": "Interest",
+  "tax.sumIncome": "Total income",
+  "tax.allowance": "Allowance (Sparerpauschbetrag)",
+  "tax.allowanceTip": "Your tax-free capital income allowance, set in Settings.",
+  "tax.taxable": "Taxable",
+  "tax.estimatedTax": "Estimated tax",
+  "tax.estimatedTaxTip":
+    "25% Abgeltungsteuer plus a 5.5% solidarity surcharge, plus church tax if configured in Settings.",
+  "tax.withheld": "Withheld by broker",
+  "tax.withheldTip":
+    "Sum of tax already withheld on your recorded sells. Your broker may already account for a Freistellungsauftrag or Teilfreistellung; this is a rough comparison, not a reconciliation.",
+  "tax.additionalOwed": "Estimated additional tax (rough)",
+  "tax.refund": "Estimated refund (rough)",
+  "tax.diffTip":
+    "A rough comparison between the estimated tax and what was already withheld, not a substitute for your actual tax return.",
+  "tax.notIncluded": "Not included",
+  "tax.privateSale": "Private sale gains (crypto, commodities)",
+  "tax.privateSaleTip":
+    "Gains from crypto and commodity sells follow separate rules (§23 EStG): tax-free after a one-year holding period, and exempt below a small yearly threshold. Not part of your capital income allowance.",
+  "tax.vorab": "Vorabpauschale",
+  "tax.vorabNotComputed": "Not computed",
+  "tax.vorabTip":
+    "A notional annual tax pre-payment on accumulating funds, based on the Basiszins. It can't be calculated from the data available here; check your broker's tax statement.",
+  "tax.empty": "No taxable events yet. Sell a position, or receive interest or dividends, to see a report here.",
 
   // X-Ray
   "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
@@ -1060,6 +1095,13 @@ const de: Partial<Record<MessageKey, string>> = {
   "settings.namePlaceholder": "z. B. Simon",
   "settings.language": "Sprache",
   "settings.currency": "Basiswährung",
+  "settings.taxSection": "Steuern",
+  "settings.taxAllowance": "Freibetrag (Sparerpauschbetrag)",
+  "settings.taxAllowanceHint": "1000 Euro Alleinstehende, 2000 Euro bei gemeinsamer Veranlagung.",
+  "settings.churchTax": "Kirchensteuer",
+  "settings.churchTaxNone": "Keine",
+  "settings.teilfreistellung": "Teilfreistellung",
+  "settings.teilfreistellungHint": "Nur aktivieren, wenn deine Fonds und ETFs überwiegend Aktienfonds sind.",
   "settings.changePassword": "Passwort ändern",
   "settings.newPassword": "Neues Passwort",
   "settings.confirmPassword": "Passwort bestätigen",
@@ -1428,6 +1470,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "analysis.blurb.trades": "Realisierter G/V im Zeitverlauf und deine besten und schlechtesten Positionen.",
   "analysis.blurb.risks":
     "Risikobereinigte Rendite, Volatilität, Drawdowns und wie sich deine Positionen gemeinsam bewegen.",
+  "analysis.blurb.tax": "Eine Schätzung deiner deutschen Kapitalertragsteuer, Jahr für Jahr.",
 
   // Risk tab
   "risk.addHoldings": "Füge Positionen hinzu, um deine Risikokennzahlen zu sehen.",
@@ -1582,15 +1625,42 @@ const de: Partial<Record<MessageKey, string>> = {
     "Sortiert nach Gewinn/Verlust im gewählten Zeitraum (realisiert plus nicht realisiert) in deiner Basiswährung.",
   "trades.nothing": "Hier ist noch nichts.",
   "trades.addHoldings": "Füge Positionen hinzu, um deine Handelshistorie zu sehen.",
-  "trades.taxReport": "Steuerreport",
-  "trades.taxReportTip":
-    "Pro Kalenderjahr: realisierte Gewinne aus Verkäufen (brutto, vor Gebühren und Steuern; das ist die Zahl, die das Finanzamt interessiert), erhaltene Zinsen sowie die auf deinen Transaktionen erfassten Gebühren und Steuern. Dividenden sind hier nicht enthalten; Ausschüttungen findest du auf den Asset-Seiten.",
-  "trades.taxYear": "Jahr",
-  "trades.realizedGross": "Realisiert (brutto)",
-  "trades.realizedNet": "Realisiert (netto)",
-  "trades.interest": "Zinsen",
-  "trades.fees": "Gebühren",
-  "trades.taxes": "Steuern",
+
+  // Steuern (Tax-Tab)
+  "tax.tabLabel": "Steuern",
+  "tax.disclaimer": "Das ist eine grobe Schätzung zur Orientierung, keine Steuerberatung.",
+  "tax.settingsLink": "Passe Sparerpauschbetrag, Kirchensteuer und Teilfreistellung in den Einstellungen an",
+  "tax.capitalIncome": "Kapitalerträge",
+  "tax.stockGains": "Aktiengewinne",
+  "tax.stockGainsTip":
+    "Realisierte Gewinne und Verluste aus Aktienverkäufen, Durchschnittskostenbasis. Verluste lassen sich nur mit Aktiengewinnen verrechnen, nie mit anderen Kapitalerträgen: dieser vereinfachte Verlusttopf berücksichtigt keine Verlustvorträge über Jahre hinweg.",
+  "tax.fundGains": "Fondsgewinne",
+  "tax.tfSuffix": "(Teilfreistellung, 30% berücksichtigt)",
+  "tax.dividends": "Dividenden",
+  "tax.interest": "Zinsen",
+  "tax.sumIncome": "Summe Erträge",
+  "tax.allowance": "Freibetrag (Sparerpauschbetrag)",
+  "tax.allowanceTip": "Dein steuerfreier Freibetrag für Kapitalerträge, einstellbar in den Einstellungen.",
+  "tax.taxable": "Zu versteuern",
+  "tax.estimatedTax": "Geschätzte Steuer",
+  "tax.estimatedTaxTip":
+    "25% Abgeltungsteuer zuzüglich 5,5% Solidaritätszuschlag, zuzüglich Kirchensteuer, falls in den Einstellungen konfiguriert.",
+  "tax.withheld": "Vom Broker einbehalten",
+  "tax.withheldTip":
+    "Summe der bereits auf deine erfassten Verkäufe einbehaltenen Steuer. Dein Broker berücksichtigt darin eventuell schon einen Freistellungsauftrag oder eine Teilfreistellung; das hier ist ein grober Vergleich, keine Abstimmung.",
+  "tax.additionalOwed": "Voraussichtliche Nachzahlung (grob)",
+  "tax.refund": "Mögliche Erstattung (grob)",
+  "tax.diffTip":
+    "Ein grober Vergleich zwischen geschätzter Steuer und bereits einbehaltener Steuer, kein Ersatz für deine tatsächliche Steuererklärung.",
+  "tax.notIncluded": "Nicht enthalten",
+  "tax.privateSale": "Gewinne aus privaten Veräußerungsgeschäften (Krypto, Rohstoffe)",
+  "tax.privateSaleTip":
+    "Gewinne aus Krypto- und Rohstoffverkäufen folgen eigenen Regeln (§23 EStG): steuerfrei nach einem Jahr Haltefrist, und steuerfrei unterhalb einer kleinen jährlichen Freigrenze. Zählen nicht zu deinem Sparerpauschbetrag.",
+  "tax.vorab": "Vorabpauschale",
+  "tax.vorabNotComputed": "Nicht berechnet",
+  "tax.vorabTip":
+    "Eine fiktive jährliche Steuervorauszahlung auf thesaurierende Fonds, basierend auf dem Basiszins. Sie lässt sich aus den hier vorhandenen Daten nicht berechnen; schau dazu in die Steuerbescheinigung deines Brokers.",
+  "tax.empty": "Noch keine steuerlich relevanten Ereignisse. Verkaufe eine Position oder erhalte Zinsen oder Dividenden, um hier einen Report zu sehen.",
 
   // X-Ray
   "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
