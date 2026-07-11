@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: explicit light/dark (lib/theme/theme-context.tsx)
+   toggles the "dark" class on <html>, taking precedence over the OS
+   preference. Every `dark:` utility now matches this instead of
+   prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +18,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {
@@ -93,23 +97,21 @@ body {
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
 }
 
-@media (prefers-color-scheme: dark) {
-  .fin-slider::-webkit-slider-runnable-track {
-    background: linear-gradient(
-      to right,
-      #10b981 var(--fill, 0%),
-      rgb(63 63 70) var(--fill, 0%)
-    );
-  }
-  .fin-slider::-moz-range-track {
-    background: rgb(63 63 70);
-  }
-  .fin-slider::-webkit-slider-thumb {
-    background: #fafafa;
-    border-color: rgb(82 82 91);
-  }
-  .fin-slider::-moz-range-thumb {
-    background: #fafafa;
-    border-color: rgb(82 82 91);
-  }
+.dark .fin-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    #10b981 var(--fill, 0%),
+    rgb(63 63 70) var(--fill, 0%)
+  );
+}
+.dark .fin-slider::-moz-range-track {
+  background: rgb(63 63 70);
+}
+.dark .fin-slider::-webkit-slider-thumb {
+  background: #fafafa;
+  border-color: rgb(82 82 91);
+}
+.dark .fin-slider::-moz-range-thumb {
+  background: #fafafa;
+  border-color: rgb(82 82 91);
 }

@@ -29,7 +29,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
 
   // Hydrate the saved preference (deferred so it's not a sync setState in an
-  // effect, and so SSR/first paint always render the default).
+  // effect, and so SSR/first paint always render the default). With no saved
+  // preference, fall back to the browser's language — but don't persist that
+  // guess to localStorage: only an explicit user choice (setLocale) should
+  // stick, so a later browser-language change or a different device can still
+  // take effect.
   useEffect(() => {
     void Promise.resolve().then(() => {
       try {
@@ -37,7 +41,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         if (saved === "en" || saved === "de") {
           setLocaleState(saved);
           setActiveLocale(saved);
+          return;
         }
+        const browserLang =
+          typeof navigator !== "undefined" ? navigator.language : undefined;
+        const guessed: Locale = browserLang?.toLowerCase().startsWith("de") ? "de" : "en";
+        setLocaleState(guessed);
+        setActiveLocale(guessed);
       } catch {
         /* ignore */
       }

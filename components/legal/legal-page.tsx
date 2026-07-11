@@ -6,6 +6,7 @@
 // sentence into the dictionary (see lib/i18n/dictionaries.ts header comment).
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { useTheme } from "@/lib/theme/theme-context";
 
 export function LegalPage({
   title,
@@ -84,9 +85,10 @@ export function LegalValue({
  *
  * The font and color are read from the canvas element's computed style so
  * the drawn text matches the surrounding legal copy in both light and dark
- * theme; this app has no `.dark` class toggle (see globals.css), theming is
- * purely `prefers-color-scheme`, so a `matchMedia` listener alone covers
- * theme switches.
+ * theme; theming is class-based (`.dark` on <html>, lib/theme/theme-context)
+ * so the effective theme is also a redraw dependency, on top of the
+ * `matchMedia` listener that still covers a live OS-preference change while
+ * following the system.
  *
  * Like `LegalValue`, renders nothing while `loaded` is false and the value is
  * still missing (no placeholder flash); falls back to the `Placeholder` chip
@@ -105,6 +107,7 @@ export function EmailImage({
   label?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!value) return;
@@ -147,11 +150,13 @@ export function EmailImage({
 
     draw();
 
+    // Redraws on an explicit toggle (theme dependency) and on a live OS
+    // preference change while following the system (matchMedia listener).
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => draw();
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
-  }, [value]);
+  }, [value, theme]);
 
   if (!value) {
     if (!loaded) return null;

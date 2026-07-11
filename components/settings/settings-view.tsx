@@ -1,8 +1,8 @@
 "use client";
 
-// Account settings: display name, base currency, and password change
-// (registered users). Language lives in the header switcher, not here. Guests
-// can still set name/currency — they persist to local storage via the store.
+// Account settings: display name, base currency, language, and password
+// change (registered users). Guests can still set name/currency/language —
+// they persist to local storage via the store.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 const CHURCH_TAX_RATES = [0, 0.08, 0.09];
@@ -161,6 +162,13 @@ export function SettingsView() {
               </span>
             )}
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">{t("settings.language")}</h2>
+        <div className="mt-4">
+          <LocaleSwitcher />
         </div>
       </Card>
 

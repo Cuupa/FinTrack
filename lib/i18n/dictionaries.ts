@@ -24,6 +24,9 @@ export const en = {
   "nav.deletePortfolioMsg":
     "Its transactions and any assets held only in this portfolio are deleted permanently.",
 
+  "theme.toggleToDark": "Switch to dark mode",
+  "theme.toggleToLight": "Switch to light mode",
+
   "export.menu": "Export",
   "export.csv": "Download CSV",
   "export.json": "Download JSON",
@@ -1008,6 +1011,9 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.deletePortfolioTitle": "Portfolio löschen?",
   "nav.deletePortfolioMsg":
     "Seine Transaktionen und alle nur in diesem Portfolio gehaltenen Assets werden endgültig gelöscht.",
+
+  "theme.toggleToDark": "Zum dunklen Modus wechseln",
+  "theme.toggleToLight": "Zum hellen Modus wechseln",
 
   "export.menu": "Export",
   "export.csv": "CSV herunterladen",

@@ -52,7 +52,20 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* No-flash theme bootstrap: applies the "dark" class before first
+            paint, from the explicit choice (localStorage) or else the OS
+            preference. Kept inline (CSP allows script-src 'unsafe-inline')
+            because it must run before any CSS/React paints. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('fintrack-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}",
+          }}
+        />
+      </head>
       {/* No overflow clipping on <body>: on iOS Safari that breaks the fixed
           bottom nav's stickiness. Horizontal overflow is contained on <main>
           instead, leaving the fixed MobileNav anchored to the viewport. */}

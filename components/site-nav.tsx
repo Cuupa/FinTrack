@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button } from "./ui/primitives";
 import { PrivacyToggle } from "./privacy-toggle";
-import { LocaleSwitcher } from "./locale-switcher";
+import { ThemeToggle } from "./theme-toggle";
 import { ProfileMenu } from "./profile-menu";
 import { PortfolioPicker } from "./portfolio-picker";
 
@@ -32,7 +32,7 @@ export function SiteNav() {
             {t("shared.viewing")}
           </span>
           <div className="ml-auto flex items-center gap-3">
-            <LocaleSwitcher />
+            <ThemeToggle />
             <Link href="/">
               <Button variant="primary">{t("shared.open")}</Button>
             </Link>
@@ -51,7 +51,7 @@ export function SiteNav() {
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
           <PortfolioPicker />
-          <LocaleSwitcher />
+          <ThemeToggle />
           <PrivacyToggle />
           {mode === "registered" ? (
             <ProfileMenu />
