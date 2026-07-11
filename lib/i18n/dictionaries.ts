@@ -523,6 +523,56 @@ export const en = {
     "No geographic data yet. Run the ETF-breakdowns sync to fetch each fund's country weightings.",
   "alloc.noData": "No data for this breakdown yet.",
 
+  // Allocation slice labels (fixed sentinel buckets; asset classes reuse
+  // assetType.*, "Other" reuses common.other)
+  "alloc.untagged": "Untagged",
+  "alloc.unknown": "Unknown",
+  "alloc.commodities": "Commodities",
+  "alloc.digitalAssets": "Digital Assets",
+  "alloc.crypto": "Crypto",
+
+  // Volatility bands (allocation breakdown)
+  "vol.low": "Low (<15%)",
+  "vol.medium": "Medium (15-30%)",
+  "vol.high": "High (30-60%)",
+  "vol.veryHigh": "Very high (>60%)",
+
+  // Sector labels (allocation/x-ray breakdowns). Two source vocabularies feed
+  // the same breakdown (Yahoo's raw sector names and the GICS-style names our
+  // own classifier maps them to) — both are covered, kept as distinct labels.
+  "sector.informationTechnology": "Information Technology",
+  "sector.technology": "Technology",
+  "sector.consumerDiscretionary": "Consumer Discretionary",
+  "sector.consumerCyclical": "Consumer Cyclical",
+  "sector.consumerDefensive": "Consumer Defensive",
+  "sector.consumerStaples": "Consumer Staples",
+  "sector.financials": "Financials",
+  "sector.financialServices": "Financial Services",
+  "sector.healthCare": "Health Care",
+  "sector.healthcare": "Healthcare",
+  "sector.materials": "Materials",
+  "sector.basicMaterials": "Basic Materials",
+  "sector.communicationServices": "Communication Services",
+  "sector.industrials": "Industrials",
+  "sector.energy": "Energy",
+  "sector.utilities": "Utilities",
+  "sector.realEstate": "Real Estate",
+
+  // Region labels (allocation breakdown)
+  "region.northAmerica": "North America",
+  "region.europe": "Europe",
+  "region.asiaPacific": "Asia-Pacific",
+  "region.asia": "Asia",
+  "region.japan": "Japan",
+  "region.emergingMarkets": "Emerging Markets",
+  "region.latinAmerica": "Latin America",
+  "region.africa": "Africa",
+  "region.oceania": "Oceania",
+  "region.middleEast": "Middle East",
+  "region.middleEastAfrica": "Middle East & Africa",
+  "region.global": "Global",
+  "region.cashOther": "Cash & other",
+
   // Returns
   "returns.title": "Returns",
   "returns.tip":
@@ -1231,6 +1281,56 @@ const de: Partial<Record<MessageKey, string>> = {
   "alloc.noGeo":
     "Noch keine Geodaten. Führe die ETF-Breakdowns-Synchronisierung aus, um die Ländergewichtungen je Fonds zu laden.",
   "alloc.noData": "Noch keine Daten für diese Aufteilung.",
+
+  // Allocation slice labels (fixed sentinel buckets; asset classes reuse
+  // assetType.*, "Other" reuses common.other)
+  "alloc.untagged": "Ohne Tag",
+  "alloc.unknown": "Unbekannt",
+  "alloc.commodities": "Rohstoffe",
+  "alloc.digitalAssets": "Digitale Assets",
+  "alloc.crypto": "Krypto",
+
+  // Volatility bands (allocation breakdown)
+  "vol.low": "Niedrig (<15%)",
+  "vol.medium": "Mittel (15-30%)",
+  "vol.high": "Hoch (30-60%)",
+  "vol.veryHigh": "Sehr hoch (>60%)",
+
+  // Sector labels (allocation/x-ray breakdowns). Two source vocabularies feed
+  // the same breakdown (Yahoo's raw sector names and the GICS-style names our
+  // own classifier maps them to) — both are covered, kept as distinct labels.
+  "sector.informationTechnology": "Informationstechnologie",
+  "sector.technology": "Technologie",
+  "sector.consumerDiscretionary": "Zyklische Konsumgüter",
+  "sector.consumerCyclical": "Zyklischer Konsum",
+  "sector.consumerDefensive": "Basiskonsum",
+  "sector.consumerStaples": "Basiskonsumgüter",
+  "sector.financials": "Finanzwesen",
+  "sector.financialServices": "Finanzdienstleistungen",
+  "sector.healthCare": "Gesundheitswesen",
+  "sector.healthcare": "Gesundheit",
+  "sector.materials": "Materialien",
+  "sector.basicMaterials": "Grundstoffe",
+  "sector.communicationServices": "Kommunikationsdienste",
+  "sector.industrials": "Industrie",
+  "sector.energy": "Energie",
+  "sector.utilities": "Versorger",
+  "sector.realEstate": "Immobilien",
+
+  // Region labels (allocation breakdown)
+  "region.northAmerica": "Nordamerika",
+  "region.europe": "Europa",
+  "region.asiaPacific": "Asien-Pazifik",
+  "region.asia": "Asien",
+  "region.japan": "Japan",
+  "region.emergingMarkets": "Schwellenländer",
+  "region.latinAmerica": "Lateinamerika",
+  "region.africa": "Afrika",
+  "region.oceania": "Ozeanien",
+  "region.middleEast": "Naher Osten",
+  "region.middleEastAfrica": "Naher Osten & Afrika",
+  "region.global": "Global",
+  "region.cashOther": "Bargeld & Sonstiges",
 
   // Returns
   "returns.title": "Renditen",

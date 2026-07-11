@@ -21,6 +21,7 @@ import {
 } from "@/lib/finance/allocation";
 import { useTags } from "@/lib/tags/tags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { translateSliceLabel } from "@/lib/i18n/slice-label";
 import { colorForLabel } from "@/lib/colors";
 import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
@@ -77,19 +78,24 @@ export function AllocationView() {
     ? selectedGroupId
     : (groups[0]?.id ?? "");
 
-  const charts = useMemo<Record<OtherTabKey, Slice[]>>(
-    () => ({
+  const charts = useMemo<Record<OtherTabKey, Slice[]>>(() => {
+    // The finance layer is pure and locale-agnostic (English canonical
+    // labels only); translate the breakdowns whose labels come from a fixed
+    // vocabulary (asset class, sector, region, volatility). Investment and
+    // currency labels are real data (names/codes), left untranslated.
+    const translate = (slices: Slice[]): Slice[] =>
+      slices.map((s) => ({ ...s, label: translateSliceLabel(s.label, t) }));
+    return {
       investment: byInvestment(holdings),
-      assetClass: byAssetClass(holdings),
-      sector: bySector(holdings, classMap, etfSectors),
-      region: byRegion(holdings, classMap, etfRegions),
-      country: byCountryLookThrough(holdings, classMap, etfCountries),
+      assetClass: translate(byAssetClass(holdings)),
+      sector: translate(bySector(holdings, classMap, etfSectors)),
+      region: translate(byRegion(holdings, classMap, etfRegions)),
+      country: translate(byCountryLookThrough(holdings, classMap, etfCountries)),
       currency: byCurrency(holdings, base),
-      volatility: byVolatility(holdings),
-    }),
+      volatility: translate(byVolatility(holdings)),
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries],
-  );
+  }, [holdings, base, version, classMap, etfSectors, etfRegions, etfCountries, t]);
 
   // Kept separate from `charts`: it depends on the selected tag group instead
   // of the catalog/classification data the other breakdowns depend on.
@@ -98,7 +104,17 @@ export function AllocationView() {
     [holdings, assignments, activeGroupId],
   );
 
-  const activeSlices = tab === "custom" ? customSlices : charts[tab];
+  // Only the "Untagged" sentinel is translated; user tag values are real data
+  // and must never be run through the label vocabulary. The empty-state and
+  // gray-color checks below stay against `customSlices` (canonical, untranslated)
+  // on purpose, so they keep matching regardless of locale.
+  const translatedCustomSlices = useMemo(
+    () =>
+      customSlices.map((s) => (s.label === "Untagged" ? { ...s, label: t("alloc.untagged") } : s)),
+    [customSlices, t],
+  );
+
+  const activeSlices = tab === "custom" ? translatedCustomSlices : charts[tab];
 
   if (holdings.length === 0) {
     return (
