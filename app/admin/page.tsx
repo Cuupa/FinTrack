@@ -20,6 +20,7 @@ import { useSiteConfig } from "@/lib/site-config";
 import { SITE_CONFIG_KEYS } from "@/lib/site-config-cache";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { summarizeInstrumentHealth, type InstrumentHealthRow } from "@/lib/admin/overview-stats";
+import { adminAuthToken, adminGet } from "@/lib/admin/client";
 import { Card, Stat } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -31,6 +32,11 @@ interface FlagRow {
 interface ErrorCounts {
   last24h: number;
   last7d: number;
+}
+
+interface SiteSettings {
+  maxUsers: number | null;
+  userCount: number | null;
 }
 
 function TileHeader({ title, href, linkLabel }: { title: string; href: string; linkLabel: string }) {
@@ -51,6 +57,7 @@ export default function AdminOverviewPage() {
   const [instruments, setInstruments] = useState<InstrumentHealthRow[] | null>(null);
   const [flags, setFlags] = useState<FlagRow[] | null>(null);
   const [errorCounts, setErrorCounts] = useState<ErrorCounts | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -99,6 +106,28 @@ export default function AdminOverviewPage() {
       // A denied/errored read (not readable, or Supabase misconfigured)
       // degrades to the 0 state rather than an indefinite skeleton.
       setErrorCounts({ last24h: r24.count ?? 0, last7d: r7.count ?? 0 });
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // userCount/maxUsers aren't client-readable (app_settings has RLS enabled
+  // with no select policy, and auth.admin.listUsers needs the secret key),
+  // so this goes through GET /api/admin/site with a bearer token — same
+  // fetch idiom as app/admin/site/page.tsx's own `settings` load.
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      const token = await adminAuthToken();
+      if (!token || !active) return;
+      try {
+        const body = await adminGet<SiteSettings>("/api/admin/site", token);
+        if (active) setSiteSettings(body);
+      } catch {
+        // Leave siteSettings null — the tile keeps showing its skeleton.
+      }
     };
     void run();
     return () => {
@@ -207,6 +236,31 @@ export default function AdminOverviewPage() {
                   missingSiteKeys === 0
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-amber-600 dark:text-amber-400"
+                }
+              />
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <TileHeader
+            title={t("admin.overview.usersTitle")}
+            href="/admin/site"
+            linkLabel={t("admin.nav.site")}
+          />
+          {siteSettings?.userCount == null ? (
+            <div className="mt-3">
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <div className="mt-3">
+              <Stat
+                label={t("admin.overview.usersRegistered")}
+                value={String(siteSettings.userCount)}
+                sub={
+                  siteSettings.maxUsers != null
+                    ? t("admin.overview.usersOfMax", { max: String(siteSettings.maxUsers) })
+                    : undefined
                 }
               />
             </div>

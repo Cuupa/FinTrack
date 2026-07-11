@@ -24,6 +24,7 @@ import { adminAuthToken, adminGet, adminPost } from "@/lib/admin/client";
 interface AppSettings {
   maxUsers: number | null;
   updatedAt: string | null;
+  userCount: number | null;
 }
 
 export default function AdminSitePage() {
@@ -157,6 +158,16 @@ export default function AdminSitePage() {
       <Card>
         <h2 className="text-lg font-semibold">{t("admin.site.settingsTitle")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("admin.site.maxUsersHint")}</p>
+        {settings?.userCount != null && (
+          <p className="mt-1 text-sm text-zinc-500">
+            {settings.maxUsers != null
+              ? t("admin.site.userCountOfMax", {
+                  n: String(settings.userCount),
+                  max: String(settings.maxUsers),
+                })
+              : t("admin.site.userCount", { n: String(settings.userCount) })}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-end gap-2">
           <div className="min-w-[160px]">
             <label className="block text-xs text-zinc-500">{t("admin.site.maxUsersLabel")}</label>

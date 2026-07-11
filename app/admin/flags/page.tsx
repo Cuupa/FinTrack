@@ -27,6 +27,11 @@ interface OverrideRow {
   enabled: boolean;
 }
 
+interface UserResult {
+  id: string;
+  email: string | null;
+}
+
 async function authToken(): Promise<string | null> {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
@@ -41,6 +46,15 @@ async function postFlags(body: unknown, token: string): Promise<void> {
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("request failed");
+}
+
+async function searchUsers(q: string, token: string): Promise<UserResult[]> {
+  const res = await fetch(`/api/admin/users?q=${encodeURIComponent(q)}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("request failed");
+  const body = (await res.json()) as { users: UserResult[] };
+  return body.users;
 }
 
 export default function AdminFlagsPage() {
@@ -62,6 +76,50 @@ export default function AdminFlagsPage() {
   const [newEnabled, setNewEnabled] = useState(true);
   const [addingOverride, setAddingOverride] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<OverrideRow | null>(null);
+
+  // Email search for the "add override" form: fills newUserId on pick, but
+  // the raw user-id input above keeps working unchanged. chosenEmail is
+  // reset whenever the id is edited by hand, so the confirmation label never
+  // shows a stale email next to a manually-typed id.
+  //
+  // `searchingEmail` is derived (not synced via a `setState` at the top of
+  // the effect body, which Next 16's react-hooks/set-state-in-effect rule
+  // rejects): it's true whenever the trimmed query is searchable but the
+  // last completed search (`emailResultsQuery`) doesn't match it yet.
+  const [emailQuery, setEmailQuery] = useState("");
+  const [emailResults, setEmailResults] = useState<UserResult[] | null>(null);
+  const [emailResultsQuery, setEmailResultsQuery] = useState<string | null>(null);
+  const [chosenEmail, setChosenEmail] = useState<string | null>(null);
+
+  const trimmedEmailQuery = emailQuery.trim();
+  const searchingEmail = trimmedEmailQuery.length >= 2 && emailResultsQuery !== trimmedEmailQuery;
+
+  useEffect(() => {
+    const q = emailQuery.trim();
+    if (q.length < 2) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        const token = await authToken();
+        if (!token || !active) return;
+        const users = await searchUsers(q, token);
+        if (active) {
+          setEmailResults(users);
+          setEmailResultsQuery(q);
+        }
+      } catch {
+        if (active) {
+          setEmailResults([]);
+          setEmailResultsQuery(q);
+          setError(t("admin.flags.error"));
+        }
+      }
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [emailQuery, t]);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -218,15 +276,59 @@ export default function AdminFlagsPage() {
         <h2 className="text-lg font-semibold">{t("admin.flags.overridesTitle")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("admin.flags.overridesSubtitle")}</p>
 
-        <div className="mt-4 flex flex-wrap items-end gap-2">
+        <div className="mt-4 min-w-[220px] max-w-sm">
+          <label className="block text-xs text-zinc-500">{t("admin.flags.searchEmail")}</label>
+          <input
+            value={emailQuery}
+            onChange={(e) => setEmailQuery(e.target.value)}
+            placeholder={t("admin.flags.searchEmailPlaceholder")}
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+          />
+          {searchingEmail && <p className="mt-1 text-xs text-zinc-500">{t("admin.flags.searching")}</p>}
+          {!searchingEmail && trimmedEmailQuery.length >= 2 && emailResults !== null && (
+            <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+              {emailResults.length === 0 ? (
+                <li className="px-3 py-2 text-xs text-zinc-500">{t("admin.flags.searchNoResults")}</li>
+              ) : (
+                emailResults.map((u) => (
+                  <li key={u.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewUserId(u.id);
+                        setChosenEmail(u.email);
+                        setEmailQuery("");
+                        setEmailResults(null);
+                        setEmailResultsQuery(null);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      {u.email ?? u.id}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end gap-2">
           <div className="min-w-[220px] flex-1">
             <label className="block text-xs text-zinc-500">{t("admin.flags.userId")}</label>
             <input
               value={newUserId}
-              onChange={(e) => setNewUserId(e.target.value)}
+              onChange={(e) => {
+                setNewUserId(e.target.value);
+                setChosenEmail(null);
+              }}
               placeholder={t("admin.flags.userIdPlaceholder")}
               className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
+            {chosenEmail && (
+              <p className="mt-1 text-xs text-zinc-500">
+                {t("admin.flags.searchChosen", { email: chosenEmail })}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-xs text-zinc-500">{t("admin.flags.colName")}</label>

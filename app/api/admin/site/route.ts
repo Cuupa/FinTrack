@@ -7,7 +7,9 @@
 //
 // GET returns the current `app_settings` row (the client can't read it
 // directly, unlike `site_config`, which is world-readable and read straight
-// from the browser client by app/admin/site/page.tsx via useSiteConfig()).
+// from the browser client by app/admin/site/page.tsx via useSiteConfig())
+// plus the current registered-user count, via the secret client's
+// `auth.admin.listUsers` (no client-readable table exposes `auth.users`).
 //
 // POST body is one of:
 //   { kind: "config", key, value }   upsert a site_config row (key must be
@@ -41,9 +43,25 @@ export async function GET(req: Request): Promise<Response> {
     .maybeSingle();
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
+  // Self-hosted instances are expected to stay well under 1000 registered
+  // users; a single page is enough to get an exact count without paginating.
+  // A listUsers failure degrades to userCount: null rather than failing the
+  // whole GET, since the max-users editor above is the more important half.
+  let userCount: number | null = null;
+  try {
+    const { data: usersPage, error: usersError } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (!usersError) userCount = usersPage.users.length;
+  } catch {
+    userCount = null;
+  }
+
   return Response.json({
     maxUsers: data?.max_users ?? null,
     updatedAt: data?.updated_at ?? null,
+    userCount,
   });
 }
 

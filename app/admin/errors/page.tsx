@@ -169,6 +169,27 @@ export default function AdminErrorsPage() {
           </div>
         </div>
 
+        <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-500">
+          <div>
+            <dt className="inline font-medium text-zinc-600 dark:text-zinc-400">
+              {t("admin.errors.kindBoundary")}:
+            </dt>{" "}
+            <dd className="inline">{t("admin.errors.kindBoundaryHelp")}</dd>
+          </div>
+          <div>
+            <dt className="inline font-medium text-zinc-600 dark:text-zinc-400">
+              {t("admin.errors.kindWindow")}:
+            </dt>{" "}
+            <dd className="inline">{t("admin.errors.kindWindowHelp")}</dd>
+          </div>
+          <div>
+            <dt className="inline font-medium text-zinc-600 dark:text-zinc-400">
+              {t("admin.errors.kindUnhandledrejection")}:
+            </dt>{" "}
+            <dd className="inline">{t("admin.errors.kindUnhandledrejectionHelp")}</dd>
+          </div>
+        </dl>
+
         <p className="mt-3 text-xs text-zinc-500">
           {t("admin.errors.count", { count: String(filtered.length), total: String(rows?.length ?? 0) })}
         </p>

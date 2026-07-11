@@ -15,16 +15,28 @@
 // see that route for the self-heal semantics (null + re-resolve for STOCK/
 // ETF, leave COMMODITY's authoritative hint alone, ?revalidate=1 for the
 // bulk sweep).
+//
+// The base-currency and FX-rate columns mirror the finance core's own
+// native->base conversion: `rateFor` in lib/finance/portfolio.ts multiplies
+// a native price by `ValuationContext.fx[nativeCurrency]` (1 unit of that
+// currency expressed in the base currency), falling back to 1 for the base
+// currency itself or a currency with no rate loaded. `useLivePrices()`'s
+// `valuation.fx` is exactly that map (built by `fxToBase` in
+// lib/catalog/catalog.ts), so the same `fx[currency] ?? 1` multiplier is
+// used here rather than re-deriving a rate.
 
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatCurrency, formatInstant } from "@/lib/format";
+import { intlLocale } from "@/lib/i18n/locale";
 import { priceStaleness, needsAttention, type PriceStaleness } from "@/lib/admin/price-health";
 import { Button, Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { adminAuthToken, adminPost } from "@/lib/admin/client";
+import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { useLivePrices } from "@/lib/live/live-prices-context";
 import type { AssetType } from "@/lib/types";
 
 interface InstrumentRow {
@@ -41,7 +53,7 @@ interface InstrumentRow {
   price_synced_at: string | null;
 }
 
-type SortKey = "name" | "type" | "price" | "synced";
+type SortKey = "name" | "type" | "price" | "priceBase" | "fxRate" | "synced";
 
 const STALENESS_CLASS: Record<PriceStaleness, string> = {
   fresh:
@@ -69,6 +81,12 @@ function identifier(r: InstrumentRow): string {
 
 export default function AdminPricesPage() {
   const { t } = useI18n();
+  const { data } = usePortfolio();
+  const { valuation } = useLivePrices();
+  const base = data.profile.currency;
+  // valuation.fx is a fresh object every render when absent; stabilize the
+  // fallback so it doesn't retrigger the `filtered` useMemo below every time.
+  const fx = useMemo(() => valuation.fx ?? {}, [valuation.fx]);
   const [rows, setRows] = useState<InstrumentRow[] | null>(null);
   const [rowsVersion, setRowsVersion] = useState(0);
   const [query, setQuery] = useState("");
@@ -111,8 +129,8 @@ export default function AdminPricesPage() {
       );
     });
     const dir = sort.dir;
-    return [...list].sort((a, b) => compare(a, b, sort.key) * dir);
-  }, [rows, query, staleOnly, sort]);
+    return [...list].sort((a, b) => compare(a, b, sort.key, base, fx) * dir);
+  }, [rows, query, staleOnly, sort, base, fx]);
 
   function toggleSort(key: SortKey) {
     setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
@@ -218,6 +236,20 @@ export default function AdminPricesPage() {
                     align="right"
                   />
                   <Th
+                    label={t("admin.prices.colPriceBase")}
+                    k="priceBase"
+                    sort={sort}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <Th
+                    label={t("admin.prices.colFxRate")}
+                    k="fxRate"
+                    sort={sort}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <Th
                     label={t("admin.prices.colSynced")}
                     k="synced"
                     sort={sort}
@@ -231,10 +263,13 @@ export default function AdminPricesPage() {
                   const lastPrice = numOrNull(r.last_price);
                   const status = priceStaleness(r.price_synced_at);
                   const isRevalidating = revalidating.has(r.id);
+                  const nativeCur = r.currency ?? "EUR";
+                  const rate = rateForRow(r, base, fx);
+                  const basePrice = lastPrice != null ? lastPrice * rate : null;
                   return (
                     <tr
                       key={r.id}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+                      className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                     >
                       <td className="px-3 py-2">
                         <div className="font-medium">{r.name}</div>
@@ -247,10 +282,16 @@ export default function AdminPricesPage() {
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {lastPrice != null ? (
-                          formatCurrency(lastPrice, r.currency ?? "EUR")
+                          formatCurrency(lastPrice, nativeCur)
                         ) : (
                           <EstimatedBadge compact tip={t("admin.prices.syntheticTip")} />
                         )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {basePrice != null ? formatCurrency(basePrice, base) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-zinc-500">
+                        {lastPrice != null ? formatRate(rate) : "—"}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -286,13 +327,36 @@ export default function AdminPricesPage() {
   );
 }
 
+/** FX rate at a fixed 4 decimals (e.g. "1.0000" for the same currency),
+ *  locale-formatted like every other number in the app rather than a raw
+ *  `toFixed`. */
+function formatRate(rate: number): string {
+  return new Intl.NumberFormat(intlLocale(), {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  }).format(rate);
+}
+
 function numOrNull(v: number | string | null): number | null {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function compare(a: InstrumentRow, b: InstrumentRow, key: SortKey): number {
+/** Native-currency -> base-currency rate for a row, same `fx[cur] ?? 1`
+ *  fallback as `rateFor` in lib/finance/portfolio.ts. */
+function rateForRow(r: InstrumentRow, base: string, fx: Record<string, number>): number {
+  const nativeCur = r.currency ?? "EUR";
+  return nativeCur === base ? 1 : (fx[nativeCur] ?? 1);
+}
+
+function compare(
+  a: InstrumentRow,
+  b: InstrumentRow,
+  key: SortKey,
+  base: string,
+  fx: Record<string, number>,
+): number {
   switch (key) {
     case "name":
       return a.name.localeCompare(b.name);
@@ -300,6 +364,15 @@ function compare(a: InstrumentRow, b: InstrumentRow, key: SortKey): number {
       return a.type.localeCompare(b.type);
     case "price":
       return (numOrNull(a.last_price) ?? -1) - (numOrNull(b.last_price) ?? -1);
+    case "priceBase": {
+      const av = numOrNull(a.last_price);
+      const bv = numOrNull(b.last_price);
+      const abase = av != null ? av * rateForRow(a, base, fx) : -1;
+      const bbase = bv != null ? bv * rateForRow(b, base, fx) : -1;
+      return abase - bbase;
+    }
+    case "fxRate":
+      return rateForRow(a, base, fx) - rateForRow(b, base, fx);
     case "synced": {
       const at = a.price_synced_at ? Date.parse(a.price_synced_at) : 0;
       const bt = b.price_synced_at ? Date.parse(b.price_synced_at) : 0;

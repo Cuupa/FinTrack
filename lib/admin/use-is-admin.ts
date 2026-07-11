@@ -6,6 +6,12 @@
 // row: the client can never enumerate the admin list. Settles immediately
 // to { isAdmin: false, loading: false } when Supabase isn't configured
 // (Guest Mode has no admin concept) or the user is signed out.
+//
+// While AuthProvider is still restoring the Supabase session (a hard
+// navigation straight to /admin: `useAuth().user` is transiently null with
+// `loading: true`), this must report `loading: true` too rather than
+// settling on `isAdmin: false` — otherwise app/admin/layout.tsx's redirect
+// effect fires and bounces a real admin to "/" before auth even resolves.
 
 import { useEffect, useState } from "react";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
@@ -17,7 +23,7 @@ interface UseIsAdminResult {
 }
 
 export function useIsAdmin(): UseIsAdminResult {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
   // Tagged with the user id it was resolved for, same pattern as
   // FeatureFlagsProvider's `overrides` state: a sign-out/switch needs no
@@ -42,7 +48,9 @@ export function useIsAdmin(): UseIsAdminResult {
     };
   }, [userId]);
 
-  if (!isSupabaseConfigured || !userId) return { isAdmin: false, loading: false };
+  if (!isSupabaseConfigured) return { isAdmin: false, loading: false };
+  if (authLoading) return { isAdmin: false, loading: true };
+  if (!userId) return { isAdmin: false, loading: false };
   if (resolved?.userId !== userId) return { isAdmin: false, loading: true };
   return { isAdmin: resolved.isAdmin, loading: false };
 }

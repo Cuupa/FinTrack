@@ -38,7 +38,7 @@ function fakeClient(row: { user_id: string } | null) {
 describe("useIsAdmin", () => {
   it("settles false immediately when Supabase is not configured", () => {
     isSupabaseConfiguredMock.value = false;
-    authMock.mockReturnValue({ user: { id: "u1" } });
+    authMock.mockReturnValue({ user: { id: "u1" }, loading: false });
     getSupabaseClientMock.mockReturnValue(null);
 
     const { result } = renderHook(() => useIsAdmin());
@@ -47,15 +47,27 @@ describe("useIsAdmin", () => {
   });
 
   it("settles false immediately when signed out", () => {
-    authMock.mockReturnValue({ user: null });
+    authMock.mockReturnValue({ user: null, loading: false });
     getSupabaseClientMock.mockReturnValue(fakeClient(null));
 
     const { result } = renderHook(() => useIsAdmin());
     expect(result.current).toEqual({ isAdmin: false, loading: false });
   });
 
+  it("reports loading:true while auth is still restoring the session, even with no user yet", () => {
+    // The hard-navigation-to-/admin case: AuthProvider hasn't resolved the
+    // session yet, so `user` is transiently null but `loading` is true. This
+    // must not settle isAdmin:false, or app/admin/layout.tsx bounces a real
+    // admin to "/" before auth even finishes restoring.
+    authMock.mockReturnValue({ user: null, loading: true });
+    getSupabaseClientMock.mockReturnValue(fakeClient(null));
+
+    const { result } = renderHook(() => useIsAdmin());
+    expect(result.current).toEqual({ isAdmin: false, loading: true });
+  });
+
   it("reports loading then isAdmin:true when the admins row exists", async () => {
-    authMock.mockReturnValue({ user: { id: "admin-1" } });
+    authMock.mockReturnValue({ user: { id: "admin-1" }, loading: false });
     getSupabaseClientMock.mockReturnValue(fakeClient({ user_id: "admin-1" }));
 
     const { result } = renderHook(() => useIsAdmin());
@@ -66,7 +78,7 @@ describe("useIsAdmin", () => {
   });
 
   it("reports isAdmin:false once settled when no admins row exists", async () => {
-    authMock.mockReturnValue({ user: { id: "regular-1" } });
+    authMock.mockReturnValue({ user: { id: "regular-1" }, loading: false });
     getSupabaseClientMock.mockReturnValue(fakeClient(null));
 
     const { result } = renderHook(() => useIsAdmin());
