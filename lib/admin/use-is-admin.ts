@@ -10,7 +10,7 @@
 // While AuthProvider is still restoring the Supabase session (a hard
 // navigation straight to /admin: `useAuth().user` is transiently null with
 // `loading: true`), this must report `loading: true` too rather than
-// settling on `isAdmin: false` — otherwise app/admin/layout.tsx's redirect
+// settling on `isAdmin: false`, otherwise app/admin/layout.tsx's redirect
 // effect fires and bounces a real admin to "/" before auth even resolves.
 
 import { useEffect, useState } from "react";

@@ -115,7 +115,7 @@ export default function AdminOverviewPage() {
 
   // userCount/maxUsers aren't client-readable (app_settings has RLS enabled
   // with no select policy, and auth.admin.listUsers needs the secret key),
-  // so this goes through GET /api/admin/site with a bearer token — same
+  // so this goes through GET /api/admin/site with a bearer token, same
   // fetch idiom as app/admin/site/page.tsx's own `settings` load.
   useEffect(() => {
     let active = true;
@@ -126,7 +126,7 @@ export default function AdminOverviewPage() {
         const body = await adminGet<SiteSettings>("/api/admin/site", token);
         if (active) setSiteSettings(body);
       } catch {
-        // Leave siteSettings null — the tile keeps showing its skeleton.
+        // Leave siteSettings null, the tile keeps showing its skeleton.
       }
     };
     void run();
