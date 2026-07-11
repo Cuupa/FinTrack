@@ -50,8 +50,8 @@ is the most important invariant: keep mode-switching inside `lib/store`.
 
 ### State flow
 
-Provider chain (`components/providers.tsx`): `AuthProvider` → `CatalogProvider`
-→ `PortfolioProvider` → `LivePricesProvider`.
+Provider chain (`components/providers.tsx`): `ThemeProvider` → `AuthProvider` →
+`CatalogProvider` → `PortfolioProvider` → `LivePricesProvider`.
 - `AuthProvider` (`lib/auth/`) tracks the Supabase session.
 - `CatalogProvider` (`lib/catalog/`) loads the instruments catalog from the DB.
 - `PortfolioProvider` (`lib/portfolio/`) recreates the store when `user.id`
@@ -152,7 +152,17 @@ duplicated, not imported).
   stocks (from `instrument_constituents`) + direct holdings → per-stock
   exposure (`/xray`).
 - `lib/finance/allocation.ts` — pie-chart breakdowns by investment / class /
-  currency / country / volatility (`/allocation`).
+  currency / country / volatility (`/allocation`). On /analysis the active tab
+  and breakdown ride the URL (`?tab=`, `?breakdown=`, invalid values fall back
+  silently); the Custom tab renders one pie PER tag group (no dropdown, groups
+  without any tagged holding are hidden).
+- `lib/finance/tax.ts` — pure per-year German tax estimate (Aktien- vs
+  Sonstige-Topf, Sparerpauschbetrag/Kirchensteuer/Teilfreistellung from three
+  `Profile` fields, Par.23 informational, Vorabpauschale honestly deferred),
+  rendered as the flag-gated "Steuern" tab on /analysis; dividends/interest
+  included, sell fees folded into the gain, estimate never presented as advice.
+- Dividend income charts live ONLY on /dividends; the returns tab's copy was
+  removed as redundant (user decision, round 18).
 - Tags are grouped key-value pairs (e.g. `Strategie=gamble`): `TagsProvider`
   (`lib/tags/tags-context.tsx`) holds `groups` (customizable names, stable ids,
   rename/delete via the manager modal) and `assignments[assetId][groupId] =
@@ -231,10 +241,18 @@ already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
 The prices cron treats a COMMODITY row's stored `quote_id` as **authoritative**
 (never re-resolved via search, row skipped if the hinted listing does not
 resolve to itself) — Yahoo search on a bare metal ticker mis-resolves and once
-put gold at 1.42 EUR. STOCK/ETF rows instead self-heal: once a day (03 UTC
-hour) or on `?revalidate=1` the cron drops the stored hint so a stuck
-mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
-`/api/cron/sync` forwards its query string to the prices sub-sync.
+put gold at 1.42 EUR. Consequence: when Yahoo **delists** the hinted symbol
+(it dropped XAUEUR=X in 2026), the row goes permanently stale by design —
+the fix is a guarded catalog migration to a live listing (0053 moved gold to
+GC=F, USD per ounce; the cron FX-converts then applies `quote_scale`), never
+a search fallback. For COMMODITY rows with a hint the cron passes an EMPTY
+want-currency to `resolveQuote` (and `yahooHistory` does the same for any
+hinted lookup) so an authoritative cross-currency listing is accepted; the
+per-point FX conversion + scale-after-FX reconcile it. STOCK/ETF rows instead
+self-heal: once a day (03 UTC hour) or on `?revalidate=1` the cron drops the
+stored hint so a stuck mis-resolved `quote_id` re-resolves from scratch (the
+GME/GMEX-Robotics case); the bulk `/api/cron/sync` forwards its query string
+to the prices sub-sync. `/admin/prices` surfaces dead/stale rows.
 
 ### Finance core (`lib/finance/`) — pure, no React
 
@@ -263,11 +281,12 @@ mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
   scaled by shares held on each pay date; accumulating funds show none. The
   hinted listing (the quote symbol the app prices the asset with) is
   **authoritative in `dividendsByQuery`**: if it resolves, its event list is
-  returned even when empty — never fall back to search candidates past a
-  resolved hint, and never gate dividends by asset type or a flag (both were
-  explicitly rejected). Scanning past an empty hint once imported an unrelated
-  payer's events via the name-fallback search (the phantom gold-dividends
-  case). Client-side, `useDividends` returns `{ dividends, loading }` (loading
+  returned even when empty, and if the hint does NOT resolve (delisted, e.g.
+  Yahoo dropping XAUEUR=X) the result is EMPTY — never fall back to search
+  candidates past a provided hint, and never gate dividends by asset type or a
+  flag (both were explicitly rejected). Scanning past an empty or dead hint
+  twice imported an unrelated payer's events via the name-fallback search (the
+  phantom gold-dividends cases). Client-side, `useDividends` returns `{ dividends, loading }` (loading
   derived from the settled fetch signature, stale map kept meanwhile); the
   /dividends page shows skeletons while events are in flight.
 
@@ -381,6 +400,14 @@ client pages (see `app/assets/[id]/page.tsx`).
   sites handling it.
 - `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
   `footer` render prop (used for "+ New asset…" in the savings-plan form).
+- Dark mode is **class-based**: `ThemeProvider` (`lib/theme/theme-context.tsx`,
+  localStorage `fintrack-theme`, absent = follow system) stamps `.dark` on
+  `<html>`, a no-flash inline script in `app/layout.tsx` pre-stamps it, and
+  `@custom-variant dark` in `globals.css` rewires every `dark:` utility. Never
+  style the app with `prefers-color-scheme` media queries — use `dark:` /
+  `.dark` so the manual toggle wins. The nav hosts the theme toggle; the
+  language switcher lives in /settings (locale defaults to `navigator.language`
+  on first visit, unpersisted until an explicit choice).
 - Service-worker cache versioning: never hand-bump a version in `public/sw.js`.
   The npm `prebuild` hook (`scripts/generate-sw-version.mjs`) writes the commit
   sha into the gitignored `public/sw-version.js`, which sw.js `importScripts`s
