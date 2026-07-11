@@ -44,6 +44,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Reflect the active locale on <html lang> for a11y/BFSG compliance. This
+  // is a DOM attribute write, not state, so it can run synchronously post-
+  // hydration without tripping react-hooks/set-state-in-effect.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
     setActiveLocale(l);
