@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { isStorageFullError } from "@/lib/store/errors";
 
 export default function DashboardPage() {
   const { loading, loadError, reload } = usePortfolio();
@@ -54,7 +55,11 @@ export default function DashboardPage() {
       (e: unknown) => {
         setImportStatus({
           kind: "error",
-          message: e instanceof Error ? e.message : t("import.applyError"),
+          message: isStorageFullError(e)
+            ? t("common.storageFull")
+            : e instanceof Error
+              ? e.message
+              : t("import.applyError"),
         });
       },
     );

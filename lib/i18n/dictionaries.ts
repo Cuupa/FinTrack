@@ -42,6 +42,7 @@ export const en = {
   "watchlist.removeTitle": "Remove from watchlist?",
   "watchlist.removeMsg": "{name} will be removed from your watchlist.",
   "watchlist.removeConfirm": "Remove",
+  "watchlist.removeError": "Couldn't remove this item.",
   "watchlist.currency": "Currency",
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "View details",
@@ -84,6 +85,7 @@ export const en = {
   "sp.confirm": "Book {count} buy(s)",
   "sp.applying": "Booking…",
   "sp.applyError": "Booking failed.",
+  "sp.actionError": "Action failed.",
   "sp.loadingPrices": "Loading historical prices…",
   "sp.errAsset": "Pick an asset.",
   "sp.errAmount": "Enter a positive amount.",
@@ -795,6 +797,8 @@ export const en = {
 
   "common.loadError": "Your data could not be loaded. Check your connection and try again.",
   "common.retry": "Retry",
+  "common.storageFull":
+    "Storage is full. Your last change was not saved. Register to store your data online.",
 
   // Guest mode banner
   "guestBanner.title": "Guest Mode:",
@@ -839,6 +843,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "watchlist.removeTitle": "Von der Watchlist entfernen?",
   "watchlist.removeMsg": "{name} wird von deiner Watchlist entfernt.",
   "watchlist.removeConfirm": "Entfernen",
+  "watchlist.removeError": "Konnte nicht entfernt werden.",
   "watchlist.currency": "Währung",
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Details ansehen",
@@ -881,6 +886,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "sp.confirm": "{count} Kauf/Käufe buchen",
   "sp.applying": "Wird gebucht…",
   "sp.applyError": "Buchung fehlgeschlagen.",
+  "sp.actionError": "Aktion fehlgeschlagen.",
   "sp.loadingPrices": "Historische Kurse werden geladen…",
   "sp.errAsset": "Wähle ein Wertpapier.",
   "sp.errAmount": "Gib einen positiven Betrag ein.",
@@ -1589,6 +1595,8 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "common.loadError": "Deine Daten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
   "common.retry": "Erneut versuchen",
+  "common.storageFull":
+    "Der Speicher ist voll. Deine letzte Änderung wurde nicht gespeichert. Registriere dich, um deine Daten online zu speichern.",
 
   // Guest mode banner
   "guestBanner.title": "Gastmodus:",

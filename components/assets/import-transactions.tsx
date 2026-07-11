@@ -17,6 +17,7 @@ import { formatCurrency, formatNumber, formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { isStorageFullError } from "@/lib/store/errors";
 import type { AssetType, TransactionType } from "@/lib/types";
 
 // A conflict is resolved field by field: each mergeable field takes its value
@@ -316,7 +317,13 @@ export function ImportTransactions({
       await runImport();
       onDone?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("import.applyError"));
+      setError(
+        isStorageFullError(e)
+          ? t("common.storageFull")
+          : e instanceof Error
+            ? e.message
+            : t("import.applyError"),
+      );
     } finally {
       setBusy(false);
     }

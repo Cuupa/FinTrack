@@ -16,6 +16,7 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { lookupInstrument } from "@/lib/catalog/catalog";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { fetchLivePrice, isPriceFresh } from "@/lib/live/fetch-price";
+import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -136,7 +137,13 @@ export function TransactionForm({
       setTax("0");
       onDone?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("tx.errFail"));
+      setError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : t("tx.errFail"),
+      );
     } finally {
       setBusy(false);
     }

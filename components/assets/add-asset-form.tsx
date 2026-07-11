@@ -14,6 +14,7 @@ import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
+import { isStorageFullError } from "@/lib/store/errors";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -237,7 +238,13 @@ export function AddAssetForm({
       // (the ensure endpoint is now secret-gated), so nothing to trigger here.
       onDone?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : tr("addAsset.errFailed"));
+      setError(
+        isStorageFullError(err)
+          ? tr("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : tr("addAsset.errFailed"),
+      );
       setBusy(false);
     }
   }

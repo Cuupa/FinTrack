@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { pickWatchlistPrice } from "@/lib/live/watchlist-price";
+import { isStorageFullError } from "@/lib/store/errors";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
@@ -127,10 +128,23 @@ export function WatchlistCard() {
       setQuery("");
       setAddCurrency("auto");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("watchlist.notFound"));
+      setError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : t("watchlist.notFound"),
+      );
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleRemove(item: WatchlistItem) {
+    setError(null);
+    removeWatchlistItem(item.id).catch((err: unknown) => {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("watchlist.removeError"));
+    });
   }
 
   return (
@@ -208,7 +222,7 @@ export function WatchlistCard() {
         message={removing ? t("watchlist.removeMsg", { name: removing.name }) : undefined}
         confirmLabel={t("watchlist.removeConfirm")}
         onConfirm={() => {
-          if (removing) void removeWatchlistItem(removing.id);
+          if (removing) handleRemove(removing);
           setRemoving(null);
         }}
         onCancel={() => setRemoving(null)}

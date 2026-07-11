@@ -32,6 +32,7 @@ import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { useFormTouched, missingFieldCls, missingLabelCls } from "@/lib/forms/required";
+import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -255,10 +256,30 @@ export function SavingsPlansCard() {
       }
       closeReview();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("sp.applyError"));
+      setError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : t("sp.applyError"),
+      );
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleToggleActive(plan: SavingsPlan) {
+    setError(null);
+    updateSavingsPlan(plan.id, { active: !plan.active }).catch((err: unknown) => {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("sp.actionError"));
+    });
+  }
+
+  function handleDeletePlan(plan: SavingsPlan) {
+    setError(null);
+    deleteSavingsPlan(plan.id).catch((err: unknown) => {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("sp.actionError"));
+    });
   }
 
   return (
@@ -271,6 +292,7 @@ export function SavingsPlansCard() {
           </Button>
         )}
       </div>
+      {error && !reviewing && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {due.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
@@ -323,7 +345,7 @@ export function SavingsPlansCard() {
                 <span className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => void updateSavingsPlan(plan.id, { active: !plan.active })}
+                    onClick={() => handleToggleActive(plan)}
                     className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   >
                     {plan.active ? t("sp.pause") : t("sp.resume")}
@@ -437,7 +459,7 @@ export function SavingsPlansCard() {
         }
         confirmLabel={t("watchlist.removeConfirm")}
         onConfirm={() => {
-          if (deleting) void deleteSavingsPlan(deleting.id);
+          if (deleting) handleDeletePlan(deleting);
           setDeleting(null);
         }}
         onCancel={() => setDeleting(null)}
@@ -529,7 +551,13 @@ function NewPlanForm({
       setAssetId(created.id);
       closeAddAsset();
     } catch (err) {
-      setNewAssetError(err instanceof Error ? err.message : t("watchlist.notFound"));
+      setNewAssetError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : t("watchlist.notFound"),
+      );
     } finally {
       setNewAssetBusy(false);
     }
@@ -559,7 +587,13 @@ function NewPlanForm({
         lastRunDate: null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("sp.applyError"));
+      setError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : t("sp.applyError"),
+      );
     } finally {
       setBusy(false);
     }

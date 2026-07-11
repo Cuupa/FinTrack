@@ -4,6 +4,7 @@
 // truly ephemeral sessions.
 
 import { emptyPortfolio, MAX_PORTFOLIOS, type PortfolioData, type Profile } from "../types";
+import { isNativeQuotaError, StorageFullError } from "./errors";
 import type {
   AssetInput,
   DataStore,
@@ -92,7 +93,21 @@ export class LocalStore implements DataStore {
   }
 
   private write(data: PortfolioData): void {
-    this.storage.setItem(this.keys.portfolio, JSON.stringify(data));
+    // Unlike saveSimulation/writeImportRecord below (best-effort caches, safe
+    // to drop), a portfolio-data write failure must never be silently
+    // swallowed: silently ignoring it here would mean localStorage keeps the
+    // OLD data while the in-memory PortfolioData the caller just mutated
+    // moves on as if the write succeeded — a guest reloading the page would
+    // then lose the change with no warning. So on quota, throw a tagged
+    // `StorageFullError` that propagates through every mutation method
+    // (addAsset, addTransaction, …) to the caller; any other error rethrows
+    // untagged.
+    try {
+      this.storage.setItem(this.keys.portfolio, JSON.stringify(data));
+    } catch (err) {
+      if (isNativeQuotaError(err)) throw new StorageFullError();
+      throw err;
+    }
   }
 
   async load(): Promise<PortfolioData> {
