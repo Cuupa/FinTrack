@@ -140,9 +140,18 @@ async function yahooHistory(item: HistItem, range: string): Promise<YahooPoint[]
   const query = isISIN(item.key) ? item.key : item.id || item.key;
   const hint = item.source === "yahoo" && item.id ? item.id : undefined;
   const cfg = RANGE[range] ?? RANGE["1Y"];
+  // A resolved hint is the exact listing the app already prices this asset
+  // with (mirrors the price cron's resolveQuote call) - trust it even when
+  // its currency differs from the instrument's native one. This matters for
+  // commodities like gold: the authoritative replacement listing (GC=F) is
+  // USD while gold's native currency is EUR; the per-point FX conversion
+  // below (and the unit scale applied after it) already reconcile the
+  // difference. Requiring a currency match on historyByQuery's hint fast
+  // path only risks falling through to the unreliable search-candidate scan
+  // past a hint that is perfectly valid, just cross-currency.
   const result = await historyByQuery(
     query,
-    item.currency,
+    hint ? "" : item.currency,
     hint,
     cfg.yRange,
     cfg.yInterval,

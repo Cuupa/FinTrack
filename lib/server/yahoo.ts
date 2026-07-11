@@ -672,7 +672,12 @@ async function dividendChart(
  * funds, FX lines and spot commodities legitimately pay nothing. Scanning
  * search candidates further once surfaced an unrelated payer's events for a
  * symbol-only asset (phantom dividends on gold), so a resolved hint chart
- * short-circuits the search loop entirely instead of only seeding it.
+ * short-circuits the search loop entirely instead of only seeding it. A DEAD
+ * hint (delisted/renamed listing, e.g. Yahoo delisting gold's former
+ * XAUEUR=X) must not fall through to the search loop either - that is how
+ * the phantom-dividends bug happened a second time, importing an unrelated
+ * payer's events via the name-fallback search past a hint that simply
+ * stopped resolving. A dead hint yields an empty event list instead.
  */
 export async function dividendsByQuery(
   query: string,
@@ -687,7 +692,7 @@ export async function dividendsByQuery(
 
   if (hint) {
     const hinted = await dividendChart(hint, range);
-    if (hinted) return hinted;
+    return hinted ?? { events: [], currency: want };
   }
 
   let fallback: { events: DividendEvent[]; currency: string } | null = null;

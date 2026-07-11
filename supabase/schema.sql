@@ -415,7 +415,8 @@ insert into public.schema_migrations (version) values
   ('0049_drop_pays_dividends'),
   ('0050_admin_authz'),
   ('0051_error_logs'),
-  ('0052_retention_indexes')
+  ('0052_retention_indexes'),
+  ('0053_heal_gold_gme_quotes')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -662,12 +663,14 @@ on conflict (symbol) where symbol is not null do nothing;
 
 -- Gold seed, kept as a separate insert so the shared column list above (which
 -- has no quote_scale) doesn't have to be widened for every existing row.
--- Quoted per troy ounce (XAUEUR=X); quote_scale converts to per-gram
--- (1 / 31.1034768 ~= 0.0321507466), the instrument's native display unit.
+-- Quoted per troy ounce (GC=F, COMEX gold futures, USD - Yahoo delisted the
+-- original XAUEUR=X listing, see migration 0053); quote_scale converts to
+-- per-gram (1 / 31.1034768 ~= 0.0321507466), the instrument's native display
+-- unit, applied after the USD->EUR FX conversion.
 insert into public.instruments
   (symbol, name, type, currency, quote_source, quote_id, base_price, drift, vol, dividend_yield, quote_scale)
 values
-  ('XAU', 'Gold', 'COMMODITY', 'EUR', 'yahoo', 'XAUEUR=X', 115, 0.03, 0.16, 0, 0.0321507466)
+  ('XAU', 'Gold', 'COMMODITY', 'EUR', 'yahoo', 'GC=F', 115, 0.03, 0.16, 0, 0.0321507466)
 on conflict (symbol) where symbol is not null do nothing;
 
 -- Seed approximate FX rates (units per 1 EUR); the cron refreshes them.

@@ -98,8 +98,17 @@ async function syncEquities(
       // one (not yet seeded) keep resolving normally. Non-COMMODITY rows
       // are excluded from this and instead self-heal daily below.
       const hint = hasHint && (isCommodity || !revalidate) ? (r.quote_id as string) : undefined;
+      // A COMMODITY row's authoritative listing can trade in a different
+      // currency than the instrument's native one (gold's replacement
+      // listing GC=F is USD, the gold row itself is EUR) - resolveQuote's
+      // hint fast path rejects a currency mismatch, which would otherwise
+      // fall through to an unreliable search and get caught by the guard
+      // below anyway. Passing an empty want-currency lets the fast path
+      // accept the hint regardless of currency; the FX conversion + scale
+      // below already handle the difference.
+      const want = isCommodity && hint ? "" : r.currency || "";
       try {
-        const resolved = await resolveQuote(query, r.currency || "", hint);
+        const resolved = await resolveQuote(query, want, hint);
         if (isCommodity && hasHint && (!resolved || resolved.symbol !== hint)) {
           // The hinted listing failed (no data / currency mismatch) or
           // resolveQuote fell through to search and picked a different one -

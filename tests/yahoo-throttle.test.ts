@@ -4,7 +4,34 @@
 // backoff sleeps are driven with fake timers so nothing here is flaky.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConcurrencyLimiter, TTLCache, __resetForTests, dividendsByQuery, getJSON } from "../lib/server/yahoo";
+import {
+  ConcurrencyLimiter,
+  TTLCache,
+  __resetForTests,
+  dividendsByQuery,
+  getJSON,
+  historyByQuery,
+  resolveQuote,
+} from "../lib/server/yahoo";
+
+/** A Yahoo /v8/finance/chart response with quote candles (resolveQuote/historyByQuery). */
+function chartQuoteResponse(currency: string, closes: number[]) {
+  const now = Math.floor(Date.now() / 1000);
+  return new Response(
+    JSON.stringify({
+      chart: {
+        result: [
+          {
+            timestamp: closes.map((_, i) => now - (closes.length - i) * 86400),
+            indicators: { quote: [{ close: closes }] },
+            meta: { currency, regularMarketVolume: 1000 },
+          },
+        ],
+      },
+    }),
+    { status: 200 },
+  );
+}
 
 describe("ConcurrencyLimiter", () => {
   it("caps concurrent acquisitions at max and drains the FIFO queue in order", async () => {
@@ -209,7 +236,7 @@ describe("dividendsByQuery", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("falls through to the search-candidate loop when the hint does not resolve", async () => {
+  it("returns no events and issues no search request when the hint is dead (never scans past a dead hint)", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       const u = String(url);
       if (u.includes("/chart/BADHINT")) return Promise.resolve(new Response(null, { status: 404 }));
@@ -224,12 +251,14 @@ describe("dividendsByQuery", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await dividendsByQuery("DE0000000000", "EUR", "BADHINT", "5y", "Real Corp");
-    expect(result?.currency).toBe("EUR");
-    expect(result?.events).toEqual([{ date: "2023-11-14", amount: 1.2 }]);
+    expect(result).toEqual({ events: [], currency: "EUR" });
+    // The dead hint must not fall through to a search - that's how gold's
+    // dead XAUEUR=X hint once imported an unrelated payer's events.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/chart/BADHINT");
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
-    expect(urls.some((u) => u.includes("/chart/BADHINT"))).toBe(true);
-    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
-    expect(urls.some((u) => u.includes("/chart/REAL.DE"))).toBe(true);
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(false);
+    expect(urls.some((u) => u.includes("/chart/REAL.DE"))).toBe(false);
   });
 
   it("with no hint, scans search candidates as before", async () => {
@@ -250,6 +279,93 @@ describe("dividendsByQuery", () => {
     expect(result?.events).toEqual([{ date: "2023-11-14", amount: 1.2 }]);
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("/chart/BADHINT"))).toBe(false);
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+  });
+});
+
+describe("resolveQuote", () => {
+  beforeEach(() => {
+    __resetForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetForTests();
+  });
+
+  it("trusts a currency-mismatched hint when wantCurrency is empty (commodity cross-currency listing)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      // GC=F: gold's replacement listing after Yahoo delisted XAUEUR=X -
+      // quoted in USD while the gold instrument's native currency is EUR.
+      if (u.includes("/chart/GC%3DF")) return Promise.resolve(chartQuoteResponse("USD", [4104]));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveQuote("XAU", "", "GC=F");
+    expect(result).toEqual({ symbol: "GC=F", currency: "USD", price: 4104 });
+    // Fast path only - no search-candidate scan.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a currency-mismatched hint when wantCurrency is given, falling through to search", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/chart/GC%3DF")) return Promise.resolve(chartQuoteResponse("USD", [4104]));
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(new Response(JSON.stringify({ quotes: [{ symbol: "XAUEUR=X" }] }), { status: 200 }));
+      }
+      if (u.includes("/chart/XAUEUR%3DX")) return Promise.resolve(chartQuoteResponse("EUR", [115]));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveQuote("XAU", "EUR", "GC=F");
+    expect(result).toEqual({ symbol: "XAUEUR=X", currency: "EUR", price: 115 });
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+  });
+});
+
+describe("historyByQuery", () => {
+  beforeEach(() => {
+    __resetForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetForTests();
+  });
+
+  it("returns a currency-mismatched hint's series when wantCurrency is empty, without scanning search candidates", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/chart/GC%3DF")) return Promise.resolve(chartQuoteResponse("USD", [4104, 4110]));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await historyByQuery("GC=F", "", "GC=F", "5d", "1d");
+    expect(result?.currency).toBe("USD");
+    expect(result?.points.map((p) => p.close)).toEqual([4104, 4110]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a currency-mismatched hint when wantCurrency is given, falling through to search", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/chart/GC%3DF")) return Promise.resolve(chartQuoteResponse("USD", [4104, 4110]));
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(new Response(JSON.stringify({ quotes: [{ symbol: "XAUEUR=X" }] }), { status: 200 }));
+      }
+      if (u.includes("/chart/XAUEUR%3DX")) return Promise.resolve(chartQuoteResponse("EUR", [115, 116]));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await historyByQuery("XAU", "EUR", "GC=F", "5d", "1d");
+    expect(result?.currency).toBe("EUR");
+    expect(result?.points.map((p) => p.close)).toEqual([115, 116]);
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
   });
 });
