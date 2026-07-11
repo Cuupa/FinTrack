@@ -28,12 +28,16 @@ import {
   plColor,
   stripLeadingZero,
 } from "@/lib/format";
-import { assetPriceKey, type Portfolio, type Transaction, type TransactionType } from "@/lib/types";
+import { assetPriceKey, type Asset, type Portfolio, type Transaction, type TransactionType } from "@/lib/types";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor, lookupInstrument } from "@/lib/catalog/catalog";
 import { nativeCurrency, quoteItemFor } from "@/lib/finance/prices";
-import { instrumentToAsset, watchlistItemToAsset } from "@/lib/finance/instrument-asset";
+import {
+  instrumentToAsset,
+  resolveOrBuildHeldAsset,
+  watchlistItemToAsset,
+} from "@/lib/finance/instrument-asset";
 import { assetAnnualStats } from "@/lib/finance/stats";
 import { useHistory } from "@/lib/history/use-history";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
@@ -53,7 +57,6 @@ import {
 } from "@/components/charts/performance-chart";
 import { TransactionForm } from "./transaction-form";
 import { AssetTags } from "./asset-tags";
-import { AddAssetForm } from "./add-asset-form";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -68,8 +71,17 @@ export function AssetDetail({
    * hit, resolved by ISIN/WKN/symbol/name (see lib/finance/instrument-asset.ts). */
   instrumentKey?: string;
 }) {
-  const { data, loading, loadError, reload, deleteAsset, deleteTransaction, updateTransaction, portfolios } =
-    usePortfolio();
+  const {
+    data,
+    loading,
+    loadError,
+    reload,
+    deleteAsset,
+    deleteTransaction,
+    updateTransaction,
+    portfolios,
+    addAsset,
+  } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const router = useRouter();
@@ -89,17 +101,19 @@ export function AssetDetail({
     confirmLabel?: string;
     action: () => void;
   } | null>(null);
-  const [addingHolding, setAddingHolding] = useState(false);
   const compare = useBenchmarkCompare(benchmarks, currency);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
 
   // Resolve what this page is about, in order of preference: a held asset (by
   // id or, for the instrumentKey route, by price-key match), else a watchlist
-  // item, else a bare catalog hit. `held` drives which UI renders — the full
-  // held layout (byte-identical to before) or the reduced non-held one. The
-  // synthesized assets carry a sentinel id (wl:/cat:) that never collides with
-  // a real asset id, so `transactionsByAsset` below naturally returns [].
+  // item, else a bare catalog hit. The layout is the same either way — `held`
+  // only gates the handful of sections that genuinely need a real asset row
+  // (delete, tags) — everything else (metrics, details, transactions) renders
+  // for both, showing natural zero/empty states until a transaction is
+  // booked. The synthesized assets carry a sentinel id (wl:/cat:) that never
+  // collides with a real asset id, so `transactionsByAsset` below naturally
+  // returns [] until `ensureHeldAsset` (below) turns it into a real one.
   const resolved = useMemo(() => {
     if (assetId) {
       const a = data.assets.find((x) => x.id === assetId);
@@ -267,6 +281,18 @@ export function AssetDetail({
   // assetValueSeries above), not a native-currency price — label it as such.
   const chartCurrency = asset.type === "CASH" ? currency : nativeCur;
 
+  // Passed to TransactionForm for a not-(yet-)held instrument only: resolves
+  // (creating if necessary, deduped by price key — reuses an existing asset
+  // rather than creating a duplicate) the real asset so the submitted
+  // transaction has something real to book against. Once that transaction
+  // lands in `data`, the `resolved` memo above finds the new held asset by
+  // price key on the next render and this page "flips" to the held layout on
+  // its own — no explicit navigation needed.
+  async function ensureHeldAsset(): Promise<Asset> {
+    const resolution = resolveOrBuildHeldAsset(data.assets, asset!);
+    return "existing" in resolution ? resolution.existing : addAsset(resolution.input);
+  }
+
   function handleDelete() {
     setPending({
       title: `Delete ${asset!.name}?`,
@@ -310,7 +336,7 @@ export function AssetDetail({
                 : formatCurrency(summary.price, nativeCur)}
             </span>
             {summary.syntheticPrice && <EstimatedBadge tip={t("data.estimatedPriceTip")} />}
-            {held && asset.type !== "CASH" && (
+            {asset.type !== "CASH" && (
               <span className="text-zinc-500">
                 {t("common.holdingValue")} <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
               </span>
@@ -424,54 +450,54 @@ export function AssetDetail({
         </div>
       </Card>
 
-      {/* Advanced metrics — directly under the chart */}
-      {held && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
-            <Stat
-              label={t("common.marketValue")}
-              value={formatCurrency(summary.marketValue, currency)}
-              info={t("tip.marketValue")}
-              isPrivate
-            />
-          </Card>
-          <Card>
-            <Stat
-              label={t("stat.unrealized")}
-              value={formatCurrency(summary.unrealizedPL, currency)}
-              sub={formatPercent(summary.unrealizedPLPercent)}
-              valueClassName={plColor(summary.unrealizedPL)}
-              info={t("tip.unrealized")}
-              isPrivate
-            />
-          </Card>
-          <Card>
-            <Stat
-              label={t("stat.realized")}
-              value={formatCurrency(summary.realizedPL, currency)}
-              valueClassName={plColor(summary.realizedPL)}
-              info={t("tip.realized")}
-              isPrivate
-            />
-          </Card>
-          <Card>
-            <Stat
-              label={t("asset.metric.irr")}
-              value={irr === null ? "—" : formatPercent(irr)}
-              valueClassName={irr === null ? "" : plColor(irr)}
-              info={t("asset.metric.irrTip")}
-            />
-          </Card>
-          <Card>
-            <Stat
-              label={t("asset.metric.sharpe")}
-              value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
-              valueClassName={annual?.sharpe != null ? plColor(annual.sharpe) : ""}
-              info={t("asset.metric.sharpeTip")}
-            />
-          </Card>
-        </div>
-      )}
+      {/* Advanced metrics — directly under the chart. Zero/empty for a
+          not-(yet-)held instrument (no transactions), same as any freshly
+          added holding. */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <Stat
+            label={t("common.marketValue")}
+            value={formatCurrency(summary.marketValue, currency)}
+            info={t("tip.marketValue")}
+            isPrivate
+          />
+        </Card>
+        <Card>
+          <Stat
+            label={t("stat.unrealized")}
+            value={formatCurrency(summary.unrealizedPL, currency)}
+            sub={formatPercent(summary.unrealizedPLPercent)}
+            valueClassName={plColor(summary.unrealizedPL)}
+            info={t("tip.unrealized")}
+            isPrivate
+          />
+        </Card>
+        <Card>
+          <Stat
+            label={t("stat.realized")}
+            value={formatCurrency(summary.realizedPL, currency)}
+            valueClassName={plColor(summary.realizedPL)}
+            info={t("tip.realized")}
+            isPrivate
+          />
+        </Card>
+        <Card>
+          <Stat
+            label={t("asset.metric.irr")}
+            value={irr === null ? "—" : formatPercent(irr)}
+            valueClassName={irr === null ? "" : plColor(irr)}
+            info={t("asset.metric.irrTip")}
+          />
+        </Card>
+        <Card>
+          <Stat
+            label={t("asset.metric.sharpe")}
+            value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
+            valueClassName={annual?.sharpe != null ? plColor(annual.sharpe) : ""}
+            info={t("asset.metric.sharpeTip")}
+          />
+        </Card>
+      </div>
 
       {/* Details + Top 10 holdings (ETF look-through) share one row, Details
           twice as wide (2:1). */}
@@ -492,40 +518,30 @@ export function AssetDetail({
               <Row label={t("asset.row.symbol")} value={<CopyValue value={asset.symbol} />} />
             )}
             <Row label={t("asset.row.currency")} value={nativeCur} />
-            {held && (
-              <>
-                <Row label={t("asset.row.shares")} value={formatNumber(summary.position.shares, 4)} isPrivate />
-                {asset.type !== "CASH" && (
-                  <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
-                )}
-              </>
+            <Row label={t("asset.row.shares")} value={formatNumber(summary.position.shares, 4)} isPrivate />
+            {asset.type !== "CASH" && (
+              <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
             )}
             {asset.type !== "CASH" && (
               <Row label={t("asset.row.currentPrice")} value={formatCurrency(summary.price, nativeCur)} />
             )}
-            {held && (
-              <>
-                <Row label={t("asset.row.costBasis")} value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
-                {asset.type === "CASH" && (
-                  <Row
-                    label={t("asset.row.interestEarned")}
-                    value={formatCurrency(summary.unrealizedPL, nativeCur)}
-                    isPrivate
-                  />
-                )}
-                <Row label={t("asset.row.totalFees")} value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
-              </>
+            <Row label={t("asset.row.costBasis")} value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
+            {asset.type === "CASH" && (
+              <Row
+                label={t("asset.row.interestEarned")}
+                value={formatCurrency(summary.unrealizedPL, nativeCur)}
+                isPrivate
+              />
             )}
+            <Row label={t("asset.row.totalFees")} value={formatCurrency(summary.position.totalFees, nativeCur)} isPrivate />
             {asset.type !== "CASH" && (
               <>
                 <Row label={t("asset.row.divYield")} value={yld > 0 ? formatPercent(yld) : "—"} />
-                {held && (
-                  <Row
-                    label={t("asset.row.divReceived")}
-                    value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
-                    isPrivate
-                  />
-                )}
+                <Row
+                  label={t("asset.row.divReceived")}
+                  value={divTotal > 0 ? formatCurrency(divTotal, nativeCur) : "—"}
+                  isPrivate
+                />
               </>
             )}
             <Row
@@ -537,25 +553,6 @@ export function AssetDetail({
               value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
             />
           </dl>
-
-          {!held && (
-            <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <p className="text-sm text-zinc-500">{t("instrument.notHeld")}</p>
-              {addingHolding ? (
-                <Card className="mt-3">
-                  <AddAssetForm
-                    embedded
-                    initialQuery={assetPriceKey(asset)}
-                    onDone={() => setAddingHolding(false)}
-                  />
-                </Card>
-              ) : (
-                <Button variant="primary" className="mt-3" onClick={() => setAddingHolding(true)}>
-                  {t("instrument.addToPortfolio")}
-                </Button>
-              )}
-            </div>
-          )}
         </Card>
 
         {constituents.length > 0 && (
@@ -592,38 +589,38 @@ export function AssetDetail({
         )}
       </div>
 
-      {/* Transactions — full width, add form above the table */}
-      {held && (
-        <Card>
-          <h2 className="text-lg font-semibold">{t("asset.transactions")}</h2>
+      {/* Transactions — full width, add form above the table. Booking the
+          first transaction on a not-(yet-)held instrument is what turns it
+          into a holding (see ensureHeldAsset above). */}
+      <Card>
+        <h2 className="text-lg font-semibold">{t("asset.transactions")}</h2>
 
-          <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-            <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
-            <TransactionForm asset={asset} />
+        <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
+          <TransactionForm asset={asset} ensureAsset={held ? undefined : ensureHeldAsset} />
+        </div>
+
+        {txs.length === 0 ? (
+          <p className="mt-4 text-sm text-zinc-500">{t("asset.noTransactions")}</p>
+        ) : (
+          <div className="mt-4">
+            <TransactionsTable
+              txs={txs}
+              currency={nativeCur}
+              portfolios={portfolios}
+              isCash={asset.type === "CASH"}
+              onUpdate={(id, patch) => void updateTransaction(id, patch)}
+              onDelete={(tx) =>
+                setPending({
+                  title: t("tx.deleteConfirmTitle"),
+                  message: `${tx.type} · ${formatNumber(tx.quantity, 4)} · ${formatDateTime(tx.date)}`,
+                  action: () => void deleteTransaction(tx.id),
+                })
+              }
+            />
           </div>
-
-          {txs.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-500">{t("asset.noTransactions")}</p>
-          ) : (
-            <div className="mt-4">
-              <TransactionsTable
-                txs={txs}
-                currency={nativeCur}
-                portfolios={portfolios}
-                isCash={asset.type === "CASH"}
-                onUpdate={(id, patch) => void updateTransaction(id, patch)}
-                onDelete={(tx) =>
-                  setPending({
-                    title: t("tx.deleteConfirmTitle"),
-                    message: `${tx.type} · ${formatNumber(tx.quantity, 4)} · ${formatDateTime(tx.date)}`,
-                    action: () => void deleteTransaction(tx.id),
-                  })
-                }
-              />
-            </div>
-          )}
-        </Card>
-      )}
+        )}
+      </Card>
 
       <ConfirmDialog
         open={pending !== null}

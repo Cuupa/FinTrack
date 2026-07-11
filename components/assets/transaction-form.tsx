@@ -24,9 +24,16 @@ const inputCls =
 export function TransactionForm({
   asset,
   onDone,
+  ensureAsset,
 }: {
   asset: Asset;
   onDone?: () => void;
+  /** For a not-(yet-)held instrument (sentinel wl:/cat: id): resolves the
+   * real asset to book this transaction against, creating it first if none
+   * exists yet (deduped by price key). When provided, its result's id is
+   * used instead of `asset.id` — this is the seam that turns the first
+   * transaction on a watchlist/catalog instrument into a holding. */
+  ensureAsset?: () => Promise<Asset>;
 }) {
   const { addTransaction, createPortfolio, portfolios, selectedPortfolioIds } = usePortfolio();
   const { t } = useI18n();
@@ -122,8 +129,13 @@ export function TransactionForm({
     }
     setBusy(true);
     try {
+      // If this transaction write fails after ensureAsset() already created
+      // the real asset, that's benign by design: the page still flips to the
+      // held view (the asset now exists), and the next submit just books
+      // normally against it.
+      const targetAsset = ensureAsset ? await ensureAsset() : asset;
       await addTransaction({
-        assetId: asset.id,
+        assetId: targetAsset.id,
         portfolioId: portfolioId || portfolios[0]?.id || "",
         type,
         quantity: qty,

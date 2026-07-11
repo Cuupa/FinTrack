@@ -430,7 +430,10 @@ export const en = {
   "asset.row.sharpe": "Sharpe ratio",
   "asset.row.interestEarned": "Interest earned",
 
-  // Non-held instrument detail (watchlist item or catalog-only lookup)
+  // Non-held instrument detail (watchlist item or catalog-only lookup).
+  // notHeld/addToPortfolio are orphaned since the unified layout removed the
+  // embedded add-asset block (booking a transaction is now the only way to
+  // add a holding) — left in place per repo convention (see names.* keys).
   "instrument.notHeld": "You follow this instrument but don't hold it.",
   "instrument.addToPortfolio": "Add to portfolio",
   "instrument.notFound": "Instrument not found.",
@@ -1358,7 +1361,11 @@ const de: Partial<Record<MessageKey, string>> = {
   "asset.row.sharpe": "Sharpe-Ratio",
   "asset.row.interestEarned": "Erhaltene Zinsen",
 
-  // Nicht gehaltenes Instrument (Watchlist-Eintrag oder reiner Katalog-Treffer)
+  // Nicht gehaltenes Instrument (Watchlist-Eintrag oder reiner Katalog-Treffer).
+  // notHeld/addToPortfolio verwaist seit das vereinheitlichte Layout den
+  // eingebetteten Add-Asset-Block entfernt hat (eine Transaktion ist jetzt der
+  // einzige Weg zu einem Bestand) — laut Repo-Konvention belassen (siehe
+  // names.*-Keys).
   "instrument.notHeld": "Du beobachtest dieses Instrument, hältst es aber nicht.",
   "instrument.addToPortfolio": "Zum Portfolio hinzufügen",
   "instrument.notFound": "Instrument nicht gefunden.",
