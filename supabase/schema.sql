@@ -405,7 +405,8 @@ insert into public.schema_migrations (version) values
   ('0046_history_cache_flag'),
   ('0047_export_flags'),
   ('0049_drop_pays_dividends'),
-  ('0050_admin_authz')
+  ('0050_admin_authz'),
+  ('0051_error_logs')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -609,7 +610,8 @@ insert into public.feature_flags (flag, description) values
   ('dividends', 'Dividend dashboard (/dividends)'),
   ('historyCache', 'Client-side stale-while-revalidate cache of historical price series (instant chart repaint on repeat visits)'),
   ('exportCsv', 'Portfolio export — Download CSV'),
-  ('exportJson', 'Portfolio export — Download JSON')
+  ('exportJson', 'Portfolio export — Download JSON'),
+  ('errorLogging', 'Server-side capture of client error reports')
 on conflict (flag) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the
@@ -896,3 +898,23 @@ alter table public.admin_audit enable row level security;
 drop policy if exists "admin audit readable" on public.admin_audit;
 create policy "admin audit readable" on public.admin_audit for select using (public.is_admin());
 create index if not exists admin_audit_created_at_idx on public.admin_audit (created_at desc);
+
+-- Self-hosted error-log pipeline (migration 0051) --------------------------
+-- Client error boundaries and a window-level error/unhandledrejection
+-- listener report here via POST /api/errors (flag-gated, rate-limited, no
+-- user id / IP stored). Admins browse via /admin/errors under RLS below; a
+-- 30-day retention cron (app/api/cron/sync/error-logs) purges old rows.
+create table if not exists public.error_logs (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null default 'boundary',
+  message text,
+  stack text,
+  route text,
+  digest text,
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+alter table public.error_logs enable row level security;
+drop policy if exists "error logs admin readable" on public.error_logs;
+create policy "error logs admin readable" on public.error_logs for select using (public.is_admin());
+create index if not exists error_logs_created_at_idx on public.error_logs (created_at desc);

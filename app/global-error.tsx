@@ -17,6 +17,34 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
+    // This boundary renders with NO providers and its own <html> (see the
+    // file banner above), so it cannot import lib/errors/report.ts or
+    // anything that pulls in provider code — that's the whole reason this
+    // duplicates a minimal, self-contained version of the same fire-and-
+    // forget POST inline instead of sharing the helper. The server route
+    // (app/api/errors/route.ts) no-ops (204) when Supabase isn't configured
+    // or the errorLogging flag is off, so it's safe to call unconditionally
+    // here too. This is a plain fetch, not lib/api.ts's apiFetch: if
+    // NEXT_PUBLIC_API_TOKEN is configured this report gets rejected by the
+    // middleware gateway (401) rather than authenticating, which is an
+    // accepted gap for this one provider-less boundary.
+    try {
+      const body = JSON.stringify({
+        kind: "boundary",
+        message: typeof error.message === "string" ? error.message.slice(0, 500) : undefined,
+        stack: typeof error.stack === "string" ? error.stack.slice(0, 4000) : undefined,
+        digest: error.digest,
+        route: typeof window !== "undefined" ? window.location.pathname : undefined,
+      });
+      fetch("/api/errors", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        keepalive: true,
+        body,
+      }).catch(() => {});
+    } catch {
+      // Reporting must never throw inside this boundary.
+    }
   }, [error]);
 
   return (

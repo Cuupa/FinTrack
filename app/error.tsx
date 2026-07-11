@@ -12,6 +12,7 @@ import { Component, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { reportError } from "@/lib/errors/report";
 
 const FALLBACK = {
   title: "Something went wrong / Etwas ist schiefgelaufen",
@@ -96,6 +97,21 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error(error);
+    // Deliberately NOT gated behind useFeatureFlag("errorLogging") here: an
+    // error reaching this boundary may have originated inside one of the
+    // providers below the root layout (the same reason LocalizedErrorBody is
+    // wrapped in its own I18nGuard above) — a hook call risks a crash-in-
+    // crash if its context isn't mounted. reportError() is safe to call
+    // unconditionally: it never throws, and POST /api/errors re-checks the
+    // flag server-side, so a report made while the flag is off is simply
+    // dropped there rather than stored.
+    reportError({
+      kind: "boundary",
+      message: error.message,
+      stack: error.stack,
+      digest: error.digest,
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
   }, [error]);
 
   return <I18nGuard reset={reset} />;

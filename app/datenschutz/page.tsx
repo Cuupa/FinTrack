@@ -28,7 +28,7 @@ function DatenschutzDE({
   loaded: boolean;
 }) {
   return (
-    <LegalPage title="Datenschutzerklärung" updated="Stand: 4. Juli 2026">
+    <LegalPage title="Datenschutzerklärung" updated="Stand: 11. Juli 2026">
       <LegalSection heading="1. Verantwortlicher">
         <p>
           Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist der im{" "}
@@ -107,7 +107,18 @@ function DatenschutzDE({
         </p>
       </LegalSection>
 
-      <LegalSection heading="5. Speicherung, Cookies und lokaler Speicher">
+      <LegalSection heading="5. Fehlerprotokolle">
+        <p>
+          Wenn in der App ein technischer Fehler auftritt, speichern wir auf unserem eigenen
+          Server ausschließlich technische Angaben zum Fehler (Fehlermeldung, technischer
+          Stacktrace, die betroffene Seite und die Art deines Browsers). Es werden dabei keine
+          personenbezogenen Daten, keine IP-Adresse und keine Inhalte deines Depots
+          gespeichert. Diese Protokolle helfen uns nur, Fehler zu finden und zu beheben, und
+          werden spätestens nach 30 Tagen automatisch gelöscht.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="6. Speicherung, Cookies und lokaler Speicher">
         <p>
           Wir setzen ausschließlich technisch notwendige Cookies und lokalen Speicher ein,
           <strong> keine Analyse-, Marketing- oder Tracking-Cookies</strong> Dritter:
@@ -135,7 +146,7 @@ function DatenschutzDE({
         </p>
       </LegalSection>
 
-      <LegalSection heading="6. Deine Rechte">
+      <LegalSection heading="7. Deine Rechte">
         <p>Nach der DSGVO hast du insbesondere folgende Rechte:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>Auskunft über die zu deiner Person gespeicherten Daten (Art. 15 DSGVO),</li>
@@ -163,7 +174,7 @@ function DatenschutzDE({
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Speicherdauer">
+      <LegalSection heading="8. Speicherdauer">
         <p>
           Wir speichern deine Daten, solange dein Konto besteht. Löschst du dein Konto (siehe
           oben), werden dein Profil, alle Portfolios, Assets, Transaktionen und geteilten
@@ -183,7 +194,7 @@ function DatenschutzEN({
   loaded: boolean;
 }) {
   return (
-    <LegalPage title="Privacy Policy" updated="Last updated: 4 July 2026">
+    <LegalPage title="Privacy Policy" updated="Last updated: 11 July 2026">
       <LegalSection heading="1. Controller">
         <p>
           The controller within the meaning of the GDPR is the operator named in the{" "}
@@ -258,7 +269,17 @@ function DatenschutzEN({
         </p>
       </LegalSection>
 
-      <LegalSection heading="5. Storage, cookies and local storage">
+      <LegalSection heading="5. Error logs">
+        <p>
+          When a technical error occurs in the app, we store on our own server only technical
+          details about the error (the error message, the technical stack trace, the affected
+          page, and your browser type). No personal data, no IP address, and no content from
+          your portfolio is stored. These logs only help us find and fix bugs and are
+          automatically deleted after 30 days at the latest.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="6. Storage, cookies and local storage">
         <p>
           We use only technically necessary cookies and local storage,{" "}
           <strong>no third-party analytics, marketing, or tracking cookies</strong>:
@@ -285,7 +306,7 @@ function DatenschutzEN({
         </p>
       </LegalSection>
 
-      <LegalSection heading="6. Your rights">
+      <LegalSection heading="7. Your rights">
         <p>Under the GDPR you have, in particular, the following rights:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>access to the data stored about you (Art. 15 GDPR),</li>
@@ -311,7 +332,7 @@ function DatenschutzEN({
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Retention">
+      <LegalSection heading="8. Retention">
         <p>
           We keep your data for as long as your account exists. Deleting your account (see
           above) permanently and completely removes your profile, all portfolios, assets,

@@ -41,7 +41,8 @@ export type FeatureFlag =
   | "dividends"
   | "historyCache"
   | "exportCsv"
-  | "exportJson";
+  | "exportJson"
+  | "errorLogging";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

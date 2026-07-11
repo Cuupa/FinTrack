@@ -38,3 +38,16 @@ export async function adminGet<T>(path: string, token: string): Promise<T> {
   if (!res.ok) throw new Error("request failed");
   return (await res.json()) as T;
 }
+
+/** DELETEs to an `/api/admin/*` route with `body` as JSON and the given
+ *  bearer token, returning the parsed JSON response. Throws on a non-ok
+ *  response, same contract as adminPost. */
+export async function adminDelete<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(path, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("request failed");
+  return (await res.json()) as T;
+}

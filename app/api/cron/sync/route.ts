@@ -48,6 +48,7 @@ async function handle(req: Request): Promise<Response> {
   await post("/api/cron/sync/etf-breakdowns");
   await post("/api/cron/sync/benchmarks");
   await post("/api/cron/sync/shared-portfolios");
+  await post("/api/cron/sync/error-logs");
 
   return Response.json({ ok: true, results });
 }
