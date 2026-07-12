@@ -17,6 +17,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveQuote } from "@/lib/server/yahoo";
+import {
+  encodeOnvistaQuoteId,
+  onvistaQuote,
+  parseOnvistaQuoteId,
+  resolveOnvistaInstrument,
+} from "@/lib/server/onvista";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +94,35 @@ async function syncEquities(
     rows.map(async (r) => {
       const query = r.isin || r.wkn || r.symbol;
       if (!query) return;
+
+      // Rows already learned onto onvista (by the Yahoo-miss fallback below,
+      // or seeded directly) skip Yahoo entirely - there's no Yahoo hint to
+      // drop/revalidate for these, so this runs on every sync regardless of
+      // `revalidate`.
+      if (r.quote_source === "onvista" && r.quote_id) {
+        const parsed = parseOnvistaQuoteId(r.quote_id);
+        if (!parsed) return;
+        try {
+          const q = await onvistaQuote(parsed.entityType, parsed.entityValue);
+          if (!q) return;
+          let p = q.price;
+          if (r.currency && q.currency && q.currency !== r.currency) {
+            p = p * (await fxRate(q.currency, r.currency));
+          }
+          const scale = Number(r.quote_scale ?? 1);
+          if (scale !== 1) p = p * scale;
+          if (!changed(r.last_price, p)) return;
+          const { error } = await supabase
+            .from("instruments")
+            .update({ last_price: p, price_synced_at: syncedAt })
+            .eq("id", r.id);
+          if (!error) updated += 1;
+        } catch {
+          /* skip */
+        }
+        return;
+      }
+
       const hasHint = r.quote_source === "yahoo" && !!r.quote_id;
       const isCommodity = r.type === "COMMODITY";
       // COMMODITY listings are seeded and authoritative (e.g. gold's
@@ -118,7 +153,41 @@ async function syncEquities(
         }
         const symbol = resolved?.symbol;
         let p = resolved ? resolved.price : null;
-        if (p == null) return;
+
+        if (p == null) {
+          // Yahoo has nothing for this row at all (no search hit, or none of
+          // the candidates have data) - German structured products/
+          // certificates and LU-domiciled mutual funds routinely fall here.
+          // Try onvista as a fallback, STOCK/ETF only: COMMODITY listings are
+          // seeded/authoritative (the guard above) and must never fall
+          // through to any search-based resolution, onvista included.
+          if (!isCommodity && (r.type === "STOCK" || r.type === "ETF")) {
+            const ref = await resolveOnvistaInstrument(query);
+            if (!ref) return;
+            const oq = await onvistaQuote(ref.entityType, ref.entityValue);
+            if (!oq) return;
+            let op = oq.price;
+            if (r.currency && oq.currency && oq.currency !== r.currency) {
+              op = op * (await fxRate(oq.currency, r.currency));
+            }
+            const scale = Number(r.quote_scale ?? 1);
+            if (scale !== 1) op = op * scale;
+            // Learn the listing unconditionally (like the Yahoo learnsListing
+            // case below) so the next sync short-circuits straight to the
+            // onvista-refresh branch above instead of re-resolving.
+            const { error } = await supabase
+              .from("instruments")
+              .update({
+                last_price: op,
+                price_synced_at: syncedAt,
+                quote_source: "onvista",
+                quote_id: encodeOnvistaQuoteId(ref.entityType, ref.entityValue),
+              })
+              .eq("id", r.id);
+            if (!error) updated += 1;
+          }
+          return;
+        }
         // The instrument's last_price must be in the instrument's own currency.
         // When only a different-currency listing exists (e.g. a US stock the user
         // holds in EUR resolves to the USD NASDAQ line), convert via FX — exactly

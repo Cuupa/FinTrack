@@ -6,6 +6,7 @@
 
 import { after } from "next/server";
 import { resolveQuote } from "@/lib/server/yahoo";
+import { onvistaQuote, resolveOnvistaInstrument } from "@/lib/server/onvista";
 import { secretKey, supabaseSecret } from "@/lib/server/supabase-keys";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
@@ -75,16 +76,33 @@ export async function GET(req: Request): Promise<Response> {
   if (!q) return Response.json({ found: false });
 
   const r = await resolveQuote(q, currency, undefined, name);
-  if (!r) return Response.json({ found: false });
+  if (r) {
+    // Convert into the requested currency when the resolved listing differs.
+    let price = r.price;
+    if (currency && r.currency && r.currency !== currency) {
+      price = r.price * (await fxRate(r.currency, currency));
+    }
 
-  // Convert into the requested currency when the resolved listing differs.
-  let price = r.price;
-  if (currency && r.currency && r.currency !== currency) {
-    price = r.price * (await fxRate(r.currency, currency));
+    const resultCurrency = currency || r.currency;
+    after(() => writeThroughPrice(q, resultCurrency, price));
+
+    return Response.json({ found: true, price, currency: resultCurrency });
   }
 
-  const resultCurrency = currency || r.currency;
-  after(() => writeThroughPrice(q, resultCurrency, price));
+  // Yahoo has nothing for this identifier at all (German structured products/
+  // certificates and LU-domiciled mutual funds routinely fall here) - try
+  // onvista as a fallback. No write-through: writeThroughPrice's guards are
+  // shaped for the Yahoo case, and the cron's own Yahoo-miss fallback is what
+  // learns quote_source/quote_id for onvista-priced rows, not this route.
+  const ref = await resolveOnvistaInstrument(q);
+  if (!ref) return Response.json({ found: false });
+  const oq = await onvistaQuote(ref.entityType, ref.entityValue);
+  if (!oq) return Response.json({ found: false });
 
+  let price = oq.price;
+  if (currency && oq.currency && oq.currency !== currency) {
+    price = oq.price * (await fxRate(oq.currency, currency));
+  }
+  const resultCurrency = currency || oq.currency;
   return Response.json({ found: true, price, currency: resultCurrency });
 }

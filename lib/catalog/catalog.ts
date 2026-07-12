@@ -6,7 +6,7 @@
 import type { AssetType } from "../types";
 import { decodeEntities } from "../format";
 
-export type QuoteSource = "yahoo" | "stooq" | "coingecko";
+export type QuoteSource = "yahoo" | "stooq" | "coingecko" | "onvista";
 
 export interface Instrument {
   isin: string | null;

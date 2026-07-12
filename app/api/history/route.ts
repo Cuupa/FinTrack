@@ -1,11 +1,16 @@
 // Historical price series proxy. Returns REAL daily history per asset (not the
 // synthetic walk), keyed by the asset's price key, in native currency.
 //   - Equities: Yahoo Finance, resolved by ISIN (currency + exchange aware).
+//   - Equities the catalog learned onto onvista (German structured products/
+//     certificates, LU mutual funds Yahoo can't resolve at all): onvista's
+//     eod_history, capped at roughly the last month by the provider itself
+//     (see lib/server/onvista.ts) — a short real series beats none.
 //   - Crypto:   CoinGecko market_chart in the base currency.
 // Missing series are omitted; the chart falls back to the synthetic series.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { historyByQuery, isISIN, type YahooPoint } from "@/lib/server/yahoo";
+import { onvistaEodHistory, parseOnvistaQuoteId } from "@/lib/server/onvista";
 import { secretKey, supabaseSecret, supabasePublishable } from "@/lib/server/supabase-keys";
 import { scalePoints } from "@/lib/server/scale";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
@@ -82,7 +87,7 @@ async function writeCached(
 
 interface HistItem {
   key: string;
-  source: "yahoo" | "stooq" | "coingecko";
+  source: "yahoo" | "stooq" | "coingecko" | "onvista";
   id: string;
   currency: string;
   // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
@@ -183,6 +188,41 @@ async function yahooHistory(item: HistItem, range: string): Promise<YahooPoint[]
   return scalePoints(points, scale);
 }
 
+/** Onvista sibling of yahooHistory: same FX-then-scale structure, backed by
+ *  onvistaEodHistory instead of Yahoo's chart endpoint. `item.id` is the
+ *  encoded "{entityType}:{entityValue}" quote_id (see lib/server/onvista.ts);
+ *  unparseable ids (a stale/corrupt quote_id) yield null, same as any other
+ *  unresolvable item. */
+async function onvistaHistory(item: HistItem, range: string): Promise<YahooPoint[] | null> {
+  const parsed = parseOnvistaQuoteId(item.id);
+  if (!parsed) return null;
+  const result = await onvistaEodHistory(parsed.entityType, parsed.entityValue, range);
+  if (!result) return null;
+
+  const scale = item.scale ?? 1;
+  const want = (item.currency || "").toUpperCase();
+  let points = result.points;
+  if (want && result.currency && result.currency !== want) {
+    const converted = await convertPoints(result.points, result.currency, want);
+    if (converted) {
+      points = converted;
+    } else {
+      // Last-resort fallback if the historical FX timeseries fetch failed:
+      // apply today's spot rate to the whole series rather than show nothing.
+      const spot = await fxRate(result.currency, want);
+      points = scalePoints(result.points, spot);
+    }
+  }
+  // Scale strictly AFTER FX, same reasoning as yahooHistory above.
+  return scalePoints(points, scale);
+}
+
+/** Dispatch to the provider matching `item.source` (coingecko is handled
+ *  separately by the caller, never reaches here). */
+async function providerHistory(item: HistItem, range: string): Promise<YahooPoint[] | null> {
+  return item.source === "onvista" ? onvistaHistory(item, range) : yahooHistory(item, range);
+}
+
 function ytdDays(): number {
   const now = new Date();
   const start = Date.UTC(now.getUTCFullYear(), 0, 1);
@@ -253,7 +293,7 @@ export async function POST(req: Request): Promise<Response> {
         // Refresh from the provider when the cache is missing or stale (writes
         // need the service role; otherwise we serve whatever is cached).
         if (canWrite && hoursSince(await lastSync(supabase, item.key, range)) > staleHours(range)) {
-          const fresh = await yahooHistory(item, range).catch(() => null);
+          const fresh = await providerHistory(item, range).catch(() => null);
           // Only cache a usable series (>= 2 points) — a lone point is a flat,
           // useless line; leaving it uncached lets the synthetic fallback show.
           if (fresh && fresh.length >= 2) await writeCached(supabase, item.key, range, fresh);
@@ -266,7 +306,7 @@ export async function POST(req: Request): Promise<Response> {
         // Cache empty and we can't write (no service role): fall back to a live
         // fetch so the chart still has data.
         if (!canWrite) {
-          const live = await yahooHistory(item, range).catch(() => null);
+          const live = await providerHistory(item, range).catch(() => null);
           if (live && live.length >= 2) histories[item.key] = live;
           return;
         }
@@ -276,7 +316,7 @@ export async function POST(req: Request): Promise<Response> {
       const series =
         item.source === "coingecko"
           ? await coingeckoHistory(item, base, range).catch(() => null)
-          : await yahooHistory(item, range).catch(() => null);
+          : await providerHistory(item, range).catch(() => null);
       if (series && series.length >= 2) histories[item.key] = series;
     }),
   );

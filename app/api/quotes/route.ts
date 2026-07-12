@@ -6,12 +6,17 @@
 // Sources (all keyless), in order of preference for equities:
 //   - Yahoo Finance — resolved by ISIN (currency + exchange aware).
 //   - Stooq         — fallback for stocks/ETFs, by the catalog's symbol.
+//   - Onvista       — items the catalog already learned onto onvista (German
+//                     structured products/certificates, LU mutual funds
+//                     Yahoo can't resolve at all — see lib/server/onvista.ts
+//                     and the cron's Yahoo-miss fallback).
 //   - CoinGecko     — crypto, queried directly in the base currency.
 //
 // Every source degrades gracefully: an unpriceable item is omitted and the
 // client falls back to its synthetic price.
 
 import { isISIN, resolveQuote } from "@/lib/server/yahoo";
+import { onvistaQuote, parseOnvistaQuoteId } from "@/lib/server/onvista";
 import { applyScale } from "@/lib/server/scale";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
@@ -19,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 interface QuoteItem {
   key: string;
-  source: "yahoo" | "stooq" | "coingecko";
+  source: "yahoo" | "stooq" | "coingecko" | "onvista";
   id: string;
   currency: string;
   // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
@@ -99,6 +104,33 @@ async function priceViaYahoo(item: QuoteItem): Promise<number | null> {
   return applyScale(adjusted, item.scale);
 }
 
+/** Price an item already learned onto onvista (item.id = "{entityType}:{entityValue}"). */
+async function priceViaOnvista(item: QuoteItem): Promise<number | null> {
+  const parsed = parseOnvistaQuoteId(item.id);
+  if (!parsed) return null;
+  const q = await onvistaQuote(parsed.entityType, parsed.entityValue);
+  if (!q) return null;
+  const want = (item.currency || "").toUpperCase();
+  const adjusted =
+    want && q.currency && q.currency !== want
+      ? q.price * (await fxRate(q.currency, want))
+      : q.price;
+  // after FX, per-instrument unit scale.
+  return applyScale(adjusted, item.scale);
+}
+
+async function fetchOnvista(
+  items: QuoteItem[],
+  out: Record<string, number>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const results = await Promise.all(items.map((item) => priceViaOnvista(item).catch(() => null)));
+  items.forEach((item, i) => {
+    const p = results[i];
+    if (p != null) out[item.key] = p;
+  });
+}
+
 async function fetchStooq(
   items: QuoteItem[],
   out: Record<string, number>,
@@ -176,6 +208,7 @@ export async function POST(req: Request): Promise<Response> {
       items.filter((i) => i.source === "yahoo" || i.source === "stooq"),
       prices,
     ),
+    fetchOnvista(items.filter((i) => i.source === "onvista"), prices),
     fetchCoinGecko(items.filter((i) => i.source === "coingecko"), base, prices),
   ]);
 

@@ -22,7 +22,7 @@ export type FxHistoryMap = Record<string, [string, number][]>;
 
 export interface HistItem {
   key: string;
-  source: "yahoo" | "stooq" | "coingecko";
+  source: "yahoo" | "stooq" | "coingecko" | "onvista";
   id: string;
   currency: string;
   // Asset name — fallback Yahoo search query when the ISIN/WKN/symbol turns
