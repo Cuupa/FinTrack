@@ -12,10 +12,11 @@ import {
   getJSON,
   historyByQuery,
   resolveQuote,
+  resolveSymbol,
 } from "../lib/server/yahoo";
 
 /** A Yahoo /v8/finance/chart response with quote candles (resolveQuote/historyByQuery). */
-function chartQuoteResponse(currency: string, closes: number[]) {
+function chartQuoteResponse(currency: string, closes: number[], volume = 1000) {
   const now = Math.floor(Date.now() / 1000);
   return new Response(
     JSON.stringify({
@@ -24,11 +25,24 @@ function chartQuoteResponse(currency: string, closes: number[]) {
           {
             timestamp: closes.map((_, i) => now - (closes.length - i) * 86400),
             indicators: { quote: [{ close: closes }] },
-            meta: { currency, regularMarketVolume: 1000 },
+            meta: { currency, regularMarketVolume: volume },
           },
         ],
       },
     }),
+    { status: 200 },
+  );
+}
+
+/** A Yahoo /v1/finance/search response with the given symbols. */
+function searchResponse(symbols: string[]) {
+  return new Response(JSON.stringify({ quotes: symbols.map((symbol) => ({ symbol })) }), { status: 200 });
+}
+
+/** A Yahoo /v8/finance/chart "meta only" response (resolveSymbol's meta()). */
+function metaResponse(currency: string, price: number) {
+  return new Response(
+    JSON.stringify({ chart: { result: [{ meta: { currency, regularMarketPrice: price } }] } }),
     { status: 200 },
   );
 }
@@ -324,6 +338,78 @@ describe("resolveQuote", () => {
     expect(result).toEqual({ symbol: "XAUEUR=X", currency: "EUR", price: 115 });
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+  });
+
+  it("prefers an exact ticker match over a higher-volume lookalike (the GME/GMEX case)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GMEX", "GME"]));
+      // GMEX (GMEX Robotics, unrelated) out-traded GME on this mocked day.
+      if (u.includes("/chart/GMEX")) return Promise.resolve(chartQuoteResponse("USD", [5], 5000));
+      if (u.includes("/chart/GME")) return Promise.resolve(chartQuoteResponse("USD", [20], 1000));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveQuote("GME", "USD");
+    expect(result).toEqual({ symbol: "GME", currency: "USD", price: 20 });
+  });
+
+  it("still lets the currency filter win over an exact match in the wrong currency", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GME", "GME.DE"]));
+      // Exact match "GME" trades in USD; "GME.DE" is a lower-volume EUR cross-listing.
+      if (u.includes("/chart/GME.DE")) return Promise.resolve(chartQuoteResponse("EUR", [18], 100));
+      if (u.includes("/chart/GME")) return Promise.resolve(chartQuoteResponse("USD", [20], 5000));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveQuote("GME", "EUR");
+    expect(result).toEqual({ symbol: "GME.DE", currency: "EUR", price: 18 });
+  });
+
+  it("keeps pure volume order for an ISIN-style query with no exact symbol match (regression guard)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GME", "GME2"]));
+      if (u.includes("/chart/GME2")) return Promise.resolve(chartQuoteResponse("USD", [21], 5000));
+      if (u.includes("/chart/GME")) return Promise.resolve(chartQuoteResponse("USD", [20], 1000));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // The ISIN never equals a listing symbol, so neither candidate gets the
+    // exact-match tier - highest volume ("GME2") still wins, as before.
+    const result = await resolveQuote("US36467W1099", "USD");
+    expect(result).toEqual({ symbol: "GME2", currency: "USD", price: 21 });
+  });
+});
+
+describe("resolveSymbol", () => {
+  beforeEach(() => {
+    __resetForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetForTests();
+  });
+
+  it("prefers an exact ticker match over a same-scored lookalike ranked first by search", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["VWCEX.DE", "VWCE.DE"]));
+      // Both share the ".DE" suffix, so exchangeScore alone ties them - only
+      // the exact-match tier breaks the tie in favor of the real ticker.
+      if (u.includes("/chart/VWCEX.DE")) return Promise.resolve(metaResponse("EUR", 99));
+      if (u.includes("/chart/VWCE.DE")) return Promise.resolve(metaResponse("EUR", 101));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveSymbol("VWCE.DE", "EUR");
+    expect(result).toBe("VWCE.DE");
   });
 });
 

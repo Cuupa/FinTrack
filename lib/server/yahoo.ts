@@ -212,6 +212,14 @@ function exchangeScore(symbol: string, want: string): number {
   return 0;
 }
 
+// A listing whose symbol matches the query exactly (case-insensitive) beats
+// every non-exact candidate, regardless of volume/exchange score. Ranking by
+// volume/exchange alone once let Yahoo search for "GME" resolve to "GMEX"
+// (GMEX Robotics, an unrelated company) on a day it out-traded GameStop.
+function exactSymbol(symbol: string, query: string): boolean {
+  return symbol.toUpperCase() === query.toUpperCase();
+}
+
 async function meta(
   symbol: string,
 ): Promise<{ price: number; currency: string } | null> {
@@ -268,8 +276,12 @@ export async function resolveSymbol(
 
   const matches = want ? valid.filter((x) => x.m.currency === want) : valid;
   const pool = matches.length > 0 ? matches : valid;
-  // Highest exchange score wins; search order breaks ties.
-  pool.sort((a, b) => exchangeScore(b.s, want) - exchangeScore(a.s, want));
+  // An exact ticker match forms a preferred tier; within a tier, highest
+  // exchange score wins and search order breaks ties.
+  pool.sort((a, b) => {
+    const exact = Number(exactSymbol(b.s, query)) - Number(exactSymbol(a.s, query));
+    return exact !== 0 ? exact : exchangeScore(b.s, want) - exchangeScore(a.s, want);
+  });
 
   const chosen = pool[0].s;
   symbolCache.set(cacheKey, chosen);
@@ -357,7 +369,12 @@ export async function resolveQuote(
   }
   const matches = want ? hits.filter((h) => h.currency === want) : hits;
   const pool = matches.length > 0 ? matches : hits;
-  pool.sort((a, b) => b.volume - a.volume);
+  // An exact ticker match forms a preferred tier; within a tier, highest
+  // volume wins (see exactSymbol above for the GME/GMEX case this guards).
+  pool.sort((a, b) => {
+    const exact = Number(exactSymbol(b.symbol, query)) - Number(exactSymbol(a.symbol, query));
+    return exact !== 0 ? exact : b.volume - a.volume;
+  });
   const best = pool[0];
   resolutionCache.set(resolutionKey, { symbol: best.symbol, currency: best.currency }, RESOLUTION_TTL_MS);
   return { symbol: best.symbol, currency: best.currency, price: best.price };
