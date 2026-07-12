@@ -54,6 +54,13 @@ function AnalysisPageInner() {
     setTab(key);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", key);
+    // `breakdown` is only meaningful on the distributions tab (it selects
+    // the allocation pie there); drop it when leaving so it doesn't leak
+    // onto unrelated tabs. Switching back to distributions without it is
+    // fine, AllocationView falls back to its default breakdown.
+    if (key !== "distributions") {
+      params.delete("breakdown");
+    }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
