@@ -11,7 +11,13 @@ function asset(over: Partial<Asset> & Pick<Asset, "id" | "type">): Asset {
   return { isin: null, wkn: null, symbol: null, name: over.id, currency: null, notes: null, ...over };
 }
 
-const DEFAULT_SETTINGS: TaxSettings = { allowance: 1000, churchTaxRate: 0, applyTeilfreistellung: false };
+const DEFAULT_SETTINGS: TaxSettings = {
+  allowance: 1000,
+  churchTaxRate: 0,
+  applyTeilfreistellung: false,
+  vorabpauschale: {},
+  withheldOverride: {},
+};
 const noDividends: Record<string, YearDividends> = {};
 
 describe("abgeltungRate", () => {
@@ -168,6 +174,83 @@ describe("taxYearBreakdown", () => {
       DEFAULT_SETTINGS,
     );
     expect(rows.map((r) => r.year)).toEqual(["2025", "2023", "2022"]);
+  });
+
+  it("applies Teilfreistellung to a manually entered Vorabpauschale like fund income, and the year exists solely because of it", () => {
+    const rows = taxYearBreakdown(
+      [],
+      [],
+      noDividends,
+      { ...DEFAULT_SETTINGS, applyTeilfreistellung: true, vorabpauschale: { "2024": 100 } },
+    );
+    expect(rows).toHaveLength(1);
+    const y = rows[0];
+    expect(y.year).toBe("2024");
+    expect(y.vorabpauschale).toBeCloseTo(70, 6); // 100 * 0.7
+    expect(y.kapitalertraege).toBeCloseTo(70, 6);
+    expect(y.allowanceUsed).toBeCloseTo(70, 6);
+    expect(y.taxableAfterAllowance).toBe(0);
+  });
+
+  it("leaves a manually entered Vorabpauschale untouched when Teilfreistellung is off", () => {
+    const rows = taxYearBreakdown(
+      [],
+      [],
+      noDividends,
+      { ...DEFAULT_SETTINGS, applyTeilfreistellung: false, vorabpauschale: { "2024": 100 } },
+    );
+    expect(rows).toHaveLength(1);
+    const y = rows[0];
+    expect(y.vorabpauschale).toBeCloseTo(100, 6);
+    expect(y.kapitalertraege).toBeCloseTo(100, 6);
+  });
+
+  it("overrides the computed withheld tax and still exposes the computed value separately", () => {
+    const stock = asset({ id: "a", type: "STOCK" });
+    const rows = taxYearBreakdown(
+      [stock],
+      [
+        tx({ type: "BUY", quantity: 10, price: 100, fee: 10, date: "2025-01-05" }),
+        tx({ type: "SELL", quantity: 5, price: 150, fee: 5, tax: 40, date: "2025-06-01" }),
+      ],
+      noDividends,
+      { ...DEFAULT_SETTINGS, withheldOverride: { "2025": 999 } },
+    );
+    expect(rows).toHaveLength(1);
+    const y = rows[0];
+    expect(y.taxWithheldComputed).toBeCloseTo(40, 6);
+    expect(y.taxWithheld).toBeCloseTo(999, 6); // override wins
+  });
+
+  it("without an override, taxWithheld equals the computed value", () => {
+    const stock = asset({ id: "a", type: "STOCK" });
+    const rows = taxYearBreakdown(
+      [stock],
+      [
+        tx({ type: "BUY", quantity: 10, price: 100, fee: 10, date: "2025-01-05" }),
+        tx({ type: "SELL", quantity: 5, price: 150, fee: 5, tax: 40, date: "2025-06-01" }),
+      ],
+      noDividends,
+      DEFAULT_SETTINGS,
+    );
+    const y = rows[0];
+    expect(y.taxWithheld).toBeCloseTo(40, 6);
+    expect(y.taxWithheldComputed).toBeCloseTo(40, 6);
+  });
+
+  it("a year with only a withheld override and no other events still appears", () => {
+    const rows = taxYearBreakdown(
+      [],
+      [],
+      noDividends,
+      { ...DEFAULT_SETTINGS, withheldOverride: { "2023": 50 } },
+    );
+    expect(rows).toHaveLength(1);
+    const y = rows[0];
+    expect(y.year).toBe("2023");
+    expect(y.taxWithheld).toBeCloseTo(50, 6);
+    expect(y.taxWithheldComputed).toBe(0);
+    expect(y.kapitalertraege).toBe(0);
   });
 
   it("converts a non-base-currency asset's gain via the ValuationContext spot rate", () => {

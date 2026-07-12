@@ -23,6 +23,10 @@ export interface Profile {
   churchTaxRate: number;
   /** Apply the 30% Teilfreistellung to equity fund (ETF) gains/dividends. */
   taxTeilfreistellung: boolean;
+  /** Manually entered Vorabpauschale per year ("2025" -> amount, base currency); can't be computed from transaction data. */
+  taxVorabpauschale: Record<string, number>;
+  /** Manual override of the tax withheld by the broker per year; replaces the transaction-derived sum when set. */
+  taxWithheldOverride: Record<string, number>;
 }
 
 /**
@@ -155,6 +159,8 @@ export const DEFAULT_PROFILE: Profile = {
   taxAllowance: 1000,
   churchTaxRate: 0,
   taxTeilfreistellung: false,
+  taxVorabpauschale: {},
+  taxWithheldOverride: {},
 };
 
 export function emptyPortfolio(): PortfolioData {

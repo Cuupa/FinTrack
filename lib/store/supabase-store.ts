@@ -98,7 +98,9 @@ export class SupabaseStore implements DataStore {
     const [profileRes, portfoliosRes, assetsRes, txRes, watchRes, plansRes] = await Promise.all([
       this.supabase
         .from("profiles")
-        .select("currency, display_name, locale, tax_allowance, church_tax_rate, tax_teilfreistellung")
+        .select(
+          "currency, display_name, locale, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override",
+        )
         .eq("id", this.userId)
         .maybeSingle(),
       this.supabase
@@ -158,6 +160,10 @@ export class SupabaseStore implements DataStore {
           churchTaxRate: profileRes.data.church_tax_rate ?? DEFAULT_PROFILE.churchTaxRate,
           taxTeilfreistellung:
             profileRes.data.tax_teilfreistellung ?? DEFAULT_PROFILE.taxTeilfreistellung,
+          taxVorabpauschale:
+            profileRes.data.tax_vorabpauschale ?? DEFAULT_PROFILE.taxVorabpauschale,
+          taxWithheldOverride:
+            profileRes.data.tax_withheld_override ?? DEFAULT_PROFILE.taxWithheldOverride,
         }
       : { ...DEFAULT_PROFILE };
 
@@ -220,6 +226,8 @@ export class SupabaseStore implements DataStore {
       tax_allowance: profile.taxAllowance,
       church_tax_rate: profile.churchTaxRate,
       tax_teilfreistellung: profile.taxTeilfreistellung,
+      tax_vorabpauschale: profile.taxVorabpauschale,
+      tax_withheld_override: profile.taxWithheldOverride,
     });
     if (error) throw error;
   }

@@ -4,11 +4,12 @@
 // legible to a private investor: raw gains/dividends/interest, the
 // Sparerpauschbetrag, an estimated bill, and how that compares to what the
 // broker already withheld. Settings (allowance, Kirchensteuer,
-// Teilfreistellung) live on /settings. This is a rough estimate for
-// orientation, not tax advice; see lib/finance/tax.ts for the scope and
-// simplifications (per-pot loss handling, no Vorabpauschale, ...).
+// Teilfreistellung) live on /settings; Vorabpauschale and the withheld tax
+// are entered manually per year here (see EditableAmountRow below). This is
+// a rough estimate for orientation, not tax advice; see lib/finance/tax.ts
+// for the scope and simplifications (per-pot loss handling, ...).
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
@@ -19,14 +20,15 @@ import { useDividends } from "@/lib/history/use-dividends";
 import { dividendsFromEvents } from "@/lib/finance/dividends";
 import { taxYearBreakdown, type TaxSettings, type YearDividends } from "@/lib/finance/tax";
 import { assetPriceKey } from "@/lib/types";
-import { formatCurrency, formatPercent, plColor } from "@/lib/format";
+import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
+import { isStorageFullError } from "@/lib/store/errors";
 import { Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function TaxView() {
-  const { data } = usePortfolio();
+  const { data, updateProfile } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const { t } = useI18n();
@@ -72,6 +74,8 @@ export function TaxView() {
       allowance: data.profile.taxAllowance,
       churchTaxRate: data.profile.churchTaxRate,
       applyTeilfreistellung: data.profile.taxTeilfreistellung,
+      vorabpauschale: data.profile.taxVorabpauschale,
+      withheldOverride: data.profile.taxWithheldOverride,
     };
     return taxYearBreakdown(data.assets, data.transactions, dividendsByYear, settings, valuation);
   }, [
@@ -81,8 +85,24 @@ export function TaxView() {
     data.profile.taxAllowance,
     data.profile.churchTaxRate,
     data.profile.taxTeilfreistellung,
+    data.profile.taxVorabpauschale,
+    data.profile.taxWithheldOverride,
     valuation,
   ]);
+
+  const setVorabpauschale = async (year: string, raw: number | null) => {
+    const next = { ...data.profile.taxVorabpauschale };
+    if (raw === null) delete next[year];
+    else next[year] = raw;
+    await updateProfile({ taxVorabpauschale: next });
+  };
+
+  const setWithheldOverride = async (year: string, raw: number | null) => {
+    const next = { ...data.profile.taxWithheldOverride };
+    if (raw === null) delete next[year];
+    else next[year] = raw;
+    await updateProfile({ taxWithheldOverride: next });
+  };
 
   return (
     <div className="space-y-6">
@@ -102,7 +122,8 @@ export function TaxView() {
           {years.map((y) => {
             const fundGainsDisplay = y.teilfreistellungApplied ? y.fundGains * 0.7 : y.fundGains;
             const dividendsTotal = y.dividendsStock + y.dividendsFund;
-            const sumIncome = y.stockGains + fundGainsDisplay + dividendsTotal + y.interest;
+            const sumIncome =
+              y.stockGains + fundGainsDisplay + dividendsTotal + y.interest + y.vorabpauschale;
             const diff = y.estimatedTax - y.taxWithheld;
             const diffLabel = diff > 0 ? t("tax.additionalOwed") : t("tax.refund");
 
@@ -143,6 +164,20 @@ export function TaxView() {
                     value={formatCurrency(y.interest, currency)}
                     valueClassName={y.interest !== 0 ? plColor(y.interest) : ""}
                   />
+                  <EditableAmountRow
+                    key={`vorab-${y.year}-${data.profile.taxVorabpauschale[y.year] ?? ""}`}
+                    label={
+                      <>
+                        {y.teilfreistellungApplied
+                          ? `${t("tax.vorab")} ${t("tax.tfSuffix")}`
+                          : t("tax.vorab")}
+                        <InfoTip text={t("tax.vorabTip")} className="ml-1" />
+                      </>
+                    }
+                    ariaLabel={t("tax.vorabAriaLabel", { year: y.year })}
+                    initial={data.profile.taxVorabpauschale[y.year]}
+                    onCommit={(raw) => setVorabpauschale(y.year, raw)}
+                  />
                   <div className="!mt-2.5 border-t border-zinc-200 pt-1.5 dark:border-zinc-800">
                     <Row
                       label={t("tax.sumIncome")}
@@ -178,14 +213,18 @@ export function TaxView() {
                     value={formatCurrency(y.estimatedTax, currency)}
                     bold
                   />
-                  <Row
+                  <EditableAmountRow
+                    key={`withheld-${y.year}-${data.profile.taxWithheldOverride[y.year] ?? ""}`}
                     label={
                       <>
                         {t("tax.withheld")}
                         <InfoTip text={t("tax.withheldTip")} className="ml-1" />
                       </>
                     }
-                    value={formatCurrency(y.taxWithheld, currency)}
+                    ariaLabel={t("tax.withheldAriaLabel", { year: y.year })}
+                    initial={data.profile.taxWithheldOverride[y.year]}
+                    placeholder={formatCurrency(y.taxWithheldComputed, currency)}
+                    onCommit={(raw) => setWithheldOverride(y.year, raw)}
                   />
                   <div className="!mt-2.5 border-t border-zinc-200 pt-1.5 dark:border-zinc-800">
                     <Row
@@ -202,38 +241,94 @@ export function TaxView() {
                   </div>
                 </dl>
 
-                <h4 className="mt-4 border-t border-zinc-200 pt-3 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:border-zinc-800">
-                  {t("tax.notIncluded")}
-                </h4>
-                <dl className="mt-2 space-y-1.5 text-sm">
-                  {y.privateSale !== 0 && (
-                    <Row
-                      label={
-                        <>
-                          {t("tax.privateSale")}
-                          <InfoTip text={t("tax.privateSaleTip")} className="ml-1" />
-                        </>
-                      }
-                      value={formatCurrency(y.privateSale, currency)}
-                      valueClassName={plColor(y.privateSale)}
-                    />
-                  )}
-                  <Row
-                    label={
-                      <>
-                        {t("tax.vorab")}
-                        <InfoTip text={t("tax.vorabTip")} className="ml-1" />
-                      </>
-                    }
-                    value={t("tax.vorabNotComputed")}
-                    numeric={false}
-                  />
-                </dl>
+                {y.privateSale !== 0 && (
+                  <>
+                    <h4 className="mt-4 border-t border-zinc-200 pt-3 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:border-zinc-800">
+                      {t("tax.notIncluded")}
+                    </h4>
+                    <dl className="mt-2 space-y-1.5 text-sm">
+                      <Row
+                        label={
+                          <>
+                            {t("tax.privateSale")}
+                            <InfoTip text={t("tax.privateSaleTip")} className="ml-1" />
+                          </>
+                        }
+                        value={formatCurrency(y.privateSale, currency)}
+                        valueClassName={plColor(y.privateSale)}
+                      />
+                    </dl>
+                  </>
+                )}
               </Card>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * A dl row whose value is a manually entered amount (Vorabpauschale, withheld
+ * tax override): a small right-aligned number input that commits on blur or
+ * Enter. Empty/0/invalid input clears the year's entry (falls back to the
+ * placeholder / computed value); a valid positive number sets it. Local input
+ * state is initialized from `initial` and re-seeded via the `key` prop the
+ * caller passes (year + stored value) rather than syncing through an effect.
+ */
+function EditableAmountRow({
+  label,
+  ariaLabel,
+  initial,
+  placeholder,
+  onCommit,
+}: {
+  label: ReactNode;
+  ariaLabel: string;
+  initial: number | undefined;
+  placeholder?: string;
+  onCommit: (raw: number | null) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [text, setText] = useState(initial !== undefined ? String(initial) : "");
+  const [error, setError] = useState<string | null>(null);
+
+  const commit = async () => {
+    const parsed = parseDecimal(text);
+    const next = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    setText(next !== null ? String(next) : "");
+    try {
+      await onCommit(next);
+      setError(null);
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("tax.saveError"));
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-4">
+        <dt className="flex items-center text-zinc-500">{label}</dt>
+        <dd className="text-right" data-private="">
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            value={text}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            className="w-32 rounded-lg border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700"
+          />
+        </dd>
+      </div>
+      {error && <p className="mt-1 text-right text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

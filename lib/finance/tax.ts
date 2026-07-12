@@ -10,9 +10,11 @@
 //
 // Pure, no React. This is an estimate for orientation only, not tax advice:
 // German capital-gains tax has many special cases (loss carryforwards across
-// years, Vorabpauschale on accumulating funds, per-broker Freistellungsauftrag
-// allocation, ...) that are deliberately out of scope; see `privateSale` and
-// `vorab`-related fields, which are informational only.
+// years, per-broker Freistellungsauftrag allocation, ...) that are
+// deliberately out of scope; see `privateSale`, which stays informational
+// only. Vorabpauschale (a notional tax pre-payment on accumulating funds)
+// can't be computed from transaction data, so it is entered manually per year
+// (`TaxSettings.vorabpauschale`) rather than derived here.
 
 import type { Asset, Transaction } from "../types";
 import type { ValuationContext } from "./portfolio";
@@ -34,6 +36,10 @@ export interface TaxSettings {
   churchTaxRate: number;
   /** Apply the 30% Teilfreistellung for equity fund (ETF) gains/dividends. */
   applyTeilfreistellung: boolean;
+  /** Manually entered Vorabpauschale per year ("2025" -> raw amount, base currency), from the broker's annual tax statement. */
+  vorabpauschale: Record<string, number>;
+  /** Manual override of the tax withheld by the broker per year; replaces the transaction-derived sum when set. */
+  withheldOverride: Record<string, number>;
 }
 
 /** Real dividend income for a year, split by the pot it feeds (Aktien vs. sonstige Kapitalerträge). */
@@ -62,8 +68,12 @@ export interface TaxYearBreakdown {
   /** Abgeltungsteuer incl. Soli + Kirchensteuer, as a fraction. */
   effectiveRate: number;
   estimatedTax: number;
-  /** Sum of tax withheld (t.tax) on STOCK/ETF sells that year. */
+  /** Effective tax withheld: `settings.withheldOverride[year]` when set, else `taxWithheldComputed`. */
   taxWithheld: number;
+  /** Sum of tax withheld (t.tax) on STOCK/ETF sells that year, from the transaction log alone. */
+  taxWithheldComputed: number;
+  /** Manually entered Vorabpauschale for the year, AFTER Teilfreistellung when applied (feeds the sonstige pot, mirrors the `dividendsFund` convention). */
+  vorabpauschale: number;
 }
 
 /**
@@ -169,13 +179,20 @@ export function taxYearBreakdown(
     }
   }
 
-  const allYears = new Set<string>([...years.keys(), ...Object.keys(dividendsByYear)]);
+  const allYears = new Set<string>([
+    ...years.keys(),
+    ...Object.keys(dividendsByYear),
+    ...Object.keys(settings.vorabpauschale).filter((y) => settings.vorabpauschale[y] !== 0),
+    ...Object.keys(settings.withheldOverride).filter((y) => settings.withheldOverride[y] !== 0),
+  ]);
   const rate = abgeltungRate(settings.churchTaxRate);
   const out: TaxYearBreakdown[] = [];
 
   for (const year of allYears) {
     const acc = years.get(year) ?? emptyAccum();
     const div = dividendsByYear[year] ?? { stock: 0, fund: 0 };
+    const vorabRaw = settings.vorabpauschale[year] ?? 0;
+    const withheldOverride = settings.withheldOverride[year];
 
     const hasEvent =
       acc.stockGains !== 0 ||
@@ -184,16 +201,22 @@ export function taxYearBreakdown(
       acc.privateSale !== 0 ||
       acc.taxWithheld !== 0 ||
       div.stock !== 0 ||
-      div.fund !== 0;
+      div.fund !== 0 ||
+      vorabRaw !== 0 ||
+      (withheldOverride ?? 0) !== 0;
     if (!hasEvent) continue;
 
     // Teilfreistellung applies to fund gains AND fund dividends alike, before
     // pooling, including losses (a fund loss is reduced by 30% too).
     const fundGainsAfterTF = settings.applyTeilfreistellung ? acc.fundGains * 0.7 : acc.fundGains;
     const dividendsFundAfterTF = settings.applyTeilfreistellung ? div.fund * 0.7 : div.fund;
+    // Vorabpauschale is fund income under German law (InvStG), so
+    // Teilfreistellung applies exactly like fund dividends.
+    const vorabAfterTF = settings.applyTeilfreistellung ? vorabRaw * 0.7 : vorabRaw;
 
     const aktienPos = Math.max(0, acc.stockGains);
-    const sonstige = fundGainsAfterTF + dividendsFundAfterTF + div.stock + acc.interest;
+    const sonstige =
+      fundGainsAfterTF + dividendsFundAfterTF + div.stock + acc.interest + vorabAfterTF;
     const sonstigePos = Math.max(0, sonstige);
     const kapitalertraege = aktienPos + sonstigePos;
 
@@ -215,7 +238,9 @@ export function taxYearBreakdown(
       taxableAfterAllowance,
       effectiveRate: rate,
       estimatedTax,
-      taxWithheld: acc.taxWithheld,
+      taxWithheld: withheldOverride ?? acc.taxWithheld,
+      taxWithheldComputed: acc.taxWithheld,
+      vorabpauschale: vorabAfterTF,
     });
   }
 

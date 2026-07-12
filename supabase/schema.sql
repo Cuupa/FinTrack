@@ -15,6 +15,8 @@ create table if not exists public.profiles (
   tax_allowance numeric not null default 1000,
   church_tax_rate numeric not null default 0,
   tax_teilfreistellung boolean not null default false,
+  tax_vorabpauschale jsonb not null default '{}'::jsonb,
+  tax_withheld_override jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 alter table public.profiles add column if not exists display_name text;
@@ -22,6 +24,8 @@ alter table public.profiles add column if not exists locale text;
 alter table public.profiles add column if not exists tax_allowance numeric not null default 1000;
 alter table public.profiles add column if not exists church_tax_rate numeric not null default 0;
 alter table public.profiles add column if not exists tax_teilfreistellung boolean not null default false;
+alter table public.profiles add column if not exists tax_vorabpauschale jsonb not null default '{}'::jsonb;
+alter table public.profiles add column if not exists tax_withheld_override jsonb not null default '{}'::jsonb;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of

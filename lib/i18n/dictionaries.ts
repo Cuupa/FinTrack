@@ -670,7 +670,7 @@ export const en = {
     "25% Abgeltungsteuer plus a 5.5% solidarity surcharge, plus church tax if configured in Settings.",
   "tax.withheld": "Withheld by broker",
   "tax.withheldTip":
-    "Sum of tax already withheld on your recorded sells. Your broker may already account for a Freistellungsauftrag or Teilfreistellung; this is a rough comparison, not a reconciliation.",
+    "Sum of tax already withheld on your recorded sells. Your broker may already account for a Freistellungsauftrag or Teilfreistellung; this is a rough comparison, not a reconciliation. Enter the exact figure from your tax statement to override the computed sum.",
   "tax.additionalOwed": "Estimated additional tax (rough)",
   "tax.refund": "Estimated refund (rough)",
   "tax.diffTip":
@@ -680,9 +680,11 @@ export const en = {
   "tax.privateSaleTip":
     "Gains from crypto and commodity sells follow separate rules (§23 EStG): tax-free after a one-year holding period, and exempt below a small yearly threshold. Not part of your capital income allowance.",
   "tax.vorab": "Vorabpauschale",
-  "tax.vorabNotComputed": "Not computed",
   "tax.vorabTip":
-    "A notional annual tax pre-payment on accumulating funds, based on the Basiszins. It can't be calculated from the data available here; check your broker's tax statement.",
+    "A notional annual tax pre-payment on accumulating funds, based on the Basiszins. It can't be calculated from the data available here; enter the figure from your broker's annual tax statement. Teilfreistellung applies when enabled, since it counts as fund income.",
+  "tax.vorabAriaLabel": "Vorabpauschale for {year}",
+  "tax.withheldAriaLabel": "Withheld tax override for {year}",
+  "tax.saveError": "Could not save. Please try again.",
   "tax.empty": "No taxable events yet. Sell a position, or receive interest or dividends, to see a report here.",
 
   // X-Ray
@@ -1644,7 +1646,7 @@ const de: Partial<Record<MessageKey, string>> = {
     "25% Abgeltungsteuer zuzüglich 5,5% Solidaritätszuschlag, zuzüglich Kirchensteuer, falls in den Einstellungen konfiguriert.",
   "tax.withheld": "Vom Broker einbehalten",
   "tax.withheldTip":
-    "Summe der bereits auf deine erfassten Verkäufe einbehaltenen Steuer. Dein Broker berücksichtigt darin eventuell schon einen Freistellungsauftrag oder eine Teilfreistellung; das hier ist ein grober Vergleich, keine Abstimmung.",
+    "Summe der bereits auf deine erfassten Verkäufe einbehaltenen Steuer. Dein Broker berücksichtigt darin eventuell schon einen Freistellungsauftrag oder eine Teilfreistellung; das hier ist ein grober Vergleich, keine Abstimmung. Trage den genauen Wert aus deiner Steuerbescheinigung ein, um die berechnete Summe zu überschreiben.",
   "tax.additionalOwed": "Voraussichtliche Nachzahlung (grob)",
   "tax.refund": "Mögliche Erstattung (grob)",
   "tax.diffTip":
@@ -1654,9 +1656,11 @@ const de: Partial<Record<MessageKey, string>> = {
   "tax.privateSaleTip":
     "Gewinne aus Krypto- und Rohstoffverkäufen folgen eigenen Regeln (§23 EStG): steuerfrei nach einem Jahr Haltefrist, und steuerfrei unterhalb einer kleinen jährlichen Freigrenze. Zählen nicht zu deinem Sparerpauschbetrag.",
   "tax.vorab": "Vorabpauschale",
-  "tax.vorabNotComputed": "Nicht berechnet",
   "tax.vorabTip":
-    "Eine fiktive jährliche Steuervorauszahlung auf thesaurierende Fonds, basierend auf dem Basiszins. Sie lässt sich aus den hier vorhandenen Daten nicht berechnen; schau dazu in die Steuerbescheinigung deines Brokers.",
+    "Eine fiktive jährliche Steuervorauszahlung auf thesaurierende Fonds, basierend auf dem Basiszins. Sie lässt sich aus den hier vorhandenen Daten nicht berechnen; trage den Wert aus der Steuerbescheinigung deines Brokers ein. Die Teilfreistellung wird berücksichtigt, wenn sie aktiviert ist, da es sich um Fondserträge handelt.",
+  "tax.vorabAriaLabel": "Vorabpauschale für {year}",
+  "tax.withheldAriaLabel": "Überschreibung der einbehaltenen Steuer für {year}",
+  "tax.saveError": "Konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "tax.empty": "Noch keine steuerlich relevanten Ereignisse. Verkaufe eine Position oder erhalte Zinsen oder Dividenden, um hier einen Report zu sehen.",
 
   // X-Ray
