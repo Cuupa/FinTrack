@@ -454,4 +454,20 @@ describe("historyByQuery", () => {
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
   });
+
+  it("prefers an exact ticker match over a higher-volume lookalike (the GME/GMEX case)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GMEX", "GME"]));
+      // GMEX (GMEX Robotics, unrelated) out-traded GME on this mocked day.
+      if (u.includes("/chart/GMEX")) return Promise.resolve(chartQuoteResponse("USD", [5, 6], 5000));
+      if (u.includes("/chart/GME")) return Promise.resolve(chartQuoteResponse("USD", [20, 21], 1000));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await historyByQuery("GME", "USD", undefined, "5d", "1d");
+    expect(result?.currency).toBe("USD");
+    expect(result?.points.map((p) => p.close)).toEqual([20, 21]);
+  });
 });

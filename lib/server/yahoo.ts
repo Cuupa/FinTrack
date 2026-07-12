@@ -634,7 +634,13 @@ export async function historyByQuery(
   }
   const matches = want ? hits.filter((h) => h.currency === want) : hits;
   const pool = matches.length > 0 ? matches : hits;
-  pool.sort((a, b) => b.volume - a.volume);
+  // Same exact-ticker tier as resolveQuote (see exactSymbol): this writes to
+  // the shared resolutionCache, so a volume-only pick here would poison quote
+  // resolution too (the GME/GMEX case), not just this history lookup.
+  pool.sort((a, b) => {
+    const exact = Number(exactSymbol(b.symbol, query)) - Number(exactSymbol(a.symbol, query));
+    return exact !== 0 ? exact : b.volume - a.volume;
+  });
   const best = pool[0];
   resolutionCache.set(resolutionKey, { symbol: best.symbol, currency: best.currency }, RESOLUTION_TTL_MS);
   return best.series;
