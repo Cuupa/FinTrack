@@ -144,7 +144,22 @@ duplicated, not imported).
   chart by ISIN even with no Supabase** (the catalog just adds the exact
   listing hint + crypto ids). Crypto needs the catalog (CoinGecko id).
 - **German WKNs are not resolvable** by Yahoo/free sources — auto-import works
-  by ISIN or symbol; WKN-only queries fall to manual entry.
+  by ISIN or symbol; WKN-only queries fall to manual entry (onvista search
+  covers WKN → ISIN for lookup metadata, see `SEARCH_DESIGN.md`).
+- **Onvista is the quote/history fallback BEHIND Yahoo** (round 19,
+  `lib/server/onvista.ts` — the same module that serves search metadata):
+  German structured products (knock-out warrants, certificates, ETCs) and
+  LU-domiciled mutual funds have zero Yahoo hits but price via onvista's
+  keyless API. `quote_source` `'onvista'`, `quote_id`
+  `"{entityType}:{entityValue}"` (codec exported + tested). The prices cron
+  tries onvista when Yahoo resolution misses (STOCK/ETF only, learns the
+  source so future syncs skip Yahoo; COMMODITY rows never fall through to any
+  search); `/api/price` and `/api/history` have matching branches. History
+  uses `eod_history` (unauthenticated cap: ~1 month of daily bars regardless
+  of range — older chart segments stay on the anchored synthetic walk);
+  `chart_history` is 403 AGB-protected, **never use it**. Expired/redeemed
+  products resolve nowhere and stay honestly unpriced. Dividends stay
+  Yahoo-only.
 
 ### Analysis features
 
