@@ -157,10 +157,16 @@ duplicated, not imported).
   silently); the Custom tab renders one pie PER tag group (no dropdown, groups
   without any tagged holding are hidden).
 - `lib/finance/tax.ts` — pure per-year German tax estimate (Aktien- vs
-  Sonstige-Topf, Sparerpauschbetrag/Kirchensteuer/Teilfreistellung from three
-  `Profile` fields, Par.23 informational, Vorabpauschale honestly deferred),
-  rendered as the flag-gated "Steuern" tab on /analysis; dividends/interest
-  included, sell fees folded into the gain, estimate never presented as advice.
+  Sonstige-Topf, Sparerpauschbetrag/Kirchensteuer/Teilfreistellung from
+  `Profile` fields, Par.23 informational), rendered as the flag-gated
+  "Steuern" tab on /analysis; dividends/interest included, sell fees folded
+  into the gain, estimate never presented as advice. Vorabpauschale and the
+  broker-withheld tax are **manually editable per year** (round 19): profile
+  jsonb maps `taxVorabpauschale` / `taxWithheldOverride` (0055), edited
+  inline on the year cards (`EditableAmountRow`). Vorabpauschale is fund
+  income — Teilfreistellung applies like fund dividends, feeds the
+  Sonstige-Topf; the withheld override *replaces* the transaction-derived
+  sum, which stays exposed as `taxWithheldComputed` (the input placeholder).
 - Dividend income charts live ONLY on /dividends; the returns tab's copy was
   removed as redundant (user decision, round 18).
 - Tags are grouped key-value pairs (e.g. `Strategie=gamble`): `TagsProvider`
@@ -253,6 +259,18 @@ self-heal: once a day (03 UTC hour) or on `?revalidate=1` the cron drops the
 stored hint so a stuck mis-resolved `quote_id` re-resolves from scratch (the
 GME/GMEX-Robotics case); the bulk `/api/cron/sync` forwards its query string
 to the prices sub-sync. `/admin/prices` surfaces dead/stale rows.
+
+All three Yahoo ranking sites (`resolveSymbol`, `resolveQuote`,
+`historyByQuery` — the last writes the shared `resolutionCache`) give a
+candidate whose symbol **exactly equals the query** a preferred tier above
+the volume/exchange-score ordering (round 19): ranking by liquidity alone
+once resolved "GME" to GMEX Robotics on a day it out-traded GameStop, and
+the daily hint-drop revalidate would have re-poisoned any manual heal.
+`/api/price`'s fire-and-forget write-through only updates rows whose
+`currency` matches the computed price's currency, with `quote_scale` 1 and
+type != COMMODITY — `instruments.last_price` is invariantly native-currency
+and already scaled, and the route computes a requested-currency unscaled
+price (it once wrote an EUR-converted price onto the USD GME row).
 
 ### Finance core (`lib/finance/`) — pure, no React
 
@@ -407,7 +425,18 @@ client pages (see `app/assets/[id]/page.tsx`).
   style the app with `prefers-color-scheme` media queries — use `dark:` /
   `.dark` so the manual toggle wins. The nav hosts the theme toggle; the
   language switcher lives in /settings (locale defaults to `navigator.language`
-  on first visit, unpersisted until an explicit choice).
+  on first visit, unpersisted until an explicit choice). An explicit theme
+  choice also persists to `profiles.theme` (0056): `ThemeSync`
+  (`components/theme-sync.tsx`, locale-sync idiom) applies it after data
+  loads and the profile wins over a differing local choice, same rule as
+  locale; the no-flash script stays localStorage-based (new devices show the
+  system theme until data loads).
+- Prices in flight show **skeletons, never synthetic values** (round 19):
+  while a one-shot price fetch is pending (non-held asset-detail headline,
+  watchlist rows), render `Skeleton`; the synthetic price + `EstimatedBadge`
+  appear only once fetching settles with no data. Loading state is derived by
+  comparing a fetch-target signature against the last settled one (the
+  `useDividends`/`useHistory` idiom) — never set synchronously in an effect.
 - Service-worker cache versioning: never hand-bump a version in `public/sw.js`.
   The npm `prebuild` hook (`scripts/generate-sw-version.mjs`) writes the commit
   sha into the gitignored `public/sw-version.js`, which sw.js `importScripts`s
