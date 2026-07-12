@@ -18,6 +18,7 @@ import { formatCurrency } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { pickWatchlistPrice } from "@/lib/live/watchlist-price";
 import { isStorageFullError } from "@/lib/store/errors";
@@ -39,6 +40,13 @@ export function WatchlistCard() {
   // One-shot /api/price results for items the cron hasn't cached, keyed by
   // price key, in the item's own currency (mirrors LivePricesProvider).
   const [fetched, setFetched] = useState<Record<string, number>>({});
+  // Signature of the last completed fetch batch. `pendingKeys` below is
+  // derived by comparing it against the current batch's signature (same
+  // settled-signature pattern as useDividends/useHistory) rather than a flag
+  // set synchronously in the effect body, since the set-state-in-effect lint
+  // rule forbids that. A row is pending exactly while its price is still
+  // in flight, so it shows a skeleton instead of an assumed dash or price.
+  const [settledSig, setSettledSig] = useState("");
 
   const watchlist = data.watchlist;
 
@@ -95,6 +103,9 @@ export function WatchlistCard() {
       const add: Record<string, number> = {};
       for (const r of results) if (r) add[r[0]] = r[1];
       if (Object.keys(add).length > 0) setFetched((prev) => ({ ...prev, ...add }));
+      // Settle this batch either way so the pending rows' skeletons clear,
+      // including the ones that resolved to no price (dash, not a skeleton).
+      setSettledSig(uncachedSig);
     };
     void run();
     return () => {
@@ -102,6 +113,11 @@ export function WatchlistCard() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uncachedSig]);
+
+  const pendingKeys = useMemo(
+    () => (uncachedSig && settledSig !== uncachedSig ? new Set(uncachedSig.split(",")) : new Set<string>()),
+    [uncachedSig, settledSig],
+  );
 
   if (!enabled) return null;
 
@@ -181,7 +197,7 @@ export function WatchlistCard() {
         <p className="mt-3 text-sm text-zinc-500">{t("watchlist.empty")}</p>
       ) : (
         <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-          {priced.map(({ item, price, currency }) => (
+          {priced.map(({ item, key, price, currency }) => (
             <li key={item.id} className="flex items-center justify-between gap-3 py-2">
               <Link
                 href={`/instruments/${encodeURIComponent(assetPriceKey(item))}`}
@@ -195,7 +211,9 @@ export function WatchlistCard() {
               </Link>
               <span className="flex shrink-0 items-center gap-2">
                 <span className="text-sm tabular-nums">
-                  {price != null ? (
+                  {pendingKeys.has(key) ? (
+                    <Skeleton className="h-4 w-14" />
+                  ) : price != null ? (
                     formatCurrency(price, currency)
                   ) : (
                     <span className="text-zinc-400">—</span>

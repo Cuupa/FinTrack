@@ -46,6 +46,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CopyValue } from "@/components/ui/copy-value";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -141,24 +142,39 @@ export function AssetDetail({
 
   // Non-held STOCK/ETF: a one-shot live price fetch so the header/chart show
   // a real price the same way the held path does, instead of only ever
-  // falling back to the synthetic walk. Cancel-guarded; state is only set in
-  // the async continuation, never synchronously in the effect body.
-  const [nonHeldPrice, setNonHeldPrice] = useState<number | null>(null);
-  useEffect(() => {
-    if (held || !asset || (asset.type !== "STOCK" && asset.type !== "ETF")) return;
+  // falling back to the synthetic walk. `nonHeldFetchSig` is null when no
+  // fetch applies (held, wrong type, or no isin/symbol); `loading` is derived
+  // by comparing it against the settled signature (same pattern as
+  // useDividends/useHistory) rather than a flag set synchronously in the
+  // effect body, since the set-state-in-effect lint rule forbids that. While
+  // loading, the headline price must never show the synthetic walk value
+  // (user rule: no assumed price while a real one may still be loading), so
+  // the header renders a Skeleton instead (see below).
+  const nonHeldFetchSig = useMemo(() => {
+    if (held || !asset || (asset.type !== "STOCK" && asset.type !== "ETF")) return null;
     const q = asset.isin || asset.symbol;
-    if (!q) return;
+    return q ? `${asset.id}:${q}` : null;
+  }, [held, asset]);
+  const [nonHeldPriceState, setNonHeldPriceState] = useState<{
+    sig: string | null;
+    price: number | null;
+  }>({ sig: null, price: null });
+  useEffect(() => {
+    if (!nonHeldFetchSig || !asset) return;
+    const q = asset.isin || asset.symbol!;
     let cancelled = false;
     const run = async () => {
       const p = await fetchLivePrice(q, nativeCurrency(asset, currency), asset.name);
-      if (!cancelled) setNonHeldPrice(p);
+      if (!cancelled) setNonHeldPriceState({ sig: nonHeldFetchSig, price: p });
     };
     void run();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [held, asset?.id]);
+  }, [nonHeldFetchSig]);
+  const nonHeldPrice = nonHeldPriceState.sig === nonHeldFetchSig ? nonHeldPriceState.price : null;
+  const nonHeldPriceLoading = nonHeldFetchSig !== null && nonHeldPriceState.sig !== nonHeldFetchSig;
 
   // Valuation augmented with the fetched non-held price, so summarizeHolding
   // and the price series show it exactly like a cron-cached held price would.
@@ -327,15 +343,21 @@ export function AssetDetail({
             {/* CASH has no per-unit price (constant 1) — the headline is the
                 position's total value instead, same as the "Holding value"
                 subline uses for other asset types. */}
-            <span
-              className="text-lg font-semibold tabular-nums"
-              {...(asset.type === "CASH" ? { "data-private": "" } : {})}
-            >
-              {asset.type === "CASH"
-                ? formatCurrency(summary.marketValue, currency)
-                : formatCurrency(summary.price, nativeCur)}
-            </span>
-            {summary.syntheticPrice && <EstimatedBadge tip={t("data.estimatedPriceTip")} />}
+            {nonHeldPriceLoading ? (
+              <Skeleton className="h-5 w-24" />
+            ) : (
+              <span
+                className="text-lg font-semibold tabular-nums"
+                {...(asset.type === "CASH" ? { "data-private": "" } : {})}
+              >
+                {asset.type === "CASH"
+                  ? formatCurrency(summary.marketValue, currency)
+                  : formatCurrency(summary.price, nativeCur)}
+              </span>
+            )}
+            {!nonHeldPriceLoading && summary.syntheticPrice && (
+              <EstimatedBadge tip={t("data.estimatedPriceTip")} />
+            )}
             {asset.type !== "CASH" && (
               <span className="text-zinc-500">
                 {t("common.holdingValue")} <span data-private>{formatCurrency(summary.marketValue, currency)}</span>
@@ -378,7 +400,7 @@ export function AssetDetail({
           {historyLoading ? (
             <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
-              <p className="text-sm">Loading price history…</p>
+              <p className="text-sm">{t("chart.loading")}</p>
             </div>
           ) : (
             <PerformanceChart
@@ -523,7 +545,16 @@ export function AssetDetail({
               <Row label={t("asset.row.avgCost")} value={formatCurrency(summary.position.avgCost, nativeCur)} isPrivate />
             )}
             {asset.type !== "CASH" && (
-              <Row label={t("asset.row.currentPrice")} value={formatCurrency(summary.price, nativeCur)} />
+              <Row
+                label={t("asset.row.currentPrice")}
+                value={
+                  nonHeldPriceLoading ? (
+                    <SkeletonText className="ml-auto h-3.5 w-16" />
+                  ) : (
+                    formatCurrency(summary.price, nativeCur)
+                  )
+                }
+              />
             )}
             <Row label={t("asset.row.costBasis")} value={formatCurrency(summary.position.costBasis, nativeCur)} isPrivate />
             {asset.type === "CASH" && (
