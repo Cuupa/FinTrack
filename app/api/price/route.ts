@@ -19,6 +19,15 @@ export const dynamic = "force-dynamic";
 // (isin/wkn/symbol); never inserts. Silently skipped without the secret key,
 // and never awaited on the response path — a write failure here must not
 // affect the price the add-asset form shows.
+//
+// Invariant (shared with the prices cron, see app/api/cron/sync/prices/route.ts):
+// instruments.last_price is always in the row's own native currency and
+// already has quote_scale applied. This route only computes a price in the
+// requested currency with no scale applied, so the write-through may only
+// touch a row whose native currency matches that requested currency and whose
+// quote_scale is 1 - otherwise it would silently poison the row with a
+// wrong-currency or wrong-unit price. COMMODITY rows are excluded outright:
+// their quote_id is authoritative and only the cron is allowed to write them.
 function writeThroughPrice(q: string, currency: string, priceValue: number): void {
   if (!secretKey()) return;
   const supabase = supabaseSecret();
@@ -29,6 +38,9 @@ function writeThroughPrice(q: string, currency: string, priceValue: number): voi
     .from("instruments")
     .update({ last_price: priceValue, price_synced_at: new Date().toISOString() })
     .or(`isin.eq.${escaped},wkn.eq.${escaped},symbol.eq.${escaped}`)
+    .eq("currency", currency)
+    .neq("type", "COMMODITY")
+    .eq("quote_scale", 1)
     .then(
       () => {},
       () => {},
