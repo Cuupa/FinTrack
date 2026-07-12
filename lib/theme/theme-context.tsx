@@ -26,7 +26,11 @@ type EffectiveTheme = "light" | "dark";
 
 interface ThemeContextValue {
   theme: EffectiveTheme;
+  /** The explicit choice (device or profile), or null while following the OS. */
+  explicit: ExplicitTheme;
   toggle: () => void;
+  /** Applies an explicit choice from outside a user click (ThemeSync loading profile.theme). */
+  setTheme: (next: EffectiveTheme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -73,17 +77,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener("change", onChange);
   }, [explicit]);
 
-  const toggle = useCallback(() => {
-    const next: EffectiveTheme = effective === "dark" ? "light" : "dark";
+  // Shared by toggle (user click) and setTheme (ThemeSync applying the
+  // profile's saved choice): both are an explicit pick, just triggered
+  // differently, so both write localStorage the same way the no-flash
+  // script reads it on the next load.
+  const applyExplicit = useCallback((next: EffectiveTheme) => {
     setExplicit(next);
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {
       /* ignore */
     }
-  }, [effective]);
+  }, []);
 
-  const value = useMemo<ThemeContextValue>(() => ({ theme: effective, toggle }), [effective, toggle]);
+  const toggle = useCallback(() => {
+    applyExplicit(effective === "dark" ? "light" : "dark");
+  }, [effective, applyExplicit]);
+
+  const setTheme = useCallback(
+    (next: EffectiveTheme) => {
+      applyExplicit(next);
+    },
+    [applyExplicit],
+  );
+
+  const value = useMemo<ThemeContextValue>(
+    () => ({ theme: effective, explicit, toggle, setTheme }),
+    [effective, explicit, toggle, setTheme],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

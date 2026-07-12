@@ -12,6 +12,7 @@ create table if not exists public.profiles (
   currency text not null default 'EUR',
   display_name text,
   locale text,
+  theme text,
   tax_allowance numeric not null default 1000,
   church_tax_rate numeric not null default 0,
   tax_teilfreistellung boolean not null default false,
@@ -21,6 +22,7 @@ create table if not exists public.profiles (
 );
 alter table public.profiles add column if not exists display_name text;
 alter table public.profiles add column if not exists locale text;
+alter table public.profiles add column if not exists theme text;
 alter table public.profiles add column if not exists tax_allowance numeric not null default 1000;
 alter table public.profiles add column if not exists church_tax_rate numeric not null default 0;
 alter table public.profiles add column if not exists tax_teilfreistellung boolean not null default false;
@@ -427,7 +429,9 @@ insert into public.schema_migrations (version) values
   ('0051_error_logs'),
   ('0052_retention_indexes'),
   ('0053_heal_gold_gme_quotes'),
-  ('0054_tax_settings')
+  ('0054_tax_settings'),
+  ('0055_manual_tax_entries'),
+  ('0056_profile_theme')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

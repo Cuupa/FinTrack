@@ -4,17 +4,25 @@
 
 import { useTheme } from "@/lib/theme/theme-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme, toggle } = useTheme();
   const { t } = useI18n();
+  const { updateProfile } = usePortfolio();
 
   const label = theme === "dark" ? t("theme.toggleToLight") : t("theme.toggleToDark");
 
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={() => {
+        const next = theme === "dark" ? "light" : "dark";
+        toggle();
+        // Persist the choice to the profile (DB for registered users), same
+        // as LocaleSwitcher persists profile.locale.
+        void updateProfile({ theme: next });
+      }}
       title={label}
       aria-label={label}
       className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}

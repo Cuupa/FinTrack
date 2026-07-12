@@ -12,6 +12,7 @@ import { TagsProvider } from "@/lib/tags/tags-context";
 import { I18nProvider } from "@/lib/i18n/i18n-context";
 import { ThemeProvider } from "@/lib/theme/theme-context";
 import { LocaleSync } from "@/components/locale-sync";
+import { ThemeSync } from "@/components/theme-sync";
 import { ErrorReporter } from "@/components/error-reporter";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -30,6 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
                     <PrivacyProvider>
                       <TagsProvider>
                         <LocaleSync />
+                        <ThemeSync />
                         <ErrorReporter />
                         {children}
                       </TagsProvider>

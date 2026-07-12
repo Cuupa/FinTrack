@@ -99,7 +99,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("profiles")
         .select(
-          "currency, display_name, locale, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override",
+          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override",
         )
         .eq("id", this.userId)
         .maybeSingle(),
@@ -156,6 +156,10 @@ export class SupabaseStore implements DataStore {
           currency: profileRes.data.currency,
           name: profileRes.data.display_name ?? null,
           locale: profileRes.data.locale ?? null,
+          theme:
+            profileRes.data.theme === "light" || profileRes.data.theme === "dark"
+              ? profileRes.data.theme
+              : null,
           taxAllowance: profileRes.data.tax_allowance ?? DEFAULT_PROFILE.taxAllowance,
           churchTaxRate: profileRes.data.church_tax_rate ?? DEFAULT_PROFILE.churchTaxRate,
           taxTeilfreistellung:
@@ -223,6 +227,7 @@ export class SupabaseStore implements DataStore {
       currency: profile.currency,
       display_name: profile.name,
       locale: profile.locale,
+      theme: profile.theme,
       tax_allowance: profile.taxAllowance,
       church_tax_rate: profile.churchTaxRate,
       tax_teilfreistellung: profile.taxTeilfreistellung,

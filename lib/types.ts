@@ -17,6 +17,8 @@ export interface Profile {
   name: string | null;
   /** Preferred UI locale ("en" | "de"); null = use the device/last choice. */
   locale: string | null;
+  /** Explicit light/dark choice; null = follow the device/OS preference. */
+  theme: "light" | "dark" | null;
   /** Sparerpauschbetrag: tax-free capital income allowance, base currency. */
   taxAllowance: number;
   /** Kirchensteuer rate applied on top of Abgeltungsteuer: 0 | 0.08 | 0.09. */
@@ -156,6 +158,7 @@ export const DEFAULT_PROFILE: Profile = {
   currency: "EUR",
   name: null,
   locale: null,
+  theme: null,
   taxAllowance: 1000,
   churchTaxRate: 0,
   taxTeilfreistellung: false,
