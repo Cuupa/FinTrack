@@ -165,7 +165,7 @@ export function AllocationView() {
           ))}
         </div>
 
-        {tab !== "custom" && (
+        {tab !== "custom" ? (
           <div className="mt-8">
             {charts[tab].length === 0 ? (
               <p className="py-12 text-center text-sm text-zinc-500">
@@ -175,26 +175,25 @@ export function AllocationView() {
               <AllocationPie slices={charts[tab]} currency={base} title={t(`alloc.${tab}`)} />
             )}
           </div>
+        ) : (
+          <div className="mt-8">
+            {customGroupCharts.length === 0 ? (
+              <p className="py-12 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                {customGroupCharts.map(({ group, slices, colors }) => (
+                  <div key={group.id}>
+                    <h3 className="text-sm font-semibold">{group.name}</h3>
+                    <div className="mt-4">
+                      <AllocationPie slices={slices} currency={base} title={group.name} colors={colors} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </Card>
-
-      {tab === "custom" &&
-        (customGroupCharts.length === 0 ? (
-          <Card>
-            <p className="py-6 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {customGroupCharts.map(({ group, slices, colors }) => (
-              <Card key={group.id}>
-                <h3 className="text-sm font-semibold">{group.name}</h3>
-                <div className="mt-4">
-                  <AllocationPie slices={slices} currency={base} title={group.name} colors={colors} />
-                </div>
-              </Card>
-            ))}
-          </div>
-        ))}
     </div>
   );
 }
