@@ -169,8 +169,9 @@ duplicated, not imported).
 - `lib/finance/allocation.ts` — pie-chart breakdowns by investment / class /
   currency / country / volatility (`/allocation`). On /analysis the active tab
   and breakdown ride the URL (`?tab=`, `?breakdown=`, invalid values fall back
-  silently); the Custom tab renders one pie PER tag group (no dropdown, groups
-  without any tagged holding are hidden).
+  silently; `?breakdown=` is scoped to the distributions tab and dropped from
+  the URL when switching to any other tab); the Custom tab renders one pie PER
+  tag group (no dropdown, groups without any tagged holding are hidden).
 - `lib/finance/tax.ts` — pure per-year German tax estimate (Aktien- vs
   Sonstige-Topf, Sparerpauschbetrag/Kirchensteuer/Teilfreistellung from
   `Profile` fields, Par.23 informational), rendered as the flag-gated
@@ -228,6 +229,22 @@ the asset lands. Delete + tags stay held-only. The transaction form prefills
 from `valuation.live` and
 refreshes equities via `/api/price` when the cached price is older than 1h
 (`lib/live/fetch-price.ts` `isPriceFresh`/`fetchLivePrice`).
+
+### Onboarding (guided tour)
+
+First dashboard visit with `profile.tourDoneAt` null (0057; rides the store
+seam like theme/locale, so guests persist it too) opens a step-by-step
+spotlight tour: `components/onboarding/guided-tour.tsx` renders the overlay,
+`lib/onboarding/tour-steps.ts` holds the pure step registry + tooltip-geometry
+helpers (unit-tested). Targets are `data-tour="..."` attributes on the real
+dashboard elements; steps whose target has no client rects (flag off, narrow
+viewport, empty table) are skipped automatically. The open state is DERIVED
+(`tourDoneAt == null && !closed`), never synced via effect; finishing,
+skipping and Esc all persist `tourDoneAt` and close locally first so a failed
+write never traps the user. Re-run via the settings "Tour" card (clears the
+marker, navigates to `/`). Design + later phases (demo portfolio, empty-state
+cards): `ONBOARDING.md`. Monetization/paywall design (not implemented):
+`MONETIZATION.md`.
 
 ### Asset identity
 
