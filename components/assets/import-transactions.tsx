@@ -194,6 +194,19 @@ export function ImportTransactions({
     () => reconciled.map((r, i) => ({ r, i })).filter((x) => x.r.status === "new"),
     [reconciled],
   );
+  // Group new rows by asset identity (isin/wkn/symbol, same precedence
+  // `reconcile` matches on) so the user can include/exclude an entire
+  // holding's transactions at once instead of ticking each row individually.
+  const newRowGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; rows: typeof newRows }>();
+    for (const x of newRows) {
+      const key = rowIdentifier(x.r.parsed);
+      const g = groups.get(key);
+      if (g) g.rows.push(x);
+      else groups.set(key, { key, rows: [x] });
+    }
+    return [...groups.values()];
+  }, [newRows]);
   const conflictAll = useMemo(
     () => reconciled.map((r, i) => ({ r, i })).filter((x) => x.r.status === "conflict"),
     [reconciled],
@@ -494,24 +507,55 @@ export function ImportTransactions({
                   </button>
                 </div>
               </div>
-              <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 dark:divide-zinc-800/60 dark:border-zinc-800">
-                {newRows.map(({ r, i }) => (
-                  <li key={i} className="flex items-center gap-3 px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={included[i] ?? false}
-                      onChange={(e) =>
-                        setIncluded((prev) => ({ ...prev, [i]: e.target.checked }))
-                      }
-                      className="h-4 w-4 shrink-0 rounded border-zinc-300 dark:border-zinc-600"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <AssetLine parsed={r.parsed} />
+              <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                {newRowGroups.map((g) => {
+                  const allChecked = g.rows.every((x) => included[x.i] ?? false);
+                  const noneChecked = g.rows.every((x) => !(included[x.i] ?? false));
+                  return (
+                    <div key={g.key}>
+                      <div className="flex items-center gap-3 bg-zinc-50 px-3 py-2 dark:bg-zinc-900/40">
+                        <input
+                          type="checkbox"
+                          checked={allChecked}
+                          ref={(el) => {
+                            if (el) el.indeterminate = !allChecked && !noneChecked;
+                          }}
+                          onChange={(e) =>
+                            setIncluded((prev) => {
+                              const next = { ...prev };
+                              for (const x of g.rows) next[x.i] = e.target.checked;
+                              return next;
+                            })
+                          }
+                          className="h-4 w-4 shrink-0 rounded border-zinc-300 dark:border-zinc-600"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <AssetLine parsed={g.rows[0].r.parsed} />
+                        </div>
+                        <span className="shrink-0 text-xs text-zinc-400">
+                          ({g.rows.length})
+                        </span>
+                      </div>
+                      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                        {g.rows.map(({ r, i }) => (
+                          <li key={i} className="flex items-center gap-3 px-3 py-2 pl-9">
+                            <input
+                              type="checkbox"
+                              checked={included[i] ?? false}
+                              onChange={(e) =>
+                                setIncluded((prev) => ({ ...prev, [i]: e.target.checked }))
+                              }
+                              className="h-4 w-4 shrink-0 rounded border-zinc-300 dark:border-zinc-600"
+                            />
+                            <div className="min-w-0 flex-1" />
+                            <TxSummary parsed={r.parsed} />
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <TxSummary parsed={r.parsed} />
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
             </section>
           )}
 
