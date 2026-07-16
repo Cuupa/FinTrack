@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   dueOccurrences,
   MAX_DUE_OCCURRENCES,
+  monthlyContributionOf,
   nextOccurrence,
   occurrenceAt,
 } from "../lib/finance/savings-plans";
-import type { SavingsPlan } from "../lib/types";
+import type { Asset, SavingsPlan } from "../lib/types";
 
 function plan(over: Partial<SavingsPlan>): SavingsPlan {
   return {
@@ -72,5 +73,58 @@ describe("nextOccurrence", () => {
   it("is the first occurrence strictly after today", () => {
     expect(nextOccurrence(plan({ startDate: "2026-01-15" }), "2026-07-06")).toBe("2026-07-15");
     expect(nextOccurrence(plan({ startDate: "2026-07-15" }), "2026-07-06")).toBe("2026-07-15");
+  });
+});
+
+function asset(over: Partial<Asset>): Asset {
+  return {
+    id: "a",
+    isin: null,
+    wkn: null,
+    symbol: "X",
+    name: "Asset",
+    type: "ETF",
+    currency: "EUR",
+    notes: null,
+    ...over,
+  };
+}
+
+describe("monthlyContributionOf", () => {
+  it("normalizes weekly/monthly/quarterly plans to a monthly amount", () => {
+    const assets = [asset({ id: "a1" }), asset({ id: "a2" }), asset({ id: "a3" })];
+    const plans: SavingsPlan[] = [
+      plan({ id: "p1", assetId: "a1", interval: "WEEKLY", amount: 50 }),
+      plan({ id: "p2", assetId: "a2", interval: "MONTHLY", amount: 200 }),
+      plan({ id: "p3", assetId: "a3", interval: "QUARTERLY", amount: 300 }),
+    ];
+    // 50*52/12 + 200 + 300/3 = 216.666... + 200 + 100
+    expect(monthlyContributionOf(plans, assets)).toBeCloseTo(516.6667, 3);
+  });
+
+  it("skips inactive plans and plans whose asset no longer exists", () => {
+    const assets = [asset({ id: "a1" })];
+    const plans: SavingsPlan[] = [
+      plan({ id: "p1", assetId: "a1", amount: 100, active: false }),
+      plan({ id: "p2", assetId: "missing", amount: 100 }),
+    ];
+    expect(monthlyContributionOf(plans, assets)).toBe(0);
+  });
+
+  it("converts each plan's amount from its asset's native currency to the base", () => {
+    const assets = [asset({ id: "a1", currency: "USD" }), asset({ id: "a2", currency: "EUR" })];
+    const plans: SavingsPlan[] = [
+      plan({ id: "p1", assetId: "a1", interval: "MONTHLY", amount: 100 }),
+      plan({ id: "p2", assetId: "a2", interval: "MONTHLY", amount: 100 }),
+    ];
+    const v = { base: "EUR", fx: { USD: 0.9 } };
+    // USD plan converts at 0.9, EUR plan (== base) passes through 1:1.
+    expect(monthlyContributionOf(plans, assets, v)).toBeCloseTo(190, 6);
+  });
+
+  it("is currency-agnostic (1:1) without a valuation context", () => {
+    const assets = [asset({ id: "a1", currency: "USD" })];
+    const plans: SavingsPlan[] = [plan({ id: "p1", assetId: "a1", amount: 100 })];
+    expect(monthlyContributionOf(plans, assets)).toBe(100);
   });
 });

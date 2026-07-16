@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -28,6 +29,8 @@ export function DistributionChart({
   mode = "currency",
   height = 360,
   highlight = null,
+  phaseBoundaryYear,
+  phaseBoundaryLabel,
 }: {
   result: MonteCarloResult;
   currency: string;
@@ -36,6 +39,10 @@ export function DistributionChart({
   height?: number;
   /** Series key to emphasise (others dim) — driven by legend hover. */
   highlight?: string | null;
+  /** X (year) where the accumulation phase ends and withdrawal begins. */
+  phaseBoundaryYear?: number;
+  /** Localized label shown next to the phase boundary line. */
+  phaseBoundaryLabel?: string;
 }) {
   const { t } = useI18n();
   // Per-series opacity helpers for the legend-hover highlight.
@@ -175,6 +182,24 @@ export function DistributionChart({
           activeDot={false}
           isAnimationActive={false}
         />
+        {phaseBoundaryYear != null && (
+          <ReferenceLine
+            x={phaseBoundaryYear}
+            stroke="currentColor"
+            className="text-zinc-400 dark:text-zinc-500"
+            strokeDasharray="4 4"
+            label={
+              phaseBoundaryLabel
+                ? {
+                    value: phaseBoundaryLabel,
+                    position: "insideTopRight",
+                    className: "fill-zinc-500 dark:fill-zinc-400",
+                    fontSize: 11,
+                  }
+                : undefined
+            }
+          />
+        )}
       </ComposedChart>
     </ResponsiveContainer>
   );

@@ -12,6 +12,7 @@ import { summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { estimatePortfolioModel, type PortfolioModel } from "@/lib/finance/stats";
+import { monthlyContributionOf } from "@/lib/finance/savings-plans";
 import {
   runMonteCarlo,
   runPortfolioMonteCarlo,
@@ -120,6 +121,14 @@ export function MonteCarloPanel() {
     [holdings],
   );
 
+  // Savings-plan-derived monthly contribution (base currency), summed across
+  // active plans and converted from each plan's asset currency.
+  const hasSavingsPlans = data.savingsPlans.some((p) => p.active);
+  const monthlyFromPlans = useMemo(
+    () => monthlyContributionOf(data.savingsPlans, data.assets, valuation),
+    [data.savingsPlans, data.assets, valuation],
+  );
+
   // Default to simulating the real portfolio when there is one.
   const [mode, setMode] = useState<SimMode>("portfolio");
 
@@ -176,6 +185,16 @@ export function MonteCarloPanel() {
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
   const [returnOverride, setReturnOverride] = useState<number | null>(null);
   const [volOverride, setVolOverride] = useState<number | null>(null);
+  // Default to using the savings-plan-derived contribution when plans exist;
+  // an explicit toggle overrides the default, same pattern as the overrides
+  // above.
+  const [useSavingsPlansOverride, setUseSavingsPlansOverride] = useState<boolean | null>(
+    null,
+  );
+  const useSavingsPlans = useSavingsPlansOverride ?? hasSavingsPlans;
+  const effectiveMonthlyContribution = useSavingsPlans
+    ? monthlyFromPlans
+    : form.monthlyContribution;
   // Per-asset μ/σ overrides (portfolio mode), keyed by asset name. Percent units.
   const [assetOverrides, setAssetOverrides] = useState<
     Record<string, { mean?: number; vol?: number }>
@@ -231,7 +250,7 @@ export function MonteCarloPanel() {
             kind: "portfolio" as const,
             params: {
               initialCapital,
-              monthlyContribution: form.monthlyContribution,
+              monthlyContribution: effectiveMonthlyContribution,
               years,
               runs,
               assets: model.assets.map((a) => {
@@ -253,7 +272,7 @@ export function MonteCarloPanel() {
             kind: "scalar" as const,
             params: {
               initialCapital,
-              monthlyContribution: form.monthlyContribution,
+              monthlyContribution: effectiveMonthlyContribution,
               years,
               expectedReturn: expectedReturn / 100,
               volatility: volatility / 100,
@@ -341,99 +360,182 @@ export function MonteCarloPanel() {
       <Card className="lg:col-span-1">
         <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
         <div className="mt-4 space-y-4">
-          {showModeToggle && (
-            <div>
-              <label className="text-sm font-medium">{t("sim.model")}</label>
-              <div className="mt-1">
-                <SegmentedControl<SimMode>
-                  value={effectiveMode}
-                  onChange={setMode}
-                  options={[
-                    { label: t("sim.myPortfolio"), value: "portfolio" },
-                    { label: t("sim.custom"), value: "custom" },
-                  ]}
-                />
+          {/* Accumulation phase: initial capital, contribution, horizon. */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              {t("sim.accumulationPhase")}
+            </h3>
+            <div className="mt-3 space-y-4">
+              <SliderField
+                label={t("sim.initialCapital")}
+                suffix={currency}
+                value={initialCapital}
+                onChange={(v) => setCapitalOverride(v)}
+                min={0}
+                max={Math.max(100000, Math.round((netWorth || 0) * 3))}
+                step={1000}
+                lockable={effectiveMode === "portfolio"}
+                locked={locked}
+                onToggleLock={() => {
+                  if (locked) setEditing(true);
+                  else {
+                    setEditing(false);
+                    setCapitalOverride(null); // re-lock → back to net worth
+                  }
+                }}
+              />
+              <div>
+                {hasSavingsPlans && (
+                  <label className="mb-2 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={useSavingsPlans}
+                      onChange={(e) => setUseSavingsPlansOverride(e.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+                    />
+                    <span>
+                      {t("sim.useSavingsPlans", {
+                        amount: formatCurrency(monthlyFromPlans, currency),
+                      })}
+                    </span>
+                  </label>
+                )}
+                {useSavingsPlans ? (
+                  <div>
+                    <label className="text-sm font-medium">
+                      {t("sim.monthlyContribution")}
+                    </label>
+                    <div className="mt-1 text-sm font-semibold tabular-nums opacity-70">
+                      {formatCurrency(monthlyFromPlans, currency)}
+                    </div>
+                  </div>
+                ) : (
+                  <SliderField
+                    label={t("sim.monthlyContribution")}
+                    suffix={currency}
+                    value={form.monthlyContribution}
+                    onChange={(v) => update("monthlyContribution", v)}
+                    min={0}
+                    max={5000}
+                    step={50}
+                  />
+                )}
               </div>
-              <p className="mt-1 text-xs text-zinc-500">
-                {effectiveMode === "portfolio"
-                  ? t("sim.modelPortfolioDesc")
-                  : t("sim.modelCustomDesc")}
-              </p>
+              <SliderField
+                label={t("sim.horizon")}
+                suffix={t("sim.years")}
+                value={form.years}
+                onChange={(v) => update("years", v)}
+                min={1}
+                max={40}
+                step={1}
+              />
+            </div>
+          </div>
+
+          {/* Withdrawal phase (feature-flagged decumulation). */}
+          {withdrawalAllowed && (
+            <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                {t("sim.withdrawalYears")}
+              </h3>
+              <div className="mt-3 space-y-3">
+                <SliderField
+                  label={t("sim.withdrawalDuration")}
+                  suffix={t("sim.years")}
+                  value={form.withdrawalYears}
+                  onChange={(v) => update("withdrawalYears", v)}
+                  min={0}
+                  max={40}
+                  step={1}
+                />
+                {form.withdrawalYears > 0 && (
+                  <div className="space-y-2">
+                    <SliderField
+                      label={t("sim.withdrawalRate")}
+                      suffix="%"
+                      value={form.withdrawalRate}
+                      onChange={(v) => update("withdrawalRate", v)}
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      digits={1}
+                    />
+                    <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          <SliderField
-            label={t("sim.initialCapital")}
-            suffix={currency}
-            value={initialCapital}
-            onChange={(v) => setCapitalOverride(v)}
-            min={0}
-            max={Math.max(100000, Math.round((netWorth || 0) * 3))}
-            step={1000}
-            lockable={effectiveMode === "portfolio"}
-            locked={locked}
-            onToggleLock={() => {
-              if (locked) setEditing(true);
-              else {
-                setEditing(false);
-                setCapitalOverride(null); // re-lock → back to net worth
-              }
-            }}
-          />
-          <SliderField
-            label={t("sim.monthlyContribution")}
-            suffix={currency}
-            value={form.monthlyContribution}
-            onChange={(v) => update("monthlyContribution", v)}
-            min={0}
-            max={5000}
-            step={50}
-          />
-          <SliderField
-            label={t("sim.horizon")}
-            suffix={t("sim.years")}
-            value={form.years}
-            onChange={(v) => update("years", v)}
-            min={1}
-            max={40}
-            step={1}
-          />
-
-          {/* Optional decumulation phase (feature-flagged) + portfolio rebalance. */}
-          {(withdrawalAllowed || effectiveMode === "portfolio") && (
-            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-              {withdrawalAllowed && (
-                <>
-                  <SliderField
-                    label={t("sim.withdrawalYears")}
-                    suffix={t("sim.years")}
-                    value={form.withdrawalYears}
-                    onChange={(v) => update("withdrawalYears", v)}
-                    min={0}
-                    max={40}
-                    step={1}
+          {/* Model: My portfolio / Custom, the model note, rebalancing (a
+              property of the portfolio model), and the run count. */}
+          <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                {t("sim.model")}
+              </h3>
+              <InfoTip text={t("sim.guidelinesTip")} />
+            </div>
+            <div className="mt-3 space-y-4">
+              {showModeToggle && (
+                <div>
+                  <SegmentedControl<SimMode>
+                    value={effectiveMode}
+                    onChange={setMode}
+                    options={[
+                      { label: t("sim.myPortfolio"), value: "portfolio" },
+                      { label: t("sim.custom"), value: "custom" },
+                    ]}
                   />
-                  {form.withdrawalYears > 0 && (
-                    <div className="mt-3 space-y-2">
-                      <SliderField
-                        label={t("sim.withdrawalRate")}
-                        suffix="%"
-                        value={form.withdrawalRate}
-                        onChange={(v) => update("withdrawalRate", v)}
-                        min={0}
-                        max={10}
-                        step={0.1}
-                        digits={1}
-                      />
-                      <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
-                    </div>
-                  )}
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {effectiveMode === "portfolio"
+                      ? t("sim.modelPortfolioDesc")
+                      : t("sim.modelCustomDesc")}
+                  </p>
+                </div>
+              )}
+
+              {effectiveMode === "portfolio" && model ? (
+                <PortfolioModelNote
+                  model={model}
+                  overrides={assetOverrides}
+                  onOverride={(name, patch) =>
+                    setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
+                  }
+                  onResetOverrides={() => setAssetOverrides({})}
+                />
+              ) : (
+                <>
+                  <CustomAssumptionsNote
+                    usingEstimates={usingEstimates}
+                    onReset={resetToEstimates}
+                  />
+                  <SliderField
+                    label={t("sim.expectedReturn")}
+                    suffix="%"
+                    value={expectedReturn}
+                    onChange={(v) => setReturnOverride(v)}
+                    min={-5}
+                    max={20}
+                    step={0.1}
+                    digits={1}
+                  />
+                  <SliderField
+                    label={t("sim.volatility")}
+                    suffix="%"
+                    value={volatility}
+                    onChange={(v) => setVolOverride(v)}
+                    min={0}
+                    max={60}
+                    step={0.5}
+                    digits={1}
+                  />
                 </>
               )}
+
               {effectiveMode === "portfolio" && (
-                <label
-                  className={`${withdrawalAllowed ? "mt-3 " : ""}flex items-center gap-2 text-sm`}
-                >
+                <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={rebalanceYearly}
@@ -443,80 +545,21 @@ export function MonteCarloPanel() {
                   <span>{t("sim.rebalanceYearly")}</span>
                 </label>
               )}
-            </div>
-          )}
 
-          {effectiveMode === "portfolio" && model ? (
-            <PortfolioModelNote
-              model={model}
-              overrides={assetOverrides}
-              onOverride={(name, patch) =>
-                setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
-              }
-              onResetOverrides={() => setAssetOverrides({})}
-            />
-          ) : (
-            <>
-              <CustomAssumptionsNote
-                usingEstimates={usingEstimates}
-                onReset={resetToEstimates}
-              />
               <SliderField
-                label="Expected annual return"
-                suffix="%"
-                value={expectedReturn}
-                onChange={(v) => setReturnOverride(v)}
-                min={-5}
-                max={20}
-                step={0.1}
-                digits={1}
+                label={t("sim.runs")}
+                value={form.runs}
+                onChange={(v) => update("runs", v)}
+                min={1000}
+                max={25000}
+                step={500}
               />
-              <SliderField
-                label={t("sim.volatility")}
-                suffix="%"
-                value={volatility}
-                onChange={(v) => setVolOverride(v)}
-                min={0}
-                max={60}
-                step={0.5}
-                digits={1}
-              />
-            </>
-          )}
-          <SliderField
-            label={t("sim.runs")}
-            value={form.runs}
-            onChange={(v) => update("runs", v)}
-            min={1000}
-            max={25000}
-            step={500}
-          />
+            </div>
+          </div>
+
           <Button variant="primary" className="w-full" onClick={run} disabled={running}>
             {running ? t("sim.running") : t("sim.run")}
           </Button>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
-            <p className="font-medium text-zinc-700 dark:text-zinc-300">Default guidelines</p>
-            <ul className="mt-1.5 list-disc space-y-1 pl-4">
-              <li>
-                <strong>7% p.a.</strong> is the baseline real-world expectation for
-                broad equity over a standard <strong>30-year</strong> horizon
-                (≈ the long-run global-equity premium).
-              </li>
-              <li>
-                <strong>σ ≈ 16%</strong> is the research-backed annual volatility
-                for a diversified world-equity index.
-              </li>
-              <li>
-                Measured figures from your holdings override these; over long
-                horizons they regress toward the baseline, since a recent streak
-                isn&apos;t sustainable for decades.
-              </li>
-            </ul>
-            <p className="mt-1.5">
-              Runs 1,000-10,000 paths with monthly compounding and
-              normally-distributed returns.
-            </p>
-          </div>
         </div>
       </Card>
 
@@ -588,8 +631,8 @@ export function MonteCarloPanel() {
                     value={scale}
                     onChange={setScale}
                     options={[
-                      { label: "Linear", value: "linear" },
-                      { label: "Logarithmic", value: "log" },
+                      { label: t("sim.linear"), value: "linear" },
+                      { label: t("sim.logarithmic"), value: "log" },
                     ]}
                   />
                   <span className="text-xs text-zinc-500">
@@ -603,6 +646,12 @@ export function MonteCarloPanel() {
                   currency={currency}
                   scale={scale}
                   highlight={hover}
+                  phaseBoundaryYear={
+                    result.params.withdrawalYears ? result.params.years : undefined
+                  }
+                  phaseBoundaryLabel={
+                    result.params.withdrawalYears ? t("sim.withdrawalStarts") : undefined
+                  }
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
@@ -645,6 +694,7 @@ function PortfolioModelNote({
   onResetOverrides: () => void;
   editable?: boolean;
 }) {
+  const { t } = useI18n();
   // Pure guess = at least one holding has NO real history; otherwise figures are
   // data-backed (possibly blended toward the long-run prior for short windows).
   const pureGuess = model.assets.some((a) => !a.real);
@@ -653,15 +703,11 @@ function PortfolioModelNote({
     ? {
         box: "border-amber-300/70 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20",
         head: "text-amber-900 dark:text-amber-200",
-        badge:
-          "border-amber-400/60 bg-amber-100 text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/40 dark:text-amber-200",
         bar: "bg-amber-400 dark:bg-amber-500",
       }
     : {
         box: "border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/30",
         head: "text-indigo-900 dark:text-indigo-200",
-        badge:
-          "border-indigo-300/60 bg-indigo-100 text-indigo-800 dark:border-indigo-700/60 dark:bg-indigo-900/40 dark:text-indigo-200",
         bar: "bg-indigo-400 dark:bg-indigo-500",
       };
 
@@ -671,24 +717,20 @@ function PortfolioModelNote({
   return (
     <div className={`rounded-xl border p-3.5 text-xs ${theme.box}`}>
       <div className={`flex items-center justify-between gap-2 ${theme.head}`}>
-        <span className="font-semibold">Per-asset model</span>
-        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${theme.badge}`}>
-          {pureGuess ? "Estimate" : blended ? "Blended" : `${model.sampleYears.toFixed(1)} yrs history`}
+        <span className="font-semibold">{t("sim.perAssetModel")}</span>
+        <span className="text-right text-[11px] font-medium">
+          {pureGuess
+            ? t("sim.estimate")
+            : blended
+              ? t("sim.blended")
+              : t("sim.yrsHistory", { years: model.sampleYears.toFixed(1) })}
         </span>
       </div>
 
       {pureGuess ? (
-        <p className="mt-2 text-amber-800/90 dark:text-amber-200/80">
-          Some holdings have no usable price history, so their return and risk
-          below are a long-run <strong>assumption</strong>. The projection
-          sharpens as market data accrues.
-        </p>
+        <p className="mt-2 text-amber-800/90 dark:text-amber-200/80">{t("sim.pureGuessNote")}</p>
       ) : blended ? (
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Figures use each holding&apos;s own history, regressed toward long-run
-          market assumptions for longer horizons (a recent streak isn&apos;t
-          sustainable for decades).
-        </p>
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">{t("sim.blendedNote")}</p>
       ) : null}
 
       {editable && (
@@ -698,7 +740,7 @@ function PortfolioModelNote({
             onClick={() => setAdv((v) => !v)}
             className="text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
           >
-            {adv ? "Hide overrides" : "Override μ / σ per asset"}
+            {adv ? t("sim.hideOverrides") : t("sim.overridePerAsset")}
           </button>
           {hasOverrides && (
             <button
@@ -706,7 +748,7 @@ function PortfolioModelNote({
               onClick={onResetOverrides}
               className="text-[11px] font-medium text-zinc-500 hover:underline"
             >
-              Reset overrides
+              {t("sim.resetOverrides")}
             </button>
           )}
         </div>
@@ -744,12 +786,12 @@ function PortfolioModelNote({
               {adv ? (
                 <div className="mt-1.5 grid grid-cols-2 gap-2">
                   <OverrideInput
-                    label="Return %"
+                    label={t("sim.returnPercent")}
                     value={o?.mean ?? round1(a.mean * 100)}
                     onChange={(v) => onOverride(a.name, { mean: v })}
                   />
                   <OverrideInput
-                    label="σ %"
+                    label={t("sim.volPercent")}
                     value={o?.vol ?? round1(a.vol * 100)}
                     onChange={(v) => onOverride(a.name, { vol: v })}
                   />
@@ -757,10 +799,10 @@ function PortfolioModelNote({
               ) : (
                 <div className="mt-0.5 text-[11px] text-zinc-500">
                   {!a.real
-                    ? "long-run assumption · no price history"
+                    ? t("sim.longRunAssumption")
                     : a.estimated
-                      ? `${a.years.toFixed(1)} yr history · blended to long-run`
-                      : `${a.years.toFixed(1)} yr history`}
+                      ? t("sim.yrHistoryBlended", { years: a.years.toFixed(1) })
+                      : t("sim.yrHistory", { years: a.years.toFixed(1) })}
                 </div>
               )}
             </li>
@@ -769,8 +811,7 @@ function PortfolioModelNote({
       </ul>
 
       <p className="mt-3 border-t border-current/10 pt-2 text-zinc-500">
-        Each holding is simulated with its own volatility; correlations come from
-        the {model.corrYears.toFixed(1)} yr the holdings overlap.
+        {t("sim.corrNote", { years: model.corrYears.toFixed(1) })}
       </p>
     </div>
   );
@@ -808,11 +849,12 @@ function CustomAssumptionsNote({
   usingEstimates: boolean;
   onReset: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
       <div className="flex items-center justify-between">
         <span className="font-medium text-indigo-900 dark:text-indigo-200">
-          Custom assumptions
+          {t("sim.customAssumptions")}
         </span>
         {!usingEstimates && (
           <button
@@ -820,14 +862,18 @@ function CustomAssumptionsNote({
             onClick={onReset}
             className="font-medium text-indigo-700 underline underline-offset-2 dark:text-indigo-300"
           >
-            Reset to {CUSTOM_RETURN_DEFAULT}% / {CUSTOM_VOL_DEFAULT}%
+            {t("sim.resetToDefaults", {
+              ret: CUSTOM_RETURN_DEFAULT,
+              vol: CUSTOM_VOL_DEFAULT,
+            })}
           </button>
         )}
       </div>
       <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-        This mode ignores your holdings and projects from your own return and
-        volatility assumptions — defaulting to a neutral world-equity baseline
-        (μ&nbsp;{CUSTOM_RETURN_DEFAULT}% · σ&nbsp;{CUSTOM_VOL_DEFAULT}%).
+        {t("sim.customAssumptionsNote", {
+          ret: CUSTOM_RETURN_DEFAULT,
+          vol: CUSTOM_VOL_DEFAULT,
+        })}
       </p>
     </div>
   );

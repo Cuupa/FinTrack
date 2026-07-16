@@ -3,7 +3,8 @@
 // nothing is precomputed or stored, mirroring how holdings replay the
 // transaction log.
 
-import type { SavingsPlan } from "../types";
+import type { Asset, SavingsPlan, SavingsPlanInterval } from "../types";
+import type { ValuationContext } from "./portfolio";
 import { addDays } from "./dates";
 
 /** Hard cap on materialized occurrences per plan per review, so a plan created
@@ -54,4 +55,44 @@ export function nextOccurrence(plan: SavingsPlan, today: string): string {
     const date = occurrenceAt(plan, k);
     if (date > floor) return date;
   }
+}
+
+/** Multiplier that normalizes one execution's amount to a monthly equivalent. */
+const MONTHLY_FACTOR: Record<SavingsPlanInterval, number> = {
+  WEEKLY: 52 / 12,
+  MONTHLY: 1,
+  QUARTERLY: 1 / 3,
+};
+
+/** Native-currency → base-currency spot rate for an asset (mirrors the
+ *  `rateOf` helper duplicated across lib/finance modules — this module stays
+ *  free of a runtime dependency on the finance core beyond the type). */
+function rateOf(asset: Asset, v?: ValuationContext): number {
+  const cur = asset.currency ?? v?.base ?? "";
+  if (!v || !cur || cur === v.base) return 1;
+  return v.fx?.[cur] ?? 1;
+}
+
+/**
+ * Sum of ACTIVE plans' amounts, each normalized to a monthly equivalent
+ * (WEEKLY = amount*52/12, MONTHLY = amount, QUARTERLY = amount/3) and
+ * converted from the plan's asset currency to the base currency. Plans whose
+ * asset no longer exists, or that are paused, are skipped. Omitting the
+ * valuation context values everything 1:1 (native currency), matching the
+ * rest of the finance core's currency-agnostic default.
+ */
+export function monthlyContributionOf(
+  plans: SavingsPlan[],
+  assets: Asset[],
+  v?: ValuationContext,
+): number {
+  const byId = new Map(assets.map((a) => [a.id, a]));
+  let total = 0;
+  for (const plan of plans) {
+    if (!plan.active) continue;
+    const asset = byId.get(plan.assetId);
+    if (!asset) continue;
+    total += plan.amount * MONTHLY_FACTOR[plan.interval] * rateOf(asset, v);
+  }
+  return total;
 }
