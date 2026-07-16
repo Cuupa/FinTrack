@@ -207,6 +207,18 @@ export function SavingsPlansCard() {
   const dueRows = useMemo<DueRow[]>(
     () =>
       due.map(({ plan, asset, date }) => {
+        // A CASH plan is a recurring deposit: price is exactly 1 by
+        // definition (qty = amount), never an estimate.
+        if (asset.type === "CASH") {
+          return {
+            plan,
+            asset,
+            date,
+            price: 1,
+            synthetic: false,
+            feeDefault: savingsPlanFee(portfolioById.get(plan.portfolioId)),
+          };
+        }
         const key = assetPriceKey(asset);
         const hist = histories[key];
         const real = hist ? priceAtWithHeadTolerance(hist, date, 7) : null;
@@ -510,8 +522,10 @@ function NewPlanForm({
   const { t } = useI18n();
   const base = data.profile.currency;
 
-  // Cash has no course to buy at — plans apply to securities only.
-  const eligible = useMemo(() => data.assets.filter((a) => a.type !== "CASH"), [data.assets]);
+  // Securities book recurring BUYs at the market price; CASH positions book
+  // recurring deposits at price 1 (e.g. vermögenswirksame Leistungen), so
+  // every asset type is eligible.
+  const eligible = data.assets;
 
   const [assetId, setAssetId] = useState(eligible[0]?.id ?? "");
   const [portfolioId, setPortfolioId] = useState(
@@ -660,6 +674,9 @@ function NewPlanForm({
               </button>
             )}
           />
+          {asset?.type === "CASH" && (
+            <p className="mt-1 text-xs text-zinc-500">{t("sp.cashPlanHint")}</p>
+          )}
           {addingAsset && (
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
               <input
