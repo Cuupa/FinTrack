@@ -50,16 +50,16 @@ is the most important invariant: keep mode-switching inside `lib/store`.
 
 ### State flow
 
-Provider chain (`components/providers.tsx`): `ThemeProvider` → `AuthProvider` →
-`CatalogProvider` → `PortfolioProvider` → `LivePricesProvider`.
+Provider chain (`components/providers.tsx`): `AuthProvider` → `CatalogProvider`
+→ `PortfolioProvider` → `LivePricesProvider`.
 - `AuthProvider` (`lib/auth/`) tracks the Supabase session.
 - `CatalogProvider` (`lib/catalog/`) loads the instruments catalog from the DB.
 - `PortfolioProvider` (`lib/portfolio/`) recreates the store when `user.id`
   changes, loads data into memory, exposes mutations + `PortfolioData`.
 - `LivePricesProvider` (`lib/live/`) polls live quotes + FX, exposes a
   `ValuationContext`.
-Components read via `usePortfolio()` / `useAuth()` / `useLivePrices()` /
-`useCatalog()`.
+  Components read via `usePortfolio()` / `useAuth()` / `useLivePrices()` /
+  `useCatalog()`.
 
 ### Catalog in the database (not code)
 
@@ -144,22 +144,7 @@ duplicated, not imported).
   chart by ISIN even with no Supabase** (the catalog just adds the exact
   listing hint + crypto ids). Crypto needs the catalog (CoinGecko id).
 - **German WKNs are not resolvable** by Yahoo/free sources — auto-import works
-  by ISIN or symbol; WKN-only queries fall to manual entry (onvista search
-  covers WKN → ISIN for lookup metadata, see `SEARCH_DESIGN.md`).
-- **Onvista is the quote/history fallback BEHIND Yahoo** (round 19,
-  `lib/server/onvista.ts` — the same module that serves search metadata):
-  German structured products (knock-out warrants, certificates, ETCs) and
-  LU-domiciled mutual funds have zero Yahoo hits but price via onvista's
-  keyless API. `quote_source` `'onvista'`, `quote_id`
-  `"{entityType}:{entityValue}"` (codec exported + tested). The prices cron
-  tries onvista when Yahoo resolution misses (STOCK/ETF only, learns the
-  source so future syncs skip Yahoo; COMMODITY rows never fall through to any
-  search); `/api/price` and `/api/history` have matching branches. History
-  uses `eod_history` (unauthenticated cap: ~1 month of daily bars regardless
-  of range — older chart segments stay on the anchored synthetic walk);
-  `chart_history` is 403 AGB-protected, **never use it**. Expired/redeemed
-  products resolve nowhere and stay honestly unpriced. Dividends stay
-  Yahoo-only.
+  by ISIN or symbol; WKN-only queries fall to manual entry.
 
 ### Analysis features
 
@@ -167,24 +152,7 @@ duplicated, not imported).
   stocks (from `instrument_constituents`) + direct holdings → per-stock
   exposure (`/xray`).
 - `lib/finance/allocation.ts` — pie-chart breakdowns by investment / class /
-  currency / country / volatility (`/allocation`). On /analysis the active tab
-  and breakdown ride the URL (`?tab=`, `?breakdown=`, invalid values fall back
-  silently; `?breakdown=` is scoped to the distributions tab and dropped from
-  the URL when switching to any other tab); the Custom tab renders one pie PER
-  tag group (no dropdown, groups without any tagged holding are hidden).
-- `lib/finance/tax.ts` — pure per-year German tax estimate (Aktien- vs
-  Sonstige-Topf, Sparerpauschbetrag/Kirchensteuer/Teilfreistellung from
-  `Profile` fields, Par.23 informational), rendered as the flag-gated
-  "Steuern" tab on /analysis; dividends/interest included, sell fees folded
-  into the gain, estimate never presented as advice. Vorabpauschale and the
-  broker-withheld tax are **manually editable per year** (round 19): profile
-  jsonb maps `taxVorabpauschale` / `taxWithheldOverride` (0055), edited
-  inline on the year cards (`EditableAmountRow`). Vorabpauschale is fund
-  income — Teilfreistellung applies like fund dividends, feeds the
-  Sonstige-Topf; the withheld override *replaces* the transaction-derived
-  sum, which stays exposed as `taxWithheldComputed` (the input placeholder).
-- Dividend income charts live ONLY on /dividends; the returns tab's copy was
-  removed as redundant (user decision, round 18).
+  currency / country / volatility (`/allocation`).
 - Tags are grouped key-value pairs (e.g. `Strategie=gamble`): `TagsProvider`
   (`lib/tags/tags-context.tsx`) holds `groups` (customizable names, stable ids,
   rename/delete via the manager modal) and `assignments[assetId][groupId] =
@@ -221,30 +189,10 @@ the override currency wins. Items link to `/instruments/[key]` (price key), the
 shared detail view for non-held instruments: `AssetDetail` takes
 `assetId | instrumentKey`, synthesizes an `Asset` from the watchlist item or
 catalog row (`lib/finance/instrument-asset.ts`, sentinel ids `wl:`/`cat:`), and
-renders the FULL held layout (chart, zero-state metrics, transactions section).
-Booking the first transaction is what creates the holding: TransactionForm's
-`ensureAsset` seam resolves-or-creates the real asset (dedup by price key,
-sentinel ids never reach the store) and the page flips to the held view once
-the asset lands. Delete + tags stay held-only. The transaction form prefills
-from `valuation.live` and
+offers "Add to portfolio" (embedded add-asset form) which flips the page to
+the held view. The transaction form prefills from `valuation.live` and
 refreshes equities via `/api/price` when the cached price is older than 1h
 (`lib/live/fetch-price.ts` `isPriceFresh`/`fetchLivePrice`).
-
-### Onboarding (guided tour)
-
-First dashboard visit with `profile.tourDoneAt` null (0057; rides the store
-seam like theme/locale, so guests persist it too) opens a step-by-step
-spotlight tour: `components/onboarding/guided-tour.tsx` renders the overlay,
-`lib/onboarding/tour-steps.ts` holds the pure step registry + tooltip-geometry
-helpers (unit-tested). Targets are `data-tour="..."` attributes on the real
-dashboard elements; steps whose target has no client rects (flag off, narrow
-viewport, empty table) are skipped automatically. The open state is DERIVED
-(`tourDoneAt == null && !closed`), never synced via effect; finishing,
-skipping and Esc all persist `tourDoneAt` and close locally first so a failed
-write never traps the user. Re-run via the settings "Tour" card (clears the
-marker, navigates to `/`). Design + later phases (demo portfolio, empty-state
-cards): `ONBOARDING.md`. Monetization/paywall design (not implemented):
-`MONETIZATION.md`.
 
 ### Asset identity
 
@@ -279,30 +227,10 @@ already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
 The prices cron treats a COMMODITY row's stored `quote_id` as **authoritative**
 (never re-resolved via search, row skipped if the hinted listing does not
 resolve to itself) — Yahoo search on a bare metal ticker mis-resolves and once
-put gold at 1.42 EUR. Consequence: when Yahoo **delists** the hinted symbol
-(it dropped XAUEUR=X in 2026), the row goes permanently stale by design —
-the fix is a guarded catalog migration to a live listing (0053 moved gold to
-GC=F, USD per ounce; the cron FX-converts then applies `quote_scale`), never
-a search fallback. For COMMODITY rows with a hint the cron passes an EMPTY
-want-currency to `resolveQuote` (and `yahooHistory` does the same for any
-hinted lookup) so an authoritative cross-currency listing is accepted; the
-per-point FX conversion + scale-after-FX reconcile it. STOCK/ETF rows instead
-self-heal: once a day (03 UTC hour) or on `?revalidate=1` the cron drops the
-stored hint so a stuck mis-resolved `quote_id` re-resolves from scratch (the
-GME/GMEX-Robotics case); the bulk `/api/cron/sync` forwards its query string
-to the prices sub-sync. `/admin/prices` surfaces dead/stale rows.
-
-All three Yahoo ranking sites (`resolveSymbol`, `resolveQuote`,
-`historyByQuery` — the last writes the shared `resolutionCache`) give a
-candidate whose symbol **exactly equals the query** a preferred tier above
-the volume/exchange-score ordering (round 19): ranking by liquidity alone
-once resolved "GME" to GMEX Robotics on a day it out-traded GameStop, and
-the daily hint-drop revalidate would have re-poisoned any manual heal.
-`/api/price`'s fire-and-forget write-through only updates rows whose
-`currency` matches the computed price's currency, with `quote_scale` 1 and
-type != COMMODITY — `instruments.last_price` is invariantly native-currency
-and already scaled, and the route computes a requested-currency unscaled
-price (it once wrote an EUR-converted price onto the USD GME row).
+put gold at 1.42 EUR. STOCK/ETF rows instead self-heal: once a day (03 UTC
+hour) or on `?revalidate=1` the cron drops the stored hint so a stuck
+mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
+`/api/cron/sync` forwards its query string to the prices sub-sync.
 
 ### Finance core (`lib/finance/`) — pure, no React
 
@@ -331,12 +259,11 @@ price (it once wrote an EUR-converted price onto the USD GME row).
   scaled by shares held on each pay date; accumulating funds show none. The
   hinted listing (the quote symbol the app prices the asset with) is
   **authoritative in `dividendsByQuery`**: if it resolves, its event list is
-  returned even when empty, and if the hint does NOT resolve (delisted, e.g.
-  Yahoo dropping XAUEUR=X) the result is EMPTY — never fall back to search
-  candidates past a provided hint, and never gate dividends by asset type or a
-  flag (both were explicitly rejected). Scanning past an empty or dead hint
-  twice imported an unrelated payer's events via the name-fallback search (the
-  phantom gold-dividends cases). Client-side, `useDividends` returns `{ dividends, loading }` (loading
+  returned even when empty — never fall back to search candidates past a
+  resolved hint, and never gate dividends by asset type or a flag (both were
+  explicitly rejected). Scanning past an empty hint once imported an unrelated
+  payer's events via the name-fallback search (the phantom gold-dividends
+  case). Client-side, `useDividends` returns `{ dividends, loading }` (loading
   derived from the settled fetch signature, stale map kept meanwhile); the
   /dividends page shows skeletons while events are in flight.
 
@@ -346,9 +273,9 @@ price (it once wrote an EUR-converted price onto the USD GME row).
   table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
   (flag `watchlist`)
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
-- `/instruments/[key]` — the same full detail view for non-held instruments
-  (watchlist click-through / catalog); the first transaction booked there
-  creates the holding (see Watchlist section)
+- `/instruments/[key]` — same detail view for non-held instruments (watchlist
+  click-through / catalog), reduced to master data + chart + look-through,
+  with an embedded "Add to portfolio" form
 - `/dividends` — dividend dashboard: income by month/year, personal yield +
   yield-on-cost, per-holding breakdown, 12-month forecast from trailing
   payouts (flag `dividends`)
@@ -417,9 +344,9 @@ client pages (see `app/assets/[id]/page.tsx`).
   interpolation.
 - Chart y-axes: never hardcode a `YAxis width` — compute it with `yAxisWidth`
   + `axisCurrencyFormatter` (`components/charts/axis.ts`) so the left gutter
-  stays snug. `formatCompactCurrency` compacts with universal k/M/B suffixes
-  in **every** locale (Intl's compact notation doesn't compact thousands in
-  de-DE — that's why it exists).
+    stays snug. `formatCompactCurrency` compacts with universal k/M/B suffixes
+    in **every** locale (Intl's compact notation doesn't compact thousands in
+    de-DE — that's why it exists).
 - Form submit buttons disable on *presence only* (empty required fields) via
   `lib/forms/required.ts` (`useFormTouched` + amber `missingFieldCls`, hint key
   `form.missingFields`); content validation (valid number, > 0, …) stays at
@@ -450,30 +377,3 @@ client pages (see `app/assets/[id]/page.tsx`).
   sites handling it.
 - `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
   `footer` render prop (used for "+ New asset…" in the savings-plan form).
-- Dark mode is **class-based**: `ThemeProvider` (`lib/theme/theme-context.tsx`,
-  localStorage `fintrack-theme`, absent = follow system) stamps `.dark` on
-  `<html>`, a no-flash inline script in `app/layout.tsx` pre-stamps it, and
-  `@custom-variant dark` in `globals.css` rewires every `dark:` utility. Never
-  style the app with `prefers-color-scheme` media queries — use `dark:` /
-  `.dark` so the manual toggle wins. The nav hosts the theme toggle; the
-  language switcher lives in /settings (locale defaults to `navigator.language`
-  on first visit, unpersisted until an explicit choice). An explicit theme
-  choice also persists to `profiles.theme` (0056): `ThemeSync`
-  (`components/theme-sync.tsx`, locale-sync idiom) applies it after data
-  loads and the profile wins over a differing local choice, same rule as
-  locale; the no-flash script stays localStorage-based (new devices show the
-  system theme until data loads).
-- Prices in flight show **skeletons, never synthetic values** (round 19):
-  while a one-shot price fetch is pending (non-held asset-detail headline,
-  watchlist rows), render `Skeleton`; the synthetic price + `EstimatedBadge`
-  appear only once fetching settles with no data. Loading state is derived by
-  comparing a fetch-target signature against the last settled one (the
-  `useDividends`/`useHistory` idiom) — never set synchronously in an effect.
-- Service-worker cache versioning: never hand-bump a version in `public/sw.js`.
-  The npm `prebuild` hook (`scripts/generate-sw-version.mjs`) writes the commit
-  sha into the gitignored `public/sw-version.js`, which sw.js `importScripts`s
-  with a `"dev"` fallback — every deploy invalidates the previous cache.
-- Server-side caches have retention crons: `error_logs` 30d,
-  `simulation_runs` 90d, `instrument_history` 60d (`/api/cron/sync/error-logs`
-  and `/api/cron/sync/retention`). Ops procedures (deploys, migrations, cron
-  scheduling, backups, key rotation, incident triage) live in `OPERATIONS.md`.
