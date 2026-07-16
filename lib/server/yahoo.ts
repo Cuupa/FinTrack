@@ -213,9 +213,17 @@ function exchangeScore(symbol: string, want: string): number {
 }
 
 // A listing whose symbol matches the query exactly (case-insensitive) beats
-// every non-exact candidate, regardless of volume/exchange score. Ranking by
-// volume/exchange alone once let Yahoo search for "GME" resolve to "GMEX"
-// (GMEX Robotics, an unrelated company) on a day it out-traded GameStop.
+// every non-exact candidate. This tier is applied BEFORE the wanted-currency
+// filter, not after: ranking by volume/exchange alone once let Yahoo search
+// for "GME" resolve to "GMEX" (GMEX Robotics, an unrelated company) on a day
+// it out-traded GameStop, and filtering by currency first once left "GME.F"
+// (Geratherm Medical AG, an unrelated Frankfurt company Yahoo returns as a
+// fuzzy hit for "GME") as the only EUR candidate for a EUR-currency
+// GameStop query, so it won over the real GME (listed in USD). The exact
+// ticker match is preferred even in the "wrong" currency, since callers
+// FX-convert when the resolved listing's currency differs from what was
+// asked for - returning the right instrument in the wrong currency beats
+// returning a wrong instrument in the right currency.
 function exactSymbol(symbol: string, query: string): boolean {
   return symbol.toUpperCase() === query.toUpperCase();
 }
@@ -274,14 +282,14 @@ export async function resolveSymbol(
   }[];
   if (valid.length === 0) return null;
 
-  const matches = want ? valid.filter((x) => x.m.currency === want) : valid;
-  const pool = matches.length > 0 ? matches : valid;
-  // An exact ticker match forms a preferred tier; within a tier, highest
-  // exchange score wins and search order breaks ties.
-  pool.sort((a, b) => {
-    const exact = Number(exactSymbol(b.s, query)) - Number(exactSymbol(a.s, query));
-    return exact !== 0 ? exact : exchangeScore(b.s, want) - exchangeScore(a.s, want);
-  });
+  // Exact-ticker tier first (see exactSymbol above for why this precedes the
+  // currency filter), then prefer the wanted currency within that tier, then
+  // rank by exchange score; search order breaks remaining ties.
+  const exactHits = valid.filter((x) => exactSymbol(x.s, query));
+  const tier = exactHits.length > 0 ? exactHits : valid;
+  const currencyMatches = want ? tier.filter((x) => x.m.currency === want) : tier;
+  const pool = currencyMatches.length > 0 ? currencyMatches : tier;
+  pool.sort((a, b) => exchangeScore(b.s, want) - exchangeScore(a.s, want));
 
   const chosen = pool[0].s;
   symbolCache.set(cacheKey, chosen);
@@ -367,14 +375,14 @@ export async function resolveQuote(
     unresolvableCache.set(negativeKey, true, NEGATIVE_TTL_MS);
     return null;
   }
-  const matches = want ? hits.filter((h) => h.currency === want) : hits;
-  const pool = matches.length > 0 ? matches : hits;
-  // An exact ticker match forms a preferred tier; within a tier, highest
-  // volume wins (see exactSymbol above for the GME/GMEX case this guards).
-  pool.sort((a, b) => {
-    const exact = Number(exactSymbol(b.symbol, query)) - Number(exactSymbol(a.symbol, query));
-    return exact !== 0 ? exact : b.volume - a.volume;
-  });
+  // Exact-ticker tier first (see exactSymbol above for the GME/GMEX and
+  // GME/GME.F cases this guards), then prefer the wanted currency within
+  // that tier, then rank by volume; search order breaks remaining ties.
+  const exactHits = hits.filter((h) => exactSymbol(h.symbol, query));
+  const tier = exactHits.length > 0 ? exactHits : hits;
+  const currencyMatches = want ? tier.filter((h) => h.currency === want) : tier;
+  const pool = currencyMatches.length > 0 ? currencyMatches : tier;
+  pool.sort((a, b) => b.volume - a.volume);
   const best = pool[0];
   resolutionCache.set(resolutionKey, { symbol: best.symbol, currency: best.currency }, RESOLUTION_TTL_MS);
   return { symbol: best.symbol, currency: best.currency, price: best.price };
@@ -632,15 +640,15 @@ export async function historyByQuery(
     unresolvableCache.set(negativeKey, true, NEGATIVE_TTL_MS);
     return null;
   }
-  const matches = want ? hits.filter((h) => h.currency === want) : hits;
-  const pool = matches.length > 0 ? matches : hits;
-  // Same exact-ticker tier as resolveQuote (see exactSymbol): this writes to
-  // the shared resolutionCache, so a volume-only pick here would poison quote
-  // resolution too (the GME/GMEX case), not just this history lookup.
-  pool.sort((a, b) => {
-    const exact = Number(exactSymbol(b.symbol, query)) - Number(exactSymbol(a.symbol, query));
-    return exact !== 0 ? exact : b.volume - a.volume;
-  });
+  // Same exact-ticker-then-currency tiering as resolveQuote (see exactSymbol):
+  // this writes to the shared resolutionCache, so a currency-first pick here
+  // would poison quote resolution too (the GME/GME.F case), not just this
+  // history lookup.
+  const exactHits = hits.filter((h) => exactSymbol(h.symbol, query));
+  const tier = exactHits.length > 0 ? exactHits : hits;
+  const currencyMatches = want ? tier.filter((h) => h.currency === want) : tier;
+  const pool = currencyMatches.length > 0 ? currencyMatches : tier;
+  pool.sort((a, b) => b.volume - a.volume);
   const best = pool[0];
   resolutionCache.set(resolutionKey, { symbol: best.symbol, currency: best.currency }, RESOLUTION_TTL_MS);
   return best.series;

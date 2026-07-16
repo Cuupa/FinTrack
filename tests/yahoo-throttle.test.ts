@@ -355,19 +355,24 @@ describe("resolveQuote", () => {
     expect(result).toEqual({ symbol: "GME", currency: "USD", price: 20 });
   });
 
-  it("still lets the currency filter win over an exact match in the wrong currency", async () => {
+  it("prefers an exact ticker match over the currency filter (the GME/Geratherm case)", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       const u = String(url);
-      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GME", "GME.DE"]));
-      // Exact match "GME" trades in USD; "GME.DE" is a lower-volume EUR cross-listing.
-      if (u.includes("/chart/GME.DE")) return Promise.resolve(chartQuoteResponse("EUR", [18], 100));
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GME", "GME.F"]));
+      // GME.F is Geratherm Medical AG's Frankfurt listing - a EUR-currency
+      // ticker that happens to share the "GME.F" symbol, not GameStop. It was
+      // once the only EUR candidate left after filtering by currency first,
+      // so it won over the real GME (listed in USD).
+      if (u.includes("/chart/GME.F")) return Promise.resolve(chartQuoteResponse("EUR", [2.63], 100));
       if (u.includes("/chart/GME")) return Promise.resolve(chartQuoteResponse("USD", [20], 5000));
       return Promise.resolve(new Response(null, { status: 404 }));
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    // "GME" is the exact ticker match, so it wins even though its currency
+    // (USD) doesn't match the requested EUR - the caller FX-converts.
     const result = await resolveQuote("GME", "EUR");
-    expect(result).toEqual({ symbol: "GME.DE", currency: "EUR", price: 18 });
+    expect(result).toEqual({ symbol: "GME", currency: "USD", price: 20 });
   });
 
   it("keeps pure volume order for an ISIN-style query with no exact symbol match (regression guard)", async () => {
@@ -384,6 +389,23 @@ describe("resolveQuote", () => {
     // exact-match tier - highest volume ("GME2") still wins, as before.
     const result = await resolveQuote("US36467W1099", "USD");
     expect(result).toEqual({ symbol: "GME2", currency: "USD", price: 21 });
+  });
+
+  it("still picks the wanted-currency listing for an ISIN-style query with no exact match (regression guard)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["FOO", "FOO.DE"]));
+      if (u.includes("/chart/FOO.DE")) return Promise.resolve(chartQuoteResponse("EUR", [18], 100));
+      if (u.includes("/chart/FOO")) return Promise.resolve(chartQuoteResponse("USD", [20], 5000));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Neither candidate's symbol equals the ISIN query exactly, so there is
+    // no exact-match tier to restrict to - the currency filter still applies
+    // directly over all hits, even though the USD listing has more volume.
+    const result = await resolveQuote("US0000000000", "EUR");
+    expect(result).toEqual({ symbol: "FOO.DE", currency: "EUR", price: 18 });
   });
 });
 
@@ -410,6 +432,20 @@ describe("resolveSymbol", () => {
 
     const result = await resolveSymbol("VWCE.DE", "EUR");
     expect(result).toBe("VWCE.DE");
+  });
+
+  it("prefers an exact ticker match over the currency filter (the GME/Geratherm case)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GME", "GME.F"]));
+      if (u.includes("/chart/GME.F")) return Promise.resolve(metaResponse("EUR", 2.63));
+      if (u.includes("/chart/GME")) return Promise.resolve(metaResponse("USD", 20));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveSymbol("GME", "EUR");
+    expect(result).toBe("GME");
   });
 });
 
@@ -467,6 +503,24 @@ describe("historyByQuery", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await historyByQuery("GME", "USD", undefined, "5d", "1d");
+    expect(result?.currency).toBe("USD");
+    expect(result?.points.map((p) => p.close)).toEqual([20, 21]);
+  });
+
+  it("prefers an exact ticker match over the currency filter (the GME/Geratherm case)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) return Promise.resolve(searchResponse(["GME", "GME.F"]));
+      // GME.F is Geratherm Medical AG's Frankfurt listing, not GameStop.
+      if (u.includes("/chart/GME.F")) return Promise.resolve(chartQuoteResponse("EUR", [2.63, 2.64], 100));
+      if (u.includes("/chart/GME")) return Promise.resolve(chartQuoteResponse("USD", [20, 21], 5000));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // "GME" is the exact ticker match, so its (USD) series wins even though
+    // EUR was requested - the caller FX-converts.
+    const result = await historyByQuery("GME", "EUR", undefined, "5d", "1d");
     expect(result?.currency).toBe("USD");
     expect(result?.points.map((p) => p.close)).toEqual([20, 21]);
   });
