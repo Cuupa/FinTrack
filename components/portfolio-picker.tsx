@@ -49,8 +49,8 @@ export function PortfolioPicker() {
   const summary = allSelected
     ? t("nav.allPortfolios")
     : selectedPortfolioIds.length === 1
-      ? (portfolios.find((p) => p.id === selectedPortfolioIds[0])?.name ?? "1 selected")
-      : `${selectedPortfolioIds.length} of ${portfolios.length}`;
+      ? (portfolios.find((p) => p.id === selectedPortfolioIds[0])?.name ?? t("select.nSelected", { count: 1 }))
+      : t("nav.nOfM", { n: selectedPortfolioIds.length, m: portfolios.length });
 
   const toggle = (id: string) => {
     const next = selectedPortfolioIds.includes(id)
@@ -142,7 +142,7 @@ export function PortfolioPicker() {
                           setRenaming(p.id);
                           setRenameVal(p.name);
                         }}
-                        className="shrink-0 px-1 text-xs text-zinc-400 opacity-0 hover:text-zinc-700 group-hover:opacity-100 dark:hover:text-zinc-200"
+                        className="shrink-0 px-2 py-1 text-xs text-zinc-400 pointer-fine:opacity-0 hover:text-zinc-700 pointer-fine:group-hover:opacity-100 dark:hover:text-zinc-200"
                         title="Rename"
                         aria-label="Rename portfolio"
                       >
@@ -152,7 +152,7 @@ export function PortfolioPicker() {
                         <button
                           type="button"
                           onClick={() => setConfirmDelete({ id: p.id, name: p.name })}
-                          className="shrink-0 px-1 text-xs text-zinc-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
+                          className="shrink-0 px-2 py-1 text-xs text-zinc-400 pointer-fine:opacity-0 hover:text-red-500 pointer-fine:group-hover:opacity-100"
                           title="Delete"
                           aria-label="Delete portfolio"
                         >

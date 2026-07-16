@@ -40,8 +40,8 @@ export function ScopeSelect({
     selected.length === 0
       ? t("common.portfolioWide")
       : selected.length === 1
-        ? (options.find((o) => o.id === selected[0])?.label ?? "1 selected")
-        : `${selected.length} selected`;
+        ? (options.find((o) => o.id === selected[0])?.label ?? t("select.nSelected", { count: 1 }))
+        : t("select.nSelected", { count: selected.length });
 
   return (
     <div className="relative" ref={ref}>

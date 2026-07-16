@@ -23,6 +23,7 @@ export const en = {
   "nav.deletePortfolioTitle": "Delete portfolio?",
   "nav.deletePortfolioMsg":
     "Its transactions and any assets held only in this portfolio are deleted permanently.",
+  "nav.nOfM": "{n} of {m}",
 
   "theme.toggleToDark": "Switch to dark mode",
   "theme.toggleToLight": "Switch to light mode",
@@ -33,6 +34,7 @@ export const en = {
 
   "select.search": "Search…",
   "select.noResults": "No matches",
+  "select.nSelected": "{count} selected",
 
   "form.missingFields": "Fill in the highlighted fields",
 
@@ -1032,6 +1034,7 @@ const de: Partial<Record<MessageKey, string>> = {
   "nav.deletePortfolioTitle": "Portfolio löschen?",
   "nav.deletePortfolioMsg":
     "Seine Transaktionen und alle nur in diesem Portfolio gehaltenen Assets werden endgültig gelöscht.",
+  "nav.nOfM": "{n} von {m}",
 
   "theme.toggleToDark": "Zum dunklen Modus wechseln",
   "theme.toggleToLight": "Zum hellen Modus wechseln",
@@ -1042,6 +1045,7 @@ const de: Partial<Record<MessageKey, string>> = {
 
   "select.search": "Suchen…",
   "select.noResults": "Keine Treffer",
+  "select.nSelected": "{count} ausgewählt",
 
   "form.missingFields": "Fülle die markierten Felder aus",
 
