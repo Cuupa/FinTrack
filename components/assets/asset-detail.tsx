@@ -47,6 +47,7 @@ import { CopyValue } from "@/components/ui/copy-value";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -933,15 +934,19 @@ function TransactionEditRow({
           />
         </td>
         <td className="py-1.5 pr-2">
-          <select value={type} onChange={(e) => setType(e.target.value as TransactionType)} className={cell}>
-            <option value="BUY">{isCash ? txTypeLabel(tr, "BUY", true) : "BUY"}</option>
-            <option value="SELL">{isCash ? txTypeLabel(tr, "SELL", true) : "SELL"}</option>
-            {isCash ? (
-              <option value="INTEREST">{txTypeLabel(tr, "INTEREST", true)}</option>
-            ) : (
-              <option value="BOOKING">BOOKING</option>
-            )}
-          </select>
+          <SelectMenu
+            value={type}
+            onChange={(v) => setType(v as TransactionType)}
+            className={cell}
+            ariaLabel={tr("tx.type")}
+            options={[
+              { value: "BUY", label: isCash ? txTypeLabel(tr, "BUY", true) : "BUY" },
+              { value: "SELL", label: isCash ? txTypeLabel(tr, "SELL", true) : "SELL" },
+              isCash
+                ? { value: "INTEREST", label: txTypeLabel(tr, "INTEREST", true) }
+                : { value: "BOOKING", label: "BOOKING" },
+            ]}
+          />
         </td>
         <td className="py-1.5 pr-2">
           <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
@@ -973,17 +978,13 @@ function TransactionEditRow({
           <td colSpan={isCash ? 7 : 8} className="px-2 pb-2">
             <label className="flex items-center gap-2 text-xs text-zinc-500">
               <span className="shrink-0">{tr("tx.portfolio")}</span>
-              <select
+              <SelectMenu
                 value={portfolioId}
-                onChange={(e) => setPortfolioId(e.target.value)}
+                onChange={setPortfolioId}
                 className={`${cell} max-w-xs`}
-              >
-                {portfolios.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+                ariaLabel={tr("tx.portfolio")}
+                options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+              />
             </label>
           </td>
         </tr>

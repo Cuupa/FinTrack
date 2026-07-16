@@ -156,17 +156,12 @@ export function SettingsView() {
           </Field>
 
           <Field label={t("settings.currency")}>
-            <select
+            <SelectMenu
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              {[...new Set([currency, ...CURRENCIES])].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              onChange={setCurrency}
+              ariaLabel={t("settings.currency")}
+              options={[...new Set([currency, ...CURRENCIES])].map((c) => ({ value: c, label: c }))}
+            />
           </Field>
 
           <div className="flex items-center gap-3">

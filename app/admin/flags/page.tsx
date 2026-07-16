@@ -14,6 +14,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 interface FlagRow {
   flag: string;
@@ -332,28 +333,26 @@ export default function AdminFlagsPage() {
           </div>
           <div>
             <label className="block text-xs text-zinc-500">{t("admin.flags.colName")}</label>
-            <select
+            <SelectMenu
               value={selectedFlag}
-              onChange={(e) => setNewFlag(e.target.value)}
-              className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              {(flags ?? []).map((f) => (
-                <option key={f.flag} value={f.flag}>
-                  {f.flag}
-                </option>
-              ))}
-            </select>
+              onChange={setNewFlag}
+              className="mt-1 w-48"
+              ariaLabel={t("admin.flags.colName")}
+              options={(flags ?? []).map((f) => ({ value: f.flag, label: f.flag }))}
+            />
           </div>
           <div>
             <label className="block text-xs text-zinc-500">{t("admin.flags.colEnabled")}</label>
-            <select
+            <SelectMenu
               value={newEnabled ? "1" : "0"}
-              onChange={(e) => setNewEnabled(e.target.value === "1")}
-              className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              <option value="1">{t("admin.flags.enabled")}</option>
-              <option value="0">{t("admin.flags.disabled")}</option>
-            </select>
+              onChange={(v) => setNewEnabled(v === "1")}
+              className="mt-1 w-40"
+              ariaLabel={t("admin.flags.colEnabled")}
+              options={[
+                { value: "1", label: t("admin.flags.enabled") },
+                { value: "0", label: t("admin.flags.disabled") },
+              ]}
+            />
           </div>
           <Button
             variant="primary"

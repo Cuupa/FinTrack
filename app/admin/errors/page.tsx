@@ -22,6 +22,7 @@ import { formatInstant } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { adminAuthToken, adminDelete } from "@/lib/admin/client";
 
 interface ErrorLogRow {
@@ -120,16 +121,18 @@ export default function AdminErrorsPage() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs text-zinc-500">{t("admin.errors.colKind")}</label>
-            <select
+            <SelectMenu
               value={kindFilter}
-              onChange={(e) => setKindFilter(e.target.value as KindFilter)}
-              className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              <option value="all">{t("admin.errors.kindAll")}</option>
-              <option value="boundary">{t("admin.errors.kindBoundary")}</option>
-              <option value="window">{t("admin.errors.kindWindow")}</option>
-              <option value="unhandledrejection">{t("admin.errors.kindUnhandledrejection")}</option>
-            </select>
+              onChange={(v) => setKindFilter(v as KindFilter)}
+              className="mt-1 w-48"
+              ariaLabel={t("admin.errors.colKind")}
+              options={[
+                { value: "all", label: t("admin.errors.kindAll") },
+                { value: "boundary", label: t("admin.errors.kindBoundary") },
+                { value: "window", label: t("admin.errors.kindWindow") },
+                { value: "unhandledrejection", label: t("admin.errors.kindUnhandledrejection") },
+              ]}
+            />
           </div>
           <div className="min-w-[220px] flex-1">
             <label className="block text-xs text-zinc-500">{t("admin.errors.filterLabel")}</label>

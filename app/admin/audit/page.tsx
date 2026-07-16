@@ -22,6 +22,7 @@ import { formatInstant } from "@/lib/format";
 import { formatCompactJson, formatFullJson } from "@/lib/admin/audit-format";
 import { Button, Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 interface AuditRow {
   id: string;
@@ -116,18 +117,16 @@ export default function AdminAuditPage() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs text-zinc-500">{t("admin.audit.colAction")}</label>
-            <select
+            <SelectMenu
               value={actionFilter}
-              onChange={(e) => setActionFilter(e.target.value)}
-              className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            >
-              <option value="all">{t("admin.audit.actionAll")}</option>
-              {actions.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
+              onChange={setActionFilter}
+              className="mt-1 w-48"
+              ariaLabel={t("admin.audit.colAction")}
+              options={[
+                { value: "all", label: t("admin.audit.actionAll") },
+                ...actions.map((a) => ({ value: a, label: a })),
+              ]}
+            />
           </div>
           <div className="min-w-[220px] flex-1">
             <label className="block text-xs text-zinc-500">{t("admin.audit.filterLabel")}</label>
