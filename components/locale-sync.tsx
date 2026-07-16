@@ -17,7 +17,7 @@ export function LocaleSync() {
   useEffect(() => {
     const pl = data.profile.locale;
     if (!pl || pl === locale || applied.current === pl) return;
-    if (pl !== "en" && pl !== "de") return;
+    if (pl !== "en" && pl !== "de" && pl !== "es") return;
     applied.current = pl;
     // Async continuation (not a synchronous setState in an effect).
     void Promise.resolve().then(() => setLocale(pl as Locale));

@@ -38,14 +38,19 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     void Promise.resolve().then(() => {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved === "en" || saved === "de") {
+        if (saved === "en" || saved === "de" || saved === "es") {
           setLocaleState(saved);
           setActiveLocale(saved);
           return;
         }
         const browserLang =
           typeof navigator !== "undefined" ? navigator.language : undefined;
-        const guessed: Locale = browserLang?.toLowerCase().startsWith("de") ? "de" : "en";
+        const lower = browserLang?.toLowerCase();
+        const guessed: Locale = lower?.startsWith("de")
+          ? "de"
+          : lower?.startsWith("es")
+            ? "es"
+            : "en";
         setLocaleState(guessed);
         setActiveLocale(guessed);
       } catch {
