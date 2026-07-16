@@ -153,6 +153,10 @@ function makeInner(initial: PortfolioData) {
       calls.push("renamePortfolio");
       guard();
     },
+    async updatePortfolio() {
+      calls.push("updatePortfolio");
+      guard();
+    },
     async deletePortfolio() {
       calls.push("deletePortfolio");
       guard();
@@ -308,6 +312,29 @@ describe("OfflineStore", () => {
 
     const queue = new MutationQueue("user-1", storage);
     expect(queue.peek()).toHaveLength(0);
+  });
+
+  it("applies updatePortfolio to the mirror and enqueues the op when inner throws a network error", async () => {
+    const storage = makeStorage();
+    const seeded = emptyPortfolio();
+    const inner = makeInner(seeded);
+    const offline = new OfflineStore(inner.store, "user-1", storage);
+    const portfolioId = seeded.portfolios[0].id;
+
+    inner.failNext(NETWORK_ERROR());
+    await offline.updatePortfolio(portfolioId, { feeOrderFlat: 1, feeOrderFreeFrom: 500 });
+
+    const raw = storage.getItem(mirrorStorageKeys("user-1").portfolio);
+    const mirrorData = JSON.parse(raw as string) as PortfolioData;
+    const mirrored = mirrorData.portfolios.find((p) => p.id === portfolioId);
+    expect(mirrored?.feeOrderFlat).toBe(1);
+    expect(mirrored?.feeOrderFreeFrom).toBe(500);
+
+    const queue = new MutationQueue("user-1", storage);
+    const queued = queue.peek();
+    expect(queued).toHaveLength(1);
+    expect(queued[0].op).toBe("updatePortfolio");
+    expect(queued[0].id).toBe(portfolioId);
   });
 
   it("load() falls back to the mirror when inner.load() rejects with a network error", async () => {

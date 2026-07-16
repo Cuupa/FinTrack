@@ -255,6 +255,12 @@ create table if not exists public.portfolios (
 );
 create index if not exists portfolios_user_id_idx on public.portfolios (user_id);
 
+-- Per-portfolio broker fee model (settings "Broker & fees"): prefills, never
+-- forces, the fee on new buy/sell/savings-plan transactions.
+alter table public.portfolios add column if not exists fee_order_flat numeric not null default 0;
+alter table public.portfolios add column if not exists fee_order_free_from numeric;
+alter table public.portfolios add column if not exists fee_savings_plan numeric not null default 0;
+
 -- Transactions ---------------------------------------------------------------
 -- No user_id: ownership is derived via the asset (3NF — avoids the transitive
 -- dependency id -> asset_id -> user_id).
@@ -434,7 +440,8 @@ insert into public.schema_migrations (version) values
   ('0054_tax_settings'),
   ('0055_manual_tax_entries'),
   ('0056_profile_theme'),
-  ('0057_profile_tour')
+  ('0057_profile_tour'),
+  ('0058_portfolio_fees')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

@@ -8,6 +8,7 @@ import { isNativeQuotaError, StorageFullError } from "./errors";
 import type {
   AssetInput,
   DataStore,
+  PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
   TransactionInput,
@@ -66,10 +67,17 @@ export class LocalStore implements DataStore {
       const parsed = JSON.parse(raw) as PortfolioData;
       // Ensure at least one portfolio, and backfill transactions saved before
       // multi-portfolio (no portfolioId) to the default portfolio.
-      const portfolios =
+      const portfolios = (
         parsed.portfolios && parsed.portfolios.length > 0
           ? parsed.portfolios
-          : emptyPortfolio().portfolios;
+          : emptyPortfolio().portfolios
+      ).map((p) => ({
+        ...p,
+        // Backfill portfolios saved before the fee model existed.
+        feeOrderFlat: p.feeOrderFlat ?? 0,
+        feeOrderFreeFrom: p.feeOrderFreeFrom ?? null,
+        feeSavingsPlan: p.feeSavingsPlan ?? 0,
+      }));
       const fallbackId = portfolios[0].id;
       return {
         // Merge over defaults so profiles saved before new fields (name, locale)
@@ -231,19 +239,37 @@ export class LocalStore implements DataStore {
     if (data.portfolios.length >= MAX_PORTFOLIOS) {
       throw new Error(`You can have at most ${MAX_PORTFOLIOS} portfolios.`);
     }
-    const portfolio = { id: id ?? newId(), name: name.trim() || "Portfolio" };
+    const portfolio = {
+      id: id ?? newId(),
+      name: name.trim() || "Portfolio",
+      feeOrderFlat: 0,
+      feeOrderFreeFrom: null,
+      feeSavingsPlan: 0,
+    };
     data.portfolios.push(portfolio);
     this.write(data);
     return portfolio;
   }
 
   async renamePortfolio(id: string, name: string) {
+    return this.updatePortfolio(id, { name });
+  }
+
+  async updatePortfolio(id: string, patch: PortfolioPatch) {
     const data = this.read();
-    const p = data.portfolios.find((x) => x.id === id);
-    if (p) {
-      p.name = name.trim() || p.name;
-      this.write(data);
-    }
+    const idx = data.portfolios.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    const p = data.portfolios[idx];
+    data.portfolios[idx] = {
+      ...p,
+      ...(patch.name !== undefined ? { name: patch.name.trim() || p.name } : {}),
+      ...(patch.feeOrderFlat !== undefined ? { feeOrderFlat: patch.feeOrderFlat } : {}),
+      ...(patch.feeOrderFreeFrom !== undefined
+        ? { feeOrderFreeFrom: patch.feeOrderFreeFrom }
+        : {}),
+      ...(patch.feeSavingsPlan !== undefined ? { feeSavingsPlan: patch.feeSavingsPlan } : {}),
+    };
+    this.write(data);
   }
 
   async deletePortfolio(id: string) {

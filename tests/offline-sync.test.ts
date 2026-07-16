@@ -192,6 +192,10 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       calls.push(`renamePortfolio:${id}`);
       maybeFail();
     },
+    async updatePortfolio(id) {
+      calls.push(`updatePortfolio:${id}`);
+      maybeFail();
+    },
     async deletePortfolio(id) {
       calls.push(`deletePortfolio:${id}`);
       maybeFail();

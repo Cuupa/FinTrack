@@ -35,6 +35,7 @@ import { MutationQueue, type MutationOp } from "./mutation-queue";
 import type {
   AssetInput,
   DataStore,
+  PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
   TransactionInput,
@@ -259,6 +260,15 @@ export class OfflineStore implements DataStore {
       await this.inner.renamePortfolio(id, name);
     } catch (err) {
       await this.handleFailure(err, "renamePortfolio", id, { name });
+    }
+  }
+
+  async updatePortfolio(id: string, patch: PortfolioPatch): Promise<void> {
+    await this.mirror.updatePortfolio(id, patch);
+    try {
+      await this.inner.updatePortfolio(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updatePortfolio", id, patch);
     }
   }
 

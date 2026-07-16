@@ -17,6 +17,7 @@ import { getSupabaseClient } from "../supabase/client";
 import { createStore, type DataStore } from "../store";
 import type {
   AssetInput,
+  PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
   TransactionInput,
@@ -84,6 +85,7 @@ interface PortfolioContextValue {
   setSelectedPortfolios(ids: string[]): void;
   createPortfolio(name: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
+  updatePortfolio(id: string, patch: PortfolioPatch): Promise<void>;
   deletePortfolio(id: string): Promise<void>;
 }
 
@@ -318,6 +320,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const updatePortfolio = useCallback(
+    async (id: string, patch: PortfolioPatch) => {
+      await store.updatePortfolio(id, patch);
+      setData((d) => ({
+        ...d,
+        portfolios: d.portfolios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+      }));
+    },
+    [store],
+  );
+
   const deletePortfolio = useCallback(
     async (id: string) => {
       await store.deletePortfolio(id);
@@ -384,6 +397,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setSelectedPortfolios: setSelectedIds,
     createPortfolio,
     renamePortfolio,
+    updatePortfolio,
     deletePortfolio,
   };
 

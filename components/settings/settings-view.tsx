@@ -14,16 +14,22 @@ import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { isStorageFullError } from "@/lib/store/errors";
+import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import type { Portfolio } from "@/lib/types";
+import type { PortfolioPatch } from "@/lib/store/types";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 const CHURCH_TAX_RATES = [0, 0.08, 0.09];
+
+const feeInputCls =
+  "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 // Only a NEW password (this change-password form) is floored at this length;
 // existing accounts can still sign in with a shorter one.
 const NEW_PASSWORD_MIN_LENGTH = 8;
 
 export function SettingsView() {
-  const { data, updateProfile } = usePortfolio();
+  const { data, updateProfile, portfolios, updatePortfolio } = usePortfolio();
   const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
@@ -142,7 +148,7 @@ export function SettingsView() {
   };
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="grid gap-6 xl:grid-cols-2">
       <Card>
         <h2 className="text-lg font-semibold">{t("settings.title")}</h2>
         <div className="mt-4 space-y-4">
@@ -251,6 +257,21 @@ export function SettingsView() {
         </div>
       </Card>
 
+      <Card>
+        <h2 className="text-lg font-semibold">{t("settings.fees.title")}</h2>
+        <p className="mt-1 text-sm text-zinc-500">{t("settings.fees.hint")}</p>
+        <div className="mt-4 space-y-4 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+          {portfolios.map((p) => (
+            <PortfolioFeeRow
+              key={p.id}
+              portfolio={p}
+              baseCurrency={data.profile.currency}
+              onSave={updatePortfolio}
+            />
+          ))}
+        </div>
+      </Card>
+
       {mode === "registered" && (
         <Card>
           <h2 className="text-lg font-semibold">{t("settings.changePassword")}</h2>
@@ -290,7 +311,7 @@ export function SettingsView() {
       )}
 
       {mode === "registered" && (
-        <Card className="border-red-300 dark:border-red-900">
+        <Card className="border-red-300 dark:border-red-900 xl:col-span-2">
           <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">
             {t("settings.dangerZone")}
           </h2>
@@ -353,6 +374,116 @@ function Field({
       <label className="mb-1 block text-sm font-medium">{label}</label>
       {children}
       {hint && <p className="mt-1.5 text-xs text-zinc-500">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * One portfolio's fee-model row inside the "Broker & fees" card. Local state
+ * is seeded once from `portfolio` at mount (same pattern as the top-level
+ * profile/tax fields above) rather than kept in sync via effect, so an
+ * in-flight edit here survives an unrelated portfolio list refresh.
+ */
+function PortfolioFeeRow({
+  portfolio,
+  baseCurrency,
+  onSave,
+}: {
+  portfolio: Portfolio;
+  baseCurrency: string;
+  onSave: (id: string, patch: PortfolioPatch) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [flat, setFlat] = useState(String(portfolio.feeOrderFlat ?? 0));
+  const [freeFrom, setFreeFrom] = useState(
+    portfolio.feeOrderFreeFrom != null ? String(portfolio.feeOrderFreeFrom) : "",
+  );
+  const [savingsPlan, setSavingsPlan] = useState(String(portfolio.feeSavingsPlan ?? 0));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      const flatNum = parseDecimal(flat);
+      const freeFromNum = freeFrom.trim() ? parseDecimal(freeFrom) : null;
+      const savingsPlanNum = parseDecimal(savingsPlan);
+      await onSave(portfolio.id, {
+        feeOrderFlat: Number.isFinite(flatNum) ? flatNum : 0,
+        feeOrderFreeFrom:
+          freeFromNum != null && Number.isFinite(freeFromNum) ? freeFromNum : null,
+        feeSavingsPlan: Number.isFinite(savingsPlanNum) ? savingsPlanNum : 0,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("settings.fees.saveError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="pt-4 first:pt-0">
+      <h3 className="truncate text-sm font-semibold">{portfolio.name}</h3>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Field label={t("settings.fees.orderFlat")}>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={flat}
+              onChange={(e) => setFlat(stripLeadingZero(e.target.value))}
+              className={`${feeInputCls} pr-12`}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+              {baseCurrency}
+            </span>
+          </div>
+        </Field>
+        <Field label={t("settings.fees.orderFreeFrom")} hint={t("settings.fees.orderFreeFromHint")}>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="—"
+              value={freeFrom}
+              onChange={(e) => setFreeFrom(stripLeadingZero(e.target.value))}
+              className={`${feeInputCls} pr-12`}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+              {baseCurrency}
+            </span>
+          </div>
+        </Field>
+        <Field label={t("settings.fees.savingsPlan")}>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={savingsPlan}
+              onChange={(e) => setSavingsPlan(stripLeadingZero(e.target.value))}
+              className={`${feeInputCls} pr-12`}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+              {baseCurrency}
+            </span>
+          </div>
+        </Field>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <Button size="sm" variant="primary" onClick={() => void save()} disabled={saving}>
+          {saving ? "…" : t("settings.save")}
+        </Button>
+        {saved && (
+          <span className="text-sm text-emerald-600 dark:text-emerald-400">
+            {t("settings.saved")}
+          </span>
+        )}
+        {error && <span className="text-sm text-red-600 dark:text-red-400">{error}</span>}
+      </div>
     </div>
   );
 }

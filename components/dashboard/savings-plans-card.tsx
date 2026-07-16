@@ -12,6 +12,7 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
+import { savingsPlanFee } from "@/lib/finance/fees";
 import { today } from "@/lib/finance/dates";
 import { priceOn, quoteItemFor } from "@/lib/finance/prices";
 import { priceAtWithHeadTolerance } from "@/lib/history/history";
@@ -62,12 +63,15 @@ interface DueRow {
   date: string;
   price: number;
   synthetic: boolean;
+  /** The plan's portfolio fee, prefilled into the fee input below. */
+  feeDefault: number;
 }
 
-/** A user override for a single due row's price and/or quantity input. */
+/** A user override for a single due row's price, quantity and/or fee input. */
 interface RowEdit {
   price?: string;
   qty?: string;
+  fee?: string;
 }
 
 interface EffectiveRow {
@@ -75,26 +79,32 @@ interface EffectiveRow {
   priceInput: string;
   /** Text shown in the qty input. */
   qtyInput: string;
+  /** Text shown in the fee input. */
+  feeInput: string;
   /** Parsed price used for validation/booking. */
   effectivePrice: number;
   /** Parsed quantity used for validation/booking. */
   effectiveQty: number;
+  /** Parsed fee used for booking (falls back to 0 when unparseable). */
+  effectiveFee: number;
   /** Value shown in the "value at buy" column. */
   amount: number;
-  /** Whether the user touched either field. */
+  /** Whether the user touched any field. */
   edited: boolean;
 }
 
 /**
- * Derives the displayed/effective price, qty and amount for a due row given
- * any user override. Price defaults to the fetched price (rounded to 2dp);
- * qty defaults to plan.amount / price (rounded to 3dp) and tracks the price
- * until the user edits qty directly, which decouples it from the amount.
+ * Derives the displayed/effective price, qty, fee and amount for a due row
+ * given any user override. Price defaults to the fetched price (rounded to
+ * 2dp); qty defaults to plan.amount / price (rounded to 3dp) and tracks the
+ * price until the user edits qty directly, which decouples it from the
+ * amount; fee defaults to the plan's portfolio fee model.
  */
 function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow {
   const defaultPrice = round(row.price, 2);
   const priceEdited = edit?.price !== undefined;
   const qtyEdited = edit?.qty !== undefined;
+  const feeEdited = edit?.fee !== undefined;
 
   const priceInput = priceEdited ? edit.price! : String(defaultPrice);
   const effectivePrice = priceEdited ? parseDecimal(edit.price!) : defaultPrice;
@@ -114,13 +124,17 @@ function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow {
     effectiveQty = qtyValue;
   }
 
-  const edited = priceEdited || qtyEdited;
+  const feeInput = feeEdited ? edit.fee! : String(round(row.feeDefault, 2));
+  const effectiveFeeParsed = feeEdited ? parseDecimal(edit.fee!) : row.feeDefault;
+  const effectiveFee = Number.isFinite(effectiveFeeParsed) ? effectiveFeeParsed : 0;
+
+  const edited = priceEdited || qtyEdited || feeEdited;
   const amount =
-    edited && Number.isFinite(effectiveQty) && Number.isFinite(effectivePrice)
+    (priceEdited || qtyEdited) && Number.isFinite(effectiveQty) && Number.isFinite(effectivePrice)
       ? round(effectiveQty * effectivePrice, 2)
       : row.plan.amount;
 
-  return { priceInput, qtyInput, effectivePrice, effectiveQty, amount, edited };
+  return { priceInput, qtyInput, feeInput, effectivePrice, effectiveQty, effectiveFee, amount, edited };
 }
 
 export function SavingsPlansCard() {
@@ -154,6 +168,10 @@ export function SavingsPlansCard() {
   }
 
   const assetById = useMemo(() => new Map(data.assets.map((a) => [a.id, a])), [data.assets]);
+  const portfolioById = useMemo(
+    () => new Map(data.portfolios.map((p) => [p.id, p])),
+    [data.portfolios],
+  );
   // A plan may live in a portfolio outside the current selection — use the
   // full plan list from data (plans aren't portfolio-scoped in scopedData).
   const plans = data.savingsPlans;
@@ -198,9 +216,10 @@ export function SavingsPlansCard() {
           date,
           price: real != null ? real : priceOn(key, asset.type, date),
           synthetic: real == null,
+          feeDefault: savingsPlanFee(portfolioById.get(plan.portfolioId)),
         };
       }),
-    [due, histories],
+    [due, histories, portfolioById],
   );
 
   // Effective price/qty/amount per row, folding in any user override.
@@ -245,7 +264,7 @@ export function SavingsPlansCard() {
           type: "BUY",
           quantity: round(derived.effectiveQty, 3),
           price: derived.effectivePrice,
-          fee: 0,
+          fee: round(derived.effectiveFee, 2),
           tax: 0,
           date: `${row.date}T00:00:00`,
         });
@@ -384,6 +403,7 @@ export function SavingsPlansCard() {
                   <th className="py-2 pr-3 font-medium">{t("sp.asset")}</th>
                   <th className="py-2 pr-3 text-right font-medium">{t("sp.amount")}</th>
                   <th className="py-2 pr-3 text-right font-medium">{t("tx.price")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("tx.fee")}</th>
                   <th className="py-2 text-right font-medium">{t("tx.qty")}</th>
                 </tr>
               </thead>
@@ -414,6 +434,17 @@ export function SavingsPlansCard() {
                           />
                           {row.synthetic && !historyLoading && <EstimatedBadge compact />}
                         </span>
+                      </td>
+                      <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                        <input
+                          inputMode="decimal"
+                          aria-label={t("tx.fee")}
+                          value={derived.feeInput}
+                          onChange={(e) =>
+                            setRowEdit(key, { fee: stripLeadingZero(e.target.value) })
+                          }
+                          className={rowInputCls}
+                        />
                       </td>
                       <td className="py-2 text-right tabular-nums" data-private>
                         <input

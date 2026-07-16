@@ -23,11 +23,30 @@ import { RowNotFoundError } from "./types";
 import type {
   AssetInput,
   DataStore,
+  PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
   TransactionInput,
   WatchlistInput,
 } from "./types";
+
+interface PortfolioRow {
+  id: string;
+  name: string;
+  fee_order_flat: number | string | null;
+  fee_order_free_from: number | string | null;
+  fee_savings_plan: number | string | null;
+}
+
+function portfolioFromRow(r: PortfolioRow): Portfolio {
+  return {
+    id: r.id,
+    name: r.name,
+    feeOrderFlat: r.fee_order_flat != null ? Number(r.fee_order_flat) : 0,
+    feeOrderFreeFrom: r.fee_order_free_from != null ? Number(r.fee_order_free_from) : null,
+    feeSavingsPlan: r.fee_savings_plan != null ? Number(r.fee_savings_plan) : 0,
+  };
+}
 
 interface InstrumentEmbed {
   isin: string | null;
@@ -105,7 +124,7 @@ export class SupabaseStore implements DataStore {
         .maybeSingle(),
       this.supabase
         .from("portfolios")
-        .select("id, name")
+        .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan")
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
@@ -137,10 +156,9 @@ export class SupabaseStore implements DataStore {
 
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.
-    let portfolios: Portfolio[] = ((portfoliosRes.data ?? []) as Portfolio[]).map((p) => ({
-      id: p.id,
-      name: p.name,
-    }));
+    let portfolios: Portfolio[] = ((portfoliosRes.data ?? []) as PortfolioRow[]).map(
+      portfolioFromRow,
+    );
     if (portfolios.length === 0) {
       const def = await this.createPortfolio("Main");
       portfolios = [def];
@@ -503,16 +521,28 @@ export class SupabaseStore implements DataStore {
     const { data, error } = await this.supabase
       .from("portfolios")
       .insert({ id, user_id: this.userId, name: name.trim() || "Portfolio" })
-      .select("id, name")
+      .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan")
       .single();
     if (error) throw error;
-    return data as Portfolio;
+    return portfolioFromRow(data as PortfolioRow);
   }
 
   async renamePortfolio(id: string, name: string): Promise<void> {
+    return this.updatePortfolio(id, { name });
+  }
+
+  async updatePortfolio(id: string, patch: PortfolioPatch): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    // A blank name is treated as "keep the current name" (mirrors renamePortfolio's
+    // prior `name.trim() || ...` behaviour) rather than writing an empty string.
+    if (patch.name !== undefined && patch.name.trim()) upd.name = patch.name.trim();
+    if (patch.feeOrderFlat !== undefined) upd.fee_order_flat = patch.feeOrderFlat;
+    if (patch.feeOrderFreeFrom !== undefined) upd.fee_order_free_from = patch.feeOrderFreeFrom;
+    if (patch.feeSavingsPlan !== undefined) upd.fee_savings_plan = patch.feeSavingsPlan;
+    if (Object.keys(upd).length === 0) return;
     const { error } = await this.supabase
       .from("portfolios")
-      .update({ name: name.trim() })
+      .update(upd)
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) throw error;

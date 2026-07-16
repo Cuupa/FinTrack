@@ -158,13 +158,23 @@ export const en = {
   "settings.tour.button": "Start tour",
   "settings.tour.error": "Could not start the tour.",
 
+  "settings.fees.title": "Broker & fees",
+  "settings.fees.hint":
+    "Fees prefill new buy/sell orders and savings-plan executions. You can still edit them on every transaction.",
+  "settings.fees.orderFlat": "Order fee",
+  "settings.fees.orderFreeFrom": "Free from",
+  "settings.fees.orderFreeFromHint":
+    "Order volume at or above which the order fee is waived. Leave empty to always charge it.",
+  "settings.fees.savingsPlan": "Savings-plan fee",
+  "settings.fees.saveError": "Could not save.",
+
   // Guided tour (onboarding/guided-tour.tsx)
   "tour.welcome.title": "Welcome to FinTrack",
   "tour.welcome.body":
     "A quick look around, about a minute. Add your holdings, watch your net worth grow, and dig into the details whenever you like.",
   "tour.addAsset.title": "Add your holdings",
   "tour.addAsset.body":
-    "Add a position by hand or import a CSV export from your broker right here.",
+    "Add a position manually or import a CSV export from your broker right here.",
   "tour.netWorth.title": "Net worth over time",
   "tour.netWorth.body": "This chart tracks your net worth. Switch the timeframe to zoom in or out.",
   "tour.holdings.title": "Your holdings",
@@ -1198,6 +1208,16 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.tour.body": "Starte die kurze Tour durchs Dashboard erneut.",
   "settings.tour.button": "Tour starten",
   "settings.tour.error": "Die Tour konnte nicht gestartet werden.",
+
+  "settings.fees.title": "Broker & Gebühren",
+  "settings.fees.hint":
+    "Gebühren füllen neue Kauf-/Verkaufsorders und Sparplan-Ausführungen vor. Du kannst sie bei jeder Transaktion trotzdem anpassen.",
+  "settings.fees.orderFlat": "Ordergebühr",
+  "settings.fees.orderFreeFrom": "Kostenlos ab",
+  "settings.fees.orderFreeFromHint":
+    "Ordervolumen, ab dem die Ordergebühr entfällt. Leer lassen, damit sie immer anfällt.",
+  "settings.fees.savingsPlan": "Sparplan-Gebühr",
+  "settings.fees.saveError": "Konnte nicht gespeichert werden.",
 
   // Guided tour (onboarding/guided-tour.tsx)
   "tour.welcome.title": "Willkommen bei FinTrack",
@@ -2238,6 +2258,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.tour.body": "Repite el recorrido rápido por el panel principal.",
   "settings.tour.button": "Iniciar tour",
   "settings.tour.error": "No se ha podido iniciar el tour.",
+
+  "settings.fees.title": "Bróker y comisiones",
+  "settings.fees.hint":
+    "Las comisiones se autocompletan en las nuevas órdenes de compra/venta y en las ejecuciones de planes de inversión. Puedes editarlas en cada transacción.",
+  "settings.fees.orderFlat": "Comisión de orden",
+  "settings.fees.orderFreeFrom": "Gratis a partir de",
+  "settings.fees.orderFreeFromHint":
+    "Volumen de la orden a partir del cual se exime la comisión. Déjalo vacío para cobrarla siempre.",
+  "settings.fees.savingsPlan": "Comisión del plan de inversión",
+  "settings.fees.saveError": "No se ha podido guardar.",
 
   // Guided tour (onboarding/guided-tour.tsx)
   "tour.welcome.title": "Bienvenido a FinTrack",

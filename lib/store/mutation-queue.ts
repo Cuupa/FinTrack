@@ -27,6 +27,7 @@ export type MutationOp =
   | "deleteSavingsPlan"
   | "createPortfolio"
   | "renamePortfolio"
+  | "updatePortfolio"
   | "deletePortfolio";
 
 /** One queued op, matching the shape frozen in OFFLINE_DESIGN.md §2. */

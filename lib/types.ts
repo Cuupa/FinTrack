@@ -86,10 +86,21 @@ export interface WatchlistItem {
   currency: string | null;
 }
 
-/** A named portfolio. A user can hold several; transactions belong to one. */
+/**
+ * A named portfolio. A user can hold several; transactions belong to one.
+ * The optional fee model prefills (never forces) new transaction/savings-plan
+ * fee inputs — see `lib/finance/fees.ts`.
+ */
 export interface Portfolio {
   id: string;
   name: string;
+  /** Flat fee per buy/sell execution, in the base currency. Default 0. */
+  feeOrderFlat?: number;
+  /** Order volume at/above which the order fee is waived. Null/undefined =
+   *  the fee always applies. */
+  feeOrderFreeFrom?: number | null;
+  /** Fee per savings-plan execution, in the base currency. Default 0. */
+  feeSavingsPlan?: number;
 }
 
 export const MAX_PORTFOLIOS = 20;

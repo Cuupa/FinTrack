@@ -19,6 +19,16 @@ export type TransactionInput = Omit<Transaction, "id">;
 export type WatchlistInput = Omit<WatchlistItem, "id">;
 export type SavingsPlanInput = Omit<SavingsPlan, "id">;
 
+/** Patch shape for `DataStore.updatePortfolio` — every field optional, only
+ *  the fields present are changed. `renamePortfolio` is a thin wrapper around
+ *  this with just `{ name }`. */
+export interface PortfolioPatch {
+  name?: string;
+  feeOrderFlat?: number;
+  feeOrderFreeFrom?: number | null;
+  feeSavingsPlan?: number;
+}
+
 /** A cached Monte Carlo run, keyed by a hash of its (seed-independent) params. */
 export interface SimulationCacheEntry {
   hash: string;
@@ -53,6 +63,8 @@ export interface DataStore {
   deleteSavingsPlan(id: string): Promise<void>;
   createPortfolio(name: string, id?: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
+  /** Patches name and/or fee-model fields (settings "Broker & fees"). */
+  updatePortfolio(id: string, patch: PortfolioPatch): Promise<void>;
   /** Deletes the portfolio, its transactions, and assets held only in it. */
   deletePortfolio(id: string): Promise<void>;
   /** Reuse a previously computed simulation with identical params, or null. */

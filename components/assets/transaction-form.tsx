@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { currentPrice } from "@/lib/finance/prices";
+import { orderFee } from "@/lib/finance/fees";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
@@ -60,7 +61,10 @@ export function TransactionForm({
   );
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState(initialPrice);
-  const [fee, setFee] = useState("0");
+  // null = not yet edited by the user: the fee input tracks the portfolio's
+  // order-fee model (below) live. Once the user types into the field, the
+  // manual value wins permanently for this form instance.
+  const [feeManual, setFeeManual] = useState<string | null>(null);
   const [tax, setTax] = useState("0");
   const [addingPortfolio, setAddingPortfolio] = useState(false);
   const [newPortfolio, setNewPortfolio] = useState("");
@@ -100,7 +104,6 @@ export function TransactionForm({
   const isInterest = type === "INTEREST";
   const qtyNum = parseDecimal(quantity);
   const pxNum = isCash ? 1 : parseDecimal(price);
-  const feeNum = parseDecimal(fee) || 0;
   // Tax only applies to real trades (Abgeltungsteuer on sells, transaction
   // tax on some buys) — never to cash deposits/withdrawals or creditings.
   const showTax = !isCash && (isBuy || type === "SELL");
@@ -108,6 +111,12 @@ export function TransactionForm({
   // Cash leaving (buy) / arriving (sell); a BOOKING/INTEREST costs nothing, so
   // its "total" is the market value / interest received.
   const gross = Number.isFinite(qtyNum) && Number.isFinite(pxNum) ? qtyNum * pxNum : 0;
+  // The order fee only applies to real buy/sell executions (order volume =
+  // shares × price, before fee/tax) — never bookings, interest or cash.
+  const selectedPortfolio = portfolios.find((p) => p.id === portfolioId);
+  const autoFee = !isCash && (isBuy || type === "SELL") ? orderFee(selectedPortfolio, gross) : 0;
+  const fee = feeManual ?? String(round(autoFee));
+  const feeNum = parseDecimal(fee) || 0;
   const total = isBuy
     ? gross + feeNum + taxNum
     : isBooking || isInterest
@@ -145,7 +154,7 @@ export function TransactionForm({
         date: executedAt,
       });
       setQuantity("");
-      setFee("0");
+      setFeeManual(null);
       setTax("0");
       onDone?.();
     } catch (err) {
@@ -256,7 +265,7 @@ export function TransactionForm({
               type="text"
               inputMode="decimal"
               value={fee}
-              onChange={(e) => setFee(stripLeadingZero(e.target.value))}
+              onChange={(e) => setFeeManual(stripLeadingZero(e.target.value))}
               className={`${inputCls} pr-12`}
             />
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">

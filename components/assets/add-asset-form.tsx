@@ -12,6 +12,7 @@ import { currentPrice } from "@/lib/finance/prices";
 import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
+import { orderFee } from "@/lib/finance/fees";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { isStorageFullError } from "@/lib/store/errors";
@@ -72,7 +73,10 @@ export function AddAssetForm({
   // Opening transaction.
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
-  const [fee, setFee] = useState("0");
+  // null = not yet edited by the user: the fee input tracks the portfolio's
+  // order-fee model (below) live. Once the user types into the field, the
+  // manual value wins permanently for this form instance.
+  const [feeManual, setFeeManual] = useState<string | null>(null);
   const [executedAt, setExecutedAt] = useState(nowDateTimeLocal());
 
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +113,16 @@ export function AddAssetForm({
   const identifierOrNameMissing =
     !isCash && manual && !name.trim() && !isin.trim() && !wkn.trim() && !symbol.trim();
   const formIncomplete = quantityMissing || priceMissing || identifierOrNameMissing;
+
+  // The opening transaction is always a BUY — prefill its fee from the
+  // chosen portfolio's order-fee model (volume = shares × price) unless the
+  // user has already typed into the fee field.
+  const selectedPortfolio = portfolios.find((p) => p.id === portfolioId);
+  const qtyNum = parseDecimal(quantity);
+  const pxNum = isCash ? 1 : parseDecimal(price);
+  const volume = Number.isFinite(qtyNum) && Number.isFinite(pxNum) ? qtyNum * pxNum : 0;
+  const autoFee = !isCash ? orderFee(selectedPortfolio, volume) : 0;
+  const fee = feeManual ?? String(round(autoFee));
 
   async function importFor(q: string) {
     const query = q.trim();
@@ -532,7 +546,7 @@ export function AddAssetForm({
                 type="text"
                 inputMode="decimal"
                 value={fee}
-                onChange={(e) => setFee(stripLeadingZero(e.target.value))}
+                onChange={(e) => setFeeManual(stripLeadingZero(e.target.value))}
                 className={inputCls}
               />
             </div>
