@@ -232,6 +232,15 @@ hour) or on `?revalidate=1` the cron drops the stored hint so a stuck
 mis-resolved `quote_id` re-resolves from scratch (the GME case); the bulk
 `/api/cron/sync` forwards its query string to the prices sub-sync.
 
+Listing resolution ranks in tiers (round 21, all three of
+`resolveSymbol`/`resolveQuote`/`historyByQuery` in `lib/server/yahoo.ts`):
+**exact-ticker match first, THEN the wanted-currency filter, then
+volume/exchange score.** The currency filter must never run before the exact
+tier — filtering "GME" to EUR-only candidates once left Geratherm Medical
+(GME.F, an unrelated fuzzy hit and the only EUR line) as the winner, showing
+GameStop at 2.63 EUR. Right instrument in the wrong currency (callers
+FX-convert) always beats a wrong instrument in the right currency.
+
 ### Finance core (`lib/finance/`) — pure, no React
 
 - `portfolio.ts` — holdings are **derived, never stored**: positions, cost
@@ -306,6 +315,29 @@ client pages (see `app/assets/[id]/page.tsx`).
   formal-"Sie" convention was explicitly overridden). Capitalized "Sie" is
   only acceptable as a genuine third-person pronoun at sentence start. No
   em-dashes in any user-facing copy.
+- **Locales are en/de/es** (round 21). Spanish uses the informal tú-register.
+  `tests/dictionaries-es.test.ts` pins en/es key AND `{placeholder}` parity —
+  every new dictionary key must land in `es` (and `de`) or the suite fails.
+  Legal pages deliberately stay EN+DE (es falls back to the English block).
+- **Portfolios are brokers** (round 21, user rule): the user-given portfolio
+  name IS the broker identity — never hardcode broker names or presets in the
+  UI. Each portfolio carries a fee model (`fee_order_flat`,
+  `fee_order_free_from`, `fee_savings_plan`) and a per-broker
+  `tax_allowance` (Freistellungsauftrag). Fees only ever PREFILL the
+  transaction/savings-plan fee inputs (`lib/finance/fees.ts`; a manual edit
+  wins permanently). The tax report shields each broker's attributable gains
+  with its own allowance; leftovers only offset the pooled remainder
+  (dividends/Vorabpauschale) — see `taxYearBreakdown`. Settings edits one
+  broker at a time behind a SelectMenu, never a stacked list of all
+  portfolios (user rule: entity picker first, then its form).
+- **Guided tours**: `TourOverlay` (components/onboarding/guided-tour.tsx) is
+  the generic spotlight engine; page tours (risk, rebalancing, simulation,
+  asset tags — `components/onboarding/page-tours.tsx`) persist completion in
+  `profile.toursDone` (jsonb map, migration 0060) while the dashboard tour
+  keeps `tourDoneAt`. Tours auto-start only where the page has data (mount
+  placement, no enabled prop) and every tour surface has a ghost "?" replay
+  button. Step registries live in `lib/onboarding/tour-steps.ts` (pure,
+  unit-tested).
 - **Dates** are timezone-stable `YYYY-MM-DD` strings throughout; use the
   helpers in `lib/finance/dates.ts`, not raw `Date` math.
 - Next 16's `react-hooks/set-state-in-effect` lint rule **fails the build** on
