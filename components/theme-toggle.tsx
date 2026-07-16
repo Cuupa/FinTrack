@@ -6,7 +6,16 @@ import { useTheme } from "@/lib/theme/theme-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function ThemeToggle({
+  className = "",
+  dataTour,
+}: {
+  className?: string;
+  /** `data-tour` target name for the guided tour (components/onboarding);
+   *  passed only at the single call site the tour should spotlight, since
+   *  the selector picks the first visible match. */
+  dataTour?: string;
+}) {
   const { theme, toggle } = useTheme();
   const { t } = useI18n();
   const { updateProfile } = usePortfolio();
@@ -25,6 +34,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       }}
       title={label}
       aria-label={label}
+      data-tour={dataTour}
       className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
     >
       <svg

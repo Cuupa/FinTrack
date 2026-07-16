@@ -113,7 +113,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
 
   return (
     <>
-    <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div data-tour="holdings" className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">{t("table.holdings")}</h2>
         <input

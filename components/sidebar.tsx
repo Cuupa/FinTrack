@@ -76,7 +76,7 @@ export function Sidebar() {
         collapsed ? "w-16" : "w-56"
       } transition-[width] duration-150`}
     >
-      <nav className="flex h-full flex-col gap-1 p-2">
+      <nav data-tour="nav" className="flex h-full flex-col gap-1 p-2">
         {visibleLinks.map((l) => {
           const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           return (

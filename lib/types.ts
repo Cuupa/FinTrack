@@ -29,6 +29,8 @@ export interface Profile {
   taxVorabpauschale: Record<string, number>;
   /** Manual override of the tax withheld by the broker per year; replaces the transaction-derived sum when set. */
   taxWithheldOverride: Record<string, number>;
+  /** ISO datetime the guided tour was completed or skipped; null = never shown. */
+  tourDoneAt: string | null;
 }
 
 /**
@@ -164,6 +166,7 @@ export const DEFAULT_PROFILE: Profile = {
   taxTeilfreistellung: false,
   taxVorabpauschale: {},
   taxWithheldOverride: {},
+  tourDoneAt: null,
 };
 
 export function emptyPortfolio(): PortfolioData {

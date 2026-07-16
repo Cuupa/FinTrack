@@ -151,6 +151,37 @@ export const en = {
   "settings.deleteAccountPassword": "Current password",
   "settings.deleteAccountWrongPassword": "Wrong password.",
   "settings.deleteAccountError": "Deletion failed.",
+  "settings.tour.title": "Guided tour",
+  "settings.tour.body": "Replay the quick tour of the dashboard.",
+  "settings.tour.button": "Start tour",
+  "settings.tour.error": "Could not start the tour.",
+
+  // Guided tour (onboarding/guided-tour.tsx)
+  "tour.welcome.title": "Welcome to FinTrack",
+  "tour.welcome.body":
+    "A quick look around, about a minute. Add your holdings, watch your net worth grow, and dig into the details whenever you like.",
+  "tour.addAsset.title": "Add your holdings",
+  "tour.addAsset.body":
+    "Add a position by hand or import a CSV export from your broker right here.",
+  "tour.netWorth.title": "Net worth over time",
+  "tour.netWorth.body": "This chart tracks your net worth. Switch the timeframe to zoom in or out.",
+  "tour.holdings.title": "Your holdings",
+  "tour.holdings.body":
+    "Every position lives here, sortable by column. Click a row to open its details.",
+  "tour.nav.title": "More to explore",
+  "tour.nav.body": "Analysis, dividends, and simulation all live in this menu.",
+  "tour.themeToggle.title": "Dark mode",
+  "tour.themeToggle.body":
+    "Switch between light and dark anytime. Language and currency are in settings.",
+  "tour.done.title": "You're ready",
+  "tour.done.body":
+    "Add your first holding or import a CSV to get started. Find language, currency, and this tour again in settings.",
+  "tour.start": "Start",
+  "tour.next": "Next",
+  "tour.back": "Back",
+  "tour.skip": "Skip tour",
+  "tour.finish": "Finish",
+  "tour.progressAria": "Step {current} of {total}",
 
   // Login / register page
   "login.signIn": "Sign in",
@@ -1129,6 +1160,38 @@ const de: Partial<Record<MessageKey, string>> = {
   "settings.deleteAccountPassword": "Aktuelles Passwort",
   "settings.deleteAccountWrongPassword": "Falsches Passwort.",
   "settings.deleteAccountError": "Löschen fehlgeschlagen.",
+  "settings.tour.title": "Geführte Tour",
+  "settings.tour.body": "Starte die kurze Tour durchs Dashboard erneut.",
+  "settings.tour.button": "Tour starten",
+  "settings.tour.error": "Die Tour konnte nicht gestartet werden.",
+
+  // Guided tour (onboarding/guided-tour.tsx)
+  "tour.welcome.title": "Willkommen bei FinTrack",
+  "tour.welcome.body":
+    "Eine kurze Tour, etwa eine Minute. Füge deine Positionen hinzu, verfolge dein Vermögen und schau dir die Details an, wann immer du willst.",
+  "tour.addAsset.title": "Positionen hinzufügen",
+  "tour.addAsset.body":
+    "Füge eine Position von Hand hinzu oder importiere direkt hier einen CSV-Export deiner Bank.",
+  "tour.netWorth.title": "Vermögen im Zeitverlauf",
+  "tour.netWorth.body":
+    "Dieses Diagramm zeigt dein Vermögen. Wechsle den Zeitraum, um rein- oder rauszuzoomen.",
+  "tour.holdings.title": "Deine Positionen",
+  "tour.holdings.body":
+    "Alle Positionen findest du hier, sortierbar nach Spalte. Klicke auf eine Zeile für die Details.",
+  "tour.nav.title": "Mehr entdecken",
+  "tour.nav.body": "Analyse, Dividenden und Simulation findest du in diesem Menü.",
+  "tour.themeToggle.title": "Dunkler Modus",
+  "tour.themeToggle.body":
+    "Wechsle jederzeit zwischen hell und dunkel. Sprache und Währung findest du in den Einstellungen.",
+  "tour.done.title": "Du bist startklar",
+  "tour.done.body":
+    "Füge deine erste Position hinzu oder importiere eine CSV-Datei. Sprache, Währung und diese Tour findest du in den Einstellungen.",
+  "tour.start": "Los geht's",
+  "tour.next": "Weiter",
+  "tour.back": "Zurück",
+  "tour.skip": "Tour überspringen",
+  "tour.finish": "Fertig",
+  "tour.progressAria": "Schritt {current} von {total}",
 
   // Login / register page
   "login.signIn": "Anmelden",

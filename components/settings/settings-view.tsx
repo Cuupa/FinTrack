@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { isStorageFullError } from "@/lib/store/errors";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 const CHURCH_TAX_RATES = [0, 0.08, 0.09];
@@ -47,6 +48,9 @@ export function SettingsView() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [startingTour, setStartingTour] = useState(false);
+  const [tourError, setTourError] = useState<string | null>(null);
 
   const hasPassword = user?.identities?.some((i) => i.provider === "email") ?? false;
 
@@ -92,6 +96,19 @@ export function SettingsView() {
     } finally {
       setSavingPw(false);
       setTimeout(() => setPwStatus(null), 4000);
+    }
+  };
+
+  const startTour = async () => {
+    setStartingTour(true);
+    setTourError(null);
+    try {
+      await updateProfile({ tourDoneAt: null });
+      router.push("/");
+    } catch (err) {
+      setTourError(isStorageFullError(err) ? t("common.storageFull") : t("settings.tour.error"));
+    } finally {
+      setStartingTour(false);
     }
   };
 
@@ -169,6 +186,21 @@ export function SettingsView() {
         <h2 className="text-lg font-semibold">{t("settings.language")}</h2>
         <div className="mt-4">
           <LocaleSwitcher />
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">{t("settings.tour.title")}</h2>
+        <div className="mt-4 space-y-3">
+          <p className="text-sm text-zinc-500">{t("settings.tour.body")}</p>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={startTour} disabled={startingTour}>
+              {startingTour ? "…" : t("settings.tour.button")}
+            </Button>
+            {tourError && (
+              <span className="text-sm text-red-600 dark:text-red-400">{tourError}</span>
+            )}
+          </div>
         </div>
       </Card>
 

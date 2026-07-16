@@ -11,6 +11,7 @@ import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
 import { WatchlistCard } from "@/components/dashboard/watchlist-card";
+import { GuidedTour } from "@/components/onboarding/guided-tour";
 import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Button } from "@/components/ui/primitives";
@@ -82,6 +83,7 @@ export default function DashboardPage() {
               variant="primary"
               size="sm"
               className="shrink-0 whitespace-nowrap"
+              data-tour="add-asset"
               onClick={() => setAdding(true)}
             >
               {t("dashboard.addAsset")}
@@ -101,6 +103,7 @@ export default function DashboardPage() {
           <AssetTable timeframe={timeframe} />
           <SavingsPlansCard />
           <WatchlistCard />
+          <GuidedTour />
         </>
       )}
 

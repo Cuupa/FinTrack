@@ -51,7 +51,7 @@ export function SiteNav() {
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
           <PortfolioPicker />
-          <ThemeToggle />
+          <ThemeToggle dataTour="theme-toggle" />
           <PrivacyToggle />
           {mode === "registered" ? (
             <ProfileMenu />

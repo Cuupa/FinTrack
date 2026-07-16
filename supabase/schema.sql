@@ -18,6 +18,7 @@ create table if not exists public.profiles (
   tax_teilfreistellung boolean not null default false,
   tax_vorabpauschale jsonb not null default '{}'::jsonb,
   tax_withheld_override jsonb not null default '{}'::jsonb,
+  tour_done_at timestamptz,
   created_at timestamptz not null default now()
 );
 alter table public.profiles add column if not exists display_name text;
@@ -28,6 +29,7 @@ alter table public.profiles add column if not exists church_tax_rate numeric not
 alter table public.profiles add column if not exists tax_teilfreistellung boolean not null default false;
 alter table public.profiles add column if not exists tax_vorabpauschale jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists tax_withheld_override jsonb not null default '{}'::jsonb;
+alter table public.profiles add column if not exists tour_done_at timestamptz;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of
@@ -431,7 +433,8 @@ insert into public.schema_migrations (version) values
   ('0053_heal_gold_gme_quotes'),
   ('0054_tax_settings'),
   ('0055_manual_tax_entries'),
-  ('0056_profile_theme')
+  ('0056_profile_theme'),
+  ('0057_profile_tour')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

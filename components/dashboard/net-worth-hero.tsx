@@ -144,7 +144,7 @@ export function NetWorthHero({
   }, [series, data.assets, data.transactions, valuation, risk.twr]);
 
   return (
-    <Card>
+    <Card data-tour="net-worth">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
           <Stat
