@@ -77,6 +77,8 @@ export class LocalStore implements DataStore {
         feeOrderFlat: p.feeOrderFlat ?? 0,
         feeOrderFreeFrom: p.feeOrderFreeFrom ?? null,
         feeSavingsPlan: p.feeSavingsPlan ?? 0,
+        // Backfill portfolios saved before the per-broker allowance existed.
+        taxAllowance: p.taxAllowance ?? null,
       }));
       const fallbackId = portfolios[0].id;
       return {
@@ -245,6 +247,7 @@ export class LocalStore implements DataStore {
       feeOrderFlat: 0,
       feeOrderFreeFrom: null,
       feeSavingsPlan: 0,
+      taxAllowance: null,
     };
     data.portfolios.push(portfolio);
     this.write(data);
@@ -268,6 +271,7 @@ export class LocalStore implements DataStore {
         ? { feeOrderFreeFrom: patch.feeOrderFreeFrom }
         : {}),
       ...(patch.feeSavingsPlan !== undefined ? { feeSavingsPlan: patch.feeSavingsPlan } : {}),
+      ...(patch.taxAllowance !== undefined ? { taxAllowance: patch.taxAllowance } : {}),
     };
     this.write(data);
   }

@@ -101,6 +101,10 @@ export interface Portfolio {
   feeOrderFreeFrom?: number | null;
   /** Fee per savings-plan execution, in the base currency. Default 0. */
   feeSavingsPlan?: number;
+  /** Registered Freistellungsauftrag at this broker, base currency. Null/undefined
+   *  = none registered here; the global `Profile.taxAllowance` is the fallback
+   *  used until at least one portfolio has this set (see `lib/finance/tax.ts`). */
+  taxAllowance?: number | null;
 }
 
 export const MAX_PORTFOLIOS = 20;

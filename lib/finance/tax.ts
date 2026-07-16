@@ -10,11 +10,22 @@
 //
 // Pure, no React. This is an estimate for orientation only, not tax advice:
 // German capital-gains tax has many special cases (loss carryforwards across
-// years, per-broker Freistellungsauftrag allocation, ...) that are
-// deliberately out of scope; see `privateSale`, which stays informational
-// only. Vorabpauschale (a notional tax pre-payment on accumulating funds)
-// can't be computed from transaction data, so it is entered manually per year
-// (`TaxSettings.vorabpauschale`) rather than derived here.
+// years, ...) that are deliberately out of scope; see `privateSale`, which
+// stays informational only. Vorabpauschale (a notional tax pre-payment on
+// accumulating funds) can't be computed from transaction data, so it is
+// entered manually per year (`TaxSettings.vorabpauschale`) rather than
+// derived here.
+//
+// Per-broker Freistellungsauftrag allocation (`TaxSettings.portfolioAllowances`)
+// IS modeled, approximately: portfolios (transactions carry `portfolioId`)
+// represent brokers, and a broker's own Freistellungsauftrag can only shield
+// gains realized AT that broker. Stock/fund sells and cash interest are
+// portfolio-attributable (the transaction log knows which portfolio each
+// happened in); real dividend events and the manually entered Vorabpauschale
+// are not — the caller pools dividends across all portfolios holding an asset
+// before calling in (see tax-view.tsx's `dividendsByYear`), and Vorabpauschale
+// is a single manual entry per year, not per broker. See `taxYearBreakdown`
+// for the exact allocation rule.
 
 import type { Asset, Transaction } from "../types";
 import type { ValuationContext } from "./portfolio";
@@ -40,6 +51,15 @@ export interface TaxSettings {
   vorabpauschale: Record<string, number>;
   /** Manual override of the tax withheld by the broker per year; replaces the transaction-derived sum when set. */
   withheldOverride: Record<string, number>;
+  /**
+   * Registered Freistellungsauftrag per broker (portfolio id -> base-currency
+   * amount), for users who split their Sparerpauschbetrag across brokers.
+   * Only portfolios with an amount registered are included — when this map
+   * is empty, `allowanceUsed` falls back to `allowance` exactly as before
+   * (single global pot). A single amount applies to every year (the app does
+   * not historize registered allowances per year). See `taxYearBreakdown`.
+   */
+  portfolioAllowances?: Record<string, number>;
 }
 
 /** Real dividend income for a year, split by the pot it feeds (Aktien vs. sonstige Kapitalerträge). */
@@ -74,6 +94,14 @@ export interface TaxYearBreakdown {
   taxWithheldComputed: number;
   /** Manually entered Vorabpauschale for the year, AFTER Teilfreistellung when applied (feeds the sonstige pot, mirrors the `dividendsFund` convention). */
   vorabpauschale: number;
+  /**
+   * Per-broker allowance usage, only present when `settings.portfolioAllowances`
+   * has at least one entry. One row per portfolio with a registered allowance,
+   * `used` capped at that portfolio's own portfolio-attributable Kapitalerträge
+   * for the year (stock/fund gains + interest booked in that portfolio) —
+   * see `taxYearBreakdown`.
+   */
+  allowanceByPortfolio?: { portfolioId: string; used: number; registered: number }[];
 }
 
 /**
@@ -88,16 +116,46 @@ export function abgeltungRate(churchTaxRate: number): number {
   return k > 0 ? (1 / (4 + k)) * (1 + 0.055 + k) : 0.25 * 1.055;
 }
 
+/** A portfolio's (broker's) own contribution to a year's stock/fund gains and
+ *  interest — the subset of a year's Kapitalerträge that is portfolio-attributable
+ *  (see the module-level comment on per-broker allowance allocation). */
+interface PortfolioAccum {
+  stockGains: number;
+  fundGains: number;
+  interest: number;
+}
+
+function emptyPortfolioAccum(): PortfolioAccum {
+  return { stockGains: 0, fundGains: 0, interest: 0 };
+}
+
 interface YearAccum {
   stockGains: number;
   fundGains: number;
   interest: number;
   privateSale: number;
   taxWithheld: number;
+  byPortfolio: Map<string, PortfolioAccum>;
 }
 
 function emptyAccum(): YearAccum {
-  return { stockGains: 0, fundGains: 0, interest: 0, privateSale: 0, taxWithheld: 0 };
+  return {
+    stockGains: 0,
+    fundGains: 0,
+    interest: 0,
+    privateSale: 0,
+    taxWithheld: 0,
+    byPortfolio: new Map(),
+  };
+}
+
+function portfolioAccum(acc: YearAccum, portfolioId: string): PortfolioAccum {
+  let p = acc.byPortfolio.get(portfolioId);
+  if (!p) {
+    p = emptyPortfolioAccum();
+    acc.byPortfolio.set(portfolioId, p);
+  }
+  return p;
 }
 
 /**
@@ -142,8 +200,12 @@ export function taxYearBreakdown(
       if (t.type === "BUY" || t.type === "BOOKING" || t.type === "INTEREST") {
         if (t.type === "INTEREST") {
           // Cash interest: the credited amount is income in the year received
-          // (mirrors trades.ts's taxYearReport bucketing).
-          bucket(yearOf(t)).interest += t.quantity * t.price * rate;
+          // (mirrors trades.ts's taxYearReport bucketing). Interest is
+          // portfolio-attributable (the cash asset sits in one portfolio).
+          const amount = t.quantity * t.price * rate;
+          const b = bucket(yearOf(t));
+          b.interest += amount;
+          portfolioAccum(b, t.portfolioId).interest += amount;
         }
         // BOOKING (free crediting) and INTEREST both add shares at zero cost
         // basis; only a fee/tax (if any) raises it.
@@ -163,9 +225,14 @@ export function taxYearBreakdown(
           if (asset.type === "STOCK") {
             b.stockGains += taxableGain;
             b.taxWithheld += t.tax * rate;
+            // Stock/fund sells are portfolio-attributable: they carry
+            // portfolioId, so a broker's own Freistellungsauftrag can only
+            // shield gains realized at that broker.
+            portfolioAccum(b, t.portfolioId).stockGains += taxableGain;
           } else if (asset.type === "ETF") {
             b.fundGains += taxableGain;
             b.taxWithheld += t.tax * rate;
+            portfolioAccum(b, t.portfolioId).fundGains += taxableGain;
           } else if (asset.type === "CRYPTO" || asset.type === "COMMODITY") {
             b.privateSale += taxableGain;
           }
@@ -220,8 +287,64 @@ export function taxYearBreakdown(
     const sonstigePos = Math.max(0, sonstige);
     const kapitalertraege = aktienPos + sonstigePos;
 
-    const allowanceUsed = Math.min(settings.allowance, kapitalertraege);
-    const taxableAfterAllowance = Math.max(0, kapitalertraege - settings.allowance);
+    // Allowance allocation. Default: a single global pot (Sparerpauschbetrag),
+    // exactly as before. When at least one broker has a registered
+    // Freistellungsauftrag, allocate per broker instead: each portfolio's own
+    // allowance can only shield that portfolio's own portfolio-attributable
+    // gains (stock/fund sells + interest booked in it, floored at 0 exactly
+    // like the Aktien-/sonstige-Topf split above but scoped to the portfolio).
+    // Components that aren't portfolio-attributable — pooled dividend events
+    // and the manually entered Vorabpauschale — plus any gains booked at a
+    // portfolio with NO registered allowance, form a "pooled remainder";
+    // whatever registered allowance is left over after covering its own
+    // portfolio is applied against that remainder. This mirrors how
+    // Freistellungsaufträge actually work (unused allowance at broker A does
+    // NOT retroactively shield broker B's withholding) while still giving an
+    // estimate for the parts this app can't attribute to a single broker.
+    const portfolioAllowances = settings.portfolioAllowances ?? {};
+    const hasPortfolioAllowances = Object.keys(portfolioAllowances).length > 0;
+    let allowanceUsed: number;
+    let allowanceByPortfolio: TaxYearBreakdown["allowanceByPortfolio"];
+
+    if (!hasPortfolioAllowances) {
+      allowanceUsed = Math.min(settings.allowance, kapitalertraege);
+    } else {
+      const portfolioIds = new Set<string>([
+        ...acc.byPortfolio.keys(),
+        ...Object.keys(portfolioAllowances),
+      ]);
+      let attributableSum = 0;
+      let usedSum = 0;
+      let leftoverSum = 0;
+      const rows: { portfolioId: string; used: number; registered: number }[] = [];
+      for (const portfolioId of [...portfolioIds].sort()) {
+        const pb = acc.byPortfolio.get(portfolioId) ?? emptyPortfolioAccum();
+        const pAktienPos = Math.max(0, pb.stockGains);
+        const pFundAfterTF = settings.applyTeilfreistellung ? pb.fundGains * 0.7 : pb.fundGains;
+        const pSonstigePos = Math.max(0, pFundAfterTF + pb.interest);
+        const pKapitalertraege = pAktienPos + pSonstigePos;
+        attributableSum += pKapitalertraege;
+
+        const registered = portfolioAllowances[portfolioId];
+        if (registered != null) {
+          const used = Math.min(registered, pKapitalertraege);
+          usedSum += used;
+          leftoverSum += Math.max(0, registered - pKapitalertraege);
+          rows.push({ portfolioId, used, registered });
+        }
+      }
+      // The pooled remainder can only be the genuinely non-attributable slice
+      // (dividends/Vorabpauschale, or gains at unregistered portfolios) —
+      // never negative even if per-portfolio floors sum differently than the
+      // single combined pot above (e.g. offsetting gains/losses across
+      // portfolios).
+      const pooledRemainder = Math.max(0, kapitalertraege - attributableSum);
+      const pooledUsed = Math.min(leftoverSum, pooledRemainder);
+      allowanceUsed = Math.min(kapitalertraege, usedSum + pooledUsed);
+      allowanceByPortfolio = rows;
+    }
+
+    const taxableAfterAllowance = Math.max(0, kapitalertraege - allowanceUsed);
     const estimatedTax = taxableAfterAllowance * rate;
 
     out.push({
@@ -241,6 +364,7 @@ export function taxYearBreakdown(
       taxWithheld: withheldOverride ?? acc.taxWithheld,
       taxWithheldComputed: acc.taxWithheld,
       vorabpauschale: vorabAfterTF,
+      allowanceByPortfolio,
     });
   }
 

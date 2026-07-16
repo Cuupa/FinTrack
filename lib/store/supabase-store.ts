@@ -36,6 +36,7 @@ interface PortfolioRow {
   fee_order_flat: number | string | null;
   fee_order_free_from: number | string | null;
   fee_savings_plan: number | string | null;
+  tax_allowance: number | string | null;
 }
 
 function portfolioFromRow(r: PortfolioRow): Portfolio {
@@ -45,6 +46,7 @@ function portfolioFromRow(r: PortfolioRow): Portfolio {
     feeOrderFlat: r.fee_order_flat != null ? Number(r.fee_order_flat) : 0,
     feeOrderFreeFrom: r.fee_order_free_from != null ? Number(r.fee_order_free_from) : null,
     feeSavingsPlan: r.fee_savings_plan != null ? Number(r.fee_savings_plan) : 0,
+    taxAllowance: r.tax_allowance != null ? Number(r.tax_allowance) : null,
   };
 }
 
@@ -124,7 +126,7 @@ export class SupabaseStore implements DataStore {
         .maybeSingle(),
       this.supabase
         .from("portfolios")
-        .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan")
+        .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan, tax_allowance")
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
@@ -521,7 +523,7 @@ export class SupabaseStore implements DataStore {
     const { data, error } = await this.supabase
       .from("portfolios")
       .insert({ id, user_id: this.userId, name: name.trim() || "Portfolio" })
-      .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan")
+      .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan, tax_allowance")
       .single();
     if (error) throw error;
     return portfolioFromRow(data as PortfolioRow);
@@ -539,6 +541,7 @@ export class SupabaseStore implements DataStore {
     if (patch.feeOrderFlat !== undefined) upd.fee_order_flat = patch.feeOrderFlat;
     if (patch.feeOrderFreeFrom !== undefined) upd.fee_order_free_from = patch.feeOrderFreeFrom;
     if (patch.feeSavingsPlan !== undefined) upd.fee_savings_plan = patch.feeSavingsPlan;
+    if (patch.taxAllowance !== undefined) upd.tax_allowance = patch.taxAllowance;
     if (Object.keys(upd).length === 0) return;
     const { error } = await this.supabase
       .from("portfolios")

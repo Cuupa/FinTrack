@@ -270,3 +270,98 @@ describe("taxYearBreakdown", () => {
     expect(rows[0].stockGains).toBeCloseTo(450, 6);
   });
 });
+
+describe("taxYearBreakdown — per-broker Freistellungsauftrag (portfolioAllowances)", () => {
+  it("falls back to the single global allowance when portfolioAllowances is unset or empty", () => {
+    const stock = asset({ id: "a", type: "STOCK" });
+    const txs = [
+      tx({ type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+      tx({ type: "SELL", quantity: 10, price: 130, date: "2025-06-01" }), // +300
+    ];
+    const unset = taxYearBreakdown([stock], txs, noDividends, DEFAULT_SETTINGS)[0];
+    const empty = taxYearBreakdown(
+      [stock],
+      txs,
+      noDividends,
+      { ...DEFAULT_SETTINGS, portfolioAllowances: {} },
+    )[0];
+    for (const y of [unset, empty]) {
+      expect(y.allowanceUsed).toBeCloseTo(300, 6); // min(1000, 300)
+      expect(y.taxableAfterAllowance).toBe(0);
+      expect(y.allowanceByPortfolio).toBeUndefined();
+    }
+  });
+
+  it("caps allowanceUsed per broker: unused allowance at one broker does not offset another broker's excess gains", () => {
+    // p1: gain 1500, registered allowance 1000 -> excess of 500 unshielded.
+    // p2: gain 300, registered allowance 1000 -> 700 left over, but p2's own
+    // gain is already fully covered so there is nothing pooled for that
+    // leftover to apply to (no dividends/Vorabpauschale, no unregistered
+    // portfolio) — it must NOT reach across to cover p1's excess.
+    const a = asset({ id: "a", type: "STOCK" });
+    const b = asset({ id: "b", type: "STOCK" });
+    const rows = taxYearBreakdown(
+      [a, b],
+      [
+        tx({ assetId: "a", portfolioId: "p1", type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+        tx({ assetId: "a", portfolioId: "p1", type: "SELL", quantity: 10, price: 250, date: "2025-06-01" }), // +1500
+        tx({ assetId: "b", portfolioId: "p2", type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+        tx({ assetId: "b", portfolioId: "p2", type: "SELL", quantity: 10, price: 130, date: "2025-06-02" }), // +300
+      ],
+      noDividends,
+      { ...DEFAULT_SETTINGS, portfolioAllowances: { p1: 1000, p2: 1000 } },
+    );
+    const y = rows[0];
+    expect(y.kapitalertraege).toBeCloseTo(1800, 6);
+    expect(y.allowanceUsed).toBeCloseTo(1300, 6); // 1000 (p1, capped) + 300 (p2, full)
+    expect(y.taxableAfterAllowance).toBeCloseTo(500, 6); // p1's uncovered 500 stays taxable
+    expect(y.allowanceByPortfolio).toEqual(
+      expect.arrayContaining([
+        { portfolioId: "p1", used: 1000, registered: 1000 },
+        { portfolioId: "p2", used: 300, registered: 1000 },
+      ]),
+    );
+  });
+
+  it("applies a broker's leftover allowance against the pooled remainder (dividends), not against another broker", () => {
+    // p1: gain 200, registered allowance 1000 -> 800 left over.
+    // Pooled real dividends of 500 are not portfolio-attributable, so the
+    // leftover from p1 applies there instead.
+    const stock = asset({ id: "a", type: "STOCK" });
+    const rows = taxYearBreakdown(
+      [stock],
+      [
+        tx({ portfolioId: "p1", type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+        tx({ portfolioId: "p1", type: "SELL", quantity: 10, price: 120, date: "2025-06-01" }), // +200
+      ],
+      { "2025": { stock: 500, fund: 0 } },
+      { ...DEFAULT_SETTINGS, portfolioAllowances: { p1: 1000 } },
+    );
+    const y = rows[0];
+    expect(y.kapitalertraege).toBeCloseTo(700, 6); // 200 + 500
+    expect(y.allowanceUsed).toBeCloseTo(700, 6); // 200 (p1) + 500 (pooled, from p1's leftover)
+    expect(y.taxableAfterAllowance).toBe(0);
+    expect(y.allowanceByPortfolio).toEqual([{ portfolioId: "p1", used: 200, registered: 1000 }]);
+  });
+
+  it("never shields gains booked at a portfolio with no registered allowance, even when another broker has leftover", () => {
+    // p1 has a registered allowance and no gains (all leftover); p2 has gains
+    // but no registered allowance — p2's gains stay fully taxable because
+    // they are portfolio-attributable, not part of the pooled remainder.
+    const a = asset({ id: "a", type: "STOCK" });
+    const b = asset({ id: "b", type: "STOCK" });
+    const rows = taxYearBreakdown(
+      [a, b],
+      [
+        tx({ assetId: "b", portfolioId: "p2", type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+        tx({ assetId: "b", portfolioId: "p2", type: "SELL", quantity: 10, price: 140, date: "2025-06-01" }), // +400
+      ],
+      noDividends,
+      { ...DEFAULT_SETTINGS, portfolioAllowances: { p1: 1000 } },
+    );
+    const y = rows[0];
+    expect(y.kapitalertraege).toBeCloseTo(400, 6);
+    expect(y.allowanceUsed).toBe(0); // p1 has nothing of its own to shield, p2 has no registered allowance
+    expect(y.taxableAfterAllowance).toBeCloseTo(400, 6);
+  });
+});

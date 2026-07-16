@@ -27,6 +27,7 @@ export interface PortfolioPatch {
   feeOrderFlat?: number;
   feeOrderFreeFrom?: number | null;
   feeSavingsPlan?: number;
+  taxAllowance?: number | null;
 }
 
 /** A cached Monte Carlo run, keyed by a hash of its (seed-independent) params. */

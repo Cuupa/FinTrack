@@ -69,6 +69,17 @@ export function TaxView() {
     return out;
   }, [divMap, data.assets, data.transactions, currency, valuation]);
 
+  // Registered Freistellungsauftrag per broker (portfolio): only portfolios
+  // with a value set are included. Empty map = no per-broker allocation, and
+  // taxYearBreakdown falls back to the single global allowance below.
+  const portfolioAllowances = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of data.portfolios) {
+      if (p.taxAllowance != null) map[p.id] = p.taxAllowance;
+    }
+    return map;
+  }, [data.portfolios]);
+
   const years = useMemo(() => {
     const settings: TaxSettings = {
       allowance: data.profile.taxAllowance,
@@ -76,6 +87,7 @@ export function TaxView() {
       applyTeilfreistellung: data.profile.taxTeilfreistellung,
       vorabpauschale: data.profile.taxVorabpauschale,
       withheldOverride: data.profile.taxWithheldOverride,
+      portfolioAllowances,
     };
     return taxYearBreakdown(data.assets, data.transactions, dividendsByYear, settings, valuation);
   }, [
@@ -87,8 +99,11 @@ export function TaxView() {
     data.profile.taxTeilfreistellung,
     data.profile.taxVorabpauschale,
     data.profile.taxWithheldOverride,
+    portfolioAllowances,
     valuation,
   ]);
+
+  const portfolioName = (id: string) => data.portfolios.find((p) => p.id === id)?.name ?? id;
 
   const setVorabpauschale = async (year: string, raw: number | null) => {
     const next = { ...data.profile.taxVorabpauschale };
@@ -176,6 +191,7 @@ export function TaxView() {
                     }
                     ariaLabel={t("tax.vorabAriaLabel", { year: y.year })}
                     initial={data.profile.taxVorabpauschale[y.year]}
+                    currency={currency}
                     onCommit={(raw) => setVorabpauschale(y.year, raw)}
                   />
                   <div className="!mt-2.5 border-t border-zinc-200 pt-1.5 dark:border-zinc-800">
@@ -195,6 +211,22 @@ export function TaxView() {
                     }
                     value={`− ${formatCurrency(y.allowanceUsed, currency)}`}
                   />
+                  {y.allowanceByPortfolio && y.allowanceByPortfolio.length > 0 && (
+                    <div className="pl-2 text-xs text-zinc-400">
+                      <p>{t("tax.allowanceByBroker")}</p>
+                      <div className="mt-0.5 space-y-0.5">
+                        {y.allowanceByPortfolio.map((row) => (
+                          <div key={row.portfolioId} className="flex justify-between gap-4">
+                            <span className="truncate">{portfolioName(row.portfolioId)}</span>
+                            <span className="shrink-0 tabular-nums" data-private="">
+                              {formatCurrency(row.used, currency)} /{" "}
+                              {formatCurrency(row.registered, currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="!mt-2.5 border-t border-zinc-200 pt-1.5 dark:border-zinc-800">
                     <Row
                       label={t("tax.taxable")}
@@ -224,6 +256,7 @@ export function TaxView() {
                     ariaLabel={t("tax.withheldAriaLabel", { year: y.year })}
                     initial={data.profile.taxWithheldOverride[y.year]}
                     placeholder={formatCurrency(y.taxWithheldComputed, currency)}
+                    currency={currency}
                     onCommit={(raw) => setWithheldOverride(y.year, raw)}
                   />
                   <div className="!mt-2.5 border-t border-zinc-200 pt-1.5 dark:border-zinc-800">
@@ -271,28 +304,46 @@ export function TaxView() {
 
 /**
  * A dl row whose value is a manually entered amount (Vorabpauschale, withheld
- * tax override): a small right-aligned number input that commits on blur or
- * Enter. Empty/0/invalid input clears the year's entry (falls back to the
- * placeholder / computed value); a valid positive number sets it. Local input
- * state is initialized from `initial` and re-seeded via the `key` prop the
- * caller passes (year + stored value) rather than syncing through an effect.
+ * tax override). Locked by default (plain text like the sibling `Row`, or the
+ * muted placeholder/em-dash when unset) with a pen button that enters edit
+ * mode; edit mode swaps in the number input plus explicit apply (✓) / discard
+ * (✕) buttons — blur alone never commits, only Enter/✓ (apply) or
+ * Escape/✕ (discard). Local input state is initialized from `initial` and
+ * re-seeded via the `key` prop the caller passes (year + stored value) rather
+ * than syncing through an effect.
  */
 function EditableAmountRow({
   label,
   ariaLabel,
   initial,
   placeholder,
+  currency,
   onCommit,
 }: {
   label: ReactNode;
   ariaLabel: string;
   initial: number | undefined;
   placeholder?: string;
+  currency: string;
   onCommit: (raw: number | null) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [text, setText] = useState(initial !== undefined ? String(initial) : "");
+  const seedText = () => (initial !== undefined ? String(initial) : "");
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(seedText);
   const [error, setError] = useState<string | null>(null);
+
+  const startEdit = () => {
+    setText(seedText());
+    setError(null);
+    setEditing(true);
+  };
+
+  const discard = () => {
+    setText(seedText());
+    setError(null);
+    setEditing(false);
+  };
 
   const commit = async () => {
     const parsed = parseDecimal(text);
@@ -301,7 +352,9 @@ function EditableAmountRow({
     try {
       await onCommit(next);
       setError(null);
+      setEditing(false);
     } catch (err) {
+      // Stay in edit mode on failure so the entry (and the error) survives.
       setError(isStorageFullError(err) ? t("common.storageFull") : t("tax.saveError"));
     }
   };
@@ -310,22 +363,60 @@ function EditableAmountRow({
     <div>
       <div className="flex items-baseline justify-between gap-4">
         <dt className="flex items-center text-zinc-500">{label}</dt>
-        <dd className="text-right" data-private="">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            value={text}
-            placeholder={placeholder}
-            aria-label={ariaLabel}
-            onChange={(e) => setText(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-            }}
-            className="w-32 rounded-lg border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700"
-          />
+        <dd className="flex items-center justify-end gap-1" data-private="">
+          {editing ? (
+            <>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                autoFocus
+                value={text}
+                placeholder={placeholder}
+                aria-label={ariaLabel}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void commit();
+                  if (e.key === "Escape") discard();
+                }}
+                className="w-32 rounded-lg border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700"
+              />
+              <button
+                type="button"
+                onClick={() => void commit()}
+                title={t("tax.applyAriaLabel", { field: ariaLabel })}
+                aria-label={t("tax.applyAriaLabel", { field: ariaLabel })}
+                className="shrink-0 rounded-md px-2 py-1 text-sm text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                onClick={discard}
+                title={t("tax.discardAriaLabel", { field: ariaLabel })}
+                aria-label={t("tax.discardAriaLabel", { field: ariaLabel })}
+                className="shrink-0 rounded-md px-2 py-1 text-sm text-zinc-400 hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-800"
+              >
+                ✕
+              </button>
+            </>
+          ) : (
+            <>
+              <span className={`tabular-nums ${initial === undefined ? "text-zinc-400" : ""}`}>
+                {initial !== undefined ? formatCurrency(initial, currency) : (placeholder ?? "—")}
+              </span>
+              <button
+                type="button"
+                onClick={startEdit}
+                title={t("tax.editAriaLabel", { field: ariaLabel })}
+                aria-label={t("tax.editAriaLabel", { field: ariaLabel })}
+                className="shrink-0 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                ✎
+              </button>
+            </>
+          )}
         </dd>
       </div>
       {error && <p className="mt-1 text-right text-xs text-red-600 dark:text-red-400">{error}</p>}

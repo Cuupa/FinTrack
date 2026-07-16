@@ -58,6 +58,15 @@ export function SettingsView() {
   const [startingTour, setStartingTour] = useState(false);
   const [tourError, setTourError] = useState<string | null>(null);
 
+  // Broker & fees card: one broker at a time. Derive the fallback (first
+  // portfolio) instead of syncing via effect.
+  const [selectedFeePortfolioId, setSelectedFeePortfolioId] = useState("");
+  const feePortfolioId = portfolios.some((p) => p.id === selectedFeePortfolioId)
+    ? selectedFeePortfolioId
+    : (portfolios[0]?.id ?? "");
+  const feePortfolio = portfolios.find((p) => p.id === feePortfolioId) ?? null;
+  const setFeePortfolioId = setSelectedFeePortfolioId;
+
   const hasPassword = user?.identities?.some((i) => i.provider === "email") ?? false;
 
   const saveProfile = async () => {
@@ -260,16 +269,26 @@ export function SettingsView() {
       <Card>
         <h2 className="text-lg font-semibold">{t("settings.fees.title")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("settings.fees.hint")}</p>
-        <div className="mt-4 space-y-4 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-          {portfolios.map((p) => (
+        <div className="mt-4">
+          <Field label={t("settings.fees.broker")}>
+            <SelectMenu
+              value={feePortfolioId}
+              onChange={setFeePortfolioId}
+              ariaLabel={t("settings.fees.broker")}
+              options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+            />
+          </Field>
+        </div>
+        {feePortfolio && (
+          <div className="mt-4">
             <PortfolioFeeRow
-              key={p.id}
-              portfolio={p}
+              key={feePortfolio.id}
+              portfolio={feePortfolio}
               baseCurrency={data.profile.currency}
               onSave={updatePortfolio}
             />
-          ))}
-        </div>
+          </div>
+        )}
       </Card>
 
       {mode === "registered" && (
@@ -399,6 +418,9 @@ function PortfolioFeeRow({
     portfolio.feeOrderFreeFrom != null ? String(portfolio.feeOrderFreeFrom) : "",
   );
   const [savingsPlan, setSavingsPlan] = useState(String(portfolio.feeSavingsPlan ?? 0));
+  const [taxAllowance, setTaxAllowance] = useState(
+    portfolio.taxAllowance != null ? String(portfolio.taxAllowance) : "",
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -410,11 +432,14 @@ function PortfolioFeeRow({
       const flatNum = parseDecimal(flat);
       const freeFromNum = freeFrom.trim() ? parseDecimal(freeFrom) : null;
       const savingsPlanNum = parseDecimal(savingsPlan);
+      const taxAllowanceNum = taxAllowance.trim() ? parseDecimal(taxAllowance) : null;
       await onSave(portfolio.id, {
         feeOrderFlat: Number.isFinite(flatNum) ? flatNum : 0,
         feeOrderFreeFrom:
           freeFromNum != null && Number.isFinite(freeFromNum) ? freeFromNum : null,
         feeSavingsPlan: Number.isFinite(savingsPlanNum) ? savingsPlanNum : 0,
+        taxAllowance:
+          taxAllowanceNum != null && Number.isFinite(taxAllowanceNum) ? taxAllowanceNum : null,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -426,9 +451,8 @@ function PortfolioFeeRow({
   }
 
   return (
-    <div className="pt-4 first:pt-0">
-      <h3 className="truncate text-sm font-semibold">{portfolio.name}</h3>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label={t("settings.fees.orderFlat")}>
           <div className="relative">
             <input
@@ -465,6 +489,24 @@ function PortfolioFeeRow({
               inputMode="decimal"
               value={savingsPlan}
               onChange={(e) => setSavingsPlan(stripLeadingZero(e.target.value))}
+              className={`${feeInputCls} pr-12`}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+              {baseCurrency}
+            </span>
+          </div>
+        </Field>
+        <Field
+          label={t("settings.fees.taxAllowance")}
+          hint={t("settings.fees.taxAllowanceHint")}
+        >
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="—"
+              value={taxAllowance}
+              onChange={(e) => setTaxAllowance(stripLeadingZero(e.target.value))}
               className={`${feeInputCls} pr-12`}
             />
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">

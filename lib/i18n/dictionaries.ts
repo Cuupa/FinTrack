@@ -159,6 +159,7 @@ export const en = {
   "settings.tour.error": "Could not start the tour.",
 
   "settings.fees.title": "Broker & fees",
+  "settings.fees.broker": "Broker",
   "settings.fees.hint":
     "Fees prefill new buy/sell orders and savings-plan executions. You can still edit them on every transaction.",
   "settings.fees.orderFlat": "Order fee",
@@ -166,6 +167,9 @@ export const en = {
   "settings.fees.orderFreeFromHint":
     "Order volume at or above which the order fee is waived. Leave empty to always charge it.",
   "settings.fees.savingsPlan": "Savings-plan fee",
+  "settings.fees.taxAllowance": "Freistellungsauftrag",
+  "settings.fees.taxAllowanceHint":
+    "Leave empty if you haven't registered one at this broker. Splits your Sparerpauschbetrag across brokers on the Tax tab.",
   "settings.fees.saveError": "Could not save.",
 
   // Guided tour (onboarding/guided-tour.tsx)
@@ -707,6 +711,7 @@ export const en = {
   "tax.sumIncome": "Total income",
   "tax.allowance": "Allowance (Sparerpauschbetrag)",
   "tax.allowanceTip": "Your tax-free capital income allowance, set in Settings.",
+  "tax.allowanceByBroker": "By broker",
   "tax.taxable": "Taxable",
   "tax.estimatedTax": "Estimated tax",
   "tax.estimatedTaxTip":
@@ -727,6 +732,9 @@ export const en = {
     "A notional annual tax pre-payment on accumulating funds, based on the Basiszins. It can't be calculated from the data available here; enter the figure from your broker's annual tax statement. Teilfreistellung applies when enabled, since it counts as fund income.",
   "tax.vorabAriaLabel": "Vorabpauschale for {year}",
   "tax.withheldAriaLabel": "Withheld tax override for {year}",
+  "tax.editAriaLabel": "Edit {field}",
+  "tax.applyAriaLabel": "Apply {field}",
+  "tax.discardAriaLabel": "Discard changes to {field}",
   "tax.saveError": "Could not save. Please try again.",
   "tax.empty": "No taxable events yet. Sell a position, or receive interest or dividends, to see a report here.",
 
@@ -1210,6 +1218,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.tour.error": "Die Tour konnte nicht gestartet werden.",
 
   "settings.fees.title": "Broker & Gebühren",
+  "settings.fees.broker": "Broker",
   "settings.fees.hint":
     "Gebühren füllen neue Kauf-/Verkaufsorders und Sparplan-Ausführungen vor. Du kannst sie bei jeder Transaktion trotzdem anpassen.",
   "settings.fees.orderFlat": "Ordergebühr",
@@ -1217,6 +1226,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.fees.orderFreeFromHint":
     "Ordervolumen, ab dem die Ordergebühr entfällt. Leer lassen, damit sie immer anfällt.",
   "settings.fees.savingsPlan": "Sparplan-Gebühr",
+  "settings.fees.taxAllowance": "Freistellungsauftrag",
+  "settings.fees.taxAllowanceHint":
+    "Leer lassen, wenn du bei diesem Broker keinen registriert hast. Teilt deinen Sparerpauschbetrag im Steuern-Tab auf deine Broker auf.",
   "settings.fees.saveError": "Konnte nicht gespeichert werden.",
 
   // Guided tour (onboarding/guided-tour.tsx)
@@ -1757,6 +1769,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tax.sumIncome": "Summe Erträge",
   "tax.allowance": "Freibetrag (Sparerpauschbetrag)",
   "tax.allowanceTip": "Dein steuerfreier Freibetrag für Kapitalerträge, einstellbar in den Einstellungen.",
+  "tax.allowanceByBroker": "Nach Broker",
   "tax.taxable": "Zu versteuern",
   "tax.estimatedTax": "Geschätzte Steuer",
   "tax.estimatedTaxTip":
@@ -1777,6 +1790,9 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Eine fiktive jährliche Steuervorauszahlung auf thesaurierende Fonds, basierend auf dem Basiszins. Sie lässt sich aus den hier vorhandenen Daten nicht berechnen; trage den Wert aus der Steuerbescheinigung deines Brokers ein. Die Teilfreistellung wird berücksichtigt, wenn sie aktiviert ist, da es sich um Fondserträge handelt.",
   "tax.vorabAriaLabel": "Vorabpauschale für {year}",
   "tax.withheldAriaLabel": "Überschreibung der einbehaltenen Steuer für {year}",
+  "tax.editAriaLabel": "{field} bearbeiten",
+  "tax.applyAriaLabel": "{field} übernehmen",
+  "tax.discardAriaLabel": "Änderungen an {field} verwerfen",
   "tax.saveError": "Konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "tax.empty": "Noch keine steuerlich relevanten Ereignisse. Verkaufe eine Position oder erhalte Zinsen oder Dividenden, um hier einen Report zu sehen.",
 
@@ -2260,6 +2276,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.tour.error": "No se ha podido iniciar el tour.",
 
   "settings.fees.title": "Bróker y comisiones",
+  "settings.fees.broker": "Bróker",
   "settings.fees.hint":
     "Las comisiones se autocompletan en las nuevas órdenes de compra/venta y en las ejecuciones de planes de inversión. Puedes editarlas en cada transacción.",
   "settings.fees.orderFlat": "Comisión de orden",
@@ -2267,6 +2284,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.fees.orderFreeFromHint":
     "Volumen de la orden a partir del cual se exime la comisión. Déjalo vacío para cobrarla siempre.",
   "settings.fees.savingsPlan": "Comisión del plan de inversión",
+  "settings.fees.taxAllowance": "Freistellungsauftrag",
+  "settings.fees.taxAllowanceHint":
+    "Déjalo vacío si no tienes uno registrado en este bróker. Reparte tu Sparerpauschbetrag entre brókers en la pestaña Impuestos.",
   "settings.fees.saveError": "No se ha podido guardar.",
 
   // Guided tour (onboarding/guided-tour.tsx)
@@ -2805,6 +2825,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tax.sumIncome": "Ingresos totales",
   "tax.allowance": "Franquicia (Sparerpauschbetrag)",
   "tax.allowanceTip": "Tu franquicia libre de impuestos sobre rendimientos del capital, configurable en Ajustes.",
+  "tax.allowanceByBroker": "Por bróker",
   "tax.taxable": "Base imponible",
   "tax.estimatedTax": "Impuesto estimado",
   "tax.estimatedTaxTip":
@@ -2825,6 +2846,9 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Un pago anticipado ficticio anual sobre fondos de acumulación, basado en el Basiszins. No se puede calcular con los datos disponibles aquí; introduce la cifra del certificado fiscal anual de tu bróker. La Teilfreistellung se aplica si está activada, ya que cuenta como rendimiento de fondos.",
   "tax.vorabAriaLabel": "Vorabpauschale de {year}",
   "tax.withheldAriaLabel": "Sobrescritura del impuesto retenido de {year}",
+  "tax.editAriaLabel": "Editar {field}",
+  "tax.applyAriaLabel": "Aplicar {field}",
+  "tax.discardAriaLabel": "Descartar cambios en {field}",
   "tax.saveError": "No se ha podido guardar. Inténtalo de nuevo.",
   "tax.empty": "Todavía no hay eventos fiscalmente relevantes. Vende una posición, o recibe intereses o dividendos, para ver aquí un informe.",
 

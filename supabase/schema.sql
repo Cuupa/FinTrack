@@ -261,6 +261,10 @@ alter table public.portfolios add column if not exists fee_order_flat numeric no
 alter table public.portfolios add column if not exists fee_order_free_from numeric;
 alter table public.portfolios add column if not exists fee_savings_plan numeric not null default 0;
 
+-- Per-portfolio (broker) Freistellungsauftrag: null = none registered at that
+-- broker; the global profiles.tax_allowance stays the fallback (lib/finance/tax.ts).
+alter table public.portfolios add column if not exists tax_allowance numeric;
+
 -- Transactions ---------------------------------------------------------------
 -- No user_id: ownership is derived via the asset (3NF — avoids the transitive
 -- dependency id -> asset_id -> user_id).
@@ -441,7 +445,8 @@ insert into public.schema_migrations (version) values
   ('0055_manual_tax_entries'),
   ('0056_profile_theme'),
   ('0057_profile_tour'),
-  ('0058_portfolio_fees')
+  ('0058_portfolio_fees'),
+  ('0059_portfolio_tax_allowance')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
