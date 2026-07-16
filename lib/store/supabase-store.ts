@@ -120,7 +120,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("profiles")
         .select(
-          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at",
+          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at, tours_done",
         )
         .eq("id", this.userId)
         .maybeSingle(),
@@ -190,6 +190,7 @@ export class SupabaseStore implements DataStore {
             profileRes.data.tax_withheld_override ?? DEFAULT_PROFILE.taxWithheldOverride,
           tourDoneAt:
             typeof profileRes.data.tour_done_at === "string" ? profileRes.data.tour_done_at : null,
+          toursDone: profileRes.data.tours_done ?? DEFAULT_PROFILE.toursDone,
         }
       : { ...DEFAULT_PROFILE };
 
@@ -256,6 +257,7 @@ export class SupabaseStore implements DataStore {
       tax_vorabpauschale: profile.taxVorabpauschale,
       tax_withheld_override: profile.taxWithheldOverride,
       tour_done_at: profile.tourDoneAt,
+      tours_done: profile.toursDone,
     });
     if (error) throw error;
   }

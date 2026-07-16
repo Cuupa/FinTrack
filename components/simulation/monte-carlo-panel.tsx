@@ -28,6 +28,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
+import { SimulationTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 type SimMode = "portfolio" | "custom";
 
@@ -218,6 +219,7 @@ export function MonteCarloPanel() {
   const [editing, setEditing] = useState(false);
   const locked = effectiveMode === "portfolio" && !editing;
   const workerRef = useRef<Worker | null>(null);
+  const [tourReplay, setTourReplay] = useState(0);
 
   useEffect(() => {
     return () => workerRef.current?.terminate();
@@ -357,11 +359,15 @@ export function MonteCarloPanel() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
+      {holdings.length > 0 && <SimulationTour restartToken={tourReplay} />}
       <Card className="lg:col-span-1">
-        <h2 className="text-lg font-semibold">{t("sim.parameters")}</h2>
+        <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+          {t("sim.parameters")}
+          {holdings.length > 0 && <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />}
+        </h2>
         <div className="mt-4 space-y-4">
           {/* Accumulation phase: initial capital, contribution, horizon. */}
-          <div>
+          <div data-tour="sim-accumulation">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               {t("sim.accumulationPhase")}
             </h3>
@@ -435,7 +441,7 @@ export function MonteCarloPanel() {
 
           {/* Withdrawal phase (feature-flagged decumulation). */}
           {withdrawalAllowed && (
-            <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+            <div data-tour="sim-withdrawal" className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 {t("sim.withdrawalYears")}
               </h3>
@@ -470,7 +476,7 @@ export function MonteCarloPanel() {
 
           {/* Model: My portfolio / Custom, the model note, rebalancing (a
               property of the portfolio model), and the run count. */}
-          <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <div data-tour="sim-model" className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
             <div className="flex items-center gap-1.5">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 {t("sim.model")}
@@ -622,7 +628,7 @@ export function MonteCarloPanel() {
               </Card>
             )}
 
-            <Card>
+            <Card data-tour="sim-chart">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">{t("sim.projectedWealth")}</h2>
                 <div className="flex flex-wrap items-center gap-3">
@@ -669,7 +675,7 @@ export function MonteCarloPanel() {
             </Card>
           </>
         ) : (
-          <Card>
+          <Card data-tour="sim-chart">
             <div className="flex h-80 flex-col items-center justify-center gap-2 text-center text-zinc-500">
               <p className="font-medium">{t("sim.configurePrompt")}</p>
               <p className="text-sm">{t("sim.configureHint")}</p>

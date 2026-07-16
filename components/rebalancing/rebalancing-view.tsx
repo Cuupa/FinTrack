@@ -15,6 +15,7 @@ import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { PALETTE } from "@/lib/colors";
+import { RebalancingTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 type RebalanceMode = "trade" | "buyOnly";
 
@@ -55,6 +56,7 @@ export function RebalancingView() {
   const [mode, setMode] = useState<RebalanceMode>("trade");
   // The position highlighted across both donuts + the table row on hover.
   const [activeName, setActiveName] = useState<string | null>(null);
+  const [tourReplay, setTourReplay] = useState(0);
 
   const rows = useMemo<Target[]>(() => {
     const base: Target[] = holdings.map((h) => {
@@ -152,6 +154,7 @@ export function RebalancingView() {
 
   return (
     <div className="space-y-6">
+      <RebalancingTour restartToken={tourReplay} />
       <Card>
         <div className="flex flex-wrap items-center justify-around gap-8">
           <RebalanceDonut
@@ -185,7 +188,10 @@ export function RebalancingView() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-sm font-semibold">{t("rebalance.targetAllocation")}</h3>
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+              {t("rebalance.targetAllocation")}
+              <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
+            </h3>
             <SegmentedControl<RebalanceMode>
               size="sm"
               value={mode}
@@ -214,15 +220,19 @@ export function RebalancingView() {
           </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
+        <div data-tour="rebalance-table" className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
                 <th className="py-2 pr-3">{t("rebalance.colPosition")}</th>
                 <th className="py-2 pr-3 text-right">{t("rebalance.current")}</th>
-                <th className="py-2 pr-3 text-right">{t("rebalance.colTargetPct")}</th>
+                <th data-tour="rebalance-target-pct" className="py-2 pr-3 text-right">
+                  {t("rebalance.colTargetPct")}
+                </th>
                 <th className="py-2 pr-3 text-right">{t("rebalance.colTargetValue")}</th>
-                <th className="py-2 pr-3 text-right">{t("rebalance.colAction")}</th>
+                <th data-tour="rebalance-orders" className="py-2 pr-3 text-right">
+                  {t("rebalance.colAction")}
+                </th>
                 <th className="py-2" />
               </tr>
             </thead>

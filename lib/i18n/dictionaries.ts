@@ -52,6 +52,7 @@ export const en = {
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "View details",
 
+  "tags.title": "Tags",
   "tags.group": "Group",
   "tags.valuePlaceholder": "Value…",
   "tags.newGroup": "+ New group",
@@ -198,6 +199,57 @@ export const en = {
   "tour.skip": "Skip tour",
   "tour.finish": "Finish",
   "tour.progressAria": "Step {current} of {total}",
+  "tour.replay": "Show this tour again",
+
+  // Page tours (onboarding/page-tours.tsx): risk, rebalancing, simulation,
+  // asset tags. Reuse tour.start/next/back/skip/finish/progressAria above.
+  "tour.risk.scope.title": "Scope to a selection",
+  "tour.risk.scope.body":
+    "Pick specific holdings to focus every metric below on just them, or leave it on Portfolio wide to see everything together.",
+  "tour.risk.score.title": "Risk at a glance",
+  "tour.risk.score.body":
+    "These cards summarize your portfolio's risk profile: Sharpe and Sortino measure risk-adjusted return, Beta and Alpha compare you to the market.",
+  "tour.risk.metrics.title": "Volatility & drawdown",
+  "tour.risk.metrics.body":
+    "Volatility shows how much your value swings day to day; max drawdown is the worst peak-to-trough loss it has actually suffered.",
+  "tour.risk.correlation.title": "Correlation matrix",
+  "tour.risk.correlation.body":
+    "Each cell shows how two holdings move together: near +1 means they rise and fall in lockstep, near 0 means independently, near -1 means opposite directions. Mixing uncorrelated assets smooths the ride.",
+
+  "tour.rebalancing.targets.title": "Set your target weights",
+  "tour.rebalancing.targets.body":
+    "Type a target percentage for each position, or add a brand-new one. Use Normalise to make everything sum to 100%.",
+  "tour.rebalancing.drift.title": "Current vs. target",
+  "tour.rebalancing.drift.body":
+    "Compare what you actually hold with where you want to be; the gap between the two columns is your drift.",
+  "tour.rebalancing.orders.title": "Suggested orders",
+  "tour.rebalancing.orders.body":
+    "These buy/sell amounts get you to your targets. Nothing is executed automatically, you place the trades yourself.",
+
+  "tour.simulation.accumulation.title": "Accumulation phase",
+  "tour.simulation.accumulation.body":
+    "Set your starting capital, monthly contribution (or tick the box to use your active savings plans), and how many years you're investing.",
+  "tour.simulation.withdrawal.title": "Withdrawal phase",
+  "tour.simulation.withdrawal.body":
+    "Add years of withdrawals after accumulation ends, and the annual rate you'd draw down, to see how long your money lasts.",
+  "tour.simulation.model.title": "Choose your model",
+  "tour.simulation.model.body":
+    "\"My portfolio\" measures return and risk from your real holdings' history; Custom lets you set your own assumptions. Rebalance yearly keeps your weights on target.",
+  "tour.simulation.chart.title": "Projected wealth",
+  "tour.simulation.chart.body":
+    "Run a simulation to see the range of likely outcomes here: shaded bands are probability ranges around the median line, and a dashed line marks the switch to withdrawals.",
+
+  "tour.assetTags.what.title": "What are tags?",
+  "tour.assetTags.what.body":
+    "Tags are grouped key-value labels you define, like Strategie: gamble. Use them to mark holdings however makes sense to you.",
+  "tour.assetTags.add.title": "Add a tag",
+  "tour.assetTags.add.body": "Pick a group, type a value, and confirm. Create a new group anytime from here.",
+  "tour.assetTags.analysis.title": "Where they pay off",
+  "tour.assetTags.analysis.body":
+    "Switch Analysis to the Custom breakdown and pick a group to see your portfolio sliced by your own tags.",
+  "tour.assetTags.local.title": "Stored on this device",
+  "tour.assetTags.local.body":
+    "Tags are saved locally in this browser only, not synced to your account. Clearing your browser data removes them.",
 
   // Login / register page
   "login.signIn": "Sign in",
@@ -1111,6 +1163,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Details ansehen",
 
+  "tags.title": "Tags",
   "tags.group": "Gruppe",
   "tags.valuePlaceholder": "Wert…",
   "tags.newGroup": "+ Neue Gruppe",
@@ -1258,6 +1311,58 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.skip": "Tour überspringen",
   "tour.finish": "Fertig",
   "tour.progressAria": "Schritt {current} von {total}",
+  "tour.replay": "Tour erneut anzeigen",
+
+  // Seiten-Touren (onboarding/page-tours.tsx): Risiko, Rebalancing,
+  // Simulation, Tags. Nutzen tour.start/next/back/skip/finish/progressAria oben.
+  "tour.risk.scope.title": "Auf eine Auswahl eingrenzen",
+  "tour.risk.scope.body":
+    "Wähle einzelne Positionen aus, um alle Kennzahlen unten nur auf sie zu beziehen, oder lass es auf Gesamtes Portfolio, um alles zusammen zu sehen.",
+  "tour.risk.score.title": "Risiko auf einen Blick",
+  "tour.risk.score.body":
+    "Diese Karten fassen das Risikoprofil deines Portfolios zusammen: Sharpe und Sortino messen die risikoadjustierte Rendite, Beta und Alpha vergleichen dich mit dem Markt.",
+  "tour.risk.metrics.title": "Volatilität & Drawdown",
+  "tour.risk.metrics.body":
+    "Die Volatilität zeigt, wie stark dein Wert schwankt; der maximale Drawdown ist der größte Verlust vom Hoch bis zum Tief, den es tatsächlich gab.",
+  "tour.risk.correlation.title": "Korrelationsmatrix",
+  "tour.risk.correlation.body":
+    "Jede Zelle zeigt, wie sich zwei Positionen zueinander bewegen: nahe +1 heißt, sie steigen und fallen im Gleichschritt, nahe 0 unabhängig voneinander, nahe -1 gegenläufig. Unkorrelierte Positionen zu mischen macht den Verlauf ruhiger.",
+
+  "tour.rebalancing.targets.title": "Zielgewichtungen festlegen",
+  "tour.rebalancing.targets.body":
+    "Gib für jede Position einen Zielanteil in Prozent ein oder füge eine neue hinzu. Mit Normalisieren summierst du alles auf 100%.",
+  "tour.rebalancing.drift.title": "Ist- vs. Zielwert",
+  "tour.rebalancing.drift.body":
+    "Vergleiche, was du tatsächlich hältst, mit dem, wo du hinwillst. Der Unterschied zwischen den beiden Spalten ist deine Abweichung.",
+  "tour.rebalancing.orders.title": "Vorgeschlagene Orders",
+  "tour.rebalancing.orders.body":
+    "Diese Kauf-/Verkaufsbeträge bringen dich zu deinen Zielen. Es wird nichts automatisch ausgeführt, du gibst die Trades selbst auf.",
+
+  "tour.simulation.accumulation.title": "Ansparphase",
+  "tour.simulation.accumulation.body":
+    "Lege Startkapital, monatliche Sparrate (oder aktiviere die Checkbox für deine aktiven Sparpläne) und die Anzahl der Jahre fest.",
+  "tour.simulation.withdrawal.title": "Entnahmephase",
+  "tour.simulation.withdrawal.body":
+    "Füge Jahre der Entnahme nach der Ansparphase hinzu und die jährliche Entnahmerate, um zu sehen, wie lange dein Geld reicht.",
+  "tour.simulation.model.title": "Modell wählen",
+  "tour.simulation.model.body":
+    "Mein Portfolio misst Rendite und Risiko aus der echten Historie deiner Positionen, bei Benutzerdefiniert legst du eigene Annahmen fest. Jährlich rebalancieren hält deine Gewichtung auf Ziel.",
+  "tour.simulation.chart.title": "Prognostiziertes Vermögen",
+  "tour.simulation.chart.body":
+    "Starte eine Simulation, um hier die Bandbreite möglicher Verläufe zu sehen: Die farbigen Bänder sind Wahrscheinlichkeitsbereiche um die Medianlinie, eine gestrichelte Linie markiert den Wechsel zur Entnahme.",
+
+  "tour.assetTags.what.title": "Was sind Tags?",
+  "tour.assetTags.what.body":
+    "Tags sind gruppierte Schlüssel-Wert-Label, die du selbst festlegst, zum Beispiel Strategie: gamble. Nutze sie, um Positionen so zu markieren, wie es für dich Sinn ergibt.",
+  "tour.assetTags.add.title": "Tag hinzufügen",
+  "tour.assetTags.add.body":
+    "Wähle eine Gruppe, gib einen Wert ein und bestätige. Eine neue Gruppe kannst du jederzeit von hier aus anlegen.",
+  "tour.assetTags.analysis.title": "Wo sie sich auszahlen",
+  "tour.assetTags.analysis.body":
+    "Wechsle in der Analyse zur Aufschlüsselung Benutzerdefiniert und wähle eine Gruppe, um dein Portfolio nach deinen eigenen Tags aufgeteilt zu sehen.",
+  "tour.assetTags.local.title": "Nur auf diesem Gerät gespeichert",
+  "tour.assetTags.local.body":
+    "Tags werden nur lokal in diesem Browser gespeichert, nicht mit deinem Konto synchronisiert. Beim Löschen deiner Browserdaten gehen sie verloren.",
 
   // Login / register page
   "login.signIn": "Anmelden",
@@ -2169,6 +2274,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Ver detalles",
 
+  "tags.title": "Etiquetas",
   "tags.group": "Grupo",
   "tags.valuePlaceholder": "Valor…",
   "tags.newGroup": "+ Nuevo grupo",
@@ -2315,6 +2421,58 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.skip": "Saltar tour",
   "tour.finish": "Finalizar",
   "tour.progressAria": "Paso {current} de {total}",
+  "tour.replay": "Mostrar este tour de nuevo",
+
+  // Tours de página (onboarding/page-tours.tsx): riesgo, rebalanceo,
+  // simulación, etiquetas. Reutilizan tour.start/next/back/skip/finish/progressAria de arriba.
+  "tour.risk.scope.title": "Limitar a una selección",
+  "tour.risk.scope.body":
+    "Elige posiciones concretas para centrar todas las métricas de abajo solo en ellas, o déjalo en Toda la cartera para verlo todo junto.",
+  "tour.risk.score.title": "Riesgo de un vistazo",
+  "tour.risk.score.body":
+    "Estas tarjetas resumen el perfil de riesgo de tu cartera: Sharpe y Sortino miden la rentabilidad ajustada al riesgo, Beta y Alfa te comparan con el mercado.",
+  "tour.risk.metrics.title": "Volatilidad y drawdown",
+  "tour.risk.metrics.body":
+    "La volatilidad muestra cuánto oscila tu valor día a día; el drawdown máximo es la mayor pérdida de pico a valle que realmente ha sufrido.",
+  "tour.risk.correlation.title": "Matriz de correlación",
+  "tour.risk.correlation.body":
+    "Cada celda muestra cómo se mueven dos posiciones entre sí: cerca de +1 significa que suben y bajan juntas, cerca de 0 de forma independiente, cerca de -1 en direcciones opuestas. Mezclar activos no correlacionados suaviza el recorrido.",
+
+  "tour.rebalancing.targets.title": "Define tus pesos objetivo",
+  "tour.rebalancing.targets.body":
+    "Escribe un porcentaje objetivo para cada posición o añade una nueva. Usa Normalizar para que todo sume 100%.",
+  "tour.rebalancing.drift.title": "Actual vs. objetivo",
+  "tour.rebalancing.drift.body":
+    "Compara lo que realmente tienes con lo que quieres tener; la diferencia entre ambas columnas es tu desviación.",
+  "tour.rebalancing.orders.title": "Órdenes sugeridas",
+  "tour.rebalancing.orders.body":
+    "Estos importes de compra/venta te llevan a tus objetivos. No se ejecuta nada automáticamente, tú realizas las operaciones.",
+
+  "tour.simulation.accumulation.title": "Fase de ahorro",
+  "tour.simulation.accumulation.body":
+    "Define el capital inicial, la aportación mensual (o marca la casilla para usar tus planes de ahorro activos) y el número de años.",
+  "tour.simulation.withdrawal.title": "Fase de retirada",
+  "tour.simulation.withdrawal.body":
+    "Añade años de retirada tras la fase de ahorro y la tasa anual que retirarías, para ver cuánto dura tu dinero.",
+  "tour.simulation.model.title": "Elige tu modelo",
+  "tour.simulation.model.body":
+    "Mi cartera mide rentabilidad y riesgo con el historial real de tus posiciones; Personalizado te deja fijar tus propias hipótesis. Rebalancear cada año mantiene tus pesos en el objetivo.",
+  "tour.simulation.chart.title": "Patrimonio proyectado",
+  "tour.simulation.chart.body":
+    "Ejecuta una simulación para ver aquí el rango de resultados probables: las bandas de color son rangos de probabilidad alrededor de la mediana, y una línea discontinua marca el cambio a la fase de retirada.",
+
+  "tour.assetTags.what.title": "¿Qué son las etiquetas?",
+  "tour.assetTags.what.body":
+    "Las etiquetas son pares clave-valor agrupados que tú defines, como Strategie: gamble. Úsalas para marcar posiciones como tenga sentido para ti.",
+  "tour.assetTags.add.title": "Añadir una etiqueta",
+  "tour.assetTags.add.body":
+    "Elige un grupo, escribe un valor y confirma. Puedes crear un grupo nuevo en cualquier momento desde aquí.",
+  "tour.assetTags.analysis.title": "Dónde dan sus frutos",
+  "tour.assetTags.analysis.body":
+    "Cambia Análisis al desglose Personalizado y elige un grupo para ver tu cartera repartida según tus propias etiquetas.",
+  "tour.assetTags.local.title": "Guardadas solo en este dispositivo",
+  "tour.assetTags.local.body":
+    "Las etiquetas se guardan solo localmente en este navegador, no se sincronizan con tu cuenta. Si borras los datos del navegador, se pierden.",
 
   // Login / register page
   "login.signIn": "Iniciar sesión",

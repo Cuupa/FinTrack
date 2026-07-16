@@ -45,6 +45,120 @@ export const TOUR_STEPS: TourStep[] = [
   { key: "done", target: null, titleKey: "tour.done.title", bodyKey: "tour.done.body" },
 ];
 
+// Page tours (round 21, ONBOARDING.md follow-up): the same spotlight
+// mechanism as TOUR_STEPS above, one small registry per complicated view.
+// Each is mounted by its page only once that page has something to show (see
+// the call sites in components/onboarding/page-tours.tsx) — that natural
+// "first visit with data" gate does the auto-start-once-with-data job, no
+// extra flag needed here. Completion is tracked per tourId in
+// `profile.toursDone`, separate from the dashboard tour's `tourDoneAt`.
+
+/** Analysis -> Risk tab (components/analysis/risk-view.tsx). */
+export const RISK_TOUR_STEPS: TourStep[] = [
+  {
+    key: "riskScope",
+    target: "risk-scope",
+    titleKey: "tour.risk.scope.title",
+    bodyKey: "tour.risk.scope.body",
+  },
+  {
+    key: "riskScore",
+    target: "risk-kpis",
+    titleKey: "tour.risk.score.title",
+    bodyKey: "tour.risk.score.body",
+  },
+  {
+    key: "riskMetrics",
+    target: "risk-kpis",
+    titleKey: "tour.risk.metrics.title",
+    bodyKey: "tour.risk.metrics.body",
+  },
+  {
+    key: "riskCorrelation",
+    target: "risk-correlation",
+    titleKey: "tour.risk.correlation.title",
+    bodyKey: "tour.risk.correlation.body",
+  },
+];
+
+/** Rebalancing (components/rebalancing/rebalancing-view.tsx). */
+export const REBALANCING_TOUR_STEPS: TourStep[] = [
+  {
+    key: "rebalancingTargets",
+    target: "rebalance-target-pct",
+    titleKey: "tour.rebalancing.targets.title",
+    bodyKey: "tour.rebalancing.targets.body",
+  },
+  {
+    key: "rebalancingDrift",
+    target: "rebalance-table",
+    titleKey: "tour.rebalancing.drift.title",
+    bodyKey: "tour.rebalancing.drift.body",
+  },
+  {
+    key: "rebalancingOrders",
+    target: "rebalance-orders",
+    titleKey: "tour.rebalancing.orders.title",
+    bodyKey: "tour.rebalancing.orders.body",
+  },
+];
+
+/** Monte Carlo simulation (components/simulation/monte-carlo-panel.tsx). */
+export const SIMULATION_TOUR_STEPS: TourStep[] = [
+  {
+    key: "simulationAccumulation",
+    target: "sim-accumulation",
+    titleKey: "tour.simulation.accumulation.title",
+    bodyKey: "tour.simulation.accumulation.body",
+  },
+  {
+    key: "simulationWithdrawal",
+    target: "sim-withdrawal",
+    titleKey: "tour.simulation.withdrawal.title",
+    bodyKey: "tour.simulation.withdrawal.body",
+  },
+  {
+    key: "simulationModel",
+    target: "sim-model",
+    titleKey: "tour.simulation.model.title",
+    bodyKey: "tour.simulation.model.body",
+  },
+  {
+    key: "simulationChart",
+    target: "sim-chart",
+    titleKey: "tour.simulation.chart.title",
+    bodyKey: "tour.simulation.chart.body",
+  },
+];
+
+/** Asset detail tags section (components/assets/asset-tags.tsx). */
+export const ASSET_TAGS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "assetTagsWhat",
+    target: "asset-tags",
+    titleKey: "tour.assetTags.what.title",
+    bodyKey: "tour.assetTags.what.body",
+  },
+  {
+    key: "assetTagsAdd",
+    target: "asset-tags-add",
+    titleKey: "tour.assetTags.add.title",
+    bodyKey: "tour.assetTags.add.body",
+  },
+  {
+    key: "assetTagsAnalysis",
+    target: null,
+    titleKey: "tour.assetTags.analysis.title",
+    bodyKey: "tour.assetTags.analysis.body",
+  },
+  {
+    key: "assetTagsLocal",
+    target: null,
+    titleKey: "tour.assetTags.local.title",
+    bodyKey: "tour.assetTags.local.body",
+  },
+];
+
 /**
  * Drops steps whose target isn't present in the DOM for this run (a feature
  * flag off, or a narrow viewport hiding the sidebar); centered steps

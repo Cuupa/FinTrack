@@ -31,6 +31,10 @@ export interface Profile {
   taxWithheldOverride: Record<string, number>;
   /** ISO datetime the guided tour was completed or skipped; null = never shown. */
   tourDoneAt: string | null;
+  /** Per-page guided tours (round 21+): tourId -> ISO datetime completed/skipped.
+   *  Separate from `tourDoneAt` (the original dashboard tour) so each page tour
+   *  (risk, rebalancing, simulation, assetTags) tracks its own completion. */
+  toursDone: Record<string, string>;
 }
 
 /**
@@ -182,6 +186,7 @@ export const DEFAULT_PROFILE: Profile = {
   taxVorabpauschale: {},
   taxWithheldOverride: {},
   tourDoneAt: null,
+  toursDone: {},
 };
 
 export function emptyPortfolio(): PortfolioData {

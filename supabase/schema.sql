@@ -19,6 +19,7 @@ create table if not exists public.profiles (
   tax_vorabpauschale jsonb not null default '{}'::jsonb,
   tax_withheld_override jsonb not null default '{}'::jsonb,
   tour_done_at timestamptz,
+  tours_done jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 alter table public.profiles add column if not exists display_name text;
@@ -30,6 +31,7 @@ alter table public.profiles add column if not exists tax_teilfreistellung boolea
 alter table public.profiles add column if not exists tax_vorabpauschale jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists tax_withheld_override jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists tour_done_at timestamptz;
+alter table public.profiles add column if not exists tours_done jsonb not null default '{}'::jsonb;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of
@@ -446,7 +448,8 @@ insert into public.schema_migrations (version) values
   ('0056_profile_theme'),
   ('0057_profile_tour'),
   ('0058_portfolio_fees'),
-  ('0059_portfolio_tax_allowance')
+  ('0059_portfolio_tax_allowance'),
+  ('0060_profile_tours_done')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

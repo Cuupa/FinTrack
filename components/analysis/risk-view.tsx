@@ -27,6 +27,7 @@ import { Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
+import { RiskTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 const RF = 0.02; // risk-free rate used for Sharpe/Sortino/alpha
 const TF_OPTIONS: Timeframe[] = ["1Y", "5Y", "10Y", "MAX"];
@@ -61,6 +62,7 @@ export function RiskView() {
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [scope, setScope] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "weight", dir: -1 });
+  const [tourReplay, setTourReplay] = useState(0);
   const years = YEARS_FOR_TF[tf as RiskTimeframe];
 
   const allHoldings = useMemo(
@@ -240,14 +242,18 @@ export function RiskView() {
 
   return (
     <div className="space-y-6">
+      <RiskTour restartToken={tourReplay} />
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">
             {t("risk.portfolioTitle")}
             <InfoTip text={t("risk.portfolioTip")} />
+            <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
+            <div data-tour="risk-scope">
+              <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
+            </div>
             <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
               {TF_OPTIONS.map((opt) => (
                 <button
@@ -268,7 +274,7 @@ export function RiskView() {
         </div>
         <p className="mt-1.5 text-xs text-zinc-500">{t("risk.kpiScopeHint")}</p>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div data-tour="risk-kpis" className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <MetricCard
             label={t("risk.sharpe")}
             info={t("risk.sharpeTip")}
@@ -442,7 +448,7 @@ export function RiskView() {
       </Card>
 
       {/* Correlation heatmap */}
-      <Card>
+      <Card data-tour="risk-correlation">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           {t("risk.correlation")}
           <InfoTip text={t("risk.correlationTip")} />

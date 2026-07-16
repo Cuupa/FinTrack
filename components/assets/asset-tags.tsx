@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { colorForLabel } from "@/lib/colors";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { AssetTagsTour, TourReplayButton } from "@/components/onboarding/page-tours";
 import { TagGroupsManager } from "./tag-groups-manager";
 
 export function AssetTags({ assetId }: { assetId: string }) {
@@ -23,6 +24,7 @@ export function AssetTags({ assetId }: { assetId: string }) {
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [managing, setManaging] = useState(false);
+  const [tourReplay, setTourReplay] = useState(0);
 
   const entries = entriesFor(assetId);
   // Derive rather than sync via effect: fall back to the first group once the
@@ -50,7 +52,12 @@ export function AssetTags({ assetId }: { assetId: string }) {
   const datalistId = `asset-tag-values-${assetId}`;
 
   return (
-    <div className="space-y-2">
+    <div data-tour="asset-tags" className="space-y-2">
+      <AssetTagsTour restartToken={tourReplay} />
+      <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+        {t("tags.title")}
+        <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
+      </h3>
       {entries.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {entries.flatMap(({ group, values }) =>
@@ -75,7 +82,7 @@ export function AssetTags({ assetId }: { assetId: string }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-tour="asset-tags-add" className="flex flex-wrap items-center gap-2">
         {groups.length > 0 && (
           <>
             <SelectMenu

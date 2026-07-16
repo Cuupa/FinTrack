@@ -5,8 +5,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  ASSET_TAGS_TOUR_STEPS,
   computeTooltipPosition,
   filterVisibleSteps,
+  REBALANCING_TOUR_STEPS,
+  RISK_TOUR_STEPS,
+  SIMULATION_TOUR_STEPS,
   TOUR_STEPS,
   TOOLTIP_MARGIN,
   type TourStep,
@@ -31,6 +35,77 @@ describe("filterVisibleSteps", () => {
   it("on a narrow viewport (only welcome/done present) still keeps both centered steps", () => {
     const result = filterVisibleSteps(TOUR_STEPS, () => false);
     expect(result.map((s) => s.key)).toEqual(["welcome", "done"]);
+  });
+});
+
+describe("page tour registries (risk, rebalancing, simulation, assetTags)", () => {
+  const registries: [string, TourStep[], number][] = [
+    ["RISK_TOUR_STEPS", RISK_TOUR_STEPS, 4],
+    ["REBALANCING_TOUR_STEPS", REBALANCING_TOUR_STEPS, 3],
+    ["SIMULATION_TOUR_STEPS", SIMULATION_TOUR_STEPS, 4],
+    ["ASSET_TAGS_TOUR_STEPS", ASSET_TAGS_TOUR_STEPS, 4],
+  ];
+
+  it.each(registries)("%s has the expected step count and unique keys", (_name, steps, count) => {
+    expect(steps).toHaveLength(count);
+    expect(new Set(steps.map((s) => s.key)).size).toBe(steps.length);
+  });
+
+  it.each(registries)("%s: every step has a non-empty title/body key", (_name, steps) => {
+    for (const s of steps) {
+      expect(s.titleKey.length).toBeGreaterThan(0);
+      expect(s.bodyKey.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("RISK_TOUR_STEPS follows scope -> score -> metrics -> correlation", () => {
+    expect(RISK_TOUR_STEPS.map((s) => s.key)).toEqual([
+      "riskScope",
+      "riskScore",
+      "riskMetrics",
+      "riskCorrelation",
+    ]);
+  });
+
+  it("REBALANCING_TOUR_STEPS follows targets -> drift -> orders", () => {
+    expect(REBALANCING_TOUR_STEPS.map((s) => s.key)).toEqual([
+      "rebalancingTargets",
+      "rebalancingDrift",
+      "rebalancingOrders",
+    ]);
+  });
+
+  it("SIMULATION_TOUR_STEPS follows accumulation -> withdrawal -> model -> chart", () => {
+    expect(SIMULATION_TOUR_STEPS.map((s) => s.key)).toEqual([
+      "simulationAccumulation",
+      "simulationWithdrawal",
+      "simulationModel",
+      "simulationChart",
+    ]);
+  });
+
+  it("ASSET_TAGS_TOUR_STEPS follows what -> add -> analysis -> local, with the last two centered", () => {
+    expect(ASSET_TAGS_TOUR_STEPS.map((s) => s.key)).toEqual([
+      "assetTagsWhat",
+      "assetTagsAdd",
+      "assetTagsAnalysis",
+      "assetTagsLocal",
+    ]);
+    expect(ASSET_TAGS_TOUR_STEPS[2].target).toBeNull();
+    expect(ASSET_TAGS_TOUR_STEPS[3].target).toBeNull();
+  });
+
+  it.each(registries)("%s: keeps every step when every target is present", (_name, steps) => {
+    expect(filterVisibleSteps(steps, () => true)).toHaveLength(steps.length);
+  });
+
+  it("ASSET_TAGS_TOUR_STEPS keeps the two centered steps even with no DOM targets present", () => {
+    const result = filterVisibleSteps(ASSET_TAGS_TOUR_STEPS, () => false);
+    expect(result.map((s) => s.key)).toEqual(["assetTagsAnalysis", "assetTagsLocal"]);
+  });
+
+  it("RISK_TOUR_STEPS drops all steps (none centered) when no DOM targets are present", () => {
+    expect(filterVisibleSteps(RISK_TOUR_STEPS, () => false)).toEqual([]);
   });
 });
 

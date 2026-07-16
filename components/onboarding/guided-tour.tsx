@@ -1,15 +1,25 @@
 "use client";
 
-// First-login guided tour (ONBOARDING.md "Phase 1"): a spotlight overlay that
-// walks a new user through the dashboard. No third-party tour library: the
-// need is one overlay, one measured rectangle and a tooltip card.
+// Generalized guided-tour overlay (ONBOARDING.md "Phase 1" + round-21 page
+// tours): a spotlight overlay that walks a user through a page, parameterized
+// by (tourId, steps, isDone, markDone). No third-party tour library: the need
+// is one overlay, one measured rectangle and a tooltip card; a dependency
+// would bring its own CSS/positioning system into a strict-CSP, Tailwind-only
+// app for no benefit.
 //
-// Mounted unconditionally by app/page.tsx inside its "loaded" branch; render
-// is gated on a DERIVED `open` (profile.tourDoneAt == null && !closed), never
-// synced via effect. Finishing or skipping both persist `tourDoneAt` via
-// `updateProfile` and flip the local `closed` flag in the same click handler,
-// so the overlay closes even if the write rejects (StorageFullError is caught
-// per the storage-quota convention: close silently, nothing was lost).
+// `GuidedTour` below is the original dashboard tour: its call site
+// (app/page.tsx, no props) and persistence (`profile.tourDoneAt`) are
+// UNCHANGED from round 20. The four page tours (risk / rebalancing /
+// simulation / assetTags, defined in ./page-tours.tsx) wrap the same
+// `TourOverlay` with `profile.toursDone[tourId]` instead, and are mounted by
+// their page only once it has something to show — that natural "first visit
+// with data" gate replaces a separate "enabled" flag, see each call site.
+//
+// Render is gated on a DERIVED `open` (`(forceOpen || !isDone) && !closed`),
+// never synced via effect. Finishing or skipping both call `markDone()` and
+// flip the local `closed` flag in the same click handler, so the overlay
+// closes even if the write rejects (`StorageFullError` is caught per the
+// storage-quota convention: close silently, nothing was lost).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
@@ -52,8 +62,22 @@ function sameRect(a: Rect | null, b: Rect): boolean {
   return !!a && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
 }
 
-export function GuidedTour() {
-  const { data, updateProfile } = usePortfolio();
+export interface TourOverlayProps {
+  /** Stable id for this tour. Used only for error-log context here; callers
+   *  key their own persistence (`isDone`/`markDone`) off it. */
+  tourId: string;
+  steps: readonly TourStep[];
+  /** Whether this tour was already completed or skipped (persisted). */
+  isDone: boolean;
+  /** Persists completion. Errors other than `StorageFullError` are logged,
+   *  never thrown — the overlay always closes regardless of the outcome. */
+  markDone: () => Promise<void>;
+  /** Replay affordance: open the tour regardless of `isDone`. Callers force a
+   *  fresh mount alongside this (e.g. bump a `key`) so `closed` also resets. */
+  forceOpen?: boolean;
+}
+
+export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false }: TourOverlayProps) {
   const { t } = useI18n();
 
   const [closed, setClosed] = useState(false);
@@ -69,16 +93,16 @@ export function GuidedTour() {
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const open = data.profile.tourDoneAt == null && !closed;
+  const open = (forceOpen || !isDone) && !closed;
 
-  // Compute the step set once per mount (the settings "run tour again" entry
-  // point navigates back to "/", remounting this component, so a fresh
-  // computation naturally happens then too). Deferred to a rAF continuation,
-  // never a synchronous setState in the effect body.
+  // Compute the step set once per mount (a replay bumps the caller's `key`,
+  // remounting this component, so a fresh computation naturally happens
+  // then too). Deferred to a rAF continuation, never a synchronous setState
+  // in the effect body.
   useEffect(() => {
     if (!open) return;
     const raf = requestAnimationFrame(() => {
-      setVisibleSteps(filterVisibleSteps(TOUR_STEPS, (name) => resolveTarget(name) !== null));
+      setVisibleSteps(filterVisibleSteps(steps, (name) => resolveTarget(name) !== null));
     });
     return () => cancelAnimationFrame(raf);
     // Intentionally run once per mount, not on every `open` recompute.
@@ -175,14 +199,14 @@ export function GuidedTour() {
     setClosed(true);
     void (async () => {
       try {
-        await updateProfile({ tourDoneAt: new Date().toISOString() });
+        await markDone();
       } catch (err) {
         if (!isStorageFullError(err)) {
-          console.error("Failed to persist tour completion", err);
+          console.error(`Failed to persist "${tourId}" tour completion`, err);
         }
       }
     })();
-  }, [updateProfile]);
+  }, [markDone, tourId]);
 
   useEffect(() => {
     if (!open) return;
@@ -277,5 +301,20 @@ export function GuidedTour() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** The original dashboard tour: mounted unconditionally by app/page.tsx
+ *  inside its "loaded" branch. Persistence stays on `profile.tourDoneAt`
+ *  (not `toursDone`) for back-compat with existing rows. */
+export function GuidedTour() {
+  const { data, updateProfile } = usePortfolio();
+  return (
+    <TourOverlay
+      tourId="dashboard"
+      steps={TOUR_STEPS}
+      isDone={data.profile.tourDoneAt != null}
+      markDone={() => updateProfile({ tourDoneAt: new Date().toISOString() })}
+    />
   );
 }
