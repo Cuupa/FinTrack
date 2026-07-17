@@ -139,3 +139,14 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 - [x] CSP untouched (proxy keeps connect-src 'self' + supabase)
 - NOTE for owner: apply supabase/migrations/0063_llm_chat_flag.sql AND 0064_llm_settings.sql to the live DB with the deploy; llmChat is seeded DISABLED in prod (enable via feature_flags/user_feature_flags when ready). Registered-mode (SupabaseStore) paths covered by tests + review only; local dev has no Supabase keys.
 - Verified in guest mode, DE+EN, 1920x1080 and 390x844; full suite 542 passed / 1 skipped; lint + tsc clean (known generated .next/dev noise aside)
+
+## Round 2026-07-17d (Fable orchestrator)
+### C LLM key storage scope: user choice (persisted vs browser-only)
+- [x] Registered mode: settings AI section offers a storage choice "account (DB, cross-device)" vs "only this browser"; default account (owner's persisted preference), radio-style plain controls, no badges
+- [x] Guest mode: no choice shown (guest is inherently browser-local via the store blob)
+- [x] Browser scope = fintrack-llm localStorage key (first-class again; the transitional legacy-replay-and-rename logic retired since the feature never shipped)
+- [x] Scope switch moves the key (write new location, clear the other); remove-key clears both
+- [x] Browser-scoped key of a registered user is cleared on sign-out (like the history cache); account-scoped key survives sign-out
+- [x] Settings consent line + /datenschutz updated to describe the choice truthfully (EN+DE legal, en/de/es UI, du/tú, no em-dashes)
+- [x] Tests updated (scope precedence, round trips); lint/tsc/vitest green; in-app verify guest mode (no choice rendered) at 1920x1080
+- [x] Committed separately
