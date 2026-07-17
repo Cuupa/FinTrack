@@ -28,11 +28,16 @@ const feeInputCls =
 // existing accounts can still sign in with a shorter one.
 const NEW_PASSWORD_MIN_LENGTH = 8;
 
+const TABS = ["general", "fees"] as const;
+type TabKey = (typeof TABS)[number];
+
 export function SettingsView() {
   const { data, updateProfile, portfolios, updatePortfolio } = usePortfolio();
   const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
+
+  const [tab, setTab] = useState<TabKey>("general");
 
   const [name, setName] = useState(data.profile.name ?? "");
   const [currency, setCurrency] = useState(data.profile.currency);
@@ -157,223 +162,252 @@ export function SettingsView() {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
-      <Card>
-        <h2 className="text-lg font-semibold">{t("settings.title")}</h2>
-        <div className="mt-4 space-y-4">
-          <Field label={t("settings.name")}>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("settings.namePlaceholder")}
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            />
-          </Field>
-
-          <Field label={t("settings.currency")}>
-            <SelectMenu
-              value={currency}
-              onChange={setCurrency}
-              ariaLabel={t("settings.currency")}
-              options={[...new Set([currency, ...CURRENCIES])].map((c) => ({ value: c, label: c }))}
-            />
-          </Field>
-
-          <div className="flex items-center gap-3">
-            <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
-              {savingProfile ? "…" : t("settings.save")}
-            </Button>
-            {savedProfile && (
-              <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                {t("settings.saved")}
-              </span>
-            )}
-          </div>
+    <div className="space-y-6">
+      <div className="border-b border-zinc-200 dark:border-zinc-800">
+        <div role="tablist" className="-mb-px flex gap-6">
+          {TABS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`border-b-2 pb-2.5 text-sm font-medium transition-colors ${
+                tab === key
+                  ? "border-emerald-500 text-zinc-900 dark:text-white"
+                  : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              {t(key === "general" ? "settings.tabGeneral" : "settings.tabFees")}
+            </button>
+          ))}
         </div>
-      </Card>
+      </div>
 
-      <Card>
-        <h2 className="text-lg font-semibold">{t("settings.language")}</h2>
-        <div className="mt-4">
-          <LocaleSwitcher />
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-lg font-semibold">{t("settings.tour.title")}</h2>
-        <div className="mt-4 space-y-3">
-          <p className="text-sm text-zinc-500">{t("settings.tour.body")}</p>
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={startTour} disabled={startingTour}>
-              {startingTour ? "…" : t("settings.tour.button")}
-            </Button>
-            {tourError && (
-              <span className="text-sm text-red-600 dark:text-red-400">{tourError}</span>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-lg font-semibold">{t("settings.taxSection")}</h2>
-        <div className="mt-4 space-y-4">
-          <Field label={t("settings.taxAllowance")} hint={t("settings.taxAllowanceHint")}>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={taxAllowance}
-              onChange={(e) => setTaxAllowance(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            />
-          </Field>
-
-          <Field label={t("settings.churchTax")}>
-            <SelectMenu
-              value={String(churchTaxRate)}
-              onChange={(v) => setChurchTaxRate(Number(v))}
-              ariaLabel={t("settings.churchTax")}
-              options={CHURCH_TAX_RATES.map((r) => ({
-                value: String(r),
-                label: r === 0 ? t("settings.churchTaxNone") : `${Math.round(r * 100)} %`,
-              }))}
-            />
-          </Field>
-
-          <label className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={teilfreistellung}
-              onChange={(e) => setTeilfreistellung(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
-            />
-            <span>
-              <span className="block text-sm font-medium">{t("settings.teilfreistellung")}</span>
-              <span className="block text-xs text-zinc-500">{t("settings.teilfreistellungHint")}</span>
-            </span>
-          </label>
-
-          <div className="flex items-center gap-3">
-            <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax}>
-              {savingTax ? "…" : t("settings.save")}
-            </Button>
-            {savedTax && (
-              <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                {t("settings.saved")}
-              </span>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-lg font-semibold">{t("settings.fees.title")}</h2>
-        <p className="mt-1 text-sm text-zinc-500">{t("settings.fees.hint")}</p>
-        <div className="mt-4">
-          <Field label={t("settings.fees.broker")}>
-            <SelectMenu
-              value={feePortfolioId}
-              onChange={setFeePortfolioId}
-              ariaLabel={t("settings.fees.broker")}
-              options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
-            />
-          </Field>
-        </div>
-        {feePortfolio && (
-          <div className="mt-4">
-            <PortfolioFeeRow
-              key={feePortfolio.id}
-              portfolio={feePortfolio}
-              baseCurrency={data.profile.currency}
-              onSave={updatePortfolio}
-            />
-          </div>
-        )}
-      </Card>
-
-      {mode === "registered" && (
-        <Card>
-          <h2 className="text-lg font-semibold">{t("settings.changePassword")}</h2>
-          <div className="mt-4 space-y-4">
-            <Field label={t("settings.newPassword")}>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={NEW_PASSWORD_MIN_LENGTH}
-                className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-              />
-            </Field>
-            <Field label={t("settings.confirmPassword")}>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={NEW_PASSWORD_MIN_LENGTH}
-                className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-              />
-            </Field>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="primary"
-                onClick={savePassword}
-                disabled={savingPw || !password || !confirmPassword}
-              >
-                {savingPw ? "…" : t("settings.save")}
-              </Button>
-              {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {mode === "registered" && (
-        <Card className="border-red-300 dark:border-red-900 xl:col-span-2">
-          <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">
-            {t("settings.dangerZone")}
-          </h2>
-          <div className="mt-4 space-y-4">
-            <p className="text-sm text-zinc-500">{t("settings.deleteAccountHint")}</p>
-            {hasPassword && (
-              <Field label={t("settings.deleteAccountPassword")}>
+      {tab === "general" && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card>
+            <h2 className="text-lg font-semibold">{t("settings.title")}</h2>
+            <div className="mt-4 space-y-4">
+              <Field label={t("settings.name")}>
                 <input
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  autoComplete="current-password"
-                  className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("settings.namePlaceholder")}
+                  className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                 />
               </Field>
-            )}
-            <Field label={t("settings.deleteAccountType")}>
-              <input
-                value={deleteConfirm}
-                onChange={(e) => setDeleteConfirm(e.target.value)}
-                placeholder="delete"
-                autoComplete="off"
-                className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
-              />
-            </Field>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="danger"
-                onClick={deleteAccount}
-                disabled={
-                  deleting ||
-                  deleteConfirm.trim().toLowerCase() !== "delete" ||
-                  (hasPassword && !deletePassword)
-                }
-              >
-                {deleting ? "…" : t("settings.deleteAccount")}
-              </Button>
-              {deleteError && (
-                <span className="text-sm text-red-600 dark:text-red-400">{deleteError}</span>
-              )}
+
+              <Field label={t("settings.currency")}>
+                <SelectMenu
+                  value={currency}
+                  onChange={setCurrency}
+                  ariaLabel={t("settings.currency")}
+                  options={[...new Set([currency, ...CURRENCIES])].map((c) => ({ value: c, label: c }))}
+                />
+              </Field>
+
+              <div className="flex items-center gap-3">
+                <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
+                  {savingProfile ? "…" : t("settings.save")}
+                </Button>
+                {savedProfile && (
+                  <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                    {t("settings.saved")}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-semibold">{t("settings.language")}</h2>
+            <div className="mt-4">
+              <LocaleSwitcher />
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-semibold">{t("settings.tour.title")}</h2>
+            <div className="mt-4 space-y-3">
+              <p className="text-sm text-zinc-500">{t("settings.tour.body")}</p>
+              <div className="flex items-center gap-3">
+                <Button variant="secondary" onClick={startTour} disabled={startingTour}>
+                  {startingTour ? "…" : t("settings.tour.button")}
+                </Button>
+                {tourError && (
+                  <span className="text-sm text-red-600 dark:text-red-400">{tourError}</span>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {mode === "registered" && (
+            <Card>
+              <h2 className="text-lg font-semibold">{t("settings.changePassword")}</h2>
+              <div className="mt-4 space-y-4">
+                <Field label={t("settings.newPassword")}>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={NEW_PASSWORD_MIN_LENGTH}
+                    className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                  />
+                </Field>
+                <Field label={t("settings.confirmPassword")}>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={NEW_PASSWORD_MIN_LENGTH}
+                    className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                  />
+                </Field>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="primary"
+                    onClick={savePassword}
+                    disabled={savingPw || !password || !confirmPassword}
+                  >
+                    {savingPw ? "…" : t("settings.save")}
+                  </Button>
+                  {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {mode === "registered" && (
+            <Card className="border-red-300 dark:border-red-900 xl:col-span-2">
+              <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">
+                {t("settings.dangerZone")}
+              </h2>
+              <div className="mt-4 space-y-4">
+                <p className="text-sm text-zinc-500">{t("settings.deleteAccountHint")}</p>
+                {hasPassword && (
+                  <Field label={t("settings.deleteAccountPassword")}>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      autoComplete="current-password"
+                      className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                    />
+                  </Field>
+                )}
+                <Field label={t("settings.deleteAccountType")}>
+                  <input
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder="delete"
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                  />
+                </Field>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="danger"
+                    onClick={deleteAccount}
+                    disabled={
+                      deleting ||
+                      deleteConfirm.trim().toLowerCase() !== "delete" ||
+                      (hasPassword && !deletePassword)
+                    }
+                  >
+                    {deleting ? "…" : t("settings.deleteAccount")}
+                  </Button>
+                  {deleteError && (
+                    <span className="text-sm text-red-600 dark:text-red-400">{deleteError}</span>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {tab === "fees" && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card>
+            <h2 className="text-lg font-semibold">{t("settings.taxSection")}</h2>
+            <div className="mt-4 space-y-4">
+              <Field label={t("settings.taxAllowance")} hint={t("settings.taxAllowanceHint")}>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={taxAllowance}
+                  onChange={(e) => setTaxAllowance(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                />
+              </Field>
+
+              <Field label={t("settings.churchTax")}>
+                <SelectMenu
+                  value={String(churchTaxRate)}
+                  onChange={(v) => setChurchTaxRate(Number(v))}
+                  ariaLabel={t("settings.churchTax")}
+                  options={CHURCH_TAX_RATES.map((r) => ({
+                    value: String(r),
+                    label: r === 0 ? t("settings.churchTaxNone") : `${Math.round(r * 100)} %`,
+                  }))}
+                />
+              </Field>
+
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={teilfreistellung}
+                  onChange={(e) => setTeilfreistellung(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+                />
+                <span>
+                  <span className="block text-sm font-medium">{t("settings.teilfreistellung")}</span>
+                  <span className="block text-xs text-zinc-500">{t("settings.teilfreistellungHint")}</span>
+                </span>
+              </label>
+
+              <div className="flex items-center gap-3">
+                <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax}>
+                  {savingTax ? "…" : t("settings.save")}
+                </Button>
+                {savedTax && (
+                  <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                    {t("settings.saved")}
+                  </span>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-semibold">{t("settings.fees.title")}</h2>
+            <p className="mt-1 text-sm text-zinc-500">{t("settings.fees.hint")}</p>
+            <div className="mt-4">
+              <Field label={t("settings.fees.broker")}>
+                <SelectMenu
+                  value={feePortfolioId}
+                  onChange={setFeePortfolioId}
+                  ariaLabel={t("settings.fees.broker")}
+                  options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+                />
+              </Field>
+            </div>
+            {feePortfolio && (
+              <div className="mt-4">
+                <PortfolioFeeRow
+                  key={feePortfolio.id}
+                  portfolio={feePortfolio}
+                  baseCurrency={data.profile.currency}
+                  onSave={updatePortfolio}
+                />
+              </div>
+            )}
+          </Card>
+        </div>
       )}
     </div>
   );

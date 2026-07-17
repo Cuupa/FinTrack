@@ -134,6 +134,8 @@ export const en = {
 
   "settings.title": "Settings",
   "settings.subtitle": "Your profile, language, and security.",
+  "settings.tabGeneral": "General",
+  "settings.tabFees": "Fees & taxes",
   "settings.name": "Name / nickname",
   "settings.namePlaceholder": "e.g. Simon",
   "settings.language": "Language",
@@ -1252,6 +1254,8 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "settings.title": "Einstellungen",
   "settings.subtitle": "Dein Profil, deine Sprache und Sicherheit.",
+  "settings.tabGeneral": "Allgemein",
+  "settings.tabFees": "Gebühren und Steuern",
   "settings.name": "Name / Spitzname",
   "settings.namePlaceholder": "z. B. Simon",
   "settings.language": "Sprache",
@@ -2370,6 +2374,8 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "settings.title": "Ajustes",
   "settings.subtitle": "Tu perfil, idioma y seguridad.",
+  "settings.tabGeneral": "General",
+  "settings.tabFees": "Comisiones e impuestos",
   "settings.name": "Nombre / apodo",
   "settings.namePlaceholder": "p. ej. Simón",
   "settings.language": "Idioma",
