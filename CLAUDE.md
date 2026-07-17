@@ -202,6 +202,60 @@ the held view. The transaction form prefills from `valuation.live` and
 refreshes equities via `/api/price` when the cached price is older than 1h
 (`lib/live/fetch-price.ts` `isPriceFresh`/`fetchLivePrice`).
 
+### LLM assistant (BYO key)
+
+An opt-in chat bubble (flag `llmChat`, seeded **disabled**) lets the user ask
+natural-language questions about their own portfolio using an API key they
+bring themselves — no FinTrack-hosted key, no autonomous mutations. The
+provider seam is `LlmProvider` (`lib/llm/types.ts`), mirroring `DataStore`/
+`PriceProvider`: `{ id, label, models, buildRequest, buildPingRequest,
+extractDelta, extractPingText, chat }`. `lib/llm/index.ts` is the registry
+(`providers`/`providerList`/`getProvider`) — adding a vendor means one file
+under `providers/` plus one registry entry; **UI, context, and route code
+never branch on the provider id.**
+
+All vendor traffic goes through the server proxy `/api/llm`
+(`app/api/llm/route.ts`) — the browser never contacts a vendor origin
+directly, so CSP `connect-src` stays untouched (`'self'` + `*.supabase.co`,
+same "market-data calls are server-side by design" rule as Yahoo/Frankfurter).
+The route reads the key from the request body, uses it once per request, and
+never logs, persists, or echoes it; vendor error bodies are drained and
+discarded, and responses carry only a machine-readable `LlmErrorCode`
+(`invalidKey`/`rateLimited`/`providerDown`/`badRequest`/`network`), localized
+client-side (`lib/llm/error-messages.ts`). The route normalizes every
+vendor's SSE into one uniform delta stream (`data: {"delta":...}` frames, an
+error frame, a `[DONE]` sentinel via `lib/llm/sse.ts`) so the client adapter
+never parses vendor-specific SSE. Rate-limited and payload-capped (256 KB)
+like `/api/share`; a client disconnect aborts `req.signal`, which cancels the
+upstream fetch.
+
+`llmConfig` (provider/model/key) rides the **full store seam** like tags and
+watchlist (owner override of `LLM_INTEGRATION.md`'s original "localStorage
+only" decision, same precedent as round-22 tags): `PortfolioData` carries
+`llmConfig`, table `llm_settings` persists it for registered users (one row
+per user, RLS, upsert-on-save / delete-on-removal — always replace-set and
+replay-idempotent), Guest Mode keeps it in the `LocalStore` blob, and
+`OfflineStore` mirrors + queues it through `lib/offline/sync.ts` like any
+other mutation. `LlmConfigProvider` (`lib/llm/llm-context.tsx`) is a thin
+adapter over `usePortfolio()`, mounted inside `PortfolioProvider`. A legacy
+`fintrack-llm` localStorage key (pre-seam, browser-only for every user) is
+replayed into the store once (only when the store has zero config) and then
+renamed to `fintrack-llm-imported` so it never replays again — same guard
+shape as `TagsProvider`'s legacy-key import. Because the key now lives in the
+account like other portfolio data, it is **not** cleared on sign-out.
+
+Chat context is built client-side, pure, no React (`lib/llm/context.ts`,
+`buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot of
+holdings, savings plans, risk/allocation stats, sent as the system-prompt
+preamble. It deliberately **never includes internal ids** (asset/portfolio/
+transaction id — display data only: name, ISIN, type, ...) and **never
+includes the tax report** (Freistellungsauftrag amounts stay out, per the
+plan's open question). `/datenschutz` documents the BYO-key opt-in, where the
+key is stored (browser for guests, DB for registered), and that portfolio
+data is transmitted to the chosen provider only when the chat is used — keep
+that section accurate if these data flows change, same rule as the rest of
+the privacy policy.
+
 ### Asset identity
 
 Assets are identified by **ISIN/WKN** (not ticker). `symbol` is a nullable

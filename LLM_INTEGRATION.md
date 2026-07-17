@@ -1,6 +1,8 @@
 # LLM Integration — Design Plan
 
-Status: PLAN (no implementation yet). Feature-flagged, off by default.
+Status: **P1 + P2 shipped 2026-07-17** (commits 0128572, e62a824, e2f039f,
+c9c0821). P3 (conversation persistence, token/cost hints, context scoping
+toggles) is still open. Feature-flagged (`llmChat`), off by default.
 
 ## Goal
 
@@ -40,6 +42,17 @@ UI and context code never branch on the provider.
    the server must never hold long-lived third-party credentials, guest mode
    works identically, and the tags feature sets the precedent (disclosed in
    /datenschutz). Cleared on sign-out like the history cache.
+
+   **Owner override, 2026-07-17 (commit c9c0821):** the key now rides the
+   full store seam instead, mirroring round-22 tags rather than the original
+   decision above. Registered users persist it in `llm_settings` (one row per
+   user, RLS-scoped, `lib/llm/llm-context.tsx`); Guest Mode keeps it in the
+   `LocalStore` blob, same as every other guest mutation. It is **no longer
+   cleared on sign-out** — it belongs to the account like the rest of
+   `PortfolioData` now. The pre-seam `fintrack-llm` localStorage key (which
+   existed for every user, guest and registered alike, under P1/P2's original
+   design) is replayed into the store once and renamed to
+   `fintrack-llm-imported` so the migration never re-runs.
 2. **Requests go through a server proxy route** `/api/llm` (POST, streaming
    SSE passthrough). The browser sends `{ provider, model, key, messages }`;
    the route forwards to the provider and pipes the stream back. Rationale:
@@ -96,15 +109,30 @@ browser, portfolio data is transmitted to the chosen provider when the chat
 is used, link to provider DPAs. The privacy policy's "server-side market-data
 calls" claim stays accurate because `/api/llm` is server-side and stateless.
 
+**As shipped (updated 2026-07-17):** the section now describes storage
+per mode instead of "only in this browser" — Guest Mode keeps the key in
+`localStorage` as originally planned, but registered users have it stored in
+`llm_settings` in the database (RLS-scoped, available across devices), and it
+is explicitly **not** cleared on sign-out (it lives with the account like
+other portfolio data). The legal basis for transmitting portfolio data to the
+chosen provider is the user's consent, given by actively saving a key
+(Art. 6(1)(a) GDPR). Provider DPA links (Anthropic, OpenAI, Google) are
+present. This section must be kept accurate if these data flows change again.
+
 ## Phases
 
 1. **P1 Core**: provider seam + `/api/llm` proxy (streaming) + settings card +
-   key storage + flag + datenschutz. Anthropic + OpenAI adapters.
+   key storage + flag + datenschutz.
+   **As shipped (commit 0128572, e62a824):** all three adapters — Anthropic,
+   OpenAI, **and Gemini** — landed together in P1, not staggered into P2 as
+   originally planned.
 2. **P2 Chat UX**: bubble + panel + context builder + starter prompts +
-   consent note. Gemini adapter.
+   consent note.
+   **As shipped (commit e2f039f):** bubble, panel, context builder shipped;
+   provider adapters were already complete from P1 (no Gemini work left here).
 3. **P3 Polish**: conversation persistence (localStorage, capped), token/cost
-   hint per provider, context scoping toggles (holdings only / + plans / +
-   risk).
+   hint per provider, context scoping toggles (holdings only / + plans /
+   + risk). **Still open** — none of this has shipped.
 
 ## Test strategy
 
@@ -118,6 +146,16 @@ calls" claim stays accurate because `/api/llm` is server-side and stateless.
 ## Open questions for the owner
 
 1. Which providers first? (Plan assumes Anthropic + OpenAI in P1.)
+   **What shipped:** all three — Anthropic, OpenAI, and Gemini — landed
+   together in P1 (commit 0128572), so this question is effectively answered
+   by "all of them, immediately."
 2. Should the chat see the tax report (Freistellungsauftrag amounts)? Left
    out of P1 context on purpose.
+   **What shipped:** still excluded. `lib/llm/context.ts`'s
+   `buildPortfolioContext` deliberately omits the tax report / allowance —
+   this question remains open, no reversal.
 3. Conversation history persistence wanted at all, or always-fresh chats?
+   **What shipped:** no persistence. Chat state lives only in memory for the
+   session (`components/llm/use-portfolio-chat.ts`, owned by `ChatBubble` so
+   it survives closing/reopening the panel but not a reload); this is P3
+   scope and remains open.

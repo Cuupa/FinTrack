@@ -93,3 +93,49 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 - [x] One subworker at a time; each task its own commit; verify in-app before marking done
 
 - Verified in guest mode, DE+EN, 1920x1080; screenshots scratchpad/verify17b; no console errors
+
+## Round 2026-07-17c (Fable orchestrator)
+### A Asset page: display savings plans for the asset
+- [x] Held asset detail shows the savings plans targeting this asset (amount + currency, interval, next execution date, booking type where relevant)
+- [x] Paused plans render as plain dimmed text (existing "· pausiert" pattern, no pill/badge)
+- [x] Section gated by the savingsPlans feature flag, sits next to the existing "Create savings plan" entry point (commit 4209bd8)
+- [x] Reuse existing sp.* dictionary keys where possible; any new key lands in en+de+es (parity test)
+- [x] Verified in-app (guest mode, DE+EN, 1920x1080)
+- [x] Committed separately, short meaningful message (9ed2ca9)
+
+### B LLM integration (implement LLM_INTEGRATION.md)
+#### B1 P1 core (provider seam + proxy + flag)
+- [x] lib/llm/types.ts: ChatMessage, ChatRequest, StreamHandle, LlmProvider seam ({id, label, models, chat(...): AsyncIterable<delta>}); UI never branches on provider
+- [x] providers/anthropic.ts (claude-sonnet-5 default), providers/openai.ts, providers/gemini.ts (request mappers + SSE/stream parsing)
+- [x] /api/llm POST streaming SSE passthrough; key used per-request, never logged/persisted server-side
+- [x] Rate limit via lib/server/rate-limit.ts (per-IP, fail-open without Supabase); request body cap 256 KB
+- [x] feature_flags row llmChat seeded DISABLED: idempotent migration + schema.sql in the same change
+- [x] Tests: provider request mappers, /api/llm passthrough with mocked fetch, rate-limit + cap behavior
+#### B2 settings + key storage + privacy
+- [x] Settings card "KI-Assistent"/"AI assistant": provider SelectMenu, model SelectMenu, key password input w/ show-hide, "Verbindung testen" (1-token ping via /api/llm), remove-key with ConfirmDialog
+- [x] Key storage localStorage only (fintrack-llm, versioned schema like fintrack-tags), cleared on sign-out like the history cache; NOT in the store seam/DB
+- [x] /datenschutz gains the opt-in section (EN+DE, du-register): key stays in browser, portfolio data goes to the chosen provider, provider DPA links
+- [x] All copy en/de/es (legal pages stay EN+DE), no em-dashes, du-register
+#### B3 chat UX
+- [x] buildPortfolioContext(data, valuation, stats) -> compact JSON (holdings/plans/risk/allocation/base/locale/today; no internal ids, no tax report in P1); unit test fixture -> expected JSON
+- [x] Chat bubble bottom-right on all pages (above mobile nav), only when flag enabled AND key configured
+- [x] Panel: desktop 420px, mobile full-screen sheet; focus-trapped (use-focus-trap), role="dialog"; message list, streaming render, stop button, "new chat"
+- [x] Context sent as system preamble at conversation start; one-time consent note in chat header
+- [x] Starter prompts; skeleton loading dots while stream starts; localized errors (invalid key / rate limited / provider down); "Modellwerte, keine Anlageberatung" framing in the chat UI
+- [x] No badges anywhere
+#### B5 OWNER OVERRIDE (mid-round, 2026-07-17): key storage rides the store seam
+- [x] LLM config (provider, model, key) persists in the DATABASE for registered users; browser-only storage ONLY in Guest Mode (overrides LLM_INTEGRATION.md decision 1, mirrors the round-22 tags override)
+- [x] PortfolioData carries llmConfig; DataStore method saveLlmConfig; LocalStore blob (guest), SupabaseStore table llm_settings (RLS per user), OfflineStore mirror + queue, sync replay
+- [x] Migration 0064 + schema.sql, idempotent
+- [x] llm-context.tsx becomes a thin adapter over usePortfolio (moves inside PortfolioProvider); fintrack-llm localStorage key retired (replay leftover into store, tags precedent)
+- [x] Sign-out no longer clears the key for registered users (it lives in the account); datenschutz + settings copy updated accordingly (EN+DE legal, en/de/es UI)
+- [x] tests updated; flagged tsc fetch-mock typing in tests/llm-route.test.ts fixed
+#### B4 docs
+- [x] CLAUDE.md updated with the LLM seam; LLM_INTEGRATION.md status flipped from PLAN once shipped
+- [~] P3 (conversation persistence, token/cost hint, context scoping toggles): plan doc phases this out and lists it under open owner questions; postponed pending owner answer
+#### Constraints (this round)
+- [x] One subworker at a time; each task its own commit; no branches
+- [x] Verify in-app before marking done (local dev = guest mode; llmChat flag: no Supabase => enabled locally, seeded disabled in prod)
+- [x] CSP untouched (proxy keeps connect-src 'self' + supabase)
+- NOTE for owner: apply supabase/migrations/0063_llm_chat_flag.sql AND 0064_llm_settings.sql to the live DB with the deploy; llmChat is seeded DISABLED in prod (enable via feature_flags/user_feature_flags when ready). Registered-mode (SupabaseStore) paths covered by tests + review only; local dev has no Supabase keys.
+- Verified in guest mode, DE+EN, 1920x1080 and 390x844; full suite 542 passed / 1 skipped; lint + tsc clean (known generated .next/dev noise aside)
