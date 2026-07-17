@@ -1153,6 +1153,21 @@ export const en = {
   "guestBanner.body":
     "your data is stored only in this browser and will be lost if you delete your browser data.",
   "guestBanner.cta": "Sign up to save it",
+
+  // Chat bubble + panel (flag `llmChat`)
+  "llm.chat.openLabel": "Open AI assistant",
+  "llm.chat.title": "AI assistant",
+  "llm.chat.close": "Close",
+  "llm.chat.newChat": "New chat",
+  "llm.chat.consent": "Portfolio data is sent to {provider} for this chat.",
+  "llm.chat.placeholder": "Ask about your portfolio…",
+  "llm.chat.send": "Send",
+  "llm.chat.stop": "Stop",
+  "llm.chat.typing": "The assistant is typing…",
+  "llm.chat.starterHint": "Try asking:",
+  "llm.chat.starterDiversification": "How diversified is my portfolio?",
+  "llm.chat.starterRisks": "What are the biggest risks in my portfolio?",
+  "llm.chat.starterSavingsPlans": "How are my savings plans doing?",
 } as const;
 
 export const de: Partial<Record<MessageKey, string>> = {
@@ -2302,6 +2317,21 @@ export const de: Partial<Record<MessageKey, string>> = {
   "guestBanner.body":
     "Deine Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn du deine Browserdaten leerst.",
   "guestBanner.cta": "Registrieren, um sie zu speichern",
+
+  // Chat bubble + panel (flag `llmChat`)
+  "llm.chat.openLabel": "KI-Assistent öffnen",
+  "llm.chat.title": "KI-Assistent",
+  "llm.chat.close": "Schließen",
+  "llm.chat.newChat": "Neuer Chat",
+  "llm.chat.consent": "Portfoliodaten werden für diesen Chat an {provider} gesendet.",
+  "llm.chat.placeholder": "Frag etwas zu deinem Portfolio…",
+  "llm.chat.send": "Senden",
+  "llm.chat.stop": "Stopp",
+  "llm.chat.typing": "Der Assistent tippt…",
+  "llm.chat.starterHint": "Zum Beispiel:",
+  "llm.chat.starterDiversification": "Wie diversifiziert ist mein Portfolio?",
+  "llm.chat.starterRisks": "Was sind die größten Risiken in meinem Portfolio?",
+  "llm.chat.starterSavingsPlans": "Wie laufen meine Sparpläne?",
 };
 
 export const es: Partial<Record<MessageKey, string>> = {
@@ -3449,6 +3479,21 @@ export const es: Partial<Record<MessageKey, string>> = {
   "guestBanner.body":
     "tus datos se guardan solo en este navegador y se perderán si borras los datos de tu navegador.",
   "guestBanner.cta": "Regístrate para guardarlos",
+
+  // Chat bubble + panel (flag `llmChat`)
+  "llm.chat.openLabel": "Abrir asistente de IA",
+  "llm.chat.title": "Asistente de IA",
+  "llm.chat.close": "Cerrar",
+  "llm.chat.newChat": "Nuevo chat",
+  "llm.chat.consent": "Los datos de tu cartera se envían a {provider} en este chat.",
+  "llm.chat.placeholder": "Pregunta sobre tu cartera…",
+  "llm.chat.send": "Enviar",
+  "llm.chat.stop": "Detener",
+  "llm.chat.typing": "El asistente está escribiendo…",
+  "llm.chat.starterHint": "Por ejemplo:",
+  "llm.chat.starterDiversification": "¿Qué tan diversificada está mi cartera?",
+  "llm.chat.starterRisks": "¿Cuáles son los mayores riesgos en mi cartera?",
+  "llm.chat.starterSavingsPlans": "¿Cómo van mis planes de ahorro?",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de, es };

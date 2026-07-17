@@ -10,6 +10,7 @@ import { LegalFooter } from "@/components/legal-footer";
 import { OfflineBanner } from "@/components/offline/offline-banner";
 import { SyncPill } from "@/components/offline/sync-pill";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { ChatBubble } from "@/components/llm/chat-bubble";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -89,6 +90,7 @@ export default function RootLayout({
               app/page.tsx) — reconnect sync can finish while the user is on
               any route. */}
           <SyncPill />
+          <ChatBubble />
         </Providers>
         <ServiceWorkerRegister />
       </body>

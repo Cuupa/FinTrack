@@ -14,7 +14,8 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { useLlmConfig } from "@/lib/llm/llm-context";
 import { providerList, getProvider } from "@/lib/llm";
-import type { LlmErrorCode, LlmProviderId } from "@/lib/llm/types";
+import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
+import type { LlmProviderId } from "@/lib/llm/types";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -51,7 +52,7 @@ export function SettingsView() {
   const router = useRouter();
   const aiEnabled = useFeatureFlag("llmChat");
 
-  const visibleTabs = aiEnabled ? TABS : TABS.filter((key) => key !== "ai");
+  const visibleTabs: TabKey[] = aiEnabled ? [...TABS] : TABS.filter((key) => key !== "ai");
 
   const [tab, setTab] = useState<TabKey>("general");
   // Falls back to "general" if the "ai" tab was selected and then the flag
@@ -596,18 +597,6 @@ function PortfolioFeeRow({
   );
 }
 
-const LLM_ERROR_KEYS: Record<LlmErrorCode, MessageKey> = {
-  invalidKey: "settings.ai.error.invalidKey",
-  rateLimited: "settings.ai.error.rateLimited",
-  providerDown: "settings.ai.error.providerDown",
-  badRequest: "settings.ai.error.badRequest",
-  network: "settings.ai.error.network",
-};
-
-function isLlmErrorCode(value: unknown): value is LlmErrorCode {
-  return typeof value === "string" && value in LLM_ERROR_KEYS;
-}
-
 /**
  * "AI assistant" settings tab (flag `llmChat`): provider/model/key form,
  * "Test connection" ping, and "Remove key". Local state is seeded once from
@@ -666,7 +655,7 @@ function AiAssistantSection() {
         return;
       }
       const messageKey = isLlmErrorCode(data?.error)
-        ? LLM_ERROR_KEYS[data.error]
+        ? llmErrorMessageKey(data.error)
         : res.status === 429
           ? "settings.ai.error.rateLimited"
           : "settings.ai.error.network";
