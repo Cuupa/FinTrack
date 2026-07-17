@@ -39,6 +39,7 @@ import {
   watchlistItemToAsset,
 } from "@/lib/finance/instrument-asset";
 import { assetAnnualStats } from "@/lib/finance/stats";
+import { nextOccurrence } from "@/lib/finance/savings-plans";
 import { useHistory } from "@/lib/history/use-history";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
 import { Button, Card, Stat } from "@/components/ui/primitives";
@@ -49,7 +50,7 @@ import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
-import { PlanForm } from "@/components/savings/plan-form";
+import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
@@ -329,6 +330,13 @@ export function AssetDetail({
   }
   const rawType = String(asset.type);
   const typeKey = `assetType.${rawType}` as MessageKey;
+  // Savings plans that already target this asset, shown read-only next to the
+  // "new plan" entry point below (management stays on the dashboard card).
+  const assetPlans = held && savingsPlansEnabled
+    ? data.savingsPlans.filter((p) => p.assetId === asset.id)
+    : [];
+  const multiPortfolio = portfolios.length > 1;
+  const todayISO = today();
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -639,6 +647,51 @@ export function AssetDetail({
             </Button>
           )}
         </div>
+
+        {assetPlans.length > 0 && (
+          <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <h3 className="border-b border-zinc-200 px-3 py-2 text-sm font-semibold dark:border-zinc-800">
+              {t("sp.title")}
+            </h3>
+            <ul>
+              {assetPlans.map((plan) => {
+                const portfolioName = portfolios.find((p) => p.id === plan.portfolioId)?.name;
+                return (
+                  <li
+                    key={plan.id}
+                    className="border-b border-zinc-100 px-3 py-2 text-sm last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                  >
+                    {multiPortfolio && portfolioName && (
+                      <span
+                        className={`block truncate text-sm font-medium ${
+                          plan.active ? "" : "text-zinc-400 dark:text-zinc-500"
+                        }`}
+                      >
+                        {portfolioName}
+                      </span>
+                    )}
+                    <span
+                      className={
+                        multiPortfolio
+                          ? "block truncate text-xs text-zinc-500"
+                          : `block truncate ${plan.active ? "" : "text-zinc-400 dark:text-zinc-500"}`
+                      }
+                    >
+                      <span data-private>{formatCurrency(plan.amount, nativeCur)}</span>{" "}
+                      {t(INTERVAL_KEY[plan.interval])}
+                      {plan.bookingType === "BOOKING" && <> · {t("tx.booking")}</>}
+                      {plan.active ? (
+                        <> · {t("sp.next", { date: formatDate(nextOccurrence(plan, todayISO)) })}</>
+                      ) : (
+                        <> · {t("sp.paused")}</>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
