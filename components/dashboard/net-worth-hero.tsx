@@ -19,7 +19,7 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
-import { netFlows, riskMetrics } from "@/lib/finance/returns";
+import { netFlows, riskMetrics, windowChange } from "@/lib/finance/returns";
 import { InfoTip } from "@/components/ui/info-tip";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { portfolioIRR } from "@/lib/finance/irr";
@@ -130,18 +130,10 @@ export function NetWorthHero({
   // so the % is consistent with the absolute change). Falls back to TWR only
   // when the starting value is negligible (early portfolio), where the raw ratio
   // would blow up.
-  const periodChange = useMemo(() => {
-    const start = series.find((p) => p.value > 0)?.value ?? 0;
-    const end = series[series.length - 1]?.value ?? 0;
-    const abs = end - start;
-    const winStart = series[0]?.date ?? "";
-    const flowsIn = netFlows(data.assets, data.transactions, valuation)
-      .filter((f) => f.date >= winStart)
-      .reduce((s, f) => s + f.amount, 0);
-    const peak = series.reduce((m, p) => (p.value > m ? p.value : m), 0);
-    const pct = start > peak * 0.02 ? (end - start - flowsIn) / start : risk.twr;
-    return { abs, pct };
-  }, [series, data.assets, data.transactions, valuation, risk.twr]);
+  const periodChange = useMemo(
+    () => windowChange(series, netFlows(data.assets, data.transactions, valuation), risk.twr),
+    [series, data.assets, data.transactions, valuation, risk.twr],
+  );
 
   return (
     <Card data-tour="net-worth">

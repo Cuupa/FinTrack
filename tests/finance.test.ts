@@ -7,6 +7,7 @@ import {
   cumulativeReturnSeries,
   betaAlpha,
   compositeLevelSeries,
+  windowChange,
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
@@ -63,6 +64,55 @@ describe("netFlows", () => {
     ]);
     expect(flows[0].amount).toBeCloseTo(101, 6); // 10*10 + 1
     expect(flows[1].amount).toBeCloseTo(-59, 6); // -(5*12 - 1)
+  });
+});
+
+describe("windowChange", () => {
+  it("regression: a day-one-only buy reads as 0%, not -100%", () => {
+    // Portfolio's only transaction is today's deposit — the series is zero
+    // every prior day and jumps to the deposit's value on the last point.
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 0 },
+      { date: "2025-01-05", value: 0 },
+      { date: "2025-01-10", value: 2452.8 },
+    ];
+    const flows = [{ date: "2025-01-10", amount: 2452.8 }];
+    expect(windowChange(series, flows, 0)).toEqual({ abs: 0, pct: 0 });
+  });
+
+  it("subtracts a deposit strictly after the window start from the numerator", () => {
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 1000 },
+      { date: "2025-06-01", value: 1000 },
+      { date: "2025-12-31", value: 1200 },
+    ];
+    const flows = [{ date: "2025-06-01", amount: 100 }];
+    const { abs, pct } = windowChange(series, flows, 0);
+    expect(abs).toBeCloseTo(200, 6);
+    // (1200 - 1000 - 100) / 1000
+    expect(pct).toBeCloseTo(0.1, 6);
+  });
+
+  it("does NOT subtract a flow dated on the window's first point (already embedded in start)", () => {
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 1000 },
+      { date: "2025-06-01", value: 1000 },
+      { date: "2025-12-31", value: 1200 },
+    ];
+    const flows = [{ date: "2025-01-01", amount: 100 }];
+    const { pct } = windowChange(series, flows, 0);
+    // (1200 - 1000 - 0) / 1000 — the opening flow is not subtracted again.
+    expect(pct).toBeCloseTo(0.2, 6);
+  });
+
+  it("falls back to TWR when the starting value is negligible vs. the peak", () => {
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: 10 },
+      { date: "2025-06-01", value: 5000 },
+    ];
+    const { abs, pct } = windowChange(series, [], 0.37);
+    expect(abs).toBeCloseTo(4990, 6);
+    expect(pct).toBe(0.37);
   });
 });
 

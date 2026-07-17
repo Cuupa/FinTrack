@@ -335,6 +335,10 @@ FX-convert) always beats a wrong instrument in the right currency.
   (value-weighted daily returns of the user's holdings, annualised; benchmark
   fallback). This feeds the Monte Carlo defaults — μ/σ are measured, not assumed.
 - `irr.ts` — money-weighted XIRR (Newton + bisection fallback).
+- `returns.ts` `windowChange` — the hero's "Change (tf)" KPI: abs = raw
+  net-worth delta, pct = contribution-adjusted return. Flows on/before the
+  first nonzero series point are **embedded in the baseline** and must never
+  be subtracted again (a day-one portfolio once read −100%).
 - `monte-carlo.ts` — pure simulation, run off-thread via
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
 - `dividends.ts` — dividends from **real events** (`/api/dividends`, Yahoo)

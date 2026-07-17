@@ -89,6 +89,41 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
   return out;
 }
 
+/**
+ * Absolute and relative change over a net-worth window, contribution-adjusted
+ * like the rest of this file: deposits/withdrawals are backed out of the
+ * percentage so it reflects performance, not cash movement.
+ *
+ * Constraint: a flow dated on/before the window's first nonzero point is
+ * already embedded in `start` (`netWorthSeries` values each day by shares
+ * actually held that day), so subtracting it again would double-count it and
+ * understate the return by the whole deposit — a portfolio whose only buy is
+ * today would otherwise read as −100%. Only flows strictly AFTER the first
+ * nonzero point are backed out. `netFlows` dates are already day-precision
+ * `YYYY-MM-DD` (it slices), so a plain `>` string compare is correct.
+ *
+ * Falls back to the (already contribution-adjusted) TWR when the starting
+ * value is negligible relative to the window's peak, where the raw ratio
+ * would blow up (same 2%-of-peak threshold as `cumulativeReturnSeries`).
+ */
+export function windowChange(
+  series: SeriesPoint[],
+  flows: Flow[],
+  twr: number,
+): { abs: number; pct: number } {
+  const startPoint = series.find((p) => p.value > 0);
+  const start = startPoint?.value ?? 0;
+  const startDate = startPoint?.date ?? "";
+  const end = series[series.length - 1]?.value ?? 0;
+  const abs = end - start;
+  const flowsIn = flows
+    .filter((f) => f.date > startDate)
+    .reduce((s, f) => s + f.amount, 0);
+  const peak = series.reduce((m, p) => (p.value > m ? p.value : m), 0);
+  const pct = start > peak * 0.02 ? (end - start - flowsIn) / start : twr;
+  return { abs, pct };
+}
+
 export interface RiskMetrics {
   /** Cumulative time-weighted return over the window (fraction). */
   twr: number;
