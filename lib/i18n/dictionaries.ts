@@ -197,8 +197,14 @@ export const en = {
   "settings.ai.removeKeyTitle": "Remove API key?",
   "settings.ai.removeKeyMsg": "Your stored API key is removed.",
   "settings.ai.removeKeyConfirm": "Remove",
+  "settings.ai.scope.label": "Where your key is stored",
+  "settings.ai.scope.account": "In your account (on every device)",
+  "settings.ai.scope.browser": "Only in this browser",
+  "settings.ai.scope.browserHint": "Cleared when you sign out.",
   "settings.ai.privacyNote":
-    "In Guest Mode your key stays only in this browser. Signed in, it's stored in your account in the database, protected by per-user access controls, so it's available on every device. When you use the chat, your portfolio data is sent to the provider you choose; we never store or log the conversation on our server.",
+    "Choose below where your key is stored: in your account (database, protected by per-user access controls, available on every device, kept until you remove it) or only in this browser (cleared when you sign out). When you use the chat, your portfolio data is sent to the provider you choose; we never store or log the conversation on our server.",
+  "settings.ai.privacyNoteGuest":
+    "In Guest Mode your key stays only in this browser. When you use the chat, your portfolio data is sent to the provider you choose; we never store or log the conversation on our server.",
   "settings.ai.privacyLink": "Privacy policy",
   "settings.ai.saveError": "Could not save.",
   "settings.ai.error.invalidKey": "Invalid API key.",
@@ -1362,8 +1368,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.ai.removeKeyTitle": "API-Schlüssel entfernen?",
   "settings.ai.removeKeyMsg": "Dein gespeicherter API-Schlüssel wird entfernt.",
   "settings.ai.removeKeyConfirm": "Entfernen",
+  "settings.ai.scope.label": "Wo dein Schlüssel gespeichert wird",
+  "settings.ai.scope.account": "In deinem Konto (auf allen Geräten)",
+  "settings.ai.scope.browser": "Nur in diesem Browser",
+  "settings.ai.scope.browserHint": "Wird beim Abmelden gelöscht.",
   "settings.ai.privacyNote":
-    "Im Gastmodus bleibt dein Schlüssel nur in diesem Browser gespeichert. Angemeldet wird er in deinem Konto in der Datenbank gespeichert, geschützt durch nutzerspezifische Zugriffskontrollen, damit er auf all deinen Geräten verfügbar ist. Wenn du den Chat nutzt, werden deine Portfoliodaten an den gewählten Anbieter gesendet; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
+    "Wähle unten, wo dein Schlüssel gespeichert wird: in deinem Konto (Datenbank, geschützt durch nutzerspezifische Zugriffskontrollen, auf all deinen Geräten verfügbar, gespeichert bis du ihn entfernst) oder nur in diesem Browser (wird beim Abmelden gelöscht). Wenn du den Chat nutzt, werden deine Portfoliodaten an den gewählten Anbieter gesendet; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
+  "settings.ai.privacyNoteGuest":
+    "Im Gastmodus bleibt dein Schlüssel nur in diesem Browser gespeichert. Wenn du den Chat nutzt, werden deine Portfoliodaten an den gewählten Anbieter gesendet; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
   "settings.ai.privacyLink": "Datenschutzerklärung",
   "settings.ai.saveError": "Konnte nicht gespeichert werden.",
   "settings.ai.error.invalidKey": "Ungültiger API-Schlüssel.",
@@ -2527,8 +2539,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.ai.removeKeyTitle": "¿Eliminar clave de API?",
   "settings.ai.removeKeyMsg": "Tu clave de API guardada se elimina.",
   "settings.ai.removeKeyConfirm": "Eliminar",
+  "settings.ai.scope.label": "Dónde se guarda tu clave",
+  "settings.ai.scope.account": "En tu cuenta (en todos tus dispositivos)",
+  "settings.ai.scope.browser": "Solo en este navegador",
+  "settings.ai.scope.browserHint": "Se elimina al cerrar sesión.",
   "settings.ai.privacyNote":
-    "En modo invitado, tu clave se guarda solo en este navegador. Si has iniciado sesión, se guarda en tu cuenta en la base de datos, protegida por controles de acceso por usuario, para que esté disponible en todos tus dispositivos. Cuando usas el chat, tus datos de cartera se envían al proveedor que elijas; nunca almacenamos ni registramos la conversación en nuestro servidor.",
+    "Elige abajo dónde se guarda tu clave: en tu cuenta (base de datos, protegida por controles de acceso por usuario, disponible en todos tus dispositivos, se conserva hasta que la elimines) o solo en este navegador (se elimina al cerrar sesión). Cuando usas el chat, tus datos de cartera se envían al proveedor que elijas; nunca almacenamos ni registramos la conversación en nuestro servidor.",
+  "settings.ai.privacyNoteGuest":
+    "En modo invitado, tu clave se guarda solo en este navegador. Cuando usas el chat, tus datos de cartera se envían al proveedor que elijas; nunca almacenamos ni registramos la conversación en nuestro servidor.",
   "settings.ai.privacyLink": "Política de privacidad",
   "settings.ai.saveError": "No se ha podido guardar.",
   "settings.ai.error.invalidKey": "Clave de API no válida.",

@@ -199,15 +199,18 @@ function DatenschutzDE({
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>
-          ). Bist du registriert und angemeldet, speichern wir ihn stattdessen in deinem Konto in
-          unserer Datenbank, geschützt durch nutzerspezifische Zugriffskontrollen (Row-Level
-          Security), sodass er auf all deinen Geräten verfügbar ist. Eine Verschlüsselung im Ruhezustand
-          (encryption at rest) über die Standard-Datenbankverschlüsselung unseres Hosters hinaus
-          bieten wir nicht an. Im Gastmodus entfernst du den Schlüssel, indem du ihn in den
-          Einstellungen löschst oder deine Browserdaten leerst; im registrierten Modus bleibt er in
-          deinem Konto gespeichert, bis du ihn in den Einstellungen entfernst. Er wird nicht
-          automatisch beim Abmelden gelöscht, da er zu deinem Konto gehört wie alle anderen
-          Portfoliodaten.
+          ). Bist du registriert und angemeldet, kannst du in den Einstellungen wählen, wo dein
+          Schlüssel gespeichert wird: entweder in deinem Konto in unserer Datenbank, geschützt durch
+          nutzerspezifische Zugriffskontrollen (Row-Level Security), sodass er auf all deinen Geräten
+          verfügbar ist, oder ausschließlich lokal in diesem Browser. Eine Verschlüsselung im
+          Ruhezustand (encryption at rest) über die Standard-Datenbankverschlüsselung unseres Hosters
+          hinaus bieten wir nicht an. Einen Schlüssel in diesem Browser entfernst du, indem du ihn in
+          den Einstellungen löschst oder deine Browserdaten leerst; er wird außerdem automatisch beim
+          Abmelden gelöscht, da er bewusst an diesen Browser gebunden ist. Ein Schlüssel in deinem
+          Konto bleibt gespeichert, bis du ihn in den Einstellungen entfernst oder auf Browserspeicher
+          umstellst; er wird nicht automatisch beim Abmelden gelöscht, da er zu deinem Konto gehört
+          wie alle anderen Portfoliodaten. Ein Wechsel des Speicherorts in den Einstellungen
+          verschiebt den Schlüssel sofort vom einen zum anderen Ort.
         </p>
         <p>
           Nutzt du den Chat, werden deine Portfoliodaten (Positionen, Sparpläne, Risikokennzahlen)
@@ -415,13 +418,17 @@ function DatenschutzEN({
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>
-          ). If you are registered and signed in, we instead store it in your account in our
-          database, protected by per-user access controls (row-level security), so it is available
-          on every device you use. We do not offer encryption at rest beyond our hosting
-          provider&rsquo;s standard database encryption. In Guest Mode you remove the key by
-          deleting it in Settings or clearing your browser data; in registered mode it stays stored
-          in your account until you remove it in Settings, it is not automatically deleted on
+          ). If you are registered and signed in, you can choose in Settings where the key is
+          stored: either in your account in our database, protected by per-user access controls
+          (row-level security), so it is available on every device you use, or exclusively in this
+          browser. We do not offer encryption at rest beyond our hosting provider&rsquo;s standard
+          database encryption. A key stored in this browser is removed by deleting it in Settings or
+          clearing your browser data, and it is also automatically removed on sign-out, since it is
+          deliberately scoped to this browser. A key stored in your account stays stored until you
+          remove it in Settings or switch it to browser storage; it is not automatically deleted on
           sign-out since it belongs to your account like every other piece of portfolio data.
+          Switching the storage location in Settings moves the key immediately from one place to
+          the other.
         </p>
         <p>
           When you use the chat, your portfolio data (holdings, savings plans, risk figures) is

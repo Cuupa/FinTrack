@@ -16,6 +16,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
 import { clearHistoryCache } from "../history/history-cache";
+import { clearBrowserLlmConfig } from "../llm/browser-config";
 
 export type Mode = "guest" | "registered";
 
@@ -111,12 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // keys (ISIN/WKN/symbol) - clear it so a shared device never surfaces one
     // user's chart data after another signs in.
     clearHistoryCache();
-    // The LLM API key now rides the DataStore seam (round-22 tags precedent,
-    // owner override of LLM_INTEGRATION.md decision 1): a registered user's
-    // key lives in their account (llm_settings) and must survive sign-out,
-    // same as every other piece of portfolio data. Guest Mode keys already
-    // behave like all other guest data (cleared only by clearing browser
-    // storage), so there is nothing to clear here anymore.
+    // The account-scoped LLM key (llm_settings) rides the DataStore seam
+    // (round-22 tags precedent) and survives sign-out like the rest of
+    // PortfolioData - nothing to do for it here. A browser-scoped key
+    // (lib/llm/browser-config.ts, `fintrack-llm`) is explicitly scoped to
+    // this browser session by the user's own choice (owner requirement,
+    // 2026-07-17), so it's cleared here same as the history cache - a shared
+    // device must never surface it after another user signs in.
+    clearBrowserLlmConfig();
   }, [supabase]);
 
   const updatePassword = useCallback(

@@ -53,6 +53,20 @@ UI and context code never branch on the provider.
    existed for every user, guest and registered alike, under P1/P2's original
    design) is replayed into the store once and renamed to
    `fintrack-llm-imported` so the migration never re-runs.
+
+   **Second owner override, same day:** registered users must be able to
+   choose where the key lives, not just have it forced into the account.
+   `fintrack-llm` is retired as a migration source (the legacy-replay logic
+   above never shipped to real users, so it's simply dropped, not run once
+   more) and reinstated as first-class **browser-scope** storage
+   (`lib/llm/browser-config.ts`). Registered users pick "in your account" or
+   "only in this browser" in Settings; the browser-local key's mere presence
+   wins over the account row (`lib/llm/config-precedence.ts`), and switching
+   scope moves the key immediately, clearing the other location. A
+   browser-scoped key **is** cleared on sign-out (it's explicitly scoped to
+   that browser session); the account-scoped key still survives sign-out.
+   Guest Mode is unaffected — no scope choice, always the store seam's
+   browser blob.
 2. **Requests go through a server proxy route** `/api/llm` (POST, streaming
    SSE passthrough). The browser sends `{ provider, model, key, messages }`;
    the route forwards to the provider and pipes the stream back. Rationale:
@@ -85,8 +99,10 @@ states that portfolio data is sent to the chosen provider.
 ## UX
 
 - **Settings card "KI-Assistent"**: provider select (SelectMenu), model
-  select, key input (password field, show/hide), "Verbindung testen" button
-  (1-token ping via `/api/llm`), remove-key button (ConfirmDialog, destructive).
+  select, key input (password field, show/hide), a storage-location toggle
+  (account vs. browser-only, registered users only), "Verbindung testen"
+  button (1-token ping via `/api/llm`), remove-key button (ConfirmDialog,
+  destructive).
 - **Chat bubble** bottom-right (all pages, above mobile nav), only when
   flag enabled AND key configured. Opens a panel (mobile: full-screen sheet,
   desktop: 420px panel) with message list, streaming responses, stop button,
@@ -118,6 +134,13 @@ other portfolio data). The legal basis for transmitting portfolio data to the
 chosen provider is the user's consent, given by actively saving a key
 (Art. 6(1)(a) GDPR). Provider DPA links (Anthropic, OpenAI, Google) are
 present. This section must be kept accurate if these data flows change again.
+
+**Updated again, same day (scope choice):** registered users can now pick
+between the two storage locations described above instead of always landing
+in the database. The section explains both options (account vs.
+browser-only) and that a browser-only key is cleared on sign-out while an
+account key is not; switching locations in Settings moves the key
+immediately.
 
 ## Phases
 

@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
-import { useLlmConfig } from "@/lib/llm/llm-context";
+import { useLlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
 import { providerList, getProvider } from "@/lib/llm";
 import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
 import type { LlmProviderId } from "@/lib/llm/types";
@@ -599,22 +599,30 @@ function PortfolioFeeRow({
 
 /**
  * "AI assistant" settings tab (flag `llmChat`): provider/model/key form,
- * "Test connection" ping, and "Remove key". Local state is seeded once from
- * the stored config at mount (same pattern as the profile/tax fields and
- * PortfolioFeeRow above) rather than kept in sync via effect. The key rides
- * the DataStore seam via `useLlmConfig` (Guest Mode: browser-local; registered:
- * the account's `llm_settings` row) except for Test connection, a one-shot
+ * a storage-location control (registered users only), "Test connection"
+ * ping, and "Remove key". Local state is seeded once from the stored config
+ * at mount (same pattern as the profile/tax fields and PortfolioFeeRow
+ * above) rather than kept in sync via effect. The key rides `useLlmConfig`
+ * (Guest Mode: always the store seam's browser blob, no choice; registered:
+ * either the account's `llm_settings` row or the browser-local `fintrack-llm`
+ * key, per the scope control below) except for Test connection, a one-shot
  * ping POSTed to /api/llm with the CURRENT form values, which may differ from
  * the last saved config and is never persisted either way.
  */
 function AiAssistantSection() {
   const { t } = useI18n();
-  const { config, setConfig, clearConfig } = useLlmConfig();
+  const { user } = useAuth();
+  const { config, scope: activeScope, setConfig, clearConfig } = useLlmConfig();
 
   const [provider, setProvider] = useState<LlmProviderId>(config?.provider ?? providerList[0].id);
   const [model, setModel] = useState(config?.model ?? providerList[0].defaultModel);
   const [key, setKey] = useState(config?.key ?? "");
   const [showKey, setShowKey] = useState(false);
+  // Registered users only; guests never render the control and always save
+  // through the store seam regardless of this value. Seeded from the active
+  // scope so an existing config's location is reflected, "account" by
+  // default when nothing is configured yet.
+  const [scope, setScope] = useState<LlmConfigScope>(activeScope);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -638,7 +646,7 @@ function AiAssistantSection() {
     setSaving(true);
     setError(null);
     try {
-      await setConfig({ provider, model, key: key.trim() });
+      await setConfig({ provider, model, key: key.trim() }, user ? scope : undefined);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -729,8 +737,36 @@ function AiAssistantSection() {
           </div>
         </Field>
 
+        {user && (
+          <div>
+            <span className="mb-1 block text-xs font-medium text-zinc-500">
+              {t("settings.ai.scope.label")}
+            </span>
+            <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+              {(["account", "browser"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setScope(s)}
+                  aria-pressed={scope === s}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    scope === s
+                      ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {t(s === "account" ? "settings.ai.scope.account" : "settings.ai.scope.browser")}
+                </button>
+              ))}
+            </div>
+            {scope === "browser" && (
+              <p className="mt-1 text-xs text-zinc-500">{t("settings.ai.scope.browserHint")}</p>
+            )}
+          </div>
+        )}
+
         <p className="text-xs text-zinc-500">
-          {t("settings.ai.privacyNote")}{" "}
+          {t(user ? "settings.ai.privacyNote" : "settings.ai.privacyNoteGuest")}{" "}
           <Link
             href="/datenschutz"
             className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"

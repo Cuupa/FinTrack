@@ -236,13 +236,19 @@ only" decision, same precedent as round-22 tags): `PortfolioData` carries
 per user, RLS, upsert-on-save / delete-on-removal — always replace-set and
 replay-idempotent), Guest Mode keeps it in the `LocalStore` blob, and
 `OfflineStore` mirrors + queues it through `lib/offline/sync.ts` like any
-other mutation. `LlmConfigProvider` (`lib/llm/llm-context.tsx`) is a thin
-adapter over `usePortfolio()`, mounted inside `PortfolioProvider`. A legacy
-`fintrack-llm` localStorage key (pre-seam, browser-only for every user) is
-replayed into the store once (only when the store has zero config) and then
-renamed to `fintrack-llm-imported` so it never replays again — same guard
-shape as `TagsProvider`'s legacy-key import. Because the key now lives in the
-account like other portfolio data, it is **not** cleared on sign-out.
+other mutation. Registered users additionally choose the storage **scope**
+(owner requirement, 2026-07-17): the account row above, or browser-only via
+the `fintrack-llm` localStorage key (`lib/llm/browser-config.ts`) — its mere
+presence wins over the account row (`lib/llm/config-precedence.ts`,
+`resolveActiveLlmConfig`, pure/unit-tested). `LlmConfigProvider`
+(`lib/llm/llm-context.tsx`) exposes `{config, scope, setConfig, clearConfig}`
+and is mounted inside `PortfolioProvider`; `setConfig(config, scope)` moves
+the key between the two locations, clearing the other. A browser-scoped key
+is cleared on sign-out (`lib/auth/auth-context.tsx`, next to the history
+cache) since it's scoped to that browser session by the user's own choice;
+the account-scoped key survives sign-out like the rest of `PortfolioData`.
+Guest Mode has no scope choice (the guest blob IS the browser) and never
+renders the control.
 
 Chat context is built client-side, pure, no React (`lib/llm/context.ts`,
 `buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot of
@@ -251,7 +257,8 @@ preamble. It deliberately **never includes internal ids** (asset/portfolio/
 transaction id — display data only: name, ISIN, type, ...) and **never
 includes the tax report** (Freistellungsauftrag amounts stay out, per the
 plan's open question). `/datenschutz` documents the BYO-key opt-in, where the
-key is stored (browser for guests, DB for registered), and that portfolio
+key can be stored (always browser-local for guests; account DB or
+browser-local, by choice, for registered users), and that portfolio
 data is transmitted to the chosen provider only when the chat is used — keep
 that section accurate if these data flows change, same rule as the rest of
 the privacy policy.

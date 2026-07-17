@@ -1,20 +1,28 @@
 "use client";
 
 // React context for the user's BYO LLM config (provider/model/API key).
-// Rides the DataStore seam (lib/store) like watchlist/savings plans/tags
-// (round-22 tags precedent, owner override of LLM_INTEGRATION.md's earlier
-// "localStorage only" decision 1): DB-persisted for registered users
-// (`llm_settings`), localStorage-backed (inside the guest blob) for guests.
-// This module is a thin adapter over `usePortfolio()`, same shape as
-// lib/tags/tags-context.tsx, so it must be mounted inside `PortfolioProvider`
-// (components/providers.tsx).
+// Registered users choose where the key lives (owner requirement,
+// 2026-07-17): in their account (DB, `llm_settings`, cross-device, rides the
+// store seam like watchlist/savings plans/tags) or only in this browser
+// (`fintrack-llm` localStorage key, lib/llm/browser-config.ts). Guest Mode
+// has no such choice - the guest store blob already lives in this browser,
+// so it's reported as scope "browser" but always goes through the store
+// seam, same as every other guest mutation.
 //
-// One-time migration: the config used to live entirely in a separate
-// `fintrack-llm` localStorage key, for every user (guest and registered
-// alike). Once portfolio data has loaded, if the store has no config and that
-// legacy key still holds a valid payload, it's replayed into the store and
-// the key is renamed to `fintrack-llm-imported` so it never replays again —
-// same guard shape as TagsProvider's legacy-key import.
+// This module is a thin adapter over `usePortfolio()` (for the account-scope
+// config) plus browser-config.ts (for the browser-scope config), same shape
+// as lib/tags/tags-context.tsx, so it must be mounted inside
+// `PortfolioProvider` (components/providers.tsx). The precedence between the
+// two sources is pure and extracted into lib/llm/config-precedence.ts so it
+// can be unit-tested directly.
+//
+// Hydration: the browser-scope config starts null (matches SSR/first paint,
+// no window access) and is loaded in a deferred async continuation rather
+// than a synchronous setState in the effect body - same idiom the original
+// P1 provider used (config-storage.ts, commit e62a824) and required by the
+// repo's react-hooks/set-state-in-effect build-time lint rule. It re-reads
+// whenever the signed-in user changes (sign-in/sign-out), since
+// lib/auth/auth-context.tsx clears the key on sign-out.
 
 import {
   createContext,
@@ -22,50 +30,38 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { useAuth } from "@/lib/auth/auth-context";
 import type { LlmConfig } from "@/lib/types";
-import type { LlmProviderId } from "./types";
+import {
+  loadBrowserLlmConfig,
+  saveBrowserLlmConfig,
+  clearBrowserLlmConfig,
+} from "./browser-config";
+import { resolveActiveLlmConfig, type LlmConfigScope } from "./config-precedence";
 
 export type { LlmConfig };
-
-const STORAGE_KEY = "fintrack-llm";
-const STORAGE_KEY_IMPORTED = "fintrack-llm-imported";
-const VERSION = 1;
-
-interface PersistShape extends LlmConfig {
-  version: 1;
-}
-
-const PROVIDER_IDS: readonly LlmProviderId[] = ["anthropic", "openai", "gemini"];
-
-function isProviderId(value: unknown): value is LlmProviderId {
-  return typeof value === "string" && (PROVIDER_IDS as readonly string[]).includes(value);
-}
-
-/** Parses the legacy `fintrack-llm` payload, or null if absent/malformed/a
- *  version mismatch (a future shape change bumps VERSION; old data is then
- *  treated as absent rather than misread). Exported for tests, same as
- *  TagsProvider's `migrate`. */
-export function parseLegacyConfig(raw: string): LlmConfig | null {
-  try {
-    const parsed = JSON.parse(raw) as Partial<PersistShape> | null;
-    if (!parsed || typeof parsed !== "object") return null;
-    if (parsed.version !== VERSION) return null;
-    if (!isProviderId(parsed.provider)) return null;
-    if (typeof parsed.model !== "string" || !parsed.model) return null;
-    if (typeof parsed.key !== "string" || !parsed.key) return null;
-    return { provider: parsed.provider, model: parsed.model, key: parsed.key };
-  } catch {
-    return null;
-  }
-}
+export type { LlmConfigScope };
 
 interface LlmConfigContextValue {
   config: LlmConfig | null;
-  setConfig: (config: LlmConfig) => Promise<void>;
+  /** Where the active `config` currently lives. For guests this is always
+   *  "browser" (the guest blob IS the browser); meaningless to switch. */
+  scope: LlmConfigScope;
+  /**
+   * Saves `config` in the given scope. Registered users moving from one
+   * scope to the other have the key moved immediately: "account" persists
+   * via the store seam and clears the browser key, "browser" writes the
+   * browser key and clears the DB row (`saveLlmConfig(null)`). Guests always
+   * persist via the store seam regardless of `scope` (there is no choice to
+   * make), so callers with no scope control (Guest Mode's settings form) can
+   * omit it.
+   */
+  setConfig: (config: LlmConfig, scope?: LlmConfigScope) => Promise<void>;
+  /** Clears both the account row and the browser key. */
   clearConfig: () => Promise<void>;
   /** True once a valid config (provider + model + non-empty key) is stored. */
   configured: boolean;
@@ -74,52 +70,53 @@ interface LlmConfigContextValue {
 const LlmConfigContext = createContext<LlmConfigContextValue | null>(null);
 
 export function LlmConfigProvider({ children }: { children: ReactNode }) {
+  const { mode, user } = useAuth();
   const {
     data,
-    loading,
     saveLlmConfig: storeSaveLlmConfig,
   } = usePortfolio();
-  const config = data.llmConfig;
+  const accountConfig = data.llmConfig;
 
-  // Guards the one-time legacy-key import against concurrent re-entry (e.g.
-  // React StrictMode's double effect invocation in dev) — same pattern as
-  // TagsProvider's `migrating` ref.
-  const migrating = useRef(false);
+  const [browserConfig, setBrowserConfigState] = useState<LlmConfig | null>(null);
 
   useEffect(() => {
-    if (loading || migrating.current) return;
-    if (config !== null) return; // store already has a config — nothing to migrate
-    migrating.current = true;
-    void Promise.resolve()
-      .then(async () => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return;
-          const legacy = parseLegacyConfig(raw);
-          if (!legacy) return;
-          await storeSaveLlmConfig(legacy);
-          // Keep the payload as a backup but stop it from ever replaying again.
-          localStorage.setItem(STORAGE_KEY_IMPORTED, raw);
-          localStorage.removeItem(STORAGE_KEY);
-        } catch (err) {
-          console.error("Failed to migrate legacy localStorage LLM config", err);
-        }
-      })
-      .finally(() => {
-        migrating.current = false;
-      });
-  }, [loading, config, storeSaveLlmConfig]);
+    void Promise.resolve().then(() => {
+      setBrowserConfigState(loadBrowserLlmConfig());
+    });
+  }, [user?.id]);
+
+  const { config, scope } = resolveActiveLlmConfig({ mode, accountConfig, browserConfig });
 
   const setConfig = useCallback(
-    (next: LlmConfig) => storeSaveLlmConfig(next),
-    [storeSaveLlmConfig],
+    async (next: LlmConfig, nextScope?: LlmConfigScope) => {
+      if (mode === "guest") {
+        // Guests have nowhere else to put it - the guest blob is the
+        // browser. Ignore the scope argument entirely.
+        await storeSaveLlmConfig(next);
+        return;
+      }
+      if (nextScope === "browser") {
+        saveBrowserLlmConfig(next);
+        setBrowserConfigState(next);
+        await storeSaveLlmConfig(null);
+      } else {
+        await storeSaveLlmConfig(next);
+        clearBrowserLlmConfig();
+        setBrowserConfigState(null);
+      }
+    },
+    [mode, storeSaveLlmConfig],
   );
 
-  const clearConfig = useCallback(() => storeSaveLlmConfig(null), [storeSaveLlmConfig]);
+  const clearConfig = useCallback(async () => {
+    clearBrowserLlmConfig();
+    setBrowserConfigState(null);
+    await storeSaveLlmConfig(null);
+  }, [storeSaveLlmConfig]);
 
   const value = useMemo<LlmConfigContextValue>(
-    () => ({ config, setConfig, clearConfig, configured: config !== null }),
-    [config, setConfig, clearConfig],
+    () => ({ config, scope, setConfig, clearConfig, configured: config !== null }),
+    [config, scope, setConfig, clearConfig],
   );
 
   return <LlmConfigContext.Provider value={value}>{children}</LlmConfigContext.Provider>;
