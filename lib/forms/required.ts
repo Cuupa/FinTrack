@@ -14,11 +14,15 @@ import { useCallback, useState } from "react";
  * Tracks whether the user has started interacting with a form (any required
  * field changed or blurred). Gates the "missing field" highlight so a freshly
  * opened form doesn't show amber borders before the user has done anything.
+ * `reset` clears it back to untouched — for forms that stay mounted and clear
+ * their own fields after a successful submit (rather than unmounting), so the
+ * freshly-emptied fields don't immediately re-trigger the amber highlight.
  */
 export function useFormTouched() {
   const [touched, setTouched] = useState(false);
   const touch = useCallback(() => setTouched(true), []);
-  return { touched, touch };
+  const reset = useCallback(() => setTouched(false), []);
+  return { touched, touch, reset };
 }
 
 /**

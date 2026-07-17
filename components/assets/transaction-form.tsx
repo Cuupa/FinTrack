@@ -93,7 +93,7 @@ export function TransactionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.id]);
 
-  const { touched, touch } = useFormTouched();
+  const { touched, touch, reset } = useFormTouched();
   // Presence-only gating for the submit button — mirrors handleSubmit's checks.
   const quantityMissing = !quantity.trim();
   const priceMissing = !isCash && !price.trim();
@@ -156,6 +156,7 @@ export function TransactionForm({
       setQuantity("");
       setFeeManual(null);
       setTax("0");
+      reset();
       onDone?.();
     } catch (err) {
       setError(
