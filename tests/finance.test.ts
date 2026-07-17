@@ -649,4 +649,24 @@ describe("monte carlo withdrawal phase", () => {
     expect(res.bands[5].median).toBeCloseTo(100000, 0);
     expect(res.bands[15].median).toBe(0); // 10y * 12k > 100k → depleted
   });
+
+  it("plateaus the contributed line at withdrawal start, never declining", async () => {
+    const { runMonteCarlo } = await import("../lib/finance/monte-carlo");
+    const res = runMonteCarlo({
+      initialCapital: 100000,
+      monthlyContribution: 500,
+      years: 5,
+      expectedReturn: 0,
+      volatility: 0,
+      runs: 50,
+      seed: 42,
+      withdrawalYears: 10,
+      monthlyWithdrawal: 1000,
+    });
+    const atStart = res.bands[5].contributed;
+    for (let y = 5; y <= 15; y++) {
+      expect(res.bands[y].contributed).toBe(atStart);
+    }
+    expect(atStart).toBeCloseTo(100000 + 500 * 12 * 5, 0);
+  });
 });

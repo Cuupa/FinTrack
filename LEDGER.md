@@ -43,12 +43,12 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 - [x] Migration 0062_asset_tags.sql + schema.sql, idempotent, RLS owner-only, FK cascades + indexes
 - [x] One-time legacy fintrack-tags import (guarded: store empty + key present; key renamed to fintrack-tags-imported as backup)
 - [x] /datenschutz EN+DE updated (guest = local blob, registered = DB), dates bumped; CLAUDE.md tags section rewritten
-### T5 Monte Carlo
-- [ ] Layout decluttered; accumulation vs withdrawal phases clearly distinguished
-- [ ] Rebalancing option explained in context (what/where to)
-- [ ] "Eingezahlt" line stops hard at withdrawal start (no decline after contributions end)
-- [ ] Chart/bands must not hard-stop when a percentile hits 0
-- [ ] X-axis ticks at sensible regular intervals (no 15y guess-gaps)
+### T5 Monte Carlo (Opus root-cause pass + Sonnet impl)
+- [x] MODELL section collapses to one weighted summary line by default (per-asset µ/σ list + overrides + corr note behind a Details toggle); withdrawal phase shaded in the chart via ReferenceArea
+- [x] Rebalancing InfoTip: annual reset to the target weights = the Modell-list percentages (portfolio mode only) — en/de/es
+- [x] Eingezahlt line plateaus at withdrawal start (reduceRuns no longer subtracts withdrawals; test asserts constant contributed past accYears)
+- [x] Bands/median render to horizon end on log scale (0s floored in plotted geometry only; tooltip reads unfloored raw fields, YAxis domain from logFloor)
+- [x] Regular x-axis year ticks incl. horizon end via yearTicks() (step from [1,2,5,10,20], ≤8 intervals; unit-tested)
 
 ## Implicit expectations & constraints
 - [ ] No badges of any kind (hard rule)

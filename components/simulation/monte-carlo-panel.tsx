@@ -549,6 +549,7 @@ export function MonteCarloPanel() {
                     className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
                   />
                   <span>{t("sim.rebalanceYearly")}</span>
+                  <InfoTip text={t("sim.rebalanceYearlyTip")} />
                 </label>
               )}
 
@@ -718,7 +719,24 @@ function PortfolioModelNote({
       };
 
   const [adv, setAdv] = useState(false);
+  const [showAssets, setShowAssets] = useState(false);
   const hasOverrides = Object.values(overrides).some((o) => o.mean != null || o.vol != null);
+
+  // Weight-weighted summary of the effective (override-aware) per-asset
+  // figures, shown as a single line while the per-asset list is collapsed.
+  const totalWeight = model.assets.reduce((s, a) => s + a.weight, 0) || 1;
+  const weightedMean =
+    model.assets.reduce((s, a) => {
+      const o = overrides[a.name];
+      const effMean = o?.mean != null ? o.mean / 100 : a.mean;
+      return s + effMean * a.weight;
+    }, 0) / totalWeight;
+  const weightedVol =
+    model.assets.reduce((s, a) => {
+      const o = overrides[a.name];
+      const effVol = o?.vol != null ? o.vol / 100 : a.vol;
+      return s + effVol * a.weight;
+    }, 0) / totalWeight;
 
   return (
     <div className={`rounded-xl border p-3.5 text-xs ${theme.box}`}>
@@ -739,86 +757,106 @@ function PortfolioModelNote({
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">{t("sim.blendedNote")}</p>
       ) : null}
 
-      {editable && (
-        <div className="mt-2 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setAdv((v) => !v)}
-            className="text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
-          >
-            {adv ? t("sim.hideOverrides") : t("sim.overridePerAsset")}
-          </button>
-          {hasOverrides && (
-            <button
-              type="button"
-              onClick={onResetOverrides}
-              className="text-[11px] font-medium text-zinc-500 hover:underline"
-            >
-              {t("sim.resetOverrides")}
-            </button>
+      {showAssets ? (
+        <>
+          {editable && (
+            <div className="mt-2 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setAdv((v) => !v)}
+                className="text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
+              >
+                {adv ? t("sim.hideOverrides") : t("sim.overridePerAsset")}
+              </button>
+              {hasOverrides && (
+                <button
+                  type="button"
+                  onClick={onResetOverrides}
+                  className="text-[11px] font-medium text-zinc-500 hover:underline"
+                >
+                  {t("sim.resetOverrides")}
+                </button>
+              )}
+            </div>
           )}
-        </div>
+
+          <ul className="mt-3 space-y-2.5">
+            {model.assets.map((a) => {
+              const o = overrides[a.name];
+              const effMean = o?.mean != null ? o.mean / 100 : a.mean;
+              const effVol = o?.vol != null ? o.vol / 100 : a.vol;
+              const overridden = o?.mean != null || o?.vol != null;
+              return (
+                <li key={a.name}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate font-medium text-zinc-700 dark:text-zinc-200">
+                      {a.name}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-zinc-700 dark:text-zinc-200">
+                      {formatPercent(effMean)}{" "}
+                      <span className="text-zinc-400">/ σ {pct(effVol)}</span>
+                      {overridden && <span className="ml-1 text-indigo-500">•</span>}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
+                      <div
+                        className={`h-full rounded-full ${theme.bar}`}
+                        style={{ width: `${Math.min(100, a.weight * 100)}%` }}
+                      />
+                    </div>
+                    <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
+                      {pct(a.weight, 0)}
+                    </span>
+                  </div>
+                  {adv ? (
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
+                      <OverrideInput
+                        label={t("sim.returnPercent")}
+                        value={o?.mean ?? round1(a.mean * 100)}
+                        onChange={(v) => onOverride(a.name, { mean: v })}
+                      />
+                      <OverrideInput
+                        label={t("sim.volPercent")}
+                        value={o?.vol ?? round1(a.vol * 100)}
+                        onChange={(v) => onOverride(a.name, { vol: v })}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-0.5 text-[11px] text-zinc-500">
+                      {!a.real
+                        ? t("sim.longRunAssumption")
+                        : a.estimated
+                          ? t("sim.yrHistoryBlended", { years: a.years.toFixed(1) })
+                          : t("sim.yrHistory", { years: a.years.toFixed(1) })}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="mt-3 border-t border-current/10 pt-2 text-zinc-500">
+            {t("sim.corrNote", { years: model.corrYears.toFixed(1) })}
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          {t("sim.modelSummary", {
+            count: String(model.assets.length),
+            ret: formatPercent(weightedMean),
+            vol: pct(weightedVol),
+          })}
+        </p>
       )}
 
-      <ul className="mt-3 space-y-2.5">
-        {model.assets.map((a) => {
-          const o = overrides[a.name];
-          const effMean = o?.mean != null ? o.mean / 100 : a.mean;
-          const effVol = o?.vol != null ? o.vol / 100 : a.vol;
-          const overridden = o?.mean != null || o?.vol != null;
-          return (
-            <li key={a.name}>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="truncate font-medium text-zinc-700 dark:text-zinc-200">
-                  {a.name}
-                </span>
-                <span className="shrink-0 tabular-nums text-zinc-700 dark:text-zinc-200">
-                  {formatPercent(effMean)}{" "}
-                  <span className="text-zinc-400">/ σ {pct(effVol)}</span>
-                  {overridden && <span className="ml-1 text-indigo-500">•</span>}
-                </span>
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
-                  <div
-                    className={`h-full rounded-full ${theme.bar}`}
-                    style={{ width: `${Math.min(100, a.weight * 100)}%` }}
-                  />
-                </div>
-                <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
-                  {pct(a.weight, 0)}
-                </span>
-              </div>
-              {adv ? (
-                <div className="mt-1.5 grid grid-cols-2 gap-2">
-                  <OverrideInput
-                    label={t("sim.returnPercent")}
-                    value={o?.mean ?? round1(a.mean * 100)}
-                    onChange={(v) => onOverride(a.name, { mean: v })}
-                  />
-                  <OverrideInput
-                    label={t("sim.volPercent")}
-                    value={o?.vol ?? round1(a.vol * 100)}
-                    onChange={(v) => onOverride(a.name, { vol: v })}
-                  />
-                </div>
-              ) : (
-                <div className="mt-0.5 text-[11px] text-zinc-500">
-                  {!a.real
-                    ? t("sim.longRunAssumption")
-                    : a.estimated
-                      ? t("sim.yrHistoryBlended", { years: a.years.toFixed(1) })
-                      : t("sim.yrHistory", { years: a.years.toFixed(1) })}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      <p className="mt-3 border-t border-current/10 pt-2 text-zinc-500">
-        {t("sim.corrNote", { years: model.corrYears.toFixed(1) })}
-      </p>
+      <button
+        type="button"
+        onClick={() => setShowAssets((v) => !v)}
+        className="mt-2 text-[11px] font-medium text-indigo-700 hover:underline dark:text-indigo-300"
+      >
+        {showAssets ? t("sim.hideModelDetails") : t("sim.showModelDetails")}
+      </button>
     </div>
   );
 }

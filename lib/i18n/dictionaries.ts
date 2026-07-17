@@ -868,6 +868,8 @@ export const en = {
   "sim.safeRateHint":
     "The safe rate draws only the expected growth, so the invested capital isn't consumed (in expectation).",
   "sim.rebalanceYearly": "Rebalance to target weights yearly",
+  "sim.rebalanceYearlyTip":
+    "Resets every position to its target weight once a year. The target weights are the percentages from the model list. Positions that did well get partially sold, positions that did poorly get topped up. Without rebalancing the weights drift apart as the market moves.",
   "sim.expectedReturn": "Expected annual return",
   "sim.volatility": "Volatility (std. dev.)",
   "sim.runs": "Simulation runs",
@@ -928,6 +930,9 @@ export const en = {
   "sim.yrHistoryBlended": "{years} yr history · blended to long-run",
   "sim.corrNote":
     "Each holding is simulated with its own volatility; correlations come from the {years} yr the holdings overlap.",
+  "sim.modelSummary": "{count} positions, weighted {ret} expected return at {vol} volatility p.a.",
+  "sim.showModelDetails": "Show per-asset details",
+  "sim.hideModelDetails": "Hide per-asset details",
   "sim.customAssumptions": "Custom assumptions",
   "sim.resetToDefaults": "Reset to {ret}% / {vol}%",
   "sim.customAssumptionsNote":
@@ -1989,6 +1994,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.safeRateHint":
     "Die sichere Rate entnimmt nur das erwartete Wachstum, sodass das investierte Kapital (im Erwartungswert) nicht verbraucht wird.",
   "sim.rebalanceYearly": "Jährlich auf Zielgewichte umschichten",
+  "sim.rebalanceYearlyTip":
+    "Setzt einmal im Jahr jede Position auf ihr Zielgewicht zurück. Die Zielgewichte sind die Prozentanteile aus der Modell-Liste. Gut gelaufene Positionen werden anteilig verkauft, schlecht gelaufene nachgekauft. Ohne Umschichten laufen die Gewichte mit der Marktentwicklung auseinander.",
   "sim.expectedReturn": "Erwartete Jahresrendite",
   "sim.volatility": "Volatilität (Std.-Abw.)",
   "sim.runs": "Simulationsläufe",
@@ -2049,6 +2056,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.yrHistoryBlended": "{years} Jahr Historie · an Langfrist angenähert",
   "sim.corrNote":
     "Jede Anlage wird mit ihrer eigenen Volatilität simuliert; die Korrelationen stammen aus den {years} Jahren, in denen sich die Bestände überschneiden.",
+  "sim.modelSummary": "{count} Positionen, gewichtete erwartete Rendite {ret} bei {vol} Volatilität p.a.",
+  "sim.showModelDetails": "Details pro Anlage anzeigen",
+  "sim.hideModelDetails": "Details pro Anlage ausblenden",
   "sim.customAssumptions": "Eigene Annahmen",
   "sim.resetToDefaults": "Auf {ret} % / {vol} % zurücksetzen",
   "sim.customAssumptionsNote":
@@ -3108,6 +3118,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.safeRateHint":
     "La tasa segura solo retira el crecimiento esperado, de modo que el capital invertido no se consume (en valor esperado).",
   "sim.rebalanceYearly": "Reequilibrar a los pesos objetivo cada año",
+  "sim.rebalanceYearlyTip":
+    "Restablece cada posición a su peso objetivo una vez al año. Los pesos objetivo son los porcentajes de la lista del modelo. Las posiciones que fueron bien se venden parcialmente, las que fueron mal se compran más. Sin reequilibrio, los pesos se van separando con la evolución del mercado.",
   "sim.expectedReturn": "Rentabilidad anual esperada",
   "sim.volatility": "Volatilidad (desv. típica)",
   "sim.runs": "Ejecuciones de simulación",
@@ -3168,6 +3180,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.yrHistoryBlended": "{years} año de historial · ajustado a largo plazo",
   "sim.corrNote":
     "Cada posición se simula con su propia volatilidad; las correlaciones proceden de los {years} años en los que las posiciones se superponen.",
+  "sim.modelSummary": "{count} posiciones, rentabilidad esperada ponderada del {ret} con una volatilidad del {vol} anual.",
+  "sim.showModelDetails": "Mostrar detalles por activo",
+  "sim.hideModelDetails": "Ocultar detalles por activo",
   "sim.customAssumptions": "Suposiciones personalizadas",
   "sim.resetToDefaults": "Restablecer a {ret}% / {vol}%",
   "sim.customAssumptionsNote":

@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -21,6 +22,22 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 import type { ChartMode, ChartScale } from "./performance-chart";
 import { axisCurrencyFormatter, yAxisWidth } from "./axis";
+
+/**
+ * Regular x-axis year ticks: 0, step, 2*step, … up to `maxYear`, using the
+ * smallest step from [1, 2, 5, 10, 20] that keeps `maxYear / step <= 8`
+ * ticks. `maxYear` itself is always the last tick, appended even if the
+ * regular stepping doesn't land exactly on it.
+ */
+export function yearTicks(maxYear: number): number[] {
+  if (maxYear <= 0) return [0];
+  const steps = [1, 2, 5, 10, 20];
+  const step = steps.find((s) => maxYear / s <= 8) ?? steps[steps.length - 1];
+  const ticks: number[] = [];
+  for (let y = 0; y <= maxYear; y += step) ticks.push(y);
+  if (ticks[ticks.length - 1] !== maxYear) ticks.push(maxYear);
+  return ticks;
+}
 
 export function DistributionChart({
   result,
@@ -52,7 +69,9 @@ export function DistributionChart({
   // Percent mode expresses each band as growth over what was contributed by
   // that year, so the contributed line is a flat 0% baseline.
   const pct = (v: number, c: number) => (c > 0 ? v / c - 1 : 0);
-  const data = result.bands.map((b) =>
+  // Log scale is only meaningful for positive absolute values (currency mode).
+  const useLog = scale === "log" && mode === "currency";
+  const rawData = result.bands.map((b) =>
     mode === "percent"
       ? {
           year: b.year,
@@ -75,9 +94,7 @@ export function DistributionChart({
   const fmtVal = (n: number) =>
     mode === "percent" ? formatPercent(n) : formatCurrency(n, currency);
 
-  // Log scale is only meaningful for positive absolute values (currency mode).
-  const useLog = scale === "log" && mode === "currency";
-  const allValues = data.flatMap((d) => [
+  const allValues = rawData.flatMap((d) => [
     d.median,
     d.contributed,
     ...d.rangeFull,
@@ -87,6 +104,28 @@ export function DistributionChart({
   const positives = allValues.filter((v) => v > 0);
   const logLo = positives.length ? Math.min(...positives) : 1;
   const logHi = positives.length ? Math.max(...positives) : 1;
+  // Depleted runs are real 0s in the sample. On a log axis, log(0) is
+  // undefined and Recharts silently breaks the Area/Line segment there — a
+  // purely visual gap, not a data problem. Floor the *plotted* geometry to a
+  // value far below the smallest real positive so the series still reaches
+  // the horizon; the tooltip reads the unfloored raw fields below so it still
+  // shows the true 0.
+  const logFloor = positives.length ? Math.max(1, logLo / 1000) : 1;
+  const floor = (v: number) => Math.max(v, logFloor);
+  const floorRange = (r: [number, number]): [number, number] => [floor(r[0]), floor(r[1])];
+  const data = rawData.map((d) => ({
+    ...d,
+    rangeFull: useLog ? floorRange(d.rangeFull) : d.rangeFull,
+    range80: useLog ? floorRange(d.range80) : d.range80,
+    range50: useLog ? floorRange(d.range50) : d.range50,
+    median: useLog ? floor(d.median) : d.median,
+    // Unfloored values for the tooltip — it must keep showing true 0s.
+    rangeFullRaw: d.rangeFull,
+    range80Raw: d.range80,
+    range50Raw: d.range50,
+    medianRaw: d.median,
+  }));
+  const maxYear = data.length ? data[data.length - 1].year : 0;
 
   // Approximate axis extremes — feeds both the currency formatter's
   // compact/precise decision and the snug axis width below. Not the exact
@@ -108,15 +147,27 @@ export function DistributionChart({
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
+        {phaseBoundaryYear != null && (
+          <ReferenceArea
+            x1={phaseBoundaryYear}
+            x2={maxYear}
+            fill="currentColor"
+            className="text-zinc-500"
+            fillOpacity={0.05}
+            stroke="none"
+          />
+        )}
         <XAxis
           dataKey="year"
           type="number"
           // Pin the axis to the real [0, last-year] range with no side padding so
           // year 0 sits flush at the left edge (a category axis leaves a gap that
           // looked like empty space before the curve, most visibly on log scale).
-          domain={[0, data.length ? data[data.length - 1].year : 0]}
+          domain={[0, maxYear]}
           allowDecimals={false}
           padding={{ left: 0, right: 0 }}
+          ticks={yearTicks(maxYear)}
+          interval={0}
           tickFormatter={(y) => `${y}y`}
           tick={{ fontSize: 12 }}
           stroke="currentColor"
@@ -124,7 +175,7 @@ export function DistributionChart({
         />
         <YAxis
           scale={useLog ? "log" : "linear"}
-          domain={useLog ? [logLo, logHi] : ["auto", "auto"]}
+          domain={useLog ? [logFloor, logHi] : ["auto", "auto"]}
           allowDataOverflow={useLog}
           tickFormatter={formatYTick}
           width={yWidth}
@@ -207,11 +258,15 @@ export function DistributionChart({
 
 interface BandRow {
   year: number;
-  median: number;
   contributed: number;
-  range50: [number, number];
-  range80: [number, number];
-  rangeFull: [number, number];
+  // True (unfloored) values — the plotted `median`/`range50`/`range80`/
+  // `rangeFull` fields may be floored for the log-scale axis (see `data`
+  // above), but the tooltip must always show the real numbers, including
+  // real 0s from depleted runs.
+  medianRaw: number;
+  range50Raw: [number, number];
+  range80Raw: [number, number];
+  rangeFullRaw: [number, number];
 }
 
 function ChartTooltip({
@@ -233,10 +288,10 @@ function ChartTooltip({
       <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">
         {t("sim.year")} {d.year}
       </div>
-      <Line2 color="#4f46e5" label={t("sim.medianLine")} value={fmtVal(d.median)} strong />
-      <Line2 color="#6366f1" label={t("sim.band50")} value={range(d.range50)} />
-      <Line2 color="#6366f1" label={t("sim.band80")} value={range(d.range80)} opacity={0.7} />
-      <Line2 color="#6366f1" label={t("sim.bandFull")} value={range(d.rangeFull)} opacity={0.45} />
+      <Line2 color="#4f46e5" label={t("sim.medianLine")} value={fmtVal(d.medianRaw)} strong />
+      <Line2 color="#6366f1" label={t("sim.band50")} value={range(d.range50Raw)} />
+      <Line2 color="#6366f1" label={t("sim.band80")} value={range(d.range80Raw)} opacity={0.7} />
+      <Line2 color="#6366f1" label={t("sim.bandFull")} value={range(d.rangeFullRaw)} opacity={0.45} />
       <Line2 color="#64748b" label={t("sim.contributedLine")} value={fmtVal(d.contributed)} dashed />
     </div>
   );

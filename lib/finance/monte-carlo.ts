@@ -151,24 +151,15 @@ function reduceRuns(
   withdrawals: number[] = [],
 ): MonteCarloResult {
   const accYears = params.years;
-  // Annual withdrawal reference line: either the flat amount, or (rate mode) the
-  // median of the per-run withdrawal amounts.
+  // Median per-run withdrawal amount (rate mode), used by the withdrawal
+  // summary below.
   const sortedW = [...withdrawals].sort((a, b) => a - b);
-  const annualWithdrawalRef =
-    sortedW.length > 0
-      ? percentile(sortedW, 50)
-      : Math.max(0, params.monthlyWithdrawal ?? 0) * 12;
   const bands: YearBand[] = yearValues.map((vals, year) => {
     const sorted = [...vals].sort((a, b) => a - b);
     const mean = sorted.reduce((s, x) => s + x, 0) / (sorted.length || 1);
-    // Net contributed: paid-in during accumulation, drawn-down thereafter.
-    // Never below 0 — you can't have withdrawn more than was ever there.
-    const contributed = Math.max(
-      0,
-      initialCapital +
-        monthlyContribution * 12 * Math.min(year, accYears) -
-        annualWithdrawalRef * Math.max(0, year - accYears),
-    );
+    // Total paid in: grows during accumulation, then plateaus — withdrawals
+    // draw down the portfolio's value, not what was ever contributed.
+    const contributed = initialCapital + monthlyContribution * 12 * Math.min(year, accYears);
     return {
       year,
       worst: sorted[0] ?? 0,
