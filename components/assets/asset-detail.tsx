@@ -768,7 +768,7 @@ function txTypeLabel(t: (key: MessageKey) => string, type: TransactionType, isCa
   }
 }
 
-type TxSortKey = "date" | "type" | "quantity" | "price" | "fee" | "tax" | "total";
+type TxSortKey = "date" | "type" | "portfolio" | "quantity" | "price" | "fee" | "tax" | "total";
 
 function TxTh({
   label,
@@ -798,12 +798,19 @@ function TxTh({
   );
 }
 
-function txCompare(a: Transaction, b: Transaction, key: TxSortKey): number {
+function txCompare(
+  a: Transaction,
+  b: Transaction,
+  key: TxSortKey,
+  portfolioName: (id: string) => string,
+): number {
   switch (key) {
     case "date":
       return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
     case "type":
       return a.type.localeCompare(b.type);
+    case "portfolio":
+      return portfolioName(a.portfolioId).localeCompare(portfolioName(b.portfolioId));
     case "quantity":
       return a.quantity - b.quantity;
     case "price":
@@ -840,9 +847,14 @@ function TransactionsTable({
   });
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const portfolioNameById = useMemo(() => {
+    const map = new Map(portfolios.map((p) => [p.id, p.name]));
+    return (id: string) => map.get(id) ?? "";
+  }, [portfolios]);
+
   const rows = useMemo(
-    () => [...txs].sort((a, b) => txCompare(a, b, sort.key) * sort.dir),
-    [txs, sort],
+    () => [...txs].sort((a, b) => txCompare(a, b, sort.key, portfolioNameById) * sort.dir),
+    [txs, sort, portfolioNameById],
   );
 
   function toggle(key: TxSortKey) {
@@ -862,6 +874,9 @@ function TransactionsTable({
           <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
             <TxTh label={tr("tx.date")} k="date" sort={sort} onSort={toggle} />
             <TxTh label={tr("tx.type")} k="type" sort={sort} onSort={toggle} />
+            {multiPortfolio && (
+              <TxTh label={tr("tx.portfolio")} k="portfolio" sort={sort} onSort={toggle} />
+            )}
             <TxTh label={tr("tx.qty")} k="quantity" align="right" sort={sort} onSort={toggle} />
             <TxTh label={tr("tx.price")} k="price" align="right" sort={sort} onSort={toggle} />
             <TxTh label={tr("tx.fee")} k="fee" align="right" sort={sort} onSort={toggle} />
@@ -890,7 +905,7 @@ function TransactionsTable({
             ) : (
               <tr
                 key={t.id}
-                className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+                className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
               >
                 <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(t.date)}</td>
                 <td className="py-2 pr-3">
@@ -908,6 +923,13 @@ function TransactionsTable({
                     {isCash ? txTypeLabel(tr, t.type, true) : t.type}
                   </span>
                 </td>
+                {multiPortfolio && (
+                  <td className="py-2 pr-3 text-zinc-500">
+                    {portfolioNameById(t.portfolioId) || (
+                      <span className="text-zinc-400">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
                   {formatNumber(t.quantity, 4)}
                 </td>
@@ -1004,74 +1026,66 @@ function TransactionEditRow({
   };
 
   return (
-    <>
-      <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
-        <td className="py-1.5 pr-2">
-          <input
-            type="datetime-local"
-            value={date}
-            max={nowDateTimeLocal()}
-            onChange={(e) => setDate(e.target.value)}
-            className={cell}
-          />
-        </td>
+    <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
+      <td className="py-1.5 pr-2">
+        <input
+          type="datetime-local"
+          value={date}
+          max={nowDateTimeLocal()}
+          onChange={(e) => setDate(e.target.value)}
+          className={cell}
+        />
+      </td>
+      <td className="py-1.5 pr-2">
+        <SelectMenu
+          value={type}
+          onChange={(v) => setType(v as TransactionType)}
+          className={cell}
+          ariaLabel={tr("tx.type")}
+          options={[
+            { value: "BUY", label: isCash ? txTypeLabel(tr, "BUY", true) : "BUY" },
+            { value: "SELL", label: isCash ? txTypeLabel(tr, "SELL", true) : "SELL" },
+            isCash
+              ? { value: "INTEREST", label: txTypeLabel(tr, "INTEREST", true) }
+              : { value: "BOOKING", label: "BOOKING" },
+          ]}
+        />
+      </td>
+      {multiPortfolio && (
         <td className="py-1.5 pr-2">
           <SelectMenu
-            value={type}
-            onChange={(v) => setType(v as TransactionType)}
+            value={portfolioId}
+            onChange={setPortfolioId}
             className={cell}
-            ariaLabel={tr("tx.type")}
-            options={[
-              { value: "BUY", label: isCash ? txTypeLabel(tr, "BUY", true) : "BUY" },
-              { value: "SELL", label: isCash ? txTypeLabel(tr, "SELL", true) : "SELL" },
-              isCash
-                ? { value: "INTEREST", label: txTypeLabel(tr, "INTEREST", true) }
-                : { value: "BOOKING", label: "BOOKING" },
-            ]}
+            ariaLabel={tr("tx.portfolio")}
+            options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
           />
         </td>
-        <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-        </td>
-        <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={price} onChange={(e) => setPrice(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-        </td>
-        <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={fee} onChange={(e) => setFee(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-        </td>
-        {!isCash && (
-          <td className="py-1.5 pr-2">
-            <input inputMode="decimal" value={tax} onChange={(e) => setTax(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-          </td>
-        )}
-        <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
-        <td className="py-1.5 text-right whitespace-nowrap">
-          <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label={tr("tx.save")} title={tr("tx.save")}>
-            ✓
-          </button>
-          <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label={tr("tx.cancel")} title={tr("tx.cancel")}>
-            ✕
-          </button>
-        </td>
-      </tr>
-      {/* The portfolio is only surfaced (and editable) while editing. */}
-      {multiPortfolio && (
-        <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
-          <td colSpan={isCash ? 7 : 8} className="px-2 pb-2">
-            <label className="flex items-center gap-2 text-xs text-zinc-500">
-              <span className="shrink-0">{tr("tx.portfolio")}</span>
-              <SelectMenu
-                value={portfolioId}
-                onChange={setPortfolioId}
-                className={`${cell} max-w-xs`}
-                ariaLabel={tr("tx.portfolio")}
-                options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
-              />
-            </label>
-          </td>
-        </tr>
       )}
-    </>
+      <td className="py-1.5 pr-2">
+        <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+      </td>
+      <td className="py-1.5 pr-2">
+        <input inputMode="decimal" value={price} onChange={(e) => setPrice(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+      </td>
+      <td className="py-1.5 pr-2">
+        <input inputMode="decimal" value={fee} onChange={(e) => setFee(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+      </td>
+      {!isCash && (
+        <td className="py-1.5 pr-2">
+          <input inputMode="decimal" value={tax} onChange={(e) => setTax(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+        </td>
+      )}
+      <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
+      <td className="py-1.5 text-right whitespace-nowrap">
+        <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label={tr("tx.save")} title={tr("tx.save")}>
+          ✓
+        </button>
+        <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label={tr("tx.cancel")} title={tr("tx.cancel")}>
+          ✕
+        </button>
+      </td>
+    </tr>
   );
 }
 
