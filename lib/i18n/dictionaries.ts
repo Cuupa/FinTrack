@@ -171,7 +171,7 @@ export const en = {
   "settings.fees.savingsPlan": "Savings-plan fee",
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
-    "Leave empty if you haven't registered one at this broker. Splits your Sparerpauschbetrag across brokers on the Tax tab.",
+    "Leave empty if you haven't registered one at this broker. The tax report in the analysis shields each broker's gains with the amount entered here.",
   "settings.fees.saveError": "Could not save.",
 
   // Guided tour (onboarding/guided-tour.tsx)
@@ -1283,7 +1283,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.fees.savingsPlan": "Sparplan-Gebühr",
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
-    "Leer lassen, wenn du bei diesem Broker keinen registriert hast. Teilt deinen Sparerpauschbetrag im Steuern-Tab auf deine Broker auf.",
+    "Leer lassen, wenn du bei diesem Broker keinen Freistellungsauftrag erteilt hast. Der Steuer-Report in der Analyse rechnet je Broker mit dem hier eingetragenen Betrag.",
   "settings.fees.saveError": "Konnte nicht gespeichert werden.",
 
   // Guided tour (onboarding/guided-tour.tsx)
@@ -2395,7 +2395,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.fees.savingsPlan": "Comisión del plan de inversión",
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
-    "Déjalo vacío si no tienes uno registrado en este bróker. Reparte tu Sparerpauschbetrag entre brókers en la pestaña Impuestos.",
+    "Déjalo vacío si no tienes uno registrado en este bróker. El informe fiscal del análisis calcula por bróker con el importe indicado aquí.",
   "settings.fees.saveError": "No se ha podido guardar.",
 
   // Guided tour (onboarding/guided-tour.tsx)
