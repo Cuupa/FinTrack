@@ -256,9 +256,9 @@ export const en = {
   "tour.assetTags.analysis.title": "Where they pay off",
   "tour.assetTags.analysis.body":
     "Switch Analysis to the Custom breakdown and pick a group to see your portfolio sliced by your own tags.",
-  "tour.assetTags.local.title": "Stored on this device",
+  "tour.assetTags.local.title": "Saved with your data",
   "tour.assetTags.local.body":
-    "Tags are saved locally in this browser only, not synced to your account. Clearing your browser data removes them.",
+    "As a guest, tags stay in this browser. Signed in, they are saved to your account like the rest of your portfolio and follow you across devices.",
 
   // Login / register page
   "login.signIn": "Sign in",
@@ -1383,9 +1383,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.assetTags.analysis.title": "Wo sie sich auszahlen",
   "tour.assetTags.analysis.body":
     "Wechsle in der Analyse zur Aufschlüsselung Benutzerdefiniert und wähle eine Gruppe, um dein Portfolio nach deinen eigenen Tags aufgeteilt zu sehen.",
-  "tour.assetTags.local.title": "Nur auf diesem Gerät gespeichert",
+  "tour.assetTags.local.title": "Mit deinen Daten gespeichert",
   "tour.assetTags.local.body":
-    "Tags werden nur lokal in diesem Browser gespeichert, nicht mit deinem Konto synchronisiert. Beim Löschen deiner Browserdaten gehen sie verloren.",
+    "Als Gast bleiben Tags in diesem Browser. Angemeldet werden sie wie dein restliches Portfolio in deinem Konto gespeichert und sind auf allen Geräten verfügbar.",
 
   // Login / register page
   "login.signIn": "Anmelden",
@@ -2507,9 +2507,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.assetTags.analysis.title": "Dónde dan sus frutos",
   "tour.assetTags.analysis.body":
     "Cambia Análisis al desglose Personalizado y elige un grupo para ver tu cartera repartida según tus propias etiquetas.",
-  "tour.assetTags.local.title": "Guardadas solo en este dispositivo",
+  "tour.assetTags.local.title": "Guardadas con tus datos",
   "tour.assetTags.local.body":
-    "Las etiquetas se guardan solo localmente en este navegador, no se sincronizan con tu cuenta. Si borras los datos del navegador, se pierden.",
+    "Como invitado, las etiquetas se quedan en este navegador. Con sesión iniciada se guardan en tu cuenta como el resto de tu cartera y te siguen en todos tus dispositivos.",
 
   // Login / register page
   "login.signIn": "Iniciar sesión",
