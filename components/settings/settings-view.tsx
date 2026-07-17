@@ -698,6 +698,7 @@ function AiAssistantSection() {
   return (
     <section className="py-5 first:pt-0 last:pb-0">
       <h2 className="text-base font-semibold">{t("settings.ai.title")}</h2>
+      <p className="mt-1 text-sm text-zinc-500">{t("settings.ai.intro")}</p>
       <div className="mt-4 space-y-4">
         <Field label={t("settings.ai.provider")}>
           <SelectMenu

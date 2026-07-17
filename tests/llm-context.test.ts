@@ -104,6 +104,7 @@ function baseInput(): PortfolioContextInput {
     dividendYields: { [vwceAsset.isin as string]: 0.018 },
     portfolioStats,
     riskStats,
+    benchmark: { name: "MSCI World", beta: 1.2345, alpha: 0.02345 },
     allocationByClass: [
       { label: "ETF", value: 1300.456 },
       { label: "CRYPTO", value: 12000 },
@@ -138,6 +139,9 @@ describe("buildPortfolioContext", () => {
     expect(parsed.risk.portfolio.sharpe).toBeCloseTo(0.34, 6);
     expect(parsed.risk.portfolio.expectedReturnPct).toBeCloseTo(7.21, 6);
     expect(parsed.risk.perAsset.map((a: { name: string }) => a.name)).toContain("Bitcoin");
+
+    // Beta/alpha vs the external benchmark, rounded like everything else.
+    expect(parsed.risk.vsBenchmark).toEqual({ name: "MSCI World", beta: 1.23, alphaPct: 2.35 });
 
     expect(parsed.allocation.byClass.ETF).toBeGreaterThan(0);
     expect(parsed.allocation.byClass.CRYPTO).toBeGreaterThan(0);
@@ -175,6 +179,14 @@ describe("buildPortfolioContext", () => {
     );
     const parsed = JSON.parse(buildPortfolioContext(input));
     expect(parsed.holdings.map((h: { name: string }) => h.name)).not.toContain("Closed position");
+  });
+
+  it("omits vsBenchmark when beta/alpha are unavailable", () => {
+    const input = baseInput();
+    input.benchmark = null;
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.risk).not.toBeNull();
+    expect("vsBenchmark" in parsed.risk).toBe(false);
   });
 
   it("omits risk when there are no stats", () => {

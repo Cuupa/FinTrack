@@ -253,7 +253,11 @@ renders the control.
 Chat context is built client-side, pure, no React (`lib/llm/context.ts`,
 `buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot of
 holdings, savings plans, risk/allocation stats, sent as the system-prompt
-preamble. It deliberately **never includes internal ids** (asset/portfolio/
+preamble. Risk stats feed from real 5y histories plus portfolio beta/alpha
+vs MSCI World (`risk.vsBenchmark`) — the same composite-levels math as the
+risk page KPI tiles; `usePortfolioChat(active)` arms those history/benchmark
+fetches only once the panel is first opened, and the per-conversation system
+prompt isn't cached until they've landed (rebuilt per send meanwhile). It deliberately **never includes internal ids** (asset/portfolio/
 transaction id — display data only: name, ISIN, type, ...) and **never
 includes the tax report** (Freistellungsauftrag amounts stay out, per the
 plan's open question). `/datenschutz` documents the BYO-key opt-in, where the

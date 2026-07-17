@@ -185,6 +185,8 @@ export const en = {
   "settings.fees.saveError": "Could not save.",
 
   "settings.ai.title": "AI assistant",
+  "settings.ai.intro":
+    "Ask questions about your portfolio in plain language via the chat bubble, for example about your allocation, risk figures like alpha and beta, dividends or savings plans. The chat uses your own API key, sends your portfolio data to the chosen provider only when you ask a question, never changes your data and does not give investment advice.",
   "settings.ai.provider": "Provider",
   "settings.ai.model": "Model",
   "settings.ai.apiKey": "API key",
@@ -1356,6 +1358,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.fees.saveError": "Konnte nicht gespeichert werden.",
 
   "settings.ai.title": "KI-Assistent",
+  "settings.ai.intro":
+    "Stell über die Chat-Blase Fragen zu deinem Portfolio in normaler Sprache, zum Beispiel zu deiner Allokation, Risikokennzahlen wie Alpha und Beta, Dividenden oder Sparplänen. Der Chat nutzt deinen eigenen API-Schlüssel, sendet deine Portfoliodaten nur dann an den gewählten Anbieter, wenn du eine Frage stellst, ändert nichts an deinen Daten und gibt keine Anlageberatung.",
   "settings.ai.provider": "Anbieter",
   "settings.ai.model": "Modell",
   "settings.ai.apiKey": "API-Schlüssel",
@@ -2527,6 +2531,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.fees.saveError": "No se ha podido guardar.",
 
   "settings.ai.title": "Asistente de IA",
+  "settings.ai.intro":
+    "Haz preguntas sobre tu cartera en lenguaje natural a través de la burbuja de chat, por ejemplo sobre tu asignación, métricas de riesgo como alfa y beta, dividendos o planes de ahorro. El chat usa tu propia clave de API, envía los datos de tu cartera al proveedor elegido solo cuando haces una pregunta, nunca modifica tus datos y no ofrece asesoramiento de inversión.",
   "settings.ai.provider": "Proveedor",
   "settings.ai.model": "Modelo",
   "settings.ai.apiKey": "Clave de API",

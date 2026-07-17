@@ -27,10 +27,14 @@ export function ChatBubble() {
   const { t } = useI18n();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Sticky (never reset): first open arms the chat hook's history/benchmark
+  // fetches, and keeps them armed after close so the built context survives
+  // reopening — while users who never open the panel never fetch.
+  const [armed, setArmed] = useState(false);
 
   // Conversation state is owned here (not inside ChatPanel) so it survives
   // closing and reopening the panel within the session.
-  const chat = usePortfolioChat();
+  const chat = usePortfolioChat(armed);
 
   // Shared portfolios are a read-only external view of someone ELSE's data
   // (components/mobile-nav.tsx applies the same exclusion) — the bubble would
@@ -46,7 +50,10 @@ export function ChatBubble() {
   return (
     <button
       type="button"
-      onClick={() => setOpen(true)}
+      onClick={() => {
+        setOpen(true);
+        setArmed(true);
+      }}
       aria-label={t("llm.chat.openLabel")}
       className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg transition-transform hover:scale-105 hover:bg-emerald-500 md:bottom-6 dark:bg-emerald-500 dark:hover:bg-emerald-400"
     >

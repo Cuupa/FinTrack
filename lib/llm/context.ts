@@ -39,6 +39,11 @@ export interface PortfolioContextInput {
   /** lib/finance/stats.ts's portfolioRiskStats output — portfolio-level
    *  Sharpe/Sortino/volatility. Null when there are no holdings. */
   riskStats: PortfolioRiskStats | null;
+  /** Portfolio-level beta/alpha vs an external market benchmark (the same
+   *  composite-levels computation as the risk page's KPI tiles — see
+   *  components/analysis/risk-view.tsx). `alpha` is an annualised fraction.
+   *  Null/absent when history or benchmark data is unavailable. */
+  benchmark?: { name: string; beta: number; alpha: number } | null;
   /** lib/finance/allocation.ts's byAssetClass/byCurrency/byCountry output. */
   allocationByClass: Slice[];
   allocationByCurrency: Slice[];
@@ -107,6 +112,14 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
       }
     : null;
 
+  const vsBenchmark = input.benchmark
+    ? {
+        name: input.benchmark.name,
+        beta: round2(input.benchmark.beta),
+        alphaPct: pct2(input.benchmark.alpha),
+      }
+    : null;
+
   const perAsset = (input.portfolioStats?.perAsset ?? []).map((a) => ({
     name: a.name,
     weightPct: pct2(a.weight),
@@ -120,7 +133,10 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
     totalValue: round2(totalValue),
     holdings,
     savingsPlans,
-    risk: risk || perAsset.length > 0 ? { portfolio: risk, perAsset } : null,
+    risk:
+      risk || perAsset.length > 0
+        ? { portfolio: risk, perAsset, ...(vsBenchmark ? { vsBenchmark } : {}) }
+        : null,
     allocation: {
       byClass: slicesToPct(input.allocationByClass),
       byCurrency: slicesToPct(input.allocationByCurrency),

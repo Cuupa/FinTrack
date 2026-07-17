@@ -14,9 +14,13 @@
 // The system prompt (the portfolio context JSON) is built ONCE per
 // conversation, on the first send — not on every keystroke/render — and
 // reused for every follow-up message in that conversation, mirroring how a
-// real chat's system prompt is fixed for the session.
+// real chat's system prompt is fixed for the session. One exception: while
+// the async inputs (real histories + benchmark) are still in flight, the
+// prompt is rebuilt per send instead of cached, so beta/alpha and
+// history-based stats join the context as soon as the fetches land rather
+// than being locked out of the whole conversation by a fast first send.
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
@@ -31,6 +35,10 @@ import { buildPortfolioContext, buildSystemPrompt } from "@/lib/llm/context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import { byAssetClass, byCountry, byCurrency } from "@/lib/finance/allocation";
 import { estimatePortfolioStats, portfolioRiskStats, type StatHolding } from "@/lib/finance/stats";
+import { betaAlpha, compositeLevelSeries } from "@/lib/finance/returns";
+import { quoteItemFor } from "@/lib/finance/prices";
+import { useHistory } from "@/lib/history/use-history";
+import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import { assetPriceKey } from "@/lib/types";
 import { today } from "@/lib/finance/dates";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -65,15 +73,45 @@ function genId(): string {
   return `llm-msg-${idCounter}`;
 }
 
-export function usePortfolioChat(): PortfolioChat {
+// External benchmark for the context's beta/alpha — the same MSCI World pin
+// as the risk page (components/analysis/risk-view.tsx).
+const BENCHMARK_IDS = ["msci-world"];
+const NO_BENCHMARKS: string[] = [];
+// Lookback for the history fetch, matching the 5-year default of
+// estimatePortfolioStats/portfolioRiskStats.
+const HISTORY_RANGE = "5Y";
+
+/**
+ * `active` arms the async context inputs (real histories + benchmark for
+ * beta/alpha): false until the user first opens the panel, so the bubble's
+ * root mount never fetches for users who don't use the chat.
+ */
+export function usePortfolioChat(active: boolean): PortfolioChat {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
-  // Subscribed only so this hook re-renders once the catalog (dividend
-  // yields, country data) finishes loading — lookups themselves go through
-  // the module-level lib/catalog/catalog.ts functions, same as allocation.ts.
-  useCatalog();
+  // Subscribed for `version` so histItems (and the dividend-yield/country
+  // lookups) refresh once the catalog finishes loading — lookups themselves
+  // go through the module-level lib/catalog/catalog.ts functions, same as
+  // allocation.ts.
+  const { version } = useCatalog();
   const { locale } = useI18n();
   const { config } = useLlmConfig();
+  const base = data.profile.currency;
+
+  const histItems = useMemo(
+    () =>
+      active
+        ? data.assets.map(quoteItemFor).filter((x): x is NonNullable<typeof x> => x !== null)
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.assets, version, active],
+  );
+  const { histories, loading: histLoading } = useHistory(histItems, HISTORY_RANGE, base);
+  const compare = useBenchmarkCompare(active ? BENCHMARK_IDS : NO_BENCHMARKS, base);
+  const benchLevels = useMemo(
+    () => (compare[0]?.points ?? []).filter((p) => p.value > 0),
+    [compare],
+  );
 
   const [messages, setMessages] = useState<ChatUiMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -103,8 +141,31 @@ export function usePortfolioChat(): PortfolioChat {
       if (inst && inst.dividendYield > 0) dividendYields[key] = inst.dividendYield;
     }
 
+    // Portfolio-level beta/alpha vs MSCI World: each held asset's real
+    // history normalised into the base currency (spot FX), value-weighted
+    // into one composite level series — the same computation basis as the
+    // risk page's KPI tiles (risk-view.tsx), so the assistant quotes the
+    // figures the user sees there.
+    const fxSpot = valuation.fx ?? {};
+    const assetLevels = holdings
+      .filter((h) => h.position.shares > 0)
+      .map((h) => {
+        const hist = histories[assetPriceKey(h.asset)];
+        const cur = h.asset.currency ?? base;
+        const rate = cur === base ? 1 : (fxSpot[cur] ?? 1);
+        return {
+          levels: hist ? hist.map((p) => ({ date: p.date, value: p.close * rate })) : [],
+          weight: h.marketValue,
+        };
+      });
+    const compositeLevels = compositeLevelSeries(assetLevels);
+    const ba =
+      compositeLevels.length >= 3 && benchLevels.length >= 3
+        ? betaAlpha(compositeLevels, benchLevels)
+        : null;
+
     const contextJson = buildPortfolioContext({
-      baseCurrency: data.profile.currency,
+      baseCurrency: base,
       today: today(),
       holdings,
       assets: data.assets,
@@ -113,17 +174,31 @@ export function usePortfolioChat(): PortfolioChat {
       // No-holdings falls back to null here (not a benchmark) — an empty
       // portfolio should read as empty to the assistant, not as "invested
       // like FTSE All-World".
-      portfolioStats: estimatePortfolioStats(statHoldings),
-      riskStats: portfolioRiskStats(statHoldings),
+      portfolioStats: estimatePortfolioStats(statHoldings, 5, histories),
+      riskStats: portfolioRiskStats(statHoldings, 5, histories),
+      benchmark: ba ? { name: compare[0]?.label ?? "MSCI World", ...ba } : null,
       allocationByClass: byAssetClass(holdings),
-      allocationByCurrency: byCurrency(holdings, data.profile.currency),
+      allocationByCurrency: byCurrency(holdings, base),
       allocationByCountry: byCountry(holdings),
     });
 
     const prompt = buildSystemPrompt(contextJson, locale);
-    systemPromptRef.current = prompt;
+    // Cache only once the async inputs have arrived (see the header comment):
+    // until then each send rebuilds the prompt with whatever is available.
+    if (!histLoading && benchLevels.length >= 3) systemPromptRef.current = prompt;
     return prompt;
-  }, [data.assets, data.transactions, data.savingsPlans, data.profile.currency, valuation, locale]);
+  }, [
+    data.assets,
+    data.transactions,
+    data.savingsPlans,
+    base,
+    valuation,
+    locale,
+    histories,
+    histLoading,
+    benchLevels,
+    compare,
+  ]);
 
   const send = useCallback(
     (text: string) => {
