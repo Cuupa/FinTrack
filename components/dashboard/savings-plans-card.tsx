@@ -41,7 +41,7 @@ function rowKey(planId: string, date: string): string {
   return `${planId}:${date}`;
 }
 
-interface DueRow {
+export interface DueRow {
   plan: SavingsPlan;
   asset: Asset;
   date: string;
@@ -84,7 +84,7 @@ interface EffectiveRow {
  * price until the user edits qty directly, which decouples it from the
  * amount; fee defaults to the plan's portfolio fee model.
  */
-function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow {
+export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow {
   const defaultPrice = round(row.price, 2);
   const priceEdited = edit?.price !== undefined;
   const qtyEdited = edit?.qty !== undefined;
@@ -195,13 +195,15 @@ export function SavingsPlansCard() {
         // A CASH plan is a recurring deposit: price is exactly 1 by
         // definition (qty = amount), never an estimate.
         if (asset.type === "CASH") {
+          // Cash deposits carry no order fee by default (no broker
+          // execution); the per-row fee input still allows a manual fee.
           return {
             plan,
             asset,
             date,
             price: 1,
             synthetic: false,
-            feeDefault: savingsPlanFee(portfolioById.get(plan.portfolioId)),
+            feeDefault: 0,
           };
         }
         const key = assetPriceKey(asset);

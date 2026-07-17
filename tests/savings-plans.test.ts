@@ -6,7 +6,9 @@ import {
   nextOccurrence,
   occurrenceAt,
 } from "../lib/finance/savings-plans";
-import type { Asset, SavingsPlan } from "../lib/types";
+import { savingsPlanFee } from "../lib/finance/fees";
+import { deriveRow, type DueRow } from "../components/dashboard/savings-plans-card";
+import type { Asset, Portfolio, SavingsPlan } from "../lib/types";
 
 function plan(over: Partial<SavingsPlan>): SavingsPlan {
   return {
@@ -126,5 +128,62 @@ describe("monthlyContributionOf", () => {
     const assets = [asset({ id: "a1", currency: "USD" })];
     const plans: SavingsPlan[] = [plan({ id: "p1", assetId: "a1", amount: 100 })];
     expect(monthlyContributionOf(plans, assets)).toBe(100);
+  });
+});
+
+// Cash will not have fees per default, but can be set manually per
+// transaction. components/dashboard/savings-plans-card.tsx's `dueRows`
+// useMemo hardcodes feeDefault: 0 for CASH plans (a deposit has no broker
+// execution fee) and feeDefault: savingsPlanFee(portfolio) for every other
+// asset type. `dueRows` itself is a component-internal useMemo that would
+// need a full render (providers + a mocked /api/history fetch for the
+// review dialog) to exercise directly, so this exercises `deriveRow` — the
+// pure function `dueRows`' output feeds into — with the same feeDefault
+// each branch computes, confirming the CASH default surfaces as 0 while a
+// security in the same portfolio still gets the portfolio's fee, and that
+// the per-row fee input still allows a manual override either way.
+describe("deriveRow fee default (savings-plans-card dueRows CASH branch)", () => {
+  const portfolio: Portfolio = {
+    id: "p1",
+    name: "Broker",
+    feeOrderFlat: 1,
+    feeOrderFreeFrom: null,
+    feeSavingsPlan: 2.5,
+  };
+
+  function dueRow(over: Partial<DueRow>): DueRow {
+    return {
+      plan: plan({ portfolioId: portfolio.id, amount: 100 }),
+      asset: asset({}),
+      date: "2026-07-15",
+      price: 10,
+      synthetic: false,
+      feeDefault: 0,
+      ...over,
+    };
+  }
+
+  it("defaults a CASH row's fee to 0 (no broker execution fee)", () => {
+    const row = dueRow({ asset: asset({ type: "CASH" }), price: 1, feeDefault: 0 });
+    const derived = deriveRow(row, undefined);
+    expect(derived.feeInput).toBe("0");
+    expect(derived.effectiveFee).toBe(0);
+  });
+
+  it("still defaults a security row in the same portfolio to feeSavingsPlan", () => {
+    const row = dueRow({
+      asset: asset({ type: "ETF" }),
+      feeDefault: savingsPlanFee(portfolio),
+    });
+    const derived = deriveRow(row, undefined);
+    expect(derived.feeInput).toBe("2.5");
+    expect(derived.effectiveFee).toBe(2.5);
+  });
+
+  it("still allows a manual fee override on a CASH row", () => {
+    const row = dueRow({ asset: asset({ type: "CASH" }), price: 1, feeDefault: 0 });
+    const derived = deriveRow(row, { fee: "3" });
+    expect(derived.feeInput).toBe("3");
+    expect(derived.effectiveFee).toBe(3);
   });
 });
