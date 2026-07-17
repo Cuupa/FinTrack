@@ -6,17 +6,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useLlmConfig } from "@/lib/llm/llm-context";
+import { providerList, getProvider } from "@/lib/llm";
+import type { LlmErrorCode, LlmProviderId } from "@/lib/llm/types";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { isStorageFullError } from "@/lib/store/errors";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import type { Portfolio } from "@/lib/types";
 import type { PortfolioPatch } from "@/lib/store/types";
+import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 const CHURCH_TAX_RATES = [0, 0.08, 0.09];
@@ -28,16 +35,29 @@ const feeInputCls =
 // existing accounts can still sign in with a shorter one.
 const NEW_PASSWORD_MIN_LENGTH = 8;
 
-const TABS = ["general", "fees"] as const;
+const TABS = ["general", "fees", "ai"] as const;
 type TabKey = (typeof TABS)[number];
+
+const TAB_LABEL_KEYS: Record<TabKey, MessageKey> = {
+  general: "settings.tabGeneral",
+  fees: "settings.tabFees",
+  ai: "settings.tabAi",
+};
 
 export function SettingsView() {
   const { data, updateProfile, portfolios, updatePortfolio } = usePortfolio();
   const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
+  const aiEnabled = useFeatureFlag("llmChat");
+
+  const visibleTabs = aiEnabled ? TABS : TABS.filter((key) => key !== "ai");
 
   const [tab, setTab] = useState<TabKey>("general");
+  // Falls back to "general" if the "ai" tab was selected and then the flag
+  // turned off underneath it (per-user override changing live), rather than
+  // rendering a tablist with no matching panel.
+  const activeTab = visibleTabs.includes(tab) ? tab : "general";
 
   const [name, setName] = useState(data.profile.name ?? "");
   const [currency, setCurrency] = useState(data.profile.currency);
@@ -165,26 +185,26 @@ export function SettingsView() {
     <div className="max-w-2xl space-y-6">
       <div className="border-b border-zinc-200 dark:border-zinc-800">
         <div role="tablist" className="-mb-px flex gap-6">
-          {TABS.map((key) => (
+          {visibleTabs.map((key) => (
             <button
               key={key}
               type="button"
               role="tab"
-              aria-selected={tab === key}
+              aria-selected={activeTab === key}
               onClick={() => setTab(key)}
               className={`border-b-2 pb-2.5 text-sm font-medium transition-colors ${
-                tab === key
+                activeTab === key
                   ? "border-emerald-500 text-zinc-900 dark:text-white"
                   : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
-              {t(key === "general" ? "settings.tabGeneral" : "settings.tabFees")}
+              {t(TAB_LABEL_KEYS[key])}
             </button>
           ))}
         </div>
       </div>
 
-      {tab === "general" && (
+      {activeTab === "general" && (
         <Card>
           <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             <section className="py-5 first:pt-0 last:pb-0">
@@ -331,7 +351,7 @@ export function SettingsView() {
         </Card>
       )}
 
-      {tab === "fees" && (
+      {activeTab === "fees" && (
         <Card>
           <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             <section className="py-5 first:pt-0 last:pb-0">
@@ -410,6 +430,14 @@ export function SettingsView() {
                 </div>
               )}
             </section>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === "ai" && aiEnabled && (
+        <Card>
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <AiAssistantSection />
           </div>
         </Card>
       )}
@@ -565,5 +593,191 @@ function PortfolioFeeRow({
         {error && <span className="text-sm text-red-600 dark:text-red-400">{error}</span>}
       </div>
     </div>
+  );
+}
+
+const LLM_ERROR_KEYS: Record<LlmErrorCode, MessageKey> = {
+  invalidKey: "settings.ai.error.invalidKey",
+  rateLimited: "settings.ai.error.rateLimited",
+  providerDown: "settings.ai.error.providerDown",
+  badRequest: "settings.ai.error.badRequest",
+  network: "settings.ai.error.network",
+};
+
+function isLlmErrorCode(value: unknown): value is LlmErrorCode {
+  return typeof value === "string" && value in LLM_ERROR_KEYS;
+}
+
+/**
+ * "AI assistant" settings tab (flag `llmChat`): provider/model/key form,
+ * "Test connection" ping, and "Remove key". Local state is seeded once from
+ * the stored config at mount (same pattern as the profile/tax fields and
+ * PortfolioFeeRow above) rather than kept in sync via effect. The key never
+ * leaves the browser except for an explicit Save (localStorage, via
+ * useLlmConfig) or Test connection (a one-shot ping POSTed to /api/llm with
+ * the CURRENT form values, which may differ from the last saved config).
+ */
+function AiAssistantSection() {
+  const { t } = useI18n();
+  const { config, setConfig, clearConfig } = useLlmConfig();
+
+  const [provider, setProvider] = useState<LlmProviderId>(config?.provider ?? providerList[0].id);
+  const [model, setModel] = useState(config?.model ?? providerList[0].defaultModel);
+  const [key, setKey] = useState(config?.key ?? "");
+  const [showKey, setShowKey] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+
+  const selectedProvider = getProvider(provider) ?? providerList[0];
+
+  function handleProviderChange(next: string) {
+    const p = getProvider(next);
+    if (!p) return;
+    setProvider(p.id);
+    setModel(p.defaultModel);
+  }
+
+  function save() {
+    setSaving(true);
+    setConfig({ provider, model, key: key.trim() });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function testConnection() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/llm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ping: true, provider, model, key: key.trim() }),
+      });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null;
+      if (res.ok && data?.ok) {
+        setTestResult({ ok: true, message: t("settings.ai.testSuccess") });
+        return;
+      }
+      const messageKey = isLlmErrorCode(data?.error)
+        ? LLM_ERROR_KEYS[data.error]
+        : res.status === 429
+          ? "settings.ai.error.rateLimited"
+          : "settings.ai.error.network";
+      setTestResult({ ok: false, message: t(messageKey) });
+    } catch {
+      setTestResult({ ok: false, message: t("settings.ai.error.network") });
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  function removeKey() {
+    clearConfig();
+    setKey("");
+    setRemoveConfirmOpen(false);
+  }
+
+  return (
+    <section className="py-5 first:pt-0 last:pb-0">
+      <h2 className="text-base font-semibold">{t("settings.ai.title")}</h2>
+      <div className="mt-4 space-y-4">
+        <Field label={t("settings.ai.provider")}>
+          <SelectMenu
+            value={provider}
+            onChange={handleProviderChange}
+            ariaLabel={t("settings.ai.provider")}
+            options={providerList.map((p) => ({ value: p.id, label: p.label }))}
+          />
+        </Field>
+
+        <Field label={t("settings.ai.model")}>
+          <SelectMenu
+            value={model}
+            onChange={setModel}
+            ariaLabel={t("settings.ai.model")}
+            options={selectedProvider.models.map((m) => ({ value: m.id, label: m.label }))}
+          />
+        </Field>
+
+        <Field label={t("settings.ai.apiKey")}>
+          <div className="relative">
+            <input
+              type={showKey ? "text" : "password"}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              autoComplete="off"
+              placeholder={t("settings.ai.apiKeyPlaceholder")}
+              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 pr-16 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              className="absolute inset-y-0 right-2 flex items-center px-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+            >
+              {showKey ? t("settings.ai.hideKey") : t("settings.ai.showKey")}
+            </button>
+          </div>
+        </Field>
+
+        <p className="text-xs text-zinc-500">
+          {t("settings.ai.privacyNote")}{" "}
+          <Link
+            href="/datenschutz"
+            className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+          >
+            {t("settings.ai.privacyLink")}
+          </Link>
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="primary" onClick={save} disabled={saving || !key.trim()}>
+            {saving ? "…" : t("settings.save")}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => void testConnection()}
+            disabled={testing || !key.trim()}
+          >
+            {testing ? "…" : t("settings.ai.testConnection")}
+          </Button>
+          {config && (
+            <Button variant="danger" onClick={() => setRemoveConfirmOpen(true)}>
+              {t("settings.ai.removeKey")}
+            </Button>
+          )}
+        </div>
+
+        {saved && (
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">{t("settings.saved")}</p>
+        )}
+        {testResult && (
+          <p
+            className={`text-sm ${
+              testResult.ok
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-red-600 dark:text-red-400"
+            }`}
+          >
+            {testResult.message}
+          </p>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={removeConfirmOpen}
+        title={t("settings.ai.removeKeyTitle")}
+        message={t("settings.ai.removeKeyMsg")}
+        confirmLabel={t("settings.ai.removeKeyConfirm")}
+        onConfirm={removeKey}
+        onCancel={() => setRemoveConfirmOpen(false)}
+      />
+    </section>
   );
 }

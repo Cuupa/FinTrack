@@ -184,6 +184,57 @@ function DatenschutzDE({
           datenbankseitig über alle zugehörigen Tabellen.
         </p>
       </LegalSection>
+
+      <LegalSection heading="9. KI-Assistent (optional, eigener API-Schlüssel)">
+        <p>
+          FinTrack bietet optional einen KI-Assistenten an, mit dem du in natürlicher Sprache
+          Fragen zu deinem Portfolio stellen kannst. Diese Funktion ist <strong>opt-in</strong>{" "}
+          und standardmäßig deaktiviert: Sie funktioniert nur, wenn du in den Einstellungen
+          einen eigenen API-Schlüssel eines Anbieters deiner Wahl hinterlegst
+          („Bring your own key“).
+        </p>
+        <p>
+          Dein API-Schlüssel wird ausschließlich lokal in deinem Browser gespeichert (
+          <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
+            localStorage
+          </code>
+          ), niemals auf unserem Server. Meldest du dich ab, wird der gespeicherte Schlüssel
+          automatisch aus deinem Browser gelöscht.
+        </p>
+        <p>
+          Nutzt du den Chat, werden deine Portfoliodaten (Positionen, Sparpläne, Risikokennzahlen)
+          zusammen mit deiner Nachricht an den von dir gewählten Anbieter übertragen, damit
+          dieser eine Antwort erzeugen kann. Diese Übertragung erfolgt über unseren Server als
+          reinen Durchleiter (Proxy): Wir speichern und protokollieren die übertragenen Inhalte
+          nicht. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du
+          durch das aktive Hinterlegen eines eigenen Schlüssels erteilst.
+        </p>
+        <p>
+          Welche Daten der jeweilige Anbieter mit deiner Anfrage verarbeitet und wie lange er sie
+          speichert, unterliegt dessen eigener Datenschutzerklärung, nicht dieser Erklärung:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <LegalLink href="https://www.anthropic.com/legal/privacy">
+              Datenschutzerklärung von Anthropic (Claude)
+            </LegalLink>
+          </li>
+          <li>
+            <LegalLink href="https://openai.com/policies/privacy-policy">
+              Datenschutzerklärung von OpenAI (GPT)
+            </LegalLink>
+          </li>
+          <li>
+            <LegalLink href="https://policies.google.com/privacy">
+              Datenschutzerklärung von Google (Gemini)
+            </LegalLink>
+          </li>
+        </ul>
+        <p>
+          Der Assistent gibt Modellwerte aus und ersetzt keine Anlageberatung. Du kannst deinen
+          gespeicherten Schlüssel jederzeit in den Einstellungen entfernen.
+        </p>
+      </LegalSection>
     </LegalPage>
   );
 }
@@ -341,6 +392,55 @@ function DatenschutzEN({
           above) permanently and completely removes your profile, all portfolios, assets,
           transactions, and share links. The deletion cascades at the database level
           across all related tables.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="9. AI assistant (optional, your own API key)">
+        <p>
+          FinTrack optionally offers an AI assistant that lets you ask questions about your
+          portfolio in natural language. This feature is <strong>opt-in</strong> and disabled by
+          default: it only works once you add your own API key for a provider of your choice in
+          Settings (&ldquo;bring your own key&rdquo;).
+        </p>
+        <p>
+          Your API key is stored exclusively in your browser (
+          <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
+            localStorage
+          </code>
+          ), never on our server. When you sign out, the stored key is automatically removed from
+          your browser.
+        </p>
+        <p>
+          When you use the chat, your portfolio data (holdings, savings plans, risk figures) is
+          sent together with your message to the provider you chose, so it can generate a reply.
+          This transmission goes through our server acting purely as a relay (proxy): we do not
+          store or log the transmitted content. The legal basis is your consent (Art. 6(1)(a)
+          GDPR), given by actively adding your own key.
+        </p>
+        <p>
+          What data the respective provider processes with your request and how long it retains
+          it is governed by that provider&rsquo;s own privacy policy, not this one:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <LegalLink href="https://www.anthropic.com/legal/privacy">
+              Anthropic (Claude) privacy policy
+            </LegalLink>
+          </li>
+          <li>
+            <LegalLink href="https://openai.com/policies/privacy-policy">
+              OpenAI (GPT) privacy policy
+            </LegalLink>
+          </li>
+          <li>
+            <LegalLink href="https://policies.google.com/privacy">
+              Google (Gemini) privacy policy
+            </LegalLink>
+          </li>
+        </ul>
+        <p>
+          The assistant produces modeled output and is not investment advice. You can remove your
+          stored key in Settings at any time.
         </p>
       </LegalSection>
     </LegalPage>

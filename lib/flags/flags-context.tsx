@@ -42,7 +42,8 @@ export type FeatureFlag =
   | "historyCache"
   | "exportCsv"
   | "exportJson"
-  | "errorLogging";
+  | "errorLogging"
+  | "llmChat";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

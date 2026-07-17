@@ -16,6 +16,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
 import { clearHistoryCache } from "../history/history-cache";
+import { clearLlmConfig } from "../llm/config-storage";
 
 export type Mode = "guest" | "registered";
 
@@ -111,6 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // keys (ISIN/WKN/symbol) - clear it so a shared device never surfaces one
     // user's chart data after another signs in.
     clearHistoryCache();
+    // The LLM API key is browser-local only (LLM_INTEGRATION.md's key
+    // handling decision) - clear it too so a shared device never carries one
+    // user's key into another's session.
+    clearLlmConfig();
   }, [supabase]);
 
   const updatePassword = useCallback(

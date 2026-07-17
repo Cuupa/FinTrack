@@ -9,6 +9,7 @@ import { LivePricesProvider } from "@/lib/live/live-prices-context";
 import { SyncProvider } from "@/lib/offline/sync-context";
 import { PrivacyProvider } from "@/lib/privacy/privacy-context";
 import { TagsProvider } from "@/lib/tags/tags-context";
+import { LlmConfigProvider } from "@/lib/llm/llm-context";
 import { I18nProvider } from "@/lib/i18n/i18n-context";
 import { ThemeProvider } from "@/lib/theme/theme-context";
 import { LocaleSync } from "@/components/locale-sync";
@@ -20,27 +21,33 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <I18nProvider>
         <AuthProvider>
-          <FeatureFlagsProvider>
-            <CatalogProvider>
-              <PortfolioProvider>
-                {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
-                    phase 3), sits just inside it, same as every other provider
-                    here that depends on portfolio data. */}
-                <SyncProvider>
-                  <LivePricesProvider>
-                    <PrivacyProvider>
-                      <TagsProvider>
-                        <LocaleSync />
-                        <ThemeSync />
-                        <ErrorReporter />
-                        {children}
-                      </TagsProvider>
-                    </PrivacyProvider>
-                  </LivePricesProvider>
-                </SyncProvider>
-              </PortfolioProvider>
-            </CatalogProvider>
-          </FeatureFlagsProvider>
+          {/* Needs useAuth() (to re-sync after the sign-out clear in
+              auth-context.tsx), otherwise independent of portfolio data - so
+              it sits at this level rather than nested inside PortfolioProvider
+              like SyncProvider/LivePricesProvider/TagsProvider below. */}
+          <LlmConfigProvider>
+            <FeatureFlagsProvider>
+              <CatalogProvider>
+                <PortfolioProvider>
+                  {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
+                      phase 3), sits just inside it, same as every other provider
+                      here that depends on portfolio data. */}
+                  <SyncProvider>
+                    <LivePricesProvider>
+                      <PrivacyProvider>
+                        <TagsProvider>
+                          <LocaleSync />
+                          <ThemeSync />
+                          <ErrorReporter />
+                          {children}
+                        </TagsProvider>
+                      </PrivacyProvider>
+                    </LivePricesProvider>
+                  </SyncProvider>
+                </PortfolioProvider>
+              </CatalogProvider>
+            </FeatureFlagsProvider>
+          </LlmConfigProvider>
         </AuthProvider>
       </I18nProvider>
     </ThemeProvider>
