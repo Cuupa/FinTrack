@@ -16,6 +16,8 @@ import {
   type PortfolioData,
   type Profile,
   type SavingsPlan,
+  type TagAssignments,
+  type TagGroup,
   type Transaction,
   type WatchlistItem,
 } from "../types";
@@ -118,7 +120,7 @@ export class SupabaseStore implements DataStore {
   ) {}
 
   async load(): Promise<PortfolioData> {
-    const [profileRes, portfoliosRes, assetsRes, txRes, watchRes, plansRes] = await Promise.all([
+    const [profileRes, portfoliosRes, assetsRes, txRes, watchRes, plansRes, tagGroupsRes, assetTagsRes] = await Promise.all([
       this.supabase
         .from("profiles")
         .select(
@@ -151,12 +153,23 @@ export class SupabaseStore implements DataStore {
         .select("id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date")
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
+      this.supabase
+        .from("tag_groups")
+        .select("id, name")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
+        .from("asset_tags")
+        .select("asset_id, group_id, value")
+        .eq("user_id", this.userId),
     ]);
 
     if (assetsRes.error) throw assetsRes.error;
     if (txRes.error) throw txRes.error;
     if (watchRes.error) throw watchRes.error;
     if (plansRes.error) throw plansRes.error;
+    if (tagGroupsRes.error) throw tagGroupsRes.error;
+    if (assetTagsRes.error) throw assetTagsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.
@@ -243,7 +256,30 @@ export class SupabaseStore implements DataStore {
       planFromRow,
     );
 
-    return { profile, portfolios, assets, transactions, watchlist, savingsPlans };
+    const tagGroups: TagGroup[] = ((tagGroupsRes.data ?? []) as { id: string; name: string }[]).map(
+      (r) => ({ id: r.id, name: r.name }),
+    );
+
+    const tagAssignments: TagAssignments = {};
+    for (const r of (assetTagsRes.data ?? []) as {
+      asset_id: string;
+      group_id: string;
+      value: string;
+    }[]) {
+      const byGroup = (tagAssignments[r.asset_id] ??= {});
+      (byGroup[r.group_id] ??= []).push(r.value);
+    }
+
+    return {
+      profile,
+      portfolios,
+      assets,
+      transactions,
+      watchlist,
+      savingsPlans,
+      tagGroups,
+      tagAssignments,
+    };
   }
 
   async saveProfile(profile: Profile): Promise<void> {
@@ -516,6 +552,67 @@ export class SupabaseStore implements DataStore {
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) throw error;
+  }
+
+  async addTagGroup(name: string, id?: string): Promise<TagGroup> {
+    const { data, error } = await this.supabase
+      .from("tag_groups")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        name: name.trim() || "Tags",
+      })
+      .select("id, name")
+      .single();
+    if (error) throw error;
+    const r = data as { id: string; name: string };
+    return { id: r.id, name: r.name };
+  }
+
+  async renameTagGroup(id: string, name: string): Promise<void> {
+    const n = name.trim();
+    if (!n) return;
+    const { data, error } = await this.supabase
+      .from("tag_groups")
+      .update({ name: n })
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    // See updateAsset above — a zero-row match must be distinguishable for replay.
+    if (!data || data.length === 0) throw new RowNotFoundError(`tag group ${id} not found`);
+  }
+
+  async deleteTagGroup(id: string): Promise<void> {
+    // asset_tags rows cascade via the group_id FK.
+    const { error } = await this.supabase
+      .from("tag_groups")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void> {
+    // Replace-set: clear the pair, then re-insert — idempotent, replay-safe
+    // regardless of how many times it's applied.
+    const { error: delErr } = await this.supabase
+      .from("asset_tags")
+      .delete()
+      .eq("asset_id", assetId)
+      .eq("group_id", groupId)
+      .eq("user_id", this.userId);
+    if (delErr) throw delErr;
+    if (values.length === 0) return;
+    const { error: insErr } = await this.supabase.from("asset_tags").insert(
+      values.map((value) => ({
+        user_id: this.userId,
+        asset_id: assetId,
+        group_id: groupId,
+        value,
+      })),
+    );
+    if (insErr) throw insErr;
   }
 
   async createPortfolio(name: string, id?: string): Promise<Portfolio> {

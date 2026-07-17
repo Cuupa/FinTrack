@@ -3,7 +3,13 @@
 // the guest banner. Defaults to localStorage; pass sessionStorage for
 // truly ephemeral sessions.
 
-import { emptyPortfolio, MAX_PORTFOLIOS, type PortfolioData, type Profile } from "../types";
+import {
+  emptyPortfolio,
+  MAX_PORTFOLIOS,
+  type PortfolioData,
+  type Profile,
+  type TagAssignments,
+} from "../types";
 import { isNativeQuotaError, StorageFullError } from "./errors";
 import type {
   AssetInput,
@@ -96,6 +102,10 @@ export class LocalStore implements DataStore {
         // Backfill portfolios saved before the watchlist / savings plans existed.
         watchlist: parsed.watchlist ?? [],
         savingsPlans: parsed.savingsPlans ?? [],
+        // Backfill portfolios saved before tags moved onto the store seam
+        // (they used to live in a separate `fintrack-tags` key entirely).
+        tagGroups: parsed.tagGroups ?? [],
+        tagAssignments: parsed.tagAssignments ?? {},
       };
     } catch {
       return emptyPortfolio();
@@ -162,6 +172,12 @@ export class LocalStore implements DataStore {
     data.transactions = data.transactions.filter((t) => t.assetId !== id);
     // Cascade: a plan without its asset can never execute again.
     data.savingsPlans = data.savingsPlans.filter((p) => p.assetId !== id);
+    // Cascade: tag assignments for a deleted asset are meaningless.
+    if (id in data.tagAssignments) {
+      const tagAssignments = { ...data.tagAssignments };
+      delete tagAssignments[id];
+      data.tagAssignments = tagAssignments;
+    }
     this.write(data);
     this.pruneImportedFingerprints(removedIds);
   }
@@ -236,6 +252,56 @@ export class LocalStore implements DataStore {
     this.write(data);
   }
 
+  async addTagGroup(name: string, id?: string) {
+    const data = this.read();
+    const group = { id: id ?? newId(), name: name.trim() || "Tags" };
+    data.tagGroups.push(group);
+    this.write(data);
+    return group;
+  }
+
+  async renameTagGroup(id: string, name: string) {
+    const n = name.trim();
+    if (!n) return;
+    const data = this.read();
+    const idx = data.tagGroups.findIndex((g) => g.id === id);
+    if (idx >= 0) {
+      data.tagGroups[idx] = { ...data.tagGroups[idx], name: n };
+      this.write(data);
+    }
+  }
+
+  async deleteTagGroup(id: string) {
+    const data = this.read();
+    data.tagGroups = data.tagGroups.filter((g) => g.id !== id);
+    // Cascade: drop this group's assignments across every asset.
+    const tagAssignments: TagAssignments = {};
+    for (const [assetId, byGroup] of Object.entries(data.tagAssignments)) {
+      if (!(id in byGroup)) {
+        tagAssignments[assetId] = byGroup;
+        continue;
+      }
+      const nextByGroup = { ...byGroup };
+      delete nextByGroup[id];
+      if (Object.keys(nextByGroup).length) tagAssignments[assetId] = nextByGroup;
+    }
+    data.tagAssignments = tagAssignments;
+    this.write(data);
+  }
+
+  async setAssetTags(assetId: string, groupId: string, values: string[]) {
+    const data = this.read();
+    const byGroup = data.tagAssignments[assetId] ?? {};
+    const nextByGroup = { ...byGroup };
+    if (values.length > 0) nextByGroup[groupId] = values;
+    else delete nextByGroup[groupId];
+    const tagAssignments = { ...data.tagAssignments };
+    if (Object.keys(nextByGroup).length) tagAssignments[assetId] = nextByGroup;
+    else delete tagAssignments[assetId];
+    data.tagAssignments = tagAssignments;
+    this.write(data);
+  }
+
   async createPortfolio(name: string, id?: string) {
     const data = this.read();
     if (data.portfolios.length >= MAX_PORTFOLIOS) {
@@ -296,6 +362,12 @@ export class LocalStore implements DataStore {
     data.savingsPlans = data.savingsPlans.filter(
       (p) => p.portfolioId !== id && assetIds.has(p.assetId),
     );
+    // Cascade tag assignments of assets removed along with the portfolio.
+    const tagAssignments: TagAssignments = {};
+    for (const [assetId, byGroup] of Object.entries(data.tagAssignments)) {
+      if (assetIds.has(assetId)) tagAssignments[assetId] = byGroup;
+    }
+    data.tagAssignments = tagAssignments;
     this.write(data);
     // Prune fingerprints for the removed transactions so re-importing the same
     // CSV after deleting a portfolio doesn't skip rows as "already imported".

@@ -28,7 +28,7 @@ function DatenschutzDE({
   loaded: boolean;
 }) {
   return (
-    <LegalPage title="Datenschutzerklärung" updated="Stand: 11. Juli 2026">
+    <LegalPage title="Datenschutzerklärung" updated="Stand: 17. Juli 2026">
       <LegalSection heading="1. Verantwortlicher">
         <p>
           Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist der im{" "}
@@ -129,9 +129,11 @@ function DatenschutzDE({
             <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
               localStorage
             </code>{" "}
-            für: Portfoliodaten im Gastmodus, die gewählte Sprache, den Anzeige-Modus
-            (Beträge ein-/ausblenden), deine eigenen Tags sowie einen Zwischenspeicher des
-            Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten). Auch
+            für: Portfoliodaten im Gastmodus (einschließlich deiner eigenen Tags), die gewählte
+            Sprache, den Anzeige-Modus (Beträge ein-/ausblenden) sowie einen Zwischenspeicher des
+            Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten). Im
+            registrierten Modus werden deine Tags, wie alle anderen Portfoliodaten, in der
+            Datenbank gespeichert (siehe Abschnitt 3). Auch
             historische Kursverläufe werden lokal zwischengespeichert, damit Diagramme
             schneller laden; dieser Zwischenspeicher wird bei der Abmeldung gelöscht. Die auf
             den rechtlichen Seiten (Impressum, Datenschutzerklärung) angezeigten öffentlichen
@@ -194,7 +196,7 @@ function DatenschutzEN({
   loaded: boolean;
 }) {
   return (
-    <LegalPage title="Privacy Policy" updated="Last updated: 11 July 2026">
+    <LegalPage title="Privacy Policy" updated="Last updated: 17 July 2026">
       <LegalSection heading="1. Controller">
         <p>
           The controller within the meaning of the GDPR is the operator named in the{" "}
@@ -290,13 +292,14 @@ function DatenschutzEN({
             <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
               localStorage
             </code>{" "}
-            for: portfolio data in Guest Mode, your chosen language, your display
-            preference (show/hide figures), your custom tags, and a cache of the
+            for: portfolio data in Guest Mode (including your custom tags), your chosen
+            language, your display preference (show/hide figures), and a cache of the
             instrument catalog (faster loading, no personal data). Historical price
             series are also cached locally to speed up chart loading; this cache is
             deleted when you sign out. The public operator contact data shown on the
             legal pages (Imprint, Privacy Policy) is also cached locally so it
-            displays immediately.
+            displays immediately. In Registered Mode your tags, like the rest of your
+            portfolio data, are stored in the database instead (see section 3).
           </li>
         </ul>
         <p>

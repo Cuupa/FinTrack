@@ -180,6 +180,33 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       maybeFail();
       data.savingsPlans = data.savingsPlans.filter((p) => p.id !== id);
     },
+    async addTagGroup(name, id) {
+      calls.push(`addTagGroup:${id}`);
+      maybeFail();
+      if (id && duplicateIds.has(id)) throw uniqueViolationError();
+      const group = { id: id ?? "server-id", name };
+      data.tagGroups.push(group);
+      return group;
+    },
+    async renameTagGroup(id) {
+      calls.push(`renameTagGroup:${id}`);
+      maybeFail();
+      if (missingIds.has(id)) throw new RowNotFoundError(`tag group ${id} not found`);
+    },
+    async deleteTagGroup(id) {
+      calls.push(`deleteTagGroup:${id}`);
+      maybeFail();
+      data.tagGroups = data.tagGroups.filter((g) => g.id !== id);
+    },
+    async setAssetTags(assetId, groupId, values) {
+      calls.push(`setAssetTags:${assetId}:${groupId}`);
+      maybeFail();
+      const byGroup = data.tagAssignments[assetId] ?? {};
+      const nextByGroup = { ...byGroup };
+      if (values.length > 0) nextByGroup[groupId] = values;
+      else delete nextByGroup[groupId];
+      data.tagAssignments = { ...data.tagAssignments, [assetId]: nextByGroup };
+    },
     async createPortfolio(name, id) {
       calls.push(`createPortfolio:${id}`);
       maybeFail();

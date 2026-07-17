@@ -142,6 +142,25 @@ function makeInner(initial: PortfolioData) {
       calls.push("deleteSavingsPlan");
       guard();
     },
+    async addTagGroup(name, id) {
+      calls.push("addTagGroup");
+      guard();
+      const group = { id: id ?? "server-generated-id", name };
+      data.tagGroups.push(group);
+      return group;
+    },
+    async renameTagGroup() {
+      calls.push("renameTagGroup");
+      guard();
+    },
+    async deleteTagGroup() {
+      calls.push("deleteTagGroup");
+      guard();
+    },
+    async setAssetTags() {
+      calls.push("setAssetTags");
+      guard();
+    },
     async createPortfolio(name, id) {
       calls.push("createPortfolio");
       guard();

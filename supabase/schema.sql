@@ -346,6 +346,35 @@ create index if not exists savings_plans_asset_id_idx on public.savings_plans (a
 -- Cascade path from portfolios deletes.
 create index if not exists savings_plans_portfolio_id_idx on public.savings_plans (portfolio_id);
 
+-- Asset tags -----------------------------------------------------------------
+-- User-defined key-value tag groups + per-asset assignments (rides the same
+-- DataStore seam as watchlist/savings plans; Guest Mode keeps them in its
+-- localStorage blob instead).
+create table if not exists public.tag_groups (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists tag_groups_user_id_idx on public.tag_groups (user_id);
+
+-- One row per (asset, group, value) — `setAssetTags` replaces the full set
+-- for a (asset, group) pair by deleting then re-inserting, so replay is
+-- idempotent regardless of ordering.
+create table if not exists public.asset_tags (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  asset_id uuid not null references public.assets (id) on delete cascade,
+  group_id uuid not null references public.tag_groups (id) on delete cascade,
+  value text not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists asset_tags_unique_key
+  on public.asset_tags (asset_id, group_id, value);
+create index if not exists asset_tags_asset_id_idx on public.asset_tags (asset_id);
+create index if not exists asset_tags_group_id_idx on public.asset_tags (group_id);
+create index if not exists asset_tags_user_id_idx on public.asset_tags (user_id);
+
 -- Cached Monte Carlo simulation runs, keyed by a hash of the (seed-independent)
 -- parameters. Rerunning with identical params reuses the stored result instead
 -- of recomputing. The seed is kept for auditing/reproducibility.
@@ -452,7 +481,8 @@ insert into public.schema_migrations (version) values
   ('0058_portfolio_fees'),
   ('0059_portfolio_tax_allowance'),
   ('0060_profile_tours_done'),
-  ('0061_savings_plan_booking_type')
+  ('0061_savings_plan_booking_type'),
+  ('0062_asset_tags')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -463,6 +493,8 @@ alter table public.portfolios enable row level security;
 alter table public.transactions enable row level security;
 alter table public.watchlist_items enable row level security;
 alter table public.savings_plans enable row level security;
+alter table public.tag_groups enable row level security;
+alter table public.asset_tags enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
 alter table public.instruments enable row level security;
@@ -537,6 +569,14 @@ create policy "own watchlist" on public.watchlist_items
 
 drop policy if exists "own savings plans" on public.savings_plans;
 create policy "own savings plans" on public.savings_plans
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own tag groups" on public.tag_groups;
+create policy "own tag groups" on public.tag_groups
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own asset tags" on public.asset_tags;
+create policy "own asset tags" on public.asset_tags
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own simulations" on public.simulation_runs;

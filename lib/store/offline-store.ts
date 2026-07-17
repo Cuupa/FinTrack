@@ -26,6 +26,7 @@ import type {
   PortfolioData,
   Profile,
   SavingsPlan,
+  TagGroup,
   Transaction,
   WatchlistItem,
 } from "../types";
@@ -240,6 +241,52 @@ export class OfflineStore implements DataStore {
       await this.inner.deleteSavingsPlan(id);
     } catch (err) {
       await this.handleFailure(err, "deleteSavingsPlan", id, null);
+    }
+  }
+
+  async addTagGroup(name: string, id?: string): Promise<TagGroup> {
+    const groupId = id ?? newId();
+    const group = await this.mirror.addTagGroup(name, groupId);
+    try {
+      await this.inner.addTagGroup(name, groupId);
+    } catch (err) {
+      await this.handleFailure(err, "addTagGroup", groupId, { name });
+    }
+    return group;
+  }
+
+  async renameTagGroup(id: string, name: string): Promise<void> {
+    await this.mirror.renameTagGroup(id, name);
+    try {
+      await this.inner.renameTagGroup(id, name);
+    } catch (err) {
+      await this.handleFailure(err, "renameTagGroup", id, { name });
+    }
+  }
+
+  async deleteTagGroup(id: string): Promise<void> {
+    await this.mirror.deleteTagGroup(id);
+    try {
+      await this.inner.deleteTagGroup(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteTagGroup", id, null);
+    }
+  }
+
+  async setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void> {
+    await this.mirror.setAssetTags(assetId, groupId, values);
+    // No single natural "id" for a (asset, group) pair — key the queued op by
+    // their composite so it's still identifiable for debugging; the replay
+    // in lib/offline/sync.ts reads assetId/groupId/values from the payload,
+    // never from this id.
+    try {
+      await this.inner.setAssetTags(assetId, groupId, values);
+    } catch (err) {
+      await this.handleFailure(err, "setAssetTags", `${assetId}:${groupId}`, {
+        assetId,
+        groupId,
+        values,
+      });
     }
   }
 

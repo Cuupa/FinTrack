@@ -113,3 +113,65 @@ describe("LocalStore quota handling", () => {
     expect(data.assets[0].name).toBe("Apple Inc.");
   });
 });
+
+describe("LocalStore tag groups + assignments", () => {
+  it("creates a group, replace-sets an asset's values, and reads them back via load()", async () => {
+    const store = new LocalStore();
+    const asset = await store.addAsset(ASSET_INPUT);
+    const group = await store.addTagGroup("Strategie");
+
+    await store.setAssetTags(asset.id, group.id, ["core", "gamble"]);
+    let data = await store.load();
+    expect(data.tagGroups).toEqual([group]);
+    expect(data.tagAssignments).toEqual({ [asset.id]: { [group.id]: ["core", "gamble"] } });
+
+    // Replace-set: a second call overwrites, doesn't append.
+    await store.setAssetTags(asset.id, group.id, ["core"]);
+    data = await store.load();
+    expect(data.tagAssignments).toEqual({ [asset.id]: { [group.id]: ["core"] } });
+
+    // An empty array clears the pair entirely.
+    await store.setAssetTags(asset.id, group.id, []);
+    data = await store.load();
+    expect(data.tagAssignments).toEqual({});
+  });
+
+  it("renameTagGroup updates the name in place; blank name no-ops", async () => {
+    const store = new LocalStore();
+    const group = await store.addTagGroup("Strategie");
+
+    await store.renameTagGroup(group.id, "Risiko");
+    let data = await store.load();
+    expect(data.tagGroups).toEqual([{ id: group.id, name: "Risiko" }]);
+
+    await store.renameTagGroup(group.id, "   ");
+    data = await store.load();
+    expect(data.tagGroups).toEqual([{ id: group.id, name: "Risiko" }]);
+  });
+
+  it("deleteTagGroup drops the group and every assignment referencing it", async () => {
+    const store = new LocalStore();
+    const asset = await store.addAsset(ASSET_INPUT);
+    const group = await store.addTagGroup("Strategie");
+    await store.setAssetTags(asset.id, group.id, ["core"]);
+
+    await store.deleteTagGroup(group.id);
+    const data = await store.load();
+    expect(data.tagGroups).toEqual([]);
+    expect(data.tagAssignments).toEqual({});
+  });
+
+  it("deleteAsset cascades away that asset's tag assignments", async () => {
+    const store = new LocalStore();
+    const asset = await store.addAsset(ASSET_INPUT);
+    const group = await store.addTagGroup("Strategie");
+    await store.setAssetTags(asset.id, group.id, ["core"]);
+
+    await store.deleteAsset(asset.id);
+    const data = await store.load();
+    // The group itself survives — only the assignment referencing the
+    // deleted asset is gone.
+    expect(data.tagGroups).toEqual([group]);
+    expect(data.tagAssignments).toEqual({});
+  });
+});

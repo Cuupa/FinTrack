@@ -10,6 +10,7 @@ import type {
   PortfolioData,
   Profile,
   SavingsPlan,
+  TagGroup,
   Transaction,
   WatchlistItem,
 } from "../types";
@@ -62,6 +63,16 @@ export interface DataStore {
   addSavingsPlan(input: SavingsPlanInput, id?: string): Promise<SavingsPlan>;
   updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void>;
   deleteSavingsPlan(id: string): Promise<void>;
+  /** Creates a tag group. `id` — see `addAsset`'s doc above. */
+  addTagGroup(name: string, id?: string): Promise<TagGroup>;
+  renameTagGroup(id: string, name: string): Promise<void>;
+  /** Deletes the group and every assignment that referenced it. */
+  deleteTagGroup(id: string): Promise<void>;
+  /**
+   * Replace-set: the given `groupId`'s values for `assetId` become exactly
+   * `values` (idempotent, replay-safe). An empty array clears the pair.
+   */
+  setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
   createPortfolio(name: string, id?: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
   /** Patches name and/or fee-model fields (settings "Broker & fees"). */

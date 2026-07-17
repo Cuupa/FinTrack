@@ -61,6 +61,7 @@ export const en = {
   "tags.deleteGroup": "Delete group",
   "tags.deleteGroupConfirm": "Delete group “{name}” and all its assignments?",
   "tags.addTag": "+ Tag",
+  "tags.actionError": "Action failed.",
 
   "sp.title": "Savings plans",
   "sp.new": "+ New plan",
@@ -1181,6 +1182,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tags.deleteGroup": "Gruppe löschen",
   "tags.deleteGroupConfirm": "Gruppe “{name}” und alle ihre Zuordnungen löschen?",
   "tags.addTag": "+ Tag",
+  "tags.actionError": "Aktion fehlgeschlagen.",
 
   "sp.title": "Sparpläne",
   "sp.new": "+ Neuer Sparplan",
@@ -2301,6 +2303,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tags.deleteGroup": "Eliminar grupo",
   "tags.deleteGroupConfirm": "¿Eliminar el grupo “{name}” y todas sus asignaciones?",
   "tags.addTag": "+ Etiqueta",
+  "tags.actionError": "La acción ha fallado.",
 
   "sp.title": "Planes de inversión",
   "sp.new": "+ Nuevo plan",

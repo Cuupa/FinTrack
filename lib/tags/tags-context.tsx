@@ -1,8 +1,20 @@
 "use client";
 
 // User-defined key-value tag groups per asset, for the Analysis "Custom"
-// distribution (switchable per group) and the asset page's tag badges.
-// Persisted in localStorage (client-only).
+// distribution (switchable per group) and the asset page's tag badges. Rides
+// the DataStore seam (lib/store) like watchlist/savings plans: DB-persisted
+// for registered users, localStorage-backed (inside the portfolio blob) for
+// guests. This module is a thin adapter over `usePortfolio()` that keeps the
+// original consumer-facing shape (`groups`, `assignments`, `valuesFor`, …) so
+// components didn't need to change, only handle the mutators now returning
+// Promises.
+//
+// One-time migration: tags used to live entirely in a separate `fintrack-tags`
+// localStorage key, for every user (guest and registered alike). On mount,
+// once portfolio data has loaded, if the store has zero tag groups and that
+// legacy key still holds data, it's replayed into the store (group ids are
+// remapped since the store mints new ones) and the key is renamed to
+// `fintrack-tags-imported` so it never replays again.
 
 import {
   createContext,
@@ -10,24 +22,23 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useRef,
   type ReactNode,
 } from "react";
+import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import type { TagAssignments, TagGroup } from "@/lib/types";
+
+export type { TagGroup };
+/** @deprecated alias kept for the pre-seam shape; prefer `TagAssignments`. */
+export type Assignments = TagAssignments;
 
 const STORAGE_KEY = "fintrack-tags";
-
-export interface TagGroup {
-  id: string;
-  name: string;
-}
-
-/** assetId -> groupId -> values */
-export type Assignments = Record<string, Record<string, string[]>>;
+const STORAGE_KEY_IMPORTED = "fintrack-tags-imported";
 
 interface PersistShape {
   version: 2;
   groups: TagGroup[];
-  assignments: Assignments;
+  assignments: TagAssignments;
 }
 
 export interface TagEntry {
@@ -37,29 +48,22 @@ export interface TagEntry {
 
 interface TagsContextValue {
   groups: TagGroup[];
-  assignments: Assignments;
+  assignments: TagAssignments;
   valuesFor: (assetId: string, groupId: string) => string[];
   /** All of an asset's groups (in group list order) that carry at least one value. */
   entriesFor: (assetId: string) => TagEntry[];
   /** Distinct sorted values in use anywhere within a group (datalist suggestions). */
   valuesInGroup: (groupId: string) => string[];
-  addValue: (assetId: string, groupId: string, value: string) => void;
-  removeValue: (assetId: string, groupId: string, value: string) => void;
+  addValue: (assetId: string, groupId: string, value: string) => Promise<void>;
+  removeValue: (assetId: string, groupId: string, value: string) => Promise<void>;
   /** Creates a group, returning its id. Blank name no-ops (returns ""); an
    * existing group with the same name (case-insensitive) is reused. */
-  createGroup: (name: string) => string;
-  renameGroup: (groupId: string, name: string) => void;
-  deleteGroup: (groupId: string) => void;
+  createGroup: (name: string) => Promise<string>;
+  renameGroup: (groupId: string, name: string) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
 }
 
 const TagsContext = createContext<TagsContextValue | null>(null);
-
-function randomId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
 
 /** Upgrade the pre-groups shape (assetId -> tag[]) into a single "default" group. */
 function migrateLegacyTagMap(raw: unknown): PersistShape {
@@ -74,7 +78,7 @@ function migrateLegacyTagMap(raw: unknown): PersistShape {
     }
   }
   if (Object.keys(legacy).length === 0) return { version: 2, groups: [], assignments: {} };
-  const assignments: Assignments = {};
+  const assignments: TagAssignments = {};
   for (const [assetId, values] of Object.entries(legacy)) {
     assignments[assetId] = { default: values };
   }
@@ -93,7 +97,7 @@ function normalizeV2(raw: Record<string, unknown>): PersistShape {
       )
     : [];
 
-  const assignments: Assignments = {};
+  const assignments: TagAssignments = {};
   const rawAssignments = raw.assignments;
   if (rawAssignments && typeof rawAssignments === "object") {
     for (const [assetId, byGroup] of Object.entries(rawAssignments as Record<string, unknown>)) {
@@ -120,33 +124,62 @@ export function migrate(raw: unknown): PersistShape {
 }
 
 export function TagsProvider({ children }: { children: ReactNode }) {
-  const [groups, setGroups] = useState<TagGroup[]>([]);
-  const [assignments, setAssignments] = useState<Assignments>({});
+  const {
+    data,
+    loading,
+    addTagGroup: storeAddTagGroup,
+    renameTagGroup: storeRenameTagGroup,
+    deleteTagGroup: storeDeleteTagGroup,
+    setAssetTags: storeSetAssetTags,
+  } = usePortfolio();
+  const groups = data.tagGroups;
+  const assignments = data.tagAssignments;
+
+  // Guards the one-time legacy-key import against concurrent re-entry (e.g.
+  // React StrictMode's double effect invocation in dev) — not a permanent
+  // latch, so a later store swap (guest -> registered sign-in) can still be
+  // checked; the actual "never twice" guarantee comes from the store having
+  // groups already, or the legacy key having been renamed away.
+  const migrating = useRef(false);
 
   useEffect(() => {
-    void Promise.resolve().then(() => {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
+    if (loading || migrating.current) return;
+    if (groups.length > 0) return; // store already has groups — nothing to migrate
+    migrating.current = true;
+    const assets = data.assets;
+    void Promise.resolve()
+      .then(async () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
           const parsed = migrate(JSON.parse(raw));
-          setGroups(parsed.groups);
-          setAssignments(parsed.assignments);
-        }
-      } catch {
-        /* ignore */
-      }
-    });
-  }, []);
+          if (parsed.groups.length === 0) return;
 
-  const persist = useCallback((next: PersistShape) => {
-    setGroups(next.groups);
-    setAssignments(next.assignments);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+          const idMap: Record<string, string> = {};
+          for (const g of parsed.groups) {
+            const created = await storeAddTagGroup(g.name);
+            idMap[g.id] = created.id;
+          }
+          const assetIds = new Set(assets.map((a) => a.id));
+          for (const [assetId, byGroup] of Object.entries(parsed.assignments)) {
+            if (!assetIds.has(assetId)) continue;
+            for (const [legacyGroupId, values] of Object.entries(byGroup)) {
+              const newGroupId = idMap[legacyGroupId];
+              if (!newGroupId || values.length === 0) continue;
+              await storeSetAssetTags(assetId, newGroupId, values);
+            }
+          }
+          // Keep the payload as a backup but stop it from ever replaying again.
+          localStorage.setItem(STORAGE_KEY_IMPORTED, raw);
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (err) {
+          console.error("Failed to migrate legacy localStorage tags", err);
+        }
+      })
+      .finally(() => {
+        migrating.current = false;
+      });
+  }, [loading, groups.length, data.assets, storeAddTagGroup, storeSetAssetTags]);
 
   const valuesFor = useCallback(
     (assetId: string, groupId: string) => assignments[assetId]?.[groupId] ?? [],
@@ -179,77 +212,52 @@ export function TagsProvider({ children }: { children: ReactNode }) {
   );
 
   const addValue = useCallback(
-    (assetId: string, groupId: string, value: string) => {
+    async (assetId: string, groupId: string, value: string) => {
       const v = value.trim();
       if (!v) return;
-      const byGroup = assignments[assetId] ?? {};
-      const cur = byGroup[groupId] ?? [];
+      const cur = assignments[assetId]?.[groupId] ?? [];
       if (cur.some((x) => x.toLowerCase() === v.toLowerCase())) return;
-      const nextAssignments: Assignments = {
-        ...assignments,
-        [assetId]: { ...byGroup, [groupId]: [...cur, v] },
-      };
-      persist({ version: 2, groups, assignments: nextAssignments });
+      await storeSetAssetTags(assetId, groupId, [...cur, v]);
     },
-    [assignments, groups, persist],
+    [assignments, storeSetAssetTags],
   );
 
   const removeValue = useCallback(
-    (assetId: string, groupId: string, value: string) => {
-      const byGroup = assignments[assetId];
-      if (!byGroup) return;
-      const cur = byGroup[groupId] ?? [];
-      const nextValues = cur.filter((x) => x !== value);
-      const nextByGroup = { ...byGroup };
-      if (nextValues.length) nextByGroup[groupId] = nextValues;
-      else delete nextByGroup[groupId];
-      const nextAssignments = { ...assignments };
-      if (Object.keys(nextByGroup).length) nextAssignments[assetId] = nextByGroup;
-      else delete nextAssignments[assetId];
-      persist({ version: 2, groups, assignments: nextAssignments });
+    async (assetId: string, groupId: string, value: string) => {
+      const cur = assignments[assetId]?.[groupId] ?? [];
+      const next = cur.filter((x) => x !== value);
+      if (next.length === cur.length) return; // nothing to remove
+      await storeSetAssetTags(assetId, groupId, next);
     },
-    [assignments, groups, persist],
+    [assignments, storeSetAssetTags],
   );
 
   const createGroup = useCallback(
-    (name: string): string => {
+    async (name: string): Promise<string> => {
       const n = name.trim();
       if (!n) return "";
       const existing = groups.find((g) => g.name.toLowerCase() === n.toLowerCase());
       if (existing) return existing.id;
-      const id = randomId();
-      persist({ version: 2, groups: [...groups, { id, name: n }], assignments });
-      return id;
+      const group = await storeAddTagGroup(n);
+      return group.id;
     },
-    [groups, assignments, persist],
+    [groups, storeAddTagGroup],
   );
 
   const renameGroup = useCallback(
-    (groupId: string, name: string) => {
+    async (groupId: string, name: string) => {
       const n = name.trim();
       if (!n) return;
-      const nextGroups = groups.map((g) => (g.id === groupId ? { ...g, name: n } : g));
-      persist({ version: 2, groups: nextGroups, assignments });
+      await storeRenameTagGroup(groupId, n);
     },
-    [groups, assignments, persist],
+    [storeRenameTagGroup],
   );
 
   const deleteGroup = useCallback(
-    (groupId: string) => {
-      const nextGroups = groups.filter((g) => g.id !== groupId);
-      const nextAssignments: Assignments = {};
-      for (const [assetId, byGroup] of Object.entries(assignments)) {
-        if (!(groupId in byGroup)) {
-          nextAssignments[assetId] = byGroup;
-          continue;
-        }
-        const nextByGroup = { ...byGroup };
-        delete nextByGroup[groupId];
-        if (Object.keys(nextByGroup).length) nextAssignments[assetId] = nextByGroup;
-      }
-      persist({ version: 2, groups: nextGroups, assignments: nextAssignments });
+    async (groupId: string) => {
+      await storeDeleteTagGroup(groupId);
     },
-    [groups, assignments, persist],
+    [storeDeleteTagGroup],
   );
 
   const value = useMemo<TagsContextValue>(

@@ -122,6 +122,28 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
     case "deleteSavingsPlan":
       await inner.deleteSavingsPlan(op.id);
       return;
+    case "addTagGroup": {
+      const { name } = op.payload as { name: string };
+      await inner.addTagGroup(name, op.id);
+      return;
+    }
+    case "renameTagGroup": {
+      const { name } = op.payload as { name: string };
+      await inner.renameTagGroup(op.id, name);
+      return;
+    }
+    case "deleteTagGroup":
+      await inner.deleteTagGroup(op.id);
+      return;
+    case "setAssetTags": {
+      const { assetId, groupId, values } = op.payload as {
+        assetId: string;
+        groupId: string;
+        values: string[];
+      };
+      await inner.setAssetTags(assetId, groupId, values);
+      return;
+    }
     case "createPortfolio": {
       const { name } = op.payload as { name: string };
       await inner.createPortfolio(name, op.id);

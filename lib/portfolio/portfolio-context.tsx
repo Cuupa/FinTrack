@@ -30,6 +30,8 @@ import {
   type PortfolioData,
   type Profile,
   type SavingsPlan,
+  type TagAssignments,
+  type TagGroup,
   type Transaction,
   type WatchlistItem,
 } from "../types";
@@ -68,6 +70,10 @@ interface PortfolioContextValue {
   addSavingsPlan(input: SavingsPlanInput): Promise<SavingsPlan>;
   updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void>;
   deleteSavingsPlan(id: string): Promise<void>;
+  addTagGroup(name: string): Promise<TagGroup>;
+  renameTagGroup(id: string, name: string): Promise<void>;
+  deleteTagGroup(id: string): Promise<void>;
+  setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
@@ -184,12 +190,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const deleteAsset = useCallback(
     async (id: string) => {
       await store.deleteAsset(id);
-      setData((d) => ({
-        ...d,
-        assets: d.assets.filter((a) => a.id !== id),
-        transactions: d.transactions.filter((t) => t.assetId !== id),
-        savingsPlans: d.savingsPlans.filter((p) => p.assetId !== id),
-      }));
+      setData((d) => {
+        const tagAssignments = { ...d.tagAssignments };
+        delete tagAssignments[id];
+        return {
+          ...d,
+          assets: d.assets.filter((a) => a.id !== id),
+          transactions: d.transactions.filter((t) => t.assetId !== id),
+          savingsPlans: d.savingsPlans.filter((p) => p.assetId !== id),
+          tagAssignments,
+        };
+      });
     },
     [store],
   );
@@ -280,6 +291,66 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ...d,
         savingsPlans: d.savingsPlans.filter((p) => p.id !== id),
       }));
+    },
+    [store],
+  );
+
+  const addTagGroup = useCallback(
+    async (name: string) => {
+      const group = await store.addTagGroup(name);
+      setData((d) => ({ ...d, tagGroups: [...d.tagGroups, group] }));
+      return group;
+    },
+    [store],
+  );
+
+  const renameTagGroup = useCallback(
+    async (id: string, name: string) => {
+      await store.renameTagGroup(id, name);
+      const n = name.trim();
+      if (!n) return;
+      setData((d) => ({
+        ...d,
+        tagGroups: d.tagGroups.map((g) => (g.id === id ? { ...g, name: n } : g)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteTagGroup = useCallback(
+    async (id: string) => {
+      await store.deleteTagGroup(id);
+      setData((d) => {
+        const tagGroups = d.tagGroups.filter((g) => g.id !== id);
+        const tagAssignments: TagAssignments = {};
+        for (const [assetId, byGroup] of Object.entries(d.tagAssignments)) {
+          if (!(id in byGroup)) {
+            tagAssignments[assetId] = byGroup;
+            continue;
+          }
+          const nextByGroup = { ...byGroup };
+          delete nextByGroup[id];
+          if (Object.keys(nextByGroup).length) tagAssignments[assetId] = nextByGroup;
+        }
+        return { ...d, tagGroups, tagAssignments };
+      });
+    },
+    [store],
+  );
+
+  const setAssetTags = useCallback(
+    async (assetId: string, groupId: string, values: string[]) => {
+      await store.setAssetTags(assetId, groupId, values);
+      setData((d) => {
+        const byGroup = d.tagAssignments[assetId] ?? {};
+        const nextByGroup = { ...byGroup };
+        if (values.length > 0) nextByGroup[groupId] = values;
+        else delete nextByGroup[groupId];
+        const tagAssignments = { ...d.tagAssignments };
+        if (Object.keys(nextByGroup).length) tagAssignments[assetId] = nextByGroup;
+        else delete tagAssignments[assetId];
+        return { ...d, tagAssignments };
+      });
     },
     [store],
   );
@@ -385,6 +456,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addSavingsPlan,
     updateSavingsPlan,
     deleteSavingsPlan,
+    addTagGroup,
+    renameTagGroup,
+    deleteTagGroup,
+    setAssetTags,
     setCurrency,
     updateProfile,
     loadSimulation,

@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useTags } from "@/lib/tags/tags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { isStorageFullError } from "@/lib/store/errors";
 import { colorForLabel } from "@/lib/colors";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -25,6 +26,11 @@ export function AssetTags({ assetId }: { assetId: string }) {
   const [newGroupName, setNewGroupName] = useState("");
   const [managing, setManaging] = useState(false);
   const [tourReplay, setTourReplay] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  function reportError(err: unknown) {
+    setError(isStorageFullError(err) ? t("common.storageFull") : t("tags.actionError"));
+  }
 
   const entries = entriesFor(assetId);
   // Derive rather than sync via effect: fall back to the first group once the
@@ -33,20 +39,28 @@ export function AssetTags({ assetId }: { assetId: string }) {
     ? selectedGroupId
     : (groups[0]?.id ?? "");
 
-  function commitNewGroup() {
+  async function commitNewGroup() {
     const name = newGroupName.trim();
-    if (name) {
-      const id = createGroup(name);
-      if (id) setSelectedGroupId(id);
-    }
     setNewGroupName("");
     setAddingGroup(false);
+    if (!name) return;
+    try {
+      const id = await createGroup(name);
+      if (id) setSelectedGroupId(id);
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  function commitValue() {
+  async function commitValue() {
     const v = value.trim();
-    if (v && groupId) addValue(assetId, groupId, v);
     setValue("");
+    if (!v || !groupId) return;
+    try {
+      await addValue(assetId, groupId, v);
+    } catch (err) {
+      reportError(err);
+    }
   }
 
   const datalistId = `asset-tag-values-${assetId}`;
@@ -58,6 +72,7 @@ export function AssetTags({ assetId }: { assetId: string }) {
         {t("tags.title")}
         <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
       </h3>
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {entries.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {entries.flatMap(({ group, values }) =>
@@ -70,7 +85,7 @@ export function AssetTags({ assetId }: { assetId: string }) {
                 {group.name}: {v}
                 <button
                   type="button"
-                  onClick={() => removeValue(assetId, group.id, v)}
+                  onClick={() => removeValue(assetId, group.id, v).catch(reportError)}
                   aria-label={`Remove tag ${group.name}: ${v}`}
                   className="text-white/80 hover:text-white"
                 >

@@ -172,6 +172,18 @@ export interface SavingsPlan {
   lastRunDate: string | null;
 }
 
+/**
+ * A user-defined key-value tag group (e.g. "Strategie"), for the Analysis
+ * "Custom" distribution and the asset page's tag badges.
+ */
+export interface TagGroup {
+  id: string;
+  name: string;
+}
+
+/** assetId -> groupId -> values. */
+export type TagAssignments = Record<string, Record<string, string[]>>;
+
 /** The complete persisted state for one user (or guest session). */
 export interface PortfolioData {
   profile: Profile;
@@ -180,6 +192,8 @@ export interface PortfolioData {
   transactions: Transaction[];
   watchlist: WatchlistItem[];
   savingsPlans: SavingsPlan[];
+  tagGroups: TagGroup[];
+  tagAssignments: TagAssignments;
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -204,5 +218,7 @@ export function emptyPortfolio(): PortfolioData {
     transactions: [],
     watchlist: [],
     savingsPlans: [],
+    tagGroups: [],
+    tagAssignments: {},
   };
 }

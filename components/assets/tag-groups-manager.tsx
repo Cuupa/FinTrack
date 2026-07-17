@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useTags, type TagGroup } from "@/lib/tags/tags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { isStorageFullError } from "@/lib/store/errors";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button, Card } from "@/components/ui/primitives";
@@ -20,23 +21,38 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
   const [deleting, setDeleting] = useState<TagGroup | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function reportError(err: unknown) {
+    setError(isStorageFullError(err) ? t("common.storageFull") : t("tags.actionError"));
+  }
 
   function startRename(group: TagGroup) {
     setRenaming(group.id);
     setRenameVal(group.name);
   }
 
-  function commitRename(groupId: string) {
+  async function commitRename(groupId: string) {
     const name = renameVal.trim();
-    if (name) renameGroup(groupId, name);
     setRenaming(null);
+    if (!name) return;
+    try {
+      await renameGroup(groupId, name);
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  function commitNew() {
+  async function commitNew() {
     const name = newName.trim();
-    if (name) createGroup(name);
     setNewName("");
     setAdding(false);
+    if (!name) return;
+    try {
+      await createGroup(name);
+    } catch (err) {
+      reportError(err);
+    }
   }
 
   return (
@@ -44,6 +60,7 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
       <Modal open={open} onClose={onClose} maxWidthClass="max-w-md">
         <Card>
           <h2 className="text-lg font-semibold">{t("tags.manageGroups")}</h2>
+          {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           {groups.length > 0 && (
             <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -117,8 +134,10 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
         message={deleting ? t("tags.deleteGroupConfirm", { name: deleting.name }) : undefined}
         confirmLabel={t("tags.deleteGroup")}
         onConfirm={() => {
-          if (deleting) deleteGroup(deleting.id);
+          const group = deleting;
           setDeleting(null);
+          if (!group) return;
+          deleteGroup(group.id).catch(reportError);
         }}
         onCancel={() => setDeleting(null)}
       />

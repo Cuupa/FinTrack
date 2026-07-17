@@ -36,13 +36,13 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 - [x] Delete keeps ConfirmDialog; presence-gating pattern preserved
 - [x] Bonus: paused-state pill removed (no-badge rule) — plain subtitle text + dimmed name
 ### T3 Settings tabs
-- [ ] Settings panels behind tabs (not badges): Tab "General" = name/currency + language + guided tour + change password + danger zone; Tab "Fees & taxes" = broker fees + taxes
-- [ ] Localized en/de/es, du/tú registers, es parity test stays green
+- [x] Two underline tabs (no pills): General = profile + language + tour + password + danger zone; Fees and taxes = taxes + broker fees; reused the analysis-page tab styling + proper tablist aria (480 tests + lint green)
+- [x] Keys settings.tabGeneral/tabFees in en/de/es; parity test green
 ### T4 Tags in the store (user override of the earlier localStorage-only decision)
-- [ ] Tag groups + assignments persist through the DataStore seam (LocalStore + SupabaseStore + OfflineStore mirror/queue + sync replay)
-- [ ] Idempotent migration + schema.sql update; RLS per user
-- [ ] Existing localStorage tags migrate into the store once, losslessly
-- [ ] /datenschutz claims updated (tags no longer local-only for registered users); CLAUDE.md updated
+- [x] Full seam: PortfolioData.tagGroups/tagAssignments; addTagGroup/renameTagGroup/deleteTagGroup/setAssetTags (replace-set, replay-idempotent) in LocalStore + SupabaseStore + OfflineStore mirror/queue + sync replay (484 tests, lint, tsc, build green)
+- [x] Migration 0062_asset_tags.sql + schema.sql, idempotent, RLS owner-only, FK cascades + indexes
+- [x] One-time legacy fintrack-tags import (guarded: store empty + key present; key renamed to fintrack-tags-imported as backup)
+- [x] /datenschutz EN+DE updated (guest = local blob, registered = DB), dates bumped; CLAUDE.md tags section rewritten
 ### T5 Monte Carlo
 - [ ] Layout decluttered; accumulation vs withdrawal phases clearly distinguished
 - [ ] Rebalancing option explained in context (what/where to)

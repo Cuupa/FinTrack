@@ -154,11 +154,19 @@ duplicated, not imported).
 - `lib/finance/allocation.ts` — pie-chart breakdowns by investment / class /
   currency / country / volatility (`/allocation`).
 - Tags are grouped key-value pairs (e.g. `Strategie=gamble`): `TagsProvider`
-  (`lib/tags/tags-context.tsx`) holds `groups` (customizable names, stable ids,
-  rename/delete via the manager modal) and `assignments[assetId][groupId] =
-  string[]`, persisted **localStorage-only** under `fintrack-tags` (versioned,
-  lossless legacy migration into a default "Tags" group; disclosed in
-  `/datenschutz`, deliberately not in the store seam). The Analysis "Custom"
+  (`lib/tags/tags-context.tsx`) exposes `groups` (customizable names, stable
+  ids, rename/delete via the manager modal) and `assignments[assetId][groupId]
+  = string[]`. Since round 22 tags **ride the full store seam** (owner
+  override of the earlier localStorage-only decision): `PortfolioData` carries
+  `tagGroups`/`tagAssignments`, tables `tag_groups` + `asset_tags` (migration
+  0062, RLS per user, FK cascade on asset/group delete), store methods
+  `addTagGroup`/`renameTagGroup`/`deleteTagGroup`/`setAssetTags`
+  (replace-set semantics, replay-idempotent through the offline queue).
+  `TagsProvider` is a thin adapter over `usePortfolio()`; on first load it
+  replays a leftover legacy `fintrack-tags` localStorage key into the store
+  (only when the store has zero groups), then renames it to
+  `fintrack-tags-imported`. Disclosed in `/datenschutz` (guest = local blob,
+  registered = DB). The Analysis "Custom"
   breakdown is switchable per group: `byCustom(holdings, assignments, groupId)`
   buckets holdings without a value in that group as "Untagged" (hardcoded
   sentinel, gray slice).
