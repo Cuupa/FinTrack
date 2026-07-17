@@ -207,6 +207,11 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       else delete nextByGroup[groupId];
       data.tagAssignments = { ...data.tagAssignments, [assetId]: nextByGroup };
     },
+    async saveLlmConfig(config) {
+      calls.push("saveLlmConfig");
+      maybeFail();
+      data.llmConfig = config;
+    },
     async createPortfolio(name, id) {
       calls.push(`createPortfolio:${id}`);
       maybeFail();

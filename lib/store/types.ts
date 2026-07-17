@@ -6,6 +6,7 @@
 
 import type {
   Asset,
+  LlmConfig,
   Portfolio,
   PortfolioData,
   Profile,
@@ -73,6 +74,12 @@ export interface DataStore {
    * `values` (idempotent, replay-safe). An empty array clears the pair.
    */
   setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
+  /**
+   * Replace-set the user's BYO LLM config (replay-idempotent like
+   * `setAssetTags`). `null` removes it entirely (the settings "Remove key"
+   * action).
+   */
+  saveLlmConfig(config: LlmConfig | null): Promise<void>;
   createPortfolio(name: string, id?: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
   /** Patches name and/or fee-model fields (settings "Broker & fees"). */

@@ -1,5 +1,7 @@
 // Core domain types shared across the app and both storage backends.
 
+import type { LlmProviderId } from "./llm/types";
+
 export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "COMMODITY" | "CASH";
 // BOOKING is a cost-free crediting of shares — e.g. an
 // employer's vermögenswirksame Leistung or a gift. It adds shares at ZERO cost
@@ -184,6 +186,19 @@ export interface TagGroup {
 /** assetId -> groupId -> values. */
 export type TagAssignments = Record<string, Record<string, string[]>>;
 
+/**
+ * The user's BYO LLM assistant config (provider, model, API key). Rides the
+ * DataStore seam like watchlist/savings plans/tags (round-22 tags precedent,
+ * owner override of the earlier "localStorage only" decision): DB-persisted
+ * for registered users (`llm_settings`), localStorage-backed (inside the
+ * guest blob) for guests.
+ */
+export interface LlmConfig {
+  provider: LlmProviderId;
+  model: string;
+  key: string;
+}
+
 /** The complete persisted state for one user (or guest session). */
 export interface PortfolioData {
   profile: Profile;
@@ -194,6 +209,8 @@ export interface PortfolioData {
   savingsPlans: SavingsPlan[];
   tagGroups: TagGroup[];
   tagAssignments: TagAssignments;
+  /** null = no key configured. */
+  llmConfig: LlmConfig | null;
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -220,5 +237,6 @@ export function emptyPortfolio(): PortfolioData {
     savingsPlans: [],
     tagGroups: [],
     tagAssignments: {},
+    llmConfig: null,
   };
 }

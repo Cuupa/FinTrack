@@ -26,6 +26,7 @@ import type {
 import {
   emptyPortfolio,
   type Asset,
+  type LlmConfig,
   type Portfolio,
   type PortfolioData,
   type Profile,
@@ -74,6 +75,7 @@ interface PortfolioContextValue {
   renameTagGroup(id: string, name: string): Promise<void>;
   deleteTagGroup(id: string): Promise<void>;
   setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
+  saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
@@ -355,6 +357,14 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const saveLlmConfig = useCallback(
+    async (config: LlmConfig | null) => {
+      await store.saveLlmConfig(config);
+      setData((d) => ({ ...d, llmConfig: config }));
+    },
+    [store],
+  );
+
   const updateProfile = useCallback(
     async (patch: Partial<Profile>) => {
       const profile: Profile = { ...data.profile, ...patch };
@@ -460,6 +470,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     renameTagGroup,
     deleteTagGroup,
     setAssetTags,
+    saveLlmConfig,
     setCurrency,
     updateProfile,
     loadSimulation,

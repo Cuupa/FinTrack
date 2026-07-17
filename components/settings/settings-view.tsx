@@ -601,10 +601,11 @@ function PortfolioFeeRow({
  * "AI assistant" settings tab (flag `llmChat`): provider/model/key form,
  * "Test connection" ping, and "Remove key". Local state is seeded once from
  * the stored config at mount (same pattern as the profile/tax fields and
- * PortfolioFeeRow above) rather than kept in sync via effect. The key never
- * leaves the browser except for an explicit Save (localStorage, via
- * useLlmConfig) or Test connection (a one-shot ping POSTed to /api/llm with
- * the CURRENT form values, which may differ from the last saved config).
+ * PortfolioFeeRow above) rather than kept in sync via effect. The key rides
+ * the DataStore seam via `useLlmConfig` (Guest Mode: browser-local; registered:
+ * the account's `llm_settings` row) except for Test connection, a one-shot
+ * ping POSTed to /api/llm with the CURRENT form values, which may differ from
+ * the last saved config and is never persisted either way.
  */
 function AiAssistantSection() {
   const { t } = useI18n();
@@ -617,6 +618,7 @@ function AiAssistantSection() {
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -632,12 +634,18 @@ function AiAssistantSection() {
     setModel(p.defaultModel);
   }
 
-  function save() {
+  async function save() {
     setSaving(true);
-    setConfig({ provider, model, key: key.trim() });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setError(null);
+    try {
+      await setConfig({ provider, model, key: key.trim() });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("settings.ai.saveError"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function testConnection() {
@@ -667,10 +675,16 @@ function AiAssistantSection() {
     }
   }
 
-  function removeKey() {
-    clearConfig();
-    setKey("");
-    setRemoveConfirmOpen(false);
+  async function removeKey() {
+    setError(null);
+    try {
+      await clearConfig();
+      setKey("");
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("settings.ai.saveError"));
+    } finally {
+      setRemoveConfirmOpen(false);
+    }
   }
 
   return (
@@ -726,7 +740,7 @@ function AiAssistantSection() {
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={save} disabled={saving || !key.trim()}>
+          <Button variant="primary" onClick={() => void save()} disabled={saving || !key.trim()}>
             {saving ? "…" : t("settings.save")}
           </Button>
           <Button
@@ -746,6 +760,7 @@ function AiAssistantSection() {
         {saved && (
           <p className="text-sm text-emerald-600 dark:text-emerald-400">{t("settings.saved")}</p>
         )}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         {testResult && (
           <p
             className={`text-sm ${

@@ -80,7 +80,7 @@ afterEach(() => {
 describe("POST /api/llm — streaming passthrough (normalized)", () => {
   it("forwards to the vendor and re-emits uniform delta + [DONE] frames", async () => {
     stubUnconfigured();
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () =>
       streamResponse([
         'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hel"}}\n\n',
         'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"lo"}}\n\n',
@@ -198,7 +198,7 @@ describe("POST /api/llm — vendor error mapping", () => {
 describe("POST /api/llm — ping mode", () => {
   it("returns { ok: true } on a successful non-streamed ping", async () => {
     stubUnconfigured();
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () =>
       new Response(JSON.stringify({ content: [{ type: "text", text: "hi" }] }), { status: 200 }),
     );
     vi.stubGlobal("fetch", fetchMock);

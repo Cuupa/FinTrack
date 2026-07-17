@@ -16,7 +16,7 @@
 // React, no Supabase types. `OfflineStore.sync()` (lib/store/offline-store.ts)
 // is the thin, stateful wrapper that owns *which* queue/inner/mirror to use.
 
-import type { PortfolioData, Profile } from "../types";
+import type { LlmConfig, PortfolioData, Profile } from "../types";
 import { RowNotFoundError } from "../store/types";
 import type {
   AssetInput,
@@ -144,6 +144,9 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       await inner.setAssetTags(assetId, groupId, values);
       return;
     }
+    case "saveLlmConfig":
+      await inner.saveLlmConfig(op.payload as LlmConfig | null);
+      return;
     case "createPortfolio": {
       const { name } = op.payload as { name: string };
       await inner.createPortfolio(name, op.id);

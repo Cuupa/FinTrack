@@ -22,6 +22,7 @@
 
 import type {
   Asset,
+  LlmConfig,
   Portfolio,
   PortfolioData,
   Profile,
@@ -287,6 +288,16 @@ export class OfflineStore implements DataStore {
         groupId,
         values,
       });
+    }
+  }
+
+  async saveLlmConfig(config: LlmConfig | null): Promise<void> {
+    await this.mirror.saveLlmConfig(config);
+    try {
+      await this.inner.saveLlmConfig(config);
+    } catch (err) {
+      // No id of its own, like saveProfile — the queue keys the op by userId.
+      await this.handleFailure(err, "saveLlmConfig", this.userId, config);
     }
   }
 

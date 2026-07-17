@@ -375,6 +375,18 @@ create index if not exists asset_tags_asset_id_idx on public.asset_tags (asset_i
 create index if not exists asset_tags_group_id_idx on public.asset_tags (group_id);
 create index if not exists asset_tags_user_id_idx on public.asset_tags (user_id);
 
+-- LLM assistant config (provider, model, API key) — one row per user; rides
+-- the same DataStore seam as tags above (Guest Mode keeps it in its
+-- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
+-- row on removal, so this is always replace-set and replay-idempotent.
+create table if not exists public.llm_settings (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  provider text not null,
+  model text not null,
+  api_key text not null,
+  updated_at timestamptz not null default now()
+);
+
 -- Cached Monte Carlo simulation runs, keyed by a hash of the (seed-independent)
 -- parameters. Rerunning with identical params reuses the stored result instead
 -- of recomputing. The seed is kept for auditing/reproducibility.
@@ -483,7 +495,8 @@ insert into public.schema_migrations (version) values
   ('0060_profile_tours_done'),
   ('0061_savings_plan_booking_type'),
   ('0062_asset_tags'),
-  ('0063_llm_chat_flag')
+  ('0063_llm_chat_flag'),
+  ('0064_llm_settings')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -496,6 +509,7 @@ alter table public.watchlist_items enable row level security;
 alter table public.savings_plans enable row level security;
 alter table public.tag_groups enable row level security;
 alter table public.asset_tags enable row level security;
+alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
 alter table public.instruments enable row level security;
@@ -578,6 +592,10 @@ create policy "own tag groups" on public.tag_groups
 
 drop policy if exists "own asset tags" on public.asset_tags;
 create policy "own asset tags" on public.asset_tags
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own llm settings" on public.llm_settings;
+create policy "own llm settings" on public.llm_settings
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own simulations" on public.simulation_runs;

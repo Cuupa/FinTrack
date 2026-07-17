@@ -21,33 +21,32 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <I18nProvider>
         <AuthProvider>
-          {/* Needs useAuth() (to re-sync after the sign-out clear in
-              auth-context.tsx), otherwise independent of portfolio data - so
-              it sits at this level rather than nested inside PortfolioProvider
-              like SyncProvider/LivePricesProvider/TagsProvider below. */}
-          <LlmConfigProvider>
-            <FeatureFlagsProvider>
-              <CatalogProvider>
-                <PortfolioProvider>
-                  {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
-                      phase 3), sits just inside it, same as every other provider
-                      here that depends on portfolio data. */}
-                  <SyncProvider>
-                    <LivePricesProvider>
-                      <PrivacyProvider>
-                        <TagsProvider>
+          <FeatureFlagsProvider>
+            <CatalogProvider>
+              <PortfolioProvider>
+                {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
+                    phase 3), sits just inside it, same as every other provider
+                    here that depends on portfolio data. LlmConfigProvider is a
+                    thin adapter over usePortfolio() (round-22 tags precedent),
+                    so it lives at this level too, not at the top like before
+                    the config moved onto the DataStore seam. */}
+                <SyncProvider>
+                  <LivePricesProvider>
+                    <PrivacyProvider>
+                      <TagsProvider>
+                        <LlmConfigProvider>
                           <LocaleSync />
                           <ThemeSync />
                           <ErrorReporter />
                           {children}
-                        </TagsProvider>
-                      </PrivacyProvider>
-                    </LivePricesProvider>
-                  </SyncProvider>
-                </PortfolioProvider>
-              </CatalogProvider>
-            </FeatureFlagsProvider>
-          </LlmConfigProvider>
+                        </LlmConfigProvider>
+                      </TagsProvider>
+                    </PrivacyProvider>
+                  </LivePricesProvider>
+                </SyncProvider>
+              </PortfolioProvider>
+            </CatalogProvider>
+          </FeatureFlagsProvider>
         </AuthProvider>
       </I18nProvider>
     </ThemeProvider>

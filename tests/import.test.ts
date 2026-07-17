@@ -535,6 +535,7 @@ describe("csv parsers — fintrack (self re-import)", () => {
       savingsPlans: [],
       tagGroups: [],
       tagAssignments: {},
+      llmConfig: null,
     };
 
     const csv = portfolioToCsv(data);

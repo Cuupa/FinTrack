@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { LocalStore } from "../lib/store/local-store";
 import { isStorageFullError, StorageFullError } from "../lib/store/errors";
+import type { LlmConfig } from "../lib/types";
 
 const ASSET_INPUT = {
   isin: "US0378331005",
@@ -173,5 +174,72 @@ describe("LocalStore tag groups + assignments", () => {
     // deleted asset is gone.
     expect(data.tagGroups).toEqual([group]);
     expect(data.tagAssignments).toEqual({});
+  });
+});
+
+describe("LocalStore llmConfig", () => {
+  const SAMPLE: LlmConfig = { provider: "anthropic", model: "claude-sonnet-5", key: "sk-test" };
+
+  it("defaults to null when nothing is stored", async () => {
+    const store = new LocalStore();
+    const data = await store.load();
+    expect(data.llmConfig).toBeNull();
+  });
+
+  it("round-trips a saved config via load()", async () => {
+    const store = new LocalStore();
+    await store.saveLlmConfig(SAMPLE);
+    const data = await store.load();
+    expect(data.llmConfig).toEqual(SAMPLE);
+  });
+
+  it("replace-set: a second save overwrites, doesn't merge", async () => {
+    const store = new LocalStore();
+    await store.saveLlmConfig(SAMPLE);
+    const next: LlmConfig = { provider: "openai", model: "gpt-5", key: "sk-other" };
+    await store.saveLlmConfig(next);
+    const data = await store.load();
+    expect(data.llmConfig).toEqual(next);
+  });
+
+  it("saving null removes the config", async () => {
+    const store = new LocalStore();
+    await store.saveLlmConfig(SAMPLE);
+    await store.saveLlmConfig(null);
+    const data = await store.load();
+    expect(data.llmConfig).toBeNull();
+  });
+
+  it("backfills a blob persisted before llmConfig existed to null", async () => {
+    const storage = (() => {
+      const map = new Map<string, string>();
+      return {
+        getItem: (k: string) => map.get(k) ?? null,
+        setItem: (k: string, v: string) => void map.set(k, v),
+        removeItem: (k: string) => void map.delete(k),
+        clear: () => map.clear(),
+        key: (i: number) => Array.from(map.keys())[i] ?? null,
+        get length() {
+          return map.size;
+        },
+      } as Storage;
+    })();
+    // A pre-llmConfig blob: everything else present, no `llmConfig` key at all.
+    storage.setItem(
+      "fintrack:portfolio:v1",
+      JSON.stringify({
+        profile: { currency: "EUR" },
+        portfolios: [{ id: "p1", name: "Main" }],
+        assets: [],
+        transactions: [],
+        watchlist: [],
+        savingsPlans: [],
+        tagGroups: [],
+        tagAssignments: {},
+      }),
+    );
+    const store = new LocalStore(storage);
+    const data = await store.load();
+    expect(data.llmConfig).toBeNull();
   });
 });

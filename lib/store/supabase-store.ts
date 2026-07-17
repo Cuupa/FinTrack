@@ -12,6 +12,7 @@ import {
   DEFAULT_PROFILE,
   MAX_PORTFOLIOS,
   type Asset,
+  type LlmConfig,
   type Portfolio,
   type PortfolioData,
   type Profile,
@@ -21,6 +22,7 @@ import {
   type Transaction,
   type WatchlistItem,
 } from "../types";
+import type { LlmProviderId } from "../llm/types";
 import { RowNotFoundError } from "./types";
 import type {
   AssetInput,
@@ -120,7 +122,17 @@ export class SupabaseStore implements DataStore {
   ) {}
 
   async load(): Promise<PortfolioData> {
-    const [profileRes, portfoliosRes, assetsRes, txRes, watchRes, plansRes, tagGroupsRes, assetTagsRes] = await Promise.all([
+    const [
+      profileRes,
+      portfoliosRes,
+      assetsRes,
+      txRes,
+      watchRes,
+      plansRes,
+      tagGroupsRes,
+      assetTagsRes,
+      llmSettingsRes,
+    ] = await Promise.all([
       this.supabase
         .from("profiles")
         .select(
@@ -162,6 +174,11 @@ export class SupabaseStore implements DataStore {
         .from("asset_tags")
         .select("asset_id, group_id, value")
         .eq("user_id", this.userId),
+      this.supabase
+        .from("llm_settings")
+        .select("provider, model, api_key")
+        .eq("user_id", this.userId)
+        .maybeSingle(),
     ]);
 
     if (assetsRes.error) throw assetsRes.error;
@@ -170,6 +187,7 @@ export class SupabaseStore implements DataStore {
     if (plansRes.error) throw plansRes.error;
     if (tagGroupsRes.error) throw tagGroupsRes.error;
     if (assetTagsRes.error) throw assetTagsRes.error;
+    if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.
@@ -270,6 +288,15 @@ export class SupabaseStore implements DataStore {
       (byGroup[r.group_id] ??= []).push(r.value);
     }
 
+    const llmRow = llmSettingsRes.data as {
+      provider: string;
+      model: string;
+      api_key: string;
+    } | null;
+    const llmConfig: LlmConfig | null = llmRow
+      ? { provider: llmRow.provider as LlmProviderId, model: llmRow.model, key: llmRow.api_key }
+      : null;
+
     return {
       profile,
       portfolios,
@@ -279,6 +306,7 @@ export class SupabaseStore implements DataStore {
       savingsPlans,
       tagGroups,
       tagAssignments,
+      llmConfig,
     };
   }
 
@@ -613,6 +641,29 @@ export class SupabaseStore implements DataStore {
       })),
     );
     if (insErr) throw insErr;
+  }
+
+  /**
+   * Replace-set the user's LLM config. `llm_settings.user_id` is the primary
+   * key, so a save is a plain upsert; `null` deletes the row. Idempotent /
+   * replay-safe either way, same as `setAssetTags`.
+   */
+  async saveLlmConfig(config: LlmConfig | null): Promise<void> {
+    if (config === null) {
+      const { error } = await this.supabase
+        .from("llm_settings")
+        .delete()
+        .eq("user_id", this.userId);
+      if (error) throw error;
+      return;
+    }
+    const { error } = await this.supabase.from("llm_settings").upsert({
+      user_id: this.userId,
+      provider: config.provider,
+      model: config.model,
+      api_key: config.key,
+    });
+    if (error) throw error;
   }
 
   async createPortfolio(name: string, id?: string): Promise<Portfolio> {

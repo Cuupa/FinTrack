@@ -194,12 +194,20 @@ function DatenschutzDE({
           („Bring your own key“).
         </p>
         <p>
-          Dein API-Schlüssel wird ausschließlich lokal in deinem Browser gespeichert (
+          Im Gastmodus wird dein API-Schlüssel ausschließlich lokal in deinem Browser gespeichert
+          (
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>
-          ), niemals auf unserem Server. Meldest du dich ab, wird der gespeicherte Schlüssel
-          automatisch aus deinem Browser gelöscht.
+          ). Bist du registriert und angemeldet, speichern wir ihn stattdessen in deinem Konto in
+          unserer Datenbank, geschützt durch nutzerspezifische Zugriffskontrollen (Row-Level
+          Security), sodass er auf all deinen Geräten verfügbar ist. Eine Verschlüsselung im Ruhezustand
+          (encryption at rest) über die Standard-Datenbankverschlüsselung unseres Hosters hinaus
+          bieten wir nicht an. Im Gastmodus entfernst du den Schlüssel, indem du ihn in den
+          Einstellungen löschst oder deine Browserdaten leerst; im registrierten Modus bleibt er in
+          deinem Konto gespeichert, bis du ihn in den Einstellungen entfernst. Er wird nicht
+          automatisch beim Abmelden gelöscht, da er zu deinem Konto gehört wie alle anderen
+          Portfoliodaten.
         </p>
         <p>
           Nutzt du den Chat, werden deine Portfoliodaten (Positionen, Sparpläne, Risikokennzahlen)
@@ -403,12 +411,17 @@ function DatenschutzEN({
           Settings (&ldquo;bring your own key&rdquo;).
         </p>
         <p>
-          Your API key is stored exclusively in your browser (
+          In Guest Mode, your API key is stored exclusively in your browser (
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-zinc-800">
             localStorage
           </code>
-          ), never on our server. When you sign out, the stored key is automatically removed from
-          your browser.
+          ). If you are registered and signed in, we instead store it in your account in our
+          database, protected by per-user access controls (row-level security), so it is available
+          on every device you use. We do not offer encryption at rest beyond our hosting
+          provider&rsquo;s standard database encryption. In Guest Mode you remove the key by
+          deleting it in Settings or clearing your browser data; in registered mode it stays stored
+          in your account until you remove it in Settings, it is not automatically deleted on
+          sign-out since it belongs to your account like every other piece of portfolio data.
         </p>
         <p>
           When you use the chat, your portfolio data (holdings, savings plans, risk figures) is

@@ -16,7 +16,6 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
 import { clearHistoryCache } from "../history/history-cache";
-import { clearLlmConfig } from "../llm/config-storage";
 
 export type Mode = "guest" | "registered";
 
@@ -112,10 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // keys (ISIN/WKN/symbol) - clear it so a shared device never surfaces one
     // user's chart data after another signs in.
     clearHistoryCache();
-    // The LLM API key is browser-local only (LLM_INTEGRATION.md's key
-    // handling decision) - clear it too so a shared device never carries one
-    // user's key into another's session.
-    clearLlmConfig();
+    // The LLM API key now rides the DataStore seam (round-22 tags precedent,
+    // owner override of LLM_INTEGRATION.md decision 1): a registered user's
+    // key lives in their account (llm_settings) and must survive sign-out,
+    // same as every other piece of portfolio data. Guest Mode keys already
+    // behave like all other guest data (cleared only by clearing browser
+    // storage), so there is nothing to clear here anymore.
   }, [supabase]);
 
   const updatePassword = useCallback(

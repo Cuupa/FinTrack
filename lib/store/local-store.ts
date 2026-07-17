@@ -6,6 +6,7 @@
 import {
   emptyPortfolio,
   MAX_PORTFOLIOS,
+  type LlmConfig,
   type PortfolioData,
   type Profile,
   type TagAssignments,
@@ -106,6 +107,9 @@ export class LocalStore implements DataStore {
         // (they used to live in a separate `fintrack-tags` key entirely).
         tagGroups: parsed.tagGroups ?? [],
         tagAssignments: parsed.tagAssignments ?? {},
+        // Backfill portfolios saved before the LLM config moved onto the
+        // store seam (it used to live in a separate `fintrack-llm` key).
+        llmConfig: parsed.llmConfig ?? null,
       };
     } catch {
       return emptyPortfolio();
@@ -299,6 +303,12 @@ export class LocalStore implements DataStore {
     if (Object.keys(nextByGroup).length) tagAssignments[assetId] = nextByGroup;
     else delete tagAssignments[assetId];
     data.tagAssignments = tagAssignments;
+    this.write(data);
+  }
+
+  async saveLlmConfig(config: LlmConfig | null) {
+    const data = this.read();
+    data.llmConfig = config;
     this.write(data);
   }
 
