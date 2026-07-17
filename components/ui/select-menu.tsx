@@ -11,6 +11,8 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 export interface SelectOption {
   value: string;
   label: string;
+  /** Hidden search terms (e.g. ISIN/WKN/symbol) matched by `searchable` filtering, never rendered. */
+  keywords?: string[];
 }
 
 export function SelectMenu({
@@ -47,7 +49,11 @@ export function SelectMenu({
   const selected = options.find((o) => o.value === value);
   const filtered =
     searchable && query.trim()
-      ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+      ? options.filter((o) => {
+          const q = query.trim().toLowerCase();
+          if (o.label.toLowerCase().includes(q)) return true;
+          return (o.keywords ?? []).some((k) => k.trim().toLowerCase().includes(q));
+        })
       : options;
 
   function toggleOpen() {

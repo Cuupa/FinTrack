@@ -699,7 +699,11 @@ function NewPlanForm({
               touch();
               setAssetId(v);
             }}
-            options={eligible.map((a) => ({ value: a.id, label: a.name }))}
+            options={eligible.map((a) => ({
+              value: a.id,
+              label: a.name,
+              keywords: [a.isin, a.wkn, a.symbol].filter((v): v is string => !!v),
+            }))}
             searchable
             footer={(close) => (
               <>
