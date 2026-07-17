@@ -612,40 +612,6 @@ function PlanForm({
     setNewAssetError(null);
   }
 
-  // One-click VL entry point: reuse the existing cash position if there is
-  // one, otherwise create a bare CASH asset (same shape as the add-asset
-  // form's manual cash path) and select it.
-  async function handleSelectOrCreateCash() {
-    const existing = data.assets.find((a) => a.type === "CASH");
-    if (existing) {
-      touch();
-      setAssetId(existing.id);
-      return;
-    }
-    setError(null);
-    try {
-      const created = await addAsset({
-        isin: null,
-        wkn: null,
-        symbol: null,
-        name: "Cash",
-        type: "CASH",
-        currency: base,
-        notes: null,
-      });
-      touch();
-      setAssetId(created.id);
-    } catch (err) {
-      setError(
-        isStorageFullError(err)
-          ? t("common.storageFull")
-          : err instanceof Error
-            ? err.message
-            : t("sp.actionError"),
-      );
-    }
-  }
-
   async function handleResolveNewAsset() {
     const q = newAssetQuery.trim();
     if (!q) return;
@@ -744,17 +710,6 @@ function PlanForm({
             }))}
             searchable
             footer={(close) => (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    close();
-                    void handleSelectOrCreateCash();
-                  }}
-                  className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
-                >
-                  {t("sp.newCash")}
-                </button>
               <button
                 type="button"
                 onClick={() => {
@@ -765,7 +720,6 @@ function PlanForm({
               >
                 {t("sp.newAsset")}
               </button>
-              </>
             )}
           />
           {asset?.type === "CASH" && (
