@@ -148,6 +148,7 @@ export function SavingsPlansCard() {
   const base = data.profile.currency;
 
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<SavingsPlan | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [deleting, setDeleting] = useState<SavingsPlan | null>(null);
   const [busy, setBusy] = useState(false);
@@ -320,7 +321,14 @@ export function SavingsPlansCard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("sp.title")}</h2>
         {!creating && (
-          <Button size="sm" variant="secondary" onClick={() => setCreating(true)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setEditing(null);
+              setCreating(true);
+            }}
+          >
             {t("sp.new")}
           </Button>
         )}
@@ -339,11 +347,23 @@ export function SavingsPlansCard() {
       )}
 
       {creating && (
-        <NewPlanForm
+        <PlanForm
           onDone={() => setCreating(false)}
-          onCreate={async (input) => {
-            await addSavingsPlan(input);
+          onSubmit={async (values) => {
+            await addSavingsPlan({ ...values, active: true, lastRunDate: null });
             setCreating(false);
+          }}
+        />
+      )}
+
+      {editing && (
+        <PlanForm
+          key={editing.id}
+          plan={editing}
+          onDone={() => setEditing(null)}
+          onSubmit={async (values) => {
+            await updateSavingsPlan(editing.id, values);
+            setEditing(null);
           }}
         />
       )}
@@ -359,23 +379,34 @@ export function SavingsPlansCard() {
             return (
               <li key={plan.id} className="flex items-center justify-between gap-3 py-2">
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">
+                  <span
+                    className={`block truncate text-sm font-medium ${
+                      plan.active ? "" : "text-zinc-400 dark:text-zinc-500"
+                    }`}
+                  >
                     {asset.name}
-                    {!plan.active && (
-                      <span className="ml-2 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-normal text-zinc-500 dark:bg-zinc-800">
-                        {t("sp.paused")}
-                      </span>
-                    )}
                   </span>
                   <span className="block truncate text-xs text-zinc-500">
                     <span data-private>{formatCurrency(plan.amount, cur)}</span>{" "}
                     {t(INTERVAL_KEY[plan.interval])}
-                    {plan.active && (
+                    {plan.active ? (
                       <> · {t("sp.next", { date: formatDate(nextOccurrence(plan, todayISO)) })}</>
+                    ) : (
+                      <> · {t("sp.paused")}</>
                     )}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreating(false);
+                      setEditing((cur) => (cur?.id === plan.id ? null : plan));
+                    }}
+                    className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  >
+                    {t("sp.edit")}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleToggleActive(plan)}
@@ -513,11 +544,20 @@ export function SavingsPlansCard() {
   );
 }
 
-function NewPlanForm({
-  onCreate,
+/** The fields the form edits — shared by create (wrapped with active/lastRunDate) and edit (patched as-is, never touching active/lastRunDate). */
+type PlanFormValues = Pick<
+  SavingsPlan,
+  "assetId" | "portfolioId" | "amount" | "interval" | "bookingType" | "startDate"
+>;
+
+function PlanForm({
+  plan,
+  onSubmit,
   onDone,
 }: {
-  onCreate: (input: Omit<SavingsPlan, "id">) => Promise<void>;
+  /** Present in edit mode; prefills the form and switches the submit label/copy. */
+  plan?: SavingsPlan;
+  onSubmit: (values: PlanFormValues) => Promise<void>;
   onDone: () => void;
 }) {
   const { data, portfolios, selectedPortfolioIds, addAsset } = usePortfolio();
@@ -529,16 +569,16 @@ function NewPlanForm({
   // every asset type is eligible.
   const eligible = data.assets;
 
-  const [assetId, setAssetId] = useState(eligible[0]?.id ?? "");
+  const [assetId, setAssetId] = useState(plan?.assetId ?? eligible[0]?.id ?? "");
   const [portfolioId, setPortfolioId] = useState(
-    selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
+    plan?.portfolioId ?? selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
-  const [amount, setAmount] = useState("");
-  const [frequency, setFrequency] = useState<SavingsPlanInterval>("MONTHLY");
+  const [amount, setAmount] = useState(plan ? String(plan.amount) : "");
+  const [frequency, setFrequency] = useState<SavingsPlanInterval>(plan?.interval ?? "MONTHLY");
   // BUY = own money (cost basis as usual); BOOKING = free external inflow
   // (Einbuchung, e.g. employer-paid VL) credited at zero cost.
-  const [bookingType, setBookingType] = useState<"BUY" | "BOOKING">("BUY");
-  const [startDate, setStartDate] = useState(today());
+  const [bookingType, setBookingType] = useState<"BUY" | "BOOKING">(plan?.bookingType ?? "BUY");
+  const [startDate, setStartDate] = useState(plan?.startDate ?? today());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -661,15 +701,13 @@ function NewPlanForm({
     }
     setBusy(true);
     try {
-      await onCreate({
+      await onSubmit({
         assetId,
         portfolioId: portfolioId || portfolios[0]?.id || "",
         amount: amt,
         interval: frequency,
         bookingType,
         startDate,
-        active: true,
-        lastRunDate: null,
       });
     } catch (err) {
       setError(
@@ -856,7 +894,7 @@ function NewPlanForm({
           {t("tx.cancel")}
         </Button>
         <Button type="submit" variant="primary" size="sm" disabled={busy || formIncomplete}>
-          {busy ? t("sp.applying") : t("sp.create")}
+          {busy ? t("sp.applying") : plan ? t("sp.save") : t("sp.create")}
         </Button>
       </div>
     </form>

@@ -32,8 +32,9 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 - [x] ISIN/WKN not displayed in the option entries (render path untouched)
 - [x] Applied at the savings-plan asset picker; grep confirmed no other searchable asset SelectMenu exists
 ### T2 Savings plan editable
-- [ ] Existing savings plans can be edited (amount, interval, booking type, start date, portfolio, fee-relevant fields) via the store's updateSavingsPlan
-- [ ] Destructive actions keep ConfirmDialog; forms follow required.ts presence-gating pattern
+- [x] Plans editable (asset, portfolio, amount, interval, booking type, start date) via shared PlanForm + updateSavingsPlan; edit never touches active/lastRunDate; key={editing.id} remount fix after review (480 tests + lint green)
+- [x] Delete keeps ConfirmDialog; presence-gating pattern preserved
+- [x] Bonus: paused-state pill removed (no-badge rule) — plain subtitle text + dimmed name
 ### T3 Settings tabs
 - [ ] Settings panels behind tabs (not badges): Tab "General" = name/currency + language + guided tour + change password + danger zone; Tab "Fees & taxes" = broker fees + taxes
 - [ ] Localized en/de/es, du/tú registers, es parity test stays green
