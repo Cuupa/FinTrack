@@ -157,6 +157,13 @@ export interface SavingsPlan {
   /** Amount invested per execution, in the asset's currency. */
   amount: number;
   interval: SavingsPlanInterval;
+  /**
+   * How due executions are booked: BUY spends the user's own money (cost
+   * basis as usual); BOOKING is a free external inflow, e.g. employer-paid
+   * vermögenswirksame Leistungen, credited at zero cost. Older stored plans
+   * lack the field — read as BUY.
+   */
+  bookingType?: "BUY" | "BOOKING";
   /** First execution day (YYYY-MM-DD). */
   startDate: string;
   /** Paused plans accrue no new occurrences. */

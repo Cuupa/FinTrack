@@ -333,11 +333,13 @@ create table if not exists public.savings_plans (
   portfolio_id uuid not null references public.portfolios (id) on delete cascade,
   amount numeric not null check (amount > 0),
   frequency text not null check (frequency in ('WEEKLY', 'MONTHLY', 'QUARTERLY')),
+  booking_type text not null default 'BUY',
   start_date date not null,
   active boolean not null default true,
   last_run_date date,
   created_at timestamptz not null default now()
 );
+alter table public.savings_plans add column if not exists booking_type text not null default 'BUY';
 create index if not exists savings_plans_user_id_idx on public.savings_plans (user_id);
 -- Cascade path from assets deletes.
 create index if not exists savings_plans_asset_id_idx on public.savings_plans (asset_id);
@@ -449,7 +451,8 @@ insert into public.schema_migrations (version) values
   ('0057_profile_tour'),
   ('0058_portfolio_fees'),
   ('0059_portfolio_tax_allowance'),
-  ('0060_profile_tours_done')
+  ('0060_profile_tours_done'),
+  ('0061_savings_plan_booking_type')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

@@ -1,9 +1,11 @@
 "use client";
 
-// Savings plans (Sparpläne): recurring buy rules managed on the dashboard.
+// Savings plans (Sparpläne): recurring booking rules managed on the dashboard.
 // Due occurrences never post silently — they're listed in a review dialog
 // (date, price, resulting quantity) and only an explicit confirm materializes
-// them as ordinary BUY transactions, advancing each plan's lastRunDate.
+// them, advancing each plan's lastRunDate. The plan's bookingType decides how:
+// BUY spends the user's own money, BOOKING credits a free external inflow
+// (Einbuchung, e.g. employer-paid vermögenswirksame Leistungen) at zero cost.
 // Gated by the `savingsPlans` feature flag — renders nothing when disabled.
 
 import { useMemo, useState } from "react";
@@ -273,7 +275,7 @@ export function SavingsPlansCard() {
         await addTransaction({
           assetId: row.asset.id,
           portfolioId: row.plan.portfolioId,
-          type: "BUY",
+          type: row.plan.bookingType === "BOOKING" ? "BOOKING" : "BUY",
           quantity: round(derived.effectiveQty, 3),
           price: derived.effectivePrice,
           fee: round(derived.effectiveFee, 2),
@@ -533,6 +535,9 @@ function NewPlanForm({
   );
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState<SavingsPlanInterval>("MONTHLY");
+  // BUY = own money (cost basis as usual); BOOKING = free external inflow
+  // (Einbuchung, e.g. employer-paid VL) credited at zero cost.
+  const [bookingType, setBookingType] = useState<"BUY" | "BOOKING">("BUY");
   const [startDate, setStartDate] = useState(today());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -661,6 +666,7 @@ function NewPlanForm({
         portfolioId: portfolioId || portfolios[0]?.id || "",
         amount: amt,
         interval: frequency,
+        bookingType,
         startDate,
         active: true,
         lastRunDate: null,
@@ -800,6 +806,31 @@ function NewPlanForm({
             className={inputCls}
           />
         </label>
+        <div className="col-span-2">
+          <span className="mb-1 block text-xs font-medium text-zinc-500">
+            {t("sp.bookingType")}
+          </span>
+          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+            {(["BUY", "BOOKING"] as const).map((bt) => (
+              <button
+                key={bt}
+                type="button"
+                onClick={() => setBookingType(bt)}
+                aria-pressed={bookingType === bt}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  bookingType === bt
+                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                {t(bt === "BUY" ? "tx.buy" : "tx.booking")}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">
+            {t(bookingType === "BOOKING" ? "sp.bookingTypeBookingHint" : "sp.bookingTypeBuyHint")}
+          </p>
+        </div>
         {portfolios.length > 1 && (
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-zinc-500">{t("tx.portfolio")}</span>

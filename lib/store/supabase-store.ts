@@ -84,6 +84,7 @@ interface SavingsPlanRow {
   portfolio_id: string;
   amount: number;
   frequency: SavingsPlan["interval"];
+  booking_type: string | null;
   start_date: string;
   active: boolean;
   last_run_date: string | null;
@@ -96,6 +97,7 @@ function planFromRow(r: SavingsPlanRow): SavingsPlan {
     portfolioId: r.portfolio_id,
     amount: Number(r.amount),
     interval: r.frequency,
+    bookingType: r.booking_type === "BOOKING" ? "BOOKING" : "BUY",
     startDate: r.start_date,
     active: r.active,
     lastRunDate: r.last_run_date,
@@ -146,7 +148,7 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("savings_plans")
-        .select("id, asset_id, portfolio_id, amount, frequency, start_date, active, last_run_date")
+        .select("id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date")
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
     ]);
@@ -474,11 +476,12 @@ export class SupabaseStore implements DataStore {
         portfolio_id: input.portfolioId,
         amount: input.amount,
         frequency: input.interval,
+        booking_type: input.bookingType ?? "BUY",
         start_date: input.startDate,
         active: input.active,
         last_run_date: input.lastRunDate,
       })
-      .select("id, asset_id, portfolio_id, amount, frequency, start_date, active, last_run_date")
+      .select("id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date")
       .single();
     if (error) throw error;
     return planFromRow(data as SavingsPlanRow);
@@ -490,6 +493,7 @@ export class SupabaseStore implements DataStore {
     if (patch.portfolioId !== undefined) upd.portfolio_id = patch.portfolioId;
     if (patch.amount !== undefined) upd.amount = patch.amount;
     if (patch.interval !== undefined) upd.frequency = patch.interval;
+    if (patch.bookingType !== undefined) upd.booking_type = patch.bookingType;
     if (patch.startDate !== undefined) upd.start_date = patch.startDate;
     if (patch.active !== undefined) upd.active = patch.active;
     if (patch.lastRunDate !== undefined) upd.last_run_date = patch.lastRunDate;
