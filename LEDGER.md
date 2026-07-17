@@ -73,21 +73,23 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 
 ## Round 2026-07-17b (Fable orchestrator)
 ### U1 Settings layout ("still a mess")
-- [ ] Each tab's content lives in ONE container (single Card per tab, sectioned inside)
-- [ ] Container made smaller (constrained max width, no sprawling 2-col card grid)
-- [ ] No new copy needed; existing keys reused; no badges, no em-dashes
+- [x] Each tab's content lives in ONE container (single Card per tab, sectioned inside)
+- [x] Container made smaller (constrained max width, no sprawling 2-col card grid)
+- [x] No new copy needed; existing keys reused; no badges, no em-dashes
 ### U2 Savings plan
-- [ ] "+ Cash-Position…" footer entry removed from the plan form's asset picker (sp.newCash key dropped in en/de/es)
-- [ ] Existing CASH assets stay selectable for plans (cashPlanHint untouched)
+- [x] "+ Cash-Position…" footer entry removed from the plan form's asset picker (sp.newCash key dropped in en/de/es)
+- [x] Existing CASH assets stay selectable for plans (cashPlanHint untouched)
 ### U3 Asset page: create savings plan
-- [ ] PlanForm extracted from savings-plans-card into a shared module (no behavior change on dashboard)
-- [ ] Asset detail (held view) offers "Create savings plan" opening the form with the asset fixed
-- [ ] Gated by savingsPlans feature flag; new keys land in en+de+es (parity test)
+- [x] PlanForm extracted from savings-plans-card into a shared module (no behavior change on dashboard)
+- [x] Asset detail (held view) offers "Create savings plan" opening the form with the asset fixed
+- [x] Gated by savingsPlans feature flag; new keys land in en+de+es (parity test)
 ### U4 Asset page: dynamic fee prefill
-- [ ] Already implemented in transaction-form.tsx (feeManual null tracks orderFee live; commit ea897a8) — verify in-app, do not reimplement
+- [x] Already implemented in transaction-form.tsx (feeManual null tracks orderFee live; commit ea897a8); verified in-app: 1.5 below free-from, 0 above, manual 2.5 sticks
 ### U5 Tax field on transactions: explain only, NO code change (answer in final report)
-- [ ] Explanation delivered to owner
+- [x] Explanation delivered in session report (tax mirrors fee: Abgeltungsteuer on sells, FTT on some buys; feeds tax report)
 ### U6 Guided tour tags copy
-- [ ] tour.assetTags.local.* reworked in en/de/es: guest = browser, registered = account/DB (tags ride the store seam since 0062)
+- [x] tour.assetTags.local.* reworked in en/de/es: guest = browser, registered = account/DB (tags ride the store seam since 0062)
 ### Constraints
-- [ ] One subworker at a time; each task its own commit; verify in-app before marking done
+- [x] One subworker at a time; each task its own commit; verify in-app before marking done
+
+- Verified in guest mode, DE+EN, 1920x1080; screenshots scratchpad/verify17b; no console errors
