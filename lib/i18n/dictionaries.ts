@@ -65,6 +65,7 @@ export const en = {
 
   "sp.title": "Savings plans",
   "sp.new": "+ New plan",
+  "sp.newFromAsset": "New savings plan",
   "sp.empty": "Set up a recurring buy. Due executions appear here for review.",
   "sp.noAssets": "Add a security first. Savings plans buy into an existing holding.",
   "sp.asset": "Asset",
@@ -1190,6 +1191,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "sp.title": "Sparpläne",
   "sp.new": "+ Neuer Sparplan",
+  "sp.newFromAsset": "Neuer Sparplan",
   "sp.empty": "Richte einen wiederkehrenden Kauf ein. Fällige Ausführungen erscheinen hier zur Prüfung.",
   "sp.noAssets": "Füge zuerst ein Wertpapier hinzu. Sparpläne kaufen in eine bestehende Position.",
   "sp.asset": "Wertpapier",
@@ -2315,6 +2317,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "sp.title": "Planes de inversión",
   "sp.new": "+ Nuevo plan",
+  "sp.newFromAsset": "Nuevo plan de inversión",
   "sp.empty": "Configura una compra recurrente. Las ejecuciones pendientes aparecerán aquí para revisarlas.",
   "sp.noAssets": "Añade primero un valor. Los planes de inversión compran sobre una posición existente.",
   "sp.asset": "Activo",

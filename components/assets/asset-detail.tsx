@@ -48,6 +48,9 @@ import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Modal } from "@/components/ui/modal";
+import { PlanForm } from "@/components/savings/plan-form";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -83,14 +86,17 @@ export function AssetDetail({
     updateTransaction,
     portfolios,
     addAsset,
+    addSavingsPlan,
   } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const router = useRouter();
+  const savingsPlansEnabled = useFeatureFlag("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
   // (this page formats currency without otherwise consuming the i18n context).
   const { t } = useI18n();
   const currency = data.profile.currency;
+  const [planModalOpen, setPlanModalOpen] = useState(false);
 
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
@@ -625,7 +631,14 @@ export function AssetDetail({
           first transaction on a not-(yet-)held instrument is what turns it
           into a holding (see ensureHeldAsset above). */}
       <Card>
-        <h2 className="text-lg font-semibold">{t("asset.transactions")}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{t("asset.transactions")}</h2>
+          {held && savingsPlansEnabled && (
+            <Button size="sm" variant="secondary" onClick={() => setPlanModalOpen(true)}>
+              {t("sp.newFromAsset")}
+            </Button>
+          )}
+        </div>
 
         <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
@@ -653,6 +666,22 @@ export function AssetDetail({
           </div>
         )}
       </Card>
+
+      {held && savingsPlansEnabled && (
+        <Modal open={planModalOpen} onClose={() => setPlanModalOpen(false)}>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{t("sp.newFromAsset")}</h3>
+            <PlanForm
+              fixedAsset={asset}
+              onSubmit={async (values) => {
+                await addSavingsPlan({ ...values, active: true, lastRunDate: null });
+                setPlanModalOpen(false);
+              }}
+              onDone={() => setPlanModalOpen(false)}
+            />
+          </div>
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={pending !== null}
