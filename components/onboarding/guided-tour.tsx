@@ -8,12 +8,14 @@
 // app for no benefit.
 //
 // `GuidedTour` below is the original dashboard tour: its call site
-// (app/page.tsx, no props) and persistence (`profile.tourDoneAt`) are
-// UNCHANGED from round 20. The four page tours (risk / rebalancing /
-// simulation / assetTags, defined in ./page-tours.tsx) wrap the same
-// `TourOverlay` with `profile.toursDone[tourId]` instead, and are mounted by
-// their page only once it has something to show — that natural "first visit
-// with data" gate replaces a separate "enabled" flag, see each call site.
+// (app/page.tsx) and persistence (`profile.tourDoneAt`) are UNCHANGED from
+// round 20, plus a `restartToken` prop (mirroring the page-tour wrappers in
+// ./page-tours.tsx) so the dashboard's own `TourReplayButton` can force a
+// replay. The four page tours (risk / rebalancing / simulation / assetTags,
+// defined in ./page-tours.tsx) wrap the same `TourOverlay` with
+// `profile.toursDone[tourId]` instead, and are mounted by their page only
+// once it has something to show — that natural "first visit with data" gate
+// replaces a separate "enabled" flag, see each call site.
 //
 // Render is gated on a DERIVED `open` (`(forceOpen || !isDone) && !closed`),
 // never synced via effect. Finishing or skipping both call `markDone()` and
@@ -306,15 +308,19 @@ export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false
 
 /** The original dashboard tour: mounted unconditionally by app/page.tsx
  *  inside its "loaded" branch. Persistence stays on `profile.tourDoneAt`
- *  (not `toursDone`) for back-compat with existing rows. */
-export function GuidedTour() {
+ *  (not `toursDone`) for back-compat with existing rows. `restartToken`
+ *  (bumped by the dashboard's `TourReplayButton`) forces a fresh, open
+ *  mount, mirroring the page-tour wrappers in ./page-tours.tsx. */
+export function GuidedTour({ restartToken = 0 }: { restartToken?: number }) {
   const { data, updateProfile } = usePortfolio();
   return (
     <TourOverlay
+      key={restartToken}
       tourId="dashboard"
       steps={TOUR_STEPS}
       isDone={data.profile.tourDoneAt != null}
       markDone={() => updateProfile({ tourDoneAt: new Date().toISOString() })}
+      forceOpen={restartToken > 0}
     />
   );
 }

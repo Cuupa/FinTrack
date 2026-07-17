@@ -12,6 +12,7 @@ import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
 import { WatchlistCard } from "@/components/dashboard/watchlist-card";
 import { GuidedTour } from "@/components/onboarding/guided-tour";
+import { TourReplayButton } from "@/components/onboarding/page-tours";
 import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Button } from "@/components/ui/primitives";
@@ -27,6 +28,8 @@ export default function DashboardPage() {
   const [adding, setAdding] = useState(false);
   // Shared so the holdings table's profit column tracks the hero chart timeframe.
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
+  // Bumped by the "?" TourReplayButton to force a fresh, open GuidedTour mount.
+  const [tourRestart, setTourRestart] = useState(0);
 
   // A CSV import handed off via `onRun` keeps running after the add-asset
   // modal has already closed — this tracks it for the floating status pill
@@ -70,7 +73,12 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
+            {!loading && !loadError && (
+              <TourReplayButton onClick={() => setTourRestart((n) => n + 1)} />
+            )}
+          </div>
           <p className="text-sm text-zinc-500">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -103,7 +111,7 @@ export default function DashboardPage() {
           <AssetTable timeframe={timeframe} />
           <SavingsPlansCard />
           <WatchlistCard />
-          <GuidedTour />
+          <GuidedTour restartToken={tourRestart} />
         </>
       )}
 
