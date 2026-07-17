@@ -50,6 +50,15 @@ Claimed by: this session. One subworker at a time. Commit per task, no branches.
 - [x] Bands/median render to horizon end on log scale (0s floored in plotted geometry only; tooltip reads unfloored raw fields, YAxis domain from logFloor)
 - [x] Regular x-axis year ticks incl. horizon end via yearTicks() (step from [1,2,5,10,20], ≤8 intervals; unit-tested)
 
+### Round 2026-07-17 in-app verification (guest mode, local dev, 1920x1080 Playwright)
+- [x] T1: typing IE00BK5BQT80 into the savings-plan asset picker search returns "Vanguard FTSE All-World…" (name only, no ISIN rendered)
+- [x] T2: edit prefills, amount 100→150 persists across reload; pause renders plain "· pausiert" text + dimmed name (no pill), persists
+- [x] T3: tabs "Allgemein | Gebühren und Steuern" (DE) / "General | Fees & taxes" (EN); guest mode correctly hides password/danger cards
+- [x] T4: legacy fintrack-tags key replayed into the store blob (new group uuid, remapped assignment), renamed to fintrack-tags-imported, tag renders on asset page
+- [x] T5: run with 30y accumulation + 15y withdrawal: Eingezahlt dashed line flat after "Entnahme beginnt", bands render to 45y (depleted runs pinned at log floor), ticks 0/10/20/30/40/45y, ReferenceArea shading present (2 nodes), rebalance InfoTip text shows, model details expand/collapse works, EN copy verified
+- NOTE for owner: apply supabase/migrations/0062_asset_tags.sql to the live DB before/with deploying the tags change; local dev has no Supabase keys so the SupabaseStore side is covered by code review + tests only
+- Observations (pre-existing, not fixed): per-asset model rows and the new summary mix decimal styles in DE ("+8,12 %" vs "16.6%"); log-scale y-axis repeats "0M €" ticks at the low end
+
 ## Implicit expectations & constraints
 - [ ] No badges of any kind (hard rule)
 - [ ] No em-dashes in user-facing copy; German copy uses du-register only
