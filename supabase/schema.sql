@@ -482,7 +482,8 @@ insert into public.schema_migrations (version) values
   ('0059_portfolio_tax_allowance'),
   ('0060_profile_tours_done'),
   ('0061_savings_plan_booking_type'),
-  ('0062_asset_tags')
+  ('0062_asset_tags'),
+  ('0063_llm_chat_flag')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -698,6 +699,12 @@ insert into public.feature_flags (flag, description) values
   ('exportCsv', 'Portfolio export — Download CSV'),
   ('exportJson', 'Portfolio export — Download JSON'),
   ('errorLogging', 'Server-side capture of client error reports')
+on conflict (flag) do nothing;
+
+-- Seeded DISABLED (separate insert so the default-true column doesn't enable
+-- it): the AI assistant chat ships off; the owner flips it on via SQL.
+insert into public.feature_flags (flag, enabled, description) values
+  ('llmChat', false, 'AI assistant chat (bring-your-own LLM API key)')
 on conflict (flag) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the
