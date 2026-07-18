@@ -496,7 +496,8 @@ insert into public.schema_migrations (version) values
   ('0061_savings_plan_booking_type'),
   ('0062_asset_tags'),
   ('0063_llm_chat_flag'),
-  ('0064_llm_settings')
+  ('0064_llm_settings'),
+  ('0065_plan_gating')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -724,6 +725,34 @@ on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('llmChat', false, 'AI assistant chat (bring-your-own LLM API key)')
 on conflict (flag) do nothing;
+
+-- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays
+-- 'free' here; the owner tiers a flag to Pro later via /admin/flags, no
+-- migration needed). `plan_limits` holds the free/pro quantity caps for
+-- watchlist items, savings plans and portfolios (null = unlimited).
+alter table public.feature_flags
+  add column if not exists required_plan text not null default 'free';
+alter table public.feature_flags
+  drop constraint if exists feature_flags_required_plan_check;
+alter table public.feature_flags
+  add constraint feature_flags_required_plan_check check (required_plan in ('free', 'pro'));
+
+create table if not exists public.plan_limits (
+  limit_key text primary key,
+  free_value integer,
+  pro_value integer,
+  updated_at timestamptz not null default now()
+);
+alter table public.plan_limits enable row level security;
+drop policy if exists "plan limits readable" on public.plan_limits;
+create policy "plan limits readable" on public.plan_limits
+  for select using (true);
+
+insert into public.plan_limits (limit_key, free_value, pro_value) values
+  ('watchlistItems', null, null),
+  ('savingsPlans', null, null),
+  ('portfolios', null, null)
+on conflict (limit_key) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the
 -- legal pages (/impressum, /datenschutz). Same shape/policy as feature_flags:
