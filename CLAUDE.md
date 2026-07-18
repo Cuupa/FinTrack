@@ -82,6 +82,21 @@ Both are toggled by the owner via SQL/dashboard only. `FeatureFlagsProvider`
 by seeding a row (migration + schema.sql) — never with env vars or the Vercel
 Flags SDK (explicitly rejected).
 
+**Plan gating (MONETIZATION.md Phase 2, dark-launched)**: `feature_flags`
+also carries `required_plan` ('free'|'pro', default 'free' — every flag is
+seeded free; the owner re-tiers rows on /admin/flags at runtime). Resolution
+(`lib/flags/resolve.ts`, pure/unit-tested): user override wins outright (and
+doubles as a Pro grant) > kill switch (`enabled=false` = invisible) >
+pro-required + free plan = `{enabled, locked}` > on; missing column/row or no
+Supabase = free/on, so a DB lagging migration 0065 behaves exactly as before.
+`useFeature(flag)` returns `{enabled, locked}`; `useFeatureFlag` stays boolean
+(`enabled && !locked`) so locked features hide until the Phase-3 teaser UI.
+`usePlan()` (`lib/billing/use-plan.ts`) is the billing seam — hardcoded
+'free' until Stripe (Phase 1) wires `resolvePlan` (`lib/billing/plan.ts`,
+active/trialing/past_due+7d grace, pure) into a real subscription row.
+`plan_limits` (free/pro caps, null = unlimited, seeded unlimited) exists but
+is unenforced until Phase 4.
+
 ### CSV import & fingerprints
 
 `lib/import/csv.ts` parses broker exports (known German brokers + Bitpanda
