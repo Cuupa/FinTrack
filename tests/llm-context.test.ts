@@ -207,4 +207,21 @@ describe("buildSystemPrompt", () => {
     expect(prompt.toLowerCase()).toContain("not investment advice".split(" ")[0]); // "not" present
     expect(prompt.toLowerCase()).toContain("advisor");
   });
+
+  it("permits general finance concept questions instead of restricting answers to the JSON only", () => {
+    const json = buildPortfolioContext(baseInput());
+    const prompt = buildSystemPrompt(json, "en");
+    expect(prompt.toLowerCase()).not.toContain("using only the json");
+    expect(prompt.toLowerCase()).toContain("general finance");
+    expect(prompt.toLowerCase()).toContain("in scope");
+    expect(prompt.toLowerCase()).toContain("never refuse");
+  });
+
+  it("instructs the informal du/tú register for German and Spanish replies", () => {
+    const json = buildPortfolioContext(baseInput());
+    const prompt = buildSystemPrompt(json, "de");
+    expect(prompt).toContain('"du"');
+    expect(prompt).toContain('"Sie"');
+    expect(prompt).toContain('"tú"');
+  });
 });
