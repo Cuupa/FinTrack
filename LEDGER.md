@@ -1,51 +1,29 @@
-# Ledger — round 2026-07-17e (closed 2026-07-18)
+# Ledger — round 2026-07-18a (closed 2026-07-18)
+
+Previous round 2026-07-17e closed and preserved in git history (ea95e25).
 
 ## Prio 1: Uncommitted changes
-- [x] 1. Review the pending LLM-context/beta-alpha + settings-intro changes
-- [x] 2. Verify: vitest suite green (550 passed), lint clean
-- [x] 3. Commit the feature changes (914ceeb)
-- [x] 4. Commit the LEDGER.md rotation (d039eff)
-- [x] 5. .idea/ gitignored (d039eff)
+- [x] 1. Working tree clean at round start (verified `git status --porcelain` empty); nothing to commit
 
-## Asset page
-- [ ] 6. Transactions table on /assets/[id] shows the portfolio the transaction belongs to
-- [x] 7. Decision: column only when portfolios.length > 1 (matches existing multiPortfolio pattern)
-- [ ] 8. New column sortable (by portfolio name); add missing row hover highlight (user rule)
-- [ ] 9. Edit mode: portfolio SelectMenu moves inline into the new column cell; second-row hack removed
-- [ ] 10. Reuse existing `tx.portfolio` key; any new keys land in en+de+es
+## Asset page / Fees / Overview
+- [x] 2. All shipped and verified last round: portfolio column (d9b5ff5), CASH savings-plan fee prefill (a2ba285), overview tour replay (59635f4)
 
-## Asset page (done)
-- [x] 6. Portfolio column in /assets/[id] transactions table (d9b5ff5)
-- [x] 8. Sortable by portfolio name; row hover highlight added
-- [x] 9. Edit-mode SelectMenu inline; second-row hack removed
-- [x] 10a. Reused `tx.portfolio`, no new keys
+## UI pass (recurring)
+- [x] 3. Fresh user-POV walkthrough done (guest mode, 1920x1080, DE primary; seeded VWCE + Apple): dashboard, asset detail, analysis, dividends, xray, rebalancing, simulation, settings, login, impressum, datenschutz
+- [x] 4. Constraints: no badges observed, tables sortable + hover, skeletons in use, du-register OK, no em-dashes
 
-## Fees
-- [x] 10. Audit: TransactionForm + AddAssetForm already zero the auto-fee for CASH (`!isCash && orderFee(...)`)
-- [ ] 11. Gap: savings-plans card prefills `savingsPlanFee` for CASH plan rows too — set feeDefault 0 for CASH
-- [ ] 12. Manual per-row fee edit stays possible for CASH (input already editable); security plans unaffected
-- [ ] 12a. Test coverage for the CASH fee default
-
-## Fees (done)
-- [x] 11. Savings-plans card: CASH rows feeDefault 0 (a2ba285)
-- [x] 12. Manual per-row fee edit retained; security plans unaffected
-- [x] 12a. deriveRow tests added (tests/savings-plans.test.ts)
-
-## Overview
-- [ ] 13. Dashboard/overview page gets the ghost "?" replay button for its onboarding tour (parity with risk/rebalancing/simulation/tags pages)
-- [ ] 13a. GuidedTour gains restartToken (key + forceOpen), button next to dashboard heading, only in loaded branch
-
-## Overview (done)
-- [x] 13. Dashboard "?" replay button (59635f4), verified in-app: reopens tour after done
-
-## UI pass
-- [x] 14a. Browser walkthrough done (dashboard, asset, analysis, dividends, xray, rebalancing, simulation, settings; DE, 1920x1080)
-- [x] 14b. In-app verification: portfolio column + sort + inline edit select OK; tour replay OK
-- [x] 14c. Bug fixed: hero "Change (1Y)" -100% for day-one portfolio (Opus-confirmed double-counted baseline flow; pure `windowChange` in lib/finance/returns.ts + tests; 1a34ec2). Browser-verified: now 0,00 EUR / 0,00 %
-- [x] 14d. Bug fixed: amber missing-fields state after successful submit (`useFormTouched` gained `reset`; 7695ace). Browser-verified: hint gone
-- [x] 15. No badges anywhere observed; skeletons in use; tables sortable + hover
+## Findings (this round)
+- [x] 5. i18n: hardcoded English strings visible in DE locale (fixed 01f4843, browser-verified: Nettovermögen tooltip, Einklappen, Logarithmisch, Gesamt donut, keys in en+de+es, 557 tests + lint green):
+      a. net-worth-hero.tsx:229 mainLabel="Net worth" (chart tooltip) -> t("stat.netWorth")
+      b. shared-portfolio-view.tsx:154 label="Net worth" -> t("stat.netWorth")
+      c. sidebar.tsx:117/134 "Collapse" text + "Expand/Collapse sidebar" aria-labels -> new keys (en+de+es)
+      d. chart-controls.tsx:49-50 "Linear"/"Logarithmic" -> reuse t("sim.linear")/t("sim.logarithmic")
+      e. rebalancing-view.tsx:397 donut center "Total" -> t("common.total") (analysis donut already shows GESAMT)
+      f. allocation-pie.tsx:101 "No data" -> new key (en+de+es)
+- [x] 6. Dividends page: forecast wrongly empty for a dividend payer bought today. perAsset skips assets with zero received payments; the forecast derived only from perAsset. Fixed: pure `projectDividends` in lib/finance/dividends.ts (trailing per-share events x current shares x fx), 7 new unit tests, 564 tests + lint green (764a6f0). Browser-verified: /dividends now shows 4 projected Apple payouts, 4,59 EUR total, USD->EUR converted; received figures stay 0 as they should.
+- [x] 7. Each fix delegated (2x Sonnet, sequential, ledger updated before each), verified in-app, committed separately (01f4843, 764a6f0)
+- [x] 8. New dictionary keys landed in en+de+es (parity suite green)
 
 ## Process
-- [x] 16. One subworker at a time (3x Sonnet, 1x Opus, sequential); ledger updated before each delegation
-- [x] 17. Each task committed separately, no branches (914ceeb, d039eff, d9b5ff5, a2ba285, 59635f4, 1a34ec2, 7695ace)
-- [x] 18. CLAUDE.md updated (windowChange invariant in finance-core section)
+- [x] 9. CLAUDE.md updated (projectDividends forecast invariant in the dividends bullet)
+- [x] 10. No branches; per-task commits on main

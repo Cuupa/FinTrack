@@ -351,7 +351,11 @@ FX-convert) always beats a wrong instrument in the right currency.
   payer's events via the name-fallback search (the phantom gold-dividends
   case). Client-side, `useDividends` returns `{ dividends, loading }` (loading
   derived from the settled fetch signature, stale map kept meanwhile); the
-  /dividends page shows skeletons while events are in flight.
+  /dividends page shows skeletons while events are in flight. The 12-month
+  forecast (`projectDividends`, pure) projects trailing per-share events at
+  the CURRENT share count, deliberately independent of received-payment
+  history — a payer bought today still forecasts; only received figures scale
+  by shares held on each pay date.
 
 ### Routes
 
