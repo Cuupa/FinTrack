@@ -226,7 +226,7 @@ export function NetWorthHero({
             mode={chartMode}
             currency={currency}
             compare={compare}
-            mainLabel="Net worth"
+            mainLabel={t("stat.netWorth")}
             returnSeries={returnSeries}
             ariaLabel={t("chart.netWorth.ariaLabel", {
               timeframe,

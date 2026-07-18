@@ -46,8 +46,8 @@ export function ChartControls({
             value={scale}
             onChange={onScale}
             options={[
-              { label: "Linear", value: "linear" },
-              { label: "Logarithmic", value: "log" },
+              { label: t("sim.linear"), value: "linear" },
+              { label: t("sim.logarithmic"), value: "log" },
             ]}
           />
         )}

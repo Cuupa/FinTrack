@@ -114,7 +114,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={toggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
           className={`mt-auto flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 dark:focus-visible:outline-emerald-400 ${
             collapsed ? "justify-center" : ""
           }`}
@@ -131,7 +131,7 @@ export function Sidebar() {
           >
             <path d="M15 6l-6 6 6 6" />
           </svg>
-          {!collapsed && <span className="truncate">Collapse</span>}
+          {!collapsed && <span className="truncate">{t("nav.collapse")}</span>}
         </button>
       </nav>
     </aside>

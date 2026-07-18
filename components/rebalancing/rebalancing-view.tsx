@@ -363,6 +363,7 @@ function RebalanceDonut({
   activeName: string | null;
   onHover: (name: string | null) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center">
       <h2 className="mb-3 text-sm font-semibold text-zinc-500">{title}</h2>
@@ -394,7 +395,7 @@ function RebalanceDonut({
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-[11px] uppercase tracking-wide text-zinc-400">Total</span>
+          <span className="text-[11px] uppercase tracking-wide text-zinc-400">{t("common.total")}</span>
           <span className="mt-0.5 text-lg font-semibold tabular-nums" data-private>
             {formatCurrency(total, currency)}
           </span>

@@ -24,6 +24,9 @@ export const en = {
   "nav.deletePortfolioMsg":
     "Its transactions and any assets held only in this portfolio are deleted permanently.",
   "nav.nOfM": "{n} of {m}",
+  "nav.expandSidebar": "Expand sidebar",
+  "nav.collapseSidebar": "Collapse sidebar",
+  "nav.collapse": "Collapse",
 
   "theme.toggleToDark": "Switch to dark mode",
   "theme.toggleToLight": "Switch to light mode",
@@ -413,6 +416,7 @@ export const en = {
   "common.scope": "Scope",
   "common.portfolioWide": "Portfolio wide",
   "common.total": "Total",
+  "common.noData": "No data",
 
   "common.selectAll": "Select all",
   "common.holdingValue": "Holding value",
@@ -1197,6 +1201,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.deletePortfolioMsg":
     "Seine Transaktionen und alle nur in diesem Portfolio gehaltenen Assets werden endgültig gelöscht.",
   "nav.nOfM": "{n} von {m}",
+  "nav.expandSidebar": "Seitenleiste ausklappen",
+  "nav.collapseSidebar": "Seitenleiste einklappen",
+  "nav.collapse": "Einklappen",
 
   "theme.toggleToDark": "Zum dunklen Modus wechseln",
   "theme.toggleToLight": "Zum hellen Modus wechseln",
@@ -1585,6 +1592,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.scope": "Bereich",
   "common.portfolioWide": "Gesamtes Portfolio",
   "common.total": "Gesamt",
+  "common.noData": "Keine Daten",
   "common.marketValue": "Marktwert",
 
   "common.selectAll": "Alles auswählen",
@@ -2370,6 +2378,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.deletePortfolioMsg":
     "Sus transacciones y los activos que solo estén en esta cartera se eliminarán definitivamente.",
   "nav.nOfM": "{n} de {m}",
+  "nav.expandSidebar": "Expandir la barra lateral",
+  "nav.collapseSidebar": "Contraer la barra lateral",
+  "nav.collapse": "Contraer",
 
   "theme.toggleToDark": "Cambiar a modo oscuro",
   "theme.toggleToLight": "Cambiar a modo claro",
@@ -2757,6 +2768,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.scope": "Ámbito",
   "common.portfolioWide": "Toda la cartera",
   "common.total": "Total",
+  "common.noData": "Sin datos",
 
   "common.selectAll": "Seleccionar todo",
   "common.holdingValue": "Valor de la posición",

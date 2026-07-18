@@ -98,7 +98,7 @@ export function AllocationPie({
   const colorAt = (i: number) => grouped.colors[i] ?? PALETTE[i % PALETTE.length];
 
   if (total <= 0) {
-    return <p className="py-16 text-center text-sm text-zinc-500">No data</p>;
+    return <p className="py-16 text-center text-sm text-zinc-500">{t("common.noData")}</p>;
   }
 
   const sel = active != null ? gSlices[active] : null;

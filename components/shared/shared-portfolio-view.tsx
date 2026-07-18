@@ -151,7 +151,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
           {!incognito && netWorth != null && (
             <Stat
-              label="Net worth"
+              label={t("stat.netWorth")}
               value={formatCurrency(netWorth, currency)}
               info="Total current value of all holdings, in the portfolio's base currency."
             />
