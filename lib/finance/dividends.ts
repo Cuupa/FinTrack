@@ -36,3 +36,30 @@ export function dividendsFromEvents(
   }
   return out;
 }
+
+/**
+ * 12-month dividend forecast: each per-share event of the trailing year
+ * projected one year forward at the CURRENT share count. Deliberately
+ * independent of received-payment history — a holding bought today still
+ * forecasts its payer's trailing cadence.
+ */
+export function projectDividends(
+  events: { date: string; amount: number }[],
+  shares: number,
+  t12mStart: string,
+  todayISO: string,
+): { date: string; amount: number }[] {
+  const out: { date: string; amount: number }[] = [];
+  for (const e of events) {
+    if (e.date < t12mStart || e.amount <= 0) continue;
+    const [y, m, d] = e.date.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(y + 1, m, 0)).getUTCDate();
+    const date = new Date(Date.UTC(y + 1, m - 1, Math.min(d, lastDay)))
+      .toISOString()
+      .slice(0, 10);
+    if (date <= todayISO) continue;
+    out.push({ date, amount: e.amount * shares });
+  }
+  out.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return out;
+}

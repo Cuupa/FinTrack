@@ -10,7 +10,7 @@ import {
   windowChange,
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
-import { dividendsFromEvents, totalDividends } from "../lib/finance/dividends";
+import { dividendsFromEvents, projectDividends, totalDividends } from "../lib/finance/dividends";
 import { assetPriceSeries, netWorthSeries, summarizeHolding, twrSeries } from "../lib/finance/portfolio";
 import { priceOn } from "../lib/finance/prices";
 import { assetAnnualStats, portfolioRiskStats } from "../lib/finance/stats";
@@ -460,6 +460,56 @@ describe("dividends", () => {
 
   it("ignores events before any shares were held (accumulating → none)", () => {
     expect(dividendsFromEvents([], [])).toEqual([]);
+  });
+});
+
+describe("projectDividends", () => {
+  it("projects trailing events one year forward at the current share count, for a holding bought today", () => {
+    const events = [{ date: "2025-06-01", amount: 0.5 }];
+    const out = projectDividends(events, 10, "2024-07-18", "2026-05-01");
+    expect(out).toEqual([{ date: "2026-06-01", amount: 5 }]);
+  });
+
+  it("excludes events older than t12mStart", () => {
+    const events = [{ date: "2024-01-01", amount: 0.5 }];
+    const out = projectDividends(events, 10, "2025-07-18", "2026-07-18");
+    expect(out).toEqual([]);
+  });
+
+  it("excludes projected dates on or before today", () => {
+    // Projected date 2026-07-01 <= today 2026-07-18 → skipped.
+    const events = [{ date: "2025-07-01", amount: 0.5 }];
+    const out = projectDividends(events, 10, "2025-07-18", "2026-07-18");
+    expect(out).toEqual([]);
+  });
+
+  it("clamps the projected date at a shorter month-end (Feb 29 leap → Feb 28)", () => {
+    // 2024 is a leap year (Feb 29 exists); 2025 is not (Feb has 28 days).
+    const events = [{ date: "2024-02-29", amount: 1 }];
+    const out = projectDividends(events, 1, "2023-01-01", "2024-06-01");
+    expect(out).toEqual([{ date: "2025-02-28", amount: 1 }]);
+  });
+
+  it("skips zero and negative amounts", () => {
+    const events = [
+      { date: "2025-06-01", amount: 0 },
+      { date: "2025-06-02", amount: -1 },
+    ];
+    expect(projectDividends(events, 10, "2024-07-18", "2026-07-18")).toEqual([]);
+  });
+
+  it("returns empty for empty events", () => {
+    expect(projectDividends([], 10, "2024-07-18", "2026-07-18")).toEqual([]);
+  });
+
+  it("returns results sorted ascending by date", () => {
+    const events = [
+      { date: "2025-09-01", amount: 1 },
+      { date: "2025-03-01", amount: 1 },
+      { date: "2025-06-01", amount: 1 },
+    ];
+    const out = projectDividends(events, 1, "2024-07-18", "2026-01-01");
+    expect(out.map((p) => p.date)).toEqual(["2026-03-01", "2026-06-01", "2026-09-01"]);
   });
 });
 

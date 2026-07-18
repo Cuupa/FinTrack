@@ -21,7 +21,7 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useDividends } from "@/lib/history/use-dividends";
-import { dividendsFromEvents, type DividendPayment } from "@/lib/finance/dividends";
+import { dividendsFromEvents, projectDividends, type DividendPayment } from "@/lib/finance/dividends";
 import {
   summarizeAll,
   transactionsByAsset,
@@ -187,27 +187,27 @@ export function DividendsView() {
       .sort((a, b) => b.t12m - a.t12m);
   }, [perAsset, holdingById, t12mStart]);
 
-  // Forecast: each payout of the trailing year, projected one year forward at
-  // the CURRENT share count (per-share amount × shares held today).
+  // Forecast: each per-share event of the trailing year, projected one year
+  // forward at the CURRENT share count. Deliberately independent of received
+  // payments — a holding bought today still forecasts its payer's trailing
+  // cadence (a freshly bought stock has no received payments yet).
   const forecast = useMemo(() => {
+    const fx = valuation.fx ?? {};
     const out: { date: string; asset: Asset; amount: number }[] = [];
-    for (const { asset, payments, rate } of perAsset) {
+    for (const asset of data.assets) {
+      const events = divMap[assetPriceKey(asset)];
+      if (!events || events.length === 0) continue;
       const shares = holdingById.get(asset.id)?.position.shares ?? 0;
       if (shares <= 0) continue;
-      for (const p of payments) {
-        if (p.date < t12mStart) continue;
-        const [y, m, d] = p.date.split("-").map(Number);
-        const lastDay = new Date(Date.UTC(y + 1, m, 0)).getUTCDate();
-        const date = new Date(Date.UTC(y + 1, m - 1, Math.min(d, lastDay)))
-          .toISOString()
-          .slice(0, 10);
-        if (date <= todayISO) continue;
-        out.push({ date, asset, amount: p.perShare * shares * rate });
+      const cur = asset.currency ?? currency;
+      const rate = cur === currency ? 1 : (fx[cur] ?? 1);
+      for (const p of projectDividends(events, shares, t12mStart, todayISO)) {
+        out.push({ date: p.date, asset, amount: p.amount * rate });
       }
     }
     out.sort((a, b) => (a.date < b.date ? -1 : 1));
     return out;
-  }, [perAsset, holdingById, t12mStart, todayISO]);
+  }, [data.assets, divMap, holdingById, currency, valuation, t12mStart, todayISO]);
 
   const forecastTotal = useMemo(() => forecast.reduce((s, f) => s + f.amount, 0), [forecast]);
 
