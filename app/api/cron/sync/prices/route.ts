@@ -50,12 +50,6 @@ function authorized(req: Request): boolean {
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
-const changed = (prev: number | string | null, next: number): boolean => {
-  if (prev == null) return true;
-  const p = Number(prev);
-  return Math.abs(p - next) >= p * 1e-4;
-};
-
 // 1 unit of `from` in `to` (Frankfurter/ECB), cached per run. 1 when equal.
 const fxCache = new Map<string, number>();
 async function fxRate(from: string, to: string): Promise<number> {
@@ -111,7 +105,6 @@ async function syncEquities(
           }
           const scale = Number(r.quote_scale ?? 1);
           if (scale !== 1) p = p * scale;
-          if (!changed(r.last_price, p)) return;
           const { error } = await supabase
             .from("instruments")
             .update({ last_price: p, price_synced_at: syncedAt })
@@ -207,7 +200,6 @@ async function syncEquities(
         // short-circuit on the hint, and runtime live quotes reuse the quote_id.
         const learnsListing =
           !!symbol && (r.quote_source !== "yahoo" || r.quote_id !== symbol);
-        if (!learnsListing && !changed(r.last_price, p)) return;
         const patch: Record<string, unknown> = {
           last_price: p,
           price_synced_at: syncedAt,
@@ -252,7 +244,7 @@ async function syncCrypto(
   await Promise.all(
     rows.map(async (r) => {
       const p = r.quote_id ? data[r.quote_id]?.usd : undefined;
-      if (p == null || p <= 0 || !changed(r.last_price, p)) return;
+      if (p == null || p <= 0) return;
       const { error } = await supabase
         .from("instruments")
         .update({ last_price: p, price_synced_at: syncedAt })
