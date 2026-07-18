@@ -8,7 +8,7 @@
 // client). All writes go through POST /api/admin/flags, never a direct
 // client write, per the app's admin-mutation convention.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
@@ -20,6 +20,7 @@ interface FlagRow {
   flag: string;
   enabled: boolean;
   description: string | null;
+  requiredPlan: string;
 }
 
 interface OverrideRow {
@@ -31,6 +32,63 @@ interface OverrideRow {
 interface UserResult {
   id: string;
   email: string | null;
+}
+
+// Sortable column headers: same toggle-direction idiom as TxTh/txCompare in
+// components/assets/asset-detail.tsx (click to sort ascending, click again to
+// flip direction, ▲/▼ indicator next to the active column), generalized over
+// the sort-key union so both tables on this page can share it.
+function SortTh<K extends string>({
+  label,
+  k,
+  align = "left",
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: K;
+  align?: "left" | "right";
+  sort: { key: K; dir: 1 | -1 };
+  onSort: (k: K) => void;
+}) {
+  return (
+    <th className={`py-2 pr-4 ${align === "right" ? "text-right" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        {label}
+        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
+
+type FlagSortKey = "flag" | "enabled" | "plan";
+
+function flagCompare(a: FlagRow, b: FlagRow, key: FlagSortKey): number {
+  switch (key) {
+    case "flag":
+      return a.flag.localeCompare(b.flag);
+    case "enabled":
+      return Number(a.enabled) - Number(b.enabled);
+    case "plan":
+      return a.requiredPlan.localeCompare(b.requiredPlan);
+  }
+}
+
+type OverrideSortKey = "user" | "flag" | "enabled";
+
+function overrideCompare(a: OverrideRow, b: OverrideRow, key: OverrideSortKey): number {
+  switch (key) {
+    case "user":
+      return a.user_id.localeCompare(b.user_id);
+    case "flag":
+      return a.flag.localeCompare(b.flag);
+    case "enabled":
+      return Number(a.enabled) - Number(b.enabled);
+  }
 }
 
 async function authToken(): Promise<string | null> {
@@ -71,6 +129,15 @@ export default function AdminFlagsPage() {
   const [overridesVersion, setOverridesVersion] = useState(0);
   const [savingFlag, setSavingFlag] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [flagSort, setFlagSort] = useState<{ key: FlagSortKey; dir: 1 | -1 }>({
+    key: "flag",
+    dir: 1,
+  });
+  const [overrideSort, setOverrideSort] = useState<{ key: OverrideSortKey; dir: 1 | -1 }>({
+    key: "user",
+    dir: 1,
+  });
 
   const [newUserId, setNewUserId] = useState("");
   const [newFlag, setNewFlag] = useState("");
@@ -128,11 +195,20 @@ export default function AdminFlagsPage() {
     let active = true;
     supabase
       .from("feature_flags")
-      .select("flag, enabled, description")
+      .select("*")
       .order("flag")
       .then(({ data }) => {
         if (!active) return;
-        setFlags((data ?? []) as FlagRow[]);
+        // Defensive read: a DB that lags the 0065_plan_gating migration has
+        // no `required_plan` column, so it comes back `undefined` — default
+        // to 'free', same as lib/flags/flags-context.tsx and resolveFeature.
+        const rows = ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+          flag: row.flag as string,
+          enabled: row.enabled === true,
+          description: (row.description as string | null) ?? null,
+          requiredPlan: typeof row.required_plan === "string" ? row.required_plan : "free",
+        }));
+        setFlags(rows);
       });
     return () => {
       active = false;
@@ -161,6 +237,29 @@ export default function AdminFlagsPage() {
   // syncing it into state via an effect.
   const selectedFlag = newFlag || flags?.[0]?.flag || "";
 
+  const sortedFlags = useMemo(
+    () => (flags ?? []).slice().sort((a, b) => flagCompare(a, b, flagSort.key) * flagSort.dir),
+    [flags, flagSort],
+  );
+
+  function toggleFlagSort(key: FlagSortKey) {
+    setFlagSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
+  }
+
+  const sortedOverrides = useMemo(
+    () =>
+      (overrides ?? [])
+        .slice()
+        .sort((a, b) => overrideCompare(a, b, overrideSort.key) * overrideSort.dir),
+    [overrides, overrideSort],
+  );
+
+  function toggleOverrideSort(key: OverrideSortKey) {
+    setOverrideSort((s) =>
+      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 },
+    );
+  }
+
   const toggleGlobal = async (flag: string, enabled: boolean) => {
     setSavingFlag(flag);
     setError(null);
@@ -168,6 +267,21 @@ export default function AdminFlagsPage() {
       const token = await authToken();
       if (!token) throw new Error();
       await postFlags({ kind: "global", flag, enabled }, token);
+      setFlagsVersion((v) => v + 1);
+    } catch {
+      setError(t("admin.flags.error"));
+    } finally {
+      setSavingFlag(null);
+    }
+  };
+
+  const setPlan = async (flag: string, requiredPlan: string) => {
+    setSavingFlag(flag);
+    setError(null);
+    try {
+      const token = await authToken();
+      if (!token) throw new Error();
+      await postFlags({ kind: "plan", flag, requiredPlan }, token);
       setFlagsVersion((v) => v + 1);
     } catch {
       setError(t("admin.flags.error"));
@@ -236,16 +350,47 @@ export default function AdminFlagsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500 dark:border-zinc-800">
-                  <th className="py-2 pr-4">{t("admin.flags.colName")}</th>
+                  <SortTh
+                    label={t("admin.flags.colName")}
+                    k="flag"
+                    sort={flagSort}
+                    onSort={toggleFlagSort}
+                  />
                   <th className="py-2 pr-4">{t("admin.flags.colDescription")}</th>
-                  <th className="py-2">{t("admin.flags.colEnabled")}</th>
+                  <SortTh
+                    label={t("admin.flags.colPlan")}
+                    k="plan"
+                    sort={flagSort}
+                    onSort={toggleFlagSort}
+                  />
+                  <SortTh
+                    label={t("admin.flags.colEnabled")}
+                    k="enabled"
+                    sort={flagSort}
+                    onSort={toggleFlagSort}
+                  />
                 </tr>
               </thead>
               <tbody>
-                {flags.map((f) => (
-                  <tr key={f.flag} className="border-b border-zinc-100 dark:border-zinc-900">
+                {sortedFlags.map((f) => (
+                  <tr
+                    key={f.flag}
+                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                  >
                     <td className="py-2 pr-4 font-mono text-xs">{f.flag}</td>
                     <td className="py-2 pr-4 text-zinc-500">{f.description}</td>
+                    <td className="py-2 pr-4">
+                      <SelectMenu
+                        value={f.requiredPlan === "pro" ? "pro" : "free"}
+                        onChange={(v) => setPlan(f.flag, v)}
+                        className="w-28"
+                        ariaLabel={t("admin.flags.colPlan")}
+                        options={[
+                          { value: "free", label: t("admin.flags.planFree") },
+                          { value: "pro", label: t("admin.flags.planPro") },
+                        ]}
+                      />
+                    </td>
                     <td className="py-2">
                       <button
                         type="button"
@@ -372,17 +517,32 @@ export default function AdminFlagsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500 dark:border-zinc-800">
-                  <th className="py-2 pr-4">{t("admin.flags.userId")}</th>
-                  <th className="py-2 pr-4">{t("admin.flags.colName")}</th>
-                  <th className="py-2 pr-4">{t("admin.flags.colEnabled")}</th>
+                  <SortTh
+                    label={t("admin.flags.userId")}
+                    k="user"
+                    sort={overrideSort}
+                    onSort={toggleOverrideSort}
+                  />
+                  <SortTh
+                    label={t("admin.flags.colName")}
+                    k="flag"
+                    sort={overrideSort}
+                    onSort={toggleOverrideSort}
+                  />
+                  <SortTh
+                    label={t("admin.flags.colEnabled")}
+                    k="enabled"
+                    sort={overrideSort}
+                    onSort={toggleOverrideSort}
+                  />
                   <th className="py-2" />
                 </tr>
               </thead>
               <tbody>
-                {overrides.map((o) => (
+                {sortedOverrides.map((o) => (
                   <tr
                     key={`${o.user_id}:${o.flag}`}
-                    className="border-b border-zinc-100 dark:border-zinc-900"
+                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                   >
                     <td className="py-2 pr-4 font-mono text-xs">{o.user_id}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{o.flag}</td>

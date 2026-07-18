@@ -9,9 +9,10 @@
 // bypass, same reasoning as requireAdmin's own admins lookup.
 //
 // POST body is one of:
-//   { kind: "global", flag, enabled }               set a global default
-//   { kind: "override", userId, flag, enabled }      upsert a per-user override
-//   { kind: "removeOverride", userId, flag }         delete a per-user override
+//   { kind: "global", flag, enabled }                    set a global default
+//   { kind: "plan", flag, requiredPlan }                 set a flag's required plan
+//   { kind: "override", userId, flag, enabled }          upsert a per-user override
+//   { kind: "removeOverride", userId, flag }             delete a per-user override
 // Each requires admin auth first, mutates via the secret client, and records
 // an admin_audit row.
 
@@ -73,6 +74,28 @@ export async function POST(req: Request): Promise<Response> {
       .eq("flag", flag);
     if (error) return Response.json({ error: error.message }, { status: 500 });
     await audit(actor, "flag.set_global", flag, before ?? null, { enabled });
+    return Response.json({ ok: true });
+  }
+
+  if (body.kind === "plan") {
+    const { flag, requiredPlan } = body;
+    if (
+      typeof flag !== "string" ||
+      (requiredPlan !== "free" && requiredPlan !== "pro")
+    ) {
+      return Response.json({ error: "invalid body" }, { status: 400 });
+    }
+    const { data: before } = await admin
+      .from("feature_flags")
+      .select("required_plan")
+      .eq("flag", flag)
+      .maybeSingle();
+    const { error } = await admin
+      .from("feature_flags")
+      .update({ required_plan: requiredPlan, updated_at: new Date().toISOString() })
+      .eq("flag", flag);
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    await audit(actor, "flag.set_plan", flag, before ?? null, { requiredPlan });
     return Response.json({ ok: true });
   }
 
