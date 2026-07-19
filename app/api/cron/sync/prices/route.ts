@@ -26,6 +26,10 @@ import {
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
+// Without this, the bulk sync's self-call (its own short-lived function
+// invocation) gets killed mid-sweep, and hint-less instrument rows never
+// reach the Yahoo search + onvista fallback.
+export const maxDuration = 300;
 
 interface InstrumentRow {
   id: string;

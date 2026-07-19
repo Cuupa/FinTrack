@@ -14,6 +14,7 @@
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const RETENTION_DAYS = 30;
 

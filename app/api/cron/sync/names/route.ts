@@ -18,6 +18,7 @@ import { pickBest, searchInstruments } from "@/lib/server/search";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const BATCH = 40; // rows resolved per call
 const CONCURRENCY = 6;

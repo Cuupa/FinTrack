@@ -521,7 +521,10 @@ client pages (see `app/assets/[id]/page.tsx`).
   change-password only — sign-in never enforces a minLength, existing shorter
   passwords still work). Market-data APIs are DB-rate-limited per IP
   (`lib/server/rate-limit.ts`, fail-open without Supabase); `/api/cron/*`
-  requires `CRON_SECRET` at the middleware edge.
+  requires `CRON_SECRET` at the middleware edge. Every `/api/cron/*` route
+  must also export `maxDuration = 300`: the bulk `/api/cron/sync` self-calls
+  each sub-sync over HTTP, so each invocation is its own Vercel function with
+  its own duration budget, not a shared one.
 - Allocation slice labels leave the pure finance layer as canonical English;
   the view translates the fixed vocabulary (asset classes, sectors in both
   Yahoo and GICS spellings, regions, volatility bands, sentinel buckets) via

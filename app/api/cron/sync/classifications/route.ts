@@ -14,6 +14,7 @@ import { classify } from "@/lib/server/classify";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const BATCH = 40; // rows resolved per call
 const CONCURRENCY = 6;
