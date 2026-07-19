@@ -22,19 +22,30 @@ Diagnosis (orchestrator, verified against prod):
   No new data provider needed - the onvista pool member already covers all
   five instruments.
 
-- [ ] 1a. `export const maxDuration = 300` on all cron sub-sync routes missing it (prices, retention, constituents, classifications, shared-portfolios, names, error-logs)
-- [ ] 1b. Lint + tsc + tests green, production build passes
-- [ ] 1c. CLAUDE.md cron note: every /api/cron/* route must export maxDuration (HTTP self-call = own duration budget)
-- [ ] 1d. Commit
-- [ ] 1e. Prod verification (rows price after next deploy + cron run) - needs owner deploy, expect deferral like prior rounds
+- [x] 1a. `export const maxDuration = 300` on all cron sub-sync routes missing it (prices, retention, constituents, classifications, shared-portfolios, names, error-logs)
+- [x] 1b. Lint + tsc + tests green (633 passed/4 skipped), production build passes with all 11 cron routes emitted
+- [x] 1c. CLAUDE.md cron note: every /api/cron/* route must export maxDuration (HTTP self-call = own duration budget)
+- [x] 1d. Commit (ddace95)
+- [~] 1e. Prod verification (rows price after next deploy + cron run) - needs owner push/deploy, deferred to owner like prior rounds' prod checks
 
 ## Task 2 - monetization
 
-- [ ] 2a. Gratitude premium: grant a user Pro with an end date or infinite (design pending)
-- [ ] 2b. resolvePlan honors grants (pure, unit-tested)
-- [ ] 2c. Admin UI to grant/revoke
-- [ ] 2d. Remaining MONETIZATION.md phase work (assess what is implementable without owner risk gates)
-- [ ] 2e. Commit
+Design (orchestrator): `plan_grants` table (migration 0068 + schema.sql,
+select-own RLS, service-role writes), `resolvePlan(sub, now, grants?)` treats
+an active pro grant (expires_at null = infinite, or future) as an independent
+path to "pro"; BillingProvider loads own grants; settings card shows a
+"granted" state without checkout/portal buttons (no Stripe customer); admin
+grant/revoke on /admin/billing via /api/admin/billing/grants (email search
+through the existing /api/admin/users, audited, revoke behind ConfirmDialog,
+sortable hover-highlighted table, no badges, en/de/es).
+
+- [x] 2a. Gratitude premium schema: plan_grants w/ end date or infinite (0068 + schema.sql, idempotent)
+- [x] 2b. resolvePlan honors grants (pure; tests extended: billing-plan 8 cases, subscription-view 7 cases, billing-admin parseGrantBody 11 cases)
+- [x] 2c. Admin UI to grant/revoke on /admin/billing + grants API (audited; table sortable + row hover; ConfirmDialog on revoke; skeletons; en/de/es du/tu)
+- [x] 2d. Settings subscription card shows granted state, hides checkout/portal buttons
+- [x] 2e. Lint + tsc + tests (660 passed/4 skipped) + build green; CLAUDE.md billing paragraph updated
+- [ ] 2f. Commit
+- [ ] 2g. Remaining MONETIZATION.md phases 3/4 (assess what is implementable without owner risk gates)
 
 ## Task 3 - error log rework (levels not types)
 

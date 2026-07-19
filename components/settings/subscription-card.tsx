@@ -65,7 +65,7 @@ function SubscriptionCardContent() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const billingParam = searchParams.get("billing");
-  const { plan, subscription, loading } = useBilling();
+  const { plan, subscription, grants, loading } = useBilling();
 
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -118,7 +118,7 @@ function SubscriptionCardContent() {
     void redirectTo("/api/billing/checkout", interval, { interval });
   const manage = () => void redirectTo("/api/billing/portal", "portal");
 
-  const view = subscriptionCardState(plan, subscription);
+  const view = subscriptionCardState(plan, subscription, grants);
 
   return (
     <Card>
@@ -155,32 +155,41 @@ function SubscriptionCardContent() {
                 {t("settings.billing.endsOn", { date: formatDate(view.date) })}
               </p>
             )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {view.kind === "free" ? (
-              <>
-                <Button
-                  variant="primary"
-                  onClick={() => upgrade("monthly")}
-                  disabled={pending !== null}
-                >
-                  {pending === "monthly" ? "…" : t("settings.billing.upgradeMonthly")}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => upgrade("yearly")}
-                  disabled={pending !== null}
-                >
-                  {pending === "yearly" ? "…" : t("settings.billing.upgradeYearly")}
-                </Button>
-              </>
-            ) : (
-              <Button variant="secondary" onClick={manage} disabled={pending !== null}>
-                {pending === "portal" ? "…" : t("settings.billing.manage")}
-              </Button>
+            {view.kind === "granted" && (
+              <p className="mt-1 text-sm text-zinc-500">
+                {view.date
+                  ? t("settings.billing.grantedUntil", { date: formatDate(view.date) })
+                  : t("settings.billing.granted")}
+              </p>
             )}
           </div>
+
+          {view.kind !== "granted" && (
+            <div className="flex flex-wrap items-center gap-3">
+              {view.kind === "free" ? (
+                <>
+                  <Button
+                    variant="primary"
+                    onClick={() => upgrade("monthly")}
+                    disabled={pending !== null}
+                  >
+                    {pending === "monthly" ? "…" : t("settings.billing.upgradeMonthly")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => upgrade("yearly")}
+                    disabled={pending !== null}
+                  >
+                    {pending === "yearly" ? "…" : t("settings.billing.upgradeYearly")}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="secondary" onClick={manage} disabled={pending !== null}>
+                  {pending === "portal" ? "…" : t("settings.billing.manage")}
+                </Button>
+              )}
+            </div>
+          )}
 
           {actionError && <p className="text-sm text-red-600 dark:text-red-400">{actionError}</p>}
         </div>

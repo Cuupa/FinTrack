@@ -11,9 +11,10 @@ import { describe, expect, it, vi } from "vitest";
 // tests/require-admin.test.ts / tests/billing-stripe.test.ts.
 vi.mock("server-only", () => ({}));
 
-const { parseBillingConfigBody, parseBillingKeysBody, redactKeysForAudit } = await import(
-  "../lib/server/billing-admin"
-);
+const { parseBillingConfigBody, parseBillingKeysBody, redactKeysForAudit, parseGrantBody } =
+  await import("../lib/server/billing-admin");
+
+const NOW = "2026-07-19T12:00:00.000Z";
 
 describe("parseBillingConfigBody", () => {
   it("accepts a fully populated body", () => {
@@ -107,6 +108,80 @@ describe("redactKeysForAudit", () => {
     expect(redactKeysForAudit({ secretKey: null, webhookSecret: "whsec_x" })).toEqual({
       secretKey: "cleared",
       webhookSecret: "set",
+    });
+  });
+});
+
+describe("parseGrantBody", () => {
+  it("accepts a userId with no expiry and no note (infinite grant)", () => {
+    expect(parseGrantBody({ userId: "user-1" }, NOW)).toEqual({
+      userId: "user-1",
+      expiresAt: null,
+      note: null,
+    });
+  });
+
+  it("accepts an explicit null expiresAt as infinite", () => {
+    expect(parseGrantBody({ userId: "user-1", expiresAt: null }, NOW)).toEqual({
+      userId: "user-1",
+      expiresAt: null,
+      note: null,
+    });
+  });
+
+  it("normalizes a future expiresAt string to an ISO datetime", () => {
+    expect(parseGrantBody({ userId: "user-1", expiresAt: "2026-08-01" }, NOW)).toEqual({
+      userId: "user-1",
+      expiresAt: new Date("2026-08-01").toISOString(),
+      note: null,
+    });
+  });
+
+  it("trims and carries a note", () => {
+    expect(parseGrantBody({ userId: "user-1", note: "  thank you  " }, NOW)).toEqual({
+      userId: "user-1",
+      expiresAt: null,
+      note: "thank you",
+    });
+  });
+
+  it("normalizes an empty (post-trim) note to null", () => {
+    expect(parseGrantBody({ userId: "user-1", note: "   " }, NOW)).toEqual({
+      userId: "user-1",
+      expiresAt: null,
+      note: null,
+    });
+  });
+
+  it("rejects a missing userId", () => {
+    expect(parseGrantBody({}, NOW)).toBeNull();
+  });
+
+  it("rejects a blank userId", () => {
+    expect(parseGrantBody({ userId: "   " }, NOW)).toBeNull();
+  });
+
+  it("rejects an unparseable expiresAt", () => {
+    expect(parseGrantBody({ userId: "user-1", expiresAt: "not-a-date" }, NOW)).toBeNull();
+  });
+
+  it("rejects a past expiresAt", () => {
+    expect(parseGrantBody({ userId: "user-1", expiresAt: "2020-01-01" }, NOW)).toBeNull();
+  });
+
+  it("rejects a non-string expiresAt", () => {
+    expect(parseGrantBody({ userId: "user-1", expiresAt: 123 }, NOW)).toBeNull();
+  });
+
+  it("rejects a non-string note", () => {
+    expect(parseGrantBody({ userId: "user-1", note: 123 }, NOW)).toBeNull();
+  });
+
+  it("trims the userId", () => {
+    expect(parseGrantBody({ userId: "  user-1  " }, NOW)).toEqual({
+      userId: "user-1",
+      expiresAt: null,
+      note: null,
     });
   });
 });

@@ -100,6 +100,13 @@ active/trialing/past_due+7d grace, pure). Guests / no Supabase / not yet
 loaded all resolve `"free"`.
 `plan_limits` (free/pro caps, null = unlimited, seeded unlimited) exists but
 is unenforced until Phase 4.
+`plan_grants` (migration 0068, "gratitude premium") independently grants a
+user Pro until `expires_at` or forever (`null`), regardless of any Stripe
+subscription; `BillingProvider` loads the user's own grants (select-own RLS)
+alongside their subscription and `resolvePlan` honors an active grant as a
+standalone path to `"pro"`. Grants are issued/revoked on `/admin/billing`'s
+"Premium grants" card (service-role writes only, every grant/revoke
+audited).
 
 **Billing (MONETIZATION.md Phase 1, dark-launched behind the `billing` flag,
 seeded disabled)**: Stripe Checkout + Billing portal, redirect-based only —

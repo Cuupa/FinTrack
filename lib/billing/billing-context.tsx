@@ -1,10 +1,12 @@
 "use client";
 
 // Client billing state (MONETIZATION.md section 3, Phase 1). Loads the
-// signed-in user's own `subscriptions` row (select-own RLS) once per user
-// and derives the `Plan` via `resolvePlan` (lib/billing/plan.ts). Guests and
+// signed-in user's own `subscriptions` row AND `plan_grants` rows
+// ("gratitude premium", migration 0068, select-own RLS) once per user and
+// derives the `Plan` via `resolvePlan` (lib/billing/plan.ts). Guests and
 // no-Supabase deploys never have a row, so they resolve `{ subscription:
-// null, loading: false, plan: "free" }` without ever touching the network.
+// null, grants: [], loading: false, plan: "free" }` without ever touching
+// the network.
 //
 // Mounted under AuthProvider and above FeatureFlagsProvider in
 // components/providers.tsx, since flag resolution (lib/flags/resolve.ts)
@@ -29,8 +31,12 @@ import {
 } from "react";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
 import { useAuth } from "../auth/auth-context";
-import { resolvePlan, type Plan } from "./plan";
+import { resolvePlan, type Plan, type PlanGrant } from "./plan";
 import type { SubscriptionRow } from "./subscription-view";
+
+// Stable reference so the no-grants case doesn't create a new array (and
+// thus a new useMemo dependency) on every render.
+const NO_GRANTS: PlanGrant[] = [];
 
 interface SubscriptionQueryRow {
   status: string;
@@ -61,9 +67,26 @@ async function fetchSubscription(userId: string): Promise<SubscriptionRow | null
   return data ? fromRow(data) : null;
 }
 
+interface PlanGrantQueryRow {
+  plan: string;
+  expires_at: string | null;
+}
+
+async function fetchGrants(userId: string): Promise<PlanGrant[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("plan_grants")
+    .select("plan, expires_at")
+    .eq("user_id", userId)
+    .returns<PlanGrantQueryRow[]>();
+  return (data ?? []).map((row) => ({ plan: row.plan, expiresAt: row.expires_at }));
+}
+
 interface BillingContextValue {
   plan: Plan;
   subscription: SubscriptionRow | null;
+  grants: PlanGrant[];
   loading: boolean;
   refresh(): Promise<void>;
 }
@@ -71,14 +94,16 @@ interface BillingContextValue {
 const BillingContext = createContext<BillingContextValue>({
   plan: "free",
   subscription: null,
+  grants: [],
   loading: false,
   refresh: async () => {},
 });
 
-/** The last successfully loaded row, tagged with the user it belongs to. */
+/** The last successfully loaded row(s), tagged with the user they belong to. */
 interface LoadedState {
   userId: string;
   subscription: SubscriptionRow | null;
+  grants: PlanGrant[];
 }
 
 export function BillingProvider({ children }: { children: ReactNode }) {
@@ -95,9 +120,9 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId || !isSupabaseConfigured) return;
     let active = true;
-    fetchSubscription(userId).then((subscription) => {
+    Promise.all([fetchSubscription(userId), fetchGrants(userId)]).then(([subscription, grants]) => {
       if (!active) return;
-      setLoaded({ userId, subscription });
+      setLoaded({ userId, subscription, grants });
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
       if (params.get("billing") !== "success") return;
@@ -106,9 +131,11 @@ export function BillingProvider({ children }: { children: ReactNode }) {
       // manual reload to show the new plan.
       window.setTimeout(() => {
         if (!active) return;
-        fetchSubscription(userId).then((retried) => {
-          if (active) setLoaded({ userId, subscription: retried });
-        });
+        Promise.all([fetchSubscription(userId), fetchGrants(userId)]).then(
+          ([retriedSubscription, retriedGrants]) => {
+            if (active) setLoaded({ userId, subscription: retriedSubscription, grants: retriedGrants });
+          },
+        );
       }, 1500);
     });
     return () => {
@@ -118,20 +145,22 @@ export function BillingProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!userId) return;
-    const subscription = await fetchSubscription(userId);
-    setLoaded({ userId, subscription });
+    const [subscription, grants] = await Promise.all([fetchSubscription(userId), fetchGrants(userId)]);
+    setLoaded({ userId, subscription, grants });
   }, [userId]);
 
   const subscription = loaded?.userId === userId ? loaded.subscription : null;
+  const grants = loaded?.userId === userId ? loaded.grants : NO_GRANTS;
   const loading = userId != null && isSupabaseConfigured && loaded?.userId !== userId;
   const plan = resolvePlan(
     subscription ? { status: subscription.status, currentPeriodEnd: subscription.currentPeriodEnd } : null,
     new Date().toISOString(),
+    grants,
   );
 
   const value = useMemo<BillingContextValue>(
-    () => ({ plan, subscription, loading, refresh }),
-    [plan, subscription, loading, refresh],
+    () => ({ plan, subscription, grants, loading, refresh }),
+    [plan, subscription, grants, loading, refresh],
   );
 
   return <BillingContext.Provider value={value}>{children}</BillingContext.Provider>;

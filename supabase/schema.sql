@@ -499,7 +499,8 @@ insert into public.schema_migrations (version) values
   ('0064_llm_settings'),
   ('0065_plan_gating'),
   ('0066_billing'),
-  ('0067_billing_admin_keys')
+  ('0067_billing_admin_keys'),
+  ('0068_plan_grants')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -855,6 +856,30 @@ create policy "billing config readable" on public.billing_config
 insert into public.billing_config (id, price_monthly, price_yearly, enabled) values
   (1, null, null, false)
 on conflict (id) do nothing;
+
+-- "Gratitude premium" (MONETIZATION.md): grant a user Pro independent of any
+-- Stripe subscription, with an optional end date or no expiry at all.
+-- Written only by the service role (owner tooling, admin API lands in a
+-- later round) -- same posture as `subscriptions`: the client can only read
+-- its own rows. `resolvePlan` (lib/billing/plan.ts) treats an active grant
+-- as an independent path to "pro", alongside the existing Stripe path.
+create table if not exists public.plan_grants (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  plan text not null default 'pro',
+  expires_at timestamptz,  -- null = infinite
+  note text,
+  created_at timestamptz not null default now(),
+  created_by text
+);
+
+create index if not exists plan_grants_user_id_idx on public.plan_grants (user_id);
+
+alter table public.plan_grants enable row level security;
+
+drop policy if exists "own plan grants" on public.plan_grants;
+create policy "own plan grants" on public.plan_grants
+  for select using (auth.uid() = user_id);
 
 -- Seed the instruments catalog -----------------------------------------------
 insert into public.instruments

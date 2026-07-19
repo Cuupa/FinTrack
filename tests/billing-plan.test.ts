@@ -3,7 +3,7 @@
 // window, 'free' otherwise (including no row / null).
 
 import { describe, expect, it } from "vitest";
-import { resolvePlan } from "../lib/billing/plan";
+import { resolvePlan, type PlanGrant } from "../lib/billing/plan";
 
 const NOW = "2026-07-18T00:00:00.000Z";
 
@@ -50,5 +50,53 @@ describe("resolvePlan", () => {
 
   it("no subscription row (undefined) resolves free", () => {
     expect(resolvePlan(undefined, NOW)).toBe("free");
+  });
+});
+
+describe("resolvePlan with plan_grants (gratitude premium)", () => {
+  it("infinite grant (null expiresAt) resolves pro", () => {
+    const grants: PlanGrant[] = [{ plan: "pro", expiresAt: null }];
+    expect(resolvePlan(null, NOW, grants)).toBe("pro");
+  });
+
+  it("grant with a future expiry resolves pro", () => {
+    const grants: PlanGrant[] = [{ plan: "pro", expiresAt: "2026-08-01T00:00:00.000Z" }];
+    expect(resolvePlan(null, NOW, grants)).toBe("pro");
+  });
+
+  it("grant with a past expiry resolves free", () => {
+    const grants: PlanGrant[] = [{ plan: "pro", expiresAt: "2026-07-01T00:00:00.000Z" }];
+    expect(resolvePlan(null, NOW, grants)).toBe("free");
+  });
+
+  it("grant with plan 'free' resolves free", () => {
+    const grants: PlanGrant[] = [{ plan: "free", expiresAt: null }];
+    expect(resolvePlan(null, NOW, grants)).toBe("free");
+  });
+
+  it("grant with an unknown plan value resolves free", () => {
+    const grants: PlanGrant[] = [{ plan: "enterprise", expiresAt: null }];
+    expect(resolvePlan(null, NOW, grants)).toBe("free");
+  });
+
+  it("active grant with no subscription at all resolves pro", () => {
+    const grants: PlanGrant[] = [{ plan: "pro", expiresAt: null }];
+    expect(resolvePlan(undefined, NOW, grants)).toBe("pro");
+  });
+
+  it("expired grant alongside an active subscription still resolves pro (subscription wins)", () => {
+    const grants: PlanGrant[] = [{ plan: "pro", expiresAt: "2026-07-01T00:00:00.000Z" }];
+    expect(
+      resolvePlan({ status: "active", currentPeriodEnd: "2026-08-01T00:00:00.000Z" }, NOW, grants),
+    ).toBe("pro");
+  });
+
+  it("empty grants array leaves existing subscription resolution unchanged", () => {
+    expect(
+      resolvePlan({ status: "canceled", currentPeriodEnd: "2026-08-01T00:00:00.000Z" }, NOW, []),
+    ).toBe("free");
+    expect(
+      resolvePlan({ status: "active", currentPeriodEnd: "2026-08-01T00:00:00.000Z" }, NOW, []),
+    ).toBe("pro");
   });
 });
