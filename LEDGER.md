@@ -38,7 +38,7 @@ tier flips, legal copy, live Stripe keys).
 
 ## Cross-cutting
 - [x] D1. All suites + lint green; production build passes (verified: vitest 611 passed, eslint clean, tsc --noEmit clean, `next build` succeeds with /settings prerendered static - the Suspense boundary around useSearchParams didn't force it dynamic)
-- [ ] D2. One commit per task, short messages, no branches
+- [x] D2. One commit per task, short messages, no branches (8927ee8 schema, 26183ae server layer, da7eb47 client wiring)
 - [x] D3. CLAUDE.md billing paragraph updated (usePlan no longer hardcoded) + new short billing paragraph under "Feature flags in the database"
 - [~] D4. Live verification (webhook on prod URL, Stripe test-mode matrix) needs owner's Stripe account + keys (open decision 7.6) - deferred to owner
 - [~] D5. Legal updates (/datenschutz Stripe processor, /terms subscription terms) ship with Phase 3 per MONETIZATION.md section 5 - deferred with billing flag off
