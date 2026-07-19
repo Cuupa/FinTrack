@@ -49,10 +49,20 @@ sortable hover-highlighted table, no badges, en/de/es).
 
 ## Task 3 - error log rework (levels not types)
 
-- [ ] 3a. Understand current error log implementation
-- [ ] 3b. Rework to severity levels (debug/info/warn/error/fatal) instead of error types
-- [ ] 3c. Tests + lint + build green
-- [ ] 3d. Commit
+Design (orchestrator): severity becomes the primary classification.
+`error_logs.level` text ('debug'|'info'|'warn'|'error'|'fatal', migration
+0069 + schema.sql, default/backfill 'error'), `reportError` and /api/errors
+carry a validated `level` (default 'error'), capture surfaces map
+global-error -> fatal, route boundary/window/unhandledrejection -> error.
+`kind` stays as a display column (capture source), but the admin filter
+switches from kind to level; level renders as color-coded plain text (no
+badges), table sortable + row hover per user rules.
+
+- [x] 3a. Understand current error log implementation (kind-based: report.ts, /api/errors, /admin/errors, 0051)
+- [x] 3b. Rework to severity levels (debug/info/warn/error/fatal) instead of error types: migration 0069 + schema.sql (level column + check constraint + index, default/backfill 'error'); ErrorLevel type + reportError level default/dedupe-key in lib/errors/report.ts; global-error.tsx -> fatal, error.tsx + error-reporter.tsx (window/unhandledrejection) -> error explicit; /api/errors validates level allowlist (absent -> error, invalid -> 400); /admin/errors: level replaces kind as the filter + SelectMenu, level own sortable column (color-coded plain text, no badges: debug gray/info blue/warn amber/error red/fatal red+semibold), kind kept as plain sortable column, every column sortable (Th/sort-state idiom from admin/prices), row hover, skeleton loading kept; en/de/es dictionary keys added (kindAll removed, now unused)
+- [x] 3c. Tests + lint + build green: extended tests/error-report.test.ts (level default/explicit/dedupe-by-level), new tests/errors-route.test.ts (POST /api/errors level defaulting + full allowlist + invalid level 400, kind 400 still works) - lint clean, tsc clean, 58 test files / 672 passed / 4 skipped, production build green (25 routes incl. /admin/errors)
+- [x] 3e. Follow-up (coordinator): fixed a migration-0069-lag regression - a prod DB that hasn't applied 0069 has no `level` column, so the insert would fail and the route's existing never-a-500 posture silently 204'd, dropping every report until the owner migrates (worse than pre-0069 behavior, violating the migration-0065 "lagging DB behaves as before" convention in CLAUDE.md). app/api/errors/route.ts now retries the insert once without the `level` field on any insert error, still 204 either way. Added 3 tests to tests/errors-route.test.ts (fallback succeeds after first-insert failure w/ payload assertions on both calls; still 204 if fallback also fails; no retry when first insert succeeds) - lint clean, tsc clean, 58 test files / 675 passed / 4 skipped, build green
+- [ ] 3d. Commit (not done - task instructed not to commit; owner/orchestrator to commit)
 
 ## Cross-cutting
 - [ ] C1. One subworker at a time, ledger updated per task

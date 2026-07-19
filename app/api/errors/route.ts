@@ -19,6 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 
 const KIND_ALLOWLIST = new Set(["boundary", "window", "unhandledrejection"]);
+const LEVEL_ALLOWLIST = new Set(["debug", "info", "warn", "error", "fatal"]);
 const MESSAGE_MAX = 500;
 const STACK_MAX = 4000;
 const ROUTE_MAX = 200;
@@ -63,17 +64,45 @@ export async function POST(req: Request): Promise<Response> {
   const kind = typeof body.kind === "string" && KIND_ALLOWLIST.has(body.kind) ? body.kind : null;
   if (!kind) return Response.json({ error: "invalid kind" }, { status: 400 });
 
-  const { error } = await supabase.from("error_logs").insert({
+  // Absent level defaults to "error" (matching reportError()'s own default,
+  // so a caller too old to send one still logs correctly); an explicitly
+  // invalid level is rejected same as an invalid kind.
+  const level = body.level === undefined ? "error" : body.level;
+  if (typeof level !== "string" || !LEVEL_ALLOWLIST.has(level)) {
+    return Response.json({ error: "invalid level" }, { status: 400 });
+  }
+
+  const row = {
     kind,
+    level,
     message: truncate(body.message, MESSAGE_MAX),
     stack: truncate(body.stack, STACK_MAX),
     route: truncate(body.route, ROUTE_MAX),
     digest: truncate(body.digest, DIGEST_MAX),
     user_agent: truncate(req.headers.get("user-agent"), USER_AGENT_MAX),
-  });
-  // A failed insert is still a 204: this endpoint never turns a logging
-  // hiccup into a visible error for the caller.
-  if (error) return new Response(null, { status: 204 });
+  };
+
+  const { error } = await supabase.from("error_logs").insert(row);
+  if (error) {
+    // Migration 0069 lag: a prod DB that hasn't applied 0069 yet has no
+    // `level` column, so the insert above fails with "unknown column" and
+    // would otherwise silently drop every report until the owner migrates —
+    // worse than pre-0069 behavior, which stored the row fine. Retry once
+    // without `level` so a lagging DB behaves exactly as before (same
+    // convention as migration 0065 in CLAUDE.md: a DB behind on a migration
+    // must never regress, just miss the new column). Still never a 500
+    // either way.
+    const rowWithoutLevel = {
+      kind: row.kind,
+      message: row.message,
+      stack: row.stack,
+      route: row.route,
+      digest: row.digest,
+      user_agent: row.user_agent,
+    };
+    const retry = await supabase.from("error_logs").insert(rowWithoutLevel);
+    if (retry.error) return new Response(null, { status: 204 });
+  }
 
   return new Response(null, { status: 204 });
 }

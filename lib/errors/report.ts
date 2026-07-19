@@ -19,8 +19,15 @@ import { apiFetch } from "@/lib/api";
 
 export type ErrorReportKind = "boundary" | "window" | "unhandledrejection";
 
+/** Severity classification, the primary axis of the error log (the
+ *  admin filter and default sort); `kind` above stays a secondary
+ *  "how was this captured" column. */
+export type ErrorLevel = "debug" | "info" | "warn" | "error" | "fatal";
+
 export interface ErrorReportPayload {
   kind: ErrorReportKind;
+  /** Defaults to "error" in reportError() when omitted. */
+  level?: ErrorLevel;
   message?: string | null;
   stack?: string | null;
   route?: string | null;
@@ -83,11 +90,13 @@ export function reportError(payload: ErrorReportPayload): void {
 
     const message = truncate(payload.message, MESSAGE_MAX);
     const route = truncate(payload.route, ROUTE_MAX);
-    const key = `${payload.kind}:${message ?? ""}:${route ?? ""}`;
+    const level: ErrorLevel = payload.level ?? "error";
+    const key = `${payload.kind}:${level}:${message ?? ""}:${route ?? ""}`;
     if (shouldThrottle(key, Date.now())) return;
 
     const body = JSON.stringify({
       kind: payload.kind,
+      level,
       message,
       stack: truncate(payload.stack, STACK_MAX),
       route,

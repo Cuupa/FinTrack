@@ -32,6 +32,7 @@ export function ErrorReporter() {
     const onError = (event: ErrorEvent) => {
       reportError({
         kind: "window",
+        level: "error",
         message: event.message || event.error?.message || "window error",
         stack: event.error?.stack ?? null,
         route: window.location.pathname,
@@ -42,6 +43,7 @@ export function ErrorReporter() {
       const { message, stack } = messageAndStack(event.reason);
       reportError({
         kind: "unhandledrejection",
+        level: "error",
         message,
         stack: stack ?? null,
         route: window.location.pathname,

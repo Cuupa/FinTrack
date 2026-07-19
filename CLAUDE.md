@@ -532,6 +532,11 @@ client pages (see `app/assets/[id]/page.tsx`).
   must also export `maxDuration = 300`: the bulk `/api/cron/sync` self-calls
   each sub-sync over HTTP, so each invocation is its own Vercel function with
   its own duration budget, not a shared one.
+- The self-hosted error log (`error_logs`, migration 0069) is classified by
+  severity `level` (`debug|info|warn|error|fatal`, the primary field and the
+  `/admin/errors` filter) with the capture-source `kind`
+  (boundary/window/unhandledrejection) as a secondary display column —
+  `reportError()` (`lib/errors/report.ts`) defaults `level` to `"error"`.
 - Allocation slice labels leave the pure finance layer as canonical English;
   the view translates the fixed vocabulary (asset classes, sectors in both
   Yahoo and GICS spellings, regions, volatility bands, sentinel buckets) via

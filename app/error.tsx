@@ -107,6 +107,7 @@ export default function Error({
     // dropped there rather than stored.
     reportError({
       kind: "boundary",
+      level: "error",
       message: error.message,
       stack: error.stack,
       digest: error.digest,

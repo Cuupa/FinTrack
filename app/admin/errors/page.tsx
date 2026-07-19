@@ -8,15 +8,20 @@
 // (app/api/cron/sync/error-logs) keeps the table small enough that this cap
 // is a safety valve, not a real pagination need.
 //
-// Filters (kind, free-text, date-from) run client-side over the fetched
-// batch, matching admin/prices's filter pattern. "Purge all" / "Purge older
-// than 7 days" go through DELETE /api/admin/errors (requireAdmin + secret
-// client — error_logs has no client delete policy) behind the app's
-// ConfirmDialog, per the house rule that every destructive action confirms
-// first.
+// Severity `level` (debug|info|warn|error|fatal, migration 0069) is the
+// primary classification and admin filter; `kind` (boundary/window/
+// unhandledrejection, the capture source) stays a secondary plain column.
+// Filters (level, free-text, date-from) run client-side over the fetched
+// batch, matching admin/prices's filter pattern. Every column is sortable
+// (same Th/sort-state idiom as app/admin/prices/page.tsx) and rows highlight
+// on hover. "Purge all" / "Purge older than 7 days" go through DELETE
+// /api/admin/errors (requireAdmin + secret client — error_logs has no client
+// delete policy) behind the app's ConfirmDialog, per the house rule that
+// every destructive action confirms first.
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatInstant } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
@@ -28,6 +33,7 @@ import { adminAuthToken, adminDelete } from "@/lib/admin/client";
 interface ErrorLogRow {
   id: string;
   kind: string;
+  level: string;
   message: string | null;
   stack: string | null;
   route: string | null;
@@ -36,22 +42,60 @@ interface ErrorLogRow {
   created_at: string;
 }
 
-type KindFilter = "all" | "boundary" | "window" | "unhandledrejection";
+type ErrorLevel = "debug" | "info" | "warn" | "error" | "fatal";
+type LevelFilter = "all" | ErrorLevel;
 type PurgeTarget = "all" | "old" | null;
+type SortKey = "level" | "kind" | "message" | "route" | "digest" | "created" | "userAgent";
 
 const ROW_LIMIT = 500;
+
+// Severity rank, low to high, used both for the default level sort order and
+// as the fallback when a row somehow carries an unexpected value.
+const LEVEL_RANK: Record<ErrorLevel, number> = { debug: 0, info: 1, warn: 2, error: 3, fatal: 4 };
+
+// Plain-text color coding, no badges/pills/chips anywhere in this app.
+const LEVEL_CLASS: Record<ErrorLevel, string> = {
+  debug: "text-zinc-400 dark:text-zinc-500",
+  info: "text-blue-600 dark:text-blue-400",
+  warn: "text-amber-600 dark:text-amber-400",
+  error: "text-red-600 dark:text-red-400",
+  fatal: "text-red-600 dark:text-red-400 font-semibold",
+};
+
+// Literal dictionary keys (not a template string) so `t()`'s key union stays
+// exhaustive and typo-proof.
+const LEVEL_LABEL_KEY: Record<ErrorLevel, MessageKey> = {
+  debug: "admin.errors.levelDebug",
+  info: "admin.errors.levelInfo",
+  warn: "admin.errors.levelWarn",
+  error: "admin.errors.levelError",
+  fatal: "admin.errors.levelFatal",
+};
+
+function levelRank(level: string): number {
+  return level in LEVEL_RANK ? LEVEL_RANK[level as ErrorLevel] : -1;
+}
+
+function levelClass(level: string): string {
+  return level in LEVEL_CLASS ? LEVEL_CLASS[level as ErrorLevel] : "text-zinc-500";
+}
+
+function levelLabelKey(level: string): MessageKey {
+  return level in LEVEL_LABEL_KEY ? LEVEL_LABEL_KEY[level as ErrorLevel] : "admin.errors.levelError";
+}
 
 export default function AdminErrorsPage() {
   const { t } = useI18n();
   const [rows, setRows] = useState<ErrorLogRow[] | null>(null);
   const [rowsVersion, setRowsVersion] = useState(0);
-  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<PurgeTarget>(null);
   const [purging, setPurging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "created", dir: -1 });
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -59,7 +103,7 @@ export default function AdminErrorsPage() {
     let active = true;
     supabase
       .from("error_logs")
-      .select("id, kind, message, stack, route, digest, user_agent, created_at")
+      .select("id, kind, level, message, stack, route, digest, user_agent, created_at")
       .order("created_at", { ascending: false })
       .limit(ROW_LIMIT)
       .then(({ data }) => {
@@ -71,11 +115,15 @@ export default function AdminErrorsPage() {
     };
   }, [rowsVersion]);
 
+  function toggleSort(key: SortKey) {
+    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const fromMs = dateFrom ? new Date(dateFrom).getTime() : null;
-    return (rows ?? []).filter((r) => {
-      if (kindFilter !== "all" && r.kind !== kindFilter) return false;
+    const list = (rows ?? []).filter((r) => {
+      if (levelFilter !== "all" && r.level !== levelFilter) return false;
       if (fromMs != null && Date.parse(r.created_at) < fromMs) return false;
       if (!q) return true;
       return (
@@ -84,7 +132,9 @@ export default function AdminErrorsPage() {
         (r.digest ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, kindFilter, query, dateFrom]);
+    const dir = sort.dir;
+    return [...list].sort((a, b) => compare(a, b, sort.key) * dir);
+  }, [rows, levelFilter, query, dateFrom, sort]);
 
   const purge = async (target: PurgeTarget) => {
     if (!target) return;
@@ -120,17 +170,19 @@ export default function AdminErrorsPage() {
       <Card>
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-xs text-zinc-500">{t("admin.errors.colKind")}</label>
+            <label className="block text-xs text-zinc-500">{t("admin.errors.colLevel")}</label>
             <SelectMenu
-              value={kindFilter}
-              onChange={(v) => setKindFilter(v as KindFilter)}
+              value={levelFilter}
+              onChange={(v) => setLevelFilter(v as LevelFilter)}
               className="mt-1 w-48"
-              ariaLabel={t("admin.errors.colKind")}
+              ariaLabel={t("admin.errors.colLevel")}
               options={[
-                { value: "all", label: t("admin.errors.kindAll") },
-                { value: "boundary", label: t("admin.errors.kindBoundary") },
-                { value: "window", label: t("admin.errors.kindWindow") },
-                { value: "unhandledrejection", label: t("admin.errors.kindUnhandledrejection") },
+                { value: "all", label: t("admin.errors.levelAll") },
+                { value: "debug", label: t("admin.errors.levelDebug") },
+                { value: "info", label: t("admin.errors.levelInfo") },
+                { value: "warn", label: t("admin.errors.levelWarn") },
+                { value: "error", label: t("admin.errors.levelError") },
+                { value: "fatal", label: t("admin.errors.levelFatal") },
               ]}
             />
           </div>
@@ -212,12 +264,18 @@ export default function AdminErrorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                  <th className="px-3 py-2 font-medium">{t("admin.errors.colKind")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.errors.colMessage")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.errors.colRoute")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.errors.colDigest")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.errors.colCreated")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.errors.colUserAgent")}</th>
+                  <Th label={t("admin.errors.colLevel")} k="level" sort={sort} onSort={toggleSort} />
+                  <Th label={t("admin.errors.colKind")} k="kind" sort={sort} onSort={toggleSort} />
+                  <Th label={t("admin.errors.colMessage")} k="message" sort={sort} onSort={toggleSort} />
+                  <Th label={t("admin.errors.colRoute")} k="route" sort={sort} onSort={toggleSort} />
+                  <Th label={t("admin.errors.colDigest")} k="digest" sort={sort} onSort={toggleSort} />
+                  <Th label={t("admin.errors.colCreated")} k="created" sort={sort} onSort={toggleSort} />
+                  <Th
+                    label={t("admin.errors.colUserAgent")}
+                    k="userAgent"
+                    sort={sort}
+                    onSort={toggleSort}
+                  />
                 </tr>
               </thead>
               <tbody>
@@ -227,7 +285,10 @@ export default function AdminErrorsPage() {
                   const hasMore = (r.message ?? "").length > 80 || !!r.stack;
                   return (
                     <Fragment key={r.id}>
-                      <tr className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
+                      <tr className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40">
+                        <td className={`px-3 py-2 align-top text-xs ${levelClass(r.level)}`}>
+                          {t(levelLabelKey(r.level))}
+                        </td>
                         <td className="px-3 py-2 align-top font-mono text-xs text-zinc-500">{r.kind}</td>
                         <td className="max-w-xs px-3 py-2 align-top">
                           <div className="truncate">{shortMessage || "—"}</div>
@@ -256,7 +317,7 @@ export default function AdminErrorsPage() {
                       </tr>
                       {isExpanded && (
                         <tr className="border-b border-zinc-100 dark:border-zinc-800/60">
-                          <td colSpan={6} className="bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
+                          <td colSpan={7} className="bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
                             <p className="whitespace-pre-wrap break-words text-xs">
                               {r.message || t("admin.errors.noStack")}
                             </p>
@@ -294,5 +355,49 @@ export default function AdminErrorsPage() {
         onCancel={() => setPurgeTarget(null)}
       />
     </div>
+  );
+}
+
+function compare(a: ErrorLogRow, b: ErrorLogRow, key: SortKey): number {
+  switch (key) {
+    case "level":
+      return levelRank(a.level) - levelRank(b.level);
+    case "kind":
+      return a.kind.localeCompare(b.kind);
+    case "message":
+      return (a.message ?? "").localeCompare(b.message ?? "");
+    case "route":
+      return (a.route ?? "").localeCompare(b.route ?? "");
+    case "digest":
+      return (a.digest ?? "").localeCompare(b.digest ?? "");
+    case "created":
+      return Date.parse(a.created_at) - Date.parse(b.created_at);
+    case "userAgent":
+      return (a.user_agent ?? "").localeCompare(b.user_agent ?? "");
+  }
+}
+
+function Th({
+  label,
+  k,
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: SortKey;
+  sort: { key: SortKey; dir: 1 | -1 };
+  onSort: (k: SortKey) => void;
+}) {
+  const active = sort.key === k;
+  return (
+    <th className="px-3 py-2 font-medium">
+      <button
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        {label}
+        <span className="text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
   );
 }

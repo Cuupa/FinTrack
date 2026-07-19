@@ -500,7 +500,8 @@ insert into public.schema_migrations (version) values
   ('0065_plan_gating'),
   ('0066_billing'),
   ('0067_billing_admin_keys'),
-  ('0068_plan_grants')
+  ('0068_plan_grants'),
+  ('0069_error_log_levels')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1148,14 +1149,18 @@ drop policy if exists "admin audit readable" on public.admin_audit;
 create policy "admin audit readable" on public.admin_audit for select using (public.is_admin());
 create index if not exists admin_audit_created_at_idx on public.admin_audit (created_at desc);
 
--- Self-hosted error-log pipeline (migration 0051) --------------------------
+-- Self-hosted error-log pipeline (migration 0051; levels added in 0069) ----
 -- Client error boundaries and a window-level error/unhandledrejection
 -- listener report here via POST /api/errors (flag-gated, rate-limited, no
 -- user id / IP stored). Admins browse via /admin/errors under RLS below; a
 -- 30-day retention cron (app/api/cron/sync/error-logs) purges old rows.
+-- `kind` (boundary/window/unhandledrejection) is the capture source, a
+-- secondary display column; `level` (debug|info|warn|error|fatal) is the
+-- primary severity classification and the /admin/errors filter.
 create table if not exists public.error_logs (
   id uuid primary key default gen_random_uuid(),
   kind text not null default 'boundary',
+  level text not null default 'error',
   message text,
   stack text,
   route text,
@@ -1167,3 +1172,7 @@ alter table public.error_logs enable row level security;
 drop policy if exists "error logs admin readable" on public.error_logs;
 create policy "error logs admin readable" on public.error_logs for select using (public.is_admin());
 create index if not exists error_logs_created_at_idx on public.error_logs (created_at desc);
+create index if not exists error_logs_level_idx on public.error_logs (level);
+alter table public.error_logs drop constraint if exists error_logs_level_check;
+alter table public.error_logs add constraint error_logs_level_check
+  check (level in ('debug', 'info', 'warn', 'error', 'fatal'));

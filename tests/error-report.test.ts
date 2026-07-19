@@ -68,11 +68,33 @@ describe("reportError", () => {
     expect(init.keepalive).toBe(true);
     expect(parsedBody(apiFetchMock.mock.calls[0])).toEqual({
       kind: "boundary",
+      level: "error",
       message: "boom",
       stack: "at x()",
       route: "/foo",
       digest: "d1",
     });
+  });
+
+  it("defaults level to 'error' when omitted", () => {
+    reportError({ kind: "boundary", message: "boom" });
+    const body = parsedBody(apiFetchMock.mock.calls[0]);
+    expect(body.level).toBe("error");
+  });
+
+  it("includes an explicit level in the body", () => {
+    reportError({ kind: "boundary", level: "fatal", message: "boom" });
+    const body = parsedBody(apiFetchMock.mock.calls[0]);
+    expect(body.level).toBe("fatal");
+  });
+
+  it("dedupes by kind+level+message+route, not kind+message+route alone", () => {
+    reportError({ kind: "window", level: "warn", message: "same error", route: "/dash" });
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+
+    // Same kind/message/route but a different level is a distinct report.
+    reportError({ kind: "window", level: "error", message: "same error", route: "/dash" });
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("truncates message to 500 chars and stack to 4000 chars client-side", () => {

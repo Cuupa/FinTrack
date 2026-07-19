@@ -31,6 +31,10 @@ export default function GlobalError({
     try {
       const body = JSON.stringify({
         kind: "boundary",
+        // "fatal": this boundary only fires when the whole app crashed (a
+        // provider failing during render, no layout/UI left to recover),
+        // the most severe level in the log.
+        level: "fatal",
         message: typeof error.message === "string" ? error.message.slice(0, 500) : undefined,
         stack: typeof error.stack === "string" ? error.stack.slice(0, 4000) : undefined,
         digest: error.digest,
