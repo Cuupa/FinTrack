@@ -39,6 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin", label: t("admin.nav.overview") },
     { href: "/admin/flags", label: t("admin.nav.flags") },
     { href: "/admin/site", label: t("admin.nav.site") },
+    { href: "/admin/billing", label: t("admin.nav.billing") },
     { href: "/admin/prices", label: t("admin.nav.prices") },
     { href: "/admin/errors", label: t("admin.nav.errors") },
     { href: "/admin/audit", label: t("admin.nav.audit") },

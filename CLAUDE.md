@@ -103,12 +103,23 @@ is unenforced until Phase 4.
 
 **Billing (MONETIZATION.md Phase 1, dark-launched behind the `billing` flag,
 seeded disabled)**: Stripe Checkout + Billing portal, redirect-based only —
-no Stripe.js on the page, so CSP `connect-src` stays untouched. Price ids
-live in `billing_config` (config-in-DB, world-readable, owner-written), not
-env; `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` are the only env vars.
-`/api/billing/checkout` and `/api/billing/portal` (POST, session bearer
-token) return `{ url }` to redirect to; `/api/billing/webhook` is the sole
-writer of `subscriptions` (service role, select-own RLS for the client).
+no Stripe.js on the page, so CSP `connect-src` stays untouched. Price ids +
+the selling toggle live in `billing_config` (config-in-DB, world-readable,
+owner-written), editable at runtime on `/admin/billing`. The Stripe secret
+key and webhook secret are DB-first with an env fallback (round 2026-07-19b):
+`app_settings.stripe_secret_key`/`stripe_webhook_secret` (RLS enabled, zero
+policies — service-role only) win over `STRIPE_SECRET_KEY`/
+`STRIPE_WEBHOOK_SECRET` when set, resolved once per request by
+`getStripeKeys()` (`lib/server/billing-keys.ts`); every caller that touches a
+key goes through it instead of reading `process.env` directly. Also editable
+on `/admin/billing`: `GET /api/admin/billing` never echoes a stored secret
+(presence booleans only), `POST` sets/clears a key (empty or `null` clears)
+or upserts the config, and every write is audited — key writes record only
+"set"/"cleared" per field, never the value (`lib/server/billing-admin.ts`,
+`app/api/admin/billing/route.ts`). `/api/billing/checkout` and
+`/api/billing/portal` (POST, session bearer token) return `{ url }` to
+redirect to; `/api/billing/webhook` is the sole writer of `subscriptions`
+(service role, select-own RLS for the client).
 Settings gets a "Subscription" card (`components/settings/subscription-card.tsx`,
 flag-gated, registered-users-only — guests can't subscribe and the
 create-an-account teaser funnel is Phase 3) reading `useBilling()` for
