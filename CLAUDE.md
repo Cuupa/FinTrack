@@ -90,7 +90,16 @@ doubles as a Pro grant) > kill switch (`enabled=false` = invisible) >
 pro-required + free plan = `{enabled, locked}` > on; missing column/row or no
 Supabase = free/on, so a DB lagging migration 0065 behaves exactly as before.
 `useFeature(flag)` returns `{enabled, locked}`; `useFeatureFlag` stays boolean
-(`enabled && !locked`) so locked features hide until the Phase-3 teaser UI.
+(`enabled && !locked`) so call sites that haven't adopted `useFeature` still
+just hide a locked feature. The shared `<ProTeaser feature="...">`
+(`components/billing/pro-teaser.tsx`, MONETIZATION.md Phase 3) is adopted on
+the five surfaces that gate on a Pro flag — the /analysis risk and tax tabs
+(tab stays visible, teaser replaces its content), /dividends, /simulation,
+/xray, /rebalancing — rendered in place of the locked content while page
+chrome stays; its upgrade button only shows when the `billing` flag is on.
+Still dark in prod: every flag is seeded `required_plan='free'`, so nothing
+locks (and no teaser renders) until the owner re-tiers a flag on
+/admin/flags.
 `usePlan()` (`lib/billing/use-plan.ts`) is the billing seam — a thin read of
 `BillingProvider` (`lib/billing/billing-context.tsx`, mounted under
 `AuthProvider` and above `FeatureFlagsProvider` in `components/providers.tsx`

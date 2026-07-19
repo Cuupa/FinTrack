@@ -422,6 +422,9 @@ export const en = {
   "common.holdingValue": "Holding value",
   "common.featureUnavailable": "This feature is currently unavailable.",
   "common.featureUnavailableHint": "It has been disabled for this environment.",
+  "common.proFeature": "This is a Pro feature",
+  "common.proFeatureHint": "Upgrade to Pro to unlock this and other advanced tools.",
+  "common.proFeatureUpgrade": "See Pro plans",
 
   "common.marketValue": "Market value",
 
@@ -1673,6 +1676,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.holdingValue": "Positionswert",
   "common.featureUnavailable": "Diese Funktion ist derzeit nicht verfügbar.",
   "common.featureUnavailableHint": "Sie wurde für diese Umgebung deaktiviert.",
+  "common.proFeature": "Das ist eine Pro-Funktion",
+  "common.proFeatureHint": "Upgrade auf Pro, um diese und weitere fortgeschrittene Funktionen freizuschalten.",
+  "common.proFeatureUpgrade": "Pro-Pläne ansehen",
 
   "common.compare": "Vergleichen",
   "common.other": "Andere",
@@ -2922,6 +2928,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.holdingValue": "Valor de la posición",
   "common.featureUnavailable": "Esta función no está disponible actualmente.",
   "common.featureUnavailableHint": "Se ha desactivado para este entorno.",
+  "common.proFeature": "Esta es una función Pro",
+  "common.proFeatureHint": "Mejora a Pro para desbloquear esta y otras herramientas avanzadas.",
+  "common.proFeatureUpgrade": "Ver planes Pro",
 
   "common.marketValue": "Valor de mercado",
 

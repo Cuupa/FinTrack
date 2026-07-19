@@ -121,7 +121,7 @@ function SubscriptionCardContent() {
   const view = subscriptionCardState(plan, subscription, grants);
 
   return (
-    <Card>
+    <Card id="subscription">
       <h2 className="text-base font-semibold">{t("settings.billing.title")}</h2>
 
       {loading ? (

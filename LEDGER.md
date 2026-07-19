@@ -44,8 +44,12 @@ sortable hover-highlighted table, no badges, en/de/es).
 - [x] 2c. Admin UI to grant/revoke on /admin/billing + grants API (audited; table sortable + row hover; ConfirmDialog on revoke; skeletons; en/de/es du/tu)
 - [x] 2d. Settings subscription card shows granted state, hides checkout/portal buttons
 - [x] 2e. Lint + tsc + tests (660 passed/4 skipped) + build green; CLAUDE.md billing paragraph updated
-- [ ] 2f. Commit
-- [ ] 2g. Remaining MONETIZATION.md phases 3/4 (assess what is implementable without owner risk gates)
+- [x] 2f. Commit (dd66a6c)
+- [ ] 2g. Remaining MONETIZATION.md phases 3/4, dark-launched (billing flag off in prod, all flags still seeded free, so no visible change until owner flips at runtime):
+  - [ ] 2g-1. ProTeaser component + useFeature adoption on /analysis tabs, /dividends, /simulation, /xray, /rebalancing
+  - [ ] 2g-2. /pricing page + owner-editable display prices in billing_config + legal updates (datenschutz Stripe processor, terms subscription section, EN+DE du)
+  - [ ] 2g-3. Phase 4: plan_limits resolution + enforcement at add-surfaces (grandfathering: existing over-cap rows stay usable) + plan_limits editor card
+  Owner-gated and NOT part of this round: flipping required_plan tiers, enabling billing, first live checkout, price-point decision (MONETIZATION.md section 7).
 
 ## Task 3 - error log rework (levels not types)
 

@@ -9,7 +9,8 @@ import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
 import { TaxView } from "@/components/analysis/tax-view";
 import { RiskDisclaimer } from "@/components/ui/risk-disclaimer";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { ProTeaser } from "@/components/billing/pro-teaser";
+import { useFeature } from "@/lib/flags/flags-context";
 
 const TABS = ["distributions", "returns", "trades", "risks", "tax"] as const;
 
@@ -34,11 +35,14 @@ function AnalysisPageInner() {
   const searchParams = useSearchParams();
   const { t: tr } = useI18n();
 
-  // The Risk and Tax tabs are behind feature flags.
-  const riskEnabled = useFeatureFlag("risk");
-  const taxReportEnabled = useFeatureFlag("taxReport");
-  const tabs = TABS.filter((key) => key !== "risks" || riskEnabled).filter(
-    (key) => key !== "tax" || taxReportEnabled,
+  // The Risk and Tax tabs are behind feature flags. A locked (Pro-required,
+  // free plan) tab stays visible in the tab bar with a ProTeaser as its
+  // content -- only a fully disabled flag (`enabled: false`, the kill
+  // switch) removes the tab outright, same as before the plan layer.
+  const risk = useFeature("risk");
+  const taxReport = useFeature("taxReport");
+  const tabs = TABS.filter((key) => key !== "risks" || risk.enabled).filter(
+    (key) => key !== "tax" || taxReport.enabled,
   );
 
   // The URL is a mirror of the client state, not the other way round: the
@@ -97,8 +101,10 @@ function AnalysisPageInner() {
       {tab === "distributions" && <AllocationView />}
       {tab === "returns" && <ReturnsView />}
       {tab === "trades" && <TradesView />}
-      {tab === "risks" && riskEnabled && <RiskView />}
-      {tab === "tax" && taxReportEnabled && <TaxView />}
+      {tab === "risks" && risk.enabled && (risk.locked ? <ProTeaser feature="risk" /> : <RiskView />)}
+      {tab === "tax" &&
+        taxReport.enabled &&
+        (taxReport.locked ? <ProTeaser feature="taxReport" /> : <TaxView />)}
     </div>
   );
 }
