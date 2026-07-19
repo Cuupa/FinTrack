@@ -49,10 +49,11 @@ async function handle(req: Request): Promise<Response> {
   await post("/api/cron/sync/benchmarks");
   await post("/api/cron/sync/shared-portfolios");
   await post("/api/cron/sync/error-logs");
-  // Billing reconcile only when Stripe is configured; the sub-sync itself also
-  // skips cleanly, but gating here keeps the results map clean on Stripe-less
-  // deploys.
-  if (process.env.STRIPE_SECRET_KEY) await post("/api/cron/sync/billing");
+  // The billing sub-sync resolves its own Stripe key (app_settings DB value
+  // or the STRIPE_SECRET_KEY env fallback, see lib/server/billing-keys.ts)
+  // and skips cleanly (200 with `skipped`) when neither is set, so it's
+  // always posted here rather than gated on the env var alone.
+  await post("/api/cron/sync/billing");
   await post("/api/cron/sync/retention");
 
   return Response.json({ ok: true, results });

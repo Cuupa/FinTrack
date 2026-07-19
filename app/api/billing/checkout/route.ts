@@ -6,10 +6,13 @@
 // exactly like app/api/account/delete (never trust a client-supplied user id).
 // DB-backed per-IP rate limit like app/api/share. Prices come from the
 // world-readable `billing_config` row (config-in-DB): selling is refused (403)
-// when disabled, 503 when the wanted price id or STRIPE_SECRET_KEY is missing.
+// when disabled, 503 when the wanted price id or the Stripe secret key
+// (`getStripeKeys()` — an `app_settings` DB value or the STRIPE_SECRET_KEY
+// env fallback) is missing.
 
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { stripeFetch } from "@/lib/server/stripe";
+import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +65,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!config?.enabled) return Response.json({ error: "billing disabled" }, { status: 403 });
 
   const priceId = interval === "yearly" ? config.price_yearly : config.price_monthly;
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const { secretKey } = await getStripeKeys();
   if (!priceId || !secretKey) {
     return Response.json({ error: "billing not configured" }, { status: 503 });
   }

@@ -20,6 +20,8 @@ const {
   stripeId,
 } = await import("../lib/server/stripe");
 
+const { resolveStripeKey } = await import("../lib/server/billing-keys");
+
 function sign(ts: number, body: string, secret: string): string {
   return createHmac("sha256", secret).update(`${ts}.${body}`).digest("hex");
 }
@@ -230,6 +232,38 @@ describe("formEncode / stripeId", () => {
     expect(stripeId({ id: "cus_2" })).toBe("cus_2");
     expect(stripeId(null)).toBeNull();
     expect(stripeId({})).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveStripeKey — DB-wins, env-fallback precedence (pure, no Supabase)
+// ---------------------------------------------------------------------------
+
+describe("resolveStripeKey", () => {
+  it("a set DB value wins over the env var", () => {
+    expect(resolveStripeKey("sk_db_value", "sk_env_value")).toBe("sk_db_value");
+  });
+
+  it("an empty or whitespace-only DB string falls back to env", () => {
+    expect(resolveStripeKey("", "sk_env_value")).toBe("sk_env_value");
+    expect(resolveStripeKey("   ", "sk_env_value")).toBe("sk_env_value");
+  });
+
+  it("null/undefined DB value with env set falls back to env", () => {
+    expect(resolveStripeKey(null, "sk_env_value")).toBe("sk_env_value");
+    expect(resolveStripeKey(undefined, "sk_env_value")).toBe("sk_env_value");
+  });
+
+  it("neither DB nor env set resolves to null", () => {
+    expect(resolveStripeKey(null, undefined)).toBeNull();
+    expect(resolveStripeKey("", "")).toBeNull();
+    expect(resolveStripeKey("   ", "   ")).toBeNull();
+  });
+
+  it("a non-string DB value is treated as unset and falls back to env", () => {
+    expect(resolveStripeKey(42, "sk_env_value")).toBe("sk_env_value");
+    expect(resolveStripeKey({}, "sk_env_value")).toBe("sk_env_value");
+    expect(resolveStripeKey(true, undefined)).toBeNull();
   });
 });
 

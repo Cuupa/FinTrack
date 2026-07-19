@@ -1,12 +1,15 @@
 // Raw Stripe REST access + the pure, unit-testable pieces of the billing
 // layer (MONETIZATION.md section 3, Phase 1). No `stripe` npm package: every
-// call is a server-side `fetch` to https://api.stripe.com/v1/... with a
-// `Authorization: Bearer ${STRIPE_SECRET_KEY}` header and a form-encoded body
-// (Stripe expects application/x-www-form-urlencoded with bracket notation,
-// e.g. `line_items[0][price]=...`). This matches the repo's Yahoo/Frankfurter
+// call is a server-side `fetch` to https://api.stripe.com/v1/... with an
+// `Authorization: Bearer <secretKey>` header and a form-encoded body (Stripe
+// expects application/x-www-form-urlencoded with bracket notation, e.g.
+// `line_items[0][price]=...`). This matches the repo's Yahoo/Frankfurter
 // convention (vendor calls are server-side fetches) and keeps the CSP
 // connect-src untouched — the browser never contacts api.stripe.com; it only
-// follows the redirect URLs Checkout / the Billing portal return.
+// follows the redirect URLs Checkout / the Billing portal return. Callers
+// resolve `secretKey` via `getStripeKeys()` (`lib/server/billing-keys.ts`,
+// Phase 2, round 2026-07-19b): an `app_settings` DB value wins over the
+// `STRIPE_SECRET_KEY` env fallback — this module never reads env itself.
 //
 // The signature verify, the subscription->row mapping and the event router
 // are pure and covered by tests/billing-stripe.test.ts. DB writes live in the

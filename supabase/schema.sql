@@ -498,7 +498,8 @@ insert into public.schema_migrations (version) values
   ('0063_llm_chat_flag'),
   ('0064_llm_settings'),
   ('0065_plan_gating'),
-  ('0066_billing')
+  ('0066_billing'),
+  ('0067_billing_admin_keys')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -635,9 +636,14 @@ create trigger on_auth_user_created
 -- App-wide settings (single row). `max_users` caps registrations; null = no
 -- limit. The owner changes it on a moment's notice with:
 --   update public.app_settings set max_users = 50;   -- or NULL to disable
+-- `stripe_secret_key`/`stripe_webhook_secret` (migration 0067) let the owner
+-- set Stripe credentials at runtime from /admin/billing; RLS has zero
+-- policies on this table so only the service role can ever read them.
 create table if not exists public.app_settings (
   id int primary key default 1 check (id = 1),
   max_users int,
+  stripe_secret_key text,
+  stripe_webhook_secret text,
   updated_at timestamptz not null default now()
 );
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;

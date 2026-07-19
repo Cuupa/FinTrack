@@ -7,14 +7,16 @@
 // POST only with `Authorization: Bearer $CRON_SECRET`, same shape as the other
 // app/api/cron/sync/* sub-syncs. middleware.ts enforces the secret at the edge
 // for the whole /api/cron/* tree; this repeats the check so the route is safe
-// if ever called directly. Skips cleanly (200) when STRIPE_SECRET_KEY is unset
-// so deploys without Stripe stay green.
+// if ever called directly. Skips cleanly (200) when no Stripe secret key
+// resolves (`getStripeKeys()` — app_settings DB value or STRIPE_SECRET_KEY
+// env fallback) so deploys without Stripe stay green.
 
 import {
   stripeFetch,
   subscriptionRowFrom,
   type StripeSubscription,
 } from "@/lib/server/stripe";
+import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +33,7 @@ async function handle(req: Request): Promise<Response> {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const { secretKey } = await getStripeKeys();
   if (!secretKey) {
     return Response.json({ ok: true, skipped: "stripe not configured" });
   }

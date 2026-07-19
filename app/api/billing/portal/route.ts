@@ -3,9 +3,12 @@
 // Stripe's hosted portal. Redirect-based like checkout (no Stripe.js, CSP
 // untouched). Same bearer session auth + rate limit as checkout; requires an
 // existing billing_customers row (404 if the user never started a checkout).
+// Secret key resolves via `getStripeKeys()` (app_settings DB value, env
+// fallback), same as checkout.
 
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { stripeFetch } from "@/lib/server/stripe";
+import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +31,7 @@ export async function POST(req: Request): Promise<Response> {
     return tooManyRequests();
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const { secretKey } = await getStripeKeys();
   if (!secretKey) return Response.json({ error: "billing not configured" }, { status: 503 });
 
   const admin = supabaseSecret();

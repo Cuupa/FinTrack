@@ -10,6 +10,10 @@
 // reprocessing. If processing then fails we RELEASE the claim (delete the row)
 // and return 500 so Stripe's retry can actually reprocess — otherwise the
 // claim would swallow the retry.
+//
+// Credentials (webhook secret + the secret key used to fetch the full
+// subscription) resolve via `getStripeKeys()` (Phase 2, round 2026-07-19b):
+// an `app_settings` DB value wins, `process.env.STRIPE_*` is the fallback.
 
 import {
   planForEvent,
@@ -20,6 +24,7 @@ import {
   type StripeSubscription,
   type SubscriptionRow,
 } from "@/lib/server/stripe";
+import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -72,10 +77,12 @@ async function fetchSubscription(id: string, secretKey: string): Promise<StripeS
 // --- handler ---------------------------------------------------------------
 
 export async function POST(req: Request): Promise<Response> {
-  // 1. RAW body first (must precede any parse for the signature to hold).
+  // 1. RAW body first (must precede any parse for the signature to hold,
+  //    and before the credential lookup so a slow DB read never delays
+  //    draining the request).
   const raw = await req.text();
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const { secretKey, webhookSecret } = await getStripeKeys();
   if (!webhookSecret) {
     return Response.json({ error: "billing not configured" }, { status: 503 });
   }
@@ -113,7 +120,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // 5. Process. On any failure, release the claim so the retry reprocesses.
   try {
-    const ok = await applyEvent(supabase, event);
+    const ok = await applyEvent(supabase, event, secretKey);
     if (!ok) {
       await releaseClaim(supabase, event.id);
       return Response.json({ error: "processing failed" }, { status: 500 });
@@ -135,9 +142,12 @@ async function releaseClaim(supabase: SupabaseClient, eventId: string): Promise<
 }
 
 /** Returns true on success, false on a recoverable failure (-> release + 500). */
-async function applyEvent(supabase: SupabaseClient, event: StripeEvent): Promise<boolean> {
+async function applyEvent(
+  supabase: SupabaseClient,
+  event: StripeEvent,
+  secretKey: string | null,
+): Promise<boolean> {
   const plan = planForEvent(event);
-  const secretKey = process.env.STRIPE_SECRET_KEY;
 
   if (plan.kind === "ignore") return true;
 
