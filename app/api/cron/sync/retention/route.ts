@@ -10,6 +10,10 @@
 //     refresh, so only series nobody has requested in 60 days remain
 //     stale. /api/history refetches on demand, so deleting old rows is
 //     always safe (it is a pure cache, never the source of truth).
+//   - stripe_events (supabase/migrations/0066_billing.sql): the webhook
+//     idempotency ledger. Each row only guards against a duplicate delivery of
+//     the same event id; Stripe retries within hours, so after 30 days a row
+//     is dead weight (MONETIZATION.md section 3).
 //
 // POST only with `Authorization: Bearer $CRON_SECRET`, same shape as the
 // other app/api/cron/sync/* sub-syncs. middleware.ts already enforces the
@@ -24,6 +28,7 @@ export const dynamic = "force-dynamic";
 
 const SIMULATION_RETENTION_DAYS = 90;
 const HISTORY_RETENTION_DAYS = 60;
+const STRIPE_EVENTS_RETENTION_DAYS = 30;
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -58,9 +63,22 @@ async function handle(req: Request): Promise<Response> {
     .lt("synced_at", historyCutoff);
   if (historyError) return Response.json({ error: historyError.message }, { status: 500 });
 
+  const stripeEventsCutoff = new Date(
+    Date.now() - STRIPE_EVENTS_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const { error: stripeEventsError, count: stripeEvents } = await supabase
+    .from("stripe_events")
+    .delete({ count: "exact" })
+    .lt("received_at", stripeEventsCutoff);
+  if (stripeEventsError) return Response.json({ error: stripeEventsError.message }, { status: 500 });
+
   return Response.json({
     ok: true,
-    deleted: { simulationRuns: simulationRuns ?? 0, instrumentHistory: instrumentHistory ?? 0 },
+    deleted: {
+      simulationRuns: simulationRuns ?? 0,
+      instrumentHistory: instrumentHistory ?? 0,
+      stripeEvents: stripeEvents ?? 0,
+    },
   });
 }
 

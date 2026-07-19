@@ -28,6 +28,14 @@ export function middleware(req: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
+  // The Stripe webhook authenticates via its signature header, not a bearer
+  // token — Stripe cannot send our API_TOKEN. Exempt it from the token gate so
+  // it stays reachable when API_TOKEN is configured; the route itself verifies
+  // the Stripe signature before trusting the body.
+  if (req.nextUrl.pathname === "/api/billing/webhook") {
+    return NextResponse.next();
+  }
+
   const apiToken = process.env.API_TOKEN;
   if (!apiToken) return NextResponse.next(); // not enforced unless configured
 

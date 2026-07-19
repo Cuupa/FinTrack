@@ -17,15 +17,16 @@ tier flips, legal copy, live Stripe keys).
 - [x] A6. .env.example gains STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET (on disk only: .env* is gitignored, so this cannot be committed)
 
 ## Task B - Stripe server layer (Opus)
-- [ ] B1. No new npm dependency: raw Stripe REST via fetch (form-encoded), server-side only - matches the repo's Yahoo/Frankfurter convention and keeps CSP untouched
-- [ ] B2. Webhook signature verification as a pure function: HMAC-SHA256 over `${t}.${raw body}`, timing-safe compare, timestamp tolerance
-- [ ] B3. `/api/billing/webhook`: raw body first, idempotency insert into stripe_events (conflict -> 200), events funneled into one `upsertSubscription`; unhandled types 200, handler errors 500
-- [ ] B4. Event mapping pure + unit-tested with fixture payloads: checkout.session.completed, customer.subscription.created/updated/deleted; mapping via client_reference_id / stripe_customer_id, never email
-- [ ] B5. `/api/billing/checkout` (POST): session bearer auth (account-delete pattern), rate-limited, price from billing_config, customer reused from billing_customers or created+persisted, client_reference_id=user id, success/cancel URLs to /settings, automatic_tax + allow_promotion_codes; refuses when billing_config disabled
-- [ ] B6. `/api/billing/portal` (POST): session bearer auth, rate-limited, portal session for the user's customer id
-- [ ] B7. `/api/cron/sync/billing`: reconcile non-free local rows against Stripe (missed-webhook repair), CRON_SECRET check like other sub-syncs, wired into bulk /api/cron/sync
-- [ ] B8. stripe_events pruned after 30 days in the retention sub-sync
-- [ ] B9. Tests: unsigned webhook rejected, signature verify pos/neg, event->upsert mapping, no supabase-js chain mocks (extract pure parts)
+- [x] B1. No new npm dependency: raw Stripe REST via fetch (form-encoded), server-side only (lib/server/stripe.ts `stripeFetch`); CSP untouched
+- [x] B2. Webhook signature verification pure (`verifyStripeSignature`): HMAC-SHA256 over `${t}.${raw body}`, timing-safe multi-v1 compare, 300s tolerance
+- [x] B3. `/api/billing/webhook`: raw body first, idempotency CLAIM in stripe_events (23505 -> 200); claim RELEASED on processing failure before the 500 so Stripe's retry actually reprocesses (claim/release refinement of the design, flagged by subworker, approved)
+- [x] B4. Event mapping pure + unit-tested (`planForEvent`/`subscriptionRowFrom`, both period-end locations); user mapped only via client_reference_id / billing_customers, never email; subscription event racing ahead of the mapping -> 500 so the retry lands after checkout.session.completed
+- [x] B5. `/api/billing/checkout` (POST): session bearer auth, rate-limited, price from billing_config (403 disabled, 503 unconfigured), customer reuse-or-create+persist, client_reference_id, success/cancel URLs to /settings, automatic_tax + allow_promotion_codes
+- [x] B6. `/api/billing/portal` (POST): session bearer auth, rate-limited, 404 without a billing_customers row
+- [x] B7. `/api/cron/sync/billing`: reconcile against Stripe (404 resource_missing -> canceled), CRON_SECRET check, wired into bulk /api/cron/sync behind STRIPE_SECRET_KEY, skips cleanly on Stripe-less deploys
+- [x] B8. stripe_events pruned after 30 days in the retention sub-sync
+- [x] B9. Tests: 21 in tests/billing-stripe.test.ts (signature pos/neg/expired/multi-v1, row mapping fixtures, event routing, webhook 503/400 guards before any Supabase touch); no supabase-js chain mocks. Full suite 606 pass, lint + tsc clean
+- [x] B10. middleware.ts exempts /api/billing/webhook from the optional API_TOKEN gate (Stripe cannot send our token; the route self-authenticates via signature) - subworker decision, approved
 
 ## Task C - client wiring + settings card (Sonnet)
 - [ ] C1. BillingProvider (lib/billing) under AuthProvider: loads own subscription row once per session + on ?billing=success return; guests/no-Supabase => free
