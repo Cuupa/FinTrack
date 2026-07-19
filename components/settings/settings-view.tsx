@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { SubscriptionCard } from "@/components/settings/subscription-card";
 import { useLlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
 import { providerList, getProvider } from "@/lib/llm";
 import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
@@ -206,150 +207,153 @@ export function SettingsView() {
       </div>
 
       {activeTab === "general" && (
-        <Card>
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            <section className="py-5 first:pt-0 last:pb-0">
-              <h2 className="text-base font-semibold">{t("settings.title")}</h2>
-              <div className="mt-4 space-y-4">
-                <Field label={t("settings.name")}>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t("settings.namePlaceholder")}
-                    className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-                  />
-                </Field>
-
-                <Field label={t("settings.currency")}>
-                  <SelectMenu
-                    value={currency}
-                    onChange={setCurrency}
-                    ariaLabel={t("settings.currency")}
-                    options={[...new Set([currency, ...CURRENCIES])].map((c) => ({ value: c, label: c }))}
-                  />
-                </Field>
-
-                <div className="flex items-center gap-3">
-                  <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
-                    {savingProfile ? "…" : t("settings.save")}
-                  </Button>
-                  {savedProfile && (
-                    <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                      {t("settings.saved")}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <section className="py-5 first:pt-0 last:pb-0">
-              <h2 className="text-base font-semibold">{t("settings.language")}</h2>
-              <div className="mt-4">
-                <LocaleSwitcher />
-              </div>
-            </section>
-
-            <section className="py-5 first:pt-0 last:pb-0">
-              <h2 className="text-base font-semibold">{t("settings.tour.title")}</h2>
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-zinc-500">{t("settings.tour.body")}</p>
-                <div className="flex items-center gap-3">
-                  <Button variant="secondary" onClick={startTour} disabled={startingTour}>
-                    {startingTour ? "…" : t("settings.tour.button")}
-                  </Button>
-                  {tourError && (
-                    <span className="text-sm text-red-600 dark:text-red-400">{tourError}</span>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {mode === "registered" && (
+        <div className="space-y-6">
+          <SubscriptionCard />
+          <Card>
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
               <section className="py-5 first:pt-0 last:pb-0">
-                <h2 className="text-base font-semibold">{t("settings.changePassword")}</h2>
+                <h2 className="text-base font-semibold">{t("settings.title")}</h2>
                 <div className="mt-4 space-y-4">
-                  <Field label={t("settings.newPassword")}>
+                  <Field label={t("settings.name")}>
                     <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="new-password"
-                      minLength={NEW_PASSWORD_MIN_LENGTH}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t("settings.namePlaceholder")}
                       className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   </Field>
-                  <Field label={t("settings.confirmPassword")}>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      autoComplete="new-password"
-                      minLength={NEW_PASSWORD_MIN_LENGTH}
-                      className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-                    />
-                  </Field>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="primary"
-                      onClick={savePassword}
-                      disabled={savingPw || !password || !confirmPassword}
-                    >
-                      {savingPw ? "…" : t("settings.save")}
-                    </Button>
-                    {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
-                  </div>
-                </div>
-              </section>
-            )}
 
-            {mode === "registered" && (
-              <section className="py-5 first:pt-0 last:pb-0">
-                <h2 className="text-base font-semibold text-red-600 dark:text-red-400">
-                  {t("settings.dangerZone")}
-                </h2>
-                <div className="mt-4 space-y-4">
-                  <p className="text-sm text-zinc-500">{t("settings.deleteAccountHint")}</p>
-                  {hasPassword && (
-                    <Field label={t("settings.deleteAccountPassword")}>
-                      <input
-                        type="password"
-                        value={deletePassword}
-                        onChange={(e) => setDeletePassword(e.target.value)}
-                        autoComplete="current-password"
-                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
-                      />
-                    </Field>
-                  )}
-                  <Field label={t("settings.deleteAccountType")}>
-                    <input
-                      value={deleteConfirm}
-                      onChange={(e) => setDeleteConfirm(e.target.value)}
-                      placeholder="delete"
-                      autoComplete="off"
-                      className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                  <Field label={t("settings.currency")}>
+                    <SelectMenu
+                      value={currency}
+                      onChange={setCurrency}
+                      ariaLabel={t("settings.currency")}
+                      options={[...new Set([currency, ...CURRENCIES])].map((c) => ({ value: c, label: c }))}
                     />
                   </Field>
+
                   <div className="flex items-center gap-3">
-                    <Button
-                      variant="danger"
-                      onClick={deleteAccount}
-                      disabled={
-                        deleting ||
-                        deleteConfirm.trim().toLowerCase() !== "delete" ||
-                        (hasPassword && !deletePassword)
-                      }
-                    >
-                      {deleting ? "…" : t("settings.deleteAccount")}
+                    <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
+                      {savingProfile ? "…" : t("settings.save")}
                     </Button>
-                    {deleteError && (
-                      <span className="text-sm text-red-600 dark:text-red-400">{deleteError}</span>
+                    {savedProfile && (
+                      <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                        {t("settings.saved")}
+                      </span>
                     )}
                   </div>
                 </div>
               </section>
-            )}
-          </div>
-        </Card>
+
+              <section className="py-5 first:pt-0 last:pb-0">
+                <h2 className="text-base font-semibold">{t("settings.language")}</h2>
+                <div className="mt-4">
+                  <LocaleSwitcher />
+                </div>
+              </section>
+
+              <section className="py-5 first:pt-0 last:pb-0">
+                <h2 className="text-base font-semibold">{t("settings.tour.title")}</h2>
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-zinc-500">{t("settings.tour.body")}</p>
+                  <div className="flex items-center gap-3">
+                    <Button variant="secondary" onClick={startTour} disabled={startingTour}>
+                      {startingTour ? "…" : t("settings.tour.button")}
+                    </Button>
+                    {tourError && (
+                      <span className="text-sm text-red-600 dark:text-red-400">{tourError}</span>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {mode === "registered" && (
+                <section className="py-5 first:pt-0 last:pb-0">
+                  <h2 className="text-base font-semibold">{t("settings.changePassword")}</h2>
+                  <div className="mt-4 space-y-4">
+                    <Field label={t("settings.newPassword")}>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="new-password"
+                        minLength={NEW_PASSWORD_MIN_LENGTH}
+                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      />
+                    </Field>
+                    <Field label={t("settings.confirmPassword")}>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        minLength={NEW_PASSWORD_MIN_LENGTH}
+                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      />
+                    </Field>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="primary"
+                        onClick={savePassword}
+                        disabled={savingPw || !password || !confirmPassword}
+                      >
+                        {savingPw ? "…" : t("settings.save")}
+                      </Button>
+                      {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {mode === "registered" && (
+                <section className="py-5 first:pt-0 last:pb-0">
+                  <h2 className="text-base font-semibold text-red-600 dark:text-red-400">
+                    {t("settings.dangerZone")}
+                  </h2>
+                  <div className="mt-4 space-y-4">
+                    <p className="text-sm text-zinc-500">{t("settings.deleteAccountHint")}</p>
+                    {hasPassword && (
+                      <Field label={t("settings.deleteAccountPassword")}>
+                        <input
+                          type="password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          autoComplete="current-password"
+                          className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                        />
+                      </Field>
+                    )}
+                    <Field label={t("settings.deleteAccountType")}>
+                      <input
+                        value={deleteConfirm}
+                        onChange={(e) => setDeleteConfirm(e.target.value)}
+                        placeholder="delete"
+                        autoComplete="off"
+                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                      />
+                    </Field>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="danger"
+                        onClick={deleteAccount}
+                        disabled={
+                          deleting ||
+                          deleteConfirm.trim().toLowerCase() !== "delete" ||
+                          (hasPassword && !deletePassword)
+                        }
+                      >
+                        {deleting ? "…" : t("settings.deleteAccount")}
+                      </Button>
+                      {deleteError && (
+                        <span className="text-sm text-red-600 dark:text-red-400">{deleteError}</span>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              )}
+            </div>
+          </Card>
+        </div>
       )}
 
       {activeTab === "fees" && (

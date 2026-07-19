@@ -1,8 +1,8 @@
 // Pure entitlement derivation (MONETIZATION.md section 3). No React, no
-// Supabase — this is written now, ahead of Phase 1 (Stripe), so that once a
-// `subscriptions` row exists Phase 1 only has to wire it into
-// `resolvePlan`; every consumer (feature flags, limits) already calls
-// through this function via `usePlan()` (lib/billing/use-plan.ts).
+// Supabase — `BillingProvider` (lib/billing/billing-context.tsx) loads the
+// signed-in user's `subscriptions` row and feeds it through `resolvePlan`;
+// every consumer (feature flags, limits) reads the result via `usePlan()`
+// (lib/billing/use-plan.ts) without knowing this function exists.
 
 export type Plan = "free" | "pro";
 

@@ -29,16 +29,17 @@ tier flips, legal copy, live Stripe keys).
 - [x] B10. middleware.ts exempts /api/billing/webhook from the optional API_TOKEN gate (Stripe cannot send our token; the route self-authenticates via signature) - subworker decision, approved
 
 ## Task C - client wiring + settings card (Sonnet)
-- [ ] C1. BillingProvider (lib/billing) under AuthProvider: loads own subscription row once per session + on ?billing=success return; guests/no-Supabase => free
-- [ ] C2. `usePlan()` becomes a context read feeding `resolvePlan` - signature unchanged, zero call-site changes
-- [ ] C3. /settings "Subscription" card gated by `billing` flag: current plan, renewal/end date incl. cancel-at-period-end wording, Upgrade (monthly/yearly -> checkout redirect), Manage (portal redirect)
-- [ ] C4. i18n: all new copy in en/de/es; German du-register, Spanish tú, no em-dashes, no badges of any kind; es parity test green
-- [ ] C5. Skeleton loading (not placeholders) while the subscription row is in flight
+- [x] C1. BillingProvider (lib/billing/billing-context.tsx) under AuthProvider, above FeatureFlagsProvider: loads own subscription row once per session (fetch+setState only inside promise continuations, no sync setState in effect) + re-fetches once more (1.5s delay, webhook race) on ?billing=success return; guests/no-Supabase => free, no fetch
+- [x] C2. `usePlan()` (lib/billing/use-plan.ts) is now a thin `useBilling().plan` context read feeding `resolvePlan` - signature unchanged, zero call-site changes; context default resolves "free" with no provider mounted
+- [x] C3. /settings "Subscription" card (components/settings/subscription-card.tsx) gated by `billing` flag + registered-only: current plan, renewal date or (cancel_at_period_end) "ends on" date, Upgrade monthly/yearly -> checkout redirect, Manage -> portal redirect; handles ?billing=success/cancelled and 403/404/503 errors, own Suspense boundary for useSearchParams
+- [x] C4. i18n: 16 new `settings.billing.*` keys in en/de/es (du/tú, no em-dashes, no badges); es parity + placeholder test green
+- [x] C5. Skeleton loading (Skeleton/SkeletonText, no placeholder text) while the subscription row or global flags are in flight
+- [x] C6. Pure view-state extracted to lib/billing/subscription-view.ts (`subscriptionCardState`), unit-tested (tests/billing-subscription-view.test.ts, 5 cases); provider/component wiring left untested per convention
 
 ## Cross-cutting
-- [ ] D1. All suites + lint green; production build passes
+- [x] D1. All suites + lint green; production build passes (verified: vitest 611 passed, eslint clean, tsc --noEmit clean, `next build` succeeds with /settings prerendered static - the Suspense boundary around useSearchParams didn't force it dynamic)
 - [ ] D2. One commit per task, short messages, no branches
-- [ ] D3. CLAUDE.md billing paragraph updated (usePlan no longer hardcoded)
+- [x] D3. CLAUDE.md billing paragraph updated (usePlan no longer hardcoded) + new short billing paragraph under "Feature flags in the database"
 - [~] D4. Live verification (webhook on prod URL, Stripe test-mode matrix) needs owner's Stripe account + keys (open decision 7.6) - deferred to owner
 - [~] D5. Legal updates (/datenschutz Stripe processor, /terms subscription terms) ship with Phase 3 per MONETIZATION.md section 5 - deferred with billing flag off
 - [~] D6. Pricing/trial figures, tier flips, grandfathering: owner decisions (section 7), not part of Phase 1

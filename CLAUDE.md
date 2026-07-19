@@ -91,11 +91,32 @@ pro-required + free plan = `{enabled, locked}` > on; missing column/row or no
 Supabase = free/on, so a DB lagging migration 0065 behaves exactly as before.
 `useFeature(flag)` returns `{enabled, locked}`; `useFeatureFlag` stays boolean
 (`enabled && !locked`) so locked features hide until the Phase-3 teaser UI.
-`usePlan()` (`lib/billing/use-plan.ts`) is the billing seam — hardcoded
-'free' until Stripe (Phase 1) wires `resolvePlan` (`lib/billing/plan.ts`,
-active/trialing/past_due+7d grace, pure) into a real subscription row.
+`usePlan()` (`lib/billing/use-plan.ts`) is the billing seam — a thin read of
+`BillingProvider` (`lib/billing/billing-context.tsx`, mounted under
+`AuthProvider` and above `FeatureFlagsProvider` in `components/providers.tsx`
+since flag resolution consumes it), which loads the signed-in user's own
+`subscriptions` row and feeds it through `resolvePlan` (`lib/billing/plan.ts`,
+active/trialing/past_due+7d grace, pure). Guests / no Supabase / not yet
+loaded all resolve `"free"`.
 `plan_limits` (free/pro caps, null = unlimited, seeded unlimited) exists but
 is unenforced until Phase 4.
+
+**Billing (MONETIZATION.md Phase 1, dark-launched behind the `billing` flag,
+seeded disabled)**: Stripe Checkout + Billing portal, redirect-based only —
+no Stripe.js on the page, so CSP `connect-src` stays untouched. Price ids
+live in `billing_config` (config-in-DB, world-readable, owner-written), not
+env; `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` are the only env vars.
+`/api/billing/checkout` and `/api/billing/portal` (POST, session bearer
+token) return `{ url }` to redirect to; `/api/billing/webhook` is the sole
+writer of `subscriptions` (service role, select-own RLS for the client).
+Settings gets a "Subscription" card (`components/settings/subscription-card.tsx`,
+flag-gated, registered-users-only — guests can't subscribe and the
+create-an-account teaser funnel is Phase 3) reading `useBilling()` for
+`{plan, subscription, loading}` and hitting the checkout/portal routes
+directly with the session token, same pattern as account deletion in
+`components/settings/settings-view.tsx`. `BillingProvider` re-fetches once,
+after a short delay, when the page was entered with `?billing=success`
+(Checkout return) since the webhook can lag the redirect.
 
 ### CSV import & fingerprints
 

@@ -1184,6 +1184,22 @@ export const en = {
   "llm.chat.starterDiversification": "How diversified is my portfolio?",
   "llm.chat.starterRisks": "What are the biggest risks in my portfolio?",
   "llm.chat.starterSavingsPlans": "How are my savings plans doing?",
+
+  "settings.billing.title": "Subscription",
+  "settings.billing.currentPlan": "Current plan",
+  "settings.billing.planFree": "Free",
+  "settings.billing.planPro": "Pro",
+  "settings.billing.renewsOn": "Renews on {date}",
+  "settings.billing.endsOn": "Ends on {date}",
+  "settings.billing.upgradeMonthly": "Upgrade monthly",
+  "settings.billing.upgradeYearly": "Upgrade yearly",
+  "settings.billing.manage": "Manage subscription",
+  "settings.billing.checkoutSuccess": "You're now on Pro. Thanks for subscribing.",
+  "settings.billing.checkoutCancelled": "Checkout was cancelled. Your plan hasn't changed.",
+  "settings.billing.errorGeneric": "Something went wrong. Please try again.",
+  "settings.billing.errorDisabled": "Subscriptions aren't available yet.",
+  "settings.billing.errorNoSubscription": "No subscription found for your account.",
+  "settings.billing.errorUnavailable": "Billing is currently unavailable.",
 } as const;
 
 export const de: Partial<Record<MessageKey, string>> = {
@@ -2364,6 +2380,22 @@ export const de: Partial<Record<MessageKey, string>> = {
   "llm.chat.starterDiversification": "Wie diversifiziert ist mein Portfolio?",
   "llm.chat.starterRisks": "Was sind die größten Risiken in meinem Portfolio?",
   "llm.chat.starterSavingsPlans": "Wie laufen meine Sparpläne?",
+
+  "settings.billing.title": "Abo",
+  "settings.billing.currentPlan": "Aktueller Plan",
+  "settings.billing.planFree": "Free",
+  "settings.billing.planPro": "Pro",
+  "settings.billing.renewsOn": "Verlängert sich am {date}",
+  "settings.billing.endsOn": "Endet am {date}",
+  "settings.billing.upgradeMonthly": "Monatlich upgraden",
+  "settings.billing.upgradeYearly": "Jährlich upgraden",
+  "settings.billing.manage": "Abo verwalten",
+  "settings.billing.checkoutSuccess": "Du bist jetzt auf Pro. Danke für dein Abo.",
+  "settings.billing.checkoutCancelled": "Der Checkout wurde abgebrochen. Dein Plan hat sich nicht geändert.",
+  "settings.billing.errorGeneric": "Etwas ist schiefgelaufen. Versuch es bitte noch einmal.",
+  "settings.billing.errorDisabled": "Abos sind noch nicht verfügbar.",
+  "settings.billing.errorNoSubscription": "Für deinen Account wurde kein Abo gefunden.",
+  "settings.billing.errorUnavailable": "Abrechnung ist gerade nicht verfügbar.",
 };
 
 export const es: Partial<Record<MessageKey, string>> = {
@@ -3542,6 +3574,22 @@ export const es: Partial<Record<MessageKey, string>> = {
   "llm.chat.starterDiversification": "¿Qué tan diversificada está mi cartera?",
   "llm.chat.starterRisks": "¿Cuáles son los mayores riesgos en mi cartera?",
   "llm.chat.starterSavingsPlans": "¿Cómo van mis planes de ahorro?",
+
+  "settings.billing.title": "Suscripción",
+  "settings.billing.currentPlan": "Plan actual",
+  "settings.billing.planFree": "Free",
+  "settings.billing.planPro": "Pro",
+  "settings.billing.renewsOn": "Se renueva el {date}",
+  "settings.billing.endsOn": "Termina el {date}",
+  "settings.billing.upgradeMonthly": "Mejorar a mensual",
+  "settings.billing.upgradeYearly": "Mejorar a anual",
+  "settings.billing.manage": "Gestionar suscripción",
+  "settings.billing.checkoutSuccess": "Ahora tienes Pro. Gracias por suscribirte.",
+  "settings.billing.checkoutCancelled": "Se canceló el proceso de pago. Tu plan no ha cambiado.",
+  "settings.billing.errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
+  "settings.billing.errorDisabled": "Las suscripciones aún no están disponibles.",
+  "settings.billing.errorNoSubscription": "No se encontró ninguna suscripción para tu cuenta.",
+  "settings.billing.errorUnavailable": "La facturación no está disponible en este momento.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de, es };
