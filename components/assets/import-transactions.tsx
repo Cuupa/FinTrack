@@ -9,6 +9,7 @@
 // CSV falls back to a generic header-driven parser.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { parseCsv, type ParsedTx } from "@/lib/import/csv";
 import { reconcile, type ReconciledRow } from "@/lib/import/reconcile";
@@ -19,6 +20,8 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import type { AssetType, TransactionType } from "@/lib/types";
+import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { atLimit } from "@/lib/billing/limits";
 
 // A conflict is resolved field by field: each mergeable field takes its value
 // from the existing transaction ("current") or the CSV row ("incoming"). New
@@ -130,6 +133,12 @@ export function ImportTransactions({
     addImportedFingerprints,
   } = usePortfolio();
   const { t } = useI18n();
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: portfoliosLimit } = usePlanLimit("portfolios");
+  // Plan-limit cap (MONETIZATION.md Phase 4): this inline "+ New portfolio"
+  // footer calls the same createPortfolio mutation as the header picker
+  // (components/portfolio-picker.tsx), so it needs the same cap check.
+  const portfoliosCapped = atLimit(portfoliosLimit, portfolios.length);
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [reconciled, setReconciled] = useState<ReconciledRow[]>([]);
@@ -381,7 +390,7 @@ export function ImportTransactions({
                       onKeyDown={async (e) => {
                         if (e.key === "Enter") {
                           const name = newPortfolio.trim();
-                          if (name) {
+                          if (name && !portfoliosCapped) {
                             try {
                               const p = await createPortfolio(name);
                               setPortfolioId(p.id);
@@ -400,6 +409,21 @@ export function ImportTransactions({
                       }}
                       className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
+                  ) : portfoliosCapped ? (
+                    <p className="px-2 py-1.5 text-xs text-zinc-500">
+                      {t("nav.portfolioLimitHint", { n: String(portfoliosLimit) })}
+                      {billingEnabled && (
+                        <>
+                          {" "}
+                          <Link
+                            href="/pricing"
+                            className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                          >
+                            {t("common.proFeatureUpgrade")}
+                          </Link>
+                        </>
+                      )}
+                    </p>
                   ) : (
                     <button
                       type="button"

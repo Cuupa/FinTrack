@@ -107,8 +107,29 @@ since flag resolution consumes it), which loads the signed-in user's own
 `subscriptions` row and feeds it through `resolvePlan` (`lib/billing/plan.ts`,
 active/trialing/past_due+7d grace, pure). Guests / no Supabase / not yet
 loaded all resolve `"free"`.
-`plan_limits` (free/pro caps, null = unlimited, seeded unlimited) exists but
-is unenforced until Phase 4.
+`plan_limits` (free/pro caps per `limit_key` — `watchlistItems`,
+`savingsPlans`, `portfolios` — null = unlimited, seeded unlimited) is
+enforced (Phase 4) at its three add-surfaces: watchlist add
+(`components/dashboard/watchlist-card.tsx`), savings-plan create
+(`components/savings/plan-form.tsx`, shared by the dashboard card and the
+asset-detail page's "new plan" entry point), and portfolio create
+(`components/portfolio-picker.tsx`, the header picker, **plus every inline
+"+ New portfolio" `SelectMenu` footer that calls the same `createPortfolio`
+mutation** — `add-asset-form.tsx`, `transaction-form.tsx`,
+`import-transactions.tsx` — capped identically so none of them bypass the
+picker's limit). Pure resolution + the grandfathering
+rule live in `lib/billing/limits.ts` (`resolveLimit`/`atLimit`, unit-tested):
+`atLimit` only ever blocks ADDING past the cap, never hides or disables a
+row already over it after a downgrade. `plan_limits` is loaded once in
+`FeatureFlagsProvider` (`lib/flags/flags-context.tsx`) — it already loads
+the sibling world-readable `feature_flags` table with the same shape and
+already consumes `usePlan()` — and surfaced via `usePlanLimit(key)`; a
+capped add-surface always shows an inline localized hint (e.g. "Free plan
+includes up to {n} watchlist items", linking to /pricing when the `billing`
+flag is on) instead of a silently disabled control. Seeded unlimited in
+prod, so nothing changes until the owner sets a cap on /admin/site's "Plan
+limits" card (`POST /api/admin/site` `{ kind: "limits" }`, validated by
+`lib/server/plan-limits-admin.ts`).
 `plan_grants` (migration 0068, "gratitude premium") independently grants a
 user Pro until `expires_at` or forever (`null`), regardless of any Stripe
 subscription; `BillingProvider` loads the user's own grants (select-own RLS)

@@ -5,7 +5,7 @@
 // (fixedAsset). See components/dashboard/savings-plans-card.tsx for the rest
 // of the savings-plans feature (due-execution review, list, pause/delete).
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { today } from "@/lib/finance/dates";
@@ -44,6 +44,7 @@ export function PlanForm({
   fixedAsset,
   onSubmit,
   onDone,
+  limitReached,
 }: {
   /** Present in edit mode; prefills the form and switches the submit label/copy. */
   plan?: SavingsPlan;
@@ -53,6 +54,11 @@ export function PlanForm({
   fixedAsset?: Asset;
   onSubmit: (values: PlanFormValues) => Promise<void>;
   onDone: () => void;
+  /** Plan-limit cap (MONETIZATION.md Phase 4): when set, submit is blocked
+   *  and this hint renders instead. Only applied in create mode (`plan`
+   *  absent) — editing/pausing/deleting an existing plan is never blocked
+   *  (grandfathering: the cap only stops adding new rows). */
+  limitReached?: ReactNode;
 }) {
   const { data, portfolios, selectedPortfolioIds, addAsset } = usePortfolio();
   const { t } = useI18n();
@@ -94,6 +100,7 @@ export function PlanForm({
   const assetMissing = fixedAsset ? false : !assetId;
   const amountMissing = !amount.trim();
   const formIncomplete = assetMissing || amountMissing;
+  const blockedByLimit = !plan && limitReached != null;
 
   function openAddAsset() {
     setNewAssetError(null);
@@ -151,6 +158,7 @@ export function PlanForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (blockedByLimit) return;
     const amt = parseDecimal(amount);
     if (!assetId) {
       setError(t("sp.errAsset"));
@@ -344,11 +352,17 @@ export function PlanForm({
       {formIncomplete && touched && (
         <p className="text-xs text-zinc-500">{t("form.missingFields")}</p>
       )}
+      {blockedByLimit && <p className="text-sm text-zinc-500">{limitReached}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onDone}>
           {t("tx.cancel")}
         </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={busy || formIncomplete}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="sm"
+          disabled={busy || formIncomplete || blockedByLimit}
+        >
           {busy ? t("sp.applying") : plan ? t("sp.save") : t("sp.create")}
         </Button>
       </div>

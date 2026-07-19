@@ -51,7 +51,8 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
 import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -93,6 +94,8 @@ export function AssetDetail({
   const { version } = useCatalog();
   const router = useRouter();
   const savingsPlansEnabled = useFeatureFlag("savingsPlans");
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
   // (this page formats currency without otherwise consuming the i18n context).
   const { t } = useI18n();
@@ -335,6 +338,26 @@ export function AssetDetail({
   const assetPlans = held && savingsPlansEnabled
     ? data.savingsPlans.filter((p) => p.assetId === asset.id)
     : [];
+  // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
+  // plan from this page's "new plan" entry point, never the read-only list
+  // above or an existing plan's own edit/pause/delete on the dashboard card.
+  const savingsPlansCapped = atLimit(savingsPlansLimit, data.savingsPlans.length);
+  const savingsPlansLimitHint = savingsPlansCapped ? (
+    <>
+      {t("sp.limitHint", { n: String(savingsPlansLimit) })}
+      {billingEnabled && (
+        <>
+          {" "}
+          <Link
+            href="/pricing"
+            className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          >
+            {t("common.proFeatureUpgrade")}
+          </Link>
+        </>
+      )}
+    </>
+  ) : null;
   const multiPortfolio = portfolios.length > 1;
   const todayISO = today();
   return (
@@ -731,6 +754,7 @@ export function AssetDetail({
                 setPlanModalOpen(false);
               }}
               onDone={() => setPlanModalOpen(false)}
+              limitReached={savingsPlansLimitHint}
             />
           </div>
         </Modal>

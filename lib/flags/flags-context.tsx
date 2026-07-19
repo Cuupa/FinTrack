@@ -24,6 +24,20 @@
 // upsell teaser instead of hiding adopt the new `useFeature(flag)` hook,
 // which also exposes `locked`. As of Phase 2 every flag is still seeded
 // 'free' (dark launch) so `locked` is never actually true yet.
+//
+// Quantity limits (Phase 4, supabase/migrations/0065_plan_gating.sql
+// `plan_limits`, seeded unlimited): loaded here rather than in
+// BillingProvider because this provider already loads a sibling
+// world-readable config table (`feature_flags`) with the exact same
+// fetch-once-and-cache shape and already consumes `usePlan()` -- adding a
+// second effect of the same shape is less churn than teaching
+// BillingProvider (which today only loads the signed-in user's OWN rows) a
+// new "load a world-readable config table" responsibility. `getLimit`/
+// `usePlanLimit` fold in `resolveLimit` (lib/billing/limits.ts, pure); a
+// missing table (lagging migration), no Supabase, or the rows not having
+// loaded yet all fall through to the same "no matching row" branch inside
+// `resolveLimit` and resolve to `null` (unlimited) -- exactly today's
+// behavior, no special-casing needed.
 
 import {
   createContext,
@@ -37,6 +51,7 @@ import {
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
 import { useAuth } from "../auth/auth-context";
 import { usePlan } from "../billing/use-plan";
+import { resolveLimit, type LimitKey, type PlanLimitRow } from "../billing/limits";
 import { resolveFeature, type FeatureState } from "./resolve";
 
 export type { FeatureState };
@@ -82,6 +97,8 @@ interface FeatureFlagsValue {
   ready: boolean;
   isEnabled(flag: FeatureFlag): boolean;
   getFeature(flag: FeatureFlag): FeatureState;
+  /** The current plan's cap for `key`, or `null` for unlimited. */
+  getLimit(key: LimitKey): number | null;
 }
 
 const OPEN_FEATURE: FeatureState = { enabled: true, locked: false };
@@ -91,6 +108,7 @@ const FeatureFlagsContext = createContext<FeatureFlagsValue>({
   ready: !isSupabaseConfigured,
   isEnabled: () => !isSupabaseConfigured,
   getFeature: () => (isSupabaseConfigured ? CLOSED_FEATURE : OPEN_FEATURE),
+  getLimit: () => null,
 });
 
 export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
@@ -102,6 +120,11 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<{ userId: string; flags: OverrideMap } | null>(
     null,
   );
+  // plan_limits rows, or null before the fetch settles / without Supabase.
+  // `getLimit` below treats null the same as an empty array (resolveLimit's
+  // "no matching row" branch), so there is no separate loading state to
+  // track — see the file-header comment for why that is safe here.
+  const [limitRows, setLimitRows] = useState<PlanLimitRow[] | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -125,6 +148,27 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           };
         }
         setGlobals(map);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    let active = true;
+    supabase
+      .from("plan_limits")
+      .select("limit_key, free_value, pro_value")
+      .then(({ data }) => {
+        if (!active) return;
+        const rows: PlanLimitRow[] = ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+          limitKey: typeof row.limit_key === "string" ? row.limit_key : "",
+          freeValue: row.free_value,
+          proValue: row.pro_value,
+        }));
+        setLimitRows(rows);
       });
     return () => {
       active = false;
@@ -189,10 +233,15 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
     [getFeature],
   );
 
+  const getLimit = useCallback(
+    (key: LimitKey): number | null => resolveLimit(limitRows ?? [], key, plan),
+    [limitRows, plan],
+  );
+
   const ready = !isSupabaseConfigured || (globals != null && (!userId || userFlags != null));
   const value = useMemo(
-    () => ({ ready, isEnabled, getFeature }),
-    [ready, isEnabled, getFeature],
+    () => ({ ready, isEnabled, getFeature, getLimit }),
+    [ready, isEnabled, getFeature, getLimit],
   );
 
   return <FeatureFlagsContext.Provider value={value}>{children}</FeatureFlagsContext.Provider>;
@@ -205,6 +254,17 @@ export function useFeatureFlags(): FeatureFlagsValue {
 /** Whether a feature is enabled for the current user (override > global > off; no Supabase > on). */
 export function useFeatureFlag(flag: FeatureFlag): boolean {
   return useFeatureFlags().isEnabled(flag);
+}
+
+/**
+ * The current plan's quantity cap for `key` (MONETIZATION.md Phase 4;
+ * lib/billing/limits.ts `resolveLimit`), or `null` for unlimited. Add-
+ * surfaces pair this with `atLimit(limit, currentCount)` to block adding
+ * beyond the cap while never touching existing (possibly over-cap) rows.
+ */
+export function usePlanLimit(key: LimitKey): { limit: number | null } {
+  const limit = useFeatureFlags().getLimit(key);
+  return { limit };
 }
 
 /** Full resolution for a feature, including the Pro-locked teaser state. */

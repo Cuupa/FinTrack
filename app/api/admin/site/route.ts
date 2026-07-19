@@ -16,12 +16,25 @@
 //                                     one of SITE_CONFIG_KEYS)
 //   { kind: "maxUsers", value }      set app_settings.max_users (integer
 //                                     >= 0, or null for "no limit")
+//   { kind: "limits", limitKey, freeValue, proValue }
+//                                     upsert a plan_limits row (MONETIZATION.md
+//                                     Phase 4; limitKey one of
+//                                     lib/billing/limits.ts LIMIT_KEYS,
+//                                     freeValue/proValue null or a
+//                                     non-negative integer, null = unlimited).
+//                                     `plan_limits` is world-readable like
+//                                     `feature_flags`, so unlike the two
+//                                     kinds above the admin page reads it
+//                                     straight from the browser client
+//                                     (app/admin/site/page.tsx); only the
+//                                     write goes through this route.
 // Each requires admin auth first, mutates via the secret client, and records
 // an admin_audit row.
 
 import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 import { SITE_CONFIG_KEYS, type SiteConfigKey } from "@/lib/site-config-cache";
+import { parsePlanLimitBody } from "@/lib/server/plan-limits-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +131,34 @@ export async function POST(req: Request): Promise<Response> {
       .eq("id", 1);
     if (error) return Response.json({ error: error.message }, { status: 500 });
     await audit(actor, "settings.set_max_users", "app_settings", before ?? null, { maxUsers: value });
+    return Response.json({ ok: true });
+  }
+
+  if (body.kind === "limits") {
+    const parsed = parsePlanLimitBody(body);
+    if (!parsed) return Response.json({ error: "invalid body" }, { status: 400 });
+
+    const { data: before } = await admin
+      .from("plan_limits")
+      .select("free_value, pro_value")
+      .eq("limit_key", parsed.limitKey)
+      .maybeSingle();
+
+    const { error } = await admin.from("plan_limits").upsert(
+      {
+        limit_key: parsed.limitKey,
+        free_value: parsed.freeValue,
+        pro_value: parsed.proValue,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "limit_key" },
+    );
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    await audit(actor, "site.set_limit", parsed.limitKey, before ?? null, {
+      freeValue: parsed.freeValue,
+      proValue: parsed.proValue,
+    });
     return Response.json({ ok: true });
   }
 

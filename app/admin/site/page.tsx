@@ -17,6 +17,8 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useSiteConfig } from "@/lib/site-config";
 import { SITE_CONFIG_KEYS, type SiteConfigKey } from "@/lib/site-config-cache";
+import { LIMIT_KEYS, type LimitKey } from "@/lib/billing/limits";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { Button, Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminAuthToken, adminGet, adminPost } from "@/lib/admin/client";
@@ -25,6 +27,18 @@ interface AppSettings {
   maxUsers: number | null;
   updatedAt: string | null;
   userCount: number | null;
+}
+
+interface LimitRow {
+  limitKey: LimitKey;
+  freeValue: number | null;
+  proValue: number | null;
+}
+
+/** Draft text for one limit row's two inputs; empty string = unlimited. */
+interface LimitDraft {
+  free: string;
+  pro: string;
 }
 
 export default function AdminSitePage() {
@@ -61,6 +75,79 @@ export default function AdminSitePage() {
       active = false;
     };
   }, [settingsVersion]);
+
+  // `plan_limits` is world-readable like `feature_flags` (unlike
+  // `app_settings` above), so it's read straight from the browser client —
+  // same reasoning as app/admin/flags/page.tsx reading `feature_flags`
+  // directly. Only the write goes through POST /api/admin/site.
+  const [limits, setLimits] = useState<LimitRow[] | null>(null);
+  const [limitsVersion, setLimitsVersion] = useState(0);
+  const [limitDrafts, setLimitDrafts] = useState<Partial<Record<LimitKey, LimitDraft>>>({});
+  const [savingLimit, setSavingLimit] = useState<LimitKey | null>(null);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    let active = true;
+    supabase
+      .from("plan_limits")
+      .select("limit_key, free_value, pro_value")
+      .then(({ data }) => {
+        if (!active) return;
+        const rows = ((data ?? []) as Record<string, unknown>[])
+          .filter((row): row is Record<string, unknown> & { limit_key: LimitKey } =>
+            (LIMIT_KEYS as readonly string[]).includes(row.limit_key as string),
+          )
+          .map((row) => ({
+            limitKey: row.limit_key,
+            freeValue: typeof row.free_value === "number" ? row.free_value : null,
+            proValue: typeof row.pro_value === "number" ? row.pro_value : null,
+          }));
+        setLimits(rows);
+      });
+    return () => {
+      active = false;
+    };
+  }, [limitsVersion]);
+
+  const limitInputValue = (key: LimitKey, field: "free" | "pro"): string => {
+    const draft = limitDrafts[key]?.[field];
+    if (draft !== undefined) return draft;
+    const row = limits?.find((r) => r.limitKey === key);
+    const stored = field === "free" ? row?.freeValue : row?.proValue;
+    return stored != null ? String(stored) : "";
+  };
+
+  const setLimitDraft = (key: LimitKey, field: "free" | "pro", value: string) => {
+    setLimitDrafts((d) => ({
+      ...d,
+      [key]: { free: limitInputValue(key, "free"), pro: limitInputValue(key, "pro"), [field]: value },
+    }));
+  };
+
+  const saveLimit = async (key: LimitKey) => {
+    const freeText = limitInputValue(key, "free").trim();
+    const proText = limitInputValue(key, "pro").trim();
+    const freeValue = freeText === "" ? null : Number(freeText);
+    const proValue = proText === "" ? null : Number(proText);
+    const invalid = (v: number | null) => v !== null && (!Number.isInteger(v) || v < 0);
+    if (invalid(freeValue) || invalid(proValue)) {
+      setError(t("admin.site.limitInvalid"));
+      return;
+    }
+    setSavingLimit(key);
+    setError(null);
+    try {
+      const token = await adminAuthToken();
+      if (!token) throw new Error();
+      await adminPost("/api/admin/site", { kind: "limits", limitKey: key, freeValue, proValue }, token);
+      setLimitsVersion((v) => v + 1);
+    } catch {
+      setError(t("admin.site.error"));
+    } finally {
+      setSavingLimit(null);
+    }
+  };
 
   const saveConfig = async (key: SiteConfigKey) => {
     const value = drafts[key] ?? config[key] ?? "";
@@ -189,6 +276,62 @@ export default function AdminSitePage() {
             {t("admin.site.save")}
           </Button>
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">{t("admin.site.limitsTitle")}</h2>
+        <p className="mt-1 text-sm text-zinc-500">{t("admin.site.limitsSubtitle")}</p>
+
+        {limits === null ? (
+          <div className="mt-4 space-y-3">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {LIMIT_KEYS.map((key) => (
+              <div key={key} className="flex flex-wrap items-end gap-2">
+                <div className="min-w-[180px] flex-1">
+                  <span className="block text-xs text-zinc-500">
+                    {t(`admin.site.limitKey.${key}`)}
+                  </span>
+                </div>
+                <div className="w-28">
+                  <label className="block text-xs text-zinc-500">{t("admin.site.limitFree")}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={limitInputValue(key, "free")}
+                    onChange={(e) => setLimitDraft(key, "free", e.target.value)}
+                    placeholder={t("admin.site.limitPlaceholder")}
+                    className="mt-1 w-28 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                  />
+                </div>
+                <div className="w-28">
+                  <label className="block text-xs text-zinc-500">{t("admin.site.limitPro")}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={limitInputValue(key, "pro")}
+                    onChange={(e) => setLimitDraft(key, "pro", e.target.value)}
+                    placeholder={t("admin.site.limitPlaceholder")}
+                    className="mt-1 w-28 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                  />
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => saveLimit(key)}
+                  disabled={savingLimit === key}
+                >
+                  {t("admin.site.save")}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

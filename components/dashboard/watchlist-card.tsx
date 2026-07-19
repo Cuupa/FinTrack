@@ -11,7 +11,8 @@ import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { lookupInstrument } from "@/lib/catalog/catalog";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { atLimit } from "@/lib/billing/limits";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { assetIdentifier, assetPriceKey, type WatchlistItem } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
@@ -27,6 +28,8 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
 export function WatchlistCard() {
   const enabled = useFeatureFlag("watchlist");
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: watchlistLimit } = usePlanLimit("watchlistItems");
   const { data, addWatchlistItem, removeWatchlistItem } = usePortfolio();
   const { version } = useCatalog();
   const { t } = useI18n();
@@ -49,6 +52,9 @@ export function WatchlistCard() {
   const [settledSig, setSettledSig] = useState("");
 
   const watchlist = data.watchlist;
+  // Plan-limit cap (MONETIZATION.md Phase 4): grandfathering means this only
+  // ever blocks adding a new item, never hides/disables existing rows above.
+  const watchlistCapped = atLimit(watchlistLimit, watchlist.length);
 
   // Price per item: the item's own currency override beats the cron-cached
   // catalog price when they disagree (see lib/live/watchlist-price.ts - this
@@ -124,6 +130,7 @@ export function WatchlistCard() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (watchlistCapped) return;
     const q = query.trim();
     if (!q) return;
     setBusy(true);
@@ -186,12 +193,33 @@ export function WatchlistCard() {
             ]}
             className="w-24"
           />
-          <Button type="submit" size="sm" variant="secondary" disabled={busy || !query.trim()}>
+          <Button
+            type="submit"
+            size="sm"
+            variant="secondary"
+            disabled={busy || !query.trim() || watchlistCapped}
+          >
             {busy ? "…" : t("watchlist.add")}
           </Button>
         </form>
       </div>
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {watchlistCapped && (
+        <p className="mt-2 text-sm text-zinc-500">
+          {t("watchlist.limitHint", { n: String(watchlistLimit) })}
+          {billingEnabled && (
+            <>
+              {" "}
+              <Link
+                href="/pricing"
+                className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+              >
+                {t("common.proFeatureUpgrade")}
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       {watchlist.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("watchlist.empty")}</p>

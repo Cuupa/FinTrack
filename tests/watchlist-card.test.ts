@@ -41,6 +41,7 @@ vi.mock("@/lib/catalog/catalog", () => ({
 
 vi.mock("@/lib/flags/flags-context", () => ({
   useFeatureFlag: () => true,
+  usePlanLimit: () => ({ limit: null }),
 }));
 
 vi.mock("@/lib/i18n/i18n-context", () => ({

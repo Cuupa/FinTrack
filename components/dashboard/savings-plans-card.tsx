@@ -9,9 +9,11 @@
 // Gated by the `savingsPlans` feature flag — renders nothing when disabled.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { atLimit } from "@/lib/billing/limits";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
 import { savingsPlanFee } from "@/lib/finance/fees";
 import { today } from "@/lib/finance/dates";
@@ -123,6 +125,8 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
 
 export function SavingsPlansCard() {
   const enabled = useFeatureFlag("savingsPlans");
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   const { data, addSavingsPlan, updateSavingsPlan, deleteSavingsPlan, addTransaction } =
     usePortfolio();
   const { version } = useCatalog();
@@ -161,6 +165,26 @@ export function SavingsPlansCard() {
   // full plan list from data (plans aren't portfolio-scoped in scopedData).
   const plans = data.savingsPlans;
   const todayISO = today();
+  // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
+  // plan (grandfathering) — pausing/editing/deleting an existing one, even
+  // over cap after a downgrade, is never affected.
+  const plansCapped = atLimit(savingsPlansLimit, plans.length);
+  const limitHint = plansCapped ? (
+    <>
+      {t("sp.limitHint", { n: String(savingsPlansLimit) })}
+      {billingEnabled && (
+        <>
+          {" "}
+          <Link
+            href="/pricing"
+            className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          >
+            {t("common.proFeatureUpgrade")}
+          </Link>
+        </>
+      )}
+    </>
+  ) : null;
 
   // Every due (plan, date) pair across active plans whose asset still exists.
   const due = useMemo(() => {
@@ -337,6 +361,7 @@ export function SavingsPlansCard() {
             await addSavingsPlan({ ...values, active: true, lastRunDate: null });
             setCreating(false);
           }}
+          limitReached={limitHint}
         />
       )}
 

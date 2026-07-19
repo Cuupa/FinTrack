@@ -20,6 +20,7 @@ export const en = {
 
   "nav.allPortfolios": "All portfolios",
   "nav.newPortfolio": "+ New portfolio",
+  "nav.portfolioLimitHint": "Free plan includes up to {n} portfolios.",
   "nav.deletePortfolioTitle": "Delete portfolio?",
   "nav.deletePortfolioMsg":
     "Its transactions and any assets held only in this portfolio are deleted permanently.",
@@ -52,6 +53,7 @@ export const en = {
   "watchlist.removeConfirm": "Remove",
   "watchlist.removeError": "Couldn't remove this item.",
   "watchlist.currency": "Currency",
+  "watchlist.limitHint": "Free plan includes up to {n} watchlist items.",
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "View details",
 
@@ -68,6 +70,7 @@ export const en = {
 
   "sp.title": "Savings plans",
   "sp.new": "+ New plan",
+  "sp.limitHint": "Free plan includes up to {n} savings plans.",
   "sp.newFromAsset": "New savings plan",
   "sp.empty": "Set up a recurring buy. Due executions appear here for review.",
   "sp.noAssets": "Add a security first. Savings plans buy into an existing holding.",
@@ -1092,6 +1095,16 @@ export const en = {
   "admin.site.userCount": "Currently registered: {n}",
   "admin.site.userCountOfMax": "{n} of {max} places used",
   "admin.site.error": "That didn't work. Try again.",
+  "admin.site.limitsTitle": "Plan limits",
+  "admin.site.limitsSubtitle":
+    "Free vs Pro quantity caps. Leave a field empty for unlimited. Existing rows above a new cap stay usable, only adding more is blocked.",
+  "admin.site.limitKey.watchlistItems": "Watchlist items",
+  "admin.site.limitKey.savingsPlans": "Savings plans",
+  "admin.site.limitKey.portfolios": "Portfolios",
+  "admin.site.limitFree": "Free",
+  "admin.site.limitPro": "Pro",
+  "admin.site.limitPlaceholder": "Unlimited",
+  "admin.site.limitInvalid": "Enter a whole number of 0 or more, or leave it empty for unlimited.",
 
   "admin.billing.title": "Billing",
   "admin.billing.subtitle": "Stripe keys and the selling configuration.",
@@ -1299,6 +1312,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "nav.allPortfolios": "Alle Portfolios",
   "nav.newPortfolio": "+ Neues Portfolio",
+  "nav.portfolioLimitHint": "Der kostenlose Plan umfasst bis zu {n} Portfolios.",
   "nav.deletePortfolioTitle": "Portfolio löschen?",
   "nav.deletePortfolioMsg":
     "Seine Transaktionen und alle nur in diesem Portfolio gehaltenen Assets werden endgültig gelöscht.",
@@ -1331,6 +1345,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "watchlist.removeConfirm": "Entfernen",
   "watchlist.removeError": "Konnte nicht entfernt werden.",
   "watchlist.currency": "Währung",
+  "watchlist.limitHint": "Der kostenlose Plan umfasst bis zu {n} Einträge auf der Watchlist.",
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Details ansehen",
 
@@ -1347,6 +1362,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "sp.title": "Sparpläne",
   "sp.new": "+ Neuer Sparplan",
+  "sp.limitHint": "Der kostenlose Plan umfasst bis zu {n} Sparpläne.",
   "sp.newFromAsset": "Neuer Sparplan",
   "sp.empty": "Richte einen wiederkehrenden Kauf ein. Fällige Ausführungen erscheinen hier zur Prüfung.",
   "sp.noAssets": "Füge zuerst ein Wertpapier hinzu. Sparpläne kaufen in eine bestehende Position.",
@@ -2371,6 +2387,16 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.site.userCount": "Aktuell registriert: {n}",
   "admin.site.userCountOfMax": "{n} von {max} Plätzen belegt",
   "admin.site.error": "Das hat nicht geklappt. Versuch es erneut.",
+  "admin.site.limitsTitle": "Plan-Limits",
+  "admin.site.limitsSubtitle":
+    "Mengenobergrenzen für Free und Pro. Leer lassen für unbegrenzt. Bestehende Einträge über einer neuen Grenze bleiben nutzbar, nur das Hinzufügen weiterer wird blockiert.",
+  "admin.site.limitKey.watchlistItems": "Watchlist-Einträge",
+  "admin.site.limitKey.savingsPlans": "Sparpläne",
+  "admin.site.limitKey.portfolios": "Portfolios",
+  "admin.site.limitFree": "Free",
+  "admin.site.limitPro": "Pro",
+  "admin.site.limitPlaceholder": "Unbegrenzt",
+  "admin.site.limitInvalid": "Gib eine ganze Zahl ab 0 ein, oder lasse das Feld leer für unbegrenzt.",
 
   "admin.billing.title": "Abrechnung",
   "admin.billing.subtitle": "Stripe-Schlüssel und die Verkaufskonfiguration.",
@@ -2578,6 +2604,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "nav.allPortfolios": "Todas las carteras",
   "nav.newPortfolio": "+ Nueva cartera",
+  "nav.portfolioLimitHint": "El plan gratuito incluye hasta {n} carteras.",
   "nav.deletePortfolioTitle": "¿Eliminar cartera?",
   "nav.deletePortfolioMsg":
     "Sus transacciones y los activos que solo estén en esta cartera se eliminarán definitivamente.",
@@ -2610,6 +2637,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "watchlist.removeConfirm": "Quitar",
   "watchlist.removeError": "No se ha podido quitar este elemento.",
   "watchlist.currency": "Moneda",
+  "watchlist.limitHint": "El plan gratuito incluye hasta {n} elementos en la lista de seguimiento.",
   "watchlist.currencyAuto": "Auto",
   "watchlist.viewDetails": "Ver detalles",
 
@@ -2626,6 +2654,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "sp.title": "Planes de inversión",
   "sp.new": "+ Nuevo plan",
+  "sp.limitHint": "El plan gratuito incluye hasta {n} planes de ahorro.",
   "sp.newFromAsset": "Nuevo plan de inversión",
   "sp.empty": "Configura una compra recurrente. Las ejecuciones pendientes aparecerán aquí para revisarlas.",
   "sp.noAssets": "Añade primero un valor. Los planes de inversión compran sobre una posición existente.",
@@ -3648,6 +3677,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.site.userCount": "Registrados actualmente: {n}",
   "admin.site.userCountOfMax": "{n} de {max} plazas usadas",
   "admin.site.error": "Eso no ha funcionado. Inténtalo de nuevo.",
+  "admin.site.limitsTitle": "Límites del plan",
+  "admin.site.limitsSubtitle":
+    "Límites de cantidad para Free y Pro. Deja un campo vacío para ilimitado. Los elementos existentes por encima de un nuevo límite siguen siendo usables, solo se bloquea añadir más.",
+  "admin.site.limitKey.watchlistItems": "Elementos de la lista de seguimiento",
+  "admin.site.limitKey.savingsPlans": "Planes de ahorro",
+  "admin.site.limitKey.portfolios": "Carteras",
+  "admin.site.limitFree": "Free",
+  "admin.site.limitPro": "Pro",
+  "admin.site.limitPlaceholder": "Sin límite",
+  "admin.site.limitInvalid": "Introduce un número entero de 0 o más, o déjalo vacío para ilimitado.",
 
   "admin.billing.title": "Facturación",
   "admin.billing.subtitle": "Claves de Stripe y la configuración de venta.",

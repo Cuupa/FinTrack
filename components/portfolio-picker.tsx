@@ -4,8 +4,11 @@
 // charts, plus create / rename / delete portfolios (up to MAX_PORTFOLIOS).
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { MAX_PORTFOLIOS } from "@/lib/types";
+import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { atLimit } from "@/lib/billing/limits";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -29,6 +32,13 @@ export function PortfolioPicker() {
   const ref = useRef<HTMLDivElement>(null);
 
   const { t } = useI18n();
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: portfoliosLimit } = usePlanLimit("portfolios");
+  // Plan-limit cap (MONETIZATION.md Phase 4), distinct from the hard
+  // MAX_PORTFOLIOS ceiling above: only blocks creating a NEW portfolio,
+  // never renaming/deleting/selecting an existing one, even if the list is
+  // already over cap after a downgrade (grandfathering).
+  const portfoliosCapped = atLimit(portfoliosLimit, portfolios.length);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +71,7 @@ export function PortfolioPicker() {
 
   const submitNew = async () => {
     const name = newName.trim();
-    if (name) await createPortfolio(name);
+    if (name && !portfoliosCapped) await createPortfolio(name);
     setNewName("");
     setAdding(false);
   };
@@ -184,11 +194,27 @@ export function PortfolioPicker() {
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                disabled={portfolios.length >= MAX_PORTFOLIOS}
+                disabled={portfolios.length >= MAX_PORTFOLIOS || portfoliosCapped}
                 className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-zinc-800"
               >
                 {t("nav.newPortfolio")}
               </button>
+            )}
+            {portfoliosCapped && (
+              <p className="mt-1 px-2 text-xs text-zinc-500">
+                {t("nav.portfolioLimitHint", { n: String(portfoliosLimit) })}
+                {billingEnabled && (
+                  <>
+                    {" "}
+                    <Link
+                      href="/pricing"
+                      className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                    >
+                      {t("common.proFeatureUpgrade")}
+                    </Link>
+                  </>
+                )}
+              </p>
             )}
           </div>
         </div>

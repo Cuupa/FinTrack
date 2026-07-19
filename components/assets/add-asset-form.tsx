@@ -7,6 +7,7 @@
 // full date+time.
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { currentPrice } from "@/lib/finance/prices";
 import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
@@ -21,6 +22,8 @@ import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
+import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { atLimit } from "@/lib/billing/limits";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
@@ -45,6 +48,13 @@ export function AddAssetForm({
   const { addAsset, addTransaction, createPortfolio, data, portfolios, selectedPortfolioIds } =
     usePortfolio();
   const { t: tr } = useI18n();
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: portfoliosLimit } = usePlanLimit("portfolios");
+  // Plan-limit cap (MONETIZATION.md Phase 4): this inline "+ New portfolio"
+  // footer calls the same createPortfolio mutation as the header picker
+  // (components/portfolio-picker.tsx), so it needs the same cap check —
+  // otherwise an at-cap user could bypass the picker's limit through here.
+  const portfoliosCapped = atLimit(portfoliosLimit, portfolios.length);
   const [portfolioId, setPortfolioId] = useState(
     selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
@@ -581,7 +591,7 @@ export function AddAssetForm({
                         onKeyDown={async (e) => {
                           if (e.key === "Enter") {
                             const name = newPortfolio.trim();
-                            if (name) {
+                            if (name && !portfoliosCapped) {
                               try {
                                 const p = await createPortfolio(name);
                                 setPortfolioId(p.id);
@@ -600,6 +610,21 @@ export function AddAssetForm({
                         }}
                         className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                       />
+                    ) : portfoliosCapped ? (
+                      <p className="px-2 py-1.5 text-xs text-zinc-500">
+                        {tr("nav.portfolioLimitHint", { n: String(portfoliosLimit) })}
+                        {billingEnabled && (
+                          <>
+                            {" "}
+                            <Link
+                              href="/pricing"
+                              className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                            >
+                              {tr("common.proFeatureUpgrade")}
+                            </Link>
+                          </>
+                        )}
+                      </p>
                     ) : (
                       <button
                         type="button"
