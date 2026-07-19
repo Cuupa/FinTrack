@@ -45,11 +45,11 @@ sortable hover-highlighted table, no badges, en/de/es).
 - [x] 2d. Settings subscription card shows granted state, hides checkout/portal buttons
 - [x] 2e. Lint + tsc + tests (660 passed/4 skipped) + build green; CLAUDE.md billing paragraph updated
 - [x] 2f. Commit (dd66a6c)
-- [ ] 2g. Remaining MONETIZATION.md phases 3/4, dark-launched (billing flag off in prod, all flags still seeded free, so no visible change until owner flips at runtime):
-  - [ ] 2g-1. ProTeaser component + useFeature adoption on /analysis tabs, /dividends, /simulation, /xray, /rebalancing
-  - [ ] 2g-2. /pricing page + owner-editable display prices in billing_config + legal updates (datenschutz Stripe processor, terms subscription section, EN+DE du)
-  - [ ] 2g-3. Phase 4: plan_limits resolution + enforcement at add-surfaces (grandfathering: existing over-cap rows stay usable) + plan_limits editor card
-  Owner-gated and NOT part of this round: flipping required_plan tiers, enabling billing, first live checkout, price-point decision (MONETIZATION.md section 7).
+- [x] 2g. Remaining MONETIZATION.md phases 3/4, dark-launched (billing flag off in prod, all flags still seeded free, so no visible change until owner flips at runtime):
+  - [x] 2g-1. ProTeaser component + useFeature adoption on /analysis risk+tax tabs, /dividends, /simulation, /xray, /rebalancing; locked tabs stay visible with teaser content; upgrade CTA only when billing flag on (commit 8f0e47f)
+  - [x] 2g-2. /pricing page (flag-gated, skeletons, free/pro comparison, checkout CTA reusing the settings card flow via new lib/billing/checkout-client.ts) + billing_config display prices (migration 0070, /admin/billing inputs) + legal: datenschutz Stripe section + terms subscription/Widerruf section, EN+DE du, conditionally phrased so claims stay accurate while dark; browser-verified in Guest Mode en/de/es (commit 6ba1511)
+  - [x] 2g-3. Phase 4: lib/billing/limits.ts resolveLimit/atLimit (grandfathering: only adding blocks, 14 cases) + usePlanLimit via FeatureFlagsProvider; enforcement at watchlist add, savings-plan create, portfolio create incl. the three inline "+ New portfolio" SelectMenu footers (same createPortfolio bypass closed); plan_limits editor card on /admin/site (audited, parse helper tested); 697 passed/4 skipped, lint/tsc/build green (commit 57d7fd4)
+  Owner-gated and NOT done (MONETIZATION.md section 7 open decisions): flipping required_plan tiers, enabling the billing flag, first live checkout, price points, grandfathering choice for existing users.
 
 ## Task 3 - error log rework (levels not types)
 
@@ -66,9 +66,10 @@ badges), table sortable + row hover per user rules.
 - [x] 3b. Rework to severity levels (debug/info/warn/error/fatal) instead of error types: migration 0069 + schema.sql (level column + check constraint + index, default/backfill 'error'); ErrorLevel type + reportError level default/dedupe-key in lib/errors/report.ts; global-error.tsx -> fatal, error.tsx + error-reporter.tsx (window/unhandledrejection) -> error explicit; /api/errors validates level allowlist (absent -> error, invalid -> 400); /admin/errors: level replaces kind as the filter + SelectMenu, level own sortable column (color-coded plain text, no badges: debug gray/info blue/warn amber/error red/fatal red+semibold), kind kept as plain sortable column, every column sortable (Th/sort-state idiom from admin/prices), row hover, skeleton loading kept; en/de/es dictionary keys added (kindAll removed, now unused)
 - [x] 3c. Tests + lint + build green: extended tests/error-report.test.ts (level default/explicit/dedupe-by-level), new tests/errors-route.test.ts (POST /api/errors level defaulting + full allowlist + invalid level 400, kind 400 still works) - lint clean, tsc clean, 58 test files / 672 passed / 4 skipped, production build green (25 routes incl. /admin/errors)
 - [x] 3e. Follow-up (coordinator): fixed a migration-0069-lag regression - a prod DB that hasn't applied 0069 has no `level` column, so the insert would fail and the route's existing never-a-500 posture silently 204'd, dropping every report until the owner migrates (worse than pre-0069 behavior, violating the migration-0065 "lagging DB behaves as before" convention in CLAUDE.md). app/api/errors/route.ts now retries the insert once without the `level` field on any insert error, still 204 either way. Added 3 tests to tests/errors-route.test.ts (fallback succeeds after first-insert failure w/ payload assertions on both calls; still 204 if fallback also fails; no retry when first insert succeeds) - lint clean, tsc clean, 58 test files / 675 passed / 4 skipped, build green
-- [ ] 3d. Commit (not done - task instructed not to commit; owner/orchestrator to commit)
+- [x] 3d. Commit (9509d0e)
 
 ## Cross-cutting
-- [ ] C1. One subworker at a time, ledger updated per task
-- [ ] C2. Commit per task, no branches, short meaningful messages
-- [ ] C3. No em-dashes, du-register, no badges in any UI work
+- [x] C1. One subworker at a time, ledger updated per task (5 Sonnet runs + 2 follow-ups, all sequential)
+- [x] C2. Commit per task, no branches, short meaningful messages (ddace95, dd66a6c, 9509d0e, 8f0e47f, 6ba1511, 57d7fd4)
+- [x] C3. No em-dashes, du-register, no badges in any UI work
+- [~] C4. Prod verification of all three tasks needs owner push + deploy + migrations 0068-0070 applied; then: (1) the five ISINs price within one cron cycle, (2) grant a test premium on /admin/billing, (3) error levels appear on /admin/errors. Deferred to owner.
