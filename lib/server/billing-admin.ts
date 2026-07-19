@@ -17,6 +17,11 @@ import "server-only";
 export interface BillingConfigInput {
   priceMonthly: string | null;
   priceYearly: string | null;
+  /** Owner-typed display strings shown on /pricing (e.g. "4,99 EUR"),
+   *  distinct from the Stripe price ids above -- never formatted or
+   *  computed with, just displayed verbatim (migration 0070). */
+  priceMonthlyDisplay: string | null;
+  priceYearlyDisplay: string | null;
   enabled: boolean;
 }
 
@@ -36,21 +41,32 @@ function normalizeOrNull(value: string | null): string | null {
 
 /**
  * Validates + normalizes a `{ kind: "config" }` body: `priceMonthly` /
- * `priceYearly` must each be a string or null (trimmed, empty -> null),
- * `enabled` must be a boolean. Returns null when the body doesn't match.
+ * `priceYearly` / `priceMonthlyDisplay` / `priceYearlyDisplay` must each be
+ * a string or null (trimmed, empty -> null), `enabled` must be a boolean.
+ * The two display fields are optional on the body (omitted normalizes to
+ * null) so older callers posting only the Stripe price ids still work.
+ * Returns null when the body doesn't match.
  */
 export function parseBillingConfigBody(body: Record<string, unknown>): BillingConfigInput | null {
-  const { priceMonthly, priceYearly, enabled } = body;
+  const { priceMonthly, priceYearly, priceMonthlyDisplay, priceYearlyDisplay, enabled } = body;
   if (
-    (priceMonthly !== null && typeof priceMonthly !== "string") ||
-    (priceYearly !== null && typeof priceYearly !== "string") ||
+    (priceMonthly !== null && priceMonthly !== undefined && typeof priceMonthly !== "string") ||
+    (priceYearly !== null && priceYearly !== undefined && typeof priceYearly !== "string") ||
+    (priceMonthlyDisplay !== null &&
+      priceMonthlyDisplay !== undefined &&
+      typeof priceMonthlyDisplay !== "string") ||
+    (priceYearlyDisplay !== null &&
+      priceYearlyDisplay !== undefined &&
+      typeof priceYearlyDisplay !== "string") ||
     typeof enabled !== "boolean"
   ) {
     return null;
   }
   return {
-    priceMonthly: normalizeOrNull(priceMonthly),
-    priceYearly: normalizeOrNull(priceYearly),
+    priceMonthly: normalizeOrNull(priceMonthly ?? null),
+    priceYearly: normalizeOrNull(priceYearly ?? null),
+    priceMonthlyDisplay: normalizeOrNull(priceMonthlyDisplay ?? null),
+    priceYearlyDisplay: normalizeOrNull(priceYearlyDisplay ?? null),
     enabled,
   };
 }

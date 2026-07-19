@@ -11,9 +11,13 @@
 // architecture decision: "GET never echoes a stored secret").
 //
 // POST body is one of:
-//   { kind: "config", priceMonthly, priceYearly, enabled }
-//     upsert billing_config id=1. Price ids are not secrets, so the audit
-//     row carries the full old/new values.
+//   { kind: "config", priceMonthly, priceYearly, priceMonthlyDisplay,
+//     priceYearlyDisplay, enabled }
+//     upsert billing_config id=1. `priceMonthlyDisplay`/`priceYearlyDisplay`
+//     (migration 0070) are the owner-typed strings shown on /pricing (e.g.
+//     "4,99 EUR"), distinct from the Stripe price ids. Price ids and display
+//     strings are not secrets, so the audit row carries the full old/new
+//     values.
 //   { kind: "keys", secretKey?, webhookSecret? }
 //     set or clear app_settings.stripe_secret_key /
 //     stripe_webhook_secret. A field omitted from the body is left
@@ -36,6 +40,8 @@ export const dynamic = "force-dynamic";
 interface BillingConfigRow {
   price_monthly: string | null;
   price_yearly: string | null;
+  price_monthly_display: string | null;
+  price_yearly_display: string | null;
   enabled: boolean;
 }
 
@@ -58,7 +64,7 @@ export async function GET(req: Request): Promise<Response> {
   const [configRes, keysRes] = await Promise.all([
     admin
       .from("billing_config")
-      .select("price_monthly, price_yearly, enabled")
+      .select("price_monthly, price_yearly, price_monthly_display, price_yearly_display, enabled")
       .eq("id", 1)
       .maybeSingle<BillingConfigRow>(),
     admin
@@ -73,6 +79,8 @@ export async function GET(req: Request): Promise<Response> {
   return Response.json({
     priceMonthly: configRes.data?.price_monthly ?? null,
     priceYearly: configRes.data?.price_yearly ?? null,
+    priceMonthlyDisplay: configRes.data?.price_monthly_display ?? null,
+    priceYearlyDisplay: configRes.data?.price_yearly_display ?? null,
     enabled: configRes.data?.enabled === true,
     secretKeySet: isSet(keysRes.data?.stripe_secret_key),
     webhookSecretSet: isSet(keysRes.data?.stripe_webhook_secret),
@@ -104,7 +112,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const { data: before } = await admin
       .from("billing_config")
-      .select("price_monthly, price_yearly, enabled")
+      .select("price_monthly, price_yearly, price_monthly_display, price_yearly_display, enabled")
       .eq("id", 1)
       .maybeSingle<BillingConfigRow>();
 
@@ -113,6 +121,8 @@ export async function POST(req: Request): Promise<Response> {
         id: 1,
         price_monthly: parsed.priceMonthly,
         price_yearly: parsed.priceYearly,
+        price_monthly_display: parsed.priceMonthlyDisplay,
+        price_yearly_display: parsed.priceYearlyDisplay,
         enabled: parsed.enabled,
         updated_at: new Date().toISOString(),
       },
@@ -128,6 +138,8 @@ export async function POST(req: Request): Promise<Response> {
         ? {
             priceMonthly: before.price_monthly,
             priceYearly: before.price_yearly,
+            priceMonthlyDisplay: before.price_monthly_display,
+            priceYearlyDisplay: before.price_yearly_display,
             enabled: before.enabled,
           }
         : null,

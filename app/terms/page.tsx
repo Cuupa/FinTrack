@@ -10,7 +10,7 @@ export default function TermsPage() {
 
 function TermsDE() {
   return (
-    <LegalPage title="Nutzungsbedingungen" updated="Stand: 4. Juli 2026">
+    <LegalPage title="Nutzungsbedingungen" updated="Stand: 19. Juli 2026">
       <LegalSection heading="1. Leistungsbeschreibung">
         <p>
           FinTrack ist ein Werkzeug zur Verfolgung und Analyse des eigenen Vermögensportfolios
@@ -72,7 +72,28 @@ function TermsDE() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Anwendbares Recht">
+      <LegalSection heading="7. Bezahltes Pro-Abo">
+        <p>
+          Neben dem kostenlosen Funktionsumfang bieten wir optional ein kostenpflichtiges
+          <strong> Pro-Abo</strong> an, monatlich oder jährlich abrechenbar. Das Abo
+          verlängert sich automatisch um die jeweils gewählte Laufzeit, sofern du es nicht
+          vorher kündigst. Maßgeblich sind die Preise, die dir beim Checkout angezeigt
+          werden. Du kannst dein Abo jederzeit selbst über das Kundenportal (erreichbar unter{" "}
+          <em>Einstellungen</em>) kündigen; die Kündigung wird zum Ende der laufenden
+          Abrechnungsperiode wirksam, dein Zugang zu den Pro-Funktionen bleibt bis dahin
+          bestehen.
+        </p>
+        <p>
+          Als Verbraucher innerhalb der EU steht dir grundsätzlich ein 14-tägiges
+          Widerrufsrecht zu. Da es sich beim Pro-Abo um eine digitale Dienstleistung handelt,
+          die sofort mit Vertragsschluss beginnt, erlischt dieses Widerrufsrecht vorzeitig,
+          wenn du beim Checkout ausdrücklich zustimmst, dass die Ausführung vor Ablauf der
+          Widerrufsfrist beginnt, und gleichzeitig bestätigst, dass du dadurch dein
+          Widerrufsrecht verlierst.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="8. Anwendbares Recht">
         <p>
           Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts,
           soweit zwingende verbraucherschützende Vorschriften deines gewöhnlichen
@@ -80,7 +101,7 @@ function TermsDE() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="8. Kontakt">
+      <LegalSection heading="9. Kontakt">
         <p>
           Fragen zu diesen Bedingungen richtest du an die im{" "}
           <LegalLink href="/impressum">Impressum</LegalLink> genannten Kontaktdaten.
@@ -92,7 +113,7 @@ function TermsDE() {
 
 function TermsEN() {
   return (
-    <LegalPage title="Terms of Service" updated="Last updated: 4 July 2026">
+    <LegalPage title="Terms of Service" updated="Last updated: 19 July 2026">
       <LegalSection heading="1. Service description">
         <p>
           FinTrack is a tool for tracking and analysing your own investment portfolio
@@ -151,7 +172,26 @@ function TermsEN() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Governing law">
+      <LegalSection heading="7. Paid Pro subscription">
+        <p>
+          Alongside the free feature set, we optionally offer a paid <strong>Pro
+          subscription</strong>, billed monthly or yearly. The subscription automatically
+          renews for the same term unless you cancel it beforehand. The prices shown to you
+          at checkout apply. You can cancel your subscription yourself at any time via the
+          billing portal (reachable from <em>Settings</em>); cancellation takes effect at
+          the end of the current billing period, and your access to Pro features continues
+          until then.
+        </p>
+        <p>
+          As an EU consumer you generally have a 14-day right of withdrawal. Because the Pro
+          subscription is a digital service that begins immediately upon purchase, this
+          right expires early if you expressly consent at checkout to performance starting
+          before the withdrawal period ends and confirm that you thereby lose your right of
+          withdrawal.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="8. Governing law">
         <p>
           These terms are governed by the law of the Federal Republic of Germany, excluding
           the UN Convention on Contracts for the International Sale of Goods, to the extent
@@ -160,7 +200,7 @@ function TermsEN() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="8. Contact">
+      <LegalSection heading="9. Contact">
         <p>
           Questions about these terms can be directed to the contact details listed in the{" "}
           <LegalLink href="/impressum">Imprint</LegalLink>.

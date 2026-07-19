@@ -7,8 +7,9 @@
 // card simply doesn't render for them.
 //
 // Reads `useBilling()` (lib/billing/billing-context.tsx) for the row +
-// loading state, and hits the redirect-based checkout/portal routes
-// directly with the caller's own session bearer token, same pattern as
+// loading state, and hits the redirect-based checkout/portal routes via
+// `redirectToBilling` (lib/billing/checkout-client.ts, shared with the
+// /pricing page's checkout CTA), same session-bearer-token pattern as
 // account deletion in settings-view.tsx. No Stripe.js: a successful call
 // just navigates the browser to the returned hosted-page URL.
 //
@@ -23,8 +24,8 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { useBilling } from "@/lib/billing/billing-context";
 import { subscriptionCardState } from "@/lib/billing/subscription-view";
+import { redirectToBilling, type BillingRedirectErrorKind } from "@/lib/billing/checkout-client";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { Button, Card } from "@/components/ui/primitives";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
@@ -32,10 +33,11 @@ import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 type PendingAction = "monthly" | "yearly" | "portal";
 
-const STATUS_ERROR_KEYS: Partial<Record<number, MessageKey>> = {
-  403: "settings.billing.errorDisabled",
-  404: "settings.billing.errorNoSubscription",
-  503: "settings.billing.errorUnavailable",
+const ERROR_KIND_KEYS: Record<BillingRedirectErrorKind, MessageKey> = {
+  generic: "settings.billing.errorGeneric",
+  disabled: "settings.billing.errorDisabled",
+  noSubscription: "settings.billing.errorNoSubscription",
+  unavailable: "settings.billing.errorUnavailable",
 };
 
 export function SubscriptionCard() {
@@ -75,43 +77,11 @@ function SubscriptionCardContent() {
     action: PendingAction,
     body?: Record<string, unknown>,
   ) {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      setActionError(t("settings.billing.errorGeneric"));
-      return;
-    }
     setPending(action);
     setActionError(null);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        setActionError(t("settings.billing.errorGeneric"));
-        return;
-      }
-      const res = await fetch(path, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(body ?? {}),
-      });
-      if (!res.ok) {
-        setActionError(t(STATUS_ERROR_KEYS[res.status] ?? "settings.billing.errorGeneric"));
-        return;
-      }
-      const data = (await res.json().catch(() => null)) as { url?: string } | null;
-      if (!data?.url) {
-        setActionError(t("settings.billing.errorGeneric"));
-        return;
-      }
-      window.location.href = data.url;
-    } catch {
-      setActionError(t("settings.billing.errorGeneric"));
-    } finally {
-      setPending(null);
-    }
+    const errorKind = await redirectToBilling(path, body);
+    if (errorKind) setActionError(t(ERROR_KIND_KEYS[errorKind]));
+    setPending(null);
   }
 
   const upgrade = (interval: "monthly" | "yearly") =>

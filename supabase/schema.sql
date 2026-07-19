@@ -501,7 +501,8 @@ insert into public.schema_migrations (version) values
   ('0066_billing'),
   ('0067_billing_admin_keys'),
   ('0068_plan_grants'),
-  ('0069_error_log_levels')
+  ('0069_error_log_levels'),
+  ('0070_billing_display_prices')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -842,10 +843,16 @@ create policy "own subscription" on public.subscriptions
 -- Single-row config for Stripe price ids, world-readable, owner-written only
 -- (same shape as app_settings/site_config). Prices are null until the owner
 -- fills them in; `enabled` gates selling independently of the `billing` flag.
+-- `price_monthly_display`/`price_yearly_display` (migration 0070) are the
+-- owner-typed strings shown on the /pricing marketing page (e.g. "4,99
+-- EUR") -- free text, never formatted or computed with, distinct from the
+-- Stripe price ids above.
 create table if not exists public.billing_config (
   id integer primary key check (id = 1),
   price_monthly text,
   price_yearly text,
+  price_monthly_display text,
+  price_yearly_display text,
   enabled boolean not null default false,
   updated_at timestamptz not null default now()
 );

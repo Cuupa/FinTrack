@@ -14,6 +14,10 @@
 // family of empty state. The upgrade link only renders when the `billing`
 // flag itself is on: with billing off, checkout is impossible, so the
 // teaser explains the feature is Pro without a dead-end call to action.
+// Links to /pricing (MONETIZATION.md: "Locked teasers deep-link here"),
+// the marketing plan comparison shipped in Phase 3 -- not directly to
+// checkout, since the visitor may be a guest or want to compare plans
+// first.
 
 import Link from "next/link";
 import { Card } from "@/components/ui/primitives";
@@ -51,7 +55,7 @@ export function ProTeaser({
         <p className="text-sm">{t("common.proFeatureHint")}</p>
         {billingEnabled && (
           <Link
-            href="/settings#subscription"
+            href="/pricing"
             className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
           >
             {t("common.proFeatureUpgrade")}

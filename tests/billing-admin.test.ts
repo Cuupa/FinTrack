@@ -19,25 +19,84 @@ const NOW = "2026-07-19T12:00:00.000Z";
 describe("parseBillingConfigBody", () => {
   it("accepts a fully populated body", () => {
     expect(
-      parseBillingConfigBody({ priceMonthly: "price_a", priceYearly: "price_b", enabled: true }),
-    ).toEqual({ priceMonthly: "price_a", priceYearly: "price_b", enabled: true });
+      parseBillingConfigBody({
+        priceMonthly: "price_a",
+        priceYearly: "price_b",
+        priceMonthlyDisplay: "4,99 EUR",
+        priceYearlyDisplay: "39 EUR",
+        enabled: true,
+      }),
+    ).toEqual({
+      priceMonthly: "price_a",
+      priceYearly: "price_b",
+      priceMonthlyDisplay: "4,99 EUR",
+      priceYearlyDisplay: "39 EUR",
+      enabled: true,
+    });
   });
 
-  it("accepts explicit nulls for both price ids", () => {
+  it("accepts explicit nulls for all four price fields", () => {
     expect(
-      parseBillingConfigBody({ priceMonthly: null, priceYearly: null, enabled: false }),
-    ).toEqual({ priceMonthly: null, priceYearly: null, enabled: false });
+      parseBillingConfigBody({
+        priceMonthly: null,
+        priceYearly: null,
+        priceMonthlyDisplay: null,
+        priceYearlyDisplay: null,
+        enabled: false,
+      }),
+    ).toEqual({
+      priceMonthly: null,
+      priceYearly: null,
+      priceMonthlyDisplay: null,
+      priceYearlyDisplay: null,
+      enabled: false,
+    });
+  });
+
+  it("normalizes an omitted display field to null (older callers posting only price ids)", () => {
+    expect(
+      parseBillingConfigBody({ priceMonthly: "price_a", priceYearly: "price_b", enabled: true }),
+    ).toEqual({
+      priceMonthly: "price_a",
+      priceYearly: "price_b",
+      priceMonthlyDisplay: null,
+      priceYearlyDisplay: null,
+      enabled: true,
+    });
   });
 
   it("trims strings and normalizes empty (post-trim) strings to null", () => {
     expect(
-      parseBillingConfigBody({ priceMonthly: "  price_a  ", priceYearly: "   ", enabled: true }),
-    ).toEqual({ priceMonthly: "price_a", priceYearly: null, enabled: true });
+      parseBillingConfigBody({
+        priceMonthly: "  price_a  ",
+        priceYearly: "   ",
+        priceMonthlyDisplay: "  4,99 EUR  ",
+        priceYearlyDisplay: "   ",
+        enabled: true,
+      }),
+    ).toEqual({
+      priceMonthly: "price_a",
+      priceYearly: null,
+      priceMonthlyDisplay: "4,99 EUR",
+      priceYearlyDisplay: null,
+      enabled: true,
+    });
   });
 
   it("rejects a non-string, non-null price id", () => {
     expect(
       parseBillingConfigBody({ priceMonthly: 123, priceYearly: null, enabled: true }),
+    ).toBeNull();
+  });
+
+  it("rejects a non-string, non-null display price", () => {
+    expect(
+      parseBillingConfigBody({
+        priceMonthly: null,
+        priceYearly: null,
+        priceMonthlyDisplay: 499,
+        enabled: true,
+      }),
     ).toBeNull();
   });
 

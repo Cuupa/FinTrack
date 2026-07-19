@@ -4,8 +4,11 @@
 // webhook secret (app_settings, never client-readable, GET only returns
 // presence booleans) and the billing_config prices/selling toggle
 // (world-readable, but writes still go through the admin route like
-// everything else in app/admin). Both cards save through POST
-// /api/admin/billing (kind "keys" / "config"), same convention as
+// everything else in app/admin). The "Selling" card also carries the two
+// owner-typed display price strings (migration 0070, e.g. "4,99 EUR")
+// rendered on /pricing -- free text, never formatted or computed with,
+// separate from the Stripe price ids above them. Both cards save through
+// POST /api/admin/billing (kind "keys" / "config"), same convention as
 // app/admin/site/page.tsx.
 //
 // The "Premium grants" card (migration 0068 "gratitude premium") is a third,
@@ -25,6 +28,8 @@ import { adminAuthToken, adminDelete, adminGet, adminPost } from "@/lib/admin/cl
 interface BillingAdminData {
   priceMonthly: string | null;
   priceYearly: string | null;
+  priceMonthlyDisplay: string | null;
+  priceYearlyDisplay: string | null;
   enabled: boolean;
   secretKeySet: boolean;
   webhookSecretSet: boolean;
@@ -125,6 +130,8 @@ export default function AdminBillingPage() {
   // app/admin/site/page.tsx's drafts.
   const [priceMonthlyDraft, setPriceMonthlyDraft] = useState<string | null>(null);
   const [priceYearlyDraft, setPriceYearlyDraft] = useState<string | null>(null);
+  const [priceMonthlyDisplayDraft, setPriceMonthlyDisplayDraft] = useState<string | null>(null);
+  const [priceYearlyDisplayDraft, setPriceYearlyDisplayDraft] = useState<string | null>(null);
   const [enabledDraft, setEnabledDraft] = useState<boolean | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
 
@@ -313,6 +320,8 @@ export default function AdminBillingPage() {
 
   const priceMonthlyValue = priceMonthlyDraft ?? data?.priceMonthly ?? "";
   const priceYearlyValue = priceYearlyDraft ?? data?.priceYearly ?? "";
+  const priceMonthlyDisplayValue = priceMonthlyDisplayDraft ?? data?.priceMonthlyDisplay ?? "";
+  const priceYearlyDisplayValue = priceYearlyDisplayDraft ?? data?.priceYearlyDisplay ?? "";
   const enabledValue = enabledDraft ?? data?.enabled ?? false;
 
   const saveConfig = async () => {
@@ -327,6 +336,10 @@ export default function AdminBillingPage() {
           kind: "config",
           priceMonthly: priceMonthlyValue.trim() === "" ? null : priceMonthlyValue.trim(),
           priceYearly: priceYearlyValue.trim() === "" ? null : priceYearlyValue.trim(),
+          priceMonthlyDisplay:
+            priceMonthlyDisplayValue.trim() === "" ? null : priceMonthlyDisplayValue.trim(),
+          priceYearlyDisplay:
+            priceYearlyDisplayValue.trim() === "" ? null : priceYearlyDisplayValue.trim(),
           enabled: enabledValue,
         },
         token,
@@ -446,6 +459,8 @@ export default function AdminBillingPage() {
           <div className="mt-4 space-y-3">
             <Skeleton className="h-9 w-full max-w-md" />
             <Skeleton className="h-9 w-full max-w-md" />
+            <Skeleton className="h-9 w-full max-w-md" />
+            <Skeleton className="h-9 w-full max-w-md" />
             <Skeleton className="h-6 w-32" />
           </div>
         ) : (
@@ -470,6 +485,30 @@ export default function AdminBillingPage() {
                 value={priceYearlyValue}
                 onChange={(e) => setPriceYearlyDraft(e.target.value)}
                 placeholder={t("admin.billing.priceIdPlaceholder")}
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              />
+            </div>
+
+            <div className="min-w-[220px] max-w-md">
+              <label className="block text-xs text-zinc-500">
+                {t("admin.billing.priceMonthlyDisplayLabel")}
+              </label>
+              <input
+                value={priceMonthlyDisplayValue}
+                onChange={(e) => setPriceMonthlyDisplayDraft(e.target.value)}
+                placeholder={t("admin.billing.priceDisplayPlaceholder")}
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              />
+            </div>
+
+            <div className="min-w-[220px] max-w-md">
+              <label className="block text-xs text-zinc-500">
+                {t("admin.billing.priceYearlyDisplayLabel")}
+              </label>
+              <input
+                value={priceYearlyDisplayValue}
+                onChange={(e) => setPriceYearlyDisplayDraft(e.target.value)}
+                placeholder={t("admin.billing.priceDisplayPlaceholder")}
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </div>

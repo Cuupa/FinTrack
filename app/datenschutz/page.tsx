@@ -28,7 +28,7 @@ function DatenschutzDE({
   loaded: boolean;
 }) {
   return (
-    <LegalPage title="Datenschutzerklärung" updated="Stand: 17. Juli 2026">
+    <LegalPage title="Datenschutzerklärung" updated="Stand: 19. Juli 2026">
       <LegalSection heading="1. Verantwortlicher">
         <p>
           Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist der im{" "}
@@ -246,6 +246,25 @@ function DatenschutzDE({
           gespeicherten Schlüssel jederzeit in den Einstellungen entfernen.
         </p>
       </LegalSection>
+
+      <LegalSection heading="10. Zahlungsabwicklung (Stripe)">
+        <p>
+          FinTrack bietet optional ein kostenpflichtiges Pro-Abo an. Wenn du ein Abo
+          abschließt, wird die Zahlungsabwicklung vollständig von unserem
+          Zahlungsdienstleister <strong>Stripe Payments Europe, Ltd.</strong> übernommen. Wir
+          leiten dazu deine E-Mail-Adresse sowie zahlungsbezogene Metadaten (z. B. eine
+          interne Nutzerkennung zur Zuordnung deines Abos) an Stripe weiter. Deine
+          Zahlungsdaten (Kartennummer o. Ä.) gibst du ausschließlich auf der von Stripe
+          gehosteten Checkout-Seite ein; <strong>FinTrack selbst speichert oder verarbeitet
+          zu keinem Zeitpunkt deine Zahlungsdaten</strong>. Rechtsgrundlage ist Art. 6 Abs. 1
+          lit. b DSGVO (Erfüllung des Abo-Vertrags). Welche Daten Stripe im Einzelnen
+          verarbeitet und wie lange, regelt dessen eigene{" "}
+          <LegalLink href="https://stripe.com/privacy">Datenschutzerklärung</LegalLink>.
+        </p>
+        <p>
+          Solange du kein Abo abschließt, findet keine Übermittlung an Stripe statt.
+        </p>
+      </LegalSection>
     </LegalPage>
   );
 }
@@ -258,7 +277,7 @@ function DatenschutzEN({
   loaded: boolean;
 }) {
   return (
-    <LegalPage title="Privacy Policy" updated="Last updated: 17 July 2026">
+    <LegalPage title="Privacy Policy" updated="Last updated: 19 July 2026">
       <LegalSection heading="1. Controller">
         <p>
           The controller within the meaning of the GDPR is the operator named in the{" "}
@@ -462,6 +481,22 @@ function DatenschutzEN({
           The assistant produces modeled output and is not investment advice. You can remove your
           stored key in Settings at any time.
         </p>
+      </LegalSection>
+
+      <LegalSection heading="10. Payment processing (Stripe)">
+        <p>
+          FinTrack optionally offers a paid Pro subscription. If you take out a
+          subscription, payment processing is handled entirely by our payment provider{" "}
+          <strong>Stripe Payments Europe, Ltd.</strong> We pass your email address and
+          payment-related metadata (e.g. an internal user id used to attribute your
+          subscription) to Stripe for this purpose. You enter your payment details (card
+          number etc.) exclusively on Stripe&rsquo;s own hosted checkout page;{" "}
+          <strong>FinTrack itself never stores or processes your payment data</strong>. The
+          legal basis is Art. 6(1)(b) GDPR (performance of the subscription contract). What
+          data Stripe processes and for how long is governed by its own{" "}
+          <LegalLink href="https://stripe.com/privacy">privacy policy</LegalLink>.
+        </p>
+        <p>As long as you don&rsquo;t take out a subscription, no data is sent to Stripe.</p>
       </LegalSection>
     </LegalPage>
   );

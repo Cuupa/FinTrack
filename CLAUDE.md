@@ -121,7 +121,13 @@ audited).
 seeded disabled)**: Stripe Checkout + Billing portal, redirect-based only —
 no Stripe.js on the page, so CSP `connect-src` stays untouched. Price ids +
 the selling toggle live in `billing_config` (config-in-DB, world-readable,
-owner-written), editable at runtime on `/admin/billing`. The Stripe secret
+owner-written), editable at runtime on `/admin/billing`. `billing_config`
+also carries owner-typed **display price strings**
+(`price_monthly_display`/`price_yearly_display`, migration 0070, e.g. "4,99
+EUR") shown on `/pricing` — free text, never formatted or computed with,
+distinct from the Stripe price ids; nullable, so `/pricing` shows the plan
+comparison without an amount rather than inventing one while empty. The
+Stripe secret
 key and webhook secret are DB-first with an env fallback (round 2026-07-19b):
 `app_settings.stripe_secret_key`/`stripe_webhook_secret` (RLS enabled, zero
 policies — service-role only) win over `STRIPE_SECRET_KEY`/
@@ -143,7 +149,34 @@ create-an-account teaser funnel is Phase 3) reading `useBilling()` for
 directly with the session token, same pattern as account deletion in
 `components/settings/settings-view.tsx`. `BillingProvider` re-fetches once,
 after a short delay, when the page was entered with `?billing=success`
-(Checkout return) since the webhook can lag the redirect.
+(Checkout return) since the webhook can lag the redirect. The
+checkout/portal redirect call (`lib/billing/checkout-client.ts`) is a shared
+helper so the settings card and `/pricing` don't each reimplement it.
+
+**Pricing page + legal (MONETIZATION.md Phase 3, ships with `billing` flag
+still off in prod)**: `/pricing` (`app/pricing/page.tsx`) is a Free-vs-Pro
+marketing comparison, gated behind the `billing` flag the same way any other
+flag-gated route degrades to `FeatureUnavailable`. It reads the display
+prices via `useBillingConfig()` (`lib/billing/use-billing-config.ts`, a
+direct world-readable-row read through the browser Supabase client, same
+shape as `BillingProvider`'s own subscription fetch) with skeleton
+placeholders while loading. The CTA reuses `redirectToBilling`: registered
+users check out directly, guests get a link to `/login`, an already-Pro user
+gets a link to manage instead of a second checkout, and the buy buttons
+disappear (comparison-only) when `billing_config.enabled` (the owner's
+selling toggle, independent of the `billing` flag) is off.
+`<ProTeaser>`'s upgrade link now points to `/pricing` instead of
+`/settings#subscription` (MONETIZATION.md: "Locked teasers deep-link here").
+`/datenschutz` and `/terms` (EN+DE) carry the Phase-3 legal sections
+required before a real checkout is reachable: a Stripe payment-processing
+section (`/datenschutz` — email + payment metadata shared with Stripe,
+FinTrack itself never stores card data, linked to Stripe's privacy policy)
+and a subscription-terms section (`/terms` — billing interval, auto-renewal,
+portal cancellation effective at period end, prices as shown at checkout,
+the EU 14-day withdrawal right and its early-expiry consent at checkout).
+Both are phrased conditionally ("Wenn du ein Abo abschließt, ...") so they
+stay accurate while billing is dark-launched and no checkout has happened
+yet.
 
 ### CSV import & fingerprints
 
