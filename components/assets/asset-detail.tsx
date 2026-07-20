@@ -12,6 +12,7 @@ import { addDays, nowDateTimeLocal, today, type Timeframe } from "@/lib/finance/
 import {
   assetPriceSeries,
   assetValueSeries,
+  holdingPeriodProfit,
   summarizeHolding,
   transactionsByAsset,
 } from "@/lib/finance/portfolio";
@@ -283,6 +284,20 @@ export function AssetDetail({
     [txs, summary],
   );
 
+  // Return over the selected chart timeframe. A held position uses the
+  // contribution-adjusted return (same methodology as the dashboard hero's
+  // windowChange, so mid-window buys/sells don't distort it); a not-held
+  // instrument (no transactions) falls back to the price series' plain
+  // first-to-last change. Null until a usable series is available.
+  const timeframeReturn = useMemo(() => {
+    if (!asset) return null;
+    if (txs.length > 0) return holdingPeriodProfit(asset, txs, timeframe, chartValuation, histories).pct;
+    if (series.length >= 2 && series[0].value > 0) {
+      return (series[series.length - 1].value - series[0].value) / series[0].value;
+    }
+    return null;
+  }, [asset, txs, timeframe, chartValuation, histories, series]);
+
   // Risk-adjusted return from this asset's price history over the timeframe.
   const annual = useMemo(
     () => (asset ? assetAnnualStats(asset, histories, 100) : null),
@@ -524,6 +539,18 @@ export function AssetDetail({
           onMode={setMode}
           showMode={false}
         />
+        {historyLoading ? (
+          <div className="mt-3">
+            <SkeletonText className="h-6 w-28" />
+          </div>
+        ) : timeframeReturn != null ? (
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className={`text-lg font-semibold tabular-nums ${plColor(timeframeReturn)}`} data-private>
+              {formatPercent(timeframeReturn)}
+            </span>
+            <span className="text-xs text-zinc-500">{t("asset.periodReturn", { tf: timeframe })}</span>
+          </div>
+        ) : null}
         <div className="mt-3 flex items-center justify-between gap-2">
           {!historyLoading && syntheticSeries ? (
             <EstimatedBadge tip={t("data.estimatedChartTip")} />
