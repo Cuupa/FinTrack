@@ -11,6 +11,8 @@ npm run dev       # start dev server (http://localhost:3000)
 npm run build     # production build
 npm run start     # serve production build
 npm run lint      # ESLint
+npm run test      # vitest unit suite (pure finance/i18n core)
+npm run test:e2e  # Playwright browser tests (Guest Mode wiring); see E2E.md
 ```
 
 ## Stack
