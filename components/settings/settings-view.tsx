@@ -13,6 +13,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { SubscriptionCard } from "@/components/settings/subscription-card";
+import { NotificationsCard } from "@/components/settings/notifications-card";
 import { useLlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
 import { providerList, getProvider } from "@/lib/llm";
 import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
@@ -209,6 +210,7 @@ export function SettingsView() {
       {activeTab === "general" && (
         <div className="space-y-6">
           <SubscriptionCard />
+          <NotificationsCard />
           <Card>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
               <section className="py-5 first:pt-0 last:pb-0">

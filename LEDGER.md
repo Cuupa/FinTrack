@@ -149,7 +149,57 @@ Files:
       /dividends forecast shows "Coca-Cola Oct 1, 2026 confirmed" (green)
       replacing the earliest projection with later dates staying projected,
       disclaimer updated. No console errors.
-- [ ] F4d. Commit.
+- [x] F4d. Commit (4d9bb2f).
 
-## Remaining this round
-- [ ] F5 web push notifications
+## Task F5 - web push notifications (closes G5, Medium) - USER APPROVED "Full F5"
+
+Design (orchestrator; the user explicitly chose "Full F5 now" knowing it needs
+a new dependency and can't be browser-verified locally). Two reminder events
+only: dividend pay-day + savings-plan due. No marketing pushes ever.
+
+- Dependency: `web-push` (VAPID JWT signing + payload encryption; server-only).
+- VAPID keys: app_settings.vapid_public_key/private_key/subject, DB-first with
+  VAPID_* env fallback, resolved by getVapidKeys() (lib/server/push-keys.ts)
+  mirroring getStripeKeys 1:1. Public key served by GET /api/push/vapid.
+- Table push_subscriptions (migration 0076 + schema.sql): one row per device,
+  per-sub prefs, last_notified_on de-dupe, own-row RLS (cron uses service role).
+- Routes: /api/push/subscribe + /unsubscribe (bearer-token auth like billing
+  checkout), /api/push/vapid (public key), /api/cron/sync/push (daily cron,
+  added to the bulk sync, skips cleanly with no keys).
+- Cron logic: loads all subs, computes due savings plans (dueOccurrences ==
+  today) + due dividends (announcedByQuery payDate == today AND sharesAt > 0,
+  deduped per price key), builds a localized per-sub payload (only the events
+  that sub opted into), sends via web-push, deletes on 404/410, sets
+  last_notified_on. Localized server-side via translate() + the user's profile
+  locale.
+- SW push + notificationclick handlers (public/sw.js).
+- Client: lib/push/client.ts (enable/disable/isEnabled; getRegistration not
+  `ready` so dev without a SW doesn't hang). Settings NotificationsCard
+  (registered-only, flag-gated), rendered under SubscriptionCard.
+- Pure: lib/push/reminder.ts buildReminderPayload (localized, name-list cap).
+- Flag `pushNotifications` seeded DISABLED (migration 0076 + schema.sql +
+  FeatureFlag union). i18n en/de/es. Tests tests/push.test.ts (8:
+  resolveVapidValue precedence, buildReminderPayload event-filtering/cap/i18n).
+
+- [x] F5a. Orchestrator design (above).
+- [x] F5b. Implemented all files above (done directly - security-sensitive
+      VAPID/RLS + new dependency).
+- [x] F5c. Verified to the limit local dev allows: tsc clean, lint clean,
+      vitest 65 files/752 passed/4 skipped (up from 744), build green (all
+      four push routes present), sw.js syntax valid, /api/push/vapid ->
+      {publicKey:null} and /api/cron/sync/push -> {skipped:"no vapid keys"}
+      (graceful no-config paths), /settings renders in Guest Mode with the
+      card correctly absent (registered-only), no console errors. NOT
+      browser-verifiable end to end locally: needs prod with VAPID keys set
+      (app_settings SQL or VAPID_* env), the pushNotifications flag flipped
+      on, and a real registered device subscribing over HTTPS. The pure
+      logic is unit-tested; the send path is the standard web-push library.
+- [ ] F5d. Commit.
+
+## Round close-out
+Wave 2 delivered: F6 (Vorabpauschale estimator, 1852a20), F4 (announced
+dividend calendar, 4d9bb2f), F5 (web push, this commit). Wave 1 loophole check
+found no share-count loopholes; fixed one schema drift (schema_migrations list
+lagged 0071-0073, backfilled). Remaining COMPETITION.md backlog: F2 (PDF
+import, L, deferred), Wave 3 (F7 interest cash, F8 manual-valuation asset, F10
+persisted rebalancing). Non-goals G3/G12-G15 unchanged.

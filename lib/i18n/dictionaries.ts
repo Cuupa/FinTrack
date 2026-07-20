@@ -1317,6 +1317,22 @@ export const en = {
   "pricing.pro.notAvailable": "Not available for purchase right now.",
   "pricing.pro.alreadyPro": "You're already on Pro.",
   "pricing.guestCta": "Log in to upgrade",
+
+  // Push notifications (F5)
+  "push.title": "FinTrack reminder",
+  "push.dividendBody": "Dividend pay-day today: {assets}.",
+  "push.savingsBody": "Savings plan due today: {assets}.",
+  "push.andMore": "{names} and {count} more",
+  "notif.title": "Notifications",
+  "notif.subtitle": "Get a reminder on this device when a dividend pays out or a savings plan is due. No marketing, ever.",
+  "notif.dividendLabel": "Dividend pay-day",
+  "notif.savingsLabel": "Savings plan due",
+  "notif.enable": "Enable on this device",
+  "notif.disable": "Turn off on this device",
+  "notif.enabled": "On for this device",
+  "notif.blocked": "Notifications are blocked in your browser settings. Allow them for this site to enable reminders.",
+  "notif.unsupported": "This browser does not support push notifications.",
+  "notif.saveError": "Could not update notifications. Please try again.",
 } as const;
 
 export const de: Partial<Record<MessageKey, string>> = {
@@ -2630,6 +2646,21 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pricing.pro.notAvailable": "Gerade nicht käuflich verfügbar.",
   "pricing.pro.alreadyPro": "Du hast bereits Pro.",
   "pricing.guestCta": "Anmelden zum Upgrade",
+  // Push notifications (F5)
+  "push.title": "FinTrack Erinnerung",
+  "push.dividendBody": "Heute Dividendenzahltag: {assets}.",
+  "push.savingsBody": "Heute Sparplan fällig: {assets}.",
+  "push.andMore": "{names} und {count} weitere",
+  "notif.title": "Benachrichtigungen",
+  "notif.subtitle": "Erhalte auf diesem Gerät eine Erinnerung, wenn eine Dividende ausgezahlt wird oder ein Sparplan fällig ist. Keine Werbung, niemals.",
+  "notif.dividendLabel": "Dividendenzahltag",
+  "notif.savingsLabel": "Sparplan fällig",
+  "notif.enable": "Auf diesem Gerät aktivieren",
+  "notif.disable": "Auf diesem Gerät ausschalten",
+  "notif.enabled": "Für dieses Gerät aktiv",
+  "notif.blocked": "Benachrichtigungen sind in deinen Browsereinstellungen blockiert. Erlaube sie für diese Seite, um Erinnerungen zu aktivieren.",
+  "notif.unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
+  "notif.saveError": "Benachrichtigungen konnten nicht aktualisiert werden. Bitte versuche es erneut.",
 };
 
 export const es: Partial<Record<MessageKey, string>> = {
@@ -3941,6 +3972,22 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pricing.pro.notAvailable": "No disponible para compra en este momento.",
   "pricing.pro.alreadyPro": "Ya tienes Pro.",
   "pricing.guestCta": "Inicia sesión para mejorar",
+
+  // Push notifications (F5)
+  "push.title": "Recordatorio de FinTrack",
+  "push.dividendBody": "Hoy pagan dividendo: {assets}.",
+  "push.savingsBody": "Hoy vence un plan de ahorro: {assets}.",
+  "push.andMore": "{names} y {count} más",
+  "notif.title": "Notificaciones",
+  "notif.subtitle": "Recibe un recordatorio en este dispositivo cuando se pague un dividendo o venza un plan de ahorro. Nunca publicidad.",
+  "notif.dividendLabel": "Día de pago de dividendo",
+  "notif.savingsLabel": "Plan de ahorro vencido",
+  "notif.enable": "Activar en este dispositivo",
+  "notif.disable": "Desactivar en este dispositivo",
+  "notif.enabled": "Activo en este dispositivo",
+  "notif.blocked": "Las notificaciones están bloqueadas en la configuración de tu navegador. Permítelas para este sitio para activar los recordatorios.",
+  "notif.unsupported": "Este navegador no admite notificaciones push.",
+  "notif.saveError": "No se pudieron actualizar las notificaciones. Inténtalo de nuevo.",
 };
 
 const DICTS: Record<Locale, Partial<Record<MessageKey, string>>> = { en, de, es };

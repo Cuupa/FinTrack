@@ -80,7 +80,8 @@ export type FeatureFlag =
   | "importPp"
   | "splitDetection"
   | "vorabEstimate"
-  | "dividendCalendar";
+  | "dividendCalendar"
+  | "pushNotifications";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

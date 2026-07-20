@@ -532,7 +532,8 @@ insert into public.schema_migrations (version) values
   ('0072_split_transaction_type'),
   ('0073_split_detection_flag'),
   ('0074_vorabpauschale'),
-  ('0075_dividend_calendar_flag')
+  ('0075_dividend_calendar_flag'),
+  ('0076_push_notifications')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -677,9 +678,44 @@ create table if not exists public.app_settings (
   max_users int,
   stripe_secret_key text,
   stripe_webhook_secret text,
+  -- VAPID keys for web push (F5); DB-first with an env fallback like the
+  -- Stripe keys. The public key is not secret (handed to the browser).
+  vapid_public_key text,
+  vapid_private_key text,
+  vapid_subject text,
   updated_at timestamptz not null default now()
 );
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+
+-- Web push subscriptions (COMPETITION.md F5): one row per browser/device, prefs
+-- per subscription, `last_notified_on` de-dupes the daily cron. A user manages
+-- only their own rows; the cron reads/writes all via the service role.
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  notify_dividends boolean not null default false,
+  notify_savings boolean not null default false,
+  last_notified_on date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions (user_id);
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "own push subs selectable" on public.push_subscriptions;
+create policy "own push subs selectable" on public.push_subscriptions
+  for select using (auth.uid() = user_id);
+drop policy if exists "own push subs insertable" on public.push_subscriptions;
+create policy "own push subs insertable" on public.push_subscriptions
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "own push subs updatable" on public.push_subscriptions;
+create policy "own push subs updatable" on public.push_subscriptions
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "own push subs deletable" on public.push_subscriptions;
+create policy "own push subs deletable" on public.push_subscriptions
+  for delete using (auth.uid() = user_id);
 alter table public.app_settings enable row level security;
 
 -- Whether registration is currently open (below the user cap). SECURITY DEFINER
@@ -774,6 +810,11 @@ on conflict (flag) do nothing;
 -- Stripe webhooks are verified live.
 insert into public.feature_flags (flag, enabled, description) values
   ('billing', false, 'Stripe subscription billing (Checkout, portal, Pro plan)')
+on conflict (flag) do nothing;
+
+-- Seeded DISABLED: web push ships off until the owner sets VAPID keys.
+insert into public.feature_flags (flag, enabled, description) values
+  ('pushNotifications', false, 'Web push reminders (dividend pay-day, savings-plan due)')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

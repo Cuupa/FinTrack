@@ -54,6 +54,9 @@ async function handle(req: Request): Promise<Response> {
   // and skips cleanly (200 with `skipped`) when neither is set, so it's
   // always posted here rather than gated on the env var alone.
   await post("/api/cron/sync/billing");
+  // Push reminders resolve their own VAPID keys (app_settings DB value or the
+  // VAPID_* env fallback) and skip cleanly (200 with `skipped`) when unset.
+  await post("/api/cron/sync/push");
   await post("/api/cron/sync/retention");
 
   return Response.json({ ok: true, results });

@@ -214,3 +214,42 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
+// Web push (COMPETITION.md F5). The cron sends a JSON payload
+// { title, body, url }; show it as a notification, and focus/open the app at
+// `url` when it's clicked. Reminders only (dividend pay-day, savings-plan due)
+// — there are no marketing pushes.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || "FinTrack";
+  const options = {
+    body: data.body || "",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
+    data: { url: data.url || "/" },
+    tag: "fintrack-reminder",
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      // Focus an existing tab if one is open, else open a new one.
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
+});
