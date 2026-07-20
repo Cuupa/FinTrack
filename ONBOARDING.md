@@ -71,7 +71,8 @@ Tailwind-only app for no benefit.
 | 4 | `holdings` (AssetTable root) | Holdings table: sortable, click a row for details |
 | 5 | `nav` (sidebar nav group) | Analysis, dividends, simulation live here |
 | 6 | `theme-toggle` (nav toggle) | Dark mode + settings pointer |
-| 7 | none (centered card) | Done: suggested first step is adding an asset or importing a CSV; points to settings for language/currency and "tour again" |
+| 7 | `privacy-toggle` (nav toggle) | Privacy mode: blur every amount on screen, handy in public / screen-sharing |
+| 8 | none (centered card) | Done: suggested first step is adding an asset or importing a CSV; points to settings for language/currency and "tour again" |
 
 Steps whose target element is not in the DOM (feature flag off, mobile layout
 hiding the sidebar) are skipped automatically at render time; centered steps

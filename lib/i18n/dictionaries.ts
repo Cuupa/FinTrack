@@ -240,6 +240,9 @@ export const en = {
   "tour.themeToggle.title": "Dark mode",
   "tour.themeToggle.body":
     "Switch between light and dark anytime. Language and currency are in settings.",
+  "tour.privacy.title": "Privacy mode",
+  "tour.privacy.body":
+    "Tap the eye to blur every amount on screen, handy in public or when sharing your screen. Tap again to reveal.",
   "tour.done.title": "You're ready",
   "tour.done.body":
     "Add your first holding or import a CSV to get started. Find language, currency, and this tour again in settings.",
@@ -1593,6 +1596,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.themeToggle.title": "Dunkler Modus",
   "tour.themeToggle.body":
     "Wechsle jederzeit zwischen hell und dunkel. Sprache und Währung findest du in den Einstellungen.",
+  "tour.privacy.title": "Privatmodus",
+  "tour.privacy.body":
+    "Tippe auf das Auge, um alle Beträge auf dem Bildschirm auszublenden, praktisch in der Öffentlichkeit oder beim Teilen deines Bildschirms. Tippe erneut, um sie wieder anzuzeigen.",
   "tour.done.title": "Du bist startklar",
   "tour.done.body":
     "Füge deine erste Position hinzu oder importiere eine CSV-Datei. Sprache, Währung und diese Tour findest du in den Einstellungen.",
@@ -2943,6 +2949,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.themeToggle.title": "Modo oscuro",
   "tour.themeToggle.body":
     "Cambia entre claro y oscuro cuando quieras. El idioma y la moneda están en ajustes.",
+  "tour.privacy.title": "Modo privado",
+  "tour.privacy.body":
+    "Toca el ojo para difuminar todos los importes en pantalla, útil en público o al compartir tu pantalla. Toca de nuevo para mostrarlos.",
   "tour.done.title": "Ya estás listo",
   "tour.done.body":
     "Añade tu primera posición o importa un CSV para empezar. Encuentra el idioma, la moneda y este tour de nuevo en ajustes.",

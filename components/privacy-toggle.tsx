@@ -6,7 +6,14 @@
 import { usePrivacy } from "@/lib/privacy/privacy-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
-export function PrivacyToggle({ className = "" }: { className?: string }) {
+export function PrivacyToggle({
+  className = "",
+  dataTour,
+}: {
+  className?: string;
+  /** `data-tour` target name for the guided tour (components/onboarding). */
+  dataTour?: string;
+}) {
   const { incognito, locked, toggle } = usePrivacy();
   const { t } = useI18n();
 
@@ -16,6 +23,7 @@ export function PrivacyToggle({ className = "" }: { className?: string }) {
     <button
       type="button"
       onClick={toggle}
+      data-tour={dataTour}
       aria-pressed={incognito}
       title={incognito ? t("privacy.showFigures") : t("privacy.hideFigures") }
       aria-label={incognito ? t("privacy.showFigures") : t("privacy.hideFigures") }

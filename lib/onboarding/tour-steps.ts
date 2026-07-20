@@ -42,6 +42,12 @@ export const TOUR_STEPS: TourStep[] = [
     titleKey: "tour.themeToggle.title",
     bodyKey: "tour.themeToggle.body",
   },
+  {
+    key: "privacy",
+    target: "privacy-toggle",
+    titleKey: "tour.privacy.title",
+    bodyKey: "tour.privacy.body",
+  },
   { key: "done", target: null, titleKey: "tour.done.title", bodyKey: "tour.done.body" },
 ];
 

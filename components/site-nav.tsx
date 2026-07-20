@@ -52,7 +52,7 @@ export function SiteNav() {
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
           <PortfolioPicker />
           <ThemeToggle dataTour="theme-toggle" />
-          <PrivacyToggle />
+          <PrivacyToggle dataTour="privacy-toggle" />
           {mode === "registered" ? (
             <ProfileMenu />
           ) : (
