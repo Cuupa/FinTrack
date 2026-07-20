@@ -165,6 +165,44 @@ export function SavingsPlansCard() {
   // full plan list from data (plans aren't portfolio-scoped in scopedData).
   const plans = data.savingsPlans;
   const todayISO = today();
+
+  const [planSort, setPlanSort] = useState<{ key: PlanSortKey; dir: 1 | -1 }>({
+    key: "next",
+    dir: 1,
+  });
+  const togglePlanSort = (key: PlanSortKey) =>
+    setPlanSort((s) =>
+      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "amount" ? -1 : 1 },
+    );
+
+  // Rows joined with their asset + next occurrence, sorted by the active column.
+  const planRows = useMemo(() => {
+    const rows = plans.flatMap((plan) => {
+      const asset = assetById.get(plan.assetId);
+      return asset ? [{ plan, asset, next: nextOccurrence(plan, todayISO) }] : [];
+    });
+    const val = (r: (typeof rows)[number]): string | number => {
+      switch (planSort.key) {
+        case "asset":
+          return r.asset.name.toLowerCase();
+        case "type":
+          return r.plan.bookingType ?? "BUY";
+        case "amount":
+          return r.plan.amount;
+        case "interval":
+          return INTERVAL_RANK[r.plan.interval];
+        case "next":
+          return r.next;
+      }
+    };
+    return rows.sort((a, b) => {
+      const va = val(a);
+      const vb = val(b);
+      if (va < vb) return -1 * planSort.dir;
+      if (va > vb) return 1 * planSort.dir;
+      return 0;
+    });
+  }, [plans, assetById, planSort, todayISO]);
   // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
   // plan (grandfathering) — pausing/editing/deleting an existing one, even
   // over cap after a downgrade, is never affected.
@@ -380,64 +418,78 @@ export function SavingsPlansCard() {
       {plans.length === 0 && !creating ? (
         <p className="mt-3 text-sm text-zinc-500">{t("sp.empty")}</p>
       ) : (
-        <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-          {plans.map((plan) => {
-            const asset = assetById.get(plan.assetId);
-            if (!asset) return null;
-            const cur = asset.currency || base;
-            return (
-              <li key={plan.id} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0">
-                  <span
-                    className={`block truncate text-sm font-medium ${
-                      plan.active ? "" : "text-zinc-400 dark:text-zinc-500"
-                    }`}
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+                <PlanTh label={t("sp.asset")} k="asset" sort={planSort} onSort={togglePlanSort} />
+                <PlanTh label={t("sp.bookingType")} k="type" sort={planSort} onSort={togglePlanSort} />
+                <PlanTh label={t("sp.amount")} k="amount" align="right" sort={planSort} onSort={togglePlanSort} />
+                <PlanTh label={t("sp.interval")} k="interval" sort={planSort} onSort={togglePlanSort} />
+                <PlanTh label={t("sp.nextHeader")} k="next" sort={planSort} onSort={togglePlanSort} />
+                <th className="py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {planRows.map(({ plan, asset }) => {
+                const cur = asset.currency || base;
+                const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
+                return (
+                  <tr
+                    key={plan.id}
+                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                   >
-                    {asset.name}
-                  </span>
-                  <span className="block truncate text-xs text-zinc-500">
-                    <span data-private>{formatCurrency(plan.amount, cur)}</span>{" "}
-                    {t(INTERVAL_KEY[plan.interval])} ·{" "}
-                    {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
-                    {plan.active ? (
-                      <> · {t("sp.next", { date: formatDate(nextOccurrence(plan, todayISO)) })}</>
-                    ) : (
-                      <> · {t("sp.paused")}</>
-                    )}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCreating(false);
-                      setEditing((cur) => (cur?.id === plan.id ? null : plan));
-                    }}
-                    className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  >
-                    {t("sp.edit")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleActive(plan)}
-                    className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  >
-                    {plan.active ? t("sp.pause") : t("sp.resume")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleting(plan)}
-                    className="px-1 text-zinc-400 hover:text-red-500"
-                    aria-label={t("sp.deleteTitle")}
-                    title={t("sp.deleteTitle")}
-                  >
-                    ✕
-                  </button>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+                    <td className={`max-w-[12rem] truncate py-2 pr-3 font-medium ${muted}`}>
+                      {asset.name}
+                    </td>
+                    <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                      {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
+                    </td>
+                    <td className={`py-2 pr-3 text-right tabular-nums ${muted}`} data-private>
+                      {formatCurrency(plan.amount, cur)}
+                    </td>
+                    <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                      {t(INTERVAL_KEY[plan.interval])}
+                    </td>
+                    <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                      {plan.active ? formatDate(nextOccurrence(plan, todayISO)) : t("sp.paused")}
+                    </td>
+                    <td className="py-2">
+                      <span className="flex shrink-0 items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreating(false);
+                            setEditing((cur) => (cur?.id === plan.id ? null : plan));
+                          }}
+                          className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        >
+                          {t("sp.edit")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(plan)}
+                          className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        >
+                          {plan.active ? t("sp.pause") : t("sp.resume")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleting(plan)}
+                          className="px-1 text-zinc-400 hover:text-red-500"
+                          aria-label={t("sp.deleteTitle")}
+                          title={t("sp.deleteTitle")}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Review dialog: due executions with the price each would post at. */}
@@ -554,3 +606,36 @@ export function SavingsPlansCard() {
   );
 }
 
+
+type PlanSortKey = "asset" | "type" | "amount" | "interval" | "next";
+
+const INTERVAL_RANK: Record<string, number> = { WEEKLY: 0, MONTHLY: 1, QUARTERLY: 2 };
+
+function PlanTh({
+  label,
+  k,
+  align,
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: PlanSortKey;
+  align?: "right";
+  sort: { key: PlanSortKey; dir: 1 | -1 };
+  onSort: (k: PlanSortKey) => void;
+}) {
+  return (
+    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+          align === "right" ? "justify-end" : ""
+        }`}
+      >
+        {label}
+        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
