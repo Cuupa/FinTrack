@@ -40,6 +40,9 @@ const GENERAL: Record<AssetType, { mean: number; vol: number }> = {
   CRYPTO: { mean: 0.08, vol: 0.7 },
   COMMODITY,
   CASH: { mean: 0.02, vol: 0.005 },
+  // Manual-valuation assets (real estate, collectibles): illiquid, low measured
+  // volatility, modest long-run appreciation. A conservative prior only.
+  OTHER: { mean: 0.03, vol: 0.1 },
 };
 
 export interface AssetStat {

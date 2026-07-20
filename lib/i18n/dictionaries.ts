@@ -687,6 +687,16 @@ export const en = {
   "cashInterest.amount": "Amount",
   "cashInterest.bookAll": "Book {count} credit(s)",
   "cashInterest.error": "Could not book the interest. Please try again.",
+  "valuation.title": "Valuation",
+  "valuation.intro": "This holding has no market price. Enter its value on any date; the most recent entry is its current value.",
+  "valuation.dateLabel": "Date",
+  "valuation.valueLabel": "Value ({currency})",
+  "valuation.add": "Add valuation",
+  "valuation.empty": "No valuations yet. Add one to start tracking this holding's value.",
+  "valuation.current": "Current value: {value} (as of {date})",
+  "valuation.remove": "Remove valuation",
+  "valuation.error": "Could not save the valuation. Please try again.",
+  "addAsset.otherValue": "Current value ({currency})",
 
   // Analysis
   "analysis.tab.distributions": "Distributions",
@@ -1038,6 +1048,7 @@ export const en = {
   "assetType.CRYPTO": "Cryptocurrency",
   "assetType.COMMODITY": "Commodity",
   "assetType.CASH": "Cash",
+  "assetType.OTHER": "Other",
   "assetType.BOND": "Bond",
 
   // Legal
@@ -2042,6 +2053,16 @@ export const de: Partial<Record<MessageKey, string>> = {
   "cashInterest.amount": "Betrag",
   "cashInterest.bookAll": "{count} Gutschrift(en) buchen",
   "cashInterest.error": "Die Zinsen konnten nicht gebucht werden. Bitte versuche es erneut.",
+  "valuation.title": "Bewertung",
+  "valuation.intro": "Diese Position hat keinen Marktpreis. Trage ihren Wert zu einem beliebigen Datum ein; der neueste Eintrag ist der aktuelle Wert.",
+  "valuation.dateLabel": "Datum",
+  "valuation.valueLabel": "Wert ({currency})",
+  "valuation.add": "Bewertung hinzufügen",
+  "valuation.empty": "Noch keine Bewertungen. Füge eine hinzu, um den Wert dieser Position zu verfolgen.",
+  "valuation.current": "Aktueller Wert: {value} (Stand {date})",
+  "valuation.remove": "Bewertung entfernen",
+  "valuation.error": "Die Bewertung konnte nicht gespeichert werden. Bitte versuche es erneut.",
+  "addAsset.otherValue": "Aktueller Wert ({currency})",
 
   // Analysis
   "analysis.tab.distributions": "Verteilungen",
@@ -2394,6 +2415,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "assetType.CRYPTO": "Kryptowährung",
   "assetType.COMMODITY": "Rohstoff",
   "assetType.CASH": "Bargeld",
+  "assetType.OTHER": "Sonstiges",
   "assetType.BOND": "Anleihe",
 
   // Legal
@@ -3396,6 +3418,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   "cashInterest.amount": "Importe",
   "cashInterest.bookAll": "Registrar {count} abono(s)",
   "cashInterest.error": "No se pudieron registrar los intereses. Inténtalo de nuevo.",
+  "valuation.title": "Valoración",
+  "valuation.intro": "Esta posición no tiene precio de mercado. Introduce su valor en cualquier fecha; la entrada más reciente es su valor actual.",
+  "valuation.dateLabel": "Fecha",
+  "valuation.valueLabel": "Valor ({currency})",
+  "valuation.add": "Añadir valoración",
+  "valuation.empty": "Aún no hay valoraciones. Añade una para empezar a seguir el valor de esta posición.",
+  "valuation.current": "Valor actual: {value} (a fecha de {date})",
+  "valuation.remove": "Eliminar valoración",
+  "valuation.error": "No se pudo guardar la valoración. Inténtalo de nuevo.",
+  "addAsset.otherValue": "Valor actual ({currency})",
 
   // Analysis
   "analysis.tab.distributions": "Distribuciones",
@@ -3747,6 +3779,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "assetType.CRYPTO": "Criptomoneda",
   "assetType.COMMODITY": "Materia prima",
   "assetType.CASH": "Efectivo",
+  "assetType.OTHER": "Otro",
   "assetType.BOND": "Bono",
 
   // Legal

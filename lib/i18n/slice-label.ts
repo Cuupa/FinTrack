@@ -15,6 +15,7 @@ const LABEL_KEYS: Record<string, MessageKey> = {
   CRYPTO: "assetType.CRYPTO",
   COMMODITY: "assetType.COMMODITY",
   CASH: "assetType.CASH",
+  OTHER: "assetType.OTHER",
 
   // Sentinel buckets (byCustom, byCountry, lookThrough). "Cash" (title case,
   // the lookThrough sector/region bucket) is a distinct string from "CASH"

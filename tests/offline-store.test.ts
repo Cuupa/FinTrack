@@ -161,6 +161,10 @@ function makeInner(initial: PortfolioData) {
       calls.push("setAssetTags");
       guard();
     },
+    async setAssetValuations() {
+      calls.push("setAssetValuations");
+      guard();
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       guard();

@@ -38,6 +38,7 @@ import {
 } from "../types";
 import { useAuth } from "../auth/auth-context";
 import { useFeatureFlag } from "../flags/flags-context";
+import { setManualValuations } from "../finance/manual-valuation";
 
 interface PortfolioContextValue {
   /** Portfolio data scoped to the currently-selected portfolios. */
@@ -75,6 +76,8 @@ interface PortfolioContextValue {
   renameTagGroup(id: string, name: string): Promise<void>;
   deleteTagGroup(id: string): Promise<void>;
   setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
+  /** Replace-set an OTHER asset's manual valuation points. */
+  setAssetValuations(assetId: string, points: { date: string; value: number }[]): Promise<void>;
   saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -357,6 +360,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setAssetValuations = useCallback(
+    async (assetId: string, points: { date: string; value: number }[]) => {
+      await store.setAssetValuations(assetId, points);
+      setData((d) => {
+        const others = d.valuationPoints.filter((p) => p.assetId !== assetId);
+        return {
+          ...d,
+          valuationPoints: [
+            ...others,
+            ...points.map((p) => ({ assetId, date: p.date, value: p.value })),
+          ],
+        };
+      });
+    },
+    [store],
+  );
+
   const saveLlmConfig = useCallback(
     async (config: LlmConfig | null) => {
       await store.saveLlmConfig(config);
@@ -433,6 +453,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  // Feed OTHER assets' manual valuation points into the PriceProvider seam's
+  // registry (lib/finance/manual-valuation.ts), which prices.ts reads
+  // synchronously — exactly like the catalog cache. Done in a render-time
+  // useMemo (not an effect) so the parent updates the registry BEFORE any
+  // child renders and calls the finance layer, guaranteeing they read fresh
+  // values without threading a version through every memo. Idempotent.
+  useMemo(
+    () => setManualValuations(data.assets, data.valuationPoints),
+    [data.assets, data.valuationPoints],
+  );
+
   const allIds = data.portfolios.map((p) => p.id);
   const activeIds = selectedIds ?? allIds;
   const activeKey = activeIds.join(",");
@@ -470,6 +501,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     renameTagGroup,
     deleteTagGroup,
     setAssetTags,
+    setAssetValuations,
     saveLlmConfig,
     setCurrency,
     updateProfile,

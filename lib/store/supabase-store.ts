@@ -22,6 +22,7 @@ import {
   type TagAssignments,
   type TagGroup,
   type Transaction,
+  type ValuationPoint,
   type WatchlistItem,
 } from "../types";
 
@@ -148,6 +149,7 @@ export class SupabaseStore implements DataStore {
       plansRes,
       tagGroupsRes,
       assetTagsRes,
+      valuationsRes,
       llmSettingsRes,
     ] = await Promise.all([
       this.supabase
@@ -192,6 +194,11 @@ export class SupabaseStore implements DataStore {
         .select("asset_id, group_id, value")
         .eq("user_id", this.userId),
       this.supabase
+        .from("asset_valuations")
+        .select("asset_id, valued_on, value")
+        .eq("user_id", this.userId)
+        .order("valued_on", { ascending: true }),
+      this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
         .eq("user_id", this.userId)
@@ -204,6 +211,7 @@ export class SupabaseStore implements DataStore {
     if (plansRes.error) throw plansRes.error;
     if (tagGroupsRes.error) throw tagGroupsRes.error;
     if (assetTagsRes.error) throw assetTagsRes.error;
+    if (valuationsRes.error) throw valuationsRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
@@ -308,6 +316,10 @@ export class SupabaseStore implements DataStore {
       (byGroup[r.group_id] ??= []).push(r.value);
     }
 
+    const valuationPoints: ValuationPoint[] = (
+      (valuationsRes.data ?? []) as { asset_id: string; valued_on: string; value: number | string }[]
+    ).map((r) => ({ assetId: r.asset_id, date: r.valued_on, value: Number(r.value) }));
+
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
@@ -326,6 +338,7 @@ export class SupabaseStore implements DataStore {
       savingsPlans,
       tagGroups,
       tagAssignments,
+      valuationPoints,
       llmConfig,
     };
   }
@@ -666,6 +679,30 @@ export class SupabaseStore implements DataStore {
         asset_id: assetId,
         group_id: groupId,
         value,
+      })),
+    );
+    if (insErr) throw insErr;
+  }
+
+  async setAssetValuations(
+    assetId: string,
+    points: { date: string; value: number }[],
+  ): Promise<void> {
+    // Replace-set: clear the asset's points, then re-insert — idempotent and
+    // replay-safe regardless of how many times it's applied (like setAssetTags).
+    const { error: delErr } = await this.supabase
+      .from("asset_valuations")
+      .delete()
+      .eq("asset_id", assetId)
+      .eq("user_id", this.userId);
+    if (delErr) throw delErr;
+    if (points.length === 0) return;
+    const { error: insErr } = await this.supabase.from("asset_valuations").insert(
+      points.map((p) => ({
+        user_id: this.userId,
+        asset_id: assetId,
+        valued_on: p.date,
+        value: p.value,
       })),
     );
     if (insErr) throw insErr;

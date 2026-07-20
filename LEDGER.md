@@ -82,6 +82,54 @@ NOTE: F10's optional "per-tag-group targets" sub-idea is NOT built - the core
 gap (targets forgotten on reload) + invest-new-money are done. Per-tag targets
 would be a follow-up enhancement, flagged here rather than silently dropped.
 
-## F8 - OTHER manual-valuation asset (closes G9). Effort M. (pending - larger:
-AssetType union ripple + a manual valuation-point price series through the
-PriceProvider seam; deferred to a later round over F7/F10.)
+## F8 - OTHER manual-valuation asset (closes most of G9). Effort M. DONE.
+
+Design (orchestrator): a new `AssetType` `OTHER` (real estate, collectibles,
+unlisted holdings). The user enters dated valuation points; those points form
+the asset's price series **through the PriceProvider seam** exactly as the plan
+intends. A module-level registry (`lib/finance/manual-valuation.ts`, mirroring
+the catalog cache that prices.ts already reads synchronously) maps price key ->
+sorted points; `prices.ts` `currentPrice`/`priceOn` return the manual value for
+OTHER assets, falling back to synthetic only before any point exists. Because
+everything (summarize, net worth, allocation, detail chart) already routes
+through prices.ts, no per-caller history threading is needed. The registry is
+repopulated in the PortfolioProvider during render (useMemo, parent-before-child
+render order guarantees children see fresh values - no version thread).
+
+- Data: `ValuationPoint {assetId, date (YYYY-MM-DD), value (per-unit, native)}`;
+  `PortfolioData.valuationPoints`. Store seam replace-set `setAssetValuations(
+  assetId, [{date,value}])` (idempotent/replay-safe like setAssetTags). LocalStore
+  blob + deleteAsset cascade; SupabaseStore `asset_valuations` table + load;
+  OfflineStore mirror+queue; sync replay; mutation-queue op.
+- Finance: registry module + prices.ts (currentPrice/priceOn/hasManualValuation)
+  + portfolio.ts (isSyntheticPrice, priceFactor=1 for OTHER-with-points,
+  netWorthSeries synthetic flag, assetPriceSeries synthetic flag). stats.ts
+  GENERAL[OTHER] + allocation.ts (volForAsset, lookThrough OTHER bucket).
+- UI: add-asset-form (OTHER = name-only manual entry, seeds first valuation
+  point from the opening tx, flag-gated type button); asset-detail
+  `ValuationSection` (add/edit/delete points, gated held+OTHER+flag), dividends
+  skipped for OTHER; asset-table TYPE_FILTERS. Flag `manualValuation` seeded
+  disabled. i18n en/de/es. schema.sql + migration 0079. Vitest over registry.
+
+- [x] F8a. types.ts: AssetType/ASSET_TYPES + OTHER; ValuationPoint +
+      PortfolioData.valuationPoints + emptyPortfolio.
+- [x] F8b. lib/finance/manual-valuation.ts registry + pure lookups + tests.
+- [x] F8c. prices.ts + portfolio.ts + stats.ts + allocation.ts + slice-label.ts.
+- [x] F8d. store seam: types, local, supabase, offline, mutation-queue, sync.
+- [x] F8e. portfolio-context: data field, setAssetValuations mutation, registry
+      populate useMemo. flags-context union. schema.sql + migration 0079.
+- [x] F8f. add-asset-form, valuation-section, asset-detail wiring, asset-table.
+- [x] F8g. i18n en/de/es. lint+tsc clean, vitest 770 pass (6 new registry
+      tests), build green. Verified Guest Mode EN+DE: added an OTHER asset via
+      manual entry (qty prefilled 1), it shows in the holdings table + net
+      worth; detail page renders the Valuation section (sortable DATE/VALUE
+      table, row hover, current-value line), adding a 345k point moved the
+      current value + headline + chart line + unrealized P&L (+15%/45k vs the
+      300k basis); DE "Bewertung"/"Sonstiges" correct, du-register, no formal
+      "Sie", no badges. EN "Valuation"/"Other" correct.
+
+NOTE: Deliberate scope boundary (matches the plan's "bonds stay out"): an OTHER
+asset's risk/Monte-Carlo stats still fall back to the synthetic daily series
+(stats.ts dailyPrices), since sparse manual points don't yield a daily return
+series. Net worth, allocation, P&L and the detail chart are all exact. Bonds
+and per-unit-vs-total nuance out of scope.

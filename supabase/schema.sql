@@ -409,6 +409,23 @@ create index if not exists asset_tags_asset_id_idx on public.asset_tags (asset_i
 create index if not exists asset_tags_group_id_idx on public.asset_tags (group_id);
 create index if not exists asset_tags_user_id_idx on public.asset_tags (user_id);
 
+-- Manual valuation points for OTHER assets (COMPETITION.md F8): real estate,
+-- collectibles, unlisted holdings the user values by hand. One row per (asset,
+-- date); `setAssetValuations` replaces an asset's full set by delete-then-
+-- insert, so replay is idempotent. Rides the DataStore seam like tags above.
+create table if not exists public.asset_valuations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  asset_id uuid not null references public.assets (id) on delete cascade,
+  valued_on date not null,
+  value numeric not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists asset_valuations_unique_key
+  on public.asset_valuations (asset_id, valued_on);
+create index if not exists asset_valuations_asset_id_idx on public.asset_valuations (asset_id);
+create index if not exists asset_valuations_user_id_idx on public.asset_valuations (user_id);
+
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its
 -- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
@@ -544,7 +561,8 @@ insert into public.schema_migrations (version) values
   ('0075_dividend_calendar_flag'),
   ('0076_push_notifications'),
   ('0077_cash_interest'),
-  ('0078_rebalance_targets')
+  ('0078_rebalance_targets'),
+  ('0079_manual_valuation')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -557,6 +575,7 @@ alter table public.watchlist_items enable row level security;
 alter table public.savings_plans enable row level security;
 alter table public.tag_groups enable row level security;
 alter table public.asset_tags enable row level security;
+alter table public.asset_valuations enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
@@ -636,6 +655,10 @@ create policy "own savings plans" on public.savings_plans
 
 drop policy if exists "own tag groups" on public.tag_groups;
 create policy "own tag groups" on public.tag_groups
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own asset valuations" on public.asset_valuations;
+create policy "own asset valuations" on public.asset_valuations
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own asset tags" on public.asset_tags;
@@ -829,6 +852,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('cashInterest', false, 'Interest-bearing cash (annual rate + accrual review on CASH assets)')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('manualValuation', false, 'Manual-valuation OTHER assets (real estate, collectibles) with user-entered valuation points')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

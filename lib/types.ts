@@ -2,7 +2,7 @@
 
 import type { LlmProviderId } from "./llm/types";
 
-export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "COMMODITY" | "CASH";
+export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "COMMODITY" | "CASH" | "OTHER";
 // BOOKING is a cost-free crediting of shares — e.g. an
 // employer's vermögenswirksame Leistung or a gift. It adds shares at ZERO cost
 // basis, so their full current value counts as profit. INTEREST is interest
@@ -17,7 +17,7 @@ export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "COMMODITY" | "CASH";
 // multiplied again.
 export type TransactionType = "BUY" | "SELL" | "BOOKING" | "INTEREST" | "SPLIT";
 
-export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "COMMODITY", "CASH"];
+export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "COMMODITY", "CASH", "OTHER"];
 
 /** Per-user configuration (PRD: `profiles`). */
 export interface Profile {
@@ -91,6 +91,22 @@ export interface Asset {
   /** CASH only: how often interest is credited/compounded. Null/undefined when
    *  no rate is set. */
   interestFrequency?: InterestFrequency | null;
+}
+
+/**
+ * One user-entered valuation of an OTHER (manual-valuation) asset on a date:
+ * real estate, collectibles, unlisted holdings that no market data source can
+ * price. These points form the asset's price series through the PriceProvider
+ * seam (`lib/finance/manual-valuation.ts` → `lib/finance/prices.ts`). `value`
+ * is the per-unit price in the asset's native currency (an OTHER asset is
+ * normally held as a single unit, so per-unit == total).
+ */
+export interface ValuationPoint {
+  assetId: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** Per-unit value in the asset's native currency. */
+  value: number;
 }
 
 /** How often a cash position's interest is credited and compounded. */
@@ -248,6 +264,8 @@ export interface PortfolioData {
   savingsPlans: SavingsPlan[];
   tagGroups: TagGroup[];
   tagAssignments: TagAssignments;
+  /** Manual valuation points for OTHER assets (see `ValuationPoint`). */
+  valuationPoints: ValuationPoint[];
   /** null = no key configured. */
   llmConfig: LlmConfig | null;
 }
@@ -277,6 +295,7 @@ export function emptyPortfolio(): PortfolioData {
     savingsPlans: [],
     tagGroups: [],
     tagAssignments: {},
+    valuationPoints: [],
     llmConfig: null,
   };
 }

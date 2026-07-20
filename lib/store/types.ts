@@ -75,6 +75,12 @@ export interface DataStore {
    */
   setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
   /**
+   * Replace-set the manual valuation points for one OTHER asset (idempotent,
+   * replay-safe like `setAssetTags`). The given array becomes exactly the
+   * asset's points; an empty array clears them.
+   */
+  setAssetValuations(assetId: string, points: { date: string; value: number }[]): Promise<void>;
+  /**
    * Replace-set the user's BYO LLM config (replay-idempotent like
    * `setAssetTags`). `null` removes it entirely (the settings "Remove key"
    * action).

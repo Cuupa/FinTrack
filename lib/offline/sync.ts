@@ -144,6 +144,14 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       await inner.setAssetTags(assetId, groupId, values);
       return;
     }
+    case "setAssetValuations": {
+      const { assetId, points } = op.payload as {
+        assetId: string;
+        points: { date: string; value: number }[];
+      };
+      await inner.setAssetValuations(assetId, points);
+      return;
+    }
     case "saveLlmConfig":
       await inner.saveLlmConfig(op.payload as LlmConfig | null);
       return;

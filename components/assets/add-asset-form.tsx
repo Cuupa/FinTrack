@@ -15,7 +15,7 @@ import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { orderFee } from "@/lib/finance/fees";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
-import { nowDateTimeLocal } from "@/lib/finance/dates";
+import { dateKey, nowDateTimeLocal } from "@/lib/finance/dates";
 import { isStorageFullError } from "@/lib/store/errors";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
@@ -45,10 +45,18 @@ export function AddAssetForm({
    * (e.g. when embedded from a non-held instrument's "Add to portfolio"). */
   initialQuery?: string;
 }) {
-  const { addAsset, addTransaction, createPortfolio, data, portfolios, selectedPortfolioIds } =
-    usePortfolio();
+  const {
+    addAsset,
+    addTransaction,
+    setAssetValuations,
+    createPortfolio,
+    data,
+    portfolios,
+    selectedPortfolioIds,
+  } = usePortfolio();
   const { t: tr } = useI18n();
   const billingEnabled = useFeatureFlag("billing");
+  const manualValuationEnabled = useFeatureFlag("manualValuation");
   const { limit: portfoliosLimit } = usePlanLimit("portfolios");
   // Plan-limit cap (MONETIZATION.md Phase 4): this inline "+ New portfolio"
   // footer calls the same createPortfolio mutation as the header picker
@@ -101,7 +109,8 @@ export function AddAssetForm({
    */
   async function fetchPrice(q: string, currency: string, t: AssetType) {
     const query = q.trim();
-    if (!query || t === "CASH" || t === "CRYPTO" || t === "COMMODITY") return; // crypto/commodity need a catalog id
+    // crypto/commodity need a catalog id; OTHER assets have no market price.
+    if (!query || t === "CASH" || t === "CRYPTO" || t === "COMMODITY" || t === "OTHER") return;
     setFetchingPrice(true);
     try {
       const p = await fetchLivePrice(query, currency);
@@ -112,6 +121,9 @@ export function AddAssetForm({
   }
 
   const isCash = type === "CASH";
+  // OTHER (manual-valuation) assets: name-only master data, no identifier, no
+  // market-price lookup. The opening "price" is the current value.
+  const isOther = type === "OTHER";
   // A resolved import (or chosen manual type) reveals the rest of the form.
   const ready = importStatus === "found" || manual;
 
@@ -197,6 +209,9 @@ export function AddAssetForm({
       if (!name.trim()) setName("Gold");
       if (!price.trim()) setPrice(String(round(currentPrice("XAU", "COMMODITY"))));
     }
+    // A manual-valuation holding is normally a single unit (a property, a
+    // painting) — prefill quantity 1 so the entered value IS the total.
+    if (next === "OTHER" && !quantity.trim()) setQuantity("1");
   }
 
   function startManual() {
@@ -258,6 +273,11 @@ export function AddAssetForm({
         tax: 0,
         date: executedAt,
       });
+      // Seed the first valuation point for an OTHER asset: the acquisition value
+      // on the acquisition date. Further points are added on the detail page.
+      if (isOther) {
+        await setAssetValuations(asset.id, [{ date: dateKey(executedAt), value: px }]);
+      }
       // Constituents are populated server-side by the sync-constituents cron
       // (the ensure endpoint is now secret-gated), so nothing to trigger here.
       onDone?.();
@@ -374,7 +394,7 @@ export function AddAssetForm({
           <div>
             <label className="text-sm font-medium">{tr("addAsset.type")}</label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {ASSET_TYPES.map((t) => {
+              {ASSET_TYPES.filter((t) => t !== "OTHER" || manualValuationEnabled).map((t) => {
                 const disabled = t === "CASH" && cashTaken;
                 return (
                   <button
@@ -416,6 +436,7 @@ export function AddAssetForm({
           </div>
 
           {!isCash &&
+            !isOther &&
             (type === "CRYPTO" || type === "COMMODITY" ? (
               <div>
                 <label className="text-sm font-medium" htmlFor="symbol">
@@ -520,7 +541,9 @@ export function AddAssetForm({
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium" htmlFor="price">
-                    {tr("addAsset.price", { currency: assetCurrency })}
+                    {isOther
+                      ? tr("addAsset.otherValue", { currency: assetCurrency })
+                      : tr("addAsset.price", { currency: assetCurrency })}
                   </label>
                   {(type === "STOCK" || type === "ETF") && (isin || symbol) && (
                     <button

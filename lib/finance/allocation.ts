@@ -123,6 +123,8 @@ function volForAsset(h: HoldingSummary): number {
   if (inst) return inst.vol;
   if (h.asset.type === "CRYPTO") return 0.7;
   if (h.asset.type === "ETF" || h.asset.type === "COMMODITY") return 0.16;
+  // Manual-valuation assets (real estate, collectibles) are illiquid/low-vol.
+  if (h.asset.type === "OTHER") return 0.1;
   return 0.3;
 }
 
@@ -183,6 +185,9 @@ function lookThrough(
       add(field === "region" ? "Crypto" : "Digital Assets", h.marketValue);
     } else if (type === "COMMODITY") {
       add("Commodities", h.marketValue);
+    } else if (type === "OTHER") {
+      // Manual-valuation assets have no sector/region — pool into "Other".
+      other += h.marketValue;
     } else {
       add("Cash", h.marketValue);
     }

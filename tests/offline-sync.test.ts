@@ -207,6 +207,12 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       else delete nextByGroup[groupId];
       data.tagAssignments = { ...data.tagAssignments, [assetId]: nextByGroup };
     },
+    async setAssetValuations(assetId, points) {
+      calls.push(`setAssetValuations:${assetId}`);
+      maybeFail();
+      const others = data.valuationPoints.filter((p) => p.assetId !== assetId);
+      data.valuationPoints = [...others, ...points.map((p) => ({ assetId, ...p }))];
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       maybeFail();

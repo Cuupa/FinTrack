@@ -29,6 +29,7 @@ export type MutationOp =
   | "renameTagGroup"
   | "deleteTagGroup"
   | "setAssetTags"
+  | "setAssetValuations"
   | "saveLlmConfig"
   | "createPortfolio"
   | "renamePortfolio"

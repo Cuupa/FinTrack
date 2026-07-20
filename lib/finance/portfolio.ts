@@ -14,7 +14,7 @@ import {
   today,
   type Timeframe,
 } from "./dates";
-import { currentPrice, nativeCurrency, priceOn } from "./prices";
+import { currentPrice, hasManualValuation, nativeCurrency, priceOn } from "./prices";
 import { priceAtFrom, priceAtWithHeadTolerance, type HistoryMap } from "../history/history";
 
 export interface Position {
@@ -143,6 +143,9 @@ function anchorTx(txs: Transaction[]): { date: string; price: number } | null {
 function priceFactor(asset: Asset, txs: Transaction[], v?: ValuationContext): number {
   if (asset.type === "CASH") return 1;
   const key = assetPriceKey(asset);
+  // OTHER assets: `currentPrice`/`priceOn` already return the user's manual
+  // valuation directly — never rescale it to a live quote or a tx anchor.
+  if (asset.type === "OTHER" && hasManualValuation(key)) return 1;
   const lp = v?.live?.[key];
   if (lp && lp > 0) {
     const synth = currentPrice(key, asset.type);
@@ -211,7 +214,11 @@ function rateOn(currency: string, date: string, v?: ValuationContext): number {
  */
 function isSyntheticPrice(asset: Asset, v?: ValuationContext): boolean {
   if (asset.type === "CASH") return false;
-  const lp = v?.live?.[assetPriceKey(asset)];
+  const key = assetPriceKey(asset);
+  // OTHER assets are priced from the user's own entered valuation points —
+  // real data, not a fabricated placeholder — once at least one point exists.
+  if (asset.type === "OTHER") return !hasManualValuation(key);
+  const lp = v?.live?.[key];
   return !(lp && lp > 0);
 }
 
@@ -389,9 +396,10 @@ export function netWorthSeries(
       // Prefer real historical price (tolerating a small gap at the window's
       // head); fall back to the (live-anchored) synthetic.
       const real = hist ? priceAtWithHeadTolerance(hist, date, HEAD_GAP_TOLERANCE_DAYS) : null;
-      // CASH is fixed at 1 by definition — never an estimate — so it never
-      // trips the synthetic flag (mirrors isSyntheticPrice above).
-      if (real == null && asset.type !== "CASH") containsSynthetic = true;
+      // CASH is fixed at 1 by definition, and an OTHER asset's manual valuation
+      // is real user data — neither is an estimate, so neither trips the
+      // synthetic flag (mirrors isSyntheticPrice above).
+      if (real == null && asset.type !== "CASH" && !hasManualValuation(key)) containsSynthetic = true;
       const native = real != null ? real : priceOn(key, asset.type, date) * factor;
       value += shares * native * rateOn(cur, date, v);
     }
@@ -547,7 +555,10 @@ export function assetPriceSeries(
     date,
     value: priceOn(key, asset.type, date) * factor,
   }));
-  return { points, synthetic: true };
+  // OTHER assets draw this series from the user's own valuation points (via
+  // priceOn) — real data, not the fabricated synthetic walk.
+  const manual = asset.type === "OTHER" && hasManualValuation(key);
+  return { points, synthetic: !manual };
 }
 
 /**

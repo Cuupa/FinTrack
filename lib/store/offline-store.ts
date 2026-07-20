@@ -291,6 +291,17 @@ export class OfflineStore implements DataStore {
     }
   }
 
+  async setAssetValuations(assetId: string, points: { date: string; value: number }[]): Promise<void> {
+    await this.mirror.setAssetValuations(assetId, points);
+    // Keyed by assetId; the replay reads assetId/points from the payload, and
+    // replace-set makes it idempotent regardless of ordering (like setAssetTags).
+    try {
+      await this.inner.setAssetValuations(assetId, points);
+    } catch (err) {
+      await this.handleFailure(err, "setAssetValuations", assetId, { assetId, points });
+    }
+  }
+
   async saveLlmConfig(config: LlmConfig | null): Promise<void> {
     await this.mirror.saveLlmConfig(config);
     try {

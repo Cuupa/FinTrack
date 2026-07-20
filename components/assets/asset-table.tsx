@@ -23,7 +23,15 @@ import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
 type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
 
-const TYPE_FILTERS: (AssetType | "ALL")[] = ["ALL", "ETF", "STOCK", "CRYPTO", "COMMODITY", "CASH"];
+const TYPE_FILTERS: (AssetType | "ALL")[] = [
+  "ALL",
+  "ETF",
+  "STOCK",
+  "CRYPTO",
+  "COMMODITY",
+  "CASH",
+  "OTHER",
+];
 
 /** Shares below this are treated as fully liquidated (float dust). */
 const SHARE_EPS = 1e-9;

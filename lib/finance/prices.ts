@@ -8,6 +8,7 @@
 
 import { assetPriceKey, type Asset, type AssetType } from "../types";
 import { lookupInstrument, type Instrument, type QuoteSource } from "../catalog/catalog";
+import { manualCurrentPrice, manualPriceOn } from "./manual-valuation";
 import { addDays, daysBetween, parseISODate, today } from "./dates";
 
 export interface QuoteRef {
@@ -114,6 +115,12 @@ export function resetPriceCache(): void {
 /** Current synthetic price (native currency) for a price key. */
 export function currentPrice(key: string, type: AssetType): number {
   if (type === "CASH") return 1;
+  // OTHER (manual-valuation) assets: the user's latest entered value is the
+  // price; fall back to synthetic only until the first point exists.
+  if (type === "OTHER") {
+    const v = manualCurrentPrice(key);
+    if (v != null) return v;
+  }
   const s = buildSeries(key);
   return s[s.length - 1];
 }
@@ -121,6 +128,10 @@ export function currentPrice(key: string, type: AssetType): number {
 /** Historical synthetic price (native currency) for a price key on a date. */
 export function priceOn(key: string, type: AssetType, isoDate: string): number {
   if (type === "CASH") return 1;
+  if (type === "OTHER") {
+    const v = manualPriceOn(key, isoDate);
+    if (v != null) return v;
+  }
   const s = buildSeries(key);
   const idx = daysBetween(HISTORY_START, isoDate);
   if (idx <= 0) return s[0];
@@ -198,3 +209,4 @@ export function quoteItemFor(
 }
 
 export { parseISODate, addDays };
+export { hasManualValuation } from "./manual-valuation";

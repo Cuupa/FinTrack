@@ -107,6 +107,8 @@ export class LocalStore implements DataStore {
         // (they used to live in a separate `fintrack-tags` key entirely).
         tagGroups: parsed.tagGroups ?? [],
         tagAssignments: parsed.tagAssignments ?? {},
+        // Backfill blobs saved before manual-valuation (OTHER) assets existed.
+        valuationPoints: parsed.valuationPoints ?? [],
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -182,6 +184,8 @@ export class LocalStore implements DataStore {
       delete tagAssignments[id];
       data.tagAssignments = tagAssignments;
     }
+    // Cascade: valuation points belong to their asset.
+    data.valuationPoints = data.valuationPoints.filter((p) => p.assetId !== id);
     this.write(data);
     this.pruneImportedFingerprints(removedIds);
   }
@@ -306,6 +310,13 @@ export class LocalStore implements DataStore {
     this.write(data);
   }
 
+  async setAssetValuations(assetId: string, points: { date: string; value: number }[]) {
+    const data = this.read();
+    const others = data.valuationPoints.filter((p) => p.assetId !== assetId);
+    data.valuationPoints = [...others, ...points.map((p) => ({ assetId, date: p.date, value: p.value }))];
+    this.write(data);
+  }
+
   async saveLlmConfig(config: LlmConfig | null) {
     const data = this.read();
     data.llmConfig = config;
@@ -378,6 +389,8 @@ export class LocalStore implements DataStore {
       if (assetIds.has(assetId)) tagAssignments[assetId] = byGroup;
     }
     data.tagAssignments = tagAssignments;
+    // Cascade valuation points of assets removed along with the portfolio.
+    data.valuationPoints = data.valuationPoints.filter((p) => assetIds.has(p.assetId));
     this.write(data);
     // Prune fingerprints for the removed transactions so re-importing the same
     // CSV after deleting a portfolio doesn't skip rows as "already imported".

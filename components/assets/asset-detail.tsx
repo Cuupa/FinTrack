@@ -59,6 +59,7 @@ import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { CashInterestSection } from "@/components/assets/cash-interest-section";
+import { ValuationSection } from "@/components/assets/valuation-section";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import {
@@ -104,6 +105,7 @@ export function AssetDetail({
   const savingsPlansEnabled = useFeatureFlag("savingsPlans");
   const splitDetectionEnabled = useFeatureFlag("splitDetection");
   const cashInterestEnabled = useFeatureFlag("cashInterest");
+  const manualValuationEnabled = useFeatureFlag("manualValuation");
   const billingEnabled = useFeatureFlag("billing");
   const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
@@ -311,7 +313,7 @@ export function AssetDetail({
   // already empty for it above, so this fetches nothing).
   const { dividends: divMap } = useDividends(histItems);
   const dividends = useMemo(() => {
-    if (!asset || asset.type === "CASH") return [];
+    if (!asset || asset.type === "CASH" || asset.type === "OTHER") return [];
     const key = histItems[0]?.key;
     return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
   }, [divMap, histItems, txs, asset]);
@@ -758,6 +760,10 @@ export function AssetDetail({
 
         {held && asset.type === "CASH" && cashInterestEnabled && (
           <CashInterestSection asset={asset} txs={txs} />
+        )}
+
+        {held && asset.type === "OTHER" && manualValuationEnabled && (
+          <ValuationSection asset={asset} />
         )}
 
         {constituents.length > 0 && (
