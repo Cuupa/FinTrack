@@ -216,4 +216,28 @@ Files:
       `.next/dev/types` cache artifact), vitest (61 files/713 passed/4
       skipped, up from 705), dictionaries-es parity (3 passed), and
       production build (green) myself.
-- [x] F9d. Commit (below)
+- [x] F9d. Commit (c60ee97)
+
+## Round close-out
+
+Three COMPETITION.md items shipped this round: F1 (Portfolio Performance CSV
+import, closes G2), F3 (SPLIT transaction type, closes G6), F9 (custom
+benchmark overlays by any ISIN/WKN/symbol, closes G10). Each independently
+lint/tsc/test/build-verified by the orchestrator after the subworker's own
+pass, not just trusted. Two subworker mistakes were caught and fixed before
+commit: F1's English-locale test fixture didn't actually exercise the
+quoted-comma path its comment claimed to; F9's dedup logic compared the
+wrong field (`.id` instead of `.item.key`) and would never have caught a
+real duplicate — the orchestrator's own spec had that bug, the subworker
+caught and fixed it. F3's design phase (before delegating) independently
+found a would-be tax-report-corrupting bug by reading `trades.ts`/`tax.ts`
+first: an implicit "anything that isn't BUY/BOOKING/INTEREST is a SELL"
+replay pattern that a SPLIT row would have fallen into.
+
+Commits: 3b907f7 (F1), 2b6aca7 (F3), c60ee97 (F9).
+
+Remaining COMPETITION.md backlog for a future round: F2 (PDF import, L
+effort, deferred), Wave 2 (F4 dividend calendar, F5 push notifications, F6
+Vorabpauschale estimator), Wave 3 remainder (F7 interest-bearing cash, F8
+manual-valuation asset class, F10 persisted rebalancing targets). The
+deliberate non-goals (G3 broker auto-sync, G12-G15) are unchanged.
