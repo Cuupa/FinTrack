@@ -472,7 +472,37 @@ FX-convert) always beats a wrong instrument in the right currency.
   forecast (`projectDividends`, pure) projects trailing per-share events at
   the CURRENT share count, deliberately independent of received-payment
   history — a payer bought today still forecasts; only received figures scale
-  by shares held on each pay date.
+  by shares held on each pay date. **Announced dividend calendar**
+  (COMPETITION.md F4, flag `dividendCalendar`): confirmed upcoming ex/pay
+  dates come from Yahoo `quoteSummary.calendarEvents` (`announcedByQuery` /
+  `/api/dividends/calendar` / `useAnnouncedDividends`, hint-authoritative like
+  dividends). Unlike the keyless v8 chart, quoteSummary needs a cookie+crumb
+  (`getCrumb`/`quoteSummaryJSON` in yahoo.ts) — it **fails soft to null**, so
+  the forecast keeps its trailing projection. The pure `applyAnnouncedDate`
+  re-dates the next projected payment to the confirmed date and flags it
+  `confirmed`; the projection stays the fallback.
+- **Vorabpauschale estimator** (`tax.ts` `estimateVorabpauschaleByYear` /
+  `fundVorabpauschale`, COMPETITION.md F6, flag `vorabEstimate`): per fund per
+  completed year, `startValue x Basiszins x 0.7 − distributions`, capped at the
+  value gain. Basiszins is DB-seeded reference data (`basiszins` table,
+  world-readable, `useBasiszins`) — never hardcoded. RAW (pre-Teilfreistellung,
+  applied downstream); fills the manual `taxVorabpauschale` slot per year, the
+  manual entry always overrides.
+
+### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
+
+Opt-in per event (dividend pay-day, savings-plan due) in settings, **registered
+only**, seeded **disabled**. Strictly reminders, never marketing. VAPID keys
+are DB-first (`app_settings.vapid_*`) with a `VAPID_*` env fallback, resolved by
+`getVapidKeys()` (`lib/server/push-keys.ts`) mirroring `getStripeKeys` exactly;
+the public key is served by `/api/push/vapid`. Subscriptions live in
+`push_subscriptions` (own-row RLS, per-sub prefs, `last_notified_on` de-dupe);
+`/api/push/subscribe`+`/unsubscribe` use session-bearer auth. The daily cron
+`/api/cron/sync/push` (in the bulk sync, skips cleanly with no keys) computes
+due savings plans + due dividends (announced payDate == today), sends localized
+payloads via the `web-push` library (`lib/server/push.ts`), and deletes dead
+subscriptions on 404/410. SW `push`/`notificationclick` handlers in
+`public/sw.js`; client subscribe/unsubscribe in `lib/push/client.ts`.
 
 ### Routes
 
@@ -549,7 +579,11 @@ client pages (see `app/assets/[id]/page.tsx`).
   (market-data calls are server-side by design).
 - **All Yahoo traffic goes through `getJSON` in `lib/server/yahoo.ts`**, which
   carries the concurrency semaphore, 429/503 backoff + cooldown breaker, and
-  TTL caches. Never fetch Yahoo endpoints directly from elsewhere.
+  TTL caches. Never fetch Yahoo endpoints directly from elsewhere. The one
+  exception is the crumb-authenticated `quoteSummaryJSON` (announced dividend
+  calendar, F4): `quoteSummary` needs a cookie+crumb the keyless v8 chart
+  doesn't, so it has its own fetch — but it still shares the same semaphore +
+  cooldown breaker and fails soft (any error → null).
 - `shared_portfolios` inserts are **server-only** (secret key via
   `/api/share`; the anon RLS insert policy was dropped). The route enforces a
   256 KB payload cap and DB-backed rate limits. `instruments` has unique
