@@ -7,7 +7,15 @@ export type AssetType = "ETF" | "STOCK" | "CRYPTO" | "COMMODITY" | "CASH";
 // employer's vermögenswirksame Leistung or a gift. It adds shares at ZERO cost
 // basis, so their full current value counts as profit. INTEREST is interest
 // credited to a cash position — also zero cost basis, and counts as return.
-export type TransactionType = "BUY" | "SELL" | "BOOKING" | "INTEREST";
+// SPLIT is a stock split / corporate action: its `quantity` field holds the
+// ratio (new shares per old share — 2 for a 2-for-1 forward split, 0.5 for a
+// 1-for-2 reverse split), and `price`/`fee`/`tax` are always 0. It multiplies
+// the shares held immediately before it by the ratio and divides the running
+// average cost per share by the ratio, so total cost basis (shares ×
+// avgCost) is unchanged. It is order-dependent: shares bought after the
+// split are already recorded in post-split units by the user and must not be
+// multiplied again.
+export type TransactionType = "BUY" | "SELL" | "BOOKING" | "INTEREST" | "SPLIT";
 
 export const ASSET_TYPES: AssetType[] = ["ETF", "STOCK", "CRYPTO", "COMMODITY", "CASH"];
 

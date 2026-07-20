@@ -213,6 +213,14 @@ export function taxYearBreakdown(
         const ns = shares + t.quantity;
         avgCost = ns > 0 ? (shares * avgCost + cost) / ns : 0;
         shares = ns;
+      } else if (t.type === "SPLIT") {
+        // Stock split: quantity is the ratio. Scales shares/avgCost only —
+        // never a taxable event, so it must not fall into the SELL arm below.
+        const ratio = t.quantity;
+        if (ratio > 0) {
+          shares *= ratio;
+          avgCost = avgCost / ratio;
+        }
       } else {
         // SELL. CASH sells are withdrawals, not taxable events: no bucket
         // contribution, but shares/avgCost still advance below.

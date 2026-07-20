@@ -60,6 +60,15 @@ export function computePosition(txs: Transaction[]): Position {
       const newShares = shares + t.quantity;
       avgCost = newShares > 0 ? (shares * avgCost + t.fee + t.tax) / newShares : 0;
       shares = newShares;
+    } else if (t.type === "SPLIT") {
+      // Stock split: quantity is the ratio (new shares per old share). Total
+      // cost basis (shares × avgCost) is unchanged — shares scale up, average
+      // cost per share scales down by the same factor.
+      const ratio = t.quantity;
+      if (ratio > 0) {
+        shares *= ratio;
+        avgCost = avgCost / ratio;
+      }
     } else {
       const proceeds = t.quantity * t.price - t.fee - t.tax;
       realizedPL += proceeds - t.quantity * avgCost;
@@ -76,11 +85,19 @@ export function computePosition(txs: Transaction[]): Position {
 
 /** Signed quantity held on a given date (inclusive). */
 export function sharesAt(txs: Transaction[], isoDate: string): number {
+  // SPLIT's effect is multiplicative and order-dependent, so — unlike the
+  // purely additive types — this replay must process transactions in
+  // chronological order rather than in whatever order they're passed.
+  const sorted = [...txs].sort(byDateAsc);
   let shares = 0;
-  for (const t of txs) {
+  for (const t of sorted) {
     // Compare by day: transactions carry a full timestamp, series keys don't.
     if (dateKey(t.date) > isoDate) continue;
-    shares += t.type === "SELL" ? -t.quantity : t.quantity;
+    if (t.type === "SPLIT") {
+      if (t.quantity > 0) shares *= t.quantity;
+    } else {
+      shares += t.type === "SELL" ? -t.quantity : t.quantity;
+    }
   }
   return Math.max(0, shares);
 }

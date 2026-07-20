@@ -275,7 +275,9 @@ create table if not exists public.transactions (
   asset_id uuid not null references public.assets (id) on delete cascade,
   -- BOOKING = free crediting (Einbuchung), added at zero cost basis.
   -- INTEREST = interest credited to a cash position, also zero cost basis.
-  type text not null check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST')),
+  -- SPLIT = stock split / corporate action; quantity holds the ratio (new
+  -- shares per old share), price/fee/tax are always 0.
+  type text not null check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST', 'SPLIT')),
   quantity numeric not null check (quantity > 0),
   price numeric not null check (price >= 0),
   fee numeric not null default 0 check (fee >= 0),
@@ -300,7 +302,7 @@ create index if not exists transactions_portfolio_id_idx on public.transactions 
 alter table public.transactions
   drop constraint if exists transactions_type_check;
 alter table public.transactions
-  add constraint transactions_type_check check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST'));
+  add constraint transactions_type_check check (type in ('BUY', 'SELL', 'BOOKING', 'INTEREST', 'SPLIT'));
 
 -- Watchlist -------------------------------------------------------------------
 -- Instruments the user follows without holding them; links to the shared

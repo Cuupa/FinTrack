@@ -54,6 +54,29 @@ describe("computePosition", () => {
     expect(pos.totalFees).toBe(15);
     expect(pos.totalTaxes).toBe(35);
   });
+
+  it("a SPLIT multiplies shares and divides avgCost, leaving cost basis unchanged", () => {
+    const pos = computePosition([
+      tx({ type: "BUY", quantity: 10, price: 100, date: "2025-01-01T00:00:00" }),
+      tx({ type: "SPLIT", quantity: 2, price: 0, date: "2025-02-01T00:00:00" }),
+    ]);
+    expect(pos.shares).toBe(20);
+    expect(pos.avgCost).toBe(50);
+    expect(pos.costBasis).toBe(1000);
+  });
+
+  it("a later SELL realises P&L off the post-split avgCost", () => {
+    const pos = computePosition([
+      tx({ type: "BUY", quantity: 10, price: 100, date: "2025-01-01T00:00:00" }),
+      tx({ type: "SPLIT", quantity: 2, price: 0, date: "2025-02-01T00:00:00" }),
+      tx({ type: "SELL", quantity: 5, price: 60, date: "2025-03-01T00:00:00" }),
+    ]);
+    // after split: 20 shares @ avgCost 50; sell 5 @ 60: realised = 5*(60-50) = 50
+    expect(pos.shares).toBe(15);
+    expect(pos.avgCost).toBe(50);
+    expect(pos.costBasis).toBe(750);
+    expect(pos.realizedPL).toBeCloseTo(50, 6);
+  });
 });
 
 describe("sharesAt", () => {
@@ -65,6 +88,20 @@ describe("sharesAt", () => {
     expect(sharesAt(txs, "2025-01-09")).toBe(0);
     expect(sharesAt(txs, "2025-01-10")).toBe(10);
     expect(sharesAt(txs, "2025-02-01")).toBe(6);
+  });
+
+  it("replays a SPLIT in chronological order even when the input array is out of order — shares bought before the split are multiplied, shares bought after are not", () => {
+    // Deliberately out-of-order: the second BUY (post-split) appears before
+    // the SPLIT in the array, regression-testing the sort-before-replay fix.
+    const txs = [
+      tx({ type: "BUY", quantity: 5, price: 1, date: "2025-03-01T09:00:00" }), // post-split buy
+      tx({ type: "BUY", quantity: 10, price: 1, date: "2025-01-10T09:00:00" }), // pre-split buy
+      tx({ type: "SPLIT", quantity: 2, price: 0, date: "2025-02-01T09:00:00" }),
+    ];
+    // Pre-split 10 shares double to 20; post-split 5 shares stay 5 → 25 total.
+    expect(sharesAt(txs, "2025-01-20")).toBe(10); // before the split: still un-doubled
+    expect(sharesAt(txs, "2025-02-01")).toBe(20); // split day: pre-split buy doubled
+    expect(sharesAt(txs, "2025-03-01")).toBe(25); // post-split buy not multiplied
   });
 });
 

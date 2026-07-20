@@ -429,6 +429,18 @@ describe("realizedByMonth", () => {
     ]);
     expect(rows).toEqual([{ month: "2025-03", realized: 250 }]); // (150-100)*5
   });
+
+  it("a SPLIT between a BUY and SELL rescales avgCost without itself logging a bogus realised entry", () => {
+    const assets = [asset({ id: "a" })];
+    const rows = realizedByMonth(assets, [
+      tx({ assetId: "a", type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+      tx({ assetId: "a", type: "SPLIT", quantity: 2, price: 0, date: "2025-02-10" }),
+      tx({ assetId: "a", type: "SELL", quantity: 5, price: 60, date: "2025-03-20" }),
+    ]);
+    // Post-split avgCost = 50; realised = 5*(60-50) = 50, booked in the
+    // sell's month only — no entry for the split's own month (2025-02).
+    expect(rows).toEqual([{ month: "2025-03", realized: 50 }]);
+  });
 });
 
 describe("topMovers", () => {

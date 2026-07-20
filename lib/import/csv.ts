@@ -529,7 +529,7 @@ function parseBitpanda(text: string): { rows: ParsedTx[]; skipped: number } {
   return { rows: out, skipped };
 }
 
-const VALID_TX_TYPES = new Set<TransactionType>(["BUY", "SELL", "BOOKING", "INTEREST"]);
+const VALID_TX_TYPES = new Set<TransactionType>(["BUY", "SELL", "BOOKING", "INTEREST", "SPLIT"]);
 
 /**
  * FinTrack's own CSV export (lib/export/export.ts), re-imported. The file has
@@ -904,8 +904,9 @@ export function isValidTx(tx: ParsedTx): boolean {
     /^\d{4}-\d{2}-\d{2}/.test(tx.date || "") &&
     Number.isFinite(tx.quantity) &&
     tx.quantity > 0 &&
-    Number.isFinite(tx.price) &&
-    tx.price > 0
+    // SPLIT rows carry a ratio in `quantity` and always have price 0 — the
+    // price guard only applies to real trades/creditings.
+    (tx.type === "SPLIT" || (Number.isFinite(tx.price) && tx.price > 0))
   );
 }
 

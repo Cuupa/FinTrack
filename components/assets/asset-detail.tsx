@@ -478,11 +478,10 @@ export function AssetDetail({
                     string,
                     string,
                   ][])
-                : ([["BOOKING", t("tx.booking"), "text-indigo-500"]] as [
-                    ChartMarker["type"],
-                    string,
-                    string,
-                  ][])),
+                : ([
+                    ["BOOKING", t("tx.booking"), "text-indigo-500"],
+                    ["SPLIT", t("tx.split"), "text-purple-500"],
+                  ] as [ChartMarker["type"], string, string][])),
               // CASH never pays dividends (see the gated dividends/[]
               // computation above) — no DIV legend entry to toggle.
               ...(asset.type === "CASH"
@@ -787,6 +786,8 @@ function txTypeLabel(t: (key: MessageKey) => string, type: TransactionType, isCa
       return t("tx.booking");
     case "INTEREST":
       return t("tx.interest");
+    case "SPLIT":
+      return t("tx.split");
     default:
       return type;
   }
@@ -941,7 +942,9 @@ function TransactionsTable({
                           ? "text-indigo-600 dark:text-indigo-400"
                           : t.type === "INTEREST"
                             ? "text-amber-600 dark:text-amber-400"
-                            : "text-red-600 dark:text-red-400"
+                            : t.type === "SPLIT"
+                              ? "text-purple-600 dark:text-purple-400"
+                              : "text-red-600 dark:text-red-400"
                     }
                   >
                     {isCash ? txTypeLabel(tr, t.type, true) : t.type}
@@ -955,10 +958,14 @@ function TransactionsTable({
                   </td>
                 )}
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                  {formatNumber(t.quantity, 4)}
+                  {t.type === "SPLIT" ? `×${formatNumber(t.quantity, 4)}` : formatNumber(t.quantity, 4)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {isCash ? <span className="text-zinc-400">—</span> : formatCurrency(t.price, currency)}
+                  {isCash || t.type === "SPLIT" ? (
+                    <span className="text-zinc-400">—</span>
+                  ) : (
+                    formatCurrency(t.price, currency)
+                  )}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums" data-private>
                   {formatCurrency(t.fee, currency)}
@@ -970,14 +977,22 @@ function TransactionsTable({
                 )}
                 <td
                   className={`py-2 pr-3 text-right tabular-nums ${
-                    t.type === "BUY"
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-emerald-600 dark:text-emerald-400"
+                    t.type === "SPLIT"
+                      ? "text-zinc-400"
+                      : t.type === "BUY"
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400"
                   }`}
                   data-private
                 >
-                  {t.type === "BUY" ? "−" : "+"}
-                  {formatCurrency(t.quantity * t.price, currency)}
+                  {t.type === "SPLIT" ? (
+                    <span className="text-zinc-400">—</span>
+                  ) : (
+                    <>
+                      {t.type === "BUY" ? "−" : "+"}
+                      {formatCurrency(t.quantity * t.price, currency)}
+                    </>
+                  )}
                 </td>
                 <td className="py-2 text-right whitespace-nowrap">
                   <button
@@ -1072,6 +1087,7 @@ function TransactionEditRow({
             isCash
               ? { value: "INTEREST", label: txTypeLabel(tr, "INTEREST", true) }
               : { value: "BOOKING", label: "BOOKING" },
+            ...(!isCash ? [{ value: "SPLIT", label: "SPLIT" }] : []),
           ]}
         />
       </td>

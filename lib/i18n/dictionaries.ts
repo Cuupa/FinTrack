@@ -641,6 +641,12 @@ export const en = {
   "tx.addWithdrawal": "Add withdrawal",
   "tx.totalDeposit": "Amount deposited",
   "tx.totalWithdrawal": "Amount withdrawn",
+  "tx.split": "Split",
+  "tx.splitRatio": "Split ratio",
+  "tx.addSplit": "Add split",
+  "tx.splitHint":
+    "Enter the ratio as new shares per old share: 2 for a 2-for-1 split, 0.5 for a 1-for-2 reverse split.",
+  "tx.splitPreview": "Ratio: {ratio} new shares per old share",
 
   // Analysis
   "analysis.tab.distributions": "Distributions",
@@ -1933,6 +1939,12 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tx.addWithdrawal": "Auszahlung hinzufügen",
   "tx.totalDeposit": "Eingezahlter Betrag",
   "tx.totalWithdrawal": "Ausgezahlter Betrag",
+  "tx.split": "Split",
+  "tx.splitRatio": "Split-Verhältnis",
+  "tx.addSplit": "Split hinzufügen",
+  "tx.splitHint":
+    "Gib das Verhältnis als neue Aktien je alter Aktie ein: 2 für einen Split 2-für-1, 0,5 für einen umgekehrten Split 1-für-2.",
+  "tx.splitPreview": "Verhältnis: {ratio} neue Aktien je alter Aktie",
 
   // Analysis
   "analysis.tab.distributions": "Verteilungen",
@@ -3225,6 +3237,12 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tx.addWithdrawal": "Añadir retirada",
   "tx.totalDeposit": "Importe ingresado",
   "tx.totalWithdrawal": "Importe retirado",
+  "tx.split": "Split",
+  "tx.splitRatio": "Ratio del split",
+  "tx.addSplit": "Añadir split",
+  "tx.splitHint":
+    "Introduce el ratio como acciones nuevas por acción antigua: 2 para un split 2 por 1, 0,5 para un split inverso 1 por 2.",
+  "tx.splitPreview": "Ratio: {ratio} acciones nuevas por acción antigua",
 
   // Analysis
   "analysis.tab.distributions": "Distribuciones",

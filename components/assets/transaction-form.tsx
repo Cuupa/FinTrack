@@ -102,17 +102,19 @@ export function TransactionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset.id]);
 
-  const { touched, touch, reset } = useFormTouched();
-  // Presence-only gating for the submit button — mirrors handleSubmit's checks.
-  const quantityMissing = !quantity.trim();
-  const priceMissing = !isCash && !price.trim();
-  const formIncomplete = quantityMissing || priceMissing;
-
   const isBuy = type === "BUY";
   const isBooking = type === "BOOKING";
   const isInterest = type === "INTEREST";
+  const isSplit = type === "SPLIT";
+
+  const { touched, touch, reset } = useFormTouched();
+  // Presence-only gating for the submit button — mirrors handleSubmit's checks.
+  const quantityMissing = !quantity.trim();
+  const priceMissing = !isCash && !isSplit && !price.trim();
+  const formIncomplete = quantityMissing || priceMissing;
+
   const qtyNum = parseDecimal(quantity);
-  const pxNum = isCash ? 1 : parseDecimal(price);
+  const pxNum = isCash ? 1 : isSplit ? 0 : parseDecimal(price);
   // Tax only applies to real trades (Abgeltungsteuer on sells, transaction
   // tax on some buys) — never to cash deposits/withdrawals or creditings.
   const showTax = !isCash && (isBuy || type === "SELL");
@@ -136,12 +138,12 @@ export function TransactionForm({
     e.preventDefault();
     setError(null);
     const qty = parseDecimal(quantity);
-    const px = isCash ? 1 : parseDecimal(price);
+    const px = isCash ? 1 : isSplit ? 0 : parseDecimal(price);
     if (!Number.isFinite(qty) || qty <= 0) {
       setError(t("tx.errQty"));
       return;
     }
-    if (!isCash && (!Number.isFinite(px) || px < 0)) {
+    if (!isCash && !isSplit && (!Number.isFinite(px) || px < 0)) {
       setError(t("tx.errPrice"));
       return;
     }
@@ -157,9 +159,9 @@ export function TransactionForm({
         portfolioId: portfolioId || portfolios[0]?.id || "",
         type,
         quantity: qty,
-        price: px,
-        fee: parseDecimal(fee) || 0,
-        tax: showTax ? parseDecimal(tax) || 0 : 0,
+        price: isSplit ? 0 : px,
+        fee: isSplit ? 0 : parseDecimal(fee) || 0,
+        tax: isSplit ? 0 : showTax ? parseDecimal(tax) || 0 : 0,
         date: executedAt,
       });
       setQuantity("");
@@ -182,9 +184,17 @@ export function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-4">
-      {/* Buy / Sell / Booking (or Interest, for cash) segmented toggle */}
-      <div className="grid w-full grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60 sm:inline-flex sm:w-fit">
-        {(["BUY", "SELL", isCash ? "INTEREST" : "BOOKING"] as TransactionType[]).map((tt) => {
+      {/* Buy / Sell / Booking / Split (or Interest, for cash) segmented toggle */}
+      <div
+        className={`grid w-full gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60 sm:inline-flex sm:w-fit ${
+          isCash ? "grid-cols-3" : "grid-cols-4"
+        }`}
+      >
+        {(
+          isCash
+            ? (["BUY", "SELL", "INTEREST"] as TransactionType[])
+            : (["BUY", "SELL", "BOOKING", "SPLIT"] as TransactionType[])
+        ).map((tt) => {
           const active = type === tt;
           const activeBg =
             tt === "BUY"
@@ -193,7 +203,9 @@ export function TransactionForm({
                 ? "bg-red-500"
                 : tt === "INTEREST"
                   ? "bg-amber-500"
-                  : "bg-indigo-500";
+                  : tt === "SPLIT"
+                    ? "bg-purple-500"
+                    : "bg-indigo-500";
           const label =
             tt === "BUY"
               ? isCash
@@ -205,7 +217,9 @@ export function TransactionForm({
                   : t("tx.sell")
                 : tt === "INTEREST"
                   ? t("tx.interest")
-                  : t("tx.booking");
+                  : tt === "SPLIT"
+                    ? t("tx.split")
+                    : t("tx.booking");
           return (
             <button
               key={tt}
@@ -232,9 +246,24 @@ export function TransactionForm({
           {t("tx.interestHint")}
         </p>
       )}
+      {isSplit && (
+        <p className="rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+          {t("tx.splitHint")}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Field label={isInterest ? t("tx.interestAmount") : isCash ? t("tx.amount") : t("tx.quantity")}>
+        <Field
+          label={
+            isInterest
+              ? t("tx.interestAmount")
+              : isCash
+                ? t("tx.amount")
+                : isSplit
+                  ? t("tx.splitRatio")
+                  : t("tx.quantity")
+          }
+        >
           <input
             type="text"
             inputMode="decimal"
@@ -248,7 +277,7 @@ export function TransactionForm({
             className={`${inputCls}${missingFieldCls(quantityMissing, touched)}`}
           />
         </Field>
-        {!isCash && (
+        {!isCash && !isSplit && (
           <Field label={t("tx.price")}>
             <div className="relative">
               <input
@@ -269,20 +298,22 @@ export function TransactionForm({
             </div>
           </Field>
         )}
-        <Field label={t("tx.fee")}>
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={fee}
-              onChange={(e) => setFeeManual(stripLeadingZero(e.target.value))}
-              className={`${inputCls} pr-12`}
-            />
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
-              {cur}
-            </span>
-          </div>
-        </Field>
+        {!isSplit && (
+          <Field label={t("tx.fee")}>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={fee}
+                onChange={(e) => setFeeManual(stripLeadingZero(e.target.value))}
+                className={`${inputCls} pr-12`}
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+                {cur}
+              </span>
+            </div>
+          </Field>
+        )}
         {showTax && (
           <Field label={t("tx.tax")}>
             <div className="relative">
@@ -384,29 +415,35 @@ export function TransactionForm({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Live total preview */}
-        <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40 sm:flex-1">
-          <span className="text-zinc-500">
-            {isBuy
-              ? isCash
-                ? t("tx.totalDeposit")
-                : t("tx.totalCost")
-              : isBooking
-                ? t("tx.valueReceived")
-                : isInterest
-                  ? t("tx.interestReceived")
-                  : isCash
-                    ? t("tx.totalWithdrawal")
-                    : t("tx.totalProceeds")}
-          </span>
-          <span
-            className={`font-semibold tabular-nums ${
-              isBuy ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
-            }`}
-          >
-            {isBuy ? "−" : "+"}
-            {formatCurrency(Math.max(0, total), cur)}
-          </span>
-        </div>
+        {isSplit ? (
+          <p className="text-sm text-zinc-500 sm:flex-1">
+            {t("tx.splitPreview", { ratio: quantity || "0" })}
+          </p>
+        ) : (
+          <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40 sm:flex-1">
+            <span className="text-zinc-500">
+              {isBuy
+                ? isCash
+                  ? t("tx.totalDeposit")
+                  : t("tx.totalCost")
+                : isBooking
+                  ? t("tx.valueReceived")
+                  : isInterest
+                    ? t("tx.interestReceived")
+                    : isCash
+                      ? t("tx.totalWithdrawal")
+                      : t("tx.totalProceeds")}
+            </span>
+            <span
+              className={`font-semibold tabular-nums ${
+                isBuy ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {isBuy ? "−" : "+"}
+              {formatCurrency(Math.max(0, total), cur)}
+            </span>
+          </div>
+        )}
 
         <Button
           type="submit"
@@ -419,7 +456,9 @@ export function TransactionForm({
                 ? "!bg-indigo-500 hover:!bg-indigo-600 !text-white dark:!bg-indigo-500"
                 : isInterest
                   ? "!bg-amber-500 hover:!bg-amber-600 !text-white dark:!bg-amber-500"
-                  : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
+                  : isSplit
+                    ? "!bg-purple-500 hover:!bg-purple-600 !text-white dark:!bg-purple-500"
+                    : "!bg-red-500 hover:!bg-red-600 !text-white dark:!bg-red-500"
           }`}
         >
           {busy
@@ -432,9 +471,11 @@ export function TransactionForm({
                 ? t("tx.addBooking")
                 : isInterest
                   ? t("tx.addInterest")
-                  : isCash
-                    ? t("tx.addWithdrawal")
-                    : t("tx.addSell")}
+                  : isSplit
+                    ? t("tx.addSplit")
+                    : isCash
+                      ? t("tx.addWithdrawal")
+                      : t("tx.addSell")}
         </Button>
       </div>
     </form>

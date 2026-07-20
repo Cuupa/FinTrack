@@ -320,9 +320,9 @@ describe("csv parsers", () => {
     expect(rows).toHaveLength(4); // deposit, buy, sell (BTC) + buy (Gold)
     expect(skipped).toBe(2); // the Fiat deposit + withdrawal
     expect(invalid).toBe(0);
-    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0, SPLIT: 0 };
     for (const r of rows) byType[r.type]++;
-    expect(byType).toEqual({ BUY: 3, SELL: 1, BOOKING: 0, INTEREST: 0 });
+    expect(byType).toEqual({ BUY: 3, SELL: 1, BOOKING: 0, INTEREST: 0, SPLIT: 0 });
 
     const [deposit, buy, sell, gold] = rows;
     // Deposit: fee is denominated in BTC itself (the row's own asset) →
@@ -374,14 +374,14 @@ describe("csv parsers — full real exports", () => {
     // Wiederanlage, SELL = 159 Verkauf + 18 fee/transfer legs (settlement-
     // price fallback) + 2 Umschichtung-Abgang, BUY = 22 Kauf + 2
     // Umschichtung-Zugang + 2 Übertrag-Zugang.
-    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0, SPLIT: 0 };
     for (const r of rows) {
       byType[r.type]++;
       expect(r.quantity).toBeGreaterThan(0);
       expect(r.price).toBeGreaterThan(0);
       expect(r.isin).toBeTruthy();
     }
-    expect(byType).toEqual({ BUY: 26, SELL: 179, BOOKING: 177, INTEREST: 0 });
+    expect(byType).toEqual({ BUY: 26, SELL: 179, BOOKING: 177, INTEREST: 0, SPLIT: 0 });
   });
 
   it.skipIf(!existsSync(zeroOrdersPath))(
@@ -398,14 +398,14 @@ describe("csv parsers — full real exports", () => {
       expect(skipped).toBe(38);
       expect(invalid).toBe(0);
       expect(rows).toHaveLength(119);
-      const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+      const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0, SPLIT: 0 };
       for (const r of rows) {
         byType[r.type]++;
         expect(r.quantity).toBeGreaterThan(0);
         expect(r.price).toBeGreaterThan(0);
         expect(r.isin || r.wkn).toBeTruthy();
       }
-      expect(byType).toEqual({ BUY: 88, SELL: 31, BOOKING: 0, INTEREST: 0 });
+      expect(byType).toEqual({ BUY: 88, SELL: 31, BOOKING: 0, INTEREST: 0, SPLIT: 0 });
     },
   );
 
@@ -421,14 +421,14 @@ describe("csv parsers — full real exports", () => {
     expect(rows).toHaveLength(28);
     expect(skipped).toBe(22);
     expect(invalid).toBe(0);
-    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+    const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0, SPLIT: 0 };
     for (const r of rows) {
       byType[r.type]++;
       expect(r.quantity).toBeGreaterThan(0);
       expect(r.price).toBeGreaterThan(0);
       expect(r.isin).toBeTruthy();
     }
-    expect(byType).toEqual({ BUY: 26, SELL: 2, BOOKING: 0, INTEREST: 0 });
+    expect(byType).toEqual({ BUY: 26, SELL: 2, BOOKING: 0, INTEREST: 0, SPLIT: 0 });
   });
 
   it.skipIf(!existsSync(bitpandaPath))(
@@ -445,7 +445,7 @@ describe("csv parsers — full real exports", () => {
       expect(skipped).toBe(22);
       expect(invalid).toBe(0);
       expect(rows).toHaveLength(24);
-      const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0 };
+      const byType = { BUY: 0, SELL: 0, BOOKING: 0, INTEREST: 0, SPLIT: 0 };
       const byAssetType: Record<string, number> = {};
       for (const r of rows) {
         byType[r.type]++;
@@ -454,7 +454,7 @@ describe("csv parsers — full real exports", () => {
         expect(r.price).toBeGreaterThan(0);
         expect(r.symbol).toBeTruthy();
       }
-      expect(byType).toEqual({ BUY: 23, SELL: 1, BOOKING: 0, INTEREST: 0 });
+      expect(byType).toEqual({ BUY: 23, SELL: 1, BOOKING: 0, INTEREST: 0, SPLIT: 0 });
       // 3 Gold buys (COMMODITY) + 21 BTC trades (20 buy + 1 sell, CRYPTO).
       expect(byAssetType).toEqual({ COMMODITY: 3, CRYPTO: 21 });
     },
@@ -779,6 +779,14 @@ describe("import validation guardrail (isValidTx)", () => {
     expect(isValidTx({ ...valid, price: -230 })).toBe(false);
     expect(isValidTx({ ...valid, price: NaN })).toBe(false);
     expect(isValidTx({ ...valid, price: Infinity })).toBe(false);
+  });
+
+  it("accepts a SPLIT row with price 0 — the price guard is exempted for SPLIT since its quantity is a ratio, not a share count", () => {
+    expect(isValidTx({ ...valid, type: "SPLIT", quantity: 2, price: 0 })).toBe(true);
+    // The exemption is SPLIT-specific: a zero price on any other type still fails.
+    expect(isValidTx({ ...valid, type: "BUY", quantity: 2, price: 0 })).toBe(false);
+    // SPLIT still needs a positive, finite quantity (the ratio).
+    expect(isValidTx({ ...valid, type: "SPLIT", quantity: 0, price: 0 })).toBe(false);
   });
 
   it("parseCsv rejects and counts invalid rows while valid siblings still import", () => {

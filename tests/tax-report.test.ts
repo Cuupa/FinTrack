@@ -52,6 +52,26 @@ describe("taxYearBreakdown", () => {
     expect(y.kapitalertraege).toBeCloseTo(240, 6);
   });
 
+  it("a SPLIT between a BUY and SELL rescales avgCost without itself contributing a taxable gain/loss entry", () => {
+    const stock = asset({ id: "a", type: "STOCK" });
+    const rows = taxYearBreakdown(
+      [stock],
+      [
+        tx({ type: "BUY", quantity: 10, price: 100, date: "2025-01-05" }),
+        tx({ type: "SPLIT", quantity: 2, price: 0, date: "2025-02-10" }),
+        tx({ type: "SELL", quantity: 5, price: 60, date: "2025-06-01" }),
+      ],
+      noDividends,
+      DEFAULT_SETTINGS,
+    );
+    // Only one contributing year (the sell's) — the split produces no year
+    // entry of its own.
+    expect(rows).toHaveLength(1);
+    const y = rows[0];
+    // post-split avgCost = 50; taxableGain = 5*60 - 0(fee) - 5*50 = 50
+    expect(y.stockGains).toBeCloseTo(50, 6);
+  });
+
   it("applies Teilfreistellung to fund gains only when enabled", () => {
     const etf = asset({ id: "a", type: "ETF" });
     const txs = [

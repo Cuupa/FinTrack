@@ -103,7 +103,9 @@ function txTypeColor(type: TransactionType): string {
     ? "text-emerald-600 dark:text-emerald-400"
     : type === "BOOKING"
       ? "text-indigo-600 dark:text-indigo-400"
-      : "text-red-600 dark:text-red-400";
+      : type === "SPLIT"
+        ? "text-purple-600 dark:text-purple-400"
+        : "text-red-600 dark:text-red-400";
 }
 
 export function ImportTransactions({
