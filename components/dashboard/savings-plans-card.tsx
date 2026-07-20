@@ -185,6 +185,8 @@ export function SavingsPlansCard() {
       switch (planSort.key) {
         case "asset":
           return r.asset.name.toLowerCase();
+        case "portfolio":
+          return (portfolioById.get(r.plan.portfolioId)?.name ?? "").toLowerCase();
         case "type":
           return r.plan.bookingType ?? "BUY";
         case "amount":
@@ -202,7 +204,7 @@ export function SavingsPlansCard() {
       if (va > vb) return 1 * planSort.dir;
       return 0;
     });
-  }, [plans, assetById, planSort, todayISO]);
+  }, [plans, assetById, portfolioById, planSort, todayISO]);
   // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
   // plan (grandfathering) — pausing/editing/deleting an existing one, even
   // over cap after a downgrade, is never affected.
@@ -423,6 +425,7 @@ export function SavingsPlansCard() {
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
                 <PlanTh label={t("sp.asset")} k="asset" sort={planSort} onSort={togglePlanSort} />
+                <PlanTh label={t("sp.portfolio")} k="portfolio" sort={planSort} onSort={togglePlanSort} />
                 <PlanTh label={t("sp.bookingType")} k="type" sort={planSort} onSort={togglePlanSort} />
                 <PlanTh label={t("sp.amount")} k="amount" align="right" sort={planSort} onSort={togglePlanSort} />
                 <PlanTh label={t("sp.interval")} k="interval" sort={planSort} onSort={togglePlanSort} />
@@ -441,6 +444,9 @@ export function SavingsPlansCard() {
                   >
                     <td className={`max-w-[12rem] truncate py-2 pr-3 font-medium ${muted}`}>
                       {asset.name}
+                    </td>
+                    <td className={`max-w-[10rem] truncate py-2 pr-3 ${muted}`}>
+                      {portfolioById.get(plan.portfolioId)?.name ?? "—"}
                     </td>
                     <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
                       {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
@@ -607,7 +613,7 @@ export function SavingsPlansCard() {
 }
 
 
-type PlanSortKey = "asset" | "type" | "amount" | "interval" | "next";
+type PlanSortKey = "asset" | "portfolio" | "type" | "amount" | "interval" | "next";
 
 const INTERVAL_RANK: Record<string, number> = { WEEKLY: 0, MONTHLY: 1, QUARTERLY: 2 };
 
