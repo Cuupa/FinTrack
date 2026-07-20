@@ -118,13 +118,20 @@ async function readSeries(supabase: SupabaseClient, id: string, base: string): P
   const direct = await fetchCurrency(base);
   if (direct.length > 0) return direct;
 
-  // Base not pre-persisted (or rows predate the multi-currency migration):
-  // fall back to converting the always-present EUR series on the fly.
-  if (base !== DEFAULT_BASE) {
-    const eur = await fetchCurrency(DEFAULT_BASE);
-    if (eur.length > 0) {
-      const converted = await convertPoints(eur, DEFAULT_BASE, base);
-      if (converted) return converted;
+  // No rows in the requested base. This happens for a base that wasn't
+  // pre-persisted (an exotic base currency) AND for the stuck state where a
+  // benchmark resolved to a non-base native currency whose base-converted copy
+  // failed to persist once (a transient FX miss at write time) while the
+  // staleness gate — which checks any currency — keeps it from re-fetching.
+  // Convert from whatever currency IS cached: EUR first (always a persist
+  // target), then the other persisted ones. Without this, a benchmark cached
+  // only in USD returned empty for a EUR base and its beta/alpha never computed.
+  for (const cur of [DEFAULT_BASE, ...PERSIST_CURRENCIES]) {
+    if (cur === base) continue;
+    const src = await fetchCurrency(cur);
+    if (src.length > 0) {
+      const converted = await convertPoints(src, cur, base);
+      if (converted && converted.length > 0) return converted;
     }
   }
   return direct; // empty
