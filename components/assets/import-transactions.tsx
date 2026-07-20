@@ -453,6 +453,10 @@ export function ImportTransactions({
         )}
       </div>
 
+      {!hasFile && (
+        <p className="text-sm text-zinc-500">{t("import.hint")}</p>
+      )}
+
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {hasFile && (
