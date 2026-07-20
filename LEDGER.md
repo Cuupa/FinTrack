@@ -52,5 +52,36 @@ return) after an explicit review step, mirroring savings plans.
       credit date shown, all 6 INTEREST rows in the tx log. No badges,
       du/tu register correct.
 
-## F8 - OTHER manual-valuation asset (closes G9). Effort M. (pending)
-## F10 - Persisted rebalancing targets (closes G11). Effort M. (pending)
+## F10 - Persisted rebalancing targets (closes G11). Effort M. DONE.
+
+Design: the /rebalancing plan (target weights by row id + freely-added custom
+positions + trade/buy-only mode) was client-only, forgotten on reload. Persist
+it as a jsonb blob on the profile (`Profile.rebalanceTargets`), riding the
+existing `updateProfile` store-seam mutation exactly like `toursDone` /
+`taxVorabpauschale` - no new table, no new mutation, auto-threads through
+Local/Offline/sync. The view seeds its editable state once from the hydrated
+plan (page gates the mount behind `!loading`) and writes back debounced
+(700ms + unmount flush). Buy-only ("invest new money") mode already shipped.
+
+- [x] F10a. types.ts RebalancePlan + Profile.rebalanceTargets + default.
+- [x] F10b. SupabaseStore: profile select/map (normalizeRebalancePlan coerces
+      a partial/`{}` jsonb) + saveProfile write.
+- [x] F10c. schema.sql + migration 0078 (profiles.rebalance_targets jsonb,
+      default the empty plan).
+- [x] F10d. rebalancing-view seeds from plan + debounced persist (lint-safe:
+      no ref reads in render, seed via useState initializer); collision-safe
+      custom ids; localized new-position name (new key rebalance.newPositionName
+      en/de/es). Page gates mount on !loading with a skeleton.
+- [x] F10e. lint+tsc clean, vitest 764 pass, build green. Verified Guest Mode
+      EN: set Tagesgeld 60% + custom "Gold ETF" 40% + buy-only, reloaded ->
+      plan fully restored (60/40, name, mode, donut, buy actions). DE reuses
+      the pre-existing translated rebalance.* keys + the one new key; view
+      formatting unchanged.
+
+NOTE: F10's optional "per-tag-group targets" sub-idea is NOT built - the core
+gap (targets forgotten on reload) + invest-new-money are done. Per-tag targets
+would be a follow-up enhancement, flagged here rather than silently dropped.
+
+## F8 - OTHER manual-valuation asset (closes G9). Effort M. (pending - larger:
+AssetType union ripple + a manual valuation-point price series through the
+PriceProvider seam; deferred to a later round over F7/F10.)

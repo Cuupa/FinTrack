@@ -45,7 +45,22 @@ export interface Profile {
    *  Separate from `tourDoneAt` (the original dashboard tour) so each page tour
    *  (risk, rebalancing, simulation, assetTags) tracks its own completion. */
   toursDone: Record<string, string>;
+  /** Persisted rebalancing plan (COMPETITION.md F10) — target weights, the
+   *  freely-added custom positions, and the mode. Survives reload so the
+   *  /rebalancing grid is no longer forgotten. Empty default = no plan yet. */
+  rebalanceTargets: RebalancePlan;
 }
+
+/** A saved rebalancing plan, persisted on the profile and rehydrated by
+ *  /rebalancing. `weights` maps a row id (a held asset's id, or a custom
+ *  position's id) to its target weight in percent. */
+export interface RebalancePlan {
+  mode: "trade" | "buyOnly";
+  weights: Record<string, number>;
+  custom: { id: string; name: string }[];
+}
+
+export const EMPTY_REBALANCE_PLAN: RebalancePlan = { mode: "trade", weights: {}, custom: [] };
 
 /**
  * An asset the user holds. Merges the PRD `assets` master-data row with the
@@ -249,6 +264,7 @@ export const DEFAULT_PROFILE: Profile = {
   taxWithheldOverride: {},
   tourDoneAt: null,
   toursDone: {},
+  rebalanceTargets: { mode: "trade", weights: {}, custom: [] },
 };
 
 export function emptyPortfolio(): PortfolioData {

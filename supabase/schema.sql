@@ -20,6 +20,8 @@ create table if not exists public.profiles (
   tax_withheld_override jsonb not null default '{}'::jsonb,
   tour_done_at timestamptz,
   tours_done jsonb not null default '{}'::jsonb,
+  -- Persisted /rebalancing plan (COMPETITION.md F10): {mode, weights, custom}.
+  rebalance_targets jsonb not null default '{"mode":"trade","weights":{},"custom":[]}'::jsonb,
   created_at timestamptz not null default now()
 );
 alter table public.profiles add column if not exists display_name text;
@@ -32,6 +34,7 @@ alter table public.profiles add column if not exists tax_vorabpauschale jsonb no
 alter table public.profiles add column if not exists tax_withheld_override jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists tour_done_at timestamptz;
 alter table public.profiles add column if not exists tours_done jsonb not null default '{}'::jsonb;
+alter table public.profiles add column if not exists rebalance_targets jsonb not null default '{"mode":"trade","weights":{},"custom":[]}'::jsonb;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of
@@ -540,7 +543,8 @@ insert into public.schema_migrations (version) values
   ('0074_vorabpauschale'),
   ('0075_dividend_calendar_flag'),
   ('0076_push_notifications'),
-  ('0077_cash_interest')
+  ('0077_cash_interest'),
+  ('0078_rebalance_targets')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

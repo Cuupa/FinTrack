@@ -2,9 +2,13 @@
 
 // Portfolio rebalancing: current vs. target allocation side by side, with an
 // editable target grid (existing holdings + freely-added new positions) and the
-// buy/sell amounts needed to reach the target. Client-only — nothing persisted.
+// buy/sell amounts needed to reach the target. The plan (weights + custom rows
+// + mode) is persisted on the profile through the store seam (COMPETITION.md
+// F10) so it survives reload — seeded from `data.profile.rebalanceTargets` at
+// mount (the page only mounts this view once data has loaded) and written back
+// debounced. See RebalancingPage for the load gate.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
@@ -31,10 +35,14 @@ interface Target {
 let customSeq = 0;
 
 export function RebalancingView() {
-  const { data } = usePortfolio();
+  const { data, updateProfile } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
   const base = data.profile.currency;
+
+  // The persisted plan. Captured once at mount — the page gates this view
+  // behind `!loading`, so the profile (and its plan) is already hydrated.
+  const [initialPlan] = useState(() => data.profile.rebalanceTargets);
 
   const holdings = useMemo(
     () =>
@@ -50,13 +58,58 @@ export function RebalancingView() {
   );
 
   // Target rows: holdings (default target = current weight) + custom additions.
-  // We store edits keyed by row id so they survive re-renders.
-  const [pctEdits, setPctEdits] = useState<Record<string, number>>({});
-  const [customRows, setCustomRows] = useState<{ id: string; name: string }[]>([]);
-  const [mode, setMode] = useState<RebalanceMode>("trade");
+  // We store edits keyed by row id so they survive re-renders — and, seeded
+  // from the persisted plan, across reloads.
+  const [pctEdits, setPctEdits] = useState<Record<string, number>>(() => ({
+    ...initialPlan.weights,
+  }));
+  const [customRows, setCustomRows] = useState<{ id: string; name: string }[]>(() =>
+    initialPlan.custom.map((c) => ({ ...c })),
+  );
+  const [mode, setMode] = useState<RebalanceMode>(() => initialPlan.mode);
   // The position highlighted across both donuts + the table row on hover.
   const [activeName, setActiveName] = useState<string | null>(null);
   const [tourReplay, setTourReplay] = useState(0);
+
+  // Persist the plan (debounced) whenever it changes from what's stored. Writing
+  // goes through updateProfile like any other profile field; the local state is
+  // the source of truth for the session, so an updateProfile-driven re-render
+  // never clobbers an in-flight edit.
+  const plan = useMemo(
+    () => ({ mode, weights: pctEdits, custom: customRows }),
+    [mode, pctEdits, customRows],
+  );
+  const serialized = useMemo(() => JSON.stringify(plan), [plan]);
+  const planRef = useRef(plan);
+  const dirtyRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const baselineRef = useRef(JSON.stringify(initialPlan));
+
+  useEffect(() => {
+    planRef.current = plan; // keep the latest for the timer + unmount flush
+    if (serialized === baselineRef.current) return; // unchanged from the stored plan
+    dirtyRef.current = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      void updateProfile({ rebalanceTargets: planRef.current }).then(() => {
+        dirtyRef.current = false;
+        baselineRef.current = serialized;
+      });
+    }, 700);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialized]);
+
+  // Flush a pending edit if the user navigates away before the debounce fires.
+  useEffect(
+    () => () => {
+      if (dirtyRef.current) void updateProfile({ rebalanceTargets: planRef.current });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const rows = useMemo<Target[]>(() => {
     const base: Target[] = holdings.map((h) => {
@@ -130,8 +183,10 @@ export function RebalancingView() {
   };
 
   const addCustom = () => {
-    const id = `custom-${++customSeq}`;
-    setCustomRows((c) => [...c, { id, name: `New position ${c.length + 1}` }]);
+    // Time-based suffix so ids stay unique across reloads (customSeq resets to
+    // 0 on mount, but persisted rows may already hold "custom-…" ids).
+    const id = `custom-${Date.now().toString(36)}-${++customSeq}`;
+    setCustomRows((c) => [...c, { id, name: t("rebalance.newPositionName", { n: c.length + 1 }) }]);
   };
 
   const renameCustom = (id: string, name: string) =>

@@ -10,18 +10,33 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_PROFILE,
+  EMPTY_REBALANCE_PLAN,
   MAX_PORTFOLIOS,
   type Asset,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
   type Profile,
+  type RebalancePlan,
   type SavingsPlan,
   type TagAssignments,
   type TagGroup,
   type Transaction,
   type WatchlistItem,
 } from "../types";
+
+/** Coerce a jsonb `rebalance_targets` value (which may be `{}` from the column
+ *  default, null, or a partial object) into a complete RebalancePlan. */
+function normalizeRebalancePlan(raw: unknown): RebalancePlan {
+  if (!raw || typeof raw !== "object") return { ...EMPTY_REBALANCE_PLAN };
+  const r = raw as Partial<RebalancePlan>;
+  return {
+    mode: r.mode === "buyOnly" ? "buyOnly" : "trade",
+    weights:
+      r.weights && typeof r.weights === "object" ? (r.weights as Record<string, number>) : {},
+    custom: Array.isArray(r.custom) ? r.custom : [],
+  };
+}
 import type { LlmProviderId } from "../llm/types";
 import { RowNotFoundError } from "./types";
 import type {
@@ -138,7 +153,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("profiles")
         .select(
-          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at, tours_done",
+          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at, tours_done, rebalance_targets",
         )
         .eq("id", this.userId)
         .maybeSingle(),
@@ -226,6 +241,7 @@ export class SupabaseStore implements DataStore {
           tourDoneAt:
             typeof profileRes.data.tour_done_at === "string" ? profileRes.data.tour_done_at : null,
           toursDone: profileRes.data.tours_done ?? DEFAULT_PROFILE.toursDone,
+          rebalanceTargets: normalizeRebalancePlan(profileRes.data.rebalance_targets),
         }
       : { ...DEFAULT_PROFILE };
 
@@ -328,6 +344,7 @@ export class SupabaseStore implements DataStore {
       tax_withheld_override: profile.taxWithheldOverride,
       tour_done_at: profile.tourDoneAt,
       tours_done: profile.toursDone,
+      rebalance_targets: profile.rebalanceTargets,
     });
     if (error) throw error;
   }
