@@ -36,6 +36,8 @@ import {
   type ChartMode,
   type ChartScale,
 } from "@/components/charts/performance-chart";
+import { BENCHMARKS, buildCustomBenchmark, type Benchmark } from "@/lib/finance/benchmarks";
+import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 
 export function NetWorthHero({
   timeframe,
@@ -53,14 +55,28 @@ export function NetWorthHero({
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
+  const [customBenchmarks, setCustomBenchmarks] = useState<Benchmark[]>([]);
 
   const currency = data.profile.currency;
   const comparing = benchmarks.length > 0;
   // Privacy mode hides absolute wealth → the chart is always Return there.
   const chartMode: ChartMode = comparing || incognito ? "percent" : mode;
-  const compare = useBenchmarkCompare(benchmarks, currency);
+  const compare = useBenchmarkCompare(benchmarks, currency, customBenchmarks);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
+  const addCustomBenchmark = async (query: string) => {
+    const master = await resolveInstrumentByQuery(query);
+    if (!master) return { ok: false, error: t("benchmark.notFound") };
+    const b = buildCustomBenchmark(master, [...BENCHMARKS, ...customBenchmarks]);
+    if (!b) return { ok: false, error: t("benchmark.alreadyAdded") };
+    setCustomBenchmarks((c) => [...c, b]);
+    setBenchmarks((sel) => (sel.includes(b.id) ? sel : [...sel, b.id]));
+    return { ok: true };
+  };
+  const removeCustomBenchmark = (id: string) => {
+    setCustomBenchmarks((c) => c.filter((b) => b.id !== id));
+    setBenchmarks((sel) => sel.filter((x) => x !== id));
+  };
 
   const histItems = useMemo(
     () =>
@@ -210,7 +226,13 @@ export function NetWorthHero({
           )}
         </span>
         <div className="min-w-0">
-          <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
+          <BenchmarkPicker
+            selected={benchmarks}
+            onToggle={toggleBenchmark}
+            custom={customBenchmarks}
+            onAddCustom={addCustomBenchmark}
+            onRemoveCustom={removeCustomBenchmark}
+          />
         </div>
       </div>
 

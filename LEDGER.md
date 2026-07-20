@@ -132,4 +132,88 @@ Other required changes:
 
 ## Deferred this round
 - [~] F2 PDF import (L effort, own round)
-- [ ] F9 custom benchmarks (S) if session allows
+
+## Task F9 - custom benchmarks (closes G10)
+
+Design (orchestrator, read the full existing benchmark machinery before
+writing this): the curated `BENCHMARKS` array (`lib/finance/benchmarks.ts`,
+5 entries) stays as-is (kept as suggestions, per COMPETITION.md). Custom
+benchmarks are additive, ephemeral (component `useState`, same as the
+existing `benchmarks: string[]` selection already is in every call site —
+no persistence layer needed, keeps this bounded).
+
+Data flow: curated benchmarks are DB-cached (shared `benchmark_history`
+table via `/api/benchmarks`) — writing arbitrary user-picked ISINs into that
+shared cache would be unbounded pollution, so custom picks must NOT go
+through that route. Instead reuse `/api/history` (POST `{base, range,
+items: HistItem[]}` → `{histories: Record<key, points>, fx}`, response keyed
+by `item.key` exactly — verified in app/api/history/route.ts:303/310/320),
+the same per-user cached (`instrument_history`) path asset detail charts
+already use. Range: fixed "5Y" (not tied to the chart's own timeframe —
+curated benchmarks are also timeframe-independent, they fetch a flat window
+once and `PerformanceChart` clips to the visible range).
+
+Resolution: reuse `resolveInstrumentByQuery` (`lib/import/resolve-instrument.ts`,
+catalog → `/api/lookup`, already shared by add-asset/watchlist/savings-plan —
+never build a fourth copy of this). A resolved `ResolvedMaster` becomes a
+`Benchmark`: `id = assetPriceKey(resolved)` (dedup key), `item = { key: id,
+source: "yahoo", id: "", currency: resolved.currency || "EUR" }` (mirrors
+the two ISIN-keyed curated entries), `label = resolved.name`, `color` from a
+small rotating palette distinct from the 5 curated hex values already used
+(#3b82f6/#a855f7/#eab308/#ef4444/#14b8a6).
+
+Files:
+- `lib/finance/benchmarks.ts`: add a pure, unit-testable
+  `buildCustomBenchmark(master: ResolvedMaster, existing: Benchmark[]):
+  Benchmark | null` (null = already present in curated OR existing custom,
+  dedup by id) and a `customBenchmarkColor(index: number): string` palette
+  picker. Business logic here, not inline in a component, so it's testable
+  without React.
+- `components/charts/use-benchmark-compare.ts`: new optional 3rd param
+  `custom: Benchmark[] = []`. Curated ids keep the existing `/api/benchmarks`
+  fetch untouched. Custom ids (in `custom` AND in `selected`) get a second
+  effect POSTing to `/api/history`, merged into a separate `Record<base,
+  Record<key, points>>` cache. Final `CompareSeries[]` concatenates both
+  sources, still ordered/filtered by `selected`.
+- `components/charts/benchmark-picker.tsx`: existing curated pills unchanged
+  behavior; add an inline add-custom control (text input, resolve on
+  Enter/blur via `resolveInstrumentByQuery` + `buildCustomBenchmark`, loading
+  + not-found states) and render resolved custom entries as pills with a
+  small remove ("×") affordance in addition to the toggle. New props for the
+  custom list + add/remove callbacks — parent owns the state.
+- Three call sites each get `const [custom, setCustom] = useState<Benchmark[]>([])`
+  passed to both `BenchmarkPicker` and `useBenchmarkCompare`:
+  `components/dashboard/net-worth-hero.tsx`, `components/assets/asset-detail.tsx`,
+  `components/shared/shared-portfolio-view.tsx` (the read-only share view —
+  adding a client-side-only comparison overlay there is harmless, doesn't
+  touch the shared data). Do NOT touch `components/analysis/risk-view.tsx` or
+  `components/llm/use-portfolio-chat.ts` — both call `useBenchmarkCompare`
+  with a fixed methodological benchmark (MSCI World for beta/alpha), not a
+  user-facing picker; the new 3rd param must default to `[]` so these two
+  call sites need zero changes.
+- i18n en/de/es: add-custom placeholder, not-found error, remove-button
+  label/aria.
+- Tests: `buildCustomBenchmark` — dedup against curated id, dedup against an
+  existing custom id, builds a correct `Benchmark` from a `ResolvedMaster`;
+  `customBenchmarkColor` — cycles without colliding with the 5 curated hex
+  values.
+
+- [x] F9a. Orchestrator design (above)
+- [x] F9b. Implementation via subworker. Caught and corrected a real flaw in
+      the orchestrator's own spec: dedup must compare against each existing
+      benchmark's `item.key` (the real price key), not `.id` — curated
+      entries' `.id` is an arbitrary slug ("msci-world"), so comparing
+      against `.id` would never have caught a genuine duplicate pick.
+      Subworker also browser-verified end-to-end in Guest Mode (add by ISIN,
+      toggle, not-found error, duplicate-add error, remove) beyond what was
+      asked. New tests/benchmarks.test.ts, 11 cases.
+- [x] F9c. Orchestrator independently re-read every diff (benchmarks.ts,
+      use-benchmark-compare.ts, benchmark-picker.tsx, all three call sites,
+      i18n, tests) before running anything; confirmed the dedup-by-item.key
+      correction, the /api/history vs /api/benchmarks data-path split, and
+      that risk-view.tsx/use-portfolio-chat.ts needed no changes. Ran lint
+      (clean), tsc --noEmit (clean, after clearing a stale unrelated
+      `.next/dev/types` cache artifact), vitest (61 files/713 passed/4
+      skipped, up from 705), dictionaries-es parity (3 passed), and
+      production build (green) myself.
+- [x] F9d. Commit (below)

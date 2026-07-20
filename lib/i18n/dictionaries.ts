@@ -437,6 +437,12 @@ export const en = {
   "common.copy": "Copy",
   "common.loading": "Loading…",
 
+  "benchmark.addCustom": "Add benchmark",
+  "benchmark.searchPlaceholder": "ISIN, WKN, or symbol",
+  "benchmark.notFound": "No matching instrument found.",
+  "benchmark.alreadyAdded": "Already added.",
+  "benchmark.remove": "Remove",
+
   "offline.bannerPrefix": "You're offline, showing data as of",
   "offline.bannerNoData": "You're offline. Showing last-known data.",
 
@@ -1733,6 +1739,12 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.other": "Andere",
   "common.copy": "Kopieren",
   "common.loading": "Wird geladen…",
+
+  "benchmark.addCustom": "Benchmark hinzufügen",
+  "benchmark.searchPlaceholder": "ISIN, WKN oder Symbol",
+  "benchmark.notFound": "Kein passendes Wertpapier gefunden.",
+  "benchmark.alreadyAdded": "Bereits hinzugefügt.",
+  "benchmark.remove": "Entfernen",
 
   "offline.bannerPrefix": "Du bist offline, Stand der Daten:",
   "offline.bannerNoData": "Du bist offline. Letzter bekannter Datenstand wird angezeigt.",
@@ -3032,6 +3044,12 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.other": "Otros",
   "common.copy": "Copiar",
   "common.loading": "Cargando…",
+
+  "benchmark.addCustom": "Añadir benchmark",
+  "benchmark.searchPlaceholder": "ISIN, WKN o símbolo",
+  "benchmark.notFound": "No se encontró ningún instrumento coincidente.",
+  "benchmark.alreadyAdded": "Ya añadido.",
+  "benchmark.remove": "Quitar",
 
   "offline.bannerPrefix": "Estás sin conexión, mostrando datos del",
   "offline.bannerNoData": "Estás sin conexión. Mostrando los últimos datos conocidos.",

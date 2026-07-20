@@ -20,6 +20,8 @@ import {
   type ChartMode,
 } from "@/components/charts/performance-chart";
 import { AllocationPie } from "@/components/allocation/allocation-pie";
+import { BENCHMARKS, buildCustomBenchmark, type Benchmark } from "@/lib/finance/benchmarks";
+import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 
 const TFS: Timeframe[] = ["1M", "3M", "YTD", "1Y", "5Y", "MAX"];
 
@@ -79,7 +81,21 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [mode, setMode] = useState<ChartMode>(wealthSeries ? "currency" : "percent");
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
-  const compare = useBenchmarkCompare(benchmarks, currency);
+  const [customBenchmarks, setCustomBenchmarks] = useState<Benchmark[]>([]);
+  const compare = useBenchmarkCompare(benchmarks, currency, customBenchmarks);
+  const addCustomBenchmark = async (query: string) => {
+    const master = await resolveInstrumentByQuery(query);
+    if (!master) return { ok: false, error: t("benchmark.notFound") };
+    const b = buildCustomBenchmark(master, [...BENCHMARKS, ...customBenchmarks]);
+    if (!b) return { ok: false, error: t("benchmark.alreadyAdded") };
+    setCustomBenchmarks((c) => [...c, b]);
+    setBenchmarks((sel) => (sel.includes(b.id) ? sel : [...sel, b.id]));
+    return { ok: true };
+  };
+  const removeCustomBenchmark = (id: string) => {
+    setCustomBenchmarks((c) => c.filter((b) => b.id !== id));
+    setBenchmarks((sel) => sel.filter((x) => x !== id));
+  };
 
   const returnSlice = useMemo(() => windowSlice(twrSeries, tf, true), [twrSeries, tf]);
   const wealthSlice = useMemo(
@@ -212,6 +228,9 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
             onToggle={(id) =>
               setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]))
             }
+            custom={customBenchmarks}
+            onAddCustom={addCustomBenchmark}
+            onRemoveCustom={removeCustomBenchmark}
           />
         </div>
 

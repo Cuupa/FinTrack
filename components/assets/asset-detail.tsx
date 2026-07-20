@@ -62,6 +62,8 @@ import {
   type ChartScale,
   type ChartMarker,
 } from "@/components/charts/performance-chart";
+import { BENCHMARKS, buildCustomBenchmark, type Benchmark } from "@/lib/finance/benchmarks";
+import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { TransactionForm } from "./transaction-form";
 import { AssetTags } from "./asset-tags";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
@@ -106,6 +108,7 @@ export function AssetDetail({
   const [scale, setScale] = useState<ChartScale>("linear");
   const [mode, setMode] = useState<ChartMode>("currency");
   const [benchmarks, setBenchmarks] = useState<string[]>([]);
+  const [customBenchmarks, setCustomBenchmarks] = useState<Benchmark[]>([]);
   const [highlight, setHighlight] = useState<ChartMarker["type"] | null>(null);
   const [pending, setPending] = useState<{
     title: string;
@@ -113,9 +116,22 @@ export function AssetDetail({
     confirmLabel?: string;
     action: () => void;
   } | null>(null);
-  const compare = useBenchmarkCompare(benchmarks, currency);
+  const compare = useBenchmarkCompare(benchmarks, currency, customBenchmarks);
   const toggleBenchmark = (id: string) =>
     setBenchmarks((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
+  const addCustomBenchmark = async (query: string) => {
+    const master = await resolveInstrumentByQuery(query);
+    if (!master) return { ok: false, error: t("benchmark.notFound") };
+    const b = buildCustomBenchmark(master, [...BENCHMARKS, ...customBenchmarks]);
+    if (!b) return { ok: false, error: t("benchmark.alreadyAdded") };
+    setCustomBenchmarks((c) => [...c, b]);
+    setBenchmarks((sel) => (sel.includes(b.id) ? sel : [...sel, b.id]));
+    return { ok: true };
+  };
+  const removeCustomBenchmark = (id: string) => {
+    setCustomBenchmarks((c) => c.filter((b) => b.id !== id));
+    setBenchmarks((sel) => sel.filter((x) => x !== id));
+  };
 
   // Resolve what this page is about, in order of preference: a held asset (by
   // id or, for the instrumentKey route, by price-key match), else a watchlist
@@ -432,7 +448,13 @@ export function AssetDetail({
           ) : (
             <span />
           )}
-          <BenchmarkPicker selected={benchmarks} onToggle={toggleBenchmark} />
+          <BenchmarkPicker
+            selected={benchmarks}
+            onToggle={toggleBenchmark}
+            custom={customBenchmarks}
+            onAddCustom={addCustomBenchmark}
+            onRemoveCustom={removeCustomBenchmark}
+          />
         </div>
         <div className="mt-4">
           {historyLoading ? (
