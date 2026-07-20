@@ -14,6 +14,7 @@ import {
   resolveQuote,
   resolveSymbol,
   splitsByQuery,
+  announcedByQuery,
 } from "../lib/server/yahoo";
 
 /** A Yahoo /v8/finance/chart response with quote candles (resolveQuote/historyByQuery). */
@@ -409,6 +410,123 @@ describe("splitsByQuery", () => {
 
     const result = await splitsByQuery("US0000000000", "SOME", "5y");
     expect(result).toEqual([{ date: "2023-11-16", ratio: 4 }]);
+  });
+});
+
+describe("announcedByQuery", () => {
+  beforeEach(() => {
+    __resetForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetForTests();
+  });
+
+  // Yahoo's crumb handshake: fc.yahoo.com sets a cookie (even on its 404),
+  // then /v1/test/getcrumb returns the token.
+  function crumbLeg(url: string): Promise<Response> | null {
+    if (url.includes("fc.yahoo.com")) {
+      return Promise.resolve(
+        new Response(null, { status: 404, headers: { "set-cookie": "A3=tok; Path=/" } }),
+      );
+    }
+    if (url.includes("/v1/test/getcrumb")) {
+      return Promise.resolve(new Response("crumb123", { status: 200 }));
+    }
+    return null;
+  }
+
+  function calendarResponse(exRaw?: number, payRaw?: number) {
+    const calendarEvents: Record<string, unknown> = {};
+    if (exRaw) calendarEvents.exDividendDate = { raw: exRaw };
+    if (payRaw) calendarEvents.dividendDate = { raw: payRaw };
+    return new Response(
+      JSON.stringify({ quoteSummary: { result: [{ calendarEvents }] } }),
+      { status: 200 },
+    );
+  }
+
+  const EX = 1789000000; // some future ex-date
+  const PAY = 1789600000; // some future pay-date
+  const exISO = new Date(EX * 1000).toISOString().slice(0, 10);
+  const payISO = new Date(PAY * 1000).toISOString().slice(0, 10);
+
+  it("returns the hinted listing's announced dates and never searches", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      return crumbLeg(u) ?? (u.includes("/quoteSummary/KO")
+        ? Promise.resolve(calendarResponse(EX, PAY))
+        : Promise.resolve(new Response(null, { status: 404 })));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await announcedByQuery("US1912161007", "KO", "Coca-Cola");
+    expect(result).toEqual({ exDate: exISO, payDate: payISO });
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(false);
+    expect(urls.some((u) => u.includes("/quoteSummary/KO"))).toBe(true);
+  });
+
+  it("returns null and never searches when the hint has no calendar (never scans past the hint)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      return (
+        crumbLeg(u) ??
+        (u.includes("/quoteSummary/")
+          ? Promise.resolve(
+              new Response(JSON.stringify({ quoteSummary: { result: null } }), { status: 200 }),
+            )
+          : Promise.resolve(new Response(null, { status: 404 })))
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await announcedByQuery("DE0000000000", "DEADHINT", "Real Corp");
+    expect(result).toBeNull();
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(false);
+  });
+
+  it("with no hint, resolves via search and returns the first candidate's calendar", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      const crumb = crumbLeg(u);
+      if (crumb) return crumb;
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ quotes: [{ symbol: "REAL.DE" }] }), { status: 200 }),
+        );
+      }
+      if (u.includes("/quoteSummary/REAL.DE")) return Promise.resolve(calendarResponse(EX, PAY));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await announcedByQuery("DE0000000000", undefined, "Real Corp");
+    expect(result).toEqual({ exDate: exISO, payDate: payISO });
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+  });
+
+  it("refreshes the crumb once and retries on a 401", async () => {
+    let calls = 0;
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      const crumb = crumbLeg(u);
+      if (crumb) return crumb;
+      if (u.includes("/quoteSummary/KO")) {
+        calls += 1;
+        return calls === 1
+          ? Promise.resolve(new Response(null, { status: 401 }))
+          : Promise.resolve(calendarResponse(EX, PAY));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await announcedByQuery("US1912161007", "KO");
+    expect(result).toEqual({ exDate: exISO, payDate: payISO });
+    expect(calls).toBe(2); // one 401, then a retry with a fresh crumb
   });
 });
 

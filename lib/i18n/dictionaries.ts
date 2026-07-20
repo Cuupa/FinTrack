@@ -136,7 +136,8 @@ export const en = {
   "div.forecast": "Next 12 months",
   "div.forecastTip": "Each payout of the trailing year projected one year forward at your current share count. This is an estimate: payouts change and are never guaranteed.",
   "div.forecastMore": "+ {count} more projected payouts",
-  "div.forecastDisclaimer": "Projection from last year's payouts at your current share count. Not a guarantee.",
+  "div.forecastDisclaimer": "Projection from last year's payouts at your current share count. Not a guarantee. Confirmed dates come from the payer's announced calendar.",
+  "div.confirmedDate": "confirmed",
   "div.chart.ariaLabel": "Bar chart of dividend income per period, {total} in total.",
 
   "settings.title": "Settings",
@@ -1448,7 +1449,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "div.forecast": "Nächste 12 Monate",
   "div.forecastTip": "Jede Ausschüttung des letzten Jahres, ein Jahr nach vorn projiziert mit deinem aktuellen Anteilsbestand. Eine Schätzung: Ausschüttungen ändern sich und sind nie garantiert.",
   "div.forecastMore": "+ {count} weitere erwartete Ausschüttungen",
-  "div.forecastDisclaimer": "Projektion aus den Ausschüttungen des letzten Jahres mit aktuellem Bestand. Keine Garantie.",
+  "div.forecastDisclaimer": "Projektion aus den Ausschüttungen des letzten Jahres mit aktuellem Bestand. Keine Garantie. Bestätigte Termine stammen aus dem angekündigten Kalender des Zahlers.",
+  "div.confirmedDate": "bestätigt",
   "div.chart.ariaLabel": "Balkendiagramm der Dividendeneinnahmen je Periode, insgesamt {total}.",
 
   "settings.title": "Einstellungen",
@@ -2760,7 +2762,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "div.forecast": "Próximos 12 meses",
   "div.forecastTip": "Cada reparto del último año, proyectado un año hacia delante con tu número actual de participaciones. Es una estimación: los repartos cambian y nunca están garantizados.",
   "div.forecastMore": "+ {count} repartos previstos adicionales",
-  "div.forecastDisclaimer": "Proyección a partir de los repartos del último año con tu número actual de participaciones. No es una garantía.",
+  "div.forecastDisclaimer": "Proyección a partir de los repartos del último año con tu número actual de participaciones. No es una garantía. Las fechas confirmadas provienen del calendario anunciado del pagador.",
+  "div.confirmedDate": "confirmada",
   "div.chart.ariaLabel": "Gráfico de barras de ingresos por dividendos por periodo, {total} en total.",
 
   "settings.title": "Ajustes",

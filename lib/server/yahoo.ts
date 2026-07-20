@@ -821,6 +821,142 @@ export async function splitsByQuery(
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Announced dividend calendar (COMPETITION.md F4).
+//
+// Confirmed upcoming ex/pay dates come from Yahoo's quoteSummary
+// `calendarEvents` module, which — unlike the keyless v8 chart API the rest of
+// this file uses — requires a cookie + crumb pair. The crumb is obtained once
+// (session cookie from fc.yahoo.com, then /v1/test/getcrumb) and cached; a
+// 401 invalidates it and forces a single refresh. All of this shares the same
+// concurrency limiter + cooldown breaker as getJSON, and fails soft: any
+// error yields null, so the /dividends forecast silently keeps its trailing
+// projection (which stays the labelled-estimated fallback either way).
+// ---------------------------------------------------------------------------
+
+const CRUMB_TTL_MS = 30 * 60_000; // 30min
+let crumbCache: { crumb: string; cookie: string; at: number } | null = null;
+
+async function getCrumb(force: boolean): Promise<{ crumb: string; cookie: string } | null> {
+  if (!force && crumbCache && Date.now() - crumbCache.at < CRUMB_TTL_MS) {
+    return { crumb: crumbCache.crumb, cookie: crumbCache.cookie };
+  }
+  try {
+    // The cookie is set even on the 404 fc.yahoo.com returns; undici exposes it
+    // via getSetCookie(). Only the name=value head of each cookie is sent back.
+    const cookieRes = await fetch("https://fc.yahoo.com", {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    const setCookies =
+      typeof cookieRes.headers.getSetCookie === "function" ? cookieRes.headers.getSetCookie() : [];
+    const cookie = setCookies
+      .map((c) => c.split(";")[0].trim())
+      .filter(Boolean)
+      .join("; ");
+    const crumbRes = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "User-Agent": UA, ...(cookie ? { Cookie: cookie } : {}) },
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    if (!crumbRes.ok) return null;
+    const crumb = (await crumbRes.text()).trim();
+    // A valid crumb is a short opaque token; an HTML/error body never is.
+    if (!crumb || crumb.length > 40 || crumb.includes("<")) return null;
+    crumbCache = { crumb, cookie, at: Date.now() };
+    return { crumb, cookie };
+  } catch {
+    return null;
+  }
+}
+
+/** Crumb-authenticated quoteSummary GET, sharing getJSON's breaker + limiter.
+ *  Retries once with a fresh crumb on a 401 (stale crumb). */
+async function quoteSummaryJSON(symbol: string, modules: string): Promise<unknown | null> {
+  if (Date.now() < yahooCooldownUntil) return null;
+  const release = await yahooLimiter.acquire();
+  try {
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      const cr = await getCrumb(attempt > 0);
+      if (!cr) return null;
+      const url =
+        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}` +
+        `?modules=${encodeURIComponent(modules)}&crumb=${encodeURIComponent(cr.crumb)}`;
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: { "User-Agent": UA, Cookie: cr.cookie },
+          signal: AbortSignal.timeout(TIMEOUT),
+        });
+      } catch {
+        return null;
+      }
+      if (res.ok) return await res.json();
+      if (res.status === 401 && attempt === 0) {
+        crumbCache = null; // stale crumb → refresh and retry once
+        continue;
+      }
+      return null;
+    }
+    return null;
+  } finally {
+    release();
+  }
+}
+
+export interface AnnouncedDividend {
+  /** Confirmed ex-dividend date (YYYY-MM-DD) or null when Yahoo has none. */
+  exDate: string | null;
+  /** Confirmed pay date (YYYY-MM-DD) or null. */
+  payDate: string | null;
+}
+
+/** The next announced ex/pay dates for a resolved Yahoo symbol, or null when
+ *  the listing has no upcoming dividend on file (accumulating funds, symbols
+ *  Yahoo hasn't published a date for). */
+async function dividendCalendar(symbol: string): Promise<AnnouncedDividend | null> {
+  const data = (await quoteSummaryJSON(symbol, "calendarEvents")) as
+    | {
+        quoteSummary?: {
+          result?: Array<{
+            calendarEvents?: {
+              exDividendDate?: { raw?: number };
+              dividendDate?: { raw?: number };
+            };
+          }>;
+        };
+      }
+    | null;
+  const ce = data?.quoteSummary?.result?.[0]?.calendarEvents;
+  if (!ce) return null;
+  const toDate = (raw?: number) =>
+    typeof raw === "number" && raw > 0 ? new Date(raw * 1000).toISOString().slice(0, 10) : null;
+  const exDate = toDate(ce.exDividendDate?.raw);
+  const payDate = toDate(ce.dividendDate?.raw);
+  if (!exDate && !payDate) return null;
+  return { exDate, payDate };
+}
+
+/**
+ * Announced ex/pay dates for a query (ISIN/symbol). `hint` (the exact listing
+ * the app already prices this asset with) is authoritative and short-circuits
+ * the search loop entirely, exactly like `dividendsByQuery`/`splitsByQuery`:
+ * an announced date attributed to the wrong listing is as bad as a phantom
+ * dividend. A dead hint yields null (no announced date), never a search
+ * fallthrough.
+ */
+export async function announcedByQuery(
+  query: string,
+  hint: string | undefined,
+  fallbackQuery?: string,
+): Promise<AnnouncedDividend | null> {
+  if (hint) return dividendCalendar(hint);
+  for (const s of (await searchCandidates(query, fallbackQuery)).slice(0, 3)) {
+    const c = await dividendCalendar(s);
+    if (c) return c;
+  }
+  return null;
+}
+
 /**
  * Test-only: reset module-level caches + the circuit breaker between tests so
  * one test's mocked-fetch state can't leak into the next (this module's
@@ -834,4 +970,5 @@ export function __resetForTests(): void {
   unresolvableCache.clear();
   symbolCache.clear();
   yahooCooldownUntil = 0;
+  crumbCache = null;
 }

@@ -106,8 +106,50 @@ skips missing history).
       estimate positive-path (estimated value + EstimatedBadge feeding the
       waterfall) activates on prod once migration 0074 seeds basiszins - math
       is unit-tested.
-- [ ] F6d. Commit.
+- [x] F6d. Commit (1852a20).
+
+## Task F4 - announced dividend calendar (closes G4, Medium)
+
+Design (orchestrator - live-verified Yahoo before building, per F3b precedent):
+the v8 chart endpoint the app uses is historical only (confirmed: KO range=10y
+max date is before server-now). Confirmed UPCOMING ex/pay dates live in Yahoo's
+quoteSummary `calendarEvents`, which is crumb-locked (v10 + v7 return
+Unauthorized without one). Verified the keyless crumb handshake works both via
+curl AND in Node undici (getSetCookie -> getcrumb -> quoteSummary): KO returns
+ex 2026-09-15, pay 2026-10-01. Fails soft everywhere (any error -> null -> the
+trailing projection stays), so the crumb fragility is acceptable - the app
+degrades to exactly today's behaviour if Yahoo changes the handshake.
+
+Files:
+- lib/server/yahoo.ts: crumb infra (getCrumb 30min cache + 401-refresh,
+  quoteSummaryJSON sharing getJSON's limiter/breaker) + dividendCalendar +
+  announcedByQuery(query, hint, fallbackQuery) - hint authoritative, never
+  scans past it (same phantom-attribution rule as dividends/splits).
+- app/api/dividends/calendar/route.ts: POST {items} -> {announced: Record<key,
+  {exDate,payDate}>}, mirrors /api/dividends minus FX.
+- lib/history/use-announced-dividends.ts: gated by `enabled` (dividendCalendar
+  flag) so a disabled flag spends zero crumb calls.
+- lib/finance/dividends.ts: pure `applyAnnouncedDate(projected, payDate, today)`
+  - re-dates the earliest projected payment to the confirmed date + flags it,
+  rest unchanged; past/absent date leaves projection untouched.
+- dividends-view.tsx: folds announced dates into the forecast, confirmed rows
+  show a green "confirmed" text (no badge), disclaimer updated.
+- flag `dividendCalendar` (migration 0075 + schema.sql + FeatureFlag union).
+- i18n en/de/es (div.confirmedDate + disclaimer addition).
+- tests: applyAnnouncedDate (5, tests/dividend-forecast.test.ts) +
+  announcedByQuery (4 in yahoo-throttle.test.ts: hint authoritative + no
+  search, dead hint no search, no-hint search, 401 crumb-refresh retry).
+
+- [x] F4a. Orchestrator design + live Yahoo/undici crumb verification (above).
+- [x] F4b. Implemented all files above (done directly - fragile crumb infra).
+- [x] F4c. Verified: tsc clean, lint clean, vitest 64 files/744 passed/4
+      skipped (up from 735), es-parity, build green (/api/dividends/calendar
+      present). Browser-verified end to end EN + DE (Guest Mode, injected KO):
+      /api/dividends/calendar returns KO ex 2026-09-15 pay 2026-10-01, and the
+      /dividends forecast shows "Coca-Cola Oct 1, 2026 confirmed" (green)
+      replacing the earliest projection with later dates staying projected,
+      disclaimer updated. No console errors.
+- [ ] F4d. Commit.
 
 ## Remaining this round
-- [ ] F4 announced dividend calendar
 - [ ] F5 web push notifications

@@ -63,3 +63,34 @@ export function projectDividends(
   out.sort((a, b) => (a.date < b.date ? -1 : 1));
   return out;
 }
+
+export interface ProjectedPayment {
+  date: string;
+  amount: number;
+  /** True when `date` is a confirmed announced pay date (Yahoo calendar),
+   *  not a trailing-cadence projection. The amount stays projected either way
+   *  — Yahoo confirms the date, not the per-share figure. */
+  confirmed: boolean;
+}
+
+/**
+ * Fold one holding's confirmed announced pay date into its trailing
+ * projection (COMPETITION.md F4): the earliest projected payment is re-dated
+ * to the confirmed pay date and flagged confirmed; the rest are unchanged. A
+ * past, absent, or projection-free announced date leaves the projection
+ * untouched, so the projection always remains the fallback. Pure.
+ */
+export function applyAnnouncedDate(
+  projected: { date: string; amount: number }[],
+  announcedPayDate: string | null,
+  todayISO: string,
+): ProjectedPayment[] {
+  const out: ProjectedPayment[] = projected.map((p) => ({ ...p, confirmed: false }));
+  if (!announcedPayDate || announcedPayDate <= todayISO || out.length === 0) return out;
+  // projectDividends returns ascending, so the earliest is index 0; scan to be
+  // robust to any caller passing an unsorted list.
+  let idx = 0;
+  for (let i = 1; i < out.length; i++) if (out[i].date < out[idx].date) idx = i;
+  out[idx] = { date: announcedPayDate, amount: out[idx].amount, confirmed: true };
+  return out;
+}

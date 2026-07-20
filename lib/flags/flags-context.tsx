@@ -79,7 +79,8 @@ export type FeatureFlag =
   | "billing"
   | "importPp"
   | "splitDetection"
-  | "vorabEstimate";
+  | "vorabEstimate"
+  | "dividendCalendar";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

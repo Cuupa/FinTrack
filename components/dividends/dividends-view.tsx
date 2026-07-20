@@ -21,7 +21,14 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useDividends } from "@/lib/history/use-dividends";
-import { dividendsFromEvents, projectDividends, type DividendPayment } from "@/lib/finance/dividends";
+import { useAnnouncedDividends } from "@/lib/history/use-announced-dividends";
+import {
+  dividendsFromEvents,
+  projectDividends,
+  applyAnnouncedDate,
+  type DividendPayment,
+} from "@/lib/finance/dividends";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import {
   summarizeAll,
   transactionsByAsset,
@@ -84,6 +91,8 @@ export function DividendsView() {
     [data.assets, version],
   );
   const { dividends: divMap, loading } = useDividends(histItems);
+  const calendarEnabled = useFeatureFlag("dividendCalendar");
+  const announced = useAnnouncedDividends(histItems, calendarEnabled);
 
   const holdings = useMemo(
     () => summarizeAll(data.assets, data.transactions, valuation),
@@ -193,21 +202,26 @@ export function DividendsView() {
   // cadence (a freshly bought stock has no received payments yet).
   const forecast = useMemo(() => {
     const fx = valuation.fx ?? {};
-    const out: { date: string; asset: Asset; amount: number }[] = [];
+    const out: { date: string; asset: Asset; amount: number; confirmed: boolean }[] = [];
     for (const asset of data.assets) {
-      const events = divMap[assetPriceKey(asset)];
+      const key = assetPriceKey(asset);
+      const events = divMap[key];
       if (!events || events.length === 0) continue;
       const shares = holdingById.get(asset.id)?.position.shares ?? 0;
       if (shares <= 0) continue;
       const cur = asset.currency ?? currency;
       const rate = cur === currency ? 1 : (fx[cur] ?? 1);
-      for (const p of projectDividends(events, shares, t12mStart, todayISO)) {
-        out.push({ date: p.date, asset, amount: p.amount * rate });
+      const projected = projectDividends(events, shares, t12mStart, todayISO);
+      // Fold in the confirmed announced pay date (F4): the next projected
+      // payment adopts Yahoo's confirmed date; the projection stays the
+      // fallback for everything else.
+      for (const p of applyAnnouncedDate(projected, announced[key]?.payDate ?? null, todayISO)) {
+        out.push({ date: p.date, asset, amount: p.amount * rate, confirmed: p.confirmed });
       }
     }
     out.sort((a, b) => (a.date < b.date ? -1 : 1));
     return out;
-  }, [data.assets, divMap, holdingById, currency, valuation, t12mStart, todayISO]);
+  }, [data.assets, divMap, announced, holdingById, currency, valuation, t12mStart, todayISO]);
 
   const forecastTotal = useMemo(() => forecast.reduce((s, f) => s + f.amount, 0), [forecast]);
 
@@ -428,7 +442,14 @@ export function DividendsView() {
                   <li key={`${f.asset.id}:${f.date}:${i}`} className="flex items-center justify-between gap-3 py-2">
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">{f.asset.name}</span>
-                      <span className="block text-xs text-zinc-500">{formatDate(f.date)}</span>
+                      <span className="block text-xs text-zinc-500">
+                        {formatDate(f.date)}
+                        {f.confirmed && (
+                          <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
+                            {t("div.confirmedDate")}
+                          </span>
+                        )}
+                      </span>
                     </span>
                     <span className="shrink-0 text-sm tabular-nums" data-private>
                       ≈ {formatCurrency(f.amount, currency)}

@@ -531,7 +531,8 @@ insert into public.schema_migrations (version) values
   ('0071_import_pp_flag'),
   ('0072_split_transaction_type'),
   ('0073_split_detection_flag'),
-  ('0074_vorabpauschale')
+  ('0074_vorabpauschale'),
+  ('0075_dividend_calendar_flag')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -759,7 +760,8 @@ insert into public.feature_flags (flag, description) values
   ('errorLogging', 'Server-side capture of client error reports'),
   ('importPp', 'CSV import — Portfolio Performance format'),
   ('splitDetection', 'Automatic stock split detection + review on asset detail'),
-  ('vorabEstimate', 'Vorabpauschale estimate on the annual tax report')
+  ('vorabEstimate', 'Vorabpauschale estimate on the annual tax report'),
+  ('dividendCalendar', 'Announced dividend calendar (confirmed upcoming ex/pay dates)')
 on conflict (flag) do nothing;
 
 -- Seeded DISABLED (separate insert so the default-true column doesn't enable
