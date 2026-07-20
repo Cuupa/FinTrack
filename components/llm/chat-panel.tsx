@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFocusTrap } from "@/components/ui/use-focus-trap";
 import { Button } from "@/components/ui/primitives";
+import { Markdown } from "./markdown";
 import type { PortfolioChat } from "./use-portfolio-chat";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 
@@ -153,15 +154,16 @@ function MessageRow({ role, content }: { role: "user" | "assistant"; content: st
   const isUser = role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <p
-        className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
+      <div
+        className={`max-w-[85%] break-words rounded-2xl px-3 py-2 text-sm ${
           isUser
-            ? "rounded-br-sm bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+            ? "whitespace-pre-wrap rounded-br-sm bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
             : "rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
         }`}
       >
-        {content}
-      </p>
+        {/* The user's own text stays literal; the assistant replies in Markdown. */}
+        {isUser ? content : <Markdown content={content} />}
+      </div>
     </div>
   );
 }
