@@ -120,6 +120,40 @@ const FINTRACK_SAMPLE = [
   "",
 ].join("\n");
 
+// Portfolio Performance (github.com/portfolio-performance/portfolio) CSV
+// transaction export, German UI locale: ';' delimiter, decimal comma. Header
+// verified against CSVExporter.writeHeader + the German labels.properties/
+// messages_de.properties resource bundles. Rows: Kauf (Apple), Verkauf
+// (Vanguard ETF, negative portfolio-side Value and German thousands-less
+// decimals), Einlieferung (Siemens, "2.000,00" exercises the German
+// thousands separator), a cross-currency Kauf (Gross Amount/Currency Gross
+// Amount populated — the security's real USD price, not the EUR account
+// currency), and a Dividende row that must be skipped (no FinTrack
+// TransactionType counterpart).
+const PP_DE = [
+  "Datum;Typ;Wert;Buchungswährung;Bruttobetrag;Währung Bruttobetrag;Wechselkurs;Gebühren;Steuern;Stück;ISIN;WKN;Ticker-Symbol;Wertpapiername;Notiz",
+  "2025-04-16T20:53:24;Kauf;460,00;EUR;;;;1,00;;2;US0378331005;865985;AAPL;Apple Inc.;",
+  "2025-04-17T10:15:00;Verkauf;-120,00;EUR;;;;0,50;2,00;1;IE00BK5BQT80;;VWCE;Vanguard FTSE All-World UCITS ETF;",
+  "2025-04-18T09:00:00;Einlieferung;2.000,00;EUR;;;;;;10;DE0007236101;723610;SIE;Siemens AG;",
+  "2025-04-20T09:00:00;Kauf;-450,00;EUR;500,00;USD;0,90;2,00;;5;US0000000001;;TST;Test US Stock;",
+  "2025-04-19T00:00:00;Dividende;15,00;EUR;;;;;;10;US0378331005;865985;AAPL;Apple Inc.;",
+].join("\n");
+
+// Same shape, English UI locale: ',' delimiter, decimal point, English type
+// strings/headers. The Sell row's Value is a genuine Commons CSV
+// (QuoteMode.MINIMAL) output: a field containing the delimiter itself — the
+// grouping comma in "1,200.50" — gets double-quoted by the writer, minus
+// sign inside the quotes, e.g. "-1,200.50". This is the one real-world case
+// that could actually break parsing (a quoted field whose content itself
+// contains the delimiter), so it's exercised literally rather than assumed.
+const PP_EN = [
+  "Date,Type,Value,Transaction Currency,Gross Amount,Currency Gross Amount,Exchange Rate,Fees,Taxes,Shares,ISIN,WKN,Ticker Symbol,Security Name,Note",
+  "2025-04-16T20:53:24,Buy,460.00,EUR,,,,1.00,,2,US0378331005,865985,AAPL,Apple Inc.,",
+  '2025-04-17T10:15:00,Sell,"-1,200.50",EUR,,,,5.00,10.00,10,IE00BK5BQT80,,VWCE,Vanguard FTSE All-World UCITS ETF,',
+  "2025-04-18T09:00:00,Delivery (Inbound),2000.00,EUR,,,,,,10,DE0007236101,723610,SIE,Siemens AG,",
+  "2025-04-19T00:00:00,Dividend,15.00,EUR,,,,,,10,US0378331005,865985,AAPL,Apple Inc.,",
+].join("\n");
+
 describe("csv detectFormat", () => {
   it("identifies each broker", () => {
     expect(detectFormat(ZERO)).toBe("zeroorders");
@@ -129,6 +163,8 @@ describe("csv detectFormat", () => {
     expect(detectFormat(DB_TX)).toBe("dbtransactions"); // despite the BOM
     expect(detectFormat(BITPANDA)).toBe("bitpanda"); // header on line 6, not 0
     expect(detectFormat(FINTRACK_SAMPLE)).toBe("fintrack");
+    expect(detectFormat(PP_DE)).toBe("portfolioperformance");
+    expect(detectFormat(PP_EN)).toBe("portfolioperformance");
     expect(detectFormat("a,b,c\n1,2,3")).toBeNull();
   });
 });
@@ -562,6 +598,80 @@ describe("csv parsers — fintrack (self re-import)", () => {
       expect(rows[i].isin).toBe(asset.isin);
       expect(rows[i].symbol).toBe(asset.symbol);
     }
+  });
+});
+
+describe("csv parsers — portfolio performance", () => {
+  it("German locale: types, German decimals/thousands, fee+tax, cross-currency gross amount, skipped dividend", () => {
+    const { format, rows, skipped, invalid } = parseCsv(PP_DE);
+    expect(format).toBe("portfolioperformance");
+    expect(rows).toHaveLength(4); // Kauf, Verkauf, Einlieferung, cross-currency Kauf
+    expect(skipped).toBe(1); // Dividende — no TransactionType counterpart
+    expect(invalid).toBe(0);
+    const [kauf, verkauf, einlieferung, forex] = rows;
+
+    // Kauf: price = (Value - Fees - Taxes) / Shares = (460 - 1) / 2.
+    expect(kauf).toMatchObject({
+      isin: "US0378331005",
+      wkn: "865985",
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      type: "BUY",
+      quantity: 2,
+      currency: "EUR",
+      date: "2025-04-16T20:53:24",
+    });
+    expect(kauf.price).toBeCloseTo((460 - 1) / 2, 6);
+    expect(kauf.fee).toBeCloseTo(1, 6);
+    expect(kauf.tax).toBe(0);
+
+    // Verkauf: negative portfolio-side Value, abs'd; price = (|Value| + Fees + Taxes) / Shares.
+    expect(verkauf).toMatchObject({ isin: "IE00BK5BQT80", type: "SELL", quantity: 1, currency: "EUR" });
+    expect(verkauf.price).toBeCloseTo((120 + 0.5 + 2) / 1, 6);
+    expect(verkauf.fee).toBeCloseTo(0.5, 6);
+    expect(verkauf.tax).toBeCloseTo(2, 6);
+
+    // Einlieferung → BOOKING; "2.000,00" (German thousands separator) → 2000.
+    expect(einlieferung).toMatchObject({ isin: "DE0007236101", wkn: "723610", type: "BOOKING", quantity: 10 });
+    expect(einlieferung.price).toBeCloseTo(200, 6);
+    expect(einlieferung.fee).toBe(0);
+
+    // Cross-currency Kauf: Gross Amount + Currency Gross Amount populated →
+    // price/currency come from those (the security's real USD price), not
+    // the EUR Buchungswährung.
+    expect(forex).toMatchObject({ isin: "US0000000001", type: "BUY", quantity: 5, currency: "USD" });
+    expect(forex.price).toBeCloseTo(100, 6);
+  });
+
+  it("English locale: types, English decimals/thousands, fee+tax, skipped dividend", () => {
+    const { format, rows, skipped, invalid } = parseCsv(PP_EN);
+    expect(format).toBe("portfolioperformance");
+    expect(rows).toHaveLength(3); // Buy, Sell, Delivery (Inbound)
+    expect(skipped).toBe(1); // Dividend
+    expect(invalid).toBe(0);
+    const [buy, sell, delivery] = rows;
+
+    expect(buy).toMatchObject({
+      isin: "US0378331005",
+      wkn: "865985",
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      type: "BUY",
+      quantity: 2,
+      currency: "EUR",
+      date: "2025-04-16T20:53:24",
+    });
+    expect(buy.price).toBeCloseTo((460 - 1) / 2, 6);
+
+    // Quoted, comma-grouped Value field "-1,200.50" (quote-aware splitLine
+    // keeps the embedded comma out of the delimiter split) → 1200.50.
+    expect(sell).toMatchObject({ isin: "IE00BK5BQT80", type: "SELL", quantity: 10 });
+    expect(sell.price).toBeCloseTo((1200.5 + 5 + 10) / 10, 6);
+    expect(sell.fee).toBeCloseTo(5, 6);
+    expect(sell.tax).toBeCloseTo(10, 6);
+
+    expect(delivery).toMatchObject({ isin: "DE0007236101", type: "BOOKING", quantity: 10 });
+    expect(delivery.price).toBeCloseTo(200, 6);
   });
 });
 

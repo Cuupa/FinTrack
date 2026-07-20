@@ -1,75 +1,69 @@
-# Ledger - round 2026-07-19c (TODO.md: prices prio 1, monetization, error log)
+# Ledger - round 2026-07-19d (TODO.md: work COMPETITION.md)
 
-Previous round 2026-07-19b closed and preserved in git history (e7519d5).
+Previous round 2026-07-19c closed and preserved in git history (f85d3b7).
 
-User request: work TODO.md. Three tasks, prices marked prio 1, so order is
-prices -> monetization (incl. gratitude premium) -> error log rework.
+User request: work COMPETITION.md. Section 4 is the plan; order is Wave 1
+first (migration funnel + correctness): F1 PP import, F3 SPLIT type. F2
+(PDF import) is L effort and deferred to its own round. F9 (custom
+benchmarks, S) next if the session allows, then further Wave 2/3 items.
 
-## Task 1 - prices won't update (prio 1)
+## Constraints (from TODO.md + CLAUDE.md, apply to every task)
+- [ ] One subworker at a time, ledger updated before each delegation
+- [ ] Commit per task, short meaningful message, no branches
+- [ ] Every feature behind a feature_flags row (seeded enabled), en+de+es
+- [ ] schema.sql + idempotent migration when the data model changes
+- [ ] No em-dashes, du/tu register, no badges, sortable tables + row hover,
+      skeletons not placeholders
+- [ ] Lint + tsc + tests + production build green before each commit
 
-Diagnosis (orchestrator, verified against prod):
-- All five ISINs (LU0256331488, LU2145461757, LU0048578792, JE00B2NFTS64,
-  IE00BMVB5N38) resolve and quote fine on onvista, and prod's own
-  /api/price?q=<isin> returns correct prices via the onvista fallback.
-- The prices cron leaves exactly the 13 hint-less rows (no quote_source/
-  quote_id learned yet) unpriced while all 49 hinted rows synced today.
-- Root cause: app/api/cron/sync/prices/route.ts has no `maxDuration` export
-  while every deliberately long cron sibling (sync, benchmarks,
-  etf-breakdowns, billing) exports 300. The bulk sync self-calls sub-syncs
-  over HTTP, so each runs as its own function with the default short cap:
-  hinted rows update fast, hint-less rows wait on the Yahoo semaphore for a
-  full search and the function is killed before the onvista fallback runs.
-  No new data provider needed - the onvista pool member already covers all
-  five instruments.
+## Task F1 - Portfolio Performance CSV import (closes G2, High)
 
-- [x] 1a. `export const maxDuration = 300` on all cron sub-sync routes missing it (prices, retention, constituents, classifications, shared-portfolios, names, error-logs)
-- [x] 1b. Lint + tsc + tests green (633 passed/4 skipped), production build passes with all 11 cron routes emitted
-- [x] 1c. CLAUDE.md cron note: every /api/cron/* route must export maxDuration (HTTP self-call = own duration budget)
-- [x] 1d. Commit (ddace95)
-- [~] 1e. Prod verification (rows price after next deploy + cron run) - needs owner push/deploy, deferred to owner like prior rounds' prod checks
+Design (orchestrator): new `BrokerFormat` "portfolioperformance" in
+lib/import/csv.ts, exactly parallel to the existing `fintrack` round-trip
+format. PP is open source; the subworker verifies the real CSV export
+column layout from the PP GitHub source before writing the parser (never
+guess columns). German and English header variants, semicolon-delimited,
+deNum for German decimals. Type mapping: Kauf/Buy -> BUY, Verkauf/Sell ->
+SELL, Einlieferung/Delivery (Inbound) -> BOOKING; dividend/interest/account
+rows and Auslieferung are skipped + counted (no matching TransactionType /
+no identifier). Reconcile/fingerprint/merge reused unchanged. Kill-switch
+flag `importPp` (migration + schema.sql, seeded enabled), checked in
+import-transactions.tsx after detection. Inline anonymized fixtures in
+tests/import.test.ts; detection must not clash with the six existing
+signatures.
 
-## Task 2 - monetization
+- [x] F1a. Verify PP CSV export layout from PP source (subworker research;
+      orchestrator independently re-verified the exporter path and cell
+      formatting against the actual GitHub source — the subworker's cited
+      `CSVExporter.java` path was one level shallow (it lives under a
+      `csv/exporter/` subdirectory, not directly in `csv/`), but the header
+      order, delimiter-by-locale, and no-price-column findings all check
+      out. Additionally confirmed: PP writes via Apache Commons CSV
+      `CSVPrinter` (`QuoteMode.MINIMAL`, quote char `"`), and `Values.Amount`
+      formats with grouping ("#,##0.00" / `%,.2f`) — so a real English-locale
+      export with an amount >= 1000 emits a quoted field like
+      `"1,234.56"`. `splitLine`'s existing quote-tracking handles this
+      correctly already; the risk was never the parser, only test coverage.)
+- [x] F1b. Parser + detection + flag + tests + i18n keys (subworker)
+- [x] F1c. Lint + tsc + tests + build green (subworker; 60 files / 699 passed)
+- [x] F1c-2. Orchestrator review found the English-locale test fixture's
+      comment claims to exercise a real thousands-separator value
+      ("1,200.50") but the actual fixture string is "-1200.50" with no
+      separator at all — so the quoted-comma path (the one real-world case
+      that would break naive unquoted splitting) was never actually tested.
+      Subworker fixed: PP_EN Sell row's Value is now the genuine quoted cell
+      `"-1,200.50"` (matching Commons CSV's QuoteMode.MINIMAL output),
+      comments corrected. Orchestrator independently re-ran lint, tsc,
+      vitest (60 files/699 passed/4 skipped) and the production build — all
+      green.
+- [x] F1d. Commit (below)
 
-Design (orchestrator): `plan_grants` table (migration 0068 + schema.sql,
-select-own RLS, service-role writes), `resolvePlan(sub, now, grants?)` treats
-an active pro grant (expires_at null = infinite, or future) as an independent
-path to "pro"; BillingProvider loads own grants; settings card shows a
-"granted" state without checkout/portal buttons (no Stripe customer); admin
-grant/revoke on /admin/billing via /api/admin/billing/grants (email search
-through the existing /api/admin/users, audited, revoke behind ConfirmDialog,
-sortable hover-highlighted table, no badges, en/de/es).
+## Task F3 - SPLIT transaction type (closes G6, High-side Medium)
 
-- [x] 2a. Gratitude premium schema: plan_grants w/ end date or infinite (0068 + schema.sql, idempotent)
-- [x] 2b. resolvePlan honors grants (pure; tests extended: billing-plan 8 cases, subscription-view 7 cases, billing-admin parseGrantBody 11 cases)
-- [x] 2c. Admin UI to grant/revoke on /admin/billing + grants API (audited; table sortable + row hover; ConfirmDialog on revoke; skeletons; en/de/es du/tu)
-- [x] 2d. Settings subscription card shows granted state, hides checkout/portal buttons
-- [x] 2e. Lint + tsc + tests (660 passed/4 skipped) + build green; CLAUDE.md billing paragraph updated
-- [x] 2f. Commit (dd66a6c)
-- [x] 2g. Remaining MONETIZATION.md phases 3/4, dark-launched (billing flag off in prod, all flags still seeded free, so no visible change until owner flips at runtime):
-  - [x] 2g-1. ProTeaser component + useFeature adoption on /analysis risk+tax tabs, /dividends, /simulation, /xray, /rebalancing; locked tabs stay visible with teaser content; upgrade CTA only when billing flag on (commit 8f0e47f)
-  - [x] 2g-2. /pricing page (flag-gated, skeletons, free/pro comparison, checkout CTA reusing the settings card flow via new lib/billing/checkout-client.ts) + billing_config display prices (migration 0070, /admin/billing inputs) + legal: datenschutz Stripe section + terms subscription/Widerruf section, EN+DE du, conditionally phrased so claims stay accurate while dark; browser-verified in Guest Mode en/de/es (commit 6ba1511)
-  - [x] 2g-3. Phase 4: lib/billing/limits.ts resolveLimit/atLimit (grandfathering: only adding blocks, 14 cases) + usePlanLimit via FeatureFlagsProvider; enforcement at watchlist add, savings-plan create, portfolio create incl. the three inline "+ New portfolio" SelectMenu footers (same createPortfolio bypass closed); plan_limits editor card on /admin/site (audited, parse helper tested); 697 passed/4 skipped, lint/tsc/build green (commit 57d7fd4)
-  Owner-gated and NOT done (MONETIZATION.md section 7 open decisions): flipping required_plan tiers, enabling the billing flag, first live checkout, price points, grandfathering choice for existing users.
+- [ ] F3a. Orchestrator design of replay semantics (after F1)
+- [ ] F3b. Implementation via subworker
+- [ ] F3c. Verification + commit
 
-## Task 3 - error log rework (levels not types)
-
-Design (orchestrator): severity becomes the primary classification.
-`error_logs.level` text ('debug'|'info'|'warn'|'error'|'fatal', migration
-0069 + schema.sql, default/backfill 'error'), `reportError` and /api/errors
-carry a validated `level` (default 'error'), capture surfaces map
-global-error -> fatal, route boundary/window/unhandledrejection -> error.
-`kind` stays as a display column (capture source), but the admin filter
-switches from kind to level; level renders as color-coded plain text (no
-badges), table sortable + row hover per user rules.
-
-- [x] 3a. Understand current error log implementation (kind-based: report.ts, /api/errors, /admin/errors, 0051)
-- [x] 3b. Rework to severity levels (debug/info/warn/error/fatal) instead of error types: migration 0069 + schema.sql (level column + check constraint + index, default/backfill 'error'); ErrorLevel type + reportError level default/dedupe-key in lib/errors/report.ts; global-error.tsx -> fatal, error.tsx + error-reporter.tsx (window/unhandledrejection) -> error explicit; /api/errors validates level allowlist (absent -> error, invalid -> 400); /admin/errors: level replaces kind as the filter + SelectMenu, level own sortable column (color-coded plain text, no badges: debug gray/info blue/warn amber/error red/fatal red+semibold), kind kept as plain sortable column, every column sortable (Th/sort-state idiom from admin/prices), row hover, skeleton loading kept; en/de/es dictionary keys added (kindAll removed, now unused)
-- [x] 3c. Tests + lint + build green: extended tests/error-report.test.ts (level default/explicit/dedupe-by-level), new tests/errors-route.test.ts (POST /api/errors level defaulting + full allowlist + invalid level 400, kind 400 still works) - lint clean, tsc clean, 58 test files / 672 passed / 4 skipped, production build green (25 routes incl. /admin/errors)
-- [x] 3e. Follow-up (coordinator): fixed a migration-0069-lag regression - a prod DB that hasn't applied 0069 has no `level` column, so the insert would fail and the route's existing never-a-500 posture silently 204'd, dropping every report until the owner migrates (worse than pre-0069 behavior, violating the migration-0065 "lagging DB behaves as before" convention in CLAUDE.md). app/api/errors/route.ts now retries the insert once without the `level` field on any insert error, still 204 either way. Added 3 tests to tests/errors-route.test.ts (fallback succeeds after first-insert failure w/ payload assertions on both calls; still 204 if fallback also fails; no retry when first insert succeeds) - lint clean, tsc clean, 58 test files / 675 passed / 4 skipped, build green
-- [x] 3d. Commit (9509d0e)
-
-## Cross-cutting
-- [x] C1. One subworker at a time, ledger updated per task (5 Sonnet runs + 2 follow-ups, all sequential)
-- [x] C2. Commit per task, no branches, short meaningful messages (ddace95, dd66a6c, 9509d0e, 8f0e47f, 6ba1511, 57d7fd4)
-- [x] C3. No em-dashes, du-register, no badges in any UI work
-- [~] C4. Prod verification of all three tasks needs owner push + deploy + migrations 0068-0070 applied; then: (1) the five ISINs price within one cron cycle, (2) grant a test premium on /admin/billing, (3) error levels appear on /admin/errors. Deferred to owner.
+## Deferred this round
+- [~] F2 PDF import (L effort, own round)
+- [ ] F9 custom benchmarks (S) if session allows

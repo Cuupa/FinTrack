@@ -134,6 +134,9 @@ export function ImportTransactions({
   } = usePortfolio();
   const { t } = useI18n();
   const billingEnabled = useFeatureFlag("billing");
+  // Kill switch for the Portfolio Performance format only — every other
+  // format keeps importing normally when this is off.
+  const importPpEnabled = useFeatureFlag("importPp");
   const { limit: portfoliosLimit } = usePlanLimit("portfolios");
   // Plan-limit cap (MONETIZATION.md Phase 4): this inline "+ New portfolio"
   // footer calls the same createPortfolio mutation as the header picker
@@ -162,7 +165,15 @@ export function ImportTransactions({
     setError(null);
     try {
       const text = await readFile(file);
-      const { rows: parsed, skipped, invalid } = parseCsv(text);
+      const { format, rows: parsed, skipped, invalid } = parseCsv(text);
+      if (format === "portfolioperformance" && !importPpEnabled) {
+        setError(t("import.formatDisabled"));
+        setReconciled([]);
+        setFileName(null);
+        setSkippedCount(0);
+        setInvalidCount(0);
+        return;
+      }
       if (parsed.length === 0) {
         setError(t("import.noRows"));
         setReconciled([]);

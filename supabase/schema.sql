@@ -727,7 +727,8 @@ insert into public.feature_flags (flag, description) values
   ('historyCache', 'Client-side stale-while-revalidate cache of historical price series (instant chart repaint on repeat visits)'),
   ('exportCsv', 'Portfolio export — Download CSV'),
   ('exportJson', 'Portfolio export — Download JSON'),
-  ('errorLogging', 'Server-side capture of client error reports')
+  ('errorLogging', 'Server-side capture of client error reports'),
+  ('importPp', 'CSV import — Portfolio Performance format')
 on conflict (flag) do nothing;
 
 -- Seeded DISABLED (separate insert so the default-true column doesn't enable

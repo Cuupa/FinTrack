@@ -32,7 +32,8 @@ export type BrokerFormat =
   | "deutschebank"
   | "dbtransactions"
   | "bitpanda"
-  | "fintrack";
+  | "fintrack"
+  | "portfolioperformance";
 
 // --- helpers ----------------------------------------------------------------
 
@@ -115,6 +116,21 @@ export function detectFormat(text: string): BrokerFormat | null {
   // Deutsche Bank "PrivatDepot" transaction export (distinct from the
   // Bestandsaufstellung snapshot above): a real Umsatzart-keyed history.
   if (h.includes("umsatzart") && h.includes("ausmachender betrag")) return "dbtransactions";
+  // Portfolio Performance (github.com/portfolio-performance/portfolio) CSV
+  // transaction export ("File > Export > CSV", account or portfolio — both
+  // write the identical header via CSVExporter#writeHeader). Column labels
+  // follow the running UI's language (German or English; other UI languages
+  // fall through to the generic parser below). "WKN" plus the German
+  // hyphenated "Ticker-Symbol"/"Buchungswährung" pair, or the English
+  // "Ticker Symbol"/"Transaction Currency" pair, is unique to this export
+  // among the formats above.
+  if (
+    h.includes("wkn") &&
+    ((h.includes("ticker-symbol") && h.includes("buchungswährung")) ||
+      (h.includes("ticker symbol") && h.includes("transaction currency")))
+  ) {
+    return "portfolioperformance";
+  }
   // Bitpanda export: a personal-data preamble (name, email, account info,
   // venue) precedes the real header, so the signature is scanned across the
   // first several lines rather than assumed to be line 0.
@@ -610,6 +626,135 @@ function parseFinTrack(text: string): { rows: ParsedTx[]; skipped: number } {
   return { rows: out, skipped };
 }
 
+/**
+ * Portfolio Performance (github.com/portfolio-performance/portfolio) CSV
+ * transaction export. Verified against `CSVExporter.java`
+ * (`writeHeader`/`writeTransaction`, shared by the account- and
+ * portfolio-transaction export) and the `Messages`/`labels` resource
+ * bundles: the header is, in order, Date, Type, Value, Transaction Currency,
+ * Gross Amount, Currency Gross Amount, Exchange Rate, Fees, Taxes, Shares,
+ * ISIN, WKN, Ticker Symbol, Security Name, Note — column labels (and the
+ * type strings below) switch to German with the running UI locale, and so
+ * does the delimiter (`TextUtil.getListSeparatorChar`: ';' for German,
+ * decimal comma; ',' for English, decimal point). Numbers are parsed with
+ * the locale-tolerant `anyNum` regardless (it already disambiguates
+ * "1.234,56" from "1,234.56" by the right-most separator), and the Date
+ * column is always Java's locale-independent `LocalDateTime.toString()`
+ * (ISO, seconds omitted when zero) — so only the header lookup and the
+ * delimiter actually depend on the detected language.
+ *
+ * There is no per-share price column. "Value" is the transaction's *net*
+ * amount — fees/taxes already applied — exactly like `Transaction.getAmount()`
+ * in PP itself; the price is recovered with the same formula PP's own
+ * `PortfolioTransaction.getGrossValueAmount()` uses: gross = Value − Fees −
+ * Taxes for a purchase-type row (Buy, Einlieferung/Delivery (Inbound)),
+ * gross = Value + Fees + Taxes for a sale, then price = gross / Shares. When
+ * the optional Gross Amount + Currency Gross Amount columns are populated
+ * (a cross-currency trade, where the account/transaction currency differs
+ * from the security's own), they already hold that gross value precomputed
+ * in the security's real currency (PP's GROSS_VALUE unit, itself net of
+ * fees/taxes) — used directly instead, and its currency wins over
+ * Transaction Currency, which would otherwise be the account's currency,
+ * not the security's.
+ *
+ * Type mapping: Kauf/Buy → BUY, Verkauf/Sell → SELL, Einlieferung/Delivery
+ * (Inbound) → BOOKING (an in-kind transfer booked at a cost basis). Every
+ * other type PP can export — Dividende/Dividend, Zinsen/Interest,
+ * Auslieferung/Delivery (Outbound), Einlage/Deposit, Entnahme/Withdrawal,
+ * Umbuchung/Transfer (Inbound/Outbound), and fee-/tax-only rows — has no
+ * FinTrack `TransactionType` counterpart (dividends come from real market
+ * events, and mapping an outbound delivery to SELL would fabricate realised
+ * P&L) and is skipped and counted, same as the other parsers' cash-only rows.
+ */
+function parsePortfolioPerformance(text: string): { rows: ParsedTx[]; skipped: number } {
+  const lines = toLines(text);
+  if (lines.length < 2) return { rows: [], skipped: 0 };
+  const firstLower = lines[0].toLowerCase();
+  const isGerman = firstLower.includes("ticker-symbol") || firstLower.includes("buchungswährung");
+  const delim = isGerman ? ";" : ",";
+  const header = splitLine(lines[0], delim);
+  const c = isGerman
+    ? {
+        date: idxExact(header, "Datum"),
+        type: idxExact(header, "Typ"),
+        value: idxExact(header, "Wert"),
+        currency: idxExact(header, "Buchungswährung"),
+        grossAmount: idxExact(header, "Bruttobetrag"),
+        grossCurrency: idxExact(header, "Währung Bruttobetrag"),
+        fees: idxExact(header, "Gebühren"),
+        taxes: idxExact(header, "Steuern"),
+        shares: idxExact(header, "Stück"),
+        isin: idxExact(header, "ISIN"),
+        wkn: idxExact(header, "WKN"),
+        symbol: idxExact(header, "Ticker-Symbol"),
+        name: idxExact(header, "Wertpapiername"),
+      }
+    : {
+        date: idxExact(header, "Date"),
+        type: idxExact(header, "Type"),
+        value: idxExact(header, "Value"),
+        currency: idxExact(header, "Transaction Currency"),
+        grossAmount: idxExact(header, "Gross Amount"),
+        grossCurrency: idxExact(header, "Currency Gross Amount"),
+        fees: idxExact(header, "Fees"),
+        taxes: idxExact(header, "Taxes"),
+        shares: idxExact(header, "Shares"),
+        isin: idxExact(header, "ISIN"),
+        wkn: idxExact(header, "WKN"),
+        symbol: idxExact(header, "Ticker Symbol"),
+        name: idxExact(header, "Security Name"),
+      };
+  const out: ParsedTx[] = [];
+  let skipped = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const r = splitLine(lines[i], delim);
+    const typeRaw = (r[c.type] || "").trim();
+    let type: TransactionType;
+    if (typeRaw === "Kauf" || typeRaw === "Buy") type = "BUY";
+    else if (typeRaw === "Verkauf" || typeRaw === "Sell") type = "SELL";
+    else if (typeRaw === "Einlieferung" || typeRaw === "Delivery (Inbound)") type = "BOOKING";
+    else {
+      skipped++; // Dividend/Interest/Delivery (Outbound)/Deposit/Withdrawal/Transfer/... — no counterpart
+      continue;
+    }
+    const quantity = Math.abs(anyNum(r[c.shares]));
+    const fee = Math.abs(anyNum(r[c.fees])) || 0;
+    const tax = Math.abs(anyNum(r[c.taxes])) || 0;
+    const amount = Math.abs(anyNum(r[c.value]));
+    const grossAmountRaw = r[c.grossAmount] || "";
+    const grossCurrencyRaw = r[c.grossCurrency] || "";
+    let price: number;
+    let currency: string;
+    if (grossAmountRaw && grossCurrencyRaw) {
+      price = anyNum(grossAmountRaw) / quantity;
+      currency = grossCurrencyRaw;
+    } else {
+      const grossValue = type === "SELL" ? amount + fee + tax : amount - fee - tax;
+      price = grossValue / quantity;
+      currency = r[c.currency] || "EUR";
+    }
+    const isin = r[c.isin] || null;
+    const wkn = r[c.wkn] || null;
+    const symbol = r[c.symbol] || null;
+    const name = r[c.name] || isin || wkn || symbol || "";
+    out.push({
+      isin,
+      wkn,
+      symbol,
+      name,
+      type,
+      quantity,
+      price,
+      fee,
+      tax,
+      date: anyDate(r[c.date]),
+      currency,
+      assetType: inferAssetType(name),
+    });
+  }
+  return { rows: out, skipped };
+}
+
 // --- generic (any-broker) parser --------------------------------------------
 
 /** Number tolerant of both decimal comma and decimal point, plus thousands
@@ -772,8 +917,8 @@ export function parseCsv(
   // Known broker formats parse precisely; anything else falls back to the
   // generic header-driven parser so files from other brokers still import.
   // Only the formats with recognised-but-cash-only or unexecuted rows (FNZ,
-  // Deutsche Bank transactions, ZERO orders, Bitpanda, FinTrack) report a
-  // non-zero `skipped` count.
+  // Deutsche Bank transactions, ZERO orders, Bitpanda, FinTrack, Portfolio
+  // Performance) report a non-zero `skipped` count.
   let rows: ParsedTx[];
   let skipped: number;
   if (fmt === "fnz") {
@@ -786,6 +931,8 @@ export function parseCsv(
     ({ rows, skipped } = parseBitpanda(text));
   } else if (fmt === "fintrack") {
     ({ rows, skipped } = parseFinTrack(text));
+  } else if (fmt === "portfolioperformance") {
+    ({ rows, skipped } = parsePortfolioPerformance(text));
   } else {
     rows = !fmt
       ? parseGeneric(text)
