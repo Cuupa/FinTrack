@@ -205,6 +205,12 @@ export class SupabaseStore implements DataStore {
         .maybeSingle(),
     ]);
 
+    // Profile errors were previously swallowed, silently resetting the whole
+    // profile (currency, tax settings, theme, tour state) to defaults whenever
+    // the SELECT failed — e.g. a profile column that lags its migration. Fail
+    // loud like every sibling resource so the load surfaces a retryable error
+    // instead of quietly discarding the user's settings.
+    if (profileRes.error) throw profileRes.error;
     if (assetsRes.error) throw assetsRes.error;
     if (txRes.error) throw txRes.error;
     if (watchRes.error) throw watchRes.error;
