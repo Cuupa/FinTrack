@@ -27,8 +27,10 @@
 // is a single manual entry per year, not per broker. See `taxYearBreakdown`
 // for the exact allocation rule.
 
-import type { Asset, Transaction } from "../types";
-import type { ValuationContext } from "./portfolio";
+import { assetPriceKey, type Asset, type Transaction } from "../types";
+import { sharesAt, type ValuationContext } from "./portfolio";
+import { dividendsFromEvents } from "./dividends";
+import { priceAtFrom, type HistoryPoint } from "../history/history";
 
 /** Native-currency → base-currency spot rate for an asset (mirrors trades.ts). */
 function rateOf(asset: Asset, v?: ValuationContext): number {
@@ -377,4 +379,140 @@ export function taxYearBreakdown(
   }
 
   return out.sort((a, b) => (a.year < b.year ? 1 : -1));
+}
+
+// --- Vorabpauschale estimator (COMPETITION.md F6) --------------------------
+//
+// The Vorabpauschale is a notional annual pre-payment of tax on the (mostly
+// unrealised) gains of an investment fund, introduced by the InvStG 2018. Per
+// fund, per calendar year:
+//
+//   Basisertrag    = value at the START of the year x Basiszins x 0.7
+//                    (0 when the Basiszins for the year is <= 0)
+//   Vorabpauschale = max(0, min(Basisertrag - distributions, value gain))
+//
+// where the value gain (Wertsteigerung) is `max(0, endValue - startValue)` —
+// a fund that fell in value owes nothing — and `distributions` are the fund's
+// own payouts during the year (which is why accumulating funds, paying none,
+// bear the full Basisertrag while distributing funds are usually reduced to
+// zero). The Basiszins is published once a year by the Bundesbank/BMF and is
+// reference data (DB-seeded, owner-written), never hardcoded here.
+//
+// This estimate is RAW — before Teilfreistellung. `taxYearBreakdown` applies
+// the 30% equity-fund Teilfreistellung to `settings.vorabpauschale[year]`
+// itself, exactly as it does for a manually entered figure, so an estimate
+// feeds that same slot and needs no separate exemption pass here.
+//
+// Estimate for orientation only, not tax advice. Simplifications, in the same
+// spirit as the rest of this module: the position is taken at the start of the
+// year (a fund bought mid-year holds nothing on Jan 1 and is excluded, which
+// under- rather than over-estimates); the mid-year 1/12-per-month reduction is
+// not modelled; the value-gain cap uses the year-start share count against the
+// year-end price. Broker statements are authoritative — the manual entry in
+// the tax view overrides this per year.
+
+/** One fund's value bracket for a single year, all in the base currency. */
+export interface FundYearValue {
+  /** Market value of the position at the start of the calendar year. */
+  startValue: number;
+  /** Market value at the end of the year (year-start shares x year-end price). */
+  endValue: number;
+  /** Distributions received from this fund during the year. */
+  distributions: number;
+}
+
+/** Raw (pre-Teilfreistellung) Vorabpauschale for one fund in one year. */
+export function fundVorabpauschale(v: FundYearValue, basiszins: number): number {
+  const basisertrag = basiszins > 0 ? v.startValue * basiszins * 0.7 : 0;
+  const valueGain = Math.max(0, v.endValue - v.startValue);
+  return Math.max(0, Math.min(basisertrag - v.distributions, valueGain));
+}
+
+export interface VorabEstimateInput {
+  assets: Asset[];
+  txs: Transaction[];
+  /** Native-currency price series per price key (from /api/history). */
+  histories: Record<string, HistoryPoint[]>;
+  /** Historical FX series per native currency: ascending [date, rateToBase]. */
+  fxHistory: Record<string, [string, number][]>;
+  /** Spot native->base rates, used when a currency has no historical series. */
+  spotFx: Record<string, number>;
+  base: string;
+  /** Real dividend events per price key (native currency), from /api/dividends. */
+  dividends: Record<string, { date: string; amount: number }[]>;
+  /** Basiszins per year as a decimal fraction (0.0255 for 2.55%), owner-seeded. */
+  basiszinsByYear: Record<string, number>;
+  /** Only completed years (< this) are estimated. */
+  currentYear: number;
+}
+
+/** Carry-forward FX lookup: last rate at or before `date` (before the series,
+ *  the first rate; no series at all, the spot rate). Mirrors portfolio.ts's
+ *  `rateAtCarryForward`, deliberately duplicated to keep the finance core from
+ *  depending on it (same rule as trades.ts). */
+function rateAt(series: [string, number][] | undefined, date: string, spot: number): number {
+  if (!series || series.length === 0) return spot;
+  let ans = series[0][1];
+  for (const [d, r] of series) {
+    if (d <= date) ans = r;
+    else break;
+  }
+  return ans;
+}
+
+/**
+ * Estimated Vorabpauschale per completed calendar year, RAW (before
+ * Teilfreistellung). Only ETF funds with a start-of-year position, a usable
+ * real history series, and a positive Basiszins contribute; years with a
+ * zero total are omitted. Empty when the Basiszins reference table is
+ * unavailable (guests on a deployment without it, local dev without Supabase).
+ */
+export function estimateVorabpauschaleByYear(input: VorabEstimateInput): Record<string, number> {
+  const { assets, txs, histories, fxHistory, spotFx, base, dividends, basiszinsByYear, currentYear } =
+    input;
+
+  const byAsset = new Map<string, Transaction[]>();
+  for (const t of txs) {
+    const l = byAsset.get(t.assetId);
+    if (l) l.push(t);
+    else byAsset.set(t.assetId, [t]);
+  }
+
+  const out: Record<string, number> = {};
+  for (const [yStr, basiszins] of Object.entries(basiszinsByYear)) {
+    const year = Number(yStr);
+    if (!Number.isFinite(year) || year >= currentYear) continue;
+    let total = 0;
+    for (const asset of assets) {
+      if (asset.type !== "ETF") continue;
+      const key = assetPriceKey(asset);
+      const series = histories[key];
+      if (!series || series.length < 2) continue;
+      const atxs = byAsset.get(asset.id) ?? [];
+      const shares = sharesAt(atxs, `${yStr}-01-01`);
+      if (shares <= 0) continue;
+      const startPrice = priceAtFrom(series, `${yStr}-01-01`);
+      const endPrice = priceAtFrom(series, `${yStr}-12-31`);
+      if (startPrice == null || endPrice == null) continue;
+
+      const cur = asset.currency ?? base;
+      const inBase = cur === base;
+      const spot = inBase ? 1 : (spotFx[cur] ?? 1);
+      const rStart = inBase ? 1 : rateAt(fxHistory[cur], `${yStr}-01-01`, spot);
+      const rEnd = inBase ? 1 : rateAt(fxHistory[cur], `${yStr}-12-31`, spot);
+      const startValue = shares * startPrice * rStart;
+      const endValue = shares * endPrice * rEnd;
+
+      let distributions = 0;
+      for (const p of dividendsFromEvents(dividends[key] ?? [], atxs)) {
+        if (p.date.slice(0, 4) !== yStr) continue;
+        const rPay = inBase ? 1 : rateAt(fxHistory[cur], p.date, spot);
+        distributions += p.total * rPay;
+      }
+
+      total += fundVorabpauschale({ startValue, endValue, distributions }, basiszins);
+    }
+    if (total > 0) out[yStr] = total;
+  }
+  return out;
 }

@@ -78,7 +78,8 @@ export type FeatureFlag =
   | "llmChat"
   | "billing"
   | "importPp"
-  | "splitDetection";
+  | "splitDetection"
+  | "vorabEstimate";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

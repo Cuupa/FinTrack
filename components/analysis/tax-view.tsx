@@ -17,8 +17,16 @@ import { useCatalog } from "@/lib/catalog/catalog-context";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { transactionsByAsset } from "@/lib/finance/portfolio";
 import { useDividends } from "@/lib/history/use-dividends";
+import { useHistory } from "@/lib/history/use-history";
 import { dividendsFromEvents } from "@/lib/finance/dividends";
-import { taxYearBreakdown, type TaxSettings, type YearDividends } from "@/lib/finance/tax";
+import {
+  taxYearBreakdown,
+  estimateVorabpauschaleByYear,
+  type TaxSettings,
+  type YearDividends,
+} from "@/lib/finance/tax";
+import { useBasiszins } from "@/lib/tax/use-basiszins";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
 import { isStorageFullError } from "@/lib/store/errors";
@@ -43,6 +51,56 @@ export function TaxView() {
     [data.assets, version],
   );
   const { dividends: divMap } = useDividends(histItems);
+
+  // Vorabpauschale estimate (COMPETITION.md F6): needs real historical prices
+  // per fund to value the year-start position and cap by the year's value gain.
+  // Only ETF funds are relevant, so only those histories are fetched.
+  const fundItems = useMemo(
+    () =>
+      data.assets
+        .filter((a) => a.type === "ETF")
+        .map(quoteItemFor)
+        .filter((x): x is NonNullable<typeof x> => x !== null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.assets, version],
+  );
+  const { histories: fundHistories, fx: fundFxHistory } = useHistory(fundItems, "10y", currency);
+  const vorabEnabled = useFeatureFlag("vorabEstimate");
+  const basiszinsByYear = useBasiszins();
+  const currentYear = new Date().getFullYear();
+
+  const estimatedVorab = useMemo(() => {
+    if (!vorabEnabled) return {};
+    return estimateVorabpauschaleByYear({
+      assets: data.assets,
+      txs: data.transactions,
+      histories: fundHistories,
+      fxHistory: fundFxHistory,
+      spotFx: valuation.fx ?? {},
+      base: currency,
+      dividends: divMap,
+      basiszinsByYear,
+      currentYear,
+    });
+  }, [
+    vorabEnabled,
+    data.assets,
+    data.transactions,
+    fundHistories,
+    fundFxHistory,
+    valuation.fx,
+    currency,
+    divMap,
+    basiszinsByYear,
+    currentYear,
+  ]);
+
+  // The manual per-year entry (from the broker's statement) overrides the
+  // estimate; unentered years fall back to the estimate.
+  const vorabForCalc = useMemo(
+    () => ({ ...estimatedVorab, ...data.profile.taxVorabpauschale }),
+    [estimatedVorab, data.profile.taxVorabpauschale],
+  );
 
   // Real dividend events, scaled by shares held on each pay date (same as
   // trades-view's dividendsReceived / dividends-view), bucketed per calendar
@@ -85,7 +143,7 @@ export function TaxView() {
       allowance: data.profile.taxAllowance,
       churchTaxRate: data.profile.churchTaxRate,
       applyTeilfreistellung: data.profile.taxTeilfreistellung,
-      vorabpauschale: data.profile.taxVorabpauschale,
+      vorabpauschale: vorabForCalc,
       withheldOverride: data.profile.taxWithheldOverride,
       portfolioAllowances,
     };
@@ -97,7 +155,7 @@ export function TaxView() {
     data.profile.taxAllowance,
     data.profile.churchTaxRate,
     data.profile.taxTeilfreistellung,
-    data.profile.taxVorabpauschale,
+    vorabForCalc,
     data.profile.taxWithheldOverride,
     portfolioAllowances,
     valuation,
@@ -191,6 +249,7 @@ export function TaxView() {
                     }
                     ariaLabel={t("tax.vorabAriaLabel", { year: y.year })}
                     initial={data.profile.taxVorabpauschale[y.year]}
+                    estimate={estimatedVorab[y.year]}
                     currency={currency}
                     onCommit={(raw) => setVorabpauschale(y.year, raw)}
                   />
@@ -316,6 +375,7 @@ function EditableAmountRow({
   label,
   ariaLabel,
   initial,
+  estimate,
   placeholder,
   currency,
   onCommit,
@@ -323,6 +383,9 @@ function EditableAmountRow({
   label: ReactNode;
   ariaLabel: string;
   initial: number | undefined;
+  /** Estimated value shown (muted + estimated label) when nothing is entered
+   *  and no placeholder applies; it already feeds the tax calc upstream. */
+  estimate?: number;
   placeholder?: string;
   currency: string;
   onCommit: (raw: number | null) => Promise<void>;
@@ -403,9 +466,16 @@ function EditableAmountRow({
             </>
           ) : (
             <>
-              <span className={`tabular-nums ${initial === undefined ? "text-zinc-400" : ""}`}>
-                {initial !== undefined ? formatCurrency(initial, currency) : (placeholder ?? "—")}
-              </span>
+              {initial === undefined && estimate != null ? (
+                <span className="flex items-center gap-1 tabular-nums text-zinc-400">
+                  {formatCurrency(estimate, currency)}
+                  <EstimatedBadge compact />
+                </span>
+              ) : (
+                <span className={`tabular-nums ${initial === undefined ? "text-zinc-400" : ""}`}>
+                  {initial !== undefined ? formatCurrency(initial, currency) : (placeholder ?? "—")}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={startEdit}

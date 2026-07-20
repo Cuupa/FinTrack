@@ -853,7 +853,7 @@ export const en = {
     "Gains from crypto and commodity sells follow separate rules (§23 EStG): tax-free after a one-year holding period, and exempt below a small yearly threshold. Not part of your capital income allowance.",
   "tax.vorab": "Vorabpauschale",
   "tax.vorabTip":
-    "A notional annual tax pre-payment on accumulating funds, based on the Basiszins. It can't be calculated from the data available here; enter the figure from your broker's annual tax statement. Teilfreistellung applies when enabled, since it counts as fund income.",
+    "A notional annual tax pre-payment on funds, based on the year's Basiszins. Leave it blank and FinTrack shows an estimate from your year-start fund value and that year's Basiszins, capped by the fund's value gain; enter the figure from your broker's annual tax statement to override it. Teilfreistellung applies when enabled, since it counts as fund income.",
   "tax.vorabAriaLabel": "Vorabpauschale for {year}",
   "tax.withheldAriaLabel": "Withheld tax override for {year}",
   "tax.editAriaLabel": "Edit {field}",
@@ -2165,7 +2165,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Gewinne aus Krypto- und Rohstoffverkäufen folgen eigenen Regeln (§23 EStG): steuerfrei nach einem Jahr Haltefrist, und steuerfrei unterhalb einer kleinen jährlichen Freigrenze. Zählen nicht zu deinem Sparerpauschbetrag.",
   "tax.vorab": "Vorabpauschale",
   "tax.vorabTip":
-    "Eine fiktive jährliche Steuervorauszahlung auf thesaurierende Fonds, basierend auf dem Basiszins. Sie lässt sich aus den hier vorhandenen Daten nicht berechnen; trage den Wert aus der Steuerbescheinigung deines Brokers ein. Die Teilfreistellung wird berücksichtigt, wenn sie aktiviert ist, da es sich um Fondserträge handelt.",
+    "Eine fiktive jährliche Steuervorauszahlung auf Fonds, basierend auf dem Basiszins des Jahres. Lässt du das Feld leer, zeigt FinTrack eine Schätzung aus deinem Fondswert zu Jahresbeginn und dem Basiszins des Jahres, begrenzt durch den Wertzuwachs des Fonds; trage den Wert aus der Steuerbescheinigung deines Brokers ein, um sie zu überschreiben. Die Teilfreistellung wird berücksichtigt, wenn sie aktiviert ist, da es sich um Fondserträge handelt.",
   "tax.vorabAriaLabel": "Vorabpauschale für {year}",
   "tax.withheldAriaLabel": "Überschreibung der einbehaltenen Steuer für {year}",
   "tax.editAriaLabel": "{field} bearbeiten",
@@ -3475,7 +3475,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Las ganancias por ventas de cripto y materias primas siguen reglas independientes (§23 EStG): libres de impuestos tras un año de tenencia, y exentas por debajo de un pequeño umbral anual. No forman parte de tu franquicia sobre rendimientos del capital.",
   "tax.vorab": "Vorabpauschale",
   "tax.vorabTip":
-    "Un pago anticipado ficticio anual sobre fondos de acumulación, basado en el Basiszins. No se puede calcular con los datos disponibles aquí; introduce la cifra del certificado fiscal anual de tu bróker. La Teilfreistellung se aplica si está activada, ya que cuenta como rendimiento de fondos.",
+    "Un pago anticipado ficticio anual sobre fondos, basado en el Basiszins del año. Si lo dejas vacío, FinTrack muestra una estimación a partir del valor de tu fondo al inicio del año y el Basiszins de ese año, limitada por la revalorización del fondo; introduce la cifra del certificado fiscal anual de tu bróker para sustituirla. La Teilfreistellung se aplica si está activada, ya que cuenta como rendimiento de fondos.",
   "tax.vorabAriaLabel": "Vorabpauschale de {year}",
   "tax.withheldAriaLabel": "Sobrescritura del impuesto retenido de {year}",
   "tax.editAriaLabel": "Editar {field}",

@@ -170,6 +170,29 @@ alter table public.etf_breakdowns drop constraint if exists etf_breakdowns_kind_
 alter table public.etf_breakdowns
   add constraint etf_breakdowns_kind_check check (kind in ('sector', 'region', 'country'));
 
+-- Basiszins per year for the Vorabpauschale estimate (COMPETITION.md F6).
+-- Published annually by the Bundesbank/BMF; reference data, world-readable,
+-- owner-written. Rate is a decimal fraction (0.0255 = 2.55%); negative years
+-- yield no Vorabpauschale.
+create table if not exists public.basiszins (
+  year int primary key,
+  rate numeric not null,
+  note text
+);
+alter table public.basiszins enable row level security;
+drop policy if exists "basiszins readable" on public.basiszins;
+create policy "basiszins readable" on public.basiszins for select using (true);
+insert into public.basiszins (year, rate, note) values
+  (2018, 0.0087, 'BMF Basiszins 0.87%'),
+  (2019, 0.0052, 'BMF Basiszins 0.52%'),
+  (2020, 0.0007, 'BMF Basiszins 0.07%'),
+  (2021, -0.0045, 'BMF Basiszins -0.45% (negative, no Vorabpauschale)'),
+  (2022, -0.0005, 'BMF Basiszins -0.05% (negative, no Vorabpauschale)'),
+  (2023, 0.0255, 'BMF Basiszins 2.55%'),
+  (2024, 0.0229, 'BMF Basiszins 2.29%'),
+  (2025, 0.0253, 'BMF Basiszins 2.53%')
+on conflict (year) do nothing;
+
 -- Best-effort DB-backed per-IP rate limiting for the market-data API proxies.
 -- Fixed-window counters keyed by "route:ip:window"; an atomic upsert function
 -- returns the running count so a serverless instance (no shared memory) can
@@ -504,7 +527,11 @@ insert into public.schema_migrations (version) values
   ('0067_billing_admin_keys'),
   ('0068_plan_grants'),
   ('0069_error_log_levels'),
-  ('0070_billing_display_prices')
+  ('0070_billing_display_prices'),
+  ('0071_import_pp_flag'),
+  ('0072_split_transaction_type'),
+  ('0073_split_detection_flag'),
+  ('0074_vorabpauschale')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -731,7 +758,8 @@ insert into public.feature_flags (flag, description) values
   ('exportJson', 'Portfolio export — Download JSON'),
   ('errorLogging', 'Server-side capture of client error reports'),
   ('importPp', 'CSV import — Portfolio Performance format'),
-  ('splitDetection', 'Automatic stock split detection + review on asset detail')
+  ('splitDetection', 'Automatic stock split detection + review on asset detail'),
+  ('vorabEstimate', 'Vorabpauschale estimate on the annual tax report')
 on conflict (flag) do nothing;
 
 -- Seeded DISABLED (separate insert so the default-true column doesn't enable
