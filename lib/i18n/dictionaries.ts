@@ -654,6 +654,13 @@ export const en = {
     "Enter the ratio as new shares per old share: 2 for a 2-for-1 split, 0.5 for a 1-for-2 reverse split.",
   "tx.splitPreview": "Ratio: {ratio} new shares per old share",
 
+  // Split detection (asset detail)
+  "splits.detected": "We detected {count} stock split(s) for this holding.",
+  "splits.review": "Review",
+  "splits.modalTitle": "Review detected splits",
+  "splits.ratio": "Ratio",
+  "splits.bookAll": "Book {count} split(s)",
+
   // Analysis
   "analysis.tab.distributions": "Distributions",
   "analysis.tab.returns": "Returns",
@@ -1958,6 +1965,13 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Gib das Verhältnis als neue Aktien je alter Aktie ein: 2 für einen Split 2-für-1, 0,5 für einen umgekehrten Split 1-für-2.",
   "tx.splitPreview": "Verhältnis: {ratio} neue Aktien je alter Aktie",
 
+  // Split-Erkennung (Wertpapier-Detailseite)
+  "splits.detected": "Wir haben {count} Aktiensplit(s) für diese Position erkannt.",
+  "splits.review": "Prüfen",
+  "splits.modalTitle": "Erkannte Splits prüfen",
+  "splits.ratio": "Verhältnis",
+  "splits.bookAll": "{count} Split(s) buchen",
+
   // Analysis
   "analysis.tab.distributions": "Verteilungen",
   "analysis.tab.returns": "Renditen",
@@ -3261,6 +3275,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tx.splitHint":
     "Introduce el ratio como acciones nuevas por acción antigua: 2 para un split 2 por 1, 0,5 para un split inverso 1 por 2.",
   "tx.splitPreview": "Ratio: {ratio} acciones nuevas por acción antigua",
+
+  // Detección de splits (detalle del activo)
+  "splits.detected": "Detectamos {count} split(s) de acciones para esta posición.",
+  "splits.review": "Revisar",
+  "splits.modalTitle": "Revisar splits detectados",
+  "splits.ratio": "Ratio",
+  "splits.bookAll": "Registrar {count} split(s)",
 
   // Analysis
   "analysis.tab.distributions": "Distribuciones",

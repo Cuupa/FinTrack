@@ -13,6 +13,7 @@ import {
   historyByQuery,
   resolveQuote,
   resolveSymbol,
+  splitsByQuery,
 } from "../lib/server/yahoo";
 
 /** A Yahoo /v8/finance/chart response with quote candles (resolveQuote/historyByQuery). */
@@ -294,6 +295,120 @@ describe("dividendsByQuery", () => {
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("/chart/BADHINT"))).toBe(false);
     expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+  });
+});
+
+describe("splitsByQuery", () => {
+  beforeEach(() => {
+    __resetForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetForTests();
+  });
+
+  function splitChartResponse(splits?: Record<string, { numerator: number; denominator: number; date: number }>) {
+    return new Response(
+      JSON.stringify({
+        chart: { result: [{ events: splits ? { splits } : {} }] },
+      }),
+      { status: 200 },
+    );
+  }
+
+  it("trusts the hinted listing's empty split list and fetches nothing else", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(splitChartResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Most stocks have simply never split — a real, empty answer.
+    const result = await splitsByQuery("US0000000000", "AAPL", "5y", "Some Corp");
+    expect(result).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/chart/AAPL");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("events=split");
+  });
+
+  it("returns the hinted listing's real split events, ratio = numerator / denominator", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      splitChartResponse({ "1": { numerator: 10, denominator: 1, date: 1718026200 } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await splitsByQuery("US0000000000", "NVDA", "5y");
+    expect(result).toEqual([{ date: "2024-06-10", ratio: 10 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns no events and issues no search request when the hint is dead (never scans past a dead hint)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/chart/BADHINT")) return Promise.resolve(new Response(null, { status: 404 }));
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(new Response(JSON.stringify({ quotes: [{ symbol: "REAL.DE" }] }), { status: 200 }));
+      }
+      if (u.includes("/chart/REAL.DE")) {
+        return Promise.resolve(
+          splitChartResponse({ "1": { numerator: 2, denominator: 1, date: 1700000000 } }),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await splitsByQuery("DE0000000000", "BADHINT", "5y", "Real Corp");
+    expect(result).toEqual([]);
+    // The dead hint must not fall through to a search - a misattributed
+    // split corrupts the share count, worse than a wrong dividend figure.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/chart/BADHINT");
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(false);
+    expect(urls.some((u) => u.includes("/chart/REAL.DE"))).toBe(false);
+  });
+
+  it("with no hint, scans search candidates and stops at the first resolvable one, even with zero events", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes("/v1/finance/search")) {
+        return Promise.resolve(new Response(JSON.stringify({ quotes: [{ symbol: "REAL.DE" }] }), { status: 200 }));
+      }
+      if (u.includes("/chart/REAL.DE")) return Promise.resolve(splitChartResponse());
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await splitsByQuery("DE0000000000", undefined, "5y", "Real Corp");
+    expect(result).toEqual([]);
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes("/v1/finance/search"))).toBe(true);
+    expect(urls.some((u) => u.includes("/chart/REAL.DE"))).toBe(true);
+  });
+
+  it("skips non-positive/invalid numerator or denominator entries", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          chart: {
+            result: [
+              {
+                events: {
+                  splits: {
+                    "1": { numerator: 0, denominator: 1, date: 1700000000 },
+                    "2": { numerator: 10, denominator: 0, date: 1700000000 },
+                    "3": { numerator: 4, denominator: 1, date: 1700100000 },
+                  },
+                },
+              },
+            ],
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await splitsByQuery("US0000000000", "SOME", "5y");
+    expect(result).toEqual([{ date: "2023-11-16", ratio: 4 }]);
   });
 });
 

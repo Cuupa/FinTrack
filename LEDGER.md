@@ -1,3 +1,117 @@
+# Ledger - round 2026-07-19e (follow-up: automate stock splits)
+
+Previous round 2026-07-19d closed and preserved below (commits 3b907f7,
+2b6aca7, c60ee97, 0821419).
+
+User request (follow-up after F3 shipped manual SPLIT entry): automate
+split booking. Asked the user to disambiguate scope; chose "auto-detect
+from real market data" (like dividends) over "detect during CSV import" —
+so this is a NEW feature (F3 follow-up), not a revisit of F3 itself.
+
+## Task F3b - automatic split detection (Yahoo real events)
+
+Design (orchestrator): mirrors the existing dividends real-event pipeline
+(`dividendsByQuery`/`dividendChart` in lib/server/yahoo.ts, `/api/dividends`,
+`useDividends`) end to end, applied to Yahoo's chart-API split events
+instead. Verified LIVE against the real endpoint before designing (not
+guessed): `curl .../v8/finance/chart/NVDA?range=5y&interval=1d&events=split`
+returns `chart.result[0].events.splits` = `Record<unix_ts, {date, numerator,
+denominator, splitRatio}>` — confirmed against NVDA's real 4:1 (2021-07) and
+10:1 (2024-06) splits. `numerator/denominator` (10 for "10:1") maps exactly
+onto F3's existing SPLIT semantics ("new shares per old share"), no
+translation needed.
+
+Detected events are reviewed, not auto-booked (review-before-book, same
+principle as the savings-plans due-occurrences flow in
+`savings-plans-card.tsx`: never silently create a transaction from external
+data — the user confirms first, editable, via a Modal). Scoped to the asset
+detail page (per-asset, per-holding), not a dashboard-wide card — splits are
+an asset-specific event, unlike portfolio-wide recurring savings plans.
+Session-only dismissal (closing the modal without booking; no persisted
+"ignore forever" — reappears next visit, same tradeoff as savings-plan due
+occurrences, avoids a new store-seam table for a first version).
+
+New files, mirroring the dividends pipeline 1:1:
+- `lib/server/yahoo.ts`: `splitChart(symbol, range)` + `splitsByQuery(query,
+  hint, range, fallbackQuery)`, structurally identical to
+  `dividendChart`/`dividendsByQuery` — **including the hard-won "hinted
+  listing is authoritative, never scan past an empty hint" rule** (the
+  phantom-gold-dividends bug CLAUDE.md documents was exactly this class of
+  mistake; a wrongly-attributed split is worse than a wrong dividend since it
+  directly corrupts share counts, not just a display figure). No currency
+  param — a split ratio is currency-agnostic, unlike a dividend amount.
+- `app/api/splits/route.ts`: POST `{range, items}` → `{splits: Record<key,
+  {date,ratio}[]>}`, mirrors `/api/dividends/route.ts` minus the FX-conversion
+  block (not needed — ratio has no currency). Filter `item.source ===
+  "yahoo"` only (stooq/coingecko have no split-event data; this naturally
+  excludes CRYPTO without a hardcoded asset-type check).
+- `lib/history/use-splits.ts`: mirrors `use-dividends.ts` exactly (POST
+  `/api/splits`, same sig/loading-derivation pattern).
+- `lib/finance/splits.ts` (pure, unit-tested): `pendingSplits(events:
+  SplitEvent[], txs: Transaction[]): SplitEvent[]` — excludes events before
+  the asset's earliest transaction (nothing to correct pre-ownership; empty
+  `txs` → `[]`, no phantom prompts for an unheld/watchlist asset) and events
+  matching an existing SPLIT transaction on the same day (`dateKey` compare,
+  matched by date only — not by ratio, so a deliberate manual entry at a
+  different ratio is still treated as "handled", never double-flagged).
+
+Wiring in `components/assets/asset-detail.tsx`: reuse the existing
+`histItems` memo (already excludes CASH) for a new `useSplits(histItems)`
+call, gated by a new kill-switch flag `splitDetection` (seeded enabled,
+migration + schema.sql, same pattern as `importPp`) so the owner can disable
+it without a redeploy if Yahoo's split-events endpoint proves unreliable.
+`pendingSplits(...)` result renders a small review banner (existing `Card`/
+button idiom, no badges) that opens the existing `Modal` component listing
+each pending split (date + editable ratio), Confirm books them sequentially
+via the existing `addTransaction` mutation with `type: "SPLIT"` exactly as
+F3's manual entry does (`price: 0, fee: 0, tax: 0`), Cancel just closes.
+
+i18n en/de/es (du/tú, no em-dash): banner text with `{ratio}`/`{date}`
+placeholders, modal title, review/confirm/cancel labels, per-row ratio
+input label.
+
+Tests: `pendingSplits` (excludes pre-ownership events, excludes
+already-booked-by-date events regardless of ratio match, empty txs → [],
+sorts ascending); `splitsByQuery`/`splitChart` mirroring
+`tests/yahoo-throttle.test.ts`'s dividend coverage (mocked fetch, hinted
+listing authoritative, never falls back past an empty hint); a route test
+mirroring the existing dividends-route test if one exists (check first).
+
+- [x] F3b-a. Orchestrator design (above), live-verified against real Yahoo
+      data before writing it
+- [x] F3b-b. Implementation via subworker: lib/server/yahoo.ts
+      (`splitChart`/`splitsByQuery`), app/api/splits/route.ts,
+      lib/history/use-splits.ts, lib/finance/splits.ts (`pendingSplits`),
+      asset-detail.tsx wiring (banner + review Modal + sequential booking),
+      splitDetection flag (migration 0073 + schema.sql), i18n en/de/es,
+      tests/splits.test.ts (6 cases) + 5 new splitsByQuery cases in
+      tests/yahoo-throttle.test.ts. 724 passed/4 skipped (up from 713).
+- [x] F3b-c. Orchestrator independently re-read every diff before running
+      anything: confirmed splitsByQuery's hinted branch
+      (`hinted?.events ?? []`, no fallthrough to search on a dead/empty
+      hint) matches dividendsByQuery's precedent exactly; confirmed the
+      no-hint fallback's "first resolvable candidate wins even with zero
+      events" is actually MORE correct for splits than copying dividends'
+      "prefer non-empty" heuristic verbatim would have been (splits are
+      rare — zero events is usually the right answer, so preferring
+      non-empty could wrongly favor a wrong instrument that happened to
+      have split); confirmed `pendingSplits`, the route, the hook, the
+      migration/schema, and the asset-detail.tsx booking flow all correct.
+      Ran lint (clean), tsc --noEmit (clean, after clearing the same stale
+      .next/dev/types artifact as the F9 round), vitest (62 files/724
+      passed/4 skipped), and production build (green, /api/splits present)
+      myself. Then browser-verified live end to end (not just code review):
+      seeded a real NVDA position (ISIN US67066G1040) with a BUY dated
+      2023-01-15 in Guest Mode, confirmed the detection banner and review
+      modal correctly surfaced NVDA's real 2024-06-10 10:1 split (and
+      correctly excluded its earlier 2021 4:1 split, which predates the
+      BUY), booked it, and confirmed the resulting state: 10 -> 100 shares,
+      avg cost 177.36 -> 17.74 (divided by 10), cost basis unchanged at
+      1,773.60 EUR, SPLIT row rendered with the "x10" quantity prefix and
+      "-" price/total cells exactly as F3 designed, banner correctly
+      disappeared after booking.
+- [x] F3b-d. Commit (below)
+
 # Ledger - round 2026-07-19d (TODO.md: work COMPETITION.md)
 
 Previous round 2026-07-19c closed and preserved in git history (f85d3b7).

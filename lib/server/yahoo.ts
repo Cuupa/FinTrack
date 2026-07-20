@@ -738,6 +738,89 @@ export async function dividendsByQuery(
   return fallback;
 }
 
+export interface SplitEvent {
+  date: string;
+  /** New shares per old share (10 for a 10:1 forward split, 0.5 for a 1:2
+   *  reverse split) — maps directly onto the SPLIT transaction's `quantity`. */
+  ratio: number;
+}
+
+/** Split events for a symbol (empty array when the listing has never split).
+ *  null if the symbol has no data. */
+async function splitChart(symbol: string, range: string): Promise<{ events: SplitEvent[] } | null> {
+  const data = (await getJSON(
+    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1d&events=split`,
+  )) as
+    | {
+        chart?: {
+          result?: Array<{
+            events?: {
+              splits?: Record<string, { date?: number; numerator?: number; denominator?: number }>;
+            };
+          }>;
+        };
+      }
+    | null;
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+  const splits = result.events?.splits ?? {};
+  const events: SplitEvent[] = [];
+  for (const s of Object.values(splits)) {
+    const num = s.numerator;
+    const den = s.denominator;
+    if (
+      typeof num === "number" &&
+      typeof den === "number" &&
+      Number.isFinite(num) &&
+      Number.isFinite(den) &&
+      num > 0 &&
+      den > 0 &&
+      typeof s.date === "number"
+    ) {
+      events.push({ date: new Date(s.date * 1000).toISOString().slice(0, 10), ratio: num / den });
+    }
+  }
+  events.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return { events };
+}
+
+/**
+ * Split events for a query (ISIN/symbol). Unlike dividends there is no
+ * currency to filter by — the ratio is currency-agnostic.
+ *
+ * `hint` is the exact listing the app already prices this asset with, so its
+ * split history is authoritative for this asset, even when empty (most
+ * stocks simply never split): scanning search candidates further once
+ * surfaced an unrelated payer's events for dividends (the phantom-gold-
+ * dividends bug), and a misattributed SPLIT is worse than a wrong dividend
+ * figure — it corrupts the share count itself. A resolved hint chart
+ * therefore short-circuits the search loop entirely, exactly like
+ * `dividendsByQuery`, including a dead hint (which yields an empty list
+ * rather than falling through to search).
+ */
+export async function splitsByQuery(
+  query: string,
+  hint: string | undefined,
+  range: string,
+  // A secondary query (e.g. the asset's name) tried when `query` (the ISIN/
+  // WKN) turns up no Yahoo search results at all.
+  fallbackQuery?: string,
+): Promise<SplitEvent[] | null> {
+  if (hint) {
+    const hinted = await splitChart(hint, range);
+    return hinted?.events ?? [];
+  }
+
+  for (const s of (await searchCandidates(query, fallbackQuery)).slice(0, 5)) {
+    const c = await splitChart(s, range);
+    // The first candidate that resolves at all is the answer, even with zero
+    // events (e.g. a stock that's simply never split) — only a candidate that
+    // fails to resolve is worth trying the next one for.
+    if (c) return c.events;
+  }
+  return null;
+}
+
 /**
  * Test-only: reset module-level caches + the circuit breaker between tests so
  * one test's mocked-fetch state can't leak into the next (this module's

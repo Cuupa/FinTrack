@@ -18,6 +18,9 @@ import {
 import { positionIRR } from "@/lib/finance/irr";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { useDividends } from "@/lib/history/use-dividends";
+import { pendingSplits } from "@/lib/finance/splits";
+import { useSplits } from "@/lib/history/use-splits";
+import { isStorageFullError } from "@/lib/store/errors";
 import {
   formatCurrency,
   formatDate,
@@ -91,11 +94,13 @@ export function AssetDetail({
     portfolios,
     addAsset,
     addSavingsPlan,
+    addTransaction,
   } = usePortfolio();
   const { valuation } = useLivePrices();
   const { version } = useCatalog();
   const router = useRouter();
   const savingsPlansEnabled = useFeatureFlag("savingsPlans");
+  const splitDetectionEnabled = useFeatureFlag("splitDetection");
   const billingEnabled = useFeatureFlag("billing");
   const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
@@ -103,6 +108,25 @@ export function AssetDetail({
   const { t } = useI18n();
   const currency = data.profile.currency;
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [reviewingSplits, setReviewingSplits] = useState(false);
+  const [splitBusy, setSplitBusy] = useState(false);
+  const [splitError, setSplitError] = useState<string | null>(null);
+  // Per-row user override for the booked ratio in the split review modal,
+  // keyed by the event's date. Reset on open/close (never via effect — see
+  // react-hooks/set-state-in-effect in CLAUDE.md).
+  const [splitRowEdits, setSplitRowEdits] = useState<Map<string, string>>(new Map());
+
+  function openSplitReview() {
+    setSplitRowEdits(new Map());
+    setSplitError(null);
+    setReviewingSplits(true);
+  }
+
+  function closeSplitReview() {
+    setReviewingSplits(false);
+    setSplitRowEdits(new Map());
+    setSplitError(null);
+  }
 
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
@@ -275,6 +299,17 @@ export function AssetDetail({
     return key ? dividendsFromEvents(divMap[key] ?? [], txs) : [];
   }, [divMap, histItems, txs, asset]);
 
+  // Real split events not yet booked (flag-gated; empty items when off, so no
+  // fetch happens at all). No transactions → nothing to correct, so a
+  // watchlist/catalog instrument never prompts.
+  const { splits: splitMap } = useSplits(splitDetectionEnabled ? histItems : []);
+  const pendingSplitEvents = useMemo(() => {
+    if (!asset || !splitDetectionEnabled) return [];
+    const key = histItems[0]?.key;
+    if (!key) return [];
+    return pendingSplits(splitMap[key] ?? [], txs);
+  }, [asset, splitDetectionEnabled, histItems, splitMap, txs]);
+
   // Chart markers: buys/sells plus a marker on each dividend pay date.
   const markers: ChartMarker[] = useMemo(
     () => [
@@ -346,6 +381,53 @@ export function AssetDetail({
         router.push("/");
       },
     });
+  }
+
+  function setSplitRowEdit(date: string, ratio: string) {
+    setSplitRowEdits((prev) => {
+      const next = new Map(prev);
+      next.set(date, ratio);
+      return next;
+    });
+  }
+
+  // Books each pending split as a SPLIT transaction. Sequential, not
+  // parallel — same reasoning as the savings-plan review dialog (see
+  // SavingsPlansCard confirmDue): a mid-way failure leaves the remaining
+  // events still bookable on the next visit instead of racing partial writes.
+  async function confirmSplits() {
+    if (!asset) return;
+    setSplitBusy(true);
+    setSplitError(null);
+    try {
+      const portfolioId = txs[0]?.portfolioId ?? portfolios[0]?.id ?? "";
+      for (const event of pendingSplitEvents) {
+        const override = splitRowEdits.get(event.date);
+        const ratio = override !== undefined ? parseDecimal(override) : event.ratio;
+        if (!Number.isFinite(ratio) || ratio <= 0) continue;
+        await addTransaction({
+          assetId: asset.id,
+          portfolioId,
+          type: "SPLIT",
+          quantity: ratio,
+          price: 0,
+          fee: 0,
+          tax: 0,
+          date: `${event.date}T00:00:00`,
+        });
+      }
+      closeSplitReview();
+    } catch (err) {
+      setSplitError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : err instanceof Error
+            ? err.message
+            : t("tx.errFail"),
+      );
+    } finally {
+      setSplitBusy(false);
+    }
   }
   const rawType = String(asset.type);
   const typeKey = `assetType.${rawType}` as MessageKey;
@@ -692,6 +774,17 @@ export function AssetDetail({
           )}
         </div>
 
+        {pendingSplitEvents.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
+            <span className="text-sm text-amber-800 dark:text-amber-300">
+              {t("splits.detected", { count: pendingSplitEvents.length })}
+            </span>
+            <Button size="sm" variant="primary" onClick={openSplitReview}>
+              {t("splits.review")}
+            </Button>
+          </div>
+        )}
+
         {assetPlans.length > 0 && (
           <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <h3 className="border-b border-zinc-200 px-3 py-2 text-sm font-semibold dark:border-zinc-800">
@@ -777,6 +870,53 @@ export function AssetDetail({
               onDone={() => setPlanModalOpen(false)}
               limitReached={savingsPlansLimitHint}
             />
+          </div>
+        </Modal>
+      )}
+
+      {splitDetectionEnabled && (
+        <Modal
+          open={reviewingSplits}
+          onClose={() => {
+            if (!splitBusy) closeSplitReview();
+          }}
+        >
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{t("splits.modalTitle")}</h3>
+            <div className="space-y-2">
+              {pendingSplitEvents.map((event) => (
+                <div
+                  key={event.date}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800"
+                >
+                  <span className="text-sm">{formatDate(event.date)}</span>
+                  <label className="flex items-center gap-2 text-sm text-zinc-500">
+                    {t("splits.ratio")}
+                    <input
+                      inputMode="decimal"
+                      value={splitRowEdits.get(event.date) ?? String(event.ratio)}
+                      onChange={(e) =>
+                        setSplitRowEdit(event.date, stripLeadingZero(e.target.value))
+                      }
+                      className="w-20 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+            {splitError && <p className="text-sm text-red-600 dark:text-red-400">{splitError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" disabled={splitBusy} onClick={closeSplitReview}>
+                {t("tx.cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={splitBusy || pendingSplitEvents.length === 0}
+                onClick={() => void confirmSplits()}
+              >
+                {t("splits.bookAll", { count: pendingSplitEvents.length })}
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

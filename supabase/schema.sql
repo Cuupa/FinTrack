@@ -730,7 +730,8 @@ insert into public.feature_flags (flag, description) values
   ('exportCsv', 'Portfolio export — Download CSV'),
   ('exportJson', 'Portfolio export — Download JSON'),
   ('errorLogging', 'Server-side capture of client error reports'),
-  ('importPp', 'CSV import — Portfolio Performance format')
+  ('importPp', 'CSV import — Portfolio Performance format'),
+  ('splitDetection', 'Automatic stock split detection + review on asset detail')
 on conflict (flag) do nothing;
 
 -- Seeded DISABLED (separate insert so the default-true column doesn't enable

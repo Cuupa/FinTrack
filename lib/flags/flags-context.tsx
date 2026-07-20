@@ -77,7 +77,8 @@ export type FeatureFlag =
   | "errorLogging"
   | "llmChat"
   | "billing"
-  | "importPp";
+  | "importPp"
+  | "splitDetection";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",
