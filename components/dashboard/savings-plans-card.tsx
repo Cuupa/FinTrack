@@ -397,7 +397,8 @@ export function SavingsPlansCard() {
                   </span>
                   <span className="block truncate text-xs text-zinc-500">
                     <span data-private>{formatCurrency(plan.amount, cur)}</span>{" "}
-                    {t(INTERVAL_KEY[plan.interval])}
+                    {t(INTERVAL_KEY[plan.interval])} ·{" "}
+                    {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
                     {plan.active ? (
                       <> · {t("sp.next", { date: formatDate(nextOccurrence(plan, todayISO)) })}</>
                     ) : (
