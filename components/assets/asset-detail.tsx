@@ -58,6 +58,7 @@ import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
 import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
+import { CashInterestSection } from "@/components/assets/cash-interest-section";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import {
@@ -102,6 +103,7 @@ export function AssetDetail({
   const router = useRouter();
   const savingsPlansEnabled = useFeatureFlag("savingsPlans");
   const splitDetectionEnabled = useFeatureFlag("splitDetection");
+  const cashInterestEnabled = useFeatureFlag("cashInterest");
   const billingEnabled = useFeatureFlag("billing");
   const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
@@ -753,6 +755,10 @@ export function AssetDetail({
             />
           </dl>
         </Card>
+
+        {held && asset.type === "CASH" && cashInterestEnabled && (
+          <CashInterestSection asset={asset} txs={txs} />
+        )}
 
         {constituents.length > 0 && (
           <Card>

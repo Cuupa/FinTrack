@@ -67,6 +67,8 @@ interface AssetRow {
   id: string;
   notes: string | null;
   currency: string | null;
+  interest_rate: number | null;
+  interest_frequency: Asset["interestFrequency"] | null;
   instrument: InstrumentEmbed | InstrumentEmbed[] | null;
 }
 
@@ -148,7 +150,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("assets")
         .select(
-          "id, notes, currency, instrument:instruments (isin, wkn, symbol, name, type, currency)",
+          "id, notes, currency, interest_rate, interest_frequency, instrument:instruments (isin, wkn, symbol, name, type, currency)",
         )
         .eq("user_id", this.userId),
       // RLS scopes transactions to the user's assets — no user_id column.
@@ -239,6 +241,8 @@ export class SupabaseStore implements DataStore {
         // The user's own trading currency wins; fall back to the instrument's.
         currency: r.currency ?? inst?.currency ?? null,
         notes: r.notes,
+        interestRate: r.interest_rate,
+        interestFrequency: r.interest_frequency,
       };
     });
 
@@ -394,6 +398,8 @@ export class SupabaseStore implements DataStore {
         instrument_id: instrumentId,
         currency: input.currency, // the user's per-holding trading currency
         notes: input.notes,
+        interest_rate: input.interestRate ?? null,
+        interest_frequency: input.interestFrequency ?? null,
       })
       .select("id")
       .single();
@@ -402,11 +408,16 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateAsset(id: string, patch: Partial<AssetInput>): Promise<void> {
-    // Only `notes` is asset-level; master data lives on the instrument.
-    if (patch.notes === undefined) return;
+    // Only asset-level fields live here (notes + the CASH interest config);
+    // master data lives on the shared instrument.
+    const update: Record<string, unknown> = {};
+    if (patch.notes !== undefined) update.notes = patch.notes;
+    if (patch.interestRate !== undefined) update.interest_rate = patch.interestRate;
+    if (patch.interestFrequency !== undefined) update.interest_frequency = patch.interestFrequency;
+    if (Object.keys(update).length === 0) return;
     const { data, error } = await this.supabase
       .from("assets")
-      .update({ notes: patch.notes })
+      .update(update)
       .eq("id", id)
       .eq("user_id", this.userId)
       .select("id");

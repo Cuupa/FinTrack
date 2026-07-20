@@ -267,6 +267,12 @@ create table if not exists public.assets (
   created_at timestamptz not null default now()
 );
 alter table public.assets add column if not exists currency text;
+-- CASH interest (COMPETITION.md F7): a cash position may carry an annual
+-- nominal rate (percent) and a compounding frequency. Interest accrues and is
+-- booked as INTEREST transactions after review (lib/finance/cash-interest.ts).
+-- Null on non-cash / non-interest-bearing balances.
+alter table public.assets add column if not exists interest_rate numeric;
+alter table public.assets add column if not exists interest_frequency text;
 create index if not exists assets_user_id_idx on public.assets (user_id);
 create index if not exists assets_instrument_id_idx on public.assets (instrument_id);
 
@@ -533,7 +539,8 @@ insert into public.schema_migrations (version) values
   ('0073_split_detection_flag'),
   ('0074_vorabpauschale'),
   ('0075_dividend_calendar_flag'),
-  ('0076_push_notifications')
+  ('0076_push_notifications'),
+  ('0077_cash_interest')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -815,6 +822,9 @@ on conflict (flag) do nothing;
 -- Seeded DISABLED: web push ships off until the owner sets VAPID keys.
 insert into public.feature_flags (flag, enabled, description) values
   ('pushNotifications', false, 'Web push reminders (dividend pay-day, savings-plan due)')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('cashInterest', false, 'Interest-bearing cash (annual rate + accrual review on CASH assets)')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

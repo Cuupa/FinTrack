@@ -65,7 +65,23 @@ export interface Asset {
   /** Native trading currency (null = portfolio base currency). */
   currency: string | null;
   notes: string | null;
+  /**
+   * CASH only: annual nominal interest rate in PERCENT (e.g. 3.5 = 3.5% p.a.),
+   * or null/undefined for a non-interest-bearing balance. Interest accrues at
+   * `interestFrequency` and is booked as INTEREST transactions after an
+   * explicit review (see `lib/finance/cash-interest.ts`). Optional so existing
+   * Asset literals stay valid.
+   */
+  interestRate?: number | null;
+  /** CASH only: how often interest is credited/compounded. Null/undefined when
+   *  no rate is set. */
+  interestFrequency?: InterestFrequency | null;
 }
+
+/** How often a cash position's interest is credited and compounded. */
+export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
+
+export const INTEREST_FREQUENCIES: InterestFrequency[] = ["MONTHLY", "QUARTERLY", "ANNUAL"];
 
 /** The identifier fields shared by assets and watchlist items. */
 export type InstrumentRef = Pick<Asset, "isin" | "wkn" | "symbol" | "name">;
