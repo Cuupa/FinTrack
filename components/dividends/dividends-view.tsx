@@ -196,13 +196,21 @@ export function DividendsView() {
       .sort((a, b) => b.t12m - a.t12m);
   }, [perAsset, holdingById, t12mStart]);
 
-  // Forecast: each per-share event of the trailing year, projected one year
-  // forward at the CURRENT share count. Deliberately independent of received
-  // payments — a holding bought today still forecasts its payer's trailing
-  // cadence (a freshly bought stock has no received payments yet).
-  const forecast = useMemo(() => {
+  // Upcoming dividends: each per-share event of the trailing year, projected
+  // one year forward at the CURRENT share count. Deliberately independent of
+  // received payments — a holding bought today still forecasts its trailing
+  // cadence. Enriched with the announced calendar (F4) where Yahoo has it: the
+  // next projected payment adopts the confirmed pay date + ex-date and is
+  // flagged `confirmed`; everything else stays a projection with no ex-date.
+  const upcoming = useMemo(() => {
     const fx = valuation.fx ?? {};
-    const out: { date: string; asset: Asset; amount: number; confirmed: boolean }[] = [];
+    const out: {
+      date: string;
+      exDate: string | null;
+      asset: Asset;
+      amount: number;
+      confirmed: boolean;
+    }[] = [];
     for (const asset of data.assets) {
       const key = assetPriceKey(asset);
       const events = divMap[key];
@@ -212,68 +220,53 @@ export function DividendsView() {
       const cur = asset.currency ?? currency;
       const rate = cur === currency ? 1 : (fx[cur] ?? 1);
       const projected = projectDividends(events, shares, t12mStart, todayISO);
-      // Fold in the confirmed announced pay date (F4): the next projected
-      // payment adopts Yahoo's confirmed date; the projection stays the
-      // fallback for everything else.
-      for (const p of applyAnnouncedDate(projected, announced[key]?.payDate ?? null, todayISO)) {
-        out.push({ date: p.date, asset, amount: p.amount * rate, confirmed: p.confirmed });
+      const ann = announced[key];
+      const exDate = ann?.exDate && ann.exDate >= todayISO ? ann.exDate : null;
+      for (const p of applyAnnouncedDate(projected, ann?.payDate ?? null, todayISO)) {
+        out.push({
+          date: p.date,
+          exDate: p.confirmed ? exDate : null,
+          asset,
+          amount: p.amount * rate,
+          confirmed: p.confirmed,
+        });
       }
     }
-    out.sort((a, b) => (a.date < b.date ? -1 : 1));
     return out;
   }, [data.assets, divMap, announced, holdingById, currency, valuation, t12mStart, todayISO]);
 
-  const forecastTotal = useMemo(() => forecast.reduce((s, f) => s + f.amount, 0), [forecast]);
+  const upcomingTotal = useMemo(() => upcoming.reduce((s, f) => s + f.amount, 0), [upcoming]);
 
-  // Announced dividend calendar (F4): held payers with a confirmed upcoming
-  // ex- and/or pay-date from the payer's published calendar. `announced` is
-  // only populated when the `dividendCalendar` flag is on, so this is empty
-  // otherwise. Past dates are dropped (only what's still ahead is a calendar).
-  const calendarRows = useMemo(() => {
-    const out: { asset: Asset; exDate: string | null; payDate: string | null; next: string }[] = [];
-    for (const asset of data.assets) {
-      const a = announced[assetPriceKey(asset)];
-      if (!a) continue;
-      const exDate = a.exDate && a.exDate >= todayISO ? a.exDate : null;
-      const payDate = a.payDate && a.payDate >= todayISO ? a.payDate : null;
-      if (!exDate && !payDate) continue;
-      const next = [exDate, payDate].filter((d): d is string => d !== null).sort()[0];
-      out.push({ asset, exDate, payDate, next });
-    }
-    return out;
-  }, [announced, data.assets, todayISO]);
-
-  const [calSort, setCalSort] = useState<{ key: "asset" | "ex" | "pay"; dir: 1 | -1 }>({
+  const [upSort, setUpSort] = useState<{ key: "asset" | "ex" | "pay" | "amount"; dir: 1 | -1 }>({
     key: "pay",
     dir: 1,
   });
-  const toggleCalSort = (key: "asset" | "ex" | "pay") =>
-    setCalSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
-  const sortedCalRows = useMemo(() => {
-    const rows = [...calendarRows];
+  const toggleUpSort = (key: "asset" | "ex" | "pay" | "amount") =>
+    setUpSort((s) =>
+      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "amount" ? -1 : 1 },
+    );
+  const sortedUpcoming = useMemo(() => {
+    const rows = [...upcoming];
     return rows.sort((a, b) => {
+      if (upSort.key === "amount") return (a.amount - b.amount) * upSort.dir;
       let va: string;
       let vb: string;
-      switch (calSort.key) {
-        case "asset":
-          va = a.asset.name.toLowerCase();
-          vb = b.asset.name.toLowerCase();
-          break;
-        case "ex":
-          // Missing dates sort last regardless of direction stays natural here.
-          va = a.exDate ?? "9999-99-99";
-          vb = b.exDate ?? "9999-99-99";
-          break;
-        default:
-          va = a.payDate ?? "9999-99-99";
-          vb = b.payDate ?? "9999-99-99";
-          break;
+      if (upSort.key === "asset") {
+        va = a.asset.name.toLowerCase();
+        vb = b.asset.name.toLowerCase();
+      } else if (upSort.key === "ex") {
+        // Projected rows (no ex-date) sort to the end.
+        va = a.exDate ?? "9999-99-99";
+        vb = b.exDate ?? "9999-99-99";
+      } else {
+        va = a.date;
+        vb = b.date;
       }
-      if (va < vb) return -1 * calSort.dir;
-      if (va > vb) return 1 * calSort.dir;
+      if (va < vb) return -1 * upSort.dir;
+      if (va > vb) return 1 * upSort.dir;
       return 0;
     });
-  }, [calendarRows, calSort]);
+  }, [upcoming, upSort]);
 
   if (data.assets.length === 0) {
     return (
@@ -405,200 +398,170 @@ export function DividendsView() {
         )}
       </Card>
 
-      {calendarEnabled && (
-        <Card>
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-            {t("div.calendar")}
-            <InfoTip text={t("div.calendarTip")} />
+            {t("div.upcoming")}
+            <InfoTip text={t("div.upcomingTip")} />
           </h2>
-          {showSkeleton ? (
-            <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <ListRowSkeleton key={i} />
-              ))}
-            </div>
-          ) : sortedCalRows.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("div.calendarEmpty")}</p>
-          ) : (
+          {upcoming.length > 0 && (
+            <span className="text-sm font-medium tabular-nums" data-private>
+              {formatCurrency(upcomingTotal, currency)}
+            </span>
+          )}
+        </div>
+        {showSkeleton ? (
+          <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <ListRowSkeleton key={i} />
+            ))}
+          </div>
+        ) : sortedUpcoming.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
+        ) : (
+          <>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                    <CalTh label={t("sp.asset")} k="asset" sort={calSort} onSort={toggleCalSort} />
-                    <CalTh label={t("div.exDate")} k="ex" sort={calSort} onSort={toggleCalSort} />
-                    <CalTh label={t("div.payDate")} k="pay" sort={calSort} onSort={toggleCalSort} />
+                    <UpTh label={t("sp.asset")} k="asset" sort={upSort} onSort={toggleUpSort} />
+                    <UpTh label={t("div.exDate")} k="ex" sort={upSort} onSort={toggleUpSort} />
+                    <UpTh label={t("div.payDate")} k="pay" sort={upSort} onSort={toggleUpSort} />
+                    <UpTh
+                      label={t("sp.amount")}
+                      k="amount"
+                      align="right"
+                      sort={upSort}
+                      onSort={toggleUpSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedCalRows.map((r) => (
+                  {sortedUpcoming.map((f, i) => (
                     <tr
-                      key={r.asset.id}
+                      key={`${f.asset.id}:${f.date}:${i}`}
                       className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                     >
                       <td className="max-w-[16rem] py-2 pr-3">
                         <Link
-                          href={`/assets/${r.asset.id}`}
+                          href={`/assets/${f.asset.id}`}
                           className="block truncate font-medium hover:underline"
                         >
-                          {r.asset.name}
+                          {f.asset.name}
                         </Link>
                       </td>
                       <td className="py-2 pr-3 tabular-nums">
-                        {r.exDate ? (
-                          formatDate(r.exDate)
-                        ) : (
-                          <span className="text-zinc-400">–</span>
-                        )}
+                        {f.exDate ? formatDate(f.exDate) : <span className="text-zinc-400">–</span>}
                       </td>
-                      <td className="py-2 tabular-nums">
-                        {r.payDate ? (
-                          formatDate(r.payDate)
-                        ) : (
-                          <span className="text-zinc-400">–</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-            {t("div.byHolding")}
-            <InfoTip text={t("div.byHoldingTip")} />
-          </h2>
-          {showSkeleton ? (
-            <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <ListRowSkeleton key={i} />
-              ))}
-            </div>
-          ) : rows.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
-          ) : (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                    <th className="py-2 pr-3 font-medium">{t("sp.asset")}</th>
-                    <th className="py-2 pr-3 text-right font-medium">{t("div.col12m")}</th>
-                    <th className="py-2 pr-3 text-right font-medium">{t("div.colTotal")}</th>
-                    <th className="py-2 pr-3 text-right font-medium">{t("div.colYield")}</th>
-                    <th className="py-2 text-right font-medium">{t("div.colYoC")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr
-                      key={r.asset.id}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
-                    >
-                      <td className="max-w-[14rem] py-2 pr-3">
-                        <Link
-                          href={`/assets/${r.asset.id}`}
-                          className="block truncate font-medium hover:underline"
-                        >
-                          {r.asset.name}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                        {formatCurrency(r.t12m, currency)}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                        {formatCurrency(r.allTime, currency)}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        {formatPercent(r.yield)}
-                      </td>
-                      <td className="py-2 text-right tabular-nums">
-                        {formatPercent(r.yieldOnCost)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-              {t("div.forecast")}
-              <InfoTip text={t("div.forecastTip")} />
-            </h2>
-            {forecast.length > 0 && (
-              <span className="text-sm font-medium tabular-nums" data-private>
-                {formatCurrency(forecastTotal, currency)}
-              </span>
-            )}
-          </div>
-          {showSkeleton ? (
-            <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <ListRowSkeleton key={i} />
-              ))}
-            </div>
-          ) : forecast.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
-          ) : (
-            <>
-              <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                {forecast.slice(0, 12).map((f, i) => (
-                  <li key={`${f.asset.id}:${f.date}:${i}`} className="flex items-center justify-between gap-3 py-2">
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{f.asset.name}</span>
-                      <span className="block text-xs text-zinc-500">
+                      <td className="py-2 pr-3 tabular-nums">
                         {formatDate(f.date)}
                         {f.confirmed && (
                           <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
                             {t("div.confirmedDate")}
                           </span>
                         )}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-sm tabular-nums" data-private>
-                      ≈ {formatCurrency(f.amount, currency)}
-                    </span>
-                  </li>
+                      </td>
+                      {/* The amount is always a projection from last year's
+                          payout; only the DATE is ever confirmed, so the ≈
+                          stays on every row. */}
+                      <td className="py-2 text-right tabular-nums" data-private>
+                        ≈ {formatCurrency(f.amount, currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-zinc-400">{t("div.forecastDisclaimer")}</p>
+          </>
+        )}
+      </Card>
+
+      <Card>
+        <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+          {t("div.byHolding")}
+          <InfoTip text={t("div.byHoldingTip")} />
+        </h2>
+        {showSkeleton ? (
+          <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <ListRowSkeleton key={i} />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+                  <th className="py-2 pr-3 font-medium">{t("sp.asset")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("div.col12m")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("div.colTotal")}</th>
+                  <th className="py-2 pr-3 text-right font-medium">{t("div.colYield")}</th>
+                  <th className="py-2 text-right font-medium">{t("div.colYoC")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.asset.id}
+                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                  >
+                    <td className="max-w-[14rem] py-2 pr-3">
+                      <Link
+                        href={`/assets/${r.asset.id}`}
+                        className="block truncate font-medium hover:underline"
+                      >
+                        {r.asset.name}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                      {formatCurrency(r.t12m, currency)}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                      {formatCurrency(r.allTime, currency)}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {formatPercent(r.yield)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">
+                      {formatPercent(r.yieldOnCost)}
+                    </td>
+                  </tr>
                 ))}
-              </ul>
-              {forecast.length > 12 && (
-                <p className="mt-2 text-xs text-zinc-400">
-                  {t("div.forecastMore", { count: forecast.length - 12 })}
-                </p>
-              )}
-              <p className="mt-3 text-xs text-zinc-400">{t("div.forecastDisclaimer")}</p>
-            </>
-          )}
-        </Card>
-      </div>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
-function CalTh({
+type UpSortKey = "asset" | "ex" | "pay" | "amount";
+
+function UpTh({
   label,
   k,
+  align,
   sort,
   onSort,
 }: {
   label: string;
-  k: "asset" | "ex" | "pay";
-  sort: { key: "asset" | "ex" | "pay"; dir: 1 | -1 };
-  onSort: (k: "asset" | "ex" | "pay") => void;
+  k: UpSortKey;
+  align?: "right";
+  sort: { key: UpSortKey; dir: 1 | -1 };
+  onSort: (k: UpSortKey) => void;
 }) {
   return (
-    <th className="py-2 pr-3 font-medium">
+    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
       <button
         type="button"
         onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+          align === "right" ? "justify-end" : ""
+        }`}
       >
         {label}
         <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>

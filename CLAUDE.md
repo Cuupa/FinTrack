@@ -489,13 +489,16 @@ FX-convert) always beats a wrong instrument in the right currency.
   (`getCrumb`/`quoteSummaryJSON` in yahoo.ts) — it **fails soft to null**, so
   the forecast keeps its trailing projection. The pure `applyAnnouncedDate`
   re-dates the next projected payment to the confirmed date and flags it
-  `confirmed`; the projection stays the fallback. The confirmed dates are also
-  surfaced directly as an **"Upcoming dividends" card** on /dividends (a
-  sortable Asset / Ex-date / Pay-date table, past dates dropped, row-hover
-  highlight) so the calendar is discoverable on its own, not just as a
-  `confirmed` label inside the forecast list; the whole card is gated on the
-  `dividendCalendar` flag and shows an empty-state line when the flag is on but
-  no payer has published a date yet.
+  `confirmed`; the projection stays the fallback. The /dividends page surfaces
+  this as a **single "Upcoming dividends" card** — a sortable Asset / Ex-date /
+  Pay-date / Amount table over the projected next-12-months payouts (the old
+  standalone announced-only calendar card and the separate forecast list were
+  merged: a confirmed-dates-only card sat empty next to a filled forecast,
+  which read as broken). Projected rows show the amount with a `≈` and no
+  ex-date; where the announced calendar (gated on `dividendCalendar`) has a
+  confirmed ex/pay date it fills the ex-date column and marks the pay date
+  `confirmed`. The `≈` stays on **every** amount — only the date is ever
+  confirmed, never the projected amount.
 - **Vorabpauschale estimator** (`tax.ts` `estimateVorabpauschaleByYear` /
   `fundVorabpauschale`, COMPETITION.md F6, flag `vorabEstimate`): per fund per
   completed year, `startValue x Basiszins x 0.7 − distributions`, capped at the
