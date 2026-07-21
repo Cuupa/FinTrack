@@ -83,7 +83,8 @@ export type FeatureFlag =
   | "dividendCalendar"
   | "pushNotifications"
   | "cashInterest"
-  | "manualValuation";
+  | "manualValuation"
+  | "accounts";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

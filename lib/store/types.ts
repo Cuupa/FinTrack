@@ -5,6 +5,7 @@
 // and finance code never branch on the mode.
 
 import type {
+  Account,
   Asset,
   LlmConfig,
   Portfolio,
@@ -20,6 +21,7 @@ export type AssetInput = Omit<Asset, "id">;
 export type TransactionInput = Omit<Transaction, "id">;
 export type WatchlistInput = Omit<WatchlistItem, "id">;
 export type SavingsPlanInput = Omit<SavingsPlan, "id">;
+export type AccountInput = Omit<Account, "id">;
 
 /** Patch shape for `DataStore.updatePortfolio` — every field optional, only
  *  the fields present are changed. `renamePortfolio` is a thin wrapper around
@@ -80,6 +82,17 @@ export interface DataStore {
    * asset's points; an empty array clears them.
    */
   setAssetValuations(assetId: string, points: { date: string; value: number }[]): Promise<void>;
+  /** Creates a balance account/liability. `id` — see `addAsset`'s doc above. */
+  addAccount(input: AccountInput, id?: string): Promise<Account>;
+  updateAccount(id: string, patch: Partial<AccountInput>): Promise<void>;
+  /** Deletes the account and every balance reading that referenced it. */
+  deleteAccount(id: string): Promise<void>;
+  /**
+   * Replace-set the dated balance readings for one account (idempotent,
+   * replay-safe like `setAssetValuations`). The given array becomes exactly
+   * the account's readings; an empty array clears them.
+   */
+  setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
   /**
    * Replace-set the user's BYO LLM config (replay-idempotent like
    * `setAssetTags`). `null` removes it entirely (the settings "Remove key"

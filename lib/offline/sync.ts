@@ -19,6 +19,7 @@
 import type { LlmConfig, PortfolioData, Profile } from "../types";
 import { RowNotFoundError } from "../store/types";
 import type {
+  AccountInput,
   AssetInput,
   DataStore,
   PortfolioPatch,
@@ -150,6 +151,23 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
         points: { date: string; value: number }[];
       };
       await inner.setAssetValuations(assetId, points);
+      return;
+    }
+    case "addAccount":
+      await inner.addAccount(op.payload as AccountInput, op.id);
+      return;
+    case "updateAccount":
+      await inner.updateAccount(op.id, op.payload as Partial<AccountInput>);
+      return;
+    case "deleteAccount":
+      await inner.deleteAccount(op.id);
+      return;
+    case "setAccountBalances": {
+      const { accountId, points } = op.payload as {
+        accountId: string;
+        points: { date: string; balance: number }[];
+      };
+      await inner.setAccountBalances(accountId, points);
       return;
     }
     case "saveLlmConfig":

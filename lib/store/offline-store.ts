@@ -21,6 +21,7 @@
 // lib/offline/connectivity.tsx for the equivalent read-side probe.
 
 import type {
+  Account,
   Asset,
   LlmConfig,
   Portfolio,
@@ -35,6 +36,7 @@ import { drain, type DrainResult } from "../offline/sync";
 import { LocalStore, mirrorStorageKeys } from "./local-store";
 import { MutationQueue, type MutationOp } from "./mutation-queue";
 import type {
+  AccountInput,
   AssetInput,
   DataStore,
   PortfolioPatch,
@@ -299,6 +301,49 @@ export class OfflineStore implements DataStore {
       await this.inner.setAssetValuations(assetId, points);
     } catch (err) {
       await this.handleFailure(err, "setAssetValuations", assetId, { assetId, points });
+    }
+  }
+
+  async addAccount(input: AccountInput, id?: string): Promise<Account> {
+    const accountId = id ?? newId();
+    const account = await this.mirror.addAccount(input, accountId);
+    try {
+      await this.inner.addAccount(input, accountId);
+    } catch (err) {
+      await this.handleFailure(err, "addAccount", accountId, input);
+    }
+    return account;
+  }
+
+  async updateAccount(id: string, patch: Partial<AccountInput>): Promise<void> {
+    await this.mirror.updateAccount(id, patch);
+    try {
+      await this.inner.updateAccount(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateAccount", id, patch);
+    }
+  }
+
+  async deleteAccount(id: string): Promise<void> {
+    await this.mirror.deleteAccount(id);
+    try {
+      await this.inner.deleteAccount(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteAccount", id, null);
+    }
+  }
+
+  async setAccountBalances(
+    accountId: string,
+    points: { date: string; balance: number }[],
+  ): Promise<void> {
+    await this.mirror.setAccountBalances(accountId, points);
+    // Keyed by accountId; the replay reads accountId/points from the payload,
+    // and replace-set makes it idempotent (like setAssetValuations).
+    try {
+      await this.inner.setAccountBalances(accountId, points);
+    } catch (err) {
+      await this.handleFailure(err, "setAccountBalances", accountId, { accountId, points });
     }
   }
 

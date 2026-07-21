@@ -12,6 +12,9 @@ import {
   DEFAULT_PROFILE,
   EMPTY_REBALANCE_PLAN,
   MAX_PORTFOLIOS,
+  type Account,
+  type AccountBalance,
+  type AccountKind,
   type Asset,
   type LlmConfig,
   type Portfolio,
@@ -41,6 +44,7 @@ function normalizeRebalancePlan(raw: unknown): RebalancePlan {
 import type { LlmProviderId } from "../llm/types";
 import { RowNotFoundError } from "./types";
 import type {
+  AccountInput,
   AssetInput,
   DataStore,
   PortfolioPatch,
@@ -126,6 +130,28 @@ function planFromRow(r: SavingsPlanRow): SavingsPlan {
   };
 }
 
+interface AccountRow {
+  id: string;
+  name: string;
+  kind: string;
+  currency: string | null;
+  is_liability: boolean;
+  opening_balance: number | string | null;
+  opened_on: string;
+}
+
+function accountFromRow(r: AccountRow): Account {
+  return {
+    id: r.id,
+    name: r.name,
+    kind: r.kind as AccountKind,
+    currency: r.currency,
+    isLiability: !!r.is_liability,
+    openingBalance: r.opening_balance != null ? Number(r.opening_balance) : 0,
+    openedOn: r.opened_on,
+  };
+}
+
 function embed(row: AssetRow): InstrumentEmbed | null {
   const i = row.instrument;
   return Array.isArray(i) ? (i[0] ?? null) : i;
@@ -150,6 +176,8 @@ export class SupabaseStore implements DataStore {
       tagGroupsRes,
       assetTagsRes,
       valuationsRes,
+      accountsRes,
+      accountBalancesRes,
       llmSettingsRes,
     ] = await Promise.all([
       this.supabase
@@ -199,6 +227,16 @@ export class SupabaseStore implements DataStore {
         .eq("user_id", this.userId)
         .order("valued_on", { ascending: true }),
       this.supabase
+        .from("accounts")
+        .select("id, name, kind, currency, is_liability, opening_balance, opened_on")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
+        .from("account_balances")
+        .select("account_id, balance_on, balance")
+        .eq("user_id", this.userId)
+        .order("balance_on", { ascending: true }),
+      this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
         .eq("user_id", this.userId)
@@ -218,6 +256,8 @@ export class SupabaseStore implements DataStore {
     if (tagGroupsRes.error) throw tagGroupsRes.error;
     if (assetTagsRes.error) throw assetTagsRes.error;
     if (valuationsRes.error) throw valuationsRes.error;
+    if (accountsRes.error) throw accountsRes.error;
+    if (accountBalancesRes.error) throw accountBalancesRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
@@ -326,6 +366,16 @@ export class SupabaseStore implements DataStore {
       (valuationsRes.data ?? []) as { asset_id: string; valued_on: string; value: number | string }[]
     ).map((r) => ({ assetId: r.asset_id, date: r.valued_on, value: Number(r.value) }));
 
+    const accounts: Account[] = ((accountsRes.data ?? []) as AccountRow[]).map(accountFromRow);
+
+    const accountBalances: AccountBalance[] = (
+      (accountBalancesRes.data ?? []) as {
+        account_id: string;
+        balance_on: string;
+        balance: number | string;
+      }[]
+    ).map((r) => ({ accountId: r.account_id, date: r.balance_on, balance: Number(r.balance) }));
+
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
@@ -345,6 +395,8 @@ export class SupabaseStore implements DataStore {
       tagGroups,
       tagAssignments,
       valuationPoints,
+      accounts,
+      accountBalances,
       llmConfig,
     };
   }
@@ -709,6 +761,79 @@ export class SupabaseStore implements DataStore {
         asset_id: assetId,
         valued_on: p.date,
         value: p.value,
+      })),
+    );
+    if (insErr) throw insErr;
+  }
+
+  async addAccount(input: AccountInput, id?: string): Promise<Account> {
+    const { data, error } = await this.supabase
+      .from("accounts")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        name: input.name,
+        kind: input.kind,
+        currency: input.currency,
+        is_liability: input.isLiability,
+        opening_balance: input.openingBalance,
+        opened_on: input.openedOn,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updateAccount(id: string, patch: Partial<AccountInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.name !== undefined) upd.name = patch.name;
+    if (patch.kind !== undefined) upd.kind = patch.kind;
+    if (patch.currency !== undefined) upd.currency = patch.currency;
+    if (patch.isLiability !== undefined) upd.is_liability = patch.isLiability;
+    if (patch.openingBalance !== undefined) upd.opening_balance = patch.openingBalance;
+    if (patch.openedOn !== undefined) upd.opened_on = patch.openedOn;
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("accounts")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    // See updateAsset — a zero-row match must be distinguishable for replay.
+    if (!data || data.length === 0) throw new RowNotFoundError(`account ${id} not found`);
+  }
+
+  async deleteAccount(id: string): Promise<void> {
+    // account_balances cascade via the account_id FK.
+    const { error } = await this.supabase
+      .from("accounts")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async setAccountBalances(
+    accountId: string,
+    points: { date: string; balance: number }[],
+  ): Promise<void> {
+    // Replace-set: clear the account's readings, then re-insert — idempotent
+    // and replay-safe (like setAssetValuations).
+    const { error: delErr } = await this.supabase
+      .from("account_balances")
+      .delete()
+      .eq("account_id", accountId)
+      .eq("user_id", this.userId);
+    if (delErr) throw delErr;
+    if (points.length === 0) return;
+    const { error: insErr } = await this.supabase.from("account_balances").insert(
+      points.map((p) => ({
+        user_id: this.userId,
+        account_id: accountId,
+        balance_on: p.date,
+        balance: p.balance,
       })),
     );
     if (insErr) throw insErr;

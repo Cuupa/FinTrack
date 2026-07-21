@@ -33,6 +33,7 @@ import type { StreamHandle } from "@/lib/llm/types";
 import { llmErrorMessageKey } from "@/lib/llm/error-messages";
 import { buildPortfolioContext, buildSystemPrompt } from "@/lib/llm/context";
 import { summarizeAll } from "@/lib/finance/portfolio";
+import { accountValueOn } from "@/lib/finance/accounts";
 import { byAssetClass, byCountry, byCurrency } from "@/lib/finance/allocation";
 import { estimatePortfolioStats, portfolioRiskStats, type StatHolding } from "@/lib/finance/stats";
 import { betaAlpha, compositeLevelSeries } from "@/lib/finance/returns";
@@ -180,6 +181,17 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
       allocationByClass: byAssetClass(holdings),
       allocationByCurrency: byCurrency(holdings, base),
       allocationByCountry: byCountry(holdings),
+      // Balance accounts & liabilities (ROADMAP #1) — id-free, base-currency
+      // signed balances so the assistant sees whole-picture net worth.
+      accounts: data.accounts.length
+        ? data.accounts.map((a) => ({
+            name: a.name,
+            kind: a.kind,
+            currency: a.currency ?? base,
+            isLiability: a.isLiability,
+            balance: accountValueOn(a, data.accountBalances, today(), { base, fx: fxSpot }),
+          }))
+        : undefined,
     });
 
     const prompt = buildSystemPrompt(contextJson, locale);
@@ -191,6 +203,8 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     data.assets,
     data.transactions,
     data.savingsPlans,
+    data.accounts,
+    data.accountBalances,
     base,
     valuation,
     locale,

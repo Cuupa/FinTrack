@@ -5,7 +5,8 @@
 // basis uses the average-cost method (buy fees raise basis, sell fees reduce
 // proceeds).
 
-import { assetPriceKey, type Asset, type Transaction } from "../types";
+import { assetPriceKey, type Account, type AccountBalance, type Asset, type Transaction } from "../types";
+import { accountsValueOn } from "./accounts";
 import {
   dateKey,
   dateRange,
@@ -358,7 +359,10 @@ const HEAD_GAP_TOLERANCE_DAYS = 7;
 
 /**
  * Net-worth time series over a timeframe: for each sampled date, sum every
- * asset's holding (shares on that date × historical price).
+ * asset's holding (shares on that date × historical price), plus every balance
+ * account signed by `is_liability` (ROADMAP #1). Accounts are optional — when
+ * omitted (single-asset charts) or empty they contribute 0, so the finance
+ * core never needs to know whether the `accounts` flag is on.
  */
 export function netWorthSeries(
   assets: Asset[],
@@ -366,9 +370,17 @@ export function netWorthSeries(
   tf: Timeframe,
   v?: ValuationContext,
   history?: HistoryMap,
+  accounts?: Account[],
+  accountBalances?: AccountBalance[],
 ): NetWorthSeriesResult {
   const end = today();
-  const start = timeframeStart(tf, end, earliestTxDate(txs));
+  // MAX/YTD anchor on the earliest transaction OR the earliest account opening
+  // date, so an accounts-only user still gets a full-history window.
+  let earliest = earliestTxDate(txs);
+  for (const a of accounts ?? []) {
+    if (earliest === null || a.openedOn < earliest) earliest = a.openedOn;
+  }
+  const start = timeframeStart(tf, end, earliest);
   const dates = dateRange(start, end);
   // Per-asset native currency, live-continuity factor and real history,
   // precomputed. The FX rate itself is looked up per-date below (rateOn), not
@@ -387,9 +399,21 @@ export function netWorthSeries(
     };
   });
 
+  // Accounts fold in as real user data (like CASH / manual valuations), so they
+  // never trip the synthetic flag. Signed by is_liability, FX-converted at spot.
+  const accountVal =
+    accounts && accounts.length
+      ? { accounts, balances: accountBalances ?? [], base: v?.base, fx: v?.fx }
+      : null;
+
   let containsSynthetic = false;
   const points = dates.map((date) => {
-    let value = 0;
+    let value = accountVal
+      ? accountsValueOn(accountVal.accounts, accountVal.balances, date, {
+          base: accountVal.base ?? "",
+          fx: accountVal.fx,
+        })
+      : 0;
     for (const { asset, txs: atxs, key, cur, factor, hist } of byAsset) {
       const shares = sharesAt(atxs, date);
       if (shares === 0) continue;

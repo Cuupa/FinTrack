@@ -572,6 +572,8 @@ describe("csv parsers — fintrack (self re-import)", () => {
       tagGroups: [],
       tagAssignments: {},
       valuationPoints: [],
+      accounts: [],
+      accountBalances: [],
       llmConfig: null,
     };
 

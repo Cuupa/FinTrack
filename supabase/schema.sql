@@ -426,6 +426,43 @@ create unique index if not exists asset_valuations_unique_key
 create index if not exists asset_valuations_asset_id_idx on public.asset_valuations (asset_id);
 create index if not exists asset_valuations_user_id_idx on public.asset_valuations (user_id);
 
+-- Accounts & liabilities (ROADMAP #1, flag `accounts`): balance accounts the
+-- user sets (checking/savings/credit/loan/mortgage/other) folded into net
+-- worth; liabilities (`is_liability`) subtract. `account_balances` are dated
+-- readings (carry-forward step series), `opening_balance` at `opened_on` the
+-- implicit first point.
+create table if not exists public.accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  kind text not null default 'checking',
+  currency text,
+  is_liability boolean not null default false,
+  opening_balance numeric not null default 0,
+  opened_on date not null,
+  created_at timestamptz not null default now()
+);
+alter table public.accounts
+  drop constraint if exists accounts_kind_check;
+alter table public.accounts
+  add constraint accounts_kind_check check (
+    kind in ('checking', 'savings', 'credit', 'loan', 'mortgage', 'other_asset', 'other_liability')
+  );
+create index if not exists accounts_user_id_idx on public.accounts (user_id);
+
+create table if not exists public.account_balances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  account_id uuid not null references public.accounts (id) on delete cascade,
+  balance_on date not null,
+  balance numeric not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists account_balances_unique_key
+  on public.account_balances (account_id, balance_on);
+create index if not exists account_balances_account_id_idx on public.account_balances (account_id);
+create index if not exists account_balances_user_id_idx on public.account_balances (user_id);
+
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its
 -- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
@@ -562,7 +599,8 @@ insert into public.schema_migrations (version) values
   ('0076_push_notifications'),
   ('0077_cash_interest'),
   ('0078_rebalance_targets'),
-  ('0079_manual_valuation')
+  ('0079_manual_valuation'),
+  ('0080_accounts')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -576,6 +614,8 @@ alter table public.savings_plans enable row level security;
 alter table public.tag_groups enable row level security;
 alter table public.asset_tags enable row level security;
 alter table public.asset_valuations enable row level security;
+alter table public.accounts enable row level security;
+alter table public.account_balances enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
@@ -659,6 +699,14 @@ create policy "own tag groups" on public.tag_groups
 
 drop policy if exists "own asset valuations" on public.asset_valuations;
 create policy "own asset valuations" on public.asset_valuations
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own accounts" on public.accounts;
+create policy "own accounts" on public.accounts
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own account balances" on public.account_balances;
+create policy "own account balances" on public.account_balances
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own asset tags" on public.asset_tags;
@@ -855,6 +903,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('manualValuation', false, 'Manual-valuation OTHER assets (real estate, collectibles) with user-entered valuation points')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('accounts', false, 'Balance accounts & liabilities (checking/savings/credit/loan/mortgage) folded into net worth')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

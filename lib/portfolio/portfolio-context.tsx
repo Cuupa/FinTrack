@@ -16,6 +16,7 @@ import {
 import { getSupabaseClient } from "../supabase/client";
 import { createStore, type DataStore } from "../store";
 import type {
+  AccountInput,
   AssetInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -25,6 +26,7 @@ import type {
 } from "../store/types";
 import {
   emptyPortfolio,
+  type Account,
   type Asset,
   type LlmConfig,
   type Portfolio,
@@ -78,6 +80,11 @@ interface PortfolioContextValue {
   setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void>;
   /** Replace-set an OTHER asset's manual valuation points. */
   setAssetValuations(assetId: string, points: { date: string; value: number }[]): Promise<void>;
+  addAccount(input: AccountInput): Promise<Account>;
+  updateAccount(id: string, patch: Partial<AccountInput>): Promise<void>;
+  deleteAccount(id: string): Promise<void>;
+  /** Replace-set an account's dated balance readings. */
+  setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
   saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -377,6 +384,55 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const addAccount = useCallback(
+    async (input: AccountInput) => {
+      const account = await store.addAccount(input);
+      setData((d) => ({ ...d, accounts: [...d.accounts, account] }));
+      return account;
+    },
+    [store],
+  );
+
+  const updateAccount = useCallback(
+    async (id: string, patch: Partial<AccountInput>) => {
+      await store.updateAccount(id, patch);
+      setData((d) => ({
+        ...d,
+        accounts: d.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteAccount = useCallback(
+    async (id: string) => {
+      await store.deleteAccount(id);
+      setData((d) => ({
+        ...d,
+        accounts: d.accounts.filter((a) => a.id !== id),
+        accountBalances: d.accountBalances.filter((b) => b.accountId !== id),
+      }));
+    },
+    [store],
+  );
+
+  const setAccountBalances = useCallback(
+    async (accountId: string, points: { date: string; balance: number }[]) => {
+      await store.setAccountBalances(accountId, points);
+      setData((d) => {
+        const others = d.accountBalances.filter((b) => b.accountId !== accountId);
+        return {
+          ...d,
+          accountBalances: [
+            ...others,
+            ...points.map((p) => ({ accountId, date: p.date, balance: p.balance })),
+          ],
+        };
+      });
+    },
+    [store],
+  );
+
   const saveLlmConfig = useCallback(
     async (config: LlmConfig | null) => {
       await store.saveLlmConfig(config);
@@ -502,6 +558,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     deleteTagGroup,
     setAssetTags,
     setAssetValuations,
+    addAccount,
+    updateAccount,
+    deleteAccount,
+    setAccountBalances,
     saveLlmConfig,
     setCurrency,
     updateProfile,

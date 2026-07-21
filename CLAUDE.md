@@ -506,6 +506,21 @@ FX-convert) always beats a wrong instrument in the right currency.
   world-readable, `useBasiszins`) — never hardcoded. RAW (pre-Teilfreistellung,
   applied downstream); fills the manual `taxVorabpauschale` slot per year, the
   manual entry always overrides.
+- **Accounts & liabilities** (`accounts.ts`, ROADMAP #1, flag `accounts`,
+  seeded disabled): the keystone that lets net worth go **negative**. An
+  `Account` (kind checking/savings/credit/loan/mortgage/other) is a balance the
+  user sets, NOT a holding priced from a market — distinct from `OTHER` assets
+  (which are positive manual-valuation holdings). `openingBalance` at `openedOn`
+  plus dated `AccountBalance` readings form a carry-forward step series (like
+  `ValuationPoint`); contribution to net worth is signed `(isLiability ? -1 :
+  1) * balance`, FX-converted at spot. Rides the **full store seam** (`accounts`
+  + `account_balances` tables migration 0080, RLS, FK cascade; LocalStore
+  backfill; OfflineStore mirror+queue; `setAccountBalances` replace-set like
+  `setAssetValuations`). Folded into `netWorthSeries` via optional
+  `accounts`/`accountBalances` params (empty ⇒ 0, so the finance core never
+  gates on the flag; MAX/YTD anchors also on earliest `openedOn`). The dashboard
+  hero and AI context (`lib/llm/context.ts`, id-free) include accounts only when
+  the flag is on. Surface is `/accounts`.
 
 ### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
 
@@ -527,6 +542,8 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
 - `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable
   table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
   (flag `watchlist`)
+- `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1):
+  add-account form + sortable list + per-account dated-balance editor
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/instruments/[key]` — same detail view for non-held instruments (watchlist
   click-through / catalog), reduced to master data + chart + look-through,

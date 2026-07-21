@@ -18,6 +18,9 @@ import {
   twrSeries,
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
+import { accountsValueOn } from "@/lib/finance/accounts";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { today } from "@/lib/finance/dates";
 import { useDividends } from "@/lib/history/use-dividends";
 import { netFlows, riskMetrics, windowChange } from "@/lib/finance/returns";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -58,6 +61,11 @@ export function NetWorthHero({
   const [customBenchmarks, setCustomBenchmarks] = useState<Benchmark[]>([]);
 
   const currency = data.profile.currency;
+  // Balance accounts & liabilities (ROADMAP #1) fold into net worth only when
+  // the flag is on; off, the arrays are undefined and net worth is unchanged.
+  const accountsEnabled = useFeatureFlag("accounts");
+  const accounts = accountsEnabled ? data.accounts : undefined;
+  const accountBalances = accountsEnabled ? data.accountBalances : undefined;
   const comparing = benchmarks.length > 0;
   // Privacy mode hides absolute wealth → the chart is always Return there.
   const chartMode: ChartMode = comparing || incognito ? "percent" : mode;
@@ -99,8 +107,17 @@ export function NetWorthHero({
   }, [valuation, fx]);
 
   const { points: series, containsSynthetic } = useMemo(
-    () => netWorthSeries(data.assets, data.transactions, timeframe, effectiveValuation, histories),
-    [data.assets, data.transactions, timeframe, effectiveValuation, histories],
+    () =>
+      netWorthSeries(
+        data.assets,
+        data.transactions,
+        timeframe,
+        effectiveValuation,
+        histories,
+        accounts,
+        accountBalances,
+      ),
+    [data.assets, data.transactions, timeframe, effectiveValuation, histories, accounts, accountBalances],
   );
   // True time-weighted cumulative return (price-based, deposits never counted),
   // for "Return" mode — what brokers plot as TWROR.
@@ -115,6 +132,14 @@ export function NetWorthHero({
     () => portfolioTotals(summarizeAll(data.assets, data.transactions, valuation)),
     [data.assets, data.transactions, valuation],
   );
+
+  // Net worth includes balance accounts & liabilities (ROADMAP #1): holdings
+  // market value plus the signed sum of every account, in the base currency.
+  const accountsNet = useMemo(
+    () => (accounts ? accountsValueOn(accounts, accountBalances ?? [], today(), valuation) : 0),
+    [accounts, accountBalances, valuation],
+  );
+  const netWorth = totals.marketValue + accountsNet;
 
   // Money-weighted return (IRR / interner Zinsfuß) across all cash flows.
   const irr = useMemo(() => {
@@ -157,7 +182,7 @@ export function NetWorthHero({
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
           <Stat
             label={t("stat.netWorth")}
-            value={formatCurrency(totals.marketValue, currency)}
+            value={formatCurrency(netWorth, currency)}
             info={t("tip.netWorth")}
             isPrivate
             size="sm"
@@ -237,7 +262,7 @@ export function NetWorthHero({
       </div>
 
       <div className="mt-3 md:mt-4">
-        {totals.marketValue === 0 && data.assets.length === 0 ? (
+        {totals.marketValue === 0 && data.assets.length === 0 && !accounts?.length ? (
           <EmptyChart />
         ) : historyLoading ? (
           <LoadingChart />

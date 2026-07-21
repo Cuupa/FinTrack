@@ -48,6 +48,17 @@ export interface PortfolioContextInput {
   allocationByClass: Slice[];
   allocationByCurrency: Slice[];
   allocationByCountry: Slice[];
+  /** Balance accounts & liabilities (ROADMAP #1), id-free, base-currency
+   *  signed balances (liabilities negative). Absent/empty when the user has
+   *  no accounts. */
+  accounts?: {
+    name: string;
+    kind: string;
+    currency: string;
+    isLiability: boolean;
+    /** Signed current balance in the base currency (liabilities negative). */
+    balance: number;
+  }[];
 }
 
 function round2(n: number): number {
@@ -127,11 +138,23 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
     volatilityPct: pct2(a.annualVol),
   }));
 
+  const accounts = (input.accounts ?? []).map((a) => ({
+    name: a.name,
+    kind: a.kind,
+    currency: a.currency,
+    isLiability: a.isLiability,
+    balance: round2(a.balance),
+  }));
+  const accountsNet = accounts.reduce((s, a) => s + a.balance, 0);
+
   const context = {
     baseCurrency: input.baseCurrency,
     today: input.today,
     totalValue: round2(totalValue),
+    // Net worth = holdings market value plus every account signed by liability.
+    ...(accounts.length ? { netWorth: round2(totalValue + accountsNet) } : {}),
     holdings,
+    ...(accounts.length ? { accounts } : {}),
     savingsPlans,
     risk:
       risk || perAsset.length > 0

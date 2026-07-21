@@ -13,6 +13,7 @@ import {
 } from "../types";
 import { isNativeQuotaError, StorageFullError } from "./errors";
 import type {
+  AccountInput,
   AssetInput,
   DataStore,
   PortfolioPatch,
@@ -109,6 +110,9 @@ export class LocalStore implements DataStore {
         tagAssignments: parsed.tagAssignments ?? {},
         // Backfill blobs saved before manual-valuation (OTHER) assets existed.
         valuationPoints: parsed.valuationPoints ?? [],
+        // Backfill blobs saved before the accounts entity existed.
+        accounts: parsed.accounts ?? [],
+        accountBalances: parsed.accountBalances ?? [],
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -314,6 +318,41 @@ export class LocalStore implements DataStore {
     const data = this.read();
     const others = data.valuationPoints.filter((p) => p.assetId !== assetId);
     data.valuationPoints = [...others, ...points.map((p) => ({ assetId, date: p.date, value: p.value }))];
+    this.write(data);
+  }
+
+  async addAccount(input: AccountInput, id?: string) {
+    const data = this.read();
+    const account = { ...input, id: id ?? newId() };
+    data.accounts.push(account);
+    this.write(data);
+    return account;
+  }
+
+  async updateAccount(id: string, patch: Partial<AccountInput>) {
+    const data = this.read();
+    const idx = data.accounts.findIndex((a) => a.id === id);
+    if (idx >= 0) {
+      data.accounts[idx] = { ...data.accounts[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteAccount(id: string) {
+    const data = this.read();
+    data.accounts = data.accounts.filter((a) => a.id !== id);
+    // Cascade: balance readings belong to their account.
+    data.accountBalances = data.accountBalances.filter((b) => b.accountId !== id);
+    this.write(data);
+  }
+
+  async setAccountBalances(accountId: string, points: { date: string; balance: number }[]) {
+    const data = this.read();
+    const others = data.accountBalances.filter((b) => b.accountId !== accountId);
+    data.accountBalances = [
+      ...others,
+      ...points.map((p) => ({ accountId, date: p.date, balance: p.balance })),
+    ];
     this.write(data);
   }
 

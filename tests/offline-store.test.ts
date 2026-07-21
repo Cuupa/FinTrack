@@ -165,6 +165,25 @@ function makeInner(initial: PortfolioData) {
       calls.push("setAssetValuations");
       guard();
     },
+    async addAccount(input, id) {
+      calls.push("addAccount");
+      guard();
+      const account = { ...input, id: id ?? "server-generated-id" };
+      data.accounts.push(account);
+      return account;
+    },
+    async updateAccount() {
+      calls.push("updateAccount");
+      guard();
+    },
+    async deleteAccount() {
+      calls.push("deleteAccount");
+      guard();
+    },
+    async setAccountBalances() {
+      calls.push("setAccountBalances");
+      guard();
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       guard();

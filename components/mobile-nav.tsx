@@ -18,6 +18,12 @@ const ALL_TABS: { href: string; label: string; icon: ReactNode; flag?: FeatureFl
     ),
   },
   {
+    href: "/accounts",
+    label: "Accounts",
+    icon: <path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm0 4h18M16 14h.01" />,
+    flag: "accounts",
+  },
+  {
     href: "/analysis",
     label: "Analysis",
     icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" />,

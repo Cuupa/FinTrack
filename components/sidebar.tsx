@@ -13,6 +13,13 @@ import { useFeatureFlags, type FeatureFlag } from "@/lib/flags/flags-context";
 
 const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFlag }[] = [
   { href: "/", key: "nav.dashboard", icon: <path d="M3 12l9-9 9 9M5 10v10h14V10" /> },
+  {
+    href: "/accounts",
+    key: "nav.accounts",
+    // Wallet glyph: rounded card + clasp dot.
+    icon: <path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm0 4h18M16 14h.01" />,
+    flag: "accounts",
+  },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/dividends",

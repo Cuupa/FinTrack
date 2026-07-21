@@ -109,6 +109,66 @@ export interface ValuationPoint {
   value: number;
 }
 
+/**
+ * A balance account (ROADMAP item #1, flag `accounts`): checking/savings/credit/
+ * loan/mortgage/other. Distinct from a derived-from-trades holding — it's a
+ * balance the user sets, not a position priced from a market. Liabilities carry
+ * `isLiability=true` and subtract from net worth; this is the one entity that
+ * can push net worth below zero.
+ */
+export type AccountKind =
+  | "checking"
+  | "savings"
+  | "credit"
+  | "loan"
+  | "mortgage"
+  | "other_asset"
+  | "other_liability";
+
+export const ACCOUNT_KINDS: AccountKind[] = [
+  "checking",
+  "savings",
+  "credit",
+  "loan",
+  "mortgage",
+  "other_asset",
+  "other_liability",
+];
+
+/** The account kinds that are liabilities by nature (used to default the
+ *  `isLiability` sign when the user picks a kind). */
+export const LIABILITY_KINDS: AccountKind[] = ["credit", "loan", "mortgage", "other_liability"];
+
+export interface Account {
+  id: string;
+  name: string;
+  kind: AccountKind;
+  /** Native currency (null = the profile base currency). */
+  currency: string | null;
+  /** True = the balance is money owed and subtracts from net worth. */
+  isLiability: boolean;
+  /** Balance at `openedOn`, in the account's native currency, as a positive
+   *  magnitude (the sign comes from `isLiability`). Acts as the implicit first
+   *  balance point of the carry-forward series. */
+  openingBalance: number;
+  /** YYYY-MM-DD the account was opened; before this it contributes 0. */
+  openedOn: string;
+}
+
+/**
+ * One dated balance reading for an {@link Account} (mirrors {@link ValuationPoint}
+ * for OTHER assets): a step/carry-forward series where the balance on a date is
+ * the last reading at or before it. `balance` is the native-currency magnitude;
+ * the net-worth sign is applied from the account's `isLiability`.
+ */
+export interface AccountBalance {
+  accountId: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** Native-currency balance magnitude on this date. */
+  balance: number;
+}
+
 /** How often a cash position's interest is credited and compounded. */
 export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 
@@ -266,6 +326,10 @@ export interface PortfolioData {
   tagAssignments: TagAssignments;
   /** Manual valuation points for OTHER assets (see `ValuationPoint`). */
   valuationPoints: ValuationPoint[];
+  /** Balance accounts + liabilities (ROADMAP #1, flag `accounts`). */
+  accounts: Account[];
+  /** Dated balance readings per account (see `AccountBalance`). */
+  accountBalances: AccountBalance[];
   /** null = no key configured. */
   llmConfig: LlmConfig | null;
 }
@@ -296,6 +360,8 @@ export function emptyPortfolio(): PortfolioData {
     tagGroups: [],
     tagAssignments: {},
     valuationPoints: [],
+    accounts: [],
+    accountBalances: [],
     llmConfig: null,
   };
 }

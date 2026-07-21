@@ -213,6 +213,30 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       const others = data.valuationPoints.filter((p) => p.assetId !== assetId);
       data.valuationPoints = [...others, ...points.map((p) => ({ assetId, ...p }))];
     },
+    async addAccount(input, id) {
+      calls.push(`addAccount:${id}`);
+      maybeFail();
+      const account = { ...input, id: id ?? "server-generated-id" };
+      data.accounts.push(account);
+      return account;
+    },
+    async updateAccount(id, patch) {
+      calls.push(`updateAccount:${id}`);
+      maybeFail();
+      data.accounts = data.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a));
+    },
+    async deleteAccount(id) {
+      calls.push(`deleteAccount:${id}`);
+      maybeFail();
+      data.accounts = data.accounts.filter((a) => a.id !== id);
+      data.accountBalances = data.accountBalances.filter((b) => b.accountId !== id);
+    },
+    async setAccountBalances(accountId, points) {
+      calls.push(`setAccountBalances:${accountId}`);
+      maybeFail();
+      const others = data.accountBalances.filter((b) => b.accountId !== accountId);
+      data.accountBalances = [...others, ...points.map((p) => ({ accountId, ...p }))];
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       maybeFail();
