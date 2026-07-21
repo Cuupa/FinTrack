@@ -27,4 +27,18 @@ test.describe("settings (Guest Mode)", () => {
     await dismissTour(page);
     await expect(page.getByText(/\$/).first()).toBeVisible();
   });
+
+  test("the settings form reflects the saved base currency after reload", async ({ page }) => {
+    await page.goto("/settings");
+    const currency = page.getByRole("button", { name: "Base currency" });
+    await currency.click();
+    await page.getByRole("option", { name: "USD" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Saved")).toBeVisible();
+
+    // The page gates SettingsView behind the store load, so the control seeds
+    // from the persisted profile — no stale default flash.
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Base currency" })).toContainText("USD");
+  });
 });

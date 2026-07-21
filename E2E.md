@@ -90,16 +90,18 @@ chromium` once.
   itself) so `next build` stays clean, and named `*.spec.ts` so vitest
   (`tests/**/*.test.ts`) never tries to run them.
 
-## Incidental finding
+## Incidental finding (fixed)
 
-The Settings form seeds its inputs (base currency, name, …) **once** from
-`data.profile` at mount via `useState` initializers. On a hard reload of
-`/settings`, if the component mounts before the async store load lands, those
-inputs paint the default (EUR) even though the persisted profile is USD — the
-control never re-syncs when `data` arrives. Persistence itself is fine (the
-value is in localStorage and the dashboard reads it reactively); only the
-settings control shows stale. Hence `settings.spec.ts` asserts through the
-dashboard, not the settings form. Minor UX quirk, flagged for a possible follow-up.
+The suite surfaced a real quirk: the Settings form seeds its inputs (base
+currency, name, tax settings) **once** from `data.profile` at mount via
+`useState` initializers. On a hard reload of `/settings`, if the component
+mounted before the async store load landed, those inputs painted the default
+(EUR) even though the persisted profile was USD, and never re-synced.
+Persistence was always fine (localStorage held the value, the dashboard read it
+reactively) — only the settings control showed stale. Fixed by gating
+`SettingsView` behind the store `loading` flag in `app/settings/page.tsx`
+(mirroring the `/rebalancing` gate), so the inputs seed from the loaded profile.
+`settings.spec.ts` covers both the dashboard reformatting and the reloaded form.
 
 ## Not built (deliberate)
 
