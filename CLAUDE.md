@@ -96,9 +96,16 @@ Supabase = free/on, so a DB lagging migration 0065 behaves exactly as before.
 just hide a locked feature. The shared `<ProTeaser feature="...">`
 (`components/billing/pro-teaser.tsx`, MONETIZATION.md Phase 3) is adopted on
 the five surfaces that gate on a Pro flag — the /analysis risk and tax tabs
-(tab stays visible, teaser replaces its content), /dividends, /simulation,
-/xray, /rebalancing — rendered in place of the locked content while page
-chrome stays; its upgrade button only shows when the `billing` flag is on.
+(tab stays visible), /dividends, /simulation, /xray, /rebalancing. It renders
+the real feature UI passed as `children` **blurred + `inert`** underneath a
+centered paywall message (lock icon + "Pro feature" copy + upgrade CTA) so the
+user sees a preview of what Pro unlocks rather than a blank card; each call
+site passes the same view it renders when unlocked (e.g.
+`locked ? <ProTeaser feature="dividends"><DividendsView/></ProTeaser> :
+<DividendsView/>`), with the loading/error gates kept **before** the lock so a
+still-loading page shows its skeleton, not a blurred empty state. Called
+without `children` it falls back to the old standalone empty-state card. Its
+upgrade button only shows when the `billing` flag is on.
 Still dark in prod: every flag is seeded `required_plan='free'`, so nothing
 locks (and no teaser renders) until the owner re-tiers a flag on
 /admin/flags.
@@ -482,7 +489,13 @@ FX-convert) always beats a wrong instrument in the right currency.
   (`getCrumb`/`quoteSummaryJSON` in yahoo.ts) — it **fails soft to null**, so
   the forecast keeps its trailing projection. The pure `applyAnnouncedDate`
   re-dates the next projected payment to the confirmed date and flags it
-  `confirmed`; the projection stays the fallback.
+  `confirmed`; the projection stays the fallback. The confirmed dates are also
+  surfaced directly as an **"Upcoming dividends" card** on /dividends (a
+  sortable Asset / Ex-date / Pay-date table, past dates dropped, row-hover
+  highlight) so the calendar is discoverable on its own, not just as a
+  `confirmed` label inside the forecast list; the whole card is gated on the
+  `dividendCalendar` flag and shows an empty-state line when the flag is on but
+  no payer has published a date yet.
 - **Vorabpauschale estimator** (`tax.ts` `estimateVorabpauschaleByYear` /
   `fundVorabpauschale`, COMPETITION.md F6, flag `vorabEstimate`): per fund per
   completed year, `startValue x Basiszins x 0.7 − distributions`, capped at the

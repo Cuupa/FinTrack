@@ -21,12 +21,14 @@ export default function DividendsPage() {
       </div>
       {!enabled ? (
         <FeatureUnavailable />
-      ) : locked ? (
-        <ProTeaser feature="dividends" />
       ) : loading ? (
         <DividendsSkeleton />
       ) : loadError ? (
         <LoadError onRetry={reload} />
+      ) : locked ? (
+        <ProTeaser feature="dividends">
+          <DividendsView />
+        </ProTeaser>
       ) : (
         <DividendsView />
       )}

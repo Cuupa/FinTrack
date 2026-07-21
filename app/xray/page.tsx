@@ -18,7 +18,9 @@ export default function XrayPage() {
       {!enabled ? (
         <FeatureUnavailable />
       ) : locked ? (
-        <ProTeaser feature="xray" />
+        <ProTeaser feature="xray">
+          <XrayView />
+        </ProTeaser>
       ) : (
         <XrayView />
       )}

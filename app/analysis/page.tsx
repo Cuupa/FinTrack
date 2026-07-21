@@ -101,10 +101,24 @@ function AnalysisPageInner() {
       {tab === "distributions" && <AllocationView />}
       {tab === "returns" && <ReturnsView />}
       {tab === "trades" && <TradesView />}
-      {tab === "risks" && risk.enabled && (risk.locked ? <ProTeaser feature="risk" /> : <RiskView />)}
+      {tab === "risks" &&
+        risk.enabled &&
+        (risk.locked ? (
+          <ProTeaser feature="risk">
+            <RiskView />
+          </ProTeaser>
+        ) : (
+          <RiskView />
+        ))}
       {tab === "tax" &&
         taxReport.enabled &&
-        (taxReport.locked ? <ProTeaser feature="taxReport" /> : <TaxView />)}
+        (taxReport.locked ? (
+          <ProTeaser feature="taxReport">
+            <TaxView />
+          </ProTeaser>
+        ) : (
+          <TaxView />
+        ))}
     </div>
   );
 }

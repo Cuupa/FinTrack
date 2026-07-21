@@ -23,12 +23,14 @@ export default function RebalancingPage() {
       </div>
       {!enabled ? (
         <FeatureUnavailable />
-      ) : locked ? (
-        <ProTeaser feature="rebalance" />
       ) : loading ? (
         <Card>
           <Skeleton className="h-56 w-full" />
         </Card>
+      ) : locked ? (
+        <ProTeaser feature="rebalance">
+          <RebalancingView />
+        </ProTeaser>
       ) : (
         <RebalancingView />
       )}

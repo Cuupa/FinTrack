@@ -20,7 +20,9 @@ export default function SimulationPage() {
       {!enabled ? (
         <FeatureUnavailable />
       ) : locked ? (
-        <ProTeaser feature="simulation" />
+        <ProTeaser feature="simulation">
+          <MonteCarloPanel />
+        </ProTeaser>
       ) : (
         <MonteCarloPanel />
       )}
