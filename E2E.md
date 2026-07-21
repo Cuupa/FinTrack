@@ -35,14 +35,32 @@ one command. It's also already the de-facto tool here: the `verify` skill drives
 - `playwright.config.ts` — `testDir: e2e`, 1080p viewport (owner rule), and a
   `webServer` that runs `npm run dev` so `npm run test:e2e` is self-contained.
 - `e2e/helpers.ts` — shared drivers: `dismissTour`, `setLocale` (via Settings,
-  the only place the switcher mounts), `openDashboard`, `addOtherAsset`.
-- `e2e/smoke.spec.ts` — the app boots in Guest Mode; switching locale in Settings
-  re-renders another page's copy and updates `<html lang>` (EN/DE/ES).
-- `e2e/seed-asset.spec.ts` — add an OTHER (manual-valuation) holding, assert it
-  reaches the holdings table and net-worth headline, and **survives a reload**
-  (localStorage rehydration). One flow, but it exercises the add-asset form → the
-  store seam → the manual-valuation registry → holdings derivation → the
-  net-worth series → guest persistence, end to end.
+  the only place the switcher mounts), `openDashboard`, `addOtherAsset`,
+  `openAssetDetail`.
+
+**14 specs across the major surfaces** (all Guest Mode, all network-free):
+
+- `smoke.spec.ts` — the app boots; switching locale in Settings re-renders
+  another page's copy and updates `<html lang>` (EN/DE/ES).
+- `seed-asset.spec.ts` — add an OTHER (manual-valuation) holding; it reaches the
+  table + net-worth headline and **survives a reload** (localStorage rehydration).
+  Exercises add-asset form → store seam → manual-valuation registry → holdings
+  derivation → net-worth series → guest persistence, end to end.
+- `navigation.spec.ts` — the sidebar reaches every primary route (analysis,
+  dividends, xray, rebalancing, simulation); settings + the three legal pages
+  render.
+- `holdings.spec.ts` — the asset-detail page: core sections render; adding a
+  valuation point updates the current value; a BUY appends to the transaction
+  log; a tag group is created and a value assigned.
+- `analysis.spec.ts` — the allocation chart mounts (`role="img"`) and the
+  distributions/returns/trades tabs switch.
+- `simulation.spec.ts` — runs the Monte Carlo **Web Worker** and renders the
+  median-outcome tile (the single most integration-heavy flow).
+- `settings.spec.ts` — changing the base currency flows through the store and
+  **reformats the dashboard hero** into the new currency.
+- `savings.spec.ts` — creating a savings plan via the dashboard card adds it.
+- `export.spec.ts` — the CSV export triggers a real browser download; the file
+  carries the `# FinTrack export` marker and the holding's name.
 
 ## Running
 
@@ -72,10 +90,24 @@ chromium` once.
   itself) so `next build` stays clean, and named `*.spec.ts` so vitest
   (`tests/**/*.test.ts`) never tries to run them.
 
+## Incidental finding
+
+The Settings form seeds its inputs (base currency, name, …) **once** from
+`data.profile` at mount via `useState` initializers. On a hard reload of
+`/settings`, if the component mounts before the async store load lands, those
+inputs paint the default (EUR) even though the persisted profile is USD — the
+control never re-syncs when `data` arrives. Persistence itself is fine (the
+value is in localStorage and the dashboard reads it reactively); only the
+settings control shows stale. Hence `settings.spec.ts` asserts through the
+dashboard, not the settings form. Minor UX quirk, flagged for a possible follow-up.
+
 ## Not built (deliberate)
 
 - **CI.** There's no `.github/workflows` yet; wiring `npm test` + `npm run
   test:e2e` (with `npx playwright install --with-deps chromium`) into Actions is
   the natural next step, left as a separate decision.
+- **Network-dependent flows** (real add-asset lookup, watchlist add, dividends,
+  live prices, historical charts) hit Yahoo/Frankfurter and would be flaky in a
+  headless suite; covered by unit tests + manual `verify` instead.
 - **Registered-mode E2E.** Needs a Supabase test project + seeded fixtures;
   bigger surface, deferred.

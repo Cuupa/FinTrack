@@ -56,11 +56,29 @@ export async function addOtherAsset(
   value: string,
 ): Promise<void> {
   await page.locator('[data-tour="add-asset"]').click();
+  // Scope to the modal: once an OTHER asset exists, the holdings table grows an
+  // "Other" type-filter button that would otherwise collide with the form's.
+  const dialog = page.getByRole("dialog");
   // Switch the form to manual entry, then pick the OTHER type.
-  await page.getByRole("button", { name: /Or enter an asset manually/i }).click();
-  await page.getByRole("button", { name: /^Other$/ }).click();
+  await dialog.getByRole("button", { name: /Or enter an asset manually/i }).click();
+  await dialog.getByRole("button", { name: /^Other$/ }).click();
   await page.locator("#name").fill(name);
   // Quantity prefills to "1" for OTHER; only the opening value is required.
   await page.locator("#price").fill(value);
   await page.getByRole("button", { name: /^Add asset$/ }).click();
+  // Wait for the form to close and the holding to land in the table.
+  await expect(page.getByText(name).filter({ visible: true }).first()).toBeVisible();
+}
+
+/**
+ * Open the detail page of a held asset by grabbing the visible holdings-row link
+ * (the first `a[href*="/assets/"]` is a hidden mobile-list node — filter to the
+ * visible one). Asserts the detail heading, dismissing the asset-tags tour.
+ */
+export async function openAssetDetail(page: Page, name: string): Promise<void> {
+  const link = page.locator('a[href*="/assets/"]').filter({ visible: true }).first();
+  const href = await link.getAttribute("href");
+  await page.goto(href!);
+  await dismissTour(page);
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 }
