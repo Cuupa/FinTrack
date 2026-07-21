@@ -77,6 +77,41 @@ import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
+// Read-only savings-plan list on the asset page is scoped to a single asset,
+// so it drops the dashboard card's "asset" column; the rest of the sort
+// vocabulary mirrors it (components/dashboard/savings-plans-card.tsx).
+type AssetPlanSortKey = "portfolio" | "type" | "amount" | "interval" | "next";
+const PLAN_INTERVAL_RANK: Record<string, number> = { WEEKLY: 0, MONTHLY: 1, QUARTERLY: 2 };
+
+function PlanTh({
+  label,
+  k,
+  align,
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: AssetPlanSortKey;
+  align?: "right";
+  sort: { key: AssetPlanSortKey; dir: 1 | -1 };
+  onSort: (k: AssetPlanSortKey) => void;
+}) {
+  return (
+    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+          align === "right" ? "justify-end" : ""
+        }`}
+      >
+        {label}
+        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
+
 export function AssetDetail({
   assetId,
   instrumentKey,
@@ -113,6 +148,10 @@ export function AssetDetail({
   const { t } = useI18n();
   const currency = data.profile.currency;
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planSort, setPlanSort] = useState<{ key: AssetPlanSortKey; dir: 1 | -1 }>({
+    key: "next",
+    dir: 1,
+  });
   const [reviewingSplits, setReviewingSplits] = useState(false);
   const [splitBusy, setSplitBusy] = useState(false);
   const [splitError, setSplitError] = useState<string | null>(null);
@@ -450,11 +489,41 @@ export function AssetDetail({
   }
   const rawType = String(asset.type);
   const typeKey = `assetType.${rawType}` as MessageKey;
+  const todayISO = today();
   // Savings plans that already target this asset, shown read-only next to the
   // "new plan" entry point below (management stays on the dashboard card).
-  const assetPlans = held && savingsPlansEnabled
-    ? data.savingsPlans.filter((p) => p.assetId === asset.id)
-    : [];
+  // Not a hook (this runs after the loading/error early returns below); the
+  // list is a handful of rows, so sorting inline every render is negligible.
+  const assetPlans = !(held && savingsPlansEnabled)
+    ? []
+    : data.savingsPlans
+        .filter((p) => p.assetId === asset.id)
+        .map((plan) => ({ plan, next: nextOccurrence(plan, todayISO) }))
+        .sort((a, b) => {
+          const val = (r: { plan: (typeof a)["plan"]; next: string }): string | number => {
+            switch (planSort.key) {
+              case "portfolio":
+                return (portfolios.find((p) => p.id === r.plan.portfolioId)?.name ?? "").toLowerCase();
+              case "type":
+                return r.plan.bookingType ?? "BUY";
+              case "amount":
+                return r.plan.amount;
+              case "interval":
+                return PLAN_INTERVAL_RANK[r.plan.interval];
+              case "next":
+                return r.next;
+            }
+          };
+          const va = val(a);
+          const vb = val(b);
+          if (va < vb) return -1 * planSort.dir;
+          if (va > vb) return 1 * planSort.dir;
+          return 0;
+        });
+  const togglePlanSort = (key: AssetPlanSortKey) =>
+    setPlanSort((s) =>
+      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "amount" ? -1 : 1 },
+    );
   // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
   // plan from this page's "new plan" entry point, never the read-only list
   // above or an existing plan's own edit/pause/delete on the dashboard card.
@@ -476,7 +545,6 @@ export function AssetDetail({
     </>
   ) : null;
   const multiPortfolio = portfolios.length > 1;
-  const todayISO = today();
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -829,43 +897,79 @@ export function AssetDetail({
             <h3 className="border-b border-zinc-200 px-3 py-2 text-sm font-semibold dark:border-zinc-800">
               {t("sp.title")}
             </h3>
-            <ul>
-              {assetPlans.map((plan) => {
-                const portfolioName = portfolios.find((p) => p.id === plan.portfolioId)?.name;
-                return (
-                  <li
-                    key={plan.id}
-                    className="border-b border-zinc-100 px-3 py-2 text-sm last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    {multiPortfolio && portfolioName && (
-                      <span
-                        className={`block truncate text-sm font-medium ${
-                          plan.active ? "" : "text-zinc-400 dark:text-zinc-500"
-                        }`}
-                      >
-                        {portfolioName}
-                      </span>
+            <div className="overflow-x-auto px-3 pb-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+                    {multiPortfolio && (
+                      <PlanTh
+                        label={t("sp.portfolio")}
+                        k="portfolio"
+                        sort={planSort}
+                        onSort={togglePlanSort}
+                      />
                     )}
-                    <span
-                      className={
-                        multiPortfolio
-                          ? "block truncate text-xs text-zinc-500"
-                          : `block truncate ${plan.active ? "" : "text-zinc-400 dark:text-zinc-500"}`
-                      }
-                    >
-                      <span data-private>{formatCurrency(plan.amount, nativeCur)}</span>{" "}
-                      {t(INTERVAL_KEY[plan.interval])}
-                      {plan.bookingType === "BOOKING" && <> · {t("tx.booking")}</>}
-                      {plan.active ? (
-                        <> · {t("sp.next", { date: formatDate(nextOccurrence(plan, todayISO)) })}</>
-                      ) : (
-                        <> · {t("sp.paused")}</>
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                    <PlanTh
+                      label={t("sp.bookingType")}
+                      k="type"
+                      sort={planSort}
+                      onSort={togglePlanSort}
+                    />
+                    <PlanTh
+                      label={t("sp.amount")}
+                      k="amount"
+                      align="right"
+                      sort={planSort}
+                      onSort={togglePlanSort}
+                    />
+                    <PlanTh
+                      label={t("sp.interval")}
+                      k="interval"
+                      sort={planSort}
+                      onSort={togglePlanSort}
+                    />
+                    <PlanTh
+                      label={t("sp.nextHeader")}
+                      k="next"
+                      sort={planSort}
+                      onSort={togglePlanSort}
+                    />
+                  </tr>
+                </thead>
+                <tbody>
+                  {assetPlans.map(({ plan, next }) => {
+                    const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
+                    return (
+                      <tr
+                        key={plan.id}
+                        className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                      >
+                        {multiPortfolio && (
+                          <td className={`max-w-[10rem] truncate py-2 pr-3 font-medium ${muted}`}>
+                            {portfolios.find((p) => p.id === plan.portfolioId)?.name ?? "—"}
+                          </td>
+                        )}
+                        <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                          {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
+                        </td>
+                        <td
+                          className={`py-2 pr-3 text-right tabular-nums ${muted}`}
+                          data-private
+                        >
+                          {formatCurrency(plan.amount, nativeCur)}
+                        </td>
+                        <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                          {t(INTERVAL_KEY[plan.interval])}
+                        </td>
+                        <td className={`py-2 whitespace-nowrap ${muted}`}>
+                          {plan.active ? formatDate(next) : t("sp.paused")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
