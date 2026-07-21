@@ -5,7 +5,7 @@
 // that run before any Supabase call (repo convention, see retention.test.ts).
 
 import { createHmac } from "node:crypto";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // "server-only" has no runtime module under plain Vitest; stub it so importing
 // lib/server/stripe.ts and the route (both -> supabase-keys -> "server-only")
@@ -284,6 +284,18 @@ afterEach(() => {
 });
 
 describe("POST /api/billing/webhook — guards before any DB access", () => {
+  // `getStripeKeys()` resolves the webhook secret DB-first (app_settings) and
+  // falls back to env. These guard tests want the env-only path, so blank the
+  // Supabase env vars: `supabaseSecret()` then returns null and no DB is
+  // reached, keeping the 503/400 outcomes deterministic regardless of whether
+  // the CI/build environment happens to have Supabase configured with a
+  // webhook secret already stored in the DB.
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+  });
+
   it("503 when STRIPE_WEBHOOK_SECRET is unset", async () => {
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", "");
     const res = await POST(webhookReq('{"id":"evt_1","type":"x"}'));
