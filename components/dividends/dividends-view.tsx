@@ -225,6 +225,56 @@ export function DividendsView() {
 
   const forecastTotal = useMemo(() => forecast.reduce((s, f) => s + f.amount, 0), [forecast]);
 
+  // Announced dividend calendar (F4): held payers with a confirmed upcoming
+  // ex- and/or pay-date from the payer's published calendar. `announced` is
+  // only populated when the `dividendCalendar` flag is on, so this is empty
+  // otherwise. Past dates are dropped (only what's still ahead is a calendar).
+  const calendarRows = useMemo(() => {
+    const out: { asset: Asset; exDate: string | null; payDate: string | null; next: string }[] = [];
+    for (const asset of data.assets) {
+      const a = announced[assetPriceKey(asset)];
+      if (!a) continue;
+      const exDate = a.exDate && a.exDate >= todayISO ? a.exDate : null;
+      const payDate = a.payDate && a.payDate >= todayISO ? a.payDate : null;
+      if (!exDate && !payDate) continue;
+      const next = [exDate, payDate].filter((d): d is string => d !== null).sort()[0];
+      out.push({ asset, exDate, payDate, next });
+    }
+    return out;
+  }, [announced, data.assets, todayISO]);
+
+  const [calSort, setCalSort] = useState<{ key: "asset" | "ex" | "pay"; dir: 1 | -1 }>({
+    key: "pay",
+    dir: 1,
+  });
+  const toggleCalSort = (key: "asset" | "ex" | "pay") =>
+    setCalSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
+  const sortedCalRows = useMemo(() => {
+    const rows = [...calendarRows];
+    return rows.sort((a, b) => {
+      let va: string;
+      let vb: string;
+      switch (calSort.key) {
+        case "asset":
+          va = a.asset.name.toLowerCase();
+          vb = b.asset.name.toLowerCase();
+          break;
+        case "ex":
+          // Missing dates sort last regardless of direction stays natural here.
+          va = a.exDate ?? "9999-99-99";
+          vb = b.exDate ?? "9999-99-99";
+          break;
+        default:
+          va = a.payDate ?? "9999-99-99";
+          vb = b.payDate ?? "9999-99-99";
+          break;
+      }
+      if (va < vb) return -1 * calSort.dir;
+      if (va > vb) return 1 * calSort.dir;
+      return 0;
+    });
+  }, [calendarRows, calSort]);
+
   if (data.assets.length === 0) {
     return (
       <Card>
@@ -355,6 +405,67 @@ export function DividendsView() {
         )}
       </Card>
 
+      {calendarEnabled && (
+        <Card>
+          <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+            {t("div.calendar")}
+            <InfoTip text={t("div.calendarTip")} />
+          </h2>
+          {showSkeleton ? (
+            <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <ListRowSkeleton key={i} />
+              ))}
+            </div>
+          ) : sortedCalRows.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-500">{t("div.calendarEmpty")}</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
+                    <CalTh label={t("sp.asset")} k="asset" sort={calSort} onSort={toggleCalSort} />
+                    <CalTh label={t("div.exDate")} k="ex" sort={calSort} onSort={toggleCalSort} />
+                    <CalTh label={t("div.payDate")} k="pay" sort={calSort} onSort={toggleCalSort} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedCalRows.map((r) => (
+                    <tr
+                      key={r.asset.id}
+                      className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                    >
+                      <td className="max-w-[16rem] py-2 pr-3">
+                        <Link
+                          href={`/assets/${r.asset.id}`}
+                          className="block truncate font-medium hover:underline"
+                        >
+                          {r.asset.name}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-3 tabular-nums">
+                        {r.exDate ? (
+                          formatDate(r.exDate)
+                        ) : (
+                          <span className="text-zinc-400">–</span>
+                        )}
+                      </td>
+                      <td className="py-2 tabular-nums">
+                        {r.payDate ? (
+                          formatDate(r.payDate)
+                        ) : (
+                          <span className="text-zinc-400">–</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">
@@ -468,5 +579,30 @@ export function DividendsView() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function CalTh({
+  label,
+  k,
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: "asset" | "ex" | "pay";
+  sort: { key: "asset" | "ex" | "pay"; dir: 1 | -1 };
+  onSort: (k: "asset" | "ex" | "pay") => void;
+}) {
+  return (
+    <th className="py-2 pr-3 font-medium">
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        {label}
+        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
   );
 }
