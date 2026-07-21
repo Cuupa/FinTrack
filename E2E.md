@@ -103,11 +103,22 @@ reactively) — only the settings control showed stale. Fixed by gating
 (mirroring the `/rebalancing` gate), so the inputs seed from the loaded profile.
 `settings.spec.ts` covers both the dashboard reformatting and the reloaded form.
 
+## CI
+
+`.github/workflows/ci.yml` runs on every push to `main` and every PR:
+
+1. `npm ci`
+2. `npm run lint`
+3. `npm run build` — vitest unit suite + the production `next build`
+   (type-check + build). This is the repo's lint/tsc/test/build green-gate.
+4. `npx playwright install --with-deps chromium` (browser cached across runs,
+   keyed on `package-lock.json`)
+5. `npm run test:e2e` — in CI the config serves the **production build** via
+   `next start` (steadier than dev compilation, and it exercises the prod-only
+   CSP headers). A failing run uploads the Playwright HTML report as an artifact.
+
 ## Not built (deliberate)
 
-- **CI.** There's no `.github/workflows` yet; wiring `npm test` + `npm run
-  test:e2e` (with `npx playwright install --with-deps chromium`) into Actions is
-  the natural next step, left as a separate decision.
 - **Network-dependent flows** (real add-asset lookup, watchlist add, dividends,
   live prices, historical charts) hit Yahoo/Frankfurter and would be flaky in a
   headless suite; covered by unit tests + manual `verify` instead.

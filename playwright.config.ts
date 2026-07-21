@@ -36,10 +36,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], viewport: { width: 1920, height: 1080 } },
     },
   ],
-  // Boot the app the same way `npm run dev` does, so a bare `npm run test:e2e`
-  // is fully reproducible. Reuse an already-running dev server locally.
+  // Boot the app so a bare `npm run test:e2e` is fully reproducible. Locally use
+  // the dev server (and reuse one that's already running). In CI serve the
+  // production build (`next start`, after `npm run build`): faster and steadier
+  // than on-the-fly dev compilation, and it exercises the prod-only CSP headers.
   webServer: {
-    command: "npm run dev",
+    command: process.env.CI ? "npm run start" : "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
