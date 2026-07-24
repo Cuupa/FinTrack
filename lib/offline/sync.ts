@@ -24,6 +24,7 @@ import type {
   BudgetInput,
   ContractInput,
   DataStore,
+  GoalInput,
   PortfolioPatch,
   SavingsPlanInput,
   SpendingCategoryInput,
@@ -212,6 +213,15 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       return;
     case "deleteContract":
       await inner.deleteContract(op.id);
+      return;
+    case "addGoal":
+      await inner.addGoal(op.payload as GoalInput, op.id);
+      return;
+    case "updateGoal":
+      await inner.updateGoal(op.id, op.payload as Partial<GoalInput>);
+      return;
+    case "deleteGoal":
+      await inner.deleteGoal(op.id);
       return;
     case "saveLlmConfig":
       await inner.saveLlmConfig(op.payload as LlmConfig | null);

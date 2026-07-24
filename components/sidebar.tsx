@@ -34,6 +34,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
     icon: <path d="M6 3h9l3 3v15H6V3zm9 0v3h3M8 12h8M8 16h5" />,
     flag: "contracts",
   },
+  {
+    href: "/goals",
+    key: "nav.goals",
+    // Target glyph: three concentric rings + center dot.
+    icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />,
+    flag: "goals",
+  },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/dividends",

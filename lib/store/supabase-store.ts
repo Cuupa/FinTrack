@@ -18,6 +18,7 @@ import {
   type Asset,
   type Budget,
   type Contract,
+  type Goal,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
@@ -53,6 +54,7 @@ import type {
   BudgetInput,
   ContractInput,
   DataStore,
+  GoalInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -226,6 +228,26 @@ function contractFromRow(r: ContractRow): Contract {
   };
 }
 
+interface GoalRow {
+  id: string;
+  name: string;
+  target_amount: number | string;
+  target_date: string | null;
+  linked_account_id: string | null;
+  manual_current_amount: number | string | null;
+}
+
+function goalFromRow(r: GoalRow): Goal {
+  return {
+    id: r.id,
+    name: r.name,
+    targetAmount: Number(r.target_amount),
+    targetDate: r.target_date,
+    linkedAccountId: r.linked_account_id,
+    manualCurrentAmount: r.manual_current_amount != null ? Number(r.manual_current_amount) : null,
+  };
+}
+
 function embed(row: AssetRow): InstrumentEmbed | null {
   const i = row.instrument;
   return Array.isArray(i) ? (i[0] ?? null) : i;
@@ -256,6 +278,7 @@ export class SupabaseStore implements DataStore {
       spendingTransactionsRes,
       budgetsRes,
       contractsRes,
+      goalsRes,
       llmSettingsRes,
     ] = await Promise.all([
       this.supabase
@@ -335,6 +358,11 @@ export class SupabaseStore implements DataStore {
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
+        .from("goals")
+        .select("id, name, target_amount, target_date, linked_account_id, manual_current_amount")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
         .eq("user_id", this.userId)
@@ -360,6 +388,7 @@ export class SupabaseStore implements DataStore {
     if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
     if (budgetsRes.error) throw budgetsRes.error;
     if (contractsRes.error) throw contractsRes.error;
+    if (goalsRes.error) throw goalsRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
@@ -492,6 +521,8 @@ export class SupabaseStore implements DataStore {
       contractFromRow,
     );
 
+    const goals: Goal[] = ((goalsRes.data ?? []) as GoalRow[]).map(goalFromRow);
+
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
@@ -517,6 +548,7 @@ export class SupabaseStore implements DataStore {
       spendingTransactions,
       budgets,
       contracts,
+      goals,
       llmConfig,
     };
   }
@@ -1138,6 +1170,53 @@ export class SupabaseStore implements DataStore {
   async deleteContract(id: string): Promise<void> {
     const { error } = await this.supabase
       .from("contracts")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async addGoal(input: GoalInput, id?: string): Promise<Goal> {
+    const { data, error } = await this.supabase
+      .from("goals")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        name: input.name,
+        target_amount: input.targetAmount,
+        target_date: input.targetDate,
+        linked_account_id: input.linkedAccountId,
+        manual_current_amount: input.manualCurrentAmount,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updateGoal(id: string, patch: Partial<GoalInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.name !== undefined) upd.name = patch.name;
+    if (patch.targetAmount !== undefined) upd.target_amount = patch.targetAmount;
+    if (patch.targetDate !== undefined) upd.target_date = patch.targetDate;
+    if (patch.linkedAccountId !== undefined) upd.linked_account_id = patch.linkedAccountId;
+    if (patch.manualCurrentAmount !== undefined) {
+      upd.manual_current_amount = patch.manualCurrentAmount;
+    }
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("goals")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new RowNotFoundError(`goal ${id} not found`);
+  }
+
+  async deleteGoal(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("goals")
       .delete()
       .eq("id", id)
       .eq("user_id", this.userId);

@@ -18,6 +18,7 @@ import type {
   BudgetInput,
   ContractInput,
   DataStore,
+  GoalInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -128,6 +129,8 @@ export class LocalStore implements DataStore {
         budgets: parsed.budgets ?? [],
         // Backfill blobs saved before contracts existed.
         contracts: parsed.contracts ?? [],
+        // Backfill blobs saved before goals existed.
+        goals: parsed.goals ?? [],
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -362,6 +365,10 @@ export class LocalStore implements DataStore {
       .filter((t) => t.accountId === id)
       .map((t) => t.id);
     data.spendingTransactions = data.spendingTransactions.filter((t) => t.accountId !== id);
+    // A goal keeps existing with no linked account (mirrors the DB's on delete set null).
+    data.goals = data.goals.map((g) =>
+      g.linkedAccountId === id ? { ...g, linkedAccountId: null } : g,
+    );
     this.write(data);
     this.pruneImportedSpendingFingerprints(removedTxIds);
   }
@@ -476,6 +483,29 @@ export class LocalStore implements DataStore {
   async deleteContract(id: string) {
     const data = this.read();
     data.contracts = data.contracts.filter((c) => c.id !== id);
+    this.write(data);
+  }
+
+  async addGoal(input: GoalInput, id?: string) {
+    const data = this.read();
+    const goal = { ...input, id: id ?? newId() };
+    data.goals.push(goal);
+    this.write(data);
+    return goal;
+  }
+
+  async updateGoal(id: string, patch: Partial<GoalInput>) {
+    const data = this.read();
+    const idx = data.goals.findIndex((g) => g.id === id);
+    if (idx >= 0) {
+      data.goals[idx] = { ...data.goals[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteGoal(id: string) {
+    const data = this.read();
+    data.goals = data.goals.filter((g) => g.id !== id);
     this.write(data);
   }
 

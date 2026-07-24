@@ -245,6 +245,31 @@ export interface Contract {
   categoryId: string | null;
 }
 
+/**
+ * A named savings goal (ROADMAP item #6, flag `goals`) -- a target amount,
+ * optionally by a target date, whose progress either mirrors a linked
+ * {@link Account}'s current balance or is entered manually. `targetAmount`
+ * and `manualCurrentAmount` are both in the profile's base currency (same
+ * convention as `Budget.amount`/`Contract.amount`). `linkedAccountId` is
+ * nullable and set null (not cascade-deleted) when its account goes away --
+ * mirrors `Contract.categoryId`'s "still means something" precedent -- the
+ * goal simply falls back to manual tracking.
+ */
+export interface Goal {
+  id: string;
+  name: string;
+  /** Target amount, in the profile's base currency. */
+  targetAmount: number;
+  /** YYYY-MM-DD, or null if open-ended. */
+  targetDate: string | null;
+  /** Optional link to an Account whose current balance IS the goal's
+   *  progress. Null means progress is tracked manually. */
+  linkedAccountId: string | null;
+  /** Manually-entered current progress, base currency. Only used/shown when
+   *  linkedAccountId is null. Null = 0 progress so far. */
+  manualCurrentAmount: number | null;
+}
+
 /** How often a cash position's interest is credited and compounded. */
 export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 
@@ -414,6 +439,8 @@ export interface PortfolioData {
   budgets: Budget[];
   /** Named recurring commitments (ROADMAP #5, flag `contracts`). */
   contracts: Contract[];
+  /** Named savings goals (ROADMAP #6, flag `goals`). */
+  goals: Goal[];
   /** null = no key configured. */
   llmConfig: LlmConfig | null;
 }
@@ -450,6 +477,7 @@ export function emptyPortfolio(): PortfolioData {
     spendingTransactions: [],
     budgets: [],
     contracts: [],
+    goals: [],
     llmConfig: null,
   };
 }

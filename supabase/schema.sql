@@ -530,6 +530,24 @@ create table if not exists public.contracts (
 create index if not exists contracts_user_id_idx on public.contracts (user_id);
 create index if not exists contracts_category_id_idx on public.contracts (category_id);
 
+-- Named savings goals (ROADMAP #6, flag `goals`): a target amount, optionally
+-- by a target date, whose progress either mirrors a linked account's current
+-- balance or is entered manually. `linked_account_id` is nullable and set
+-- null on account delete (a goal survives its linked account being deleted --
+-- it just falls back to manual tracking, mirroring `contracts.category_id`).
+create table if not exists public.goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  target_amount numeric not null,
+  target_date date,
+  linked_account_id uuid references public.accounts (id) on delete set null,
+  manual_current_amount numeric,
+  created_at timestamptz not null default now()
+);
+create index if not exists goals_user_id_idx on public.goals (user_id);
+create index if not exists goals_linked_account_id_idx on public.goals (linked_account_id);
+
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its
 -- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
@@ -692,7 +710,8 @@ insert into public.schema_migrations (version) values
   ('0081_spending'),
   ('0082_imported_spending_rows'),
   ('0083_budgets'),
-  ('0084_contracts')
+  ('0084_contracts'),
+  ('0085_goals')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -712,6 +731,7 @@ alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
 alter table public.budgets enable row level security;
 alter table public.contracts enable row level security;
+alter table public.goals enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
@@ -819,6 +839,10 @@ create policy "own budgets" on public.budgets
 
 drop policy if exists "own contracts" on public.contracts;
 create policy "own contracts" on public.contracts
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own goals" on public.goals;
+create policy "own goals" on public.goals
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own asset tags" on public.asset_tags;
@@ -1027,6 +1051,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('contracts', false, 'Recurring-charge detection and a contract/subscription register')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('goals', false, 'Named savings goals with progress tracking, linked to an account or entered manually')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

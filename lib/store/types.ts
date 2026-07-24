@@ -9,6 +9,7 @@ import type {
   Asset,
   Budget,
   Contract,
+  Goal,
   LlmConfig,
   Portfolio,
   PortfolioData,
@@ -30,6 +31,7 @@ export type SpendingCategoryInput = Omit<SpendingCategory, "id">;
 export type SpendingTransactionInput = Omit<SpendingTransaction, "id">;
 export type BudgetInput = Omit<Budget, "id">;
 export type ContractInput = Omit<Contract, "id">;
+export type GoalInput = Omit<Goal, "id">;
 
 /** Patch shape for `DataStore.updatePortfolio` — every field optional, only
  *  the fields present are changed. `renamePortfolio` is a thin wrapper around
@@ -118,6 +120,10 @@ export interface DataStore {
   addContract(input: ContractInput, id?: string): Promise<Contract>;
   updateContract(id: string, patch: Partial<ContractInput>): Promise<void>;
   deleteContract(id: string): Promise<void>;
+  /** Creates a named savings goal. `id` — see `addAsset`'s doc above. */
+  addGoal(input: GoalInput, id?: string): Promise<Goal>;
+  updateGoal(id: string, patch: Partial<GoalInput>): Promise<void>;
+  deleteGoal(id: string): Promise<void>;
   /**
    * Replace-set the user's BYO LLM config (replay-idempotent like
    * `setAssetTags`). `null` removes it entirely (the settings "Remove key"

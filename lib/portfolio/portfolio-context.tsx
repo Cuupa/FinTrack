@@ -20,6 +20,7 @@ import type {
   AssetInput,
   BudgetInput,
   ContractInput,
+  GoalInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -34,6 +35,7 @@ import {
   type Asset,
   type Budget,
   type Contract,
+  type Goal,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
@@ -105,6 +107,9 @@ interface PortfolioContextValue {
   addContract(input: ContractInput): Promise<Contract>;
   updateContract(id: string, patch: Partial<ContractInput>): Promise<void>;
   deleteContract(id: string): Promise<void>;
+  addGoal(input: GoalInput): Promise<Goal>;
+  updateGoal(id: string, patch: Partial<GoalInput>): Promise<void>;
+  deleteGoal(id: string): Promise<void>;
   saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -436,6 +441,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         accounts: d.accounts.filter((a) => a.id !== id),
         accountBalances: d.accountBalances.filter((b) => b.accountId !== id),
         spendingTransactions: d.spendingTransactions.filter((t) => t.accountId !== id),
+        // A goal keeps existing with no linked account (mirrors the DB's on delete set null).
+        goals: d.goals.map((g) => (g.linkedAccountId === id ? { ...g, linkedAccountId: null } : g)),
       }));
     },
     [store],
@@ -581,6 +588,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       await store.deleteContract(id);
       setData((d) => ({ ...d, contracts: d.contracts.filter((c) => c.id !== id) }));
+    },
+    [store],
+  );
+
+  const addGoal = useCallback(
+    async (input: GoalInput) => {
+      const goal = await store.addGoal(input);
+      setData((d) => ({ ...d, goals: [...d.goals, goal] }));
+      return goal;
+    },
+    [store],
+  );
+
+  const updateGoal = useCallback(
+    async (id: string, patch: Partial<GoalInput>) => {
+      await store.updateGoal(id, patch);
+      setData((d) => ({
+        ...d,
+        goals: d.goals.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteGoal = useCallback(
+    async (id: string) => {
+      await store.deleteGoal(id);
+      setData((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) }));
     },
     [store],
   );
@@ -735,6 +770,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addContract,
     updateContract,
     deleteContract,
+    addGoal,
+    updateGoal,
+    deleteGoal,
     saveLlmConfig,
     setCurrency,
     updateProfile,

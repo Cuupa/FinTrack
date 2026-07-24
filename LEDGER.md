@@ -22,14 +22,14 @@ before moving to the next.
 - [x] Verify: build + lint + unit tests green
 
 ## Item #6: Named savings goals (flag `goals`)
-- [ ] Migration 0085 + schema.sql: `goals` table, RLS, flag seeded disabled
-- [ ] `lib/types.ts`: `Goal`, `PortfolioData.goals`
-- [ ] Store seam (all layers)
-- [ ] `lib/finance/goals.ts` (pure): progress + required monthly contribution
-- [ ] UI: `/goals` route, nav entry
-- [ ] i18n en/de/es
-- [ ] Unit tests
-- [ ] Verify: build + lint + unit tests green
+- [x] Migration 0085 + schema.sql: `goals` table, RLS, flag seeded disabled
+- [x] `lib/types.ts`: `Goal`, `PortfolioData.goals`
+- [x] Store seam (all layers)
+- [x] `lib/finance/goals.ts` (pure): progress + required monthly contribution
+- [x] UI: `/goals` route, nav entry
+- [x] i18n en/de/es
+- [x] Unit tests
+- [x] Verify: build + lint + unit tests green
 
 ## Item #7: Financial-health gauges (flag `finHealth`)
 - [ ] No new tables — derives from accounts/spending/budgets already in tree
