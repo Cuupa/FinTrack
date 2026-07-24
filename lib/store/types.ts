@@ -132,6 +132,18 @@ export interface DataStore {
   addImportedFingerprints(
     entries: { fingerprint: string; transactionId: string | null }[],
   ): Promise<void>;
+  /** Fingerprints of bank-statement rows already imported into spending
+   *  transactions (ROADMAP item #3) — separate from `loadImportedFingerprints`
+   *  above since spending rows have no ISIN/WKN to key off of and live in a
+   *  different table. */
+  loadImportedSpendingFingerprints(): Promise<string[]>;
+  /** Records fingerprints, each tied to the spending transaction it created
+   *  (null for a merge into an already-identical existing row), so deleting
+   *  that transaction — directly or via account delete — cascades the
+   *  fingerprint away too. */
+  addImportedSpendingFingerprints(
+    entries: { fingerprint: string; spendingTransactionId: string | null }[],
+  ): Promise<void>;
 }
 
 /**

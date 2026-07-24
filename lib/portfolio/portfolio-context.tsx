@@ -104,6 +104,10 @@ interface PortfolioContextValue {
   addImportedFingerprints(
     entries: { fingerprint: string; transactionId: string | null }[],
   ): Promise<void>;
+  loadImportedSpendingFingerprints(): Promise<string[]>;
+  addImportedSpendingFingerprints(
+    entries: { fingerprint: string; spendingTransactionId: string | null }[],
+  ): Promise<void>;
   /** All of the user's portfolios. */
   portfolios: Portfolio[];
   /** Every transaction (unscoped) — for building per-portfolio share snapshots. */
@@ -586,6 +590,15 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       store.addImportedFingerprints(entries),
     [store],
   );
+  const loadImportedSpendingFingerprints = useCallback(
+    () => store.loadImportedSpendingFingerprints(),
+    [store],
+  );
+  const addImportedSpendingFingerprints = useCallback(
+    (entries: { fingerprint: string; spendingTransactionId: string | null }[]) =>
+      store.addImportedSpendingFingerprints(entries),
+    [store],
+  );
 
   // Feed OTHER assets' manual valuation points into the PriceProvider seam's
   // registry (lib/finance/manual-valuation.ts), which prices.ts reads
@@ -653,6 +666,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     saveSimulation,
     loadImportedFingerprints,
     addImportedFingerprints,
+    loadImportedSpendingFingerprints,
+    addImportedSpendingFingerprints,
     portfolios: data.portfolios,
     allTransactions: data.transactions,
     selectedPortfolioIds: activeIds,

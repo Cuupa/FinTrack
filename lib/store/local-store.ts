@@ -29,18 +29,21 @@ import { newId } from "./types";
 const STORAGE_KEY = "fintrack:portfolio:v1";
 const SIM_KEY = "fintrack:simulations:v1";
 const IMPORT_KEY = "fintrack:imported:v1";
+const IMPORT_SPENDING_KEY = "fintrack:imported-spending:v1";
 
-/** The three localStorage keys a LocalStore instance reads/writes. */
+/** The localStorage keys a LocalStore instance reads/writes. */
 export interface LocalStoreKeys {
   portfolio: string;
   simulations: string;
   imported: string;
+  importedSpending: string;
 }
 
 const GUEST_KEYS: LocalStoreKeys = {
   portfolio: STORAGE_KEY,
   simulations: SIM_KEY,
   imported: IMPORT_KEY,
+  importedSpending: IMPORT_SPENDING_KEY,
 };
 
 /**
@@ -56,6 +59,7 @@ export function mirrorStorageKeys(userId: string): LocalStoreKeys {
     portfolio: base,
     simulations: `fintrack:mirror:${userId}:simulations:v1`,
     imported: `fintrack:mirror:${userId}:imported:v1`,
+    importedSpending: `fintrack:mirror:${userId}:imported-spending:v1`,
   };
 }
 
@@ -348,8 +352,12 @@ export class LocalStore implements DataStore {
     data.accounts = data.accounts.filter((a) => a.id !== id);
     // Cascade: balance readings and spending transactions belong to their account.
     data.accountBalances = data.accountBalances.filter((b) => b.accountId !== id);
+    const removedTxIds = data.spendingTransactions
+      .filter((t) => t.accountId === id)
+      .map((t) => t.id);
     data.spendingTransactions = data.spendingTransactions.filter((t) => t.accountId !== id);
     this.write(data);
+    this.pruneImportedSpendingFingerprints(removedTxIds);
   }
 
   async setAccountBalances(accountId: string, points: { date: string; balance: number }[]) {
@@ -410,6 +418,7 @@ export class LocalStore implements DataStore {
     const data = this.read();
     data.spendingTransactions = data.spendingTransactions.filter((t) => t.id !== id);
     this.write(data);
+    this.pruneImportedSpendingFingerprints([id]);
   }
 
   async saveLlmConfig(config: LlmConfig | null) {
@@ -572,6 +581,54 @@ export class LocalStore implements DataStore {
     const record = this.readImportRecord();
     for (const e of entries) record[e.fingerprint] = e.transactionId;
     this.writeImportRecord(record);
+  }
+
+  // fingerprint -> id of the spending transaction it created (null if
+  // unknown) — mirrors readImportRecord/writeImportRecord above, in its own
+  // storage key since spending rows live in a different table.
+  private readImportSpendingRecord(): Record<string, string | null> {
+    try {
+      const raw = this.storage.getItem(this.keys.importedSpending);
+      if (!raw) return {};
+      return JSON.parse(raw) as Record<string, string | null>;
+    } catch {
+      return {};
+    }
+  }
+
+  private writeImportSpendingRecord(record: Record<string, string | null>): void {
+    try {
+      this.storage.setItem(this.keys.importedSpending, JSON.stringify(record));
+    } catch {
+      /* storage full — ignore */
+    }
+  }
+
+  /** Drops fingerprints tied to now-deleted spending transactions. */
+  private pruneImportedSpendingFingerprints(removedTransactionIds: string[]): void {
+    if (removedTransactionIds.length === 0) return;
+    const removed = new Set(removedTransactionIds);
+    const record = this.readImportSpendingRecord();
+    let changed = false;
+    for (const [fingerprint, transactionId] of Object.entries(record)) {
+      if (transactionId != null && removed.has(transactionId)) {
+        delete record[fingerprint];
+        changed = true;
+      }
+    }
+    if (changed) this.writeImportSpendingRecord(record);
+  }
+
+  async loadImportedSpendingFingerprints() {
+    return Object.keys(this.readImportSpendingRecord());
+  }
+
+  async addImportedSpendingFingerprints(
+    entries: { fingerprint: string; spendingTransactionId: string | null }[],
+  ) {
+    const record = this.readImportSpendingRecord();
+    for (const e of entries) record[e.fingerprint] = e.spendingTransactionId;
+    this.writeImportSpendingRecord(record);
   }
 }
 

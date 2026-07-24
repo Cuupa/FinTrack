@@ -793,6 +793,13 @@ export const en = {
   "spending.sankey.shortfallNode": "From savings",
   "spending.sankey.ariaLabel":
     "Cash flow Sankey diagram: {income} income, {expense} expenses, net {net}.",
+  "spending.import.button": "Import statement",
+  "spending.import.title": "Import bank statement",
+  "spending.import.hint": "Export your account history as a CSV file from your bank.",
+  "spending.import.noRows": "No transactions found in this file.",
+  "spending.import.invalidRows": "rows ignored (missing date or amount)",
+  "spending.import.skipDuplicate": "Skip (already recorded)",
+  "spending.import.importAnyway": "Import anyway",
   "addAsset.otherValue": "Current value ({currency})",
 
   // Analysis
@@ -2256,6 +2263,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.sankey.shortfallNode": "Aus Ersparnissen",
   "spending.sankey.ariaLabel":
     "Cashflow-Sankey-Diagramm: {income} Einnahmen, {expense} Ausgaben, netto {net}.",
+  "spending.import.button": "Kontoauszug importieren",
+  "spending.import.title": "Kontoauszug importieren",
+  "spending.import.hint": "Exportiere deinen Kontoauszug als CSV-Datei bei deiner Bank.",
+  "spending.import.noRows": "Keine Transaktionen in dieser Datei gefunden.",
+  "spending.import.invalidRows": "Zeilen ignoriert (Datum oder Betrag fehlt)",
+  "spending.import.skipDuplicate": "Überspringen (bereits erfasst)",
+  "spending.import.importAnyway": "Trotzdem importieren",
   "addAsset.otherValue": "Aktueller Wert ({currency})",
 
   // Analysis
@@ -3718,6 +3732,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.sankey.shortfallNode": "De los ahorros",
   "spending.sankey.ariaLabel":
     "Diagrama de flujo de caja (Sankey): {income} ingresos, {expense} gastos, neto {net}.",
+  "spending.import.button": "Importar extracto",
+  "spending.import.title": "Importar extracto bancario",
+  "spending.import.hint": "Exporta el historial de tu cuenta como archivo CSV desde tu banco.",
+  "spending.import.noRows": "No se encontraron movimientos en este archivo.",
+  "spending.import.invalidRows": "filas ignoradas (falta fecha o importe)",
+  "spending.import.skipDuplicate": "Omitir (ya registrado)",
+  "spending.import.importAnyway": "Importar de todos modos",
   "addAsset.otherValue": "Valor actual ({currency})",
 
   // Analysis

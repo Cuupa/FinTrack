@@ -1,36 +1,45 @@
-# LEDGER — ROADMAP item #1: Accounts & liabilities entity (flag `accounts`)
+# LEDGER — ROADMAP item #3: Bank-statement import → spending (flag `spending`)
 
-Keystone entity: net worth learns to go negative + gains balance-accounts
-(checking/savings/credit/loan/mortgage/other) distinct from derived-from-trades
-holdings. Full store seam + pure finance module + `feature_flags` row, seeded
-disabled, dark-launched, en+de+es.
+Extends `lib/import/csv.ts`'s "generic header-driven parser, drop your export,
+nothing duplicates" pattern to `spending_transactions`: a new bank-statement
+CSV parser + its own fingerprint/reconcile pair (row shape is date/amount/
+payee/note, not ISIN/qty/price, so it's a parallel module, not a branch in the
+existing investment-import one), wired into a new import modal on `/spending`.
+Category rules (`lib/finance/categorize.ts`) auto-suggest on preview.
 
 ## Tasks
-- [x] 1. Domain types: `Account`, `AccountBalance`, `AccountKind`, added to `PortfolioData` + `emptyPortfolio`
-- [x] 2. Migration 0080 + schema.sql: `accounts` + `account_balances` tables, RLS, FK cascade, `accounts` flag seeded disabled, idempotent
-- [x] 3. `DataStore` seam: `addAccount/updateAccount/deleteAccount/setAccountBalances` (types.ts)
-- [x] 4. LocalStore: read-backfill + CRUD + replace-set balances
-- [x] 5. SupabaseStore: load fetch + CRUD
-- [x] 6. OfflineStore: mirror + queue for all four
-- [x] 7. mutation-queue MutationOp union + sync.ts applyOp cases
-- [x] 8. `lib/finance/accounts.ts` (pure): carry-forward `accountValueOn`, signed `accountsValueOn`
-- [x] 9. Fold accounts (signed by is_liability) into `netWorthSeries` (optional params)
-- [x] 10. PortfolioProvider: expose `accounts`/`accountBalances` data + mutations
-- [x] 11. `accounts` added to `FeatureFlag` type
-- [x] 12. UI: `/accounts` page (flag-gated) + accounts view + add form + balances dialog (ConfirmDialog on delete)
-- [x] 13. Sidebar + mobile-nav link (flag-gated)
-- [x] 14. Dashboard net-worth hero folds accounts into net-worth KPI + chart
-- [x] 15. AI context: accounts summary (id-free)
-- [x] 16. /datenschutz: manual account balances note (EN+DE)
-- [x] 17. i18n en/de/es keys
-- [x] 18. Unit tests: `tests/accounts.test.ts` (signed fold + carry-forward)
-- [x] 19. Verify: build + lint + unit tests green; guest round-trip in-app
+- [x] 1. Migration 0082 + schema.sql: `imported_spending_rows` table (own-row
+      RLS, FK cascade on `spending_transaction_id`), idempotent
+- [x] 2. `lib/import/spending-csv.ts` (pure): `ParsedSpendingRow`,
+      `parseSpendingCsv` (generic header-driven, DE/EN column aliases +
+      DE/EN decimal formats), `spendingFingerprint`
+- [x] 3. `lib/import/spending-reconcile.ts` (pure): `reconcileSpending`
+      (new/conflict/imported vs existing spending transactions of the target
+      account)
+- [ ] 4. `DataStore` seam: `loadImportedSpendingFingerprints` /
+      `addImportedSpendingFingerprints` (types.ts)
+- [x] 5. LocalStore: own storage key + cascade-prune on
+      deleteSpendingTransaction/deleteAccount
+- [x] 6. SupabaseStore: load/upsert against `imported_spending_rows`
+- [x] 7. OfflineStore: mirror + best-effort inner (same pattern as
+      `addImportedFingerprints` — not queued)
+- [x] 8. PortfolioProvider: expose the two new methods
+- [x] 9. UI: `components/spending/import-spending.tsx` (file picker, account
+      picker, new/conflict/imported counts, category auto-suggest, confirm)
+      opened from a button on `spending-view.tsx`
+- [x] 10. i18n en/de/es keys
+- [x] 11. Unit tests: parser + fingerprint + reconcile
+- [x] 12. Verify: build + lint + unit tests green; guest round-trip in-app
+      (import same file twice -> second import is a no-op)
 
 ## Notes
-- Balance stored as user-entered magnitude in native currency; net contribution
-  = `(isLiability ? -1 : 1) * balance`. Overdrawn checking = user enters negative.
-- `opening_balance` @ `opened_on` = implicit first balance point; carry-forward.
-  Before `opened_on` an account contributes 0 to net worth.
-- Accounts are NOT tied to a portfolio (user-global) — no portfolio cascade.
-- Accounts fold is data-driven (empty arrays contribute 0), so the finance core
-  need not know about the flag.
+- No PDF parser exists anywhere in the tree yet (ROADMAP's "+ the PDF parser"
+  aside is aspirational) — this item ships CSV-only, matching what
+  `lib/import/csv.ts` actually does today.
+- Fingerprint key is `accountId|date|amount|payee` (not global like the
+  investment fingerprint) since spending rows carry no cross-account
+  identifier — the same statement re-imported against a different account is
+  legitimately a different set of transactions.
+- No `/datenschutz` update needed: same client-side-only CSV parsing pattern
+  as the existing investment import, which never got its own privacy-policy
+  section either.

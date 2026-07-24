@@ -542,6 +542,31 @@ FX-convert) always beats a wrong instrument in the right currency.
   (that's ROADMAP #4, budgets/cash-flow). The category manager modal mirrors
   `TagGroupsManager`'s CRUD-list shape (that component itself is hardwired to
   `useTags()`, not literally reusable). Surface is `/spending`.
+- **Bank-statement import** (ROADMAP #3, same `spending` flag): a parallel
+  import pipeline for bank CSVs, not a branch inside the broker one — a
+  statement row (date/amount/payee/note) shares nothing with a broker row
+  (isin/type/quantity/price). `lib/import/spending-csv.ts` is a generic
+  header-driven parser (DE/EN column aliases, DE/EN decimal + date formats,
+  reusing `csv.ts`'s quote-aware line splitting and lenient number/date
+  helpers instead of duplicating them) plus `spendingFingerprint`, keyed
+  `accountId|date|amount|payee` since a spending row carries no cross-account
+  identifier the way ISIN/WKN does — the same statement re-imported against a
+  different account is legitimately a different set of rows, not a
+  duplicate. `lib/import/spending-reconcile.ts`'s `reconcileSpending` mirrors
+  `reconcile.ts`'s new/conflict/imported shape, scoped to the target
+  account's own transactions (same day + amount = conflict). Already-imported
+  rows are tracked in their own `imported_spending_rows` table (migration
+  0082) rather than reusing `imported_rows`, since the two fingerprint tables
+  FK to different entities (`spending_transactions` vs `transactions`) that
+  can't share one nullable column; `DataStore.addImportedSpendingFingerprints`
+  is best-effort on `OfflineStore` (not queued), matching
+  `addImportedFingerprints`'s existing precedent. The import modal
+  (`components/spending/import-spending.tsx`, opened from `/spending`) skips
+  the investment flow's field-level three-pane merge for conflicts — a
+  same-day/amount match differs in payee/note wording at most, not the
+  money — offering a plain skip/import-anyway toggle instead, and
+  auto-suggests each new row's category via the existing
+  `categorize.ts` rules.
 
 ### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
 

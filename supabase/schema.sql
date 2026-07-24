@@ -545,6 +545,27 @@ alter table public.imported_rows
 create index if not exists imported_rows_transaction_id_idx
   on public.imported_rows (transaction_id);
 
+-- Fingerprints of bank-statement rows already imported into spending
+-- transactions (ROADMAP item #3, flag `spending`) -- mirrors imported_rows
+-- above but tied to spending_transactions instead of transactions, since the
+-- two entities are unrelated tables a single fingerprint table can't FK to
+-- both.
+create table if not exists public.imported_spending_rows (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  fingerprint text not null,
+  spending_transaction_id uuid references public.spending_transactions (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, fingerprint)
+);
+create index if not exists imported_spending_rows_transaction_id_idx
+  on public.imported_spending_rows (spending_transaction_id);
+
+alter table public.imported_spending_rows enable row level security;
+
+drop policy if exists "own imported spending rows" on public.imported_spending_rows;
+create policy "own imported spending rows" on public.imported_spending_rows
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Applied-migrations registry (system table) --------------------------------
 create table if not exists public.schema_migrations (
   version text primary key,
@@ -633,7 +654,8 @@ insert into public.schema_migrations (version) values
   ('0078_rebalance_targets'),
   ('0079_manual_valuation'),
   ('0080_accounts'),
-  ('0081_spending')
+  ('0081_spending'),
+  ('0082_imported_spending_rows')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

@@ -1157,4 +1157,26 @@ export class SupabaseStore implements DataStore {
       { onConflict: "user_id,fingerprint" },
     );
   }
+
+  async loadImportedSpendingFingerprints(): Promise<string[]> {
+    const { data } = await this.supabase
+      .from("imported_spending_rows")
+      .select("fingerprint")
+      .eq("user_id", this.userId);
+    return ((data ?? []) as { fingerprint: string }[]).map((r) => r.fingerprint);
+  }
+
+  async addImportedSpendingFingerprints(
+    entries: { fingerprint: string; spendingTransactionId: string | null }[],
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    await this.supabase.from("imported_spending_rows").upsert(
+      entries.map((e) => ({
+        user_id: this.userId,
+        fingerprint: e.fingerprint,
+        spending_transaction_id: e.spendingTransactionId,
+      })),
+      { onConflict: "user_id,fingerprint" },
+    );
+  }
 }

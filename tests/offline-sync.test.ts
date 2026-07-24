@@ -314,6 +314,13 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
     async addImportedFingerprints() {
       calls.push("addImportedFingerprints");
     },
+    async loadImportedSpendingFingerprints() {
+      calls.push("loadImportedSpendingFingerprints");
+      return [];
+    },
+    async addImportedSpendingFingerprints() {
+      calls.push("addImportedSpendingFingerprints");
+    },
   };
 
   return { store, calls };

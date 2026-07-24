@@ -38,7 +38,7 @@ export type BrokerFormat =
 // --- helpers ----------------------------------------------------------------
 
 /** Quote-aware split of a single CSV line. */
-function splitLine(line: string, delim: string): string[] {
+export function splitLine(line: string, delim: string): string[] {
   const out: string[] = [];
   let cur = "";
   let inQuotes = false;
@@ -58,7 +58,7 @@ function splitLine(line: string, delim: string): string[] {
   return out.map((s) => s.trim());
 }
 
-function toLines(text: string): string[] {
+export function toLines(text: string): string[] {
   return text.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim().length > 0);
 }
 
@@ -759,7 +759,7 @@ function parsePortfolioPerformance(text: string): { rows: ParsedTx[]; skipped: n
 
 /** Number tolerant of both decimal comma and decimal point, plus thousands
  *  separators and stray currency symbols. "1.234,50" and "1,234.50" → 1234.5. */
-function anyNum(s: string): number {
+export function anyNum(s: string): number {
   let v = (s ?? "").trim().replace(/["']/g, "").replace(/\s/g, "");
   v = v.replace(/[^0-9.,-]/g, "");
   if (v === "" || v === "-") return NaN;
@@ -776,7 +776,7 @@ function anyNum(s: string): number {
 }
 
 /** Date tolerant of ISO, dd.mm.yyyy and dd/mm/yyyy, each with optional time. */
-function anyDate(s: string): string {
+export function anyDate(s: string): string {
   const v = (s ?? "").trim();
   let m = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}:\d{2}(?::\d{2})?))?/);
   if (m) {
@@ -802,7 +802,7 @@ function anyType(s: string): TransactionType | null {
 }
 
 /** Best delimiter for a header line (the one that yields the most columns). */
-function detectDelim(headerLine: string): string {
+export function detectDelim(headerLine: string): string {
   let best = ",";
   let bestCount = -1;
   for (const d of [";", "\t", ","]) {

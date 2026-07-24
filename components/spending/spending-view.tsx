@@ -17,9 +17,11 @@ import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
+import { ImportSpending } from "./import-spending";
 import { SpendingSankeyCard } from "./spending-sankey-card";
 import type { SpendingTransaction } from "@/lib/types";
 
@@ -70,6 +72,7 @@ export function SpendingView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "date",
@@ -310,6 +313,9 @@ export function SpendingView() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t("spending.list.title")}</h2>
           <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setImporting(true)}>
+              {t("spending.import.button")}
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => void autoCategorize()}>
               {t("spending.list.autoCategorize")}
             </Button>
@@ -390,6 +396,15 @@ export function SpendingView() {
       </Card>
 
       <CategoryManager open={managingCategories} onClose={() => setManagingCategories(false)} />
+
+      <Modal open={importing} onClose={() => setImporting(false)} maxWidthClass="max-w-2xl">
+        <Card>
+          <h2 className="text-lg font-semibold">{t("spending.import.title")}</h2>
+          <div className="mt-4">
+            <ImportSpending onDone={() => setImporting(false)} />
+          </div>
+        </Card>
+      </Modal>
 
       <ConfirmDialog
         open={confirmDelete !== null}

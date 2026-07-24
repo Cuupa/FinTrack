@@ -256,6 +256,15 @@ function makeInner(initial: PortfolioData) {
       calls.push("addImportedFingerprints");
       guard();
     },
+    async loadImportedSpendingFingerprints() {
+      calls.push("loadImportedSpendingFingerprints");
+      guard();
+      return [];
+    },
+    async addImportedSpendingFingerprints() {
+      calls.push("addImportedSpendingFingerprints");
+      guard();
+    },
   };
 
   return {

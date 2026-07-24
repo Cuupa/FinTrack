@@ -509,6 +509,27 @@ export class OfflineStore implements DataStore {
     }
   }
 
+  async loadImportedSpendingFingerprints(): Promise<string[]> {
+    try {
+      return await this.inner.loadImportedSpendingFingerprints();
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      return this.mirror.loadImportedSpendingFingerprints();
+    }
+  }
+
+  async addImportedSpendingFingerprints(
+    entries: { fingerprint: string; spendingTransactionId: string | null }[],
+  ): Promise<void> {
+    await this.mirror.addImportedSpendingFingerprints(entries);
+    try {
+      await this.inner.addImportedSpendingFingerprints(entries);
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      // best-effort only — not queued.
+    }
+  }
+
   // --- Phase 3: reconnect sync (OFFLINE_DESIGN.md §2 phase 3) ---------------
   //
   // These are the "minimal accessors" the sync layer needs: `lib/offline/
