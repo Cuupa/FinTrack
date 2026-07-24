@@ -21,6 +21,8 @@ import type {
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
+  SpendingCategoryInput,
+  SpendingTransactionInput,
   TransactionInput,
   WatchlistInput,
 } from "../store/types";
@@ -33,6 +35,8 @@ import {
   type PortfolioData,
   type Profile,
   type SavingsPlan,
+  type SpendingCategory,
+  type SpendingTransaction,
   type TagAssignments,
   type TagGroup,
   type Transaction,
@@ -85,6 +89,12 @@ interface PortfolioContextValue {
   deleteAccount(id: string): Promise<void>;
   /** Replace-set an account's dated balance readings. */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
+  addSpendingCategory(input: SpendingCategoryInput): Promise<SpendingCategory>;
+  updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void>;
+  deleteSpendingCategory(id: string): Promise<void>;
+  addSpendingTransaction(input: SpendingTransactionInput): Promise<SpendingTransaction>;
+  updateSpendingTransaction(id: string, patch: Partial<SpendingTransactionInput>): Promise<void>;
+  deleteSpendingTransaction(id: string): Promise<void>;
   saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -411,6 +421,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ...d,
         accounts: d.accounts.filter((a) => a.id !== id),
         accountBalances: d.accountBalances.filter((b) => b.accountId !== id),
+        spendingTransactions: d.spendingTransactions.filter((t) => t.accountId !== id),
       }));
     },
     [store],
@@ -429,6 +440,73 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           ],
         };
       });
+    },
+    [store],
+  );
+
+  const addSpendingCategory = useCallback(
+    async (input: SpendingCategoryInput) => {
+      const category = await store.addSpendingCategory(input);
+      setData((d) => ({ ...d, spendingCategories: [...d.spendingCategories, category] }));
+      return category;
+    },
+    [store],
+  );
+
+  const updateSpendingCategory = useCallback(
+    async (id: string, patch: Partial<SpendingCategoryInput>) => {
+      await store.updateSpendingCategory(id, patch);
+      setData((d) => ({
+        ...d,
+        spendingCategories: d.spendingCategories.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteSpendingCategory = useCallback(
+    async (id: string) => {
+      await store.deleteSpendingCategory(id);
+      setData((d) => ({
+        ...d,
+        spendingCategories: d.spendingCategories.filter((c) => c.id !== id),
+        spendingTransactions: d.spendingTransactions.map((t) =>
+          t.categoryId === id ? { ...t, categoryId: null } : t,
+        ),
+      }));
+    },
+    [store],
+  );
+
+  const addSpendingTransaction = useCallback(
+    async (input: SpendingTransactionInput) => {
+      const transaction = await store.addSpendingTransaction(input);
+      setData((d) => ({ ...d, spendingTransactions: [...d.spendingTransactions, transaction] }));
+      return transaction;
+    },
+    [store],
+  );
+
+  const updateSpendingTransaction = useCallback(
+    async (id: string, patch: Partial<SpendingTransactionInput>) => {
+      await store.updateSpendingTransaction(id, patch);
+      setData((d) => ({
+        ...d,
+        spendingTransactions: d.spendingTransactions.map((t) =>
+          t.id === id ? { ...t, ...patch } : t,
+        ),
+      }));
+    },
+    [store],
+  );
+
+  const deleteSpendingTransaction = useCallback(
+    async (id: string) => {
+      await store.deleteSpendingTransaction(id);
+      setData((d) => ({
+        ...d,
+        spendingTransactions: d.spendingTransactions.filter((t) => t.id !== id),
+      }));
     },
     [store],
   );
@@ -562,6 +640,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     updateAccount,
     deleteAccount,
     setAccountBalances,
+    addSpendingCategory,
+    updateSpendingCategory,
+    deleteSpendingCategory,
+    addSpendingTransaction,
+    updateSpendingTransaction,
+    deleteSpendingTransaction,
     saveLlmConfig,
     setCurrency,
     updateProfile,

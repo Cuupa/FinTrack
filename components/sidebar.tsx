@@ -20,6 +20,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
     icon: <path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm0 4h18M16 14h.01" />,
     flag: "accounts",
   },
+  {
+    href: "/spending",
+    key: "nav.spending",
+    // Receipt glyph: bordered rect + itemized lines.
+    icon: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3zm2 4h8M8 11h8M8 15h5" />,
+    flag: "spending",
+  },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/dividends",
