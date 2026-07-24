@@ -4,7 +4,7 @@
 // native currency (like `summarizeHolding`'s spot-rate convention) since a
 // spending ledger is per-account, not a cross-currency net-worth rollup.
 
-import type { SpendingTransaction } from "../types";
+import type { Account, SpendingCategory, SpendingTransaction } from "../types";
 
 export interface CategoryMonthTotal {
   /** YYYY-MM. */
@@ -58,4 +58,127 @@ export function incomeExpenseSplit(transactions: SpendingTransaction[]): IncomeE
 export function safeToSpend(transactions: SpendingTransaction[], sinceIsoDate: string): number {
   const windowed = transactions.filter((t) => t.date >= sinceIsoDate);
   return incomeExpenseSplit(windowed).net;
+}
+
+/**
+ * Converts every transaction's native-currency `amount` to the base currency
+ * at spot (same convention as `summarizeHolding`'s spot-rate conversion),
+ * looking up each transaction's currency via its account. Missing accounts or
+ * FX rates fall back to 1:1 like `spending-view.tsx`'s original inline logic.
+ */
+export function toBaseCurrency(
+  transactions: SpendingTransaction[],
+  accounts: Account[],
+  base: string,
+  fx?: Record<string, number>,
+): SpendingTransaction[] {
+  const accountsById = new Map(accounts.map((a) => [a.id, a]));
+  return transactions.map((t) => {
+    const currency = accountsById.get(t.accountId)?.currency || base;
+    const rate = !currency || currency === base ? 1 : (fx?.[currency] ?? 1);
+    return rate === 1 ? t : { ...t, amount: t.amount * rate };
+  });
+}
+
+export interface SankeyGraph {
+  /** `column` tags the layout role so the chart's node renderer can anchor
+   *  labels without re-deriving graph topology: `source` = leftmost (income
+   *  categories + shortfall), `hub` = the Total node, `target` = rightmost
+   *  (expense categories + savings). */
+  nodes: { name: string; column: "source" | "hub" | "target" }[];
+  links: { source: number; target: number; value: number }[];
+}
+
+export interface SpendingSankeyLabels {
+  total: string;
+  savings: string;
+  shortfall: string;
+  uncategorizedIncome: string;
+  uncategorizedExpense: string;
+}
+
+/**
+ * Sums entries below 1% of `total` into the `fallback` bucket, mirroring
+ * `AllocationPie`'s `groupSmallSlices` so a Sankey side doesn't get cluttered
+ * with slivers. The fallback bucket itself is always kept even if small.
+ */
+function foldSmallGroups(
+  groups: Map<string, number>,
+  total: number,
+  fallback: string,
+): Map<string, number> {
+  if (total <= 0) return groups;
+  const threshold = 0.01 * total;
+  const kept = new Map<string, number>();
+  let otherSum = 0;
+  for (const [label, value] of groups) {
+    if (value >= threshold || label === fallback) kept.set(label, (kept.get(label) ?? 0) + value);
+    else otherSum += value;
+  }
+  if (otherSum > 0) kept.set(fallback, (kept.get(fallback) ?? 0) + otherSum);
+  return kept;
+}
+
+/**
+ * Builds a cash-flow Sankey graph for a set of (already period-filtered,
+ * base-currency) transactions: income category groups -> "Total" -> expense
+ * category groups, plus a `Total -> savings` link when the period's net is
+ * positive or a `shortfall -> Total` link when it's negative (money drawn
+ * from savings/reserves) — so the Total node always balances. Returns empty
+ * nodes/links when there's nothing to show.
+ */
+export function spendingSankeyData(
+  transactions: SpendingTransaction[],
+  categories: SpendingCategory[],
+  labels: SpendingSankeyLabels,
+): SankeyGraph {
+  const groupNameById = new Map(categories.map((c) => [c.id, c.groupName]));
+  const groupLabel = (categoryId: string | null, fallback: string) =>
+    (categoryId && groupNameById.get(categoryId)) || fallback;
+
+  const income = transactions.filter((t) => t.amount > 0);
+  const expense = transactions.filter((t) => t.amount < 0);
+  const incomeTotal = income.reduce((s, t) => s + t.amount, 0);
+  const expenseTotal = expense.reduce((s, t) => s - t.amount, 0);
+  if (incomeTotal <= 0 && expenseTotal <= 0) return { nodes: [], links: [] };
+
+  const groupSum = (txs: SpendingTransaction[], magnitude: (t: SpendingTransaction) => number, fallback: string) => {
+    const map = new Map<string, number>();
+    for (const t of txs) {
+      const label = groupLabel(t.categoryId, fallback);
+      map.set(label, (map.get(label) ?? 0) + magnitude(t));
+    }
+    return map;
+  };
+
+  const sortedEntries = (map: Map<string, number>) =>
+    [...map.entries()].sort((a, b) => b[1] - a[1]);
+
+  const incomeGroups = sortedEntries(
+    foldSmallGroups(groupSum(income, (t) => t.amount, labels.uncategorizedIncome), incomeTotal, labels.uncategorizedIncome),
+  );
+  const expenseGroups = sortedEntries(
+    foldSmallGroups(groupSum(expense, (t) => -t.amount, labels.uncategorizedExpense), expenseTotal, labels.uncategorizedExpense),
+  );
+
+  const nodes: SankeyGraph["nodes"] = [];
+  const links: { source: number; target: number; value: number }[] = [];
+  const addNode = (name: string, column: SankeyGraph["nodes"][number]["column"]) =>
+    nodes.push({ name, column }) - 1;
+
+  const totalIdx = addNode(labels.total, "hub");
+  for (const [label, value] of incomeGroups) {
+    if (value <= 0) continue;
+    links.push({ source: addNode(label, "source"), target: totalIdx, value });
+  }
+  for (const [label, value] of expenseGroups) {
+    if (value <= 0) continue;
+    links.push({ source: totalIdx, target: addNode(label, "target"), value });
+  }
+
+  const net = incomeTotal - expenseTotal;
+  if (net > 0) links.push({ source: totalIdx, target: addNode(labels.savings, "target"), value: net });
+  else if (net < 0) links.push({ source: addNode(labels.shortfall, "source"), target: totalIdx, value: -net });
+
+  return { nodes, links };
 }

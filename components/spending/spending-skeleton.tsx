@@ -18,6 +18,10 @@ export function SpendingSkeleton() {
       </Card>
       <Card>
         <Skeleton className="h-6 w-40" />
+        <Skeleton className="mt-4 h-[380px] w-full" />
+      </Card>
+      <Card>
+        <Skeleton className="h-6 w-40" />
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-9 w-full" />

@@ -787,6 +787,12 @@ export const en = {
   "spending.categories.deleteConfirm": "Delete \"{name}\"? Transactions in this category become uncategorised.",
   "spending.categories.deleteGroup": "Delete group",
   "spending.categories.deleteGroupConfirm": "Delete the group \"{name}\" and every category in it? Transactions in these categories become uncategorised.",
+  "spending.sankey.title": "Cash flow",
+  "spending.sankey.totalNode": "Total",
+  "spending.sankey.savingsNode": "Savings",
+  "spending.sankey.shortfallNode": "From savings",
+  "spending.sankey.ariaLabel":
+    "Cash flow Sankey diagram: {income} income, {expense} expenses, net {net}.",
   "addAsset.otherValue": "Current value ({currency})",
 
   // Analysis
@@ -2244,6 +2250,12 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.categories.deleteConfirm": "\"{name}\" löschen? Buchungen in dieser Kategorie verlieren ihre Kategorie.",
   "spending.categories.deleteGroup": "Gruppe löschen",
   "spending.categories.deleteGroupConfirm": "Die Gruppe \"{name}\" mit allen ihren Kategorien löschen? Buchungen in diesen Kategorien verlieren ihre Kategorie.",
+  "spending.sankey.title": "Cashflow",
+  "spending.sankey.totalNode": "Gesamt",
+  "spending.sankey.savingsNode": "Ersparnisse",
+  "spending.sankey.shortfallNode": "Aus Ersparnissen",
+  "spending.sankey.ariaLabel":
+    "Cashflow-Sankey-Diagramm: {income} Einnahmen, {expense} Ausgaben, netto {net}.",
   "addAsset.otherValue": "Aktueller Wert ({currency})",
 
   // Analysis
@@ -3700,6 +3712,12 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.categories.deleteConfirm": "¿Eliminar \"{name}\"? Los movimientos de esta categoría se quedan sin categoría.",
   "spending.categories.deleteGroup": "Eliminar grupo",
   "spending.categories.deleteGroupConfirm": "¿Eliminar el grupo \"{name}\" con todas sus categorías? Los movimientos de estas categorías se quedan sin categoría.",
+  "spending.sankey.title": "Flujo de caja",
+  "spending.sankey.totalNode": "Total",
+  "spending.sankey.savingsNode": "Ahorros",
+  "spending.sankey.shortfallNode": "De los ahorros",
+  "spending.sankey.ariaLabel":
+    "Diagrama de flujo de caja (Sankey): {income} ingresos, {expense} gastos, neto {net}.",
   "addAsset.otherValue": "Valor actual ({currency})",
 
   // Analysis

@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { byCategoryAndMonth, incomeExpenseSplit, safeToSpend } from "@/lib/finance/spending";
-import type { SpendingTransaction } from "@/lib/types";
+import {
+  byCategoryAndMonth,
+  incomeExpenseSplit,
+  safeToSpend,
+  spendingSankeyData,
+  toBaseCurrency,
+  type SpendingSankeyLabels,
+} from "@/lib/finance/spending";
+import type { Account, SpendingCategory, SpendingTransaction } from "@/lib/types";
+
+const labels: SpendingSankeyLabels = {
+  total: "Total",
+  savings: "Savings",
+  shortfall: "Shortfall",
+  uncategorizedIncome: "Income",
+  uncategorizedExpense: "Uncategorized",
+};
 
 function tx(overrides: Partial<SpendingTransaction> = {}): SpendingTransaction {
   return {
@@ -63,5 +78,118 @@ describe("safeToSpend", () => {
       tx({ id: "3", date: "2024-01-15", amount: -300 }),
     ];
     expect(safeToSpend(txs, "2024-01-01")).toBe(1700);
+  });
+});
+
+function account(overrides: Partial<Account> = {}): Account {
+  return {
+    id: "a1",
+    name: "Checking",
+    kind: "checking",
+    currency: null,
+    isLiability: false,
+    openingBalance: 0,
+    openedOn: "2020-01-01",
+    ...overrides,
+  };
+}
+
+describe("toBaseCurrency", () => {
+  it("leaves amounts unchanged when the account currency matches base", () => {
+    const accounts = [account({ id: "a1", currency: "EUR" })];
+    const txs = [tx({ accountId: "a1", amount: -50 })];
+    expect(toBaseCurrency(txs, accounts, "EUR")).toEqual(txs);
+  });
+
+  it("converts using the fx rate for the account's native currency", () => {
+    const accounts = [account({ id: "a1", currency: "USD" })];
+    const txs = [tx({ accountId: "a1", amount: -100 })];
+    const [converted] = toBaseCurrency(txs, accounts, "EUR", { USD: 0.9 });
+    expect(converted.amount).toBe(-90);
+  });
+
+  it("falls back to 1:1 when the account or its fx rate is missing", () => {
+    const txs = [tx({ accountId: "missing", amount: -100 })];
+    expect(toBaseCurrency(txs, [], "EUR")[0].amount).toBe(-100);
+
+    const accounts = [account({ id: "a1", currency: "USD" })];
+    expect(toBaseCurrency(txs.map((t) => ({ ...t, accountId: "a1" })), accounts, "EUR")[0].amount).toBe(-100);
+  });
+});
+
+describe("spendingSankeyData", () => {
+  const categories: SpendingCategory[] = [
+    { id: "sal", groupName: "Salary", name: "Salary" },
+    { id: "rent", groupName: "Housing", name: "Rent" },
+  ];
+
+  it("returns empty nodes/links for no transactions", () => {
+    expect(spendingSankeyData([], categories, labels)).toEqual({ nodes: [], links: [] });
+  });
+
+  it("builds income -> Total -> expense links plus a Savings link when net is positive", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", categoryId: "sal", amount: 2000 }),
+      tx({ id: "2", categoryId: "rent", amount: -900 }),
+    ];
+    const graph = spendingSankeyData(txs, categories, labels);
+    expect(graph.nodes.map((n) => n.name)).toEqual(["Total", "Salary", "Housing", "Savings"]);
+    expect(graph.links).toEqual([
+      { source: 1, target: 0, value: 2000 },
+      { source: 0, target: 2, value: 900 },
+      { source: 0, target: 3, value: 1100 },
+    ]);
+  });
+
+  it("builds a Shortfall -> Total link when net is negative", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", categoryId: "sal", amount: 500 }),
+      tx({ id: "2", categoryId: "rent", amount: -900 }),
+    ];
+    const graph = spendingSankeyData(txs, categories, labels);
+    expect(graph.nodes.map((n) => n.name)).toEqual(["Total", "Salary", "Housing", "Shortfall"]);
+    expect(graph.links).toEqual([
+      { source: 1, target: 0, value: 500 },
+      { source: 0, target: 2, value: 900 },
+      { source: 3, target: 0, value: 400 },
+    ]);
+  });
+
+  it("omits the savings/shortfall link entirely when net is exactly zero", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", categoryId: "sal", amount: 500 }),
+      tx({ id: "2", categoryId: "rent", amount: -500 }),
+    ];
+    const graph = spendingSankeyData(txs, categories, labels);
+    expect(graph.nodes.map((n) => n.name)).toEqual(["Total", "Salary", "Housing"]);
+    expect(graph.links).toHaveLength(2);
+  });
+
+  it("groups uncategorised transactions under the fallback bucket per side", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", categoryId: null, amount: 1000 }),
+      tx({ id: "2", categoryId: null, amount: -200 }),
+      tx({ id: "3", categoryId: null, amount: -300 }),
+    ];
+    const graph = spendingSankeyData(txs, categories, labels);
+    expect(graph.nodes.map((n) => n.name)).toEqual(["Total", "Income", "Uncategorized", "Savings"]);
+    const expenseLink = graph.links.find((l) => graph.nodes[l.target]?.name === "Uncategorized");
+    expect(expenseLink?.value).toBe(500);
+  });
+
+  it("folds expense categories below 1% of the expense total into the fallback bucket", () => {
+    const many: SpendingCategory[] = [
+      { id: "big", groupName: "Housing", name: "Rent" },
+      { id: "tiny", groupName: "Fees", name: "ATM fee" },
+    ];
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", categoryId: "sal", amount: 10000 }),
+      tx({ id: "2", categoryId: "big", amount: -9900 }),
+      tx({ id: "3", categoryId: "tiny", amount: -1 }), // < 1% of 9901 expense total
+    ];
+    const graph = spendingSankeyData(txs, many.concat(categories[0]), labels);
+    expect(graph.nodes.map((n) => n.name)).not.toContain("Fees");
+    const uncategorized = graph.links.find((l) => graph.nodes[l.target]?.name === "Uncategorized");
+    expect(uncategorized?.value).toBe(1);
   });
 });

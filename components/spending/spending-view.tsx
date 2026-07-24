@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today } from "@/lib/finance/dates";
-import { incomeExpenseSplit } from "@/lib/finance/spending";
+import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat } from "@/components/ui/primitives";
@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
+import { SpendingSankeyCard } from "./spending-sankey-card";
 import type { SpendingTransaction } from "@/lib/types";
 
 const inputCls =
@@ -27,11 +28,6 @@ const inputCls =
 
 type SortKey = "date" | "payee" | "category" | "account" | "amount";
 type TxType = "expense" | "income";
-
-function rateFor(currency: string, base: string, fx?: Record<string, number>): number {
-  if (!currency || currency === base) return 1;
-  return fx?.[currency] ?? 1;
-}
 
 export function SpendingView() {
   const {
@@ -54,13 +50,9 @@ export function SpendingView() {
   );
 
   const totals = useMemo(() => {
-    const converted = data.spendingTransactions.map((tx) => {
-      const account = accountsById.get(tx.accountId);
-      const currency = account?.currency || base;
-      return { ...tx, amount: tx.amount * rateFor(currency, base, valuation.fx) };
-    });
+    const converted = toBaseCurrency(data.spendingTransactions, data.accounts, base, valuation.fx);
     return incomeExpenseSplit(converted);
-  }, [data.spendingTransactions, accountsById, base, valuation.fx]);
+  }, [data.spendingTransactions, data.accounts, base, valuation.fx]);
 
   const categoryRules = useMemo(
     () => buildCategoryRules(data.spendingTransactions),
@@ -173,6 +165,8 @@ export function SpendingView() {
           />
         </div>
       </Card>
+
+      <SpendingSankeyCard />
 
       <Card>
         <h2 className="text-lg font-semibold">{t("spending.form.title")}</h2>
