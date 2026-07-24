@@ -32,14 +32,16 @@ before moving to the next.
 - [x] Verify: build + lint + unit tests green
 
 ## Item #7: Financial-health gauges (flag `finHealth`)
-- [ ] No new tables — derives from accounts/spending/budgets already in tree
-- [ ] `lib/finance/health.ts` (pure): months-of-expenses, savings rate,
+- [x] No new tables — derives from accounts/spending/budgets already in tree
+- [x] `lib/finance/health.ts` (pure): months-of-expenses, savings rate,
       debt-to-income, net-worth-to-income
-- [ ] Feature flag `finHealth` seeded disabled (feature_flags row via migration)
-- [ ] UI: `/health` route, nav entry
-- [ ] i18n en/de/es
-- [ ] Unit tests
-- [ ] Verify: build + lint + unit tests green
+- [x] Feature flag `finHealth` seeded disabled (feature_flags row via migration
+      0086 + schema.sql)
+- [x] UI: `/health` route (read-only 4-tile gauge dashboard, no CRUD), nav entry
+- [x] i18n en/de/es
+- [x] Unit tests
+- [x] Verify: build + lint + unit tests green, browser smoke test (empty +
+      populated gauge states, zero console errors)
 
 ## Item #8: Retirement / FIRE planner (flag `firePlanner`)
 - [ ] No new tables — reframes existing monte-carlo.ts + stats.ts

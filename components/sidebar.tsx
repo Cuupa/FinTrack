@@ -41,6 +41,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
     icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />,
     flag: "goals",
   },
+  {
+    href: "/health",
+    key: "nav.health",
+    // Pulse glyph: heartbeat line through a circle.
+    icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 12h3l1.5-4 3 8 1.5-4H18" />,
+    flag: "finHealth",
+  },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/dividends",
