@@ -17,6 +17,7 @@ import {
   type AccountKind,
   type Asset,
   type Budget,
+  type Contract,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
@@ -50,6 +51,7 @@ import type {
   AccountInput,
   AssetInput,
   BudgetInput,
+  ContractInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -202,6 +204,28 @@ function budgetFromRow(r: BudgetRow): Budget {
   return { id: r.id, categoryId: r.category_id, amount: Number(r.amount) };
 }
 
+interface ContractRow {
+  id: string;
+  name: string;
+  amount: number | string;
+  interval: string;
+  renewal_date: string | null;
+  cancellation_notice_days: number | null;
+  category_id: string | null;
+}
+
+function contractFromRow(r: ContractRow): Contract {
+  return {
+    id: r.id,
+    name: r.name,
+    amount: Number(r.amount),
+    interval: r.interval as Contract["interval"],
+    renewalDate: r.renewal_date,
+    cancellationNoticeDays: r.cancellation_notice_days,
+    categoryId: r.category_id,
+  };
+}
+
 function embed(row: AssetRow): InstrumentEmbed | null {
   const i = row.instrument;
   return Array.isArray(i) ? (i[0] ?? null) : i;
@@ -231,6 +255,7 @@ export class SupabaseStore implements DataStore {
       spendingCategoriesRes,
       spendingTransactionsRes,
       budgetsRes,
+      contractsRes,
       llmSettingsRes,
     ] = await Promise.all([
       this.supabase
@@ -305,6 +330,11 @@ export class SupabaseStore implements DataStore {
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
+        .from("contracts")
+        .select("id, name, amount, interval, renewal_date, cancellation_notice_days, category_id")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
         .eq("user_id", this.userId)
@@ -329,6 +359,7 @@ export class SupabaseStore implements DataStore {
     if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
     if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
     if (budgetsRes.error) throw budgetsRes.error;
+    if (contractsRes.error) throw contractsRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
@@ -457,6 +488,10 @@ export class SupabaseStore implements DataStore {
 
     const budgets: Budget[] = ((budgetsRes.data ?? []) as BudgetRow[]).map(budgetFromRow);
 
+    const contracts: Contract[] = ((contractsRes.data ?? []) as ContractRow[]).map(
+      contractFromRow,
+    );
+
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
@@ -481,6 +516,7 @@ export class SupabaseStore implements DataStore {
       spendingCategories,
       spendingTransactions,
       budgets,
+      contracts,
       llmConfig,
     };
   }
@@ -1053,6 +1089,55 @@ export class SupabaseStore implements DataStore {
   async deleteBudget(id: string): Promise<void> {
     const { error } = await this.supabase
       .from("budgets")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async addContract(input: ContractInput, id?: string): Promise<Contract> {
+    const { data, error } = await this.supabase
+      .from("contracts")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        name: input.name,
+        amount: input.amount,
+        interval: input.interval,
+        renewal_date: input.renewalDate,
+        cancellation_notice_days: input.cancellationNoticeDays,
+        category_id: input.categoryId,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updateContract(id: string, patch: Partial<ContractInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.name !== undefined) upd.name = patch.name;
+    if (patch.amount !== undefined) upd.amount = patch.amount;
+    if (patch.interval !== undefined) upd.interval = patch.interval;
+    if (patch.renewalDate !== undefined) upd.renewal_date = patch.renewalDate;
+    if (patch.cancellationNoticeDays !== undefined) {
+      upd.cancellation_notice_days = patch.cancellationNoticeDays;
+    }
+    if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("contracts")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new RowNotFoundError(`contract ${id} not found`);
+  }
+
+  async deleteContract(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("contracts")
       .delete()
       .eq("id", id)
       .eq("user_id", this.userId);

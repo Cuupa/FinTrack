@@ -16,6 +16,7 @@ import type {
   AccountInput,
   AssetInput,
   BudgetInput,
+  ContractInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -125,6 +126,8 @@ export class LocalStore implements DataStore {
         spendingTransactions: parsed.spendingTransactions ?? [],
         // Backfill blobs saved before budgets existed.
         budgets: parsed.budgets ?? [],
+        // Backfill blobs saved before contracts existed.
+        contracts: parsed.contracts ?? [],
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -399,6 +402,10 @@ export class LocalStore implements DataStore {
     );
     // A budget with no category means nothing (mirrors the DB's on delete cascade).
     data.budgets = data.budgets.filter((b) => b.categoryId !== id);
+    // A contract keeps existing with no category (mirrors the DB's on delete set null).
+    data.contracts = data.contracts.map((c) =>
+      c.categoryId === id ? { ...c, categoryId: null } : c,
+    );
     this.write(data);
   }
 
@@ -446,6 +453,29 @@ export class LocalStore implements DataStore {
   async deleteBudget(id: string) {
     const data = this.read();
     data.budgets = data.budgets.filter((b) => b.id !== id);
+    this.write(data);
+  }
+
+  async addContract(input: ContractInput, id?: string) {
+    const data = this.read();
+    const contract = { ...input, id: id ?? newId() };
+    data.contracts.push(contract);
+    this.write(data);
+    return contract;
+  }
+
+  async updateContract(id: string, patch: Partial<ContractInput>) {
+    const data = this.read();
+    const idx = data.contracts.findIndex((c) => c.id === id);
+    if (idx >= 0) {
+      data.contracts[idx] = { ...data.contracts[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteContract(id: string) {
+    const data = this.read();
+    data.contracts = data.contracts.filter((c) => c.id !== id);
     this.write(data);
   }
 

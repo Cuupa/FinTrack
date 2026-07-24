@@ -19,6 +19,7 @@ import type {
   AccountInput,
   AssetInput,
   BudgetInput,
+  ContractInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -32,6 +33,7 @@ import {
   type Account,
   type Asset,
   type Budget,
+  type Contract,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
@@ -100,6 +102,9 @@ interface PortfolioContextValue {
   addBudget(input: BudgetInput): Promise<Budget>;
   updateBudget(id: string, patch: Partial<BudgetInput>): Promise<void>;
   deleteBudget(id: string): Promise<void>;
+  addContract(input: ContractInput): Promise<Contract>;
+  updateContract(id: string, patch: Partial<ContractInput>): Promise<void>;
+  deleteContract(id: string): Promise<void>;
   saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -484,6 +489,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ),
         // A budget with no category means nothing (mirrors the DB's on delete cascade).
         budgets: d.budgets.filter((b) => b.categoryId !== id),
+        // A contract keeps existing with no category (mirrors the DB's on delete set null).
+        contracts: d.contracts.map((c) => (c.categoryId === id ? { ...c, categoryId: null } : c)),
       }));
     },
     [store],
@@ -546,6 +553,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       await store.deleteBudget(id);
       setData((d) => ({ ...d, budgets: d.budgets.filter((b) => b.id !== id) }));
+    },
+    [store],
+  );
+
+  const addContract = useCallback(
+    async (input: ContractInput) => {
+      const contract = await store.addContract(input);
+      setData((d) => ({ ...d, contracts: [...d.contracts, contract] }));
+      return contract;
+    },
+    [store],
+  );
+
+  const updateContract = useCallback(
+    async (id: string, patch: Partial<ContractInput>) => {
+      await store.updateContract(id, patch);
+      setData((d) => ({
+        ...d,
+        contracts: d.contracts.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteContract = useCallback(
+    async (id: string) => {
+      await store.deleteContract(id);
+      setData((d) => ({ ...d, contracts: d.contracts.filter((c) => c.id !== id) }));
     },
     [store],
   );
@@ -697,6 +732,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addBudget,
     updateBudget,
     deleteBudget,
+    addContract,
+    updateContract,
+    deleteContract,
     saveLlmConfig,
     setCurrency,
     updateProfile,

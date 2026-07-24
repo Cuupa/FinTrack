@@ -29,6 +29,7 @@ npm run test:e2e  # Playwright browser tests (Guest Mode wiring); see E2E.md
 - Use skeleton loading instead of placeholders for eg. prices
 - I forbid you to use badges of any kind. if you need to display a badge, you fucked up big time and go back to drawing board
 - When changing or removing a feature, always check if feature flags became stale/depricated
+- When developing new features, create e2e tests if applicable
 
 
 ## Stack

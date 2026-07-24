@@ -8,6 +8,7 @@ import type {
   Account,
   Asset,
   Budget,
+  Contract,
   LlmConfig,
   Portfolio,
   PortfolioData,
@@ -28,6 +29,7 @@ export type AccountInput = Omit<Account, "id">;
 export type SpendingCategoryInput = Omit<SpendingCategory, "id">;
 export type SpendingTransactionInput = Omit<SpendingTransaction, "id">;
 export type BudgetInput = Omit<Budget, "id">;
+export type ContractInput = Omit<Contract, "id">;
 
 /** Patch shape for `DataStore.updatePortfolio` — every field optional, only
  *  the fields present are changed. `renamePortfolio` is a thin wrapper around
@@ -112,6 +114,10 @@ export interface DataStore {
   addBudget(input: BudgetInput, id?: string): Promise<Budget>;
   updateBudget(id: string, patch: Partial<BudgetInput>): Promise<void>;
   deleteBudget(id: string): Promise<void>;
+  /** Creates a recurring-commitment contract. `id` — see `addAsset`'s doc above. */
+  addContract(input: ContractInput, id?: string): Promise<Contract>;
+  updateContract(id: string, patch: Partial<ContractInput>): Promise<void>;
+  deleteContract(id: string): Promise<void>;
   /**
    * Replace-set the user's BYO LLM config (replay-idempotent like
    * `setAssetTags`). `null` removes it entirely (the settings "Remove key"

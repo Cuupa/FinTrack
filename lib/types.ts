@@ -216,6 +216,35 @@ export interface Budget {
   amount: number;
 }
 
+/** How often a contract charges (ROADMAP item #5, flag `contracts`). */
+export type ContractInterval = "MONTHLY" | "QUARTERLY" | "ANNUAL";
+
+export const CONTRACT_INTERVALS: ContractInterval[] = ["MONTHLY", "QUARTERLY", "ANNUAL"];
+
+/**
+ * A named recurring commitment (subscription, insurance, rent) tracked
+ * independently of any one spending transaction (ROADMAP item #5, flag
+ * `contracts`). `amount` is the per-interval charge, in the profile's base
+ * currency (same convention as `Budget.amount`). `renewalDate` +
+ * `cancellationNoticeDays` are both optional -- filled in once known, so the
+ * UI can flag an approaching cancellation deadline; a contract with neither
+ * is still a valid register entry. `categoryId` reuses the spending
+ * taxonomy and is nullable (mirrors `SpendingTransaction.categoryId` -- set
+ * null, not cascade-deleted, when its category goes away).
+ */
+export interface Contract {
+  id: string;
+  name: string;
+  /** Per-interval charge, in the profile's base currency. */
+  amount: number;
+  interval: ContractInterval;
+  /** YYYY-MM-DD, or null if unknown. */
+  renewalDate: string | null;
+  /** Notice period required before `renewalDate` to cancel, or null. */
+  cancellationNoticeDays: number | null;
+  categoryId: string | null;
+}
+
 /** How often a cash position's interest is credited and compounded. */
 export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 
@@ -383,6 +412,8 @@ export interface PortfolioData {
   spendingTransactions: SpendingTransaction[];
   /** Monthly per-category spending caps (ROADMAP #4, flag `budgets`). */
   budgets: Budget[];
+  /** Named recurring commitments (ROADMAP #5, flag `contracts`). */
+  contracts: Contract[];
   /** null = no key configured. */
   llmConfig: LlmConfig | null;
 }
@@ -418,6 +449,7 @@ export function emptyPortfolio(): PortfolioData {
     spendingCategories: [],
     spendingTransactions: [],
     budgets: [],
+    contracts: [],
     llmConfig: null,
   };
 }

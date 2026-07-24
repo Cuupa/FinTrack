@@ -22,6 +22,7 @@ import type {
   AccountInput,
   AssetInput,
   BudgetInput,
+  ContractInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -202,6 +203,15 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       return;
     case "deleteBudget":
       await inner.deleteBudget(op.id);
+      return;
+    case "addContract":
+      await inner.addContract(op.payload as ContractInput, op.id);
+      return;
+    case "updateContract":
+      await inner.updateContract(op.id, op.payload as Partial<ContractInput>);
+      return;
+    case "deleteContract":
+      await inner.deleteContract(op.id);
       return;
     case "saveLlmConfig":
       await inner.saveLlmConfig(op.payload as LlmConfig | null);

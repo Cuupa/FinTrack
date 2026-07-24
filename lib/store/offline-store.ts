@@ -24,6 +24,7 @@ import type {
   Account,
   Asset,
   Budget,
+  Contract,
   LlmConfig,
   Portfolio,
   PortfolioData,
@@ -42,6 +43,7 @@ import type {
   AccountInput,
   AssetInput,
   BudgetInput,
+  ContractInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -443,6 +445,35 @@ export class OfflineStore implements DataStore {
       await this.inner.deleteBudget(id);
     } catch (err) {
       await this.handleFailure(err, "deleteBudget", id, null);
+    }
+  }
+
+  async addContract(input: ContractInput, id?: string): Promise<Contract> {
+    const contractId = id ?? newId();
+    const contract = await this.mirror.addContract(input, contractId);
+    try {
+      await this.inner.addContract(input, contractId);
+    } catch (err) {
+      await this.handleFailure(err, "addContract", contractId, input);
+    }
+    return contract;
+  }
+
+  async updateContract(id: string, patch: Partial<ContractInput>): Promise<void> {
+    await this.mirror.updateContract(id, patch);
+    try {
+      await this.inner.updateContract(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateContract", id, patch);
+    }
+  }
+
+  async deleteContract(id: string): Promise<void> {
+    await this.mirror.deleteContract(id);
+    try {
+      await this.inner.deleteContract(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteContract", id, null);
     }
   }
 

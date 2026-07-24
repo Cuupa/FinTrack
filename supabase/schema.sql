@@ -511,6 +511,25 @@ create unique index if not exists budgets_unique_category
   on public.budgets (user_id, category_id);
 create index if not exists budgets_user_id_idx on public.budgets (user_id);
 
+-- Recurring-charge contract register (ROADMAP #5, flag `contracts`):
+-- subscriptions/insurance/rent as named recurring commitments with an
+-- optional renewal date + cancellation-notice window. `category_id` reuses
+-- the spending taxonomy; set null on category delete (a contract without a
+-- category still means something, unlike a budget).
+create table if not exists public.contracts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  amount numeric not null,
+  interval text not null,
+  renewal_date date,
+  cancellation_notice_days integer,
+  category_id uuid references public.spending_categories (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists contracts_user_id_idx on public.contracts (user_id);
+create index if not exists contracts_category_id_idx on public.contracts (category_id);
+
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its
 -- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
@@ -671,7 +690,9 @@ insert into public.schema_migrations (version) values
   ('0079_manual_valuation'),
   ('0080_accounts'),
   ('0081_spending'),
-  ('0082_imported_spending_rows')
+  ('0082_imported_spending_rows'),
+  ('0083_budgets'),
+  ('0084_contracts')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -690,6 +711,7 @@ alter table public.account_balances enable row level security;
 alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
 alter table public.budgets enable row level security;
+alter table public.contracts enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
@@ -793,6 +815,10 @@ create policy "own spending transactions" on public.spending_transactions
 
 drop policy if exists "own budgets" on public.budgets;
 create policy "own budgets" on public.budgets
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own contracts" on public.contracts;
+create policy "own contracts" on public.contracts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own asset tags" on public.asset_tags;
@@ -998,6 +1024,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('budgets', false, 'Monthly per-category spending caps with budget-vs-actual bars')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('contracts', false, 'Recurring-charge detection and a contract/subscription register')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

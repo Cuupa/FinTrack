@@ -27,6 +27,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
     icon: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3zm2 4h8M8 11h8M8 15h5" />,
     flag: "spending",
   },
+  {
+    href: "/contracts",
+    key: "nav.contracts",
+    // Document glyph: bordered page + folded corner + signature line.
+    icon: <path d="M6 3h9l3 3v15H6V3zm9 0v3h3M8 12h8M8 16h5" />,
+    flag: "contracts",
+  },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/dividends",
