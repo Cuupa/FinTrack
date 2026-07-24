@@ -712,7 +712,8 @@ insert into public.schema_migrations (version) values
   ('0083_budgets'),
   ('0084_contracts'),
   ('0085_goals'),
-  ('0086_fin_health_flag')
+  ('0086_fin_health_flag'),
+  ('0087_fire_planner_flag')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1058,6 +1059,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('finHealth', false, 'Financial-health gauges: months-of-expenses covered, savings rate, debt-to-income, net-worth-to-income')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('firePlanner', false, 'Retirement / FIRE planner: lean/regular/fat FIRE numbers, years-to-FI, and a withdrawal-rate Monte Carlo run')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

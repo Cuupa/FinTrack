@@ -44,13 +44,23 @@ before moving to the next.
       populated gauge states, zero console errors)
 
 ## Item #8: Retirement / FIRE planner (flag `firePlanner`)
-- [ ] No new tables — reframes existing monte-carlo.ts + stats.ts
-- [ ] `lib/finance/fire.ts` (pure): FIRE number, years-to-FI, withdrawal-rate
-- [ ] Feature flag `firePlanner` seeded disabled
-- [ ] UI: `/fire` route, nav entry, worker-based simulation reused
-- [ ] i18n en/de/es
-- [ ] Unit tests
-- [ ] Verify: build + lint + unit tests green
+- [x] No new tables — reframes existing monte-carlo.ts + stats.ts (migration
+      0087 + schema.sql seeds only the flag row)
+- [x] `lib/finance/fire.ts` (pure): `fireNumber`/`leanFireNumber`/
+      `fatFireNumber`, `yearsToFire` (deterministic compounding, capped at
+      100y), `trailingAnnualExpenses`, `computeFirePlan`
+- [x] Feature flag `firePlanner` seeded disabled
+- [x] UI: `/fire` route (lean/regular/fat tiles + live withdrawal-rate and
+      manual-override inputs, worker-run Monte Carlo section reusing
+      DistributionChart + the loadSimulation/saveSimulation cache seam),
+      sidebar entry (desktop only, mobile nav intentionally untouched)
+- [x] i18n en/de/es (`nav.fire` + `fire.*` block, es parity test green)
+- [x] Unit tests: 17 cases in tests/fire.test.ts
+- [x] Verify: build + lint + unit tests green (872 passing, +17 from
+      baseline 855), browser smoke test in Guest Mode EN+DE (live
+      withdrawal-rate recompute, manual override inputs, Monte Carlo run
+      completing in under a second with correct probability-fan chart and
+      success-probability stat, zero console errors)
 
 ## Notes
 - Following the accounts/spending/budgets pattern exactly: full DataStore

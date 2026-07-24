@@ -48,6 +48,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
     icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 12h3l1.5-4 3 8 1.5-4H18" />,
     flag: "finHealth",
   },
+  {
+    href: "/fire",
+    key: "nav.fire",
+    // Flag-on-a-pole glyph: reaching the goal.
+    icon: <path d="M6 3v18M6 4h11l-3 4 3 4H6" />,
+    flag: "firePlanner",
+  },
   { href: "/analysis", key: "nav.analysis", icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" /> },
   {
     href: "/dividends",

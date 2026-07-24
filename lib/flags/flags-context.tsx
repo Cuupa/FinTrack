@@ -89,7 +89,8 @@ export type FeatureFlag =
   | "budgets"
   | "contracts"
   | "goals"
-  | "finHealth";
+  | "finHealth"
+  | "firePlanner";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",
