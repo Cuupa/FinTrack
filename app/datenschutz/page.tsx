@@ -130,12 +130,12 @@ function DatenschutzDE({
               localStorage
             </code>{" "}
             für: Portfoliodaten im Gastmodus (einschließlich deiner eigenen Tags sowie deiner
-            manuell erfassten Konten, Kontostände und Verbindlichkeiten sowie deiner
-            Ausgabenbuchungen und -kategorien), die gewählte
+            manuell erfassten Konten, Kontostände und Verbindlichkeiten, deiner
+            Ausgabenbuchungen und -kategorien sowie deiner Budgets), die gewählte
             Sprache, den Anzeige-Modus (Beträge ein-/ausblenden) sowie einen Zwischenspeicher des
             Instrumenten-Katalogs (schnelleres Laden, keine personenbezogenen Daten). Im
-            registrierten Modus werden deine Tags, deine Konten, Kontostände sowie deine
-            Ausgabenbuchungen und -kategorien, wie alle anderen
+            registrierten Modus werden deine Tags, deine Konten, Kontostände, deine
+            Ausgabenbuchungen und -kategorien sowie deine Budgets, wie alle anderen
             Portfoliodaten, in der Datenbank gespeichert (siehe Abschnitt 3). Auch
             historische Kursverläufe werden lokal zwischengespeichert, damit Diagramme
             schneller laden; dieser Zwischenspeicher wird bei der Abmeldung gelöscht. Die auf
@@ -377,15 +377,15 @@ function DatenschutzEN({
               localStorage
             </code>{" "}
             for: portfolio data in Guest Mode (including your custom tags, the
-            accounts, balances and liabilities you enter manually, and your spending
-            transactions and categories), your chosen
+            accounts, balances and liabilities you enter manually, your spending
+            transactions and categories, and your budgets), your chosen
             language, your display preference (show/hide figures), and a cache of the
             instrument catalog (faster loading, no personal data). Historical price
             series are also cached locally to speed up chart loading; this cache is
             deleted when you sign out. The public operator contact data shown on the
             legal pages (Imprint, Privacy Policy) is also cached locally so it
             displays immediately. In Registered Mode your tags, accounts, balances,
-            and spending transactions and categories,
+            spending transactions and categories, and budgets,
             like the rest of your portfolio data, are stored in the database instead
             (see section 3).
           </li>

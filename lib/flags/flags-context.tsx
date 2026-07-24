@@ -85,7 +85,8 @@ export type FeatureFlag =
   | "cashInterest"
   | "manualValuation"
   | "accounts"
-  | "spending";
+  | "spending"
+  | "budgets";
 
 const SIMULATION_SUBFLAGS: readonly FeatureFlag[] = [
   "simulationPortfolio",

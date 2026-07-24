@@ -201,6 +201,21 @@ export interface SpendingTransaction {
   recurringId: string | null;
 }
 
+/**
+ * A monthly spending cap for one {@link SpendingCategory} (ROADMAP item #4,
+ * flag `budgets`) -- the "category caps + flow" philosophy, not YNAB-style
+ * envelopes. `amount` is in the profile's base currency: category totals are
+ * already converted to base before aggregation (see `toBaseCurrency` in
+ * `lib/finance/spending.ts`), so a cap needs no currency of its own. At most
+ * one budget exists per category.
+ */
+export interface Budget {
+  id: string;
+  categoryId: string;
+  /** Monthly cap, in the profile's base currency. */
+  amount: number;
+}
+
 /** How often a cash position's interest is credited and compounded. */
 export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 
@@ -366,6 +381,8 @@ export interface PortfolioData {
   spendingCategories: SpendingCategory[];
   /** Expense/income transactions against accounts (ROADMAP #2, flag `spending`). */
   spendingTransactions: SpendingTransaction[];
+  /** Monthly per-category spending caps (ROADMAP #4, flag `budgets`). */
+  budgets: Budget[];
   /** null = no key configured. */
   llmConfig: LlmConfig | null;
 }
@@ -400,6 +417,7 @@ export function emptyPortfolio(): PortfolioData {
     accountBalances: [],
     spendingCategories: [],
     spendingTransactions: [],
+    budgets: [],
     llmConfig: null,
   };
 }

@@ -18,6 +18,7 @@ import { createStore, type DataStore } from "../store";
 import type {
   AccountInput,
   AssetInput,
+  BudgetInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -30,6 +31,7 @@ import {
   emptyPortfolio,
   type Account,
   type Asset,
+  type Budget,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
@@ -95,6 +97,9 @@ interface PortfolioContextValue {
   addSpendingTransaction(input: SpendingTransactionInput): Promise<SpendingTransaction>;
   updateSpendingTransaction(id: string, patch: Partial<SpendingTransactionInput>): Promise<void>;
   deleteSpendingTransaction(id: string): Promise<void>;
+  addBudget(input: BudgetInput): Promise<Budget>;
+  updateBudget(id: string, patch: Partial<BudgetInput>): Promise<void>;
+  deleteBudget(id: string): Promise<void>;
   saveLlmConfig(config: LlmConfig | null): Promise<void>;
   setCurrency(currency: string): Promise<void>;
   updateProfile(patch: Partial<Profile>): Promise<void>;
@@ -477,6 +482,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         spendingTransactions: d.spendingTransactions.map((t) =>
           t.categoryId === id ? { ...t, categoryId: null } : t,
         ),
+        // A budget with no category means nothing (mirrors the DB's on delete cascade).
+        budgets: d.budgets.filter((b) => b.categoryId !== id),
       }));
     },
     [store],
@@ -511,6 +518,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ...d,
         spendingTransactions: d.spendingTransactions.filter((t) => t.id !== id),
       }));
+    },
+    [store],
+  );
+
+  const addBudget = useCallback(
+    async (input: BudgetInput) => {
+      const budget = await store.addBudget(input);
+      setData((d) => ({ ...d, budgets: [...d.budgets, budget] }));
+      return budget;
+    },
+    [store],
+  );
+
+  const updateBudget = useCallback(
+    async (id: string, patch: Partial<BudgetInput>) => {
+      await store.updateBudget(id, patch);
+      setData((d) => ({
+        ...d,
+        budgets: d.budgets.map((b) => (b.id === id ? { ...b, ...patch } : b)),
+      }));
+    },
+    [store],
+  );
+
+  const deleteBudget = useCallback(
+    async (id: string) => {
+      await store.deleteBudget(id);
+      setData((d) => ({ ...d, budgets: d.budgets.filter((b) => b.id !== id) }));
     },
     [store],
   );
@@ -659,6 +694,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addSpendingTransaction,
     updateSpendingTransaction,
     deleteSpendingTransaction,
+    addBudget,
+    updateBudget,
+    deleteBudget,
     saveLlmConfig,
     setCurrency,
     updateProfile,

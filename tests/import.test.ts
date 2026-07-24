@@ -576,6 +576,7 @@ describe("csv parsers — fintrack (self re-import)", () => {
       accountBalances: [],
       spendingCategories: [],
       spendingTransactions: [],
+      budgets: [],
       llmConfig: null,
     };
 

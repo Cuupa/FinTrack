@@ -495,6 +495,22 @@ create index if not exists spending_transactions_account_id_idx on public.spendi
 create index if not exists spending_transactions_category_id_idx on public.spending_transactions (category_id);
 create index if not exists spending_transactions_user_id_idx on public.spending_transactions (user_id);
 
+-- Budgets (ROADMAP #4, flag `budgets`): a monthly cap per category, in the
+-- profile's base currency (spending.ts already converts category totals to
+-- base). One row per category (unique user_id+category_id); deleting the
+-- category deletes its budget (unlike spending_transactions, a budget with
+-- no category means nothing).
+create table if not exists public.budgets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  category_id uuid not null references public.spending_categories (id) on delete cascade,
+  amount numeric not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists budgets_unique_category
+  on public.budgets (user_id, category_id);
+create index if not exists budgets_user_id_idx on public.budgets (user_id);
+
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its
 -- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
@@ -673,6 +689,7 @@ alter table public.accounts enable row level security;
 alter table public.account_balances enable row level security;
 alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
+alter table public.budgets enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
@@ -772,6 +789,10 @@ create policy "own spending categories" on public.spending_categories
 
 drop policy if exists "own spending transactions" on public.spending_transactions;
 create policy "own spending transactions" on public.spending_transactions
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own budgets" on public.budgets;
+create policy "own budgets" on public.budgets
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own asset tags" on public.asset_tags;
@@ -974,6 +995,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('spending', false, 'Categorised expense/income transactions against balance accounts')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('budgets', false, 'Monthly per-category spending caps with budget-vs-actual bars')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

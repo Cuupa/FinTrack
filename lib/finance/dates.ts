@@ -45,6 +45,13 @@ export function today(): string {
   return toISODate(new Date());
 }
 
+/** Shifts a "YYYY-MM" month string by `delta` months (negative goes back). */
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 /** Current local date+time as "YYYY-MM-DDTHH:MM" for datetime-local inputs. */
 export function nowDateTimeLocal(): string {
   const d = new Date();

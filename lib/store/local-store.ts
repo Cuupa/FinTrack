@@ -15,6 +15,7 @@ import { isNativeQuotaError, StorageFullError } from "./errors";
 import type {
   AccountInput,
   AssetInput,
+  BudgetInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -122,6 +123,8 @@ export class LocalStore implements DataStore {
         // Backfill blobs saved before the spending entity existed.
         spendingCategories: parsed.spendingCategories ?? [],
         spendingTransactions: parsed.spendingTransactions ?? [],
+        // Backfill blobs saved before budgets existed.
+        budgets: parsed.budgets ?? [],
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -394,6 +397,8 @@ export class LocalStore implements DataStore {
     data.spendingTransactions = data.spendingTransactions.map((t) =>
       t.categoryId === id ? { ...t, categoryId: null } : t,
     );
+    // A budget with no category means nothing (mirrors the DB's on delete cascade).
+    data.budgets = data.budgets.filter((b) => b.categoryId !== id);
     this.write(data);
   }
 
@@ -419,6 +424,29 @@ export class LocalStore implements DataStore {
     data.spendingTransactions = data.spendingTransactions.filter((t) => t.id !== id);
     this.write(data);
     this.pruneImportedSpendingFingerprints([id]);
+  }
+
+  async addBudget(input: BudgetInput, id?: string) {
+    const data = this.read();
+    const budget = { ...input, id: id ?? newId() };
+    data.budgets.push(budget);
+    this.write(data);
+    return budget;
+  }
+
+  async updateBudget(id: string, patch: Partial<BudgetInput>) {
+    const data = this.read();
+    const idx = data.budgets.findIndex((b) => b.id === id);
+    if (idx >= 0) {
+      data.budgets[idx] = { ...data.budgets[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteBudget(id: string) {
+    const data = this.read();
+    data.budgets = data.budgets.filter((b) => b.id !== id);
+    this.write(data);
   }
 
   async saveLlmConfig(config: LlmConfig | null) {

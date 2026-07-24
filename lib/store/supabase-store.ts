@@ -16,6 +16,7 @@ import {
   type AccountBalance,
   type AccountKind,
   type Asset,
+  type Budget,
   type LlmConfig,
   type Portfolio,
   type PortfolioData,
@@ -48,6 +49,7 @@ import { RowNotFoundError } from "./types";
 import type {
   AccountInput,
   AssetInput,
+  BudgetInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -190,6 +192,16 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
   };
 }
 
+interface BudgetRow {
+  id: string;
+  category_id: string;
+  amount: number | string;
+}
+
+function budgetFromRow(r: BudgetRow): Budget {
+  return { id: r.id, categoryId: r.category_id, amount: Number(r.amount) };
+}
+
 function embed(row: AssetRow): InstrumentEmbed | null {
   const i = row.instrument;
   return Array.isArray(i) ? (i[0] ?? null) : i;
@@ -218,6 +230,7 @@ export class SupabaseStore implements DataStore {
       accountBalancesRes,
       spendingCategoriesRes,
       spendingTransactionsRes,
+      budgetsRes,
       llmSettingsRes,
     ] = await Promise.all([
       this.supabase
@@ -287,6 +300,11 @@ export class SupabaseStore implements DataStore {
         .eq("user_id", this.userId)
         .order("date", { ascending: false }),
       this.supabase
+        .from("budgets")
+        .select("id, category_id, amount")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
         .eq("user_id", this.userId)
@@ -310,6 +328,7 @@ export class SupabaseStore implements DataStore {
     if (accountBalancesRes.error) throw accountBalancesRes.error;
     if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
     if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
+    if (budgetsRes.error) throw budgetsRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
@@ -436,6 +455,8 @@ export class SupabaseStore implements DataStore {
       (spendingTransactionsRes.data ?? []) as SpendingTransactionRow[]
     ).map(spendingTransactionFromRow);
 
+    const budgets: Budget[] = ((budgetsRes.data ?? []) as BudgetRow[]).map(budgetFromRow);
+
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
@@ -459,6 +480,7 @@ export class SupabaseStore implements DataStore {
       accountBalances,
       spendingCategories,
       spendingTransactions,
+      budgets,
       llmConfig,
     };
   }
@@ -992,6 +1014,45 @@ export class SupabaseStore implements DataStore {
   async deleteSpendingTransaction(id: string): Promise<void> {
     const { error } = await this.supabase
       .from("spending_transactions")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async addBudget(input: BudgetInput, id?: string): Promise<Budget> {
+    const { data, error } = await this.supabase
+      .from("budgets")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        category_id: input.categoryId,
+        amount: input.amount,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updateBudget(id: string, patch: Partial<BudgetInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
+    if (patch.amount !== undefined) upd.amount = patch.amount;
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("budgets")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new RowNotFoundError(`budget ${id} not found`);
+  }
+
+  async deleteBudget(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("budgets")
       .delete()
       .eq("id", id)
       .eq("user_id", this.userId);

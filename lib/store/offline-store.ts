@@ -23,6 +23,7 @@
 import type {
   Account,
   Asset,
+  Budget,
   LlmConfig,
   Portfolio,
   PortfolioData,
@@ -40,6 +41,7 @@ import { MutationQueue, type MutationOp } from "./mutation-queue";
 import type {
   AccountInput,
   AssetInput,
+  BudgetInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -412,6 +414,35 @@ export class OfflineStore implements DataStore {
       await this.inner.deleteSpendingTransaction(id);
     } catch (err) {
       await this.handleFailure(err, "deleteSpendingTransaction", id, null);
+    }
+  }
+
+  async addBudget(input: BudgetInput, id?: string): Promise<Budget> {
+    const budgetId = id ?? newId();
+    const budget = await this.mirror.addBudget(input, budgetId);
+    try {
+      await this.inner.addBudget(input, budgetId);
+    } catch (err) {
+      await this.handleFailure(err, "addBudget", budgetId, input);
+    }
+    return budget;
+  }
+
+  async updateBudget(id: string, patch: Partial<BudgetInput>): Promise<void> {
+    await this.mirror.updateBudget(id, patch);
+    try {
+      await this.inner.updateBudget(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateBudget", id, patch);
+    }
+  }
+
+  async deleteBudget(id: string): Promise<void> {
+    await this.mirror.deleteBudget(id);
+    try {
+      await this.inner.deleteBudget(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteBudget", id, null);
     }
   }
 

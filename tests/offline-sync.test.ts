@@ -275,6 +275,25 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       maybeFail();
       data.spendingTransactions = data.spendingTransactions.filter((t) => t.id !== id);
     },
+    async addBudget(input, id) {
+      calls.push(`addBudget:${id}`);
+      maybeFail();
+      if (id && duplicateIds.has(id)) throw uniqueViolationError();
+      const budget = { ...input, id: id ?? "server-generated-id" };
+      data.budgets.push(budget);
+      return budget;
+    },
+    async updateBudget(id, patch) {
+      calls.push(`updateBudget:${id}`);
+      maybeFail();
+      if (missingIds.has(id)) throw new RowNotFoundError();
+      data.budgets = data.budgets.map((b) => (b.id === id ? { ...b, ...patch } : b));
+    },
+    async deleteBudget(id) {
+      calls.push(`deleteBudget:${id}`);
+      maybeFail();
+      data.budgets = data.budgets.filter((b) => b.id !== id);
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       maybeFail();

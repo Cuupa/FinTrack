@@ -214,6 +214,21 @@ function makeInner(initial: PortfolioData) {
       calls.push("deleteSpendingTransaction");
       guard();
     },
+    async addBudget(input, id) {
+      calls.push("addBudget");
+      guard();
+      const budget = { ...input, id: id ?? "server-generated-id" };
+      data.budgets.push(budget);
+      return budget;
+    },
+    async updateBudget() {
+      calls.push("updateBudget");
+      guard();
+    },
+    async deleteBudget() {
+      calls.push("deleteBudget");
+      guard();
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       guard();

@@ -21,6 +21,7 @@ import { RowNotFoundError } from "../store/types";
 import type {
   AccountInput,
   AssetInput,
+  BudgetInput,
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
@@ -192,6 +193,15 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       return;
     case "deleteSpendingTransaction":
       await inner.deleteSpendingTransaction(op.id);
+      return;
+    case "addBudget":
+      await inner.addBudget(op.payload as BudgetInput, op.id);
+      return;
+    case "updateBudget":
+      await inner.updateBudget(op.id, op.payload as Partial<BudgetInput>);
+      return;
+    case "deleteBudget":
+      await inner.deleteBudget(op.id);
       return;
     case "saveLlmConfig":
       await inner.saveLlmConfig(op.payload as LlmConfig | null);

@@ -4,7 +4,7 @@
 // native currency (like `summarizeHolding`'s spot-rate convention) since a
 // spending ledger is per-account, not a cross-currency net-worth rollup.
 
-import type { Account, SpendingCategory, SpendingTransaction } from "../types";
+import type { Account, Budget, SpendingCategory, SpendingTransaction } from "../types";
 
 export interface CategoryMonthTotal {
   /** YYYY-MM. */
@@ -58,6 +58,49 @@ export function incomeExpenseSplit(transactions: SpendingTransaction[]): IncomeE
 export function safeToSpend(transactions: SpendingTransaction[], sinceIsoDate: string): number {
   const windowed = transactions.filter((t) => t.date >= sinceIsoDate);
   return incomeExpenseSplit(windowed).net;
+}
+
+export interface BudgetProgress {
+  budgetId: string;
+  categoryId: string;
+  /** Monthly cap, in whatever currency `transactions` are already in. */
+  cap: number;
+  /** Sum of expense magnitudes in the category for the month (positive). */
+  spent: number;
+  /** cap - spent; negative once over budget. */
+  remaining: number;
+  overBudget: boolean;
+}
+
+/**
+ * Budget-vs-actual for one calendar month (ROADMAP item #4): only EXPENSE
+ * amounts count against a cap (income never offsets it). `transactions`
+ * should already be in the same currency as `budgets[].amount` (the caller
+ * converts to base via `toBaseCurrency` first, same convention as the
+ * Sankey card). Categories without a budget are simply absent from the
+ * result -- this is budget-vs-actual, not a full category breakdown.
+ */
+export function budgetProgress(
+  transactions: SpendingTransaction[],
+  budgets: Budget[],
+  month: string,
+): BudgetProgress[] {
+  const spentByCategory = new Map<string, number>();
+  for (const t of transactions) {
+    if (t.amount >= 0 || t.date.slice(0, 7) !== month || !t.categoryId) continue;
+    spentByCategory.set(t.categoryId, (spentByCategory.get(t.categoryId) ?? 0) + -t.amount);
+  }
+  return budgets.map((b) => {
+    const spent = spentByCategory.get(b.categoryId) ?? 0;
+    return {
+      budgetId: b.id,
+      categoryId: b.categoryId,
+      cap: b.amount,
+      spent,
+      remaining: b.amount - spent,
+      overBudget: spent > b.amount,
+    };
+  });
 }
 
 /**

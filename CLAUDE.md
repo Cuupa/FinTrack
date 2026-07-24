@@ -15,6 +15,22 @@ npm run test      # vitest unit suite (pure finance/i18n core)
 npm run test:e2e  # Playwright browser tests (Guest Mode wiring); see E2E.md
 ```
 
+
+## Your roles
+- Maintain a mandatory ledger file before any delegation
+- Update CLAUDE.md if necessary
+- Only fire up one subworker simultaniously. If subworker is already active, wait until it finishes.
+- Never use em-dashes
+- Current live-url is https://fintrack-five-cyan.vercel.app/. supabase is configured
+- credentials are "demo@demo.com", password "demo". use this if necessary
+- Never use the formal adressing. Change as soon as you stumble upon a formal adressing
+- Always make every table sortable and highlight the row on mouseover
+- When emulating desktop, use 1080p as screen resolution
+- Use skeleton loading instead of placeholders for eg. prices
+- I forbid you to use badges of any kind. if you need to display a badge, you fucked up big time and go back to drawing board
+- When changing or removing a feature, always check if feature flags became stale/depricated
+
+
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack) + **TypeScript** + **Tailwind CSS v4**
@@ -567,6 +583,24 @@ FX-convert) always beats a wrong instrument in the right currency.
   money — offering a plain skip/import-anyway toggle instead, and
   auto-suggests each new row's category via the existing
   `categorize.ts` rules.
+- **Budgets** (`budgets` table, ROADMAP #4, flag `budgets`): a monthly
+  spending cap per category — the "category caps + flow" philosophy picked
+  over YNAB-style envelopes. At most one budget per category (unique
+  `user_id, category_id`); deleting the category deletes its budget (unlike
+  `spending_transactions.category_id`, which sets null so the transaction
+  survives — a budget with no category means nothing). `amount` is stored in
+  the profile's base currency since `lib/finance/spending.ts` already
+  converts category totals to base before aggregating (`toBaseCurrency`), so
+  a cap needs no currency of its own. Rides the full store seam like every
+  other spending entity (`addBudget`/`updateBudget`/`deleteBudget`,
+  LocalStore/SupabaseStore/OfflineStore + `lib/offline/sync.ts` replay).
+  `budgetProgress` (`lib/finance/spending.ts`, pure) sums only EXPENSE
+  magnitudes per category for a given `YYYY-MM` against the cap — income
+  never offsets it. The `BudgetsCard` (`components/spending/budgets-card.tsx`,
+  self-gated on the flag, rendered on `/spending`) shows a month
+  stepper (`shiftMonth` in `lib/finance/dates.ts`) and a progress bar per
+  budgeted category, turning red past 100%; adding a budget offers only
+  categories that don't already have one (one cap per category, not a list).
 
 ### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
 

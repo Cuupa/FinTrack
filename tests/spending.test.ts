@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  budgetProgress,
   byCategoryAndMonth,
   incomeExpenseSplit,
   safeToSpend,
@@ -7,7 +8,7 @@ import {
   toBaseCurrency,
   type SpendingSankeyLabels,
 } from "@/lib/finance/spending";
-import type { Account, SpendingCategory, SpendingTransaction } from "@/lib/types";
+import type { Account, Budget, SpendingCategory, SpendingTransaction } from "@/lib/types";
 
 const labels: SpendingSankeyLabels = {
   total: "Total",
@@ -191,5 +192,44 @@ describe("spendingSankeyData", () => {
     expect(graph.nodes.map((n) => n.name)).not.toContain("Fees");
     const uncategorized = graph.links.find((l) => graph.nodes[l.target]?.name === "Uncategorized");
     expect(uncategorized?.value).toBe(1);
+  });
+});
+
+describe("budgetProgress", () => {
+  const budget = (overrides: Partial<Budget> = {}): Budget => ({
+    id: "b1",
+    categoryId: "groceries",
+    amount: 300,
+    ...overrides,
+  });
+
+  it("sums only expense magnitudes in the month against the cap", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", date: "2024-02-05", categoryId: "groceries", amount: -100 }),
+      tx({ id: "2", date: "2024-02-20", categoryId: "groceries", amount: -50 }),
+      // Income in the same category never offsets the cap.
+      tx({ id: "3", date: "2024-02-10", categoryId: "groceries", amount: 40 }),
+      // A different month is excluded.
+      tx({ id: "4", date: "2024-01-15", categoryId: "groceries", amount: -900 }),
+    ];
+    const [progress] = budgetProgress(txs, [budget()], "2024-02");
+    expect(progress).toMatchObject({ cap: 300, spent: 150, remaining: 150, overBudget: false });
+  });
+
+  it("flags overBudget once spend exceeds the cap", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", date: "2024-02-05", categoryId: "groceries", amount: -350 }),
+    ];
+    const [progress] = budgetProgress(txs, [budget()], "2024-02");
+    expect(progress.overBudget).toBe(true);
+    expect(progress.remaining).toBe(-50);
+  });
+
+  it("ignores transactions in categories with no budget, and budgets with no spend", () => {
+    const txs: SpendingTransaction[] = [
+      tx({ id: "1", date: "2024-02-05", categoryId: "rent", amount: -1200 }),
+    ];
+    const [progress] = budgetProgress(txs, [budget()], "2024-02");
+    expect(progress).toMatchObject({ spent: 0, remaining: 300, overBudget: false });
   });
 });

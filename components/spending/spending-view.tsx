@@ -23,6 +23,7 @@ import { isStorageFullError } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
 import { ImportSpending } from "./import-spending";
 import { SpendingSankeyCard } from "./spending-sankey-card";
+import { BudgetsCard } from "./budgets-card";
 import type { SpendingTransaction } from "@/lib/types";
 
 const inputCls =
@@ -170,6 +171,8 @@ export function SpendingView() {
       </Card>
 
       <SpendingSankeyCard />
+
+      <BudgetsCard />
 
       <Card>
         <h2 className="text-lg font-semibold">{t("spending.form.title")}</h2>

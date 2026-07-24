@@ -84,7 +84,7 @@ export function AccountsView() {
 
   async function submit() {
     const trimmed = name.trim();
-    const openingVal = parseDecimal(opening);
+    const openingVal = opening.trim() ? parseDecimal(opening) : 0;
     if (!trimmed || !openedOn || !Number.isFinite(openingVal)) return;
     setBusy(true);
     setError(null);
@@ -206,7 +206,7 @@ export function AccountsView() {
           <div className="flex items-end">
             <Button
               variant="primary"
-              disabled={busy || !name.trim() || !opening.trim() || !openedOn}
+              disabled={busy || !name.trim() || !openedOn}
               onClick={() => void submit()}
             >
               {t("accounts.form.add")}
