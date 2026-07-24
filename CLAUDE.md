@@ -521,6 +521,27 @@ FX-convert) always beats a wrong instrument in the right currency.
   gates on the flag; MAX/YTD anchors also on earliest `openedOn`). The dashboard
   hero and AI context (`lib/llm/context.ts`, id-free) include accounts only when
   the flag is on. Surface is `/accounts`.
+- **Spending transactions & categories** (`spending.ts` + `categorize.ts`,
+  ROADMAP #2, flag `spending`, seeded disabled): expense/income against an
+  `accounts` row, categorised. `SpendingCategory` is a flat taxonomy
+  (`groupName` + `name`, stable id) — lighter than `tag_groups`/`asset_tags`
+  since a transaction carries exactly one category, so `category_id` is a
+  plain FK on the transaction row, not a junction table.
+  `SpendingTransaction.amount` is signed (income positive, expense negative)
+  in the account's native currency. Rides the **full store seam**
+  (`spending_categories` + `spending_transactions` tables migration 0081, RLS,
+  FK cascade — deleting an account cascades its spend, deleting a category
+  sets `categoryId` null on referencing transactions; LocalStore backfill;
+  OfflineStore mirror+queue). `categorize.ts`'s `buildCategoryRules` learns a
+  deterministic payee→category rule from the user's own past categorisation
+  (most recent wins on a conflict) — `applyCategoryRules` batch-suggests
+  categories for every still-uncategorised transaction; the quick-add form
+  also suggests on payee blur. `lib/finance/spending.ts` stays pure
+  (`byCategoryAndMonth`, `incomeExpenseSplit`, `safeToSpend`) and deliberately
+  does **not** fold into `netWorthSeries` — spending is a flow, not a balance
+  (that's ROADMAP #4, budgets/cash-flow). The category manager modal mirrors
+  `TagGroupsManager`'s CRUD-list shape (that component itself is hardwired to
+  `useTags()`, not literally reusable). Surface is `/spending`.
 
 ### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
 
@@ -544,6 +565,8 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
   (flag `watchlist`)
 - `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1):
   add-account form + sortable list + per-account dated-balance editor
+- `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
+  #2): quick-add form + sortable transaction table + category manager modal
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/instruments/[key]` — same detail view for non-held instruments (watchlist
   click-through / catalog), reduced to master data + chart + look-through,
