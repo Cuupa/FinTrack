@@ -169,6 +169,38 @@ export interface AccountBalance {
   balance: number;
 }
 
+/**
+ * A user-defined spending category (ROADMAP item #2, flag `spending`): a flat
+ * two-level taxonomy (`groupName` + `name`, e.g. "Housing" / "Rent"). Unlike
+ * `TagGroup`/asset tags, a transaction carries exactly one category, so there
+ * is no separate group entity or many-valued junction table.
+ */
+export interface SpendingCategory {
+  id: string;
+  groupName: string;
+  name: string;
+}
+
+/**
+ * An expense/income transaction against an {@link Account} (ROADMAP item #2,
+ * flag `spending`). `amount` is signed in the account's native currency:
+ * income positive, expense negative. `categoryId` is nullable (uncategorised
+ * spend still books). `recurringId` is a forward-looking hook for ROADMAP item
+ * #5 (contract/recurring-charge register) — nothing sets it yet.
+ */
+export interface SpendingTransaction {
+  id: string;
+  accountId: string;
+  categoryId: string | null;
+  /** YYYY-MM-DD. */
+  date: string;
+  /** Signed, native currency: income positive, expense negative. */
+  amount: number;
+  payee: string;
+  note: string | null;
+  recurringId: string | null;
+}
+
 /** How often a cash position's interest is credited and compounded. */
 export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 
@@ -330,6 +362,10 @@ export interface PortfolioData {
   accounts: Account[];
   /** Dated balance readings per account (see `AccountBalance`). */
   accountBalances: AccountBalance[];
+  /** User-defined spending taxonomy (ROADMAP #2, flag `spending`). */
+  spendingCategories: SpendingCategory[];
+  /** Expense/income transactions against accounts (ROADMAP #2, flag `spending`). */
+  spendingTransactions: SpendingTransaction[];
   /** null = no key configured. */
   llmConfig: LlmConfig | null;
 }
@@ -362,6 +398,8 @@ export function emptyPortfolio(): PortfolioData {
     valuationPoints: [],
     accounts: [],
     accountBalances: [],
+    spendingCategories: [],
+    spendingTransactions: [],
     llmConfig: null,
   };
 }

@@ -237,6 +237,44 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       const others = data.accountBalances.filter((b) => b.accountId !== accountId);
       data.accountBalances = [...others, ...points.map((p) => ({ accountId, ...p }))];
     },
+    async addSpendingCategory(input, id) {
+      calls.push(`addSpendingCategory:${id}`);
+      maybeFail();
+      const category = { ...input, id: id ?? "server-generated-id" };
+      data.spendingCategories.push(category);
+      return category;
+    },
+    async updateSpendingCategory(id, patch) {
+      calls.push(`updateSpendingCategory:${id}`);
+      maybeFail();
+      data.spendingCategories = data.spendingCategories.map((c) =>
+        c.id === id ? { ...c, ...patch } : c,
+      );
+    },
+    async deleteSpendingCategory(id) {
+      calls.push(`deleteSpendingCategory:${id}`);
+      maybeFail();
+      data.spendingCategories = data.spendingCategories.filter((c) => c.id !== id);
+    },
+    async addSpendingTransaction(input, id) {
+      calls.push(`addSpendingTransaction:${id}`);
+      maybeFail();
+      const transaction = { ...input, id: id ?? "server-generated-id" };
+      data.spendingTransactions.push(transaction);
+      return transaction;
+    },
+    async updateSpendingTransaction(id, patch) {
+      calls.push(`updateSpendingTransaction:${id}`);
+      maybeFail();
+      data.spendingTransactions = data.spendingTransactions.map((t) =>
+        t.id === id ? { ...t, ...patch } : t,
+      );
+    },
+    async deleteSpendingTransaction(id) {
+      calls.push(`deleteSpendingTransaction:${id}`);
+      maybeFail();
+      data.spendingTransactions = data.spendingTransactions.filter((t) => t.id !== id);
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       maybeFail();

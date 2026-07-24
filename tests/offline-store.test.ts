@@ -184,6 +184,36 @@ function makeInner(initial: PortfolioData) {
       calls.push("setAccountBalances");
       guard();
     },
+    async addSpendingCategory(input, id) {
+      calls.push("addSpendingCategory");
+      guard();
+      const category = { ...input, id: id ?? "server-generated-id" };
+      data.spendingCategories.push(category);
+      return category;
+    },
+    async updateSpendingCategory() {
+      calls.push("updateSpendingCategory");
+      guard();
+    },
+    async deleteSpendingCategory() {
+      calls.push("deleteSpendingCategory");
+      guard();
+    },
+    async addSpendingTransaction(input, id) {
+      calls.push("addSpendingTransaction");
+      guard();
+      const transaction = { ...input, id: id ?? "server-generated-id" };
+      data.spendingTransactions.push(transaction);
+      return transaction;
+    },
+    async updateSpendingTransaction() {
+      calls.push("updateSpendingTransaction");
+      guard();
+    },
+    async deleteSpendingTransaction() {
+      calls.push("deleteSpendingTransaction");
+      guard();
+    },
     async saveLlmConfig(config) {
       calls.push("saveLlmConfig");
       guard();

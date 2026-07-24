@@ -28,6 +28,8 @@ import type {
   PortfolioData,
   Profile,
   SavingsPlan,
+  SpendingCategory,
+  SpendingTransaction,
   TagGroup,
   Transaction,
   WatchlistItem,
@@ -42,6 +44,8 @@ import type {
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
+  SpendingCategoryInput,
+  SpendingTransactionInput,
   TransactionInput,
   WatchlistInput,
 } from "./types";
@@ -344,6 +348,70 @@ export class OfflineStore implements DataStore {
       await this.inner.setAccountBalances(accountId, points);
     } catch (err) {
       await this.handleFailure(err, "setAccountBalances", accountId, { accountId, points });
+    }
+  }
+
+  async addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory> {
+    const categoryId = id ?? newId();
+    const category = await this.mirror.addSpendingCategory(input, categoryId);
+    try {
+      await this.inner.addSpendingCategory(input, categoryId);
+    } catch (err) {
+      await this.handleFailure(err, "addSpendingCategory", categoryId, input);
+    }
+    return category;
+  }
+
+  async updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void> {
+    await this.mirror.updateSpendingCategory(id, patch);
+    try {
+      await this.inner.updateSpendingCategory(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateSpendingCategory", id, patch);
+    }
+  }
+
+  async deleteSpendingCategory(id: string): Promise<void> {
+    await this.mirror.deleteSpendingCategory(id);
+    try {
+      await this.inner.deleteSpendingCategory(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteSpendingCategory", id, null);
+    }
+  }
+
+  async addSpendingTransaction(
+    input: SpendingTransactionInput,
+    id?: string,
+  ): Promise<SpendingTransaction> {
+    const transactionId = id ?? newId();
+    const transaction = await this.mirror.addSpendingTransaction(input, transactionId);
+    try {
+      await this.inner.addSpendingTransaction(input, transactionId);
+    } catch (err) {
+      await this.handleFailure(err, "addSpendingTransaction", transactionId, input);
+    }
+    return transaction;
+  }
+
+  async updateSpendingTransaction(
+    id: string,
+    patch: Partial<SpendingTransactionInput>,
+  ): Promise<void> {
+    await this.mirror.updateSpendingTransaction(id, patch);
+    try {
+      await this.inner.updateSpendingTransaction(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updateSpendingTransaction", id, patch);
+    }
+  }
+
+  async deleteSpendingTransaction(id: string): Promise<void> {
+    await this.mirror.deleteSpendingTransaction(id);
+    try {
+      await this.inner.deleteSpendingTransaction(id);
+    } catch (err) {
+      await this.handleFailure(err, "deleteSpendingTransaction", id, null);
     }
   }
 

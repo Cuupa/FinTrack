@@ -22,6 +22,8 @@ import {
   type Profile,
   type RebalancePlan,
   type SavingsPlan,
+  type SpendingCategory,
+  type SpendingTransaction,
   type TagAssignments,
   type TagGroup,
   type Transaction,
@@ -50,6 +52,8 @@ import type {
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
+  SpendingCategoryInput,
+  SpendingTransactionInput,
   TransactionInput,
   WatchlistInput,
 } from "./types";
@@ -152,6 +156,40 @@ function accountFromRow(r: AccountRow): Account {
   };
 }
 
+interface SpendingCategoryRow {
+  id: string;
+  group_name: string;
+  name: string;
+}
+
+function spendingCategoryFromRow(r: SpendingCategoryRow): SpendingCategory {
+  return { id: r.id, groupName: r.group_name, name: r.name };
+}
+
+interface SpendingTransactionRow {
+  id: string;
+  account_id: string;
+  category_id: string | null;
+  date: string;
+  amount: number | string;
+  payee: string;
+  note: string | null;
+  recurring_id: string | null;
+}
+
+function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
+  return {
+    id: r.id,
+    accountId: r.account_id,
+    categoryId: r.category_id,
+    date: r.date,
+    amount: Number(r.amount),
+    payee: r.payee,
+    note: r.note,
+    recurringId: r.recurring_id,
+  };
+}
+
 function embed(row: AssetRow): InstrumentEmbed | null {
   const i = row.instrument;
   return Array.isArray(i) ? (i[0] ?? null) : i;
@@ -178,6 +216,8 @@ export class SupabaseStore implements DataStore {
       valuationsRes,
       accountsRes,
       accountBalancesRes,
+      spendingCategoriesRes,
+      spendingTransactionsRes,
       llmSettingsRes,
     ] = await Promise.all([
       this.supabase
@@ -237,6 +277,16 @@ export class SupabaseStore implements DataStore {
         .eq("user_id", this.userId)
         .order("balance_on", { ascending: true }),
       this.supabase
+        .from("spending_categories")
+        .select("id, group_name, name")
+        .eq("user_id", this.userId)
+        .order("created_at", { ascending: true }),
+      this.supabase
+        .from("spending_transactions")
+        .select("id, account_id, category_id, date, amount, payee, note, recurring_id")
+        .eq("user_id", this.userId)
+        .order("date", { ascending: false }),
+      this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
         .eq("user_id", this.userId)
@@ -258,6 +308,8 @@ export class SupabaseStore implements DataStore {
     if (valuationsRes.error) throw valuationsRes.error;
     if (accountsRes.error) throw accountsRes.error;
     if (accountBalancesRes.error) throw accountBalancesRes.error;
+    if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
+    if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
     // Ensure the user has at least one portfolio (creating a default for
@@ -376,6 +428,14 @@ export class SupabaseStore implements DataStore {
       }[]
     ).map((r) => ({ accountId: r.account_id, date: r.balance_on, balance: Number(r.balance) }));
 
+    const spendingCategories: SpendingCategory[] = (
+      (spendingCategoriesRes.data ?? []) as SpendingCategoryRow[]
+    ).map(spendingCategoryFromRow);
+
+    const spendingTransactions: SpendingTransaction[] = (
+      (spendingTransactionsRes.data ?? []) as SpendingTransactionRow[]
+    ).map(spendingTransactionFromRow);
+
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
@@ -397,6 +457,8 @@ export class SupabaseStore implements DataStore {
       valuationPoints,
       accounts,
       accountBalances,
+      spendingCategories,
+      spendingTransactions,
       llmConfig,
     };
   }
@@ -806,7 +868,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAccount(id: string): Promise<void> {
-    // account_balances cascade via the account_id FK.
+    // account_balances and spending_transactions cascade via the account_id FK.
     const { error } = await this.supabase
       .from("accounts")
       .delete()
@@ -837,6 +899,103 @@ export class SupabaseStore implements DataStore {
       })),
     );
     if (insErr) throw insErr;
+  }
+
+  async addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory> {
+    const { data, error } = await this.supabase
+      .from("spending_categories")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        group_name: input.groupName,
+        name: input.name,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.groupName !== undefined) upd.group_name = patch.groupName;
+    if (patch.name !== undefined) upd.name = patch.name;
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("spending_categories")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new RowNotFoundError(`spending category ${id} not found`);
+  }
+
+  async deleteSpendingCategory(id: string): Promise<void> {
+    // Referencing spending_transactions.category_id sets null via the FK.
+    const { error } = await this.supabase
+      .from("spending_categories")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
+  }
+
+  async addSpendingTransaction(
+    input: SpendingTransactionInput,
+    id?: string,
+  ): Promise<SpendingTransaction> {
+    const { data, error } = await this.supabase
+      .from("spending_transactions")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        account_id: input.accountId,
+        category_id: input.categoryId,
+        date: input.date,
+        amount: input.amount,
+        payee: input.payee,
+        note: input.note,
+        recurring_id: input.recurringId,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updateSpendingTransaction(
+    id: string,
+    patch: Partial<SpendingTransactionInput>,
+  ): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.accountId !== undefined) upd.account_id = patch.accountId;
+    if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
+    if (patch.date !== undefined) upd.date = patch.date;
+    if (patch.amount !== undefined) upd.amount = patch.amount;
+    if (patch.payee !== undefined) upd.payee = patch.payee;
+    if (patch.note !== undefined) upd.note = patch.note;
+    if (patch.recurringId !== undefined) upd.recurring_id = patch.recurringId;
+    if (Object.keys(upd).length === 0) return;
+    const { data, error } = await this.supabase
+      .from("spending_transactions")
+      .update(upd)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new RowNotFoundError(`spending transaction ${id} not found`);
+    }
+  }
+
+  async deleteSpendingTransaction(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("spending_transactions")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) throw error;
   }
 
   /**

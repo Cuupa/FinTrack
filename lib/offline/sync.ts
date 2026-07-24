@@ -24,6 +24,8 @@ import type {
   DataStore,
   PortfolioPatch,
   SavingsPlanInput,
+  SpendingCategoryInput,
+  SpendingTransactionInput,
   TransactionInput,
   WatchlistInput,
 } from "../store/types";
@@ -170,6 +172,27 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       await inner.setAccountBalances(accountId, points);
       return;
     }
+    case "addSpendingCategory":
+      await inner.addSpendingCategory(op.payload as SpendingCategoryInput, op.id);
+      return;
+    case "updateSpendingCategory":
+      await inner.updateSpendingCategory(op.id, op.payload as Partial<SpendingCategoryInput>);
+      return;
+    case "deleteSpendingCategory":
+      await inner.deleteSpendingCategory(op.id);
+      return;
+    case "addSpendingTransaction":
+      await inner.addSpendingTransaction(op.payload as SpendingTransactionInput, op.id);
+      return;
+    case "updateSpendingTransaction":
+      await inner.updateSpendingTransaction(
+        op.id,
+        op.payload as Partial<SpendingTransactionInput>,
+      );
+      return;
+    case "deleteSpendingTransaction":
+      await inner.deleteSpendingTransaction(op.id);
+      return;
     case "saveLlmConfig":
       await inner.saveLlmConfig(op.payload as LlmConfig | null);
       return;

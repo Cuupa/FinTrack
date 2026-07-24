@@ -19,6 +19,8 @@ import type {
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
+  SpendingCategoryInput,
+  SpendingTransactionInput,
   TransactionInput,
   WatchlistInput,
 } from "./types";
@@ -113,6 +115,9 @@ export class LocalStore implements DataStore {
         // Backfill blobs saved before the accounts entity existed.
         accounts: parsed.accounts ?? [],
         accountBalances: parsed.accountBalances ?? [],
+        // Backfill blobs saved before the spending entity existed.
+        spendingCategories: parsed.spendingCategories ?? [],
+        spendingTransactions: parsed.spendingTransactions ?? [],
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -341,8 +346,9 @@ export class LocalStore implements DataStore {
   async deleteAccount(id: string) {
     const data = this.read();
     data.accounts = data.accounts.filter((a) => a.id !== id);
-    // Cascade: balance readings belong to their account.
+    // Cascade: balance readings and spending transactions belong to their account.
     data.accountBalances = data.accountBalances.filter((b) => b.accountId !== id);
+    data.spendingTransactions = data.spendingTransactions.filter((t) => t.accountId !== id);
     this.write(data);
   }
 
@@ -353,6 +359,56 @@ export class LocalStore implements DataStore {
       ...others,
       ...points.map((p) => ({ accountId, date: p.date, balance: p.balance })),
     ];
+    this.write(data);
+  }
+
+  async addSpendingCategory(input: SpendingCategoryInput, id?: string) {
+    const data = this.read();
+    const category = { ...input, id: id ?? newId() };
+    data.spendingCategories.push(category);
+    this.write(data);
+    return category;
+  }
+
+  async updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>) {
+    const data = this.read();
+    const idx = data.spendingCategories.findIndex((c) => c.id === id);
+    if (idx >= 0) {
+      data.spendingCategories[idx] = { ...data.spendingCategories[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteSpendingCategory(id: string) {
+    const data = this.read();
+    data.spendingCategories = data.spendingCategories.filter((c) => c.id !== id);
+    // Referencing transactions keep their categoryId set to null (mirrors the DB's on delete set null).
+    data.spendingTransactions = data.spendingTransactions.map((t) =>
+      t.categoryId === id ? { ...t, categoryId: null } : t,
+    );
+    this.write(data);
+  }
+
+  async addSpendingTransaction(input: SpendingTransactionInput, id?: string) {
+    const data = this.read();
+    const transaction = { ...input, id: id ?? newId() };
+    data.spendingTransactions.push(transaction);
+    this.write(data);
+    return transaction;
+  }
+
+  async updateSpendingTransaction(id: string, patch: Partial<SpendingTransactionInput>) {
+    const data = this.read();
+    const idx = data.spendingTransactions.findIndex((t) => t.id === id);
+    if (idx >= 0) {
+      data.spendingTransactions[idx] = { ...data.spendingTransactions[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deleteSpendingTransaction(id: string) {
+    const data = this.read();
+    data.spendingTransactions = data.spendingTransactions.filter((t) => t.id !== id);
     this.write(data);
   }
 

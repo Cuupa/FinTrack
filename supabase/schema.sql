@@ -463,6 +463,38 @@ create unique index if not exists account_balances_unique_key
 create index if not exists account_balances_account_id_idx on public.account_balances (account_id);
 create index if not exists account_balances_user_id_idx on public.account_balances (user_id);
 
+-- Spending transactions & categories (ROADMAP #2, flag `spending`):
+-- expense/income against an accounts row, categorised. `spending_categories`
+-- is a flat taxonomy (group_name + name); a transaction carries exactly one
+-- category so no junction table is needed. `recurring_id` is a bare nullable
+-- uuid until the `contracts` table (ROADMAP #5) exists.
+create table if not exists public.spending_categories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  group_name text not null,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists spending_categories_unique_key
+  on public.spending_categories (user_id, group_name, name);
+create index if not exists spending_categories_user_id_idx on public.spending_categories (user_id);
+
+create table if not exists public.spending_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  account_id uuid not null references public.accounts (id) on delete cascade,
+  category_id uuid references public.spending_categories (id) on delete set null,
+  date date not null,
+  amount numeric not null,
+  payee text not null,
+  note text,
+  recurring_id uuid,
+  created_at timestamptz not null default now()
+);
+create index if not exists spending_transactions_account_id_idx on public.spending_transactions (account_id);
+create index if not exists spending_transactions_category_id_idx on public.spending_transactions (category_id);
+create index if not exists spending_transactions_user_id_idx on public.spending_transactions (user_id);
+
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its
 -- localStorage blob instead). `saveLlmConfig` upserts on save, deletes the
@@ -600,7 +632,8 @@ insert into public.schema_migrations (version) values
   ('0077_cash_interest'),
   ('0078_rebalance_targets'),
   ('0079_manual_valuation'),
-  ('0080_accounts')
+  ('0080_accounts'),
+  ('0081_spending')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -616,6 +649,8 @@ alter table public.asset_tags enable row level security;
 alter table public.asset_valuations enable row level security;
 alter table public.accounts enable row level security;
 alter table public.account_balances enable row level security;
+alter table public.spending_categories enable row level security;
+alter table public.spending_transactions enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
 alter table public.imported_rows enable row level security;
@@ -707,6 +742,14 @@ create policy "own accounts" on public.accounts
 
 drop policy if exists "own account balances" on public.account_balances;
 create policy "own account balances" on public.account_balances
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own spending categories" on public.spending_categories;
+create policy "own spending categories" on public.spending_categories
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own spending transactions" on public.spending_transactions;
+create policy "own spending transactions" on public.spending_transactions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "own asset tags" on public.asset_tags;
@@ -906,6 +949,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('accounts', false, 'Balance accounts & liabilities (checking/savings/credit/loan/mortgage) folded into net worth')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('spending', false, 'Categorised expense/income transactions against balance accounts')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

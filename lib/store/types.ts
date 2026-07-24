@@ -12,6 +12,8 @@ import type {
   PortfolioData,
   Profile,
   SavingsPlan,
+  SpendingCategory,
+  SpendingTransaction,
   TagGroup,
   Transaction,
   WatchlistItem,
@@ -22,6 +24,8 @@ export type TransactionInput = Omit<Transaction, "id">;
 export type WatchlistInput = Omit<WatchlistItem, "id">;
 export type SavingsPlanInput = Omit<SavingsPlan, "id">;
 export type AccountInput = Omit<Account, "id">;
+export type SpendingCategoryInput = Omit<SpendingCategory, "id">;
+export type SpendingTransactionInput = Omit<SpendingTransaction, "id">;
 
 /** Patch shape for `DataStore.updatePortfolio` — every field optional, only
  *  the fields present are changed. `renamePortfolio` is a thin wrapper around
@@ -93,6 +97,15 @@ export interface DataStore {
    * the account's readings; an empty array clears them.
    */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
+  /** Creates a spending category. `id` — see `addAsset`'s doc above. */
+  addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory>;
+  updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void>;
+  /** Deletes the category; referencing transactions keep their `categoryId` set to null. */
+  deleteSpendingCategory(id: string): Promise<void>;
+  /** Creates a spending transaction. `id` — see `addAsset`'s doc above. */
+  addSpendingTransaction(input: SpendingTransactionInput, id?: string): Promise<SpendingTransaction>;
+  updateSpendingTransaction(id: string, patch: Partial<SpendingTransactionInput>): Promise<void>;
+  deleteSpendingTransaction(id: string): Promise<void>;
   /**
    * Replace-set the user's BYO LLM config (replay-idempotent like
    * `setAssetTags`). `null` removes it entirely (the settings "Remove key"
