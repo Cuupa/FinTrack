@@ -202,8 +202,10 @@ export interface SpendingCategory {
  * An expense/income transaction against an {@link Account} (ROADMAP item #2,
  * flag `spending`). `amount` is signed in the account's native currency:
  * income positive, expense negative. `categoryId` is nullable (uncategorised
- * spend still books). `recurringId` is a forward-looking hook for ROADMAP item
- * #5 (contract/recurring-charge register) — nothing sets it yet.
+ * spend still books). `recurringId` holds the {@link Contract} that posted
+ * this booking, and is null for anything the user entered or imported
+ * themselves — `detectRecurringCandidates` uses it to skip charges that are
+ * already registered.
  */
 export interface SpendingTransaction {
   id: string;
@@ -302,6 +304,18 @@ export interface Contract {
   /** Sum insured (coverage amount), profile base currency, ROADMAP item #10.
    *  Only meaningful alongside `insuranceType`. */
   sumInsured?: number | null;
+  /** Account the recurring charge is posted against. Null (the default) keeps
+   *  the contract a register entry only: it never books anything, which is how
+   *  every contract behaved before booking existed. */
+  accountId?: string | null;
+  /** First date a booking is due. Anchors the occurrence series exactly like
+   *  `SavingsPlan.startDate`, so the schedule stays derivable rather than
+   *  stored per occurrence. Null whenever `accountId` is null. */
+  bookingStartDate?: string | null;
+  /** Last date a booking was actually posted, or null if none yet. Advanced
+   *  only after the user confirms the due bookings, mirroring
+   *  `SavingsPlan.lastRunDate`. */
+  lastBookedDate?: string | null;
 }
 
 /** Insurance types tracked on a {@link Contract} (ROADMAP item #10, flag

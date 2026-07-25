@@ -227,6 +227,11 @@ interface ContractRow {
   category_id: string | null;
   insurance_type: string | null;
   sum_insured: number | string | null;
+  // Migration 0095. Optional on the row type so a database that has not run
+  // it yet still deserialises instead of throwing.
+  account_id?: string | null;
+  booking_start_date?: string | null;
+  last_booked_date?: string | null;
 }
 
 function contractFromRow(r: ContractRow): Contract {
@@ -240,6 +245,9 @@ function contractFromRow(r: ContractRow): Contract {
     categoryId: r.category_id,
     insuranceType: r.insurance_type as Contract["insuranceType"],
     sumInsured: r.sum_insured != null ? Number(r.sum_insured) : null,
+    accountId: r.account_id ?? null,
+    bookingStartDate: r.booking_start_date ?? null,
+    lastBookedDate: r.last_booked_date ?? null,
   };
 }
 
@@ -1167,6 +1175,9 @@ export class SupabaseStore implements DataStore {
         category_id: input.categoryId,
         insurance_type: input.insuranceType ?? null,
         sum_insured: input.sumInsured ?? null,
+        account_id: input.accountId ?? null,
+        booking_start_date: input.bookingStartDate ?? null,
+        last_booked_date: input.lastBookedDate ?? null,
       })
       .select("id")
       .single();
@@ -1186,6 +1197,9 @@ export class SupabaseStore implements DataStore {
     if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
     if (patch.insuranceType !== undefined) upd.insurance_type = patch.insuranceType;
     if (patch.sumInsured !== undefined) upd.sum_insured = patch.sumInsured;
+    if (patch.accountId !== undefined) upd.account_id = patch.accountId;
+    if (patch.bookingStartDate !== undefined) upd.booking_start_date = patch.bookingStartDate;
+    if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's contract too.
     const { data, error } = await this.supabase

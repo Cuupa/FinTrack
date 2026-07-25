@@ -369,6 +369,11 @@ export class LocalStore implements DataStore {
     data.goals = data.goals.map((g) =>
       g.linkedAccountId === id ? { ...g, linkedAccountId: null } : g,
     );
+    // Likewise a contract: it stops booking but stays in the register
+    // (migration 0095's on delete set null).
+    data.contracts = data.contracts.map((c) =>
+      c.accountId === id ? { ...c, accountId: null, bookingStartDate: null } : c,
+    );
     this.write(data);
     this.pruneImportedSpendingFingerprints(removedTxIds);
   }

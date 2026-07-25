@@ -17,7 +17,8 @@ import {
   type ContractInterval,
   type InsuranceType,
 } from "@/lib/types";
-import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { pendingBookings } from "@/lib/finance/contract-bookings";
 import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -31,7 +32,14 @@ const inputCls =
 type SortKey = "name" | "interval" | "amount" | "renewalDate";
 
 export function ContractsView() {
-  const { data, addContract, deleteContract, updateSpendingTransaction } = usePortfolio();
+  const {
+    data,
+    addContract,
+    deleteContract,
+    updateContract,
+    updateSpendingTransaction,
+    addSpendingTransaction,
+  } = usePortfolio();
   const { t } = useI18n();
   const insuranceEnabled = useFeatureFlag("insurance");
   const base = data.profile.currency;
@@ -60,6 +68,46 @@ export function ContractsView() {
   const [noticeDays, setNoticeDays] = useState("");
   const [insuranceType, setInsuranceType] = useState<InsuranceType | "">("");
   const [isInsurance, setIsInsurance] = useState(false);
+  const [accountId, setAccountId] = useState("");
+  const [booking, setBooking] = useState(false);
+
+  const due = useMemo(() => pendingBookings(data.contracts, today()), [data.contracts]);
+
+  /**
+   * Posts every due charge as a spending transaction and advances each
+   * contract's `lastBookedDate` to its newest booked date.
+   *
+   * Transactions first, contract second: replaying a booking that already
+   * exists would double-charge, whereas a failure between the two only leaves
+   * the contract looking due again, which the next run resolves.
+   */
+  async function bookDue() {
+    setBooking(true);
+    setError(null);
+    try {
+      const newest = new Map<string, string>();
+      for (const b of due) {
+        await addSpendingTransaction({
+          accountId: b.accountId,
+          categoryId: b.categoryId,
+          date: b.date,
+          amount: b.amount,
+          payee: b.contractName,
+          note: null,
+          recurringId: b.contractId,
+        });
+        const prev = newest.get(b.contractId);
+        if (!prev || b.date > prev) newest.set(b.contractId, b.date);
+      }
+      for (const [contractId, lastBookedDate] of newest) {
+        await updateContract(contractId, { lastBookedDate });
+      }
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.due.error"));
+    } finally {
+      setBooking(false);
+    }
+  }
   const [sumInsured, setSumInsured] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,8 +120,10 @@ export function ContractsView() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const candidates = useMemo(
-    () => detectRecurringCandidates(data.spendingTransactions),
-    [data.spendingTransactions],
+    // Accounts are passed so a loan instalment is not offered as a contract:
+    // it is a transfer against a liability, not a recurring expense.
+    () => detectRecurringCandidates(data.spendingTransactions, data.accounts),
+    [data.spendingTransactions, data.accounts],
   );
   const visibleCandidates = candidates.filter(
     (c) => !dismissed.has(`${c.payee}|${c.amount}`),
@@ -122,6 +172,11 @@ export function ContractsView() {
         renewalDate: renewalDate || null,
         cancellationNoticeDays: notice !== null && Number.isFinite(notice) ? notice : null,
         categoryId: categoryId || null,
+        accountId: accountId || null,
+        // Booking starts today rather than back-filling the contract's whole
+        // history: nobody wants a new contract to post two years of charges.
+        bookingStartDate: accountId ? today() : null,
+        lastBookedDate: null,
         // The kind toggle is authoritative: an ordinary contract never carries
         // an insurance type or a sum insured, whatever the fields last held.
         insuranceType: isInsurance ? insuranceType || null : null,
@@ -139,6 +194,7 @@ export function ContractsView() {
       setInsuranceType("");
       setSumInsured("");
       setIsInsurance(false);
+      setAccountId("");
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.form.error"));
     } finally {
@@ -184,6 +240,35 @@ export function ContractsView() {
               <li key={g}>{insuranceTypeLabel(g)}</li>
             ))}
           </ul>
+        </Card>
+      )}
+
+      {/* Due bookings, reviewed before anything is written — the same rule the
+          savings-plans card follows: never post money movements silently. */}
+      {due.length > 0 && (
+        <Card>
+          <h2 className="text-lg font-semibold">{t("contracts.due.title")}</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            {t("contracts.due.intro", { n: due.length })}
+          </p>
+          <ul className="mt-4 space-y-2">
+            {due.map((b) => (
+              <li
+                key={`${b.contractId}|${b.date}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+              >
+                <span>
+                  {b.contractName} <span className="text-zinc-500">{formatDate(b.date)}</span>
+                </span>
+                <span className="tabular-nums text-red-600 dark:text-red-400" data-private>
+                  {formatCurrency(b.amount, base)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Button className="mt-4" variant="primary" disabled={booking} onClick={bookDue}>
+            {t("contracts.due.book")}
+          </Button>
         </Card>
       )}
 
@@ -256,6 +341,25 @@ export function ContractsView() {
               onChange={(v) => setInterval(v as ContractInterval)}
               options={CONTRACT_INTERVALS.map((i) => ({ value: i, label: intervalLabel(i) }))}
             />
+          </div>
+          {/* Choosing an account is what turns a register entry into something
+              that actually posts the charge. Left empty (the default, and how
+              every contract behaved before booking existed) it stays a note. */}
+          <div>
+            <label className="text-sm font-medium">{t("contracts.form.accountLabel")}</label>
+            <SelectMenu
+              className="mt-1 w-full"
+              ariaLabel={t("contracts.form.accountLabel")}
+              value={accountId}
+              onChange={setAccountId}
+              options={[
+                { value: "", label: t("contracts.form.accountNone") },
+                ...data.accounts.map((a) => ({ value: a.id, label: a.name })),
+              ]}
+            />
+            <p className="mt-1 text-sm text-zinc-500">
+              {accountId ? t("contracts.form.accountHintOn") : t("contracts.form.accountHintOff")}
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium">{t("contracts.form.categoryLabel")}</label>

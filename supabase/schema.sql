@@ -623,7 +623,21 @@ create table if not exists public.contracts (
   category_id uuid references public.spending_categories (id) on delete set null,
   created_at timestamptz not null default now()
 );
+-- Booking columns (migration 0095): a contract with an `account_id` posts its
+-- charge into spending on the schedule derived from
+-- (booking_start_date, interval, last_booked_date). Null account_id = register
+-- entry only, which is how contracts behaved before booking existed.
+-- `on delete set null` matches category_id above: losing the account stops the
+-- booking but does not delete the contract.
+alter table public.contracts
+  add column if not exists account_id uuid references public.accounts (id) on delete set null;
+alter table public.contracts
+  add column if not exists booking_start_date date;
+alter table public.contracts
+  add column if not exists last_booked_date date;
+
 create index if not exists contracts_user_id_idx on public.contracts (user_id);
+create index if not exists contracts_account_id_idx on public.contracts (account_id);
 create index if not exists contracts_category_id_idx on public.contracts (category_id);
 -- Insurance register (ROADMAP #10, flag `insurance`): typed rows on this same
 -- contract entity. Null insurance_type = an ordinary (non-insurance) contract.
