@@ -16,7 +16,13 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
 import { useFocusTrap } from "./ui/use-focus-trap";
-import { NAV_ROUTES, hidesNavigation, isActiveRoute } from "@/lib/nav/routes";
+import {
+  NAV_ROUTES,
+  groupedRoutes,
+  hidesNavigation,
+  isActiveRoute,
+  type NavRoute,
+} from "@/lib/nav/routes";
 
 /** Tabs that fit across a phone without the labels truncating, "More"
     included. Primary routes past this budget fall into the sheet. */
@@ -76,6 +82,27 @@ export function MobileNav() {
 
   const inSheet = rest.some((r) => isActiveRoute(r.href, pathname));
 
+  const { ungrouped: restUngrouped, sections: restSections } = groupedRoutes(rest);
+
+  const renderSheetLink = (route: NavRoute) => {
+    const active = isActiveRoute(route.href, pathname);
+    return (
+      <Link
+        key={route.href}
+        href={route.href}
+        aria-current={active ? "page" : undefined}
+        className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+          active
+            ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+            : "text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+        }`}
+      >
+        <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
+        <span className="truncate">{t(route.key)}</span>
+      </Link>
+    );
+  };
+
   const tabCls = (active: boolean) =>
     `flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2 text-[10px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:focus-visible:outline-emerald-400 ${
       active ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"
@@ -111,25 +138,21 @@ export function MobileNav() {
                 ✕
               </button>
             </div>
-            <nav className="flex flex-col gap-0.5 px-2 pb-2">
-              {rest.map((route) => {
-                const active = isActiveRoute(route.href, pathname);
-                return (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                        : "text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
-                    }`}
-                  >
-                    <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
-                    <span className="truncate">{t(route.key)}</span>
-                  </Link>
-                );
-              })}
+            {/* Grouped exactly like the desktop sidebar. This sheet holds most
+                of the app on a phone, so an ungrouped run of 10 links is the
+                same "pile of features" problem in a smaller frame. */}
+            <nav className="flex flex-col px-2 pb-2">
+              {restUngrouped.length > 0 && (
+                <div className="flex flex-col gap-0.5">{restUngrouped.map(renderSheetLink)}</div>
+              )}
+              {restSections.map((section) => (
+                <div key={section.id} className="mt-4 flex flex-col gap-0.5 first:mt-0">
+                  <h3 className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+                    {t(section.key)}
+                  </h3>
+                  {section.routes.map(renderSheetLink)}
+                </div>
+              ))}
             </nav>
           </div>
         </div>

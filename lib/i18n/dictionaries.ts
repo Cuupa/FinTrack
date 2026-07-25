@@ -37,6 +37,9 @@ export const en = {
   "nav.collapseSidebar": "Collapse sidebar",
   "nav.collapse": "Collapse",
   "nav.more": "More",
+  "nav.group.everyday": "Everyday",
+  "nav.group.invest": "Investments",
+  "nav.group.plan": "Planning",
 
   "theme.toggleToDark": "Switch to dark mode",
   "theme.toggleToLight": "Switch to light mode",
@@ -1710,6 +1713,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.collapseSidebar": "Seitenleiste einklappen",
   "nav.collapse": "Einklappen",
   "nav.more": "Mehr",
+  "nav.group.everyday": "Alltag",
+  "nav.group.invest": "Anlagen",
+  "nav.group.plan": "Planung",
 
   "theme.toggleToDark": "Zum dunklen Modus wechseln",
   "theme.toggleToLight": "Zum hellen Modus wechseln",
@@ -3382,6 +3388,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.collapseSidebar": "Contraer la barra lateral",
   "nav.collapse": "Contraer",
   "nav.more": "Más",
+  "nav.group.everyday": "Día a día",
+  "nav.group.invest": "Inversiones",
+  "nav.group.plan": "Planificación",
 
   "theme.toggleToDark": "Cambiar a modo oscuro",
   "theme.toggleToLight": "Cambiar a modo claro",
