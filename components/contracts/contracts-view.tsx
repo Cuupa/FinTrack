@@ -18,7 +18,7 @@ import {
   type InsuranceType,
 } from "@/lib/types";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -59,6 +59,7 @@ export function ContractsView() {
   const [renewalDate, setRenewalDate] = useState("");
   const [noticeDays, setNoticeDays] = useState("");
   const [insuranceType, setInsuranceType] = useState<InsuranceType | "">("");
+  const [isInsurance, setIsInsurance] = useState(false);
   const [sumInsured, setSumInsured] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,8 +122,13 @@ export function ContractsView() {
         renewalDate: renewalDate || null,
         cancellationNoticeDays: notice !== null && Number.isFinite(notice) ? notice : null,
         categoryId: categoryId || null,
-        insuranceType: insuranceType || null,
-        sumInsured: sumInsuredVal != null && Number.isFinite(sumInsuredVal) ? sumInsuredVal : null,
+        // The kind toggle is authoritative: an ordinary contract never carries
+        // an insurance type or a sum insured, whatever the fields last held.
+        insuranceType: isInsurance ? insuranceType || null : null,
+        sumInsured:
+          isInsurance && sumInsuredVal != null && Number.isFinite(sumInsuredVal)
+            ? sumInsuredVal
+            : null,
       });
       setName("");
       setAmount("");
@@ -132,6 +138,7 @@ export function ContractsView() {
       setNoticeDays("");
       setInsuranceType("");
       setSumInsured("");
+      setIsInsurance(false);
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.form.error"));
     } finally {
@@ -267,7 +274,39 @@ export function ContractsView() {
               ]}
             />
           </div>
+          {/* Ask what KIND of commitment this is before asking anything about
+              insurance. The insurance-type dropdown used to render on every
+              contract with a "not an insurance" first option, so a streaming
+              subscription was asked which insurance it was. `insuranceType`
+              was always the discriminator; this just makes the choice
+              explicit and hides the fields that do not apply. */}
           {insuranceEnabled && (
+            <div>
+              <label className="text-sm font-medium">{t("contracts.form.kindLabel")}</label>
+              <div className="mt-1">
+                <SegmentedControl
+                  options={[
+                    { value: "contract", label: t("contracts.form.kindContract") },
+                    { value: "insurance", label: t("contracts.form.kindInsurance") },
+                  ]}
+                  value={isInsurance ? "insurance" : "contract"}
+                  onChange={(v) => {
+                    const next = v === "insurance";
+                    setIsInsurance(next);
+                    // Leaving insurance must not keep a stale type/sum behind
+                    // on a contract that is no longer one.
+                    if (!next) {
+                      setInsuranceType("");
+                      setSumInsured("");
+                    } else if (!insuranceType) {
+                      setInsuranceType("other");
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {insuranceEnabled && isInsurance && (
             <div>
               <label className="text-sm font-medium">{t("contracts.form.insuranceTypeLabel")}</label>
               <SelectMenu
@@ -275,14 +314,11 @@ export function ContractsView() {
                 ariaLabel={t("contracts.form.insuranceTypeLabel")}
                 value={insuranceType}
                 onChange={(v) => setInsuranceType(v as InsuranceType | "")}
-                options={[
-                  { value: "", label: t("contracts.form.insuranceTypeNone") },
-                  ...INSURANCE_TYPES.map((i) => ({ value: i, label: insuranceTypeLabel(i) })),
-                ]}
+                options={INSURANCE_TYPES.map((i) => ({ value: i, label: insuranceTypeLabel(i) }))}
               />
             </div>
           )}
-          {insuranceEnabled && insuranceType && (
+          {insuranceEnabled && isInsurance && insuranceType && (
             <div>
               <label className="text-sm font-medium" htmlFor="contract-sum-insured">
                 {t("contracts.form.sumInsuredLabel", { currency: base })}
