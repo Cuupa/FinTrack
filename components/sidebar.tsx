@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
+import { LockIcon } from "@/components/billing/pro-teaser";
 import {
   NAV_ROUTES,
   groupedRoutes,
@@ -30,14 +31,21 @@ const STORAGE_KEY = "fintrack:sidebar-collapsed";
 export function Sidebar() {
   const pathname = usePathname();
   const { t } = useI18n();
-  const { isEnabled } = useFeatureFlags();
+  const { getFeature } = useFeatureFlags();
   const [collapsed, setCollapsed] = useState(false);
 
-  const visibleLinks = NAV_ROUTES.filter((l) => !l.flag || isEnabled(l.flag));
+  // A Pro-locked route stays in the navigation and carries a padlock: the
+  // paywall is a teaser, not a hidden feature, so the entry has to be
+  // reachable for its blurred preview to be seen at all. Only a flag that is
+  // off outright removes the entry (`enabled` is false then).
+  const featureState = (r: NavRoute) =>
+    r.flag ? getFeature(r.flag) : { enabled: true, locked: false };
+  const visibleLinks = NAV_ROUTES.filter((l) => featureState(l).enabled);
   const { ungrouped, sections } = groupedRoutes(visibleLinks);
 
   const renderLink = (l: NavRoute) => {
     const active = isActiveRoute(l.href, pathname);
+    const locked = featureState(l).locked;
     return (
       <Link
         key={l.href}
@@ -66,6 +74,7 @@ export function Sidebar() {
           {l.icon}
         </svg>
         {!collapsed && <span className="truncate">{t(l.key)}</span>}
+        {!collapsed && locked && <LockIcon className="ml-auto h-4 w-4 shrink-0 text-zinc-400" />}
       </Link>
     );
   };

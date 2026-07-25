@@ -100,7 +100,7 @@ export function HouseholdView() {
       )}
 
       {!household ? (
-        <Card>
+        <Card data-tour="household-create">
           <h2 className="text-lg font-semibold">{t("household.createTitle")}</h2>
           <p className="mt-1 text-sm text-zinc-500">{t("household.createSubtitle")}</p>
           <div className="mt-3 flex gap-2">
@@ -127,7 +127,7 @@ export function HouseholdView() {
         </Card>
       ) : (
         <>
-          <Card>
+          <Card data-tour="household-members">
             <div className="flex items-center justify-between gap-3">
               <input
                 defaultValue={household.name}
@@ -169,7 +169,7 @@ export function HouseholdView() {
             </ul>
           </Card>
 
-          <Card>
+          <Card data-tour="household-invite">
             <h2 className="text-lg font-semibold">{t("household.inviteTitle")}</h2>
             <div className="mt-3 flex gap-2">
               <input

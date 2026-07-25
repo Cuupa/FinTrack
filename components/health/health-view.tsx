@@ -53,7 +53,7 @@ export function HealthView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="health-gauges">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
             label={t("health.gauge.monthsOfExpenses.label")}

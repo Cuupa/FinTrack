@@ -16,7 +16,8 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProTeaser } from "@/components/billing/pro-teaser";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { formatCurrency } from "@/lib/format";
 import { Card, EmptyState } from "@/components/ui/primitives";
@@ -263,11 +264,17 @@ function GoalsCard() {
  * flag is off, so a pure investment install keeps its old dashboard.
  */
 export function AreaCards() {
-  const accounts = useFeatureFlag("accounts");
-  const spending = useFeatureFlag("spending");
-  const goals = useFeatureFlag("goals");
+  const accounts = useFeature("accounts");
+  const spending = useFeature("spending");
+  const goals = useFeature("goals");
 
-  const count = [accounts, spending, goals].filter(Boolean).length;
+  const areas = [
+    { state: accounts, flag: "accounts" as const, card: <AccountsCard /> },
+    { state: spending, flag: "spending" as const, card: <SpendingCard /> },
+    { state: goals, flag: "goals" as const, card: <GoalsCard /> },
+  ].filter((a) => a.state.enabled);
+
+  const count = areas.length;
   if (count === 0) return null;
 
   return (
@@ -276,9 +283,17 @@ export function AreaCards() {
         count === 3 ? "lg:grid-cols-3" : count === 2 ? "sm:grid-cols-2" : ""
       }`}
     >
-      {accounts && <AccountsCard />}
-      {spending && <SpendingCard />}
-      {goals && <GoalsCard />}
+      {/* A Pro-locked area keeps its slot in the grid, blurred behind the
+          paywall message, rather than vanishing from the home screen. */}
+      {areas.map((a) =>
+        a.state.locked ? (
+          <ProTeaser key={a.flag} feature={a.flag}>
+            {a.card}
+          </ProTeaser>
+        ) : (
+          <div key={a.flag}>{a.card}</div>
+        ),
+      )}
     </div>
   );
 }

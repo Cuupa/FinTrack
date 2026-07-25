@@ -14,7 +14,7 @@ export const en = {
   "nav.goals": "Goals",
   "nav.health": "Health",
   "nav.fire": "FIRE",
-  "nav.debt": "Debt",
+  "nav.debt": "Liabilities",
   "nav.household": "Household",
   "nav.analysis": "Analysis",
   "nav.dividends": "Dividends",
@@ -318,6 +318,81 @@ export const en = {
   "tour.simulation.chart.body":
     "Run a simulation to see the range of likely outcomes here: shaded bands are probability ranges around the median line, and a dashed line marks the switch to withdrawals.",
 
+  // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
+  "tour.accounts.totals.title": "Assets minus debts",
+  "tour.accounts.totals.body":
+    "The three figures are your accounts: what you own, what you owe, and the difference. All of it flows into the net worth on the dashboard.",
+  "tour.accounts.form.title": "Add an account",
+  "tour.accounts.form.body":
+    "Give it a name and a starting balance. The kind decides whether it counts as an asset or as a debt.",
+  "tour.accounts.list.title": "Keep balances current",
+  "tour.accounts.list.body":
+    "Every account keeps a dated list of balances. Add a reading whenever you check your bank; the chart carries the last one forward.",
+  "tour.spending.totals.title": "Income vs. expenses",
+  "tour.spending.totals.body": "What came in, what went out, and what is left over.",
+  "tour.spending.form.title": "Book in seconds",
+  "tour.spending.form.body":
+    "Pick the account, type the amount and the payee. The category is suggested from how you filed that payee before.",
+  "tour.spending.table.title": "Your ledger",
+  "tour.spending.table.body":
+    "Every booking, sortable by any column. Import a bank statement here instead of typing months of history.",
+  "tour.goals.form.title": "Set a goal",
+  "tour.goals.form.body":
+    "Name it, set the amount and the date. Link an account so progress updates itself; link a debt and the goal becomes paying it off.",
+  "tour.goals.list.title": "Progress and pace",
+  "tour.goals.list.body":
+    "Each goal shows how far along it is and what you would have to put aside monthly to make the date.",
+  "tour.debt.totals.title": "What you owe",
+  "tour.debt.totals.body":
+    "Total debt, the minimum you have to pay each month, and how long until everything is repaid.",
+  "tour.debt.list.title": "Every liability",
+  "tour.debt.list.body":
+    "Loans, mortgages and credit lines from your accounts, with their rate and payoff date. Sort by rate to see what costs you most.",
+  "tour.debt.plan.title": "Avalanche or snowball",
+  "tour.debt.plan.body":
+    "Extra money goes either to the most expensive debt or to the smallest one. The plan shows what each choice costs you.",
+  "tour.health.gauges.title": "Four vital signs",
+  "tour.health.gauges.body":
+    "Emergency buffer, savings rate, debt load and net worth relative to income. Together they say more than any single number.",
+  "tour.health.sources.title": "Where the numbers come from",
+  "tour.health.sources.body":
+    "They are computed from your accounts and your spending. The more complete those are, the more the figures are worth.",
+  "tour.fire.inputs.title": "Your assumptions",
+  "tour.fire.inputs.body":
+    "Withdrawal rate, annual expenses, what you add each month and the return you expect. Everything below reacts to these.",
+  "tour.fire.targets.title": "Lean, regular, fat",
+  "tour.fire.targets.body":
+    "Three target sums for three lifestyles, each with the year you would reach it at your current pace.",
+  "tour.fire.simulation.title": "Test it against bad luck",
+  "tour.fire.simulation.body":
+    "The simulation runs thousands of market paths, so you see how often the plan survives a rough decade, not just the average case.",
+  "tour.household.create.title": "Share with someone",
+  "tour.household.create.body":
+    "Create a household to share your data with a partner. Without one, everything stays yours alone.",
+  "tour.household.members.title": "Who is in",
+  "tour.household.members.body":
+    "Everyone listed here sees the shared data. You can remove a member or leave the household at any time.",
+  "tour.household.invite.title": "Send an invite",
+  "tour.household.invite.body":
+    "Invite by email. The other side has to accept before anything is shared.",
+  "tour.dividends.kpis.title": "What actually arrived",
+  "tour.dividends.kpis.body":
+    "Payouts of the last twelve months and since the start, plus your personal yield on today's value and on what you paid.",
+  "tour.dividends.income.title": "Month by month",
+  "tour.dividends.income.body":
+    "Real payment events, scaled to the shares you held on each pay date. Accumulating funds show nothing here on purpose.",
+  "tour.dividends.upcoming.title": "The next twelve months",
+  "tour.dividends.upcoming.body":
+    "A projection from your trailing payouts at today's share count. An officially announced date replaces the estimated one; the amount always stays an estimate.",
+  "tour.xray.table.title": "Inside your funds",
+  "tour.xray.table.body":
+    "Your ETFs are broken down into the companies behind them and added to the shares you hold directly, so you see your real exposure per company.",
+  "tour.xray.limits.title": "Only what is known",
+  "tour.xray.limits.body":
+    "The breakdown covers funds whose constituents are in the catalog. Everything else stays in the unclassified remainder rather than being dropped silently.",
+  "tour.analysis.tabs.title": "Five views on one portfolio",
+  "tour.analysis.tabs.body":
+    "Distribution, returns, trades, risk and taxes. Each tab keeps its own controls, and the tab you pick stays in the URL.",
   "tour.assetTags.what.title": "What are tags?",
   "tour.assetTags.what.body":
     "Tags are grouped key-value labels you define, like Strategie: gamble. Use them to mark holdings however makes sense to you.",
@@ -1014,13 +1089,13 @@ export const en = {
   "fire.simulation.configurePrompt": "Run the simulation to see the odds",
   "fire.unit.years": "years",
 
-  "debt.title": "Debt payoff",
+  "debt.title": "Liabilities",
   "debt.subtitle": "Amortisation schedules and an avalanche/snowball plan for your liabilities.",
-  "debt.totals.debt": "Total debt",
+  "debt.totals.debt": "Total outstanding",
   "debt.totals.minPayment": "Total minimum payments",
   "debt.totals.months": "Time to debt-free",
   "debt.totals.monthsValue": "{n} months",
-  "debt.list.title": "Your debts",
+  "debt.list.title": "Your liabilities",
   "debt.list.empty": "No liability accounts yet. Add one on the Accounts page.",
   "debt.list.name": "Name",
   "debt.list.balance": "Balance",
@@ -1029,7 +1104,7 @@ export const en = {
   "debt.list.editDetails": "Rate & payment",
   "debt.list.needsDetails": "Add rate & minimum payment",
   "debt.list.neverPaysOff": "Never pays off at this rate",
-  "debt.details.title": "Debt details — {name}",
+  "debt.details.title": "Liability details — {name}",
   "debt.details.intro": "Enter the annual interest rate and minimum monthly payment to include this debt in a payoff schedule.",
   "debt.details.rateLabel": "Annual interest rate (%)",
   "debt.details.minPaymentLabel": "Minimum monthly payment ({currency})",
@@ -1763,7 +1838,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.goals": "Ziele",
   "nav.health": "Gesundheit",
   "nav.fire": "FIRE",
-  "nav.debt": "Schulden",
+  "nav.debt": "Verbindlichkeiten",
   "nav.household": "Haushalt",
   "nav.analysis": "Analyse",
   "nav.dividends": "Dividenden",
@@ -2068,6 +2143,81 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.simulation.chart.body":
     "Starte eine Simulation, um hier die Bandbreite möglicher Verläufe zu sehen: Die farbigen Bänder sind Wahrscheinlichkeitsbereiche um die Medianlinie, eine gestrichelte Linie markiert den Wechsel zur Entnahme.",
 
+  // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
+  "tour.accounts.totals.title": "Vermögen minus Schulden",
+  "tour.accounts.totals.body":
+    "Die drei Zahlen sind deine Konten: was du besitzt, was du schuldest und die Differenz. Alles davon fließt ins Nettovermögen auf der Übersicht.",
+  "tour.accounts.form.title": "Konto anlegen",
+  "tour.accounts.form.body":
+    "Gib ihm einen Namen und einen Startsaldo. Die Art entscheidet, ob es als Vermögen oder als Schuld zählt.",
+  "tour.accounts.list.title": "Salden aktuell halten",
+  "tour.accounts.list.body":
+    "Jedes Konto führt eine datierte Liste von Ständen. Trag einen neuen ein, wenn du bei der Bank nachschaust; der Verlauf schreibt den letzten Stand fort.",
+  "tour.spending.totals.title": "Einnahmen und Ausgaben",
+  "tour.spending.totals.body": "Was reinkam, was rausging und was übrig bleibt.",
+  "tour.spending.form.title": "In Sekunden erfassen",
+  "tour.spending.form.body":
+    "Konto wählen, Betrag und Empfänger eintippen. Die Kategorie wird danach vorgeschlagen, wie du diesen Empfänger zuletzt einsortiert hast.",
+  "tour.spending.table.title": "Dein Ausgabenbuch",
+  "tour.spending.table.body":
+    "Jede Buchung, nach jeder Spalte sortierbar. Importier hier einen Kontoauszug, statt Monate von Hand zu tippen.",
+  "tour.goals.form.title": "Ziel festlegen",
+  "tour.goals.form.body":
+    "Benenn es, setz Betrag und Datum. Verknüpf ein Konto, damit der Fortschritt von allein mitläuft; verknüpfst du eine Schuld, wird daraus ein Abzahlziel.",
+  "tour.goals.list.title": "Fortschritt und Tempo",
+  "tour.goals.list.body":
+    "Jedes Ziel zeigt, wie weit es ist und was du monatlich zurücklegen müsstest, um das Datum zu schaffen.",
+  "tour.debt.totals.title": "Was du schuldest",
+  "tour.debt.totals.body":
+    "Gesamtschuld, die monatliche Mindestrate und wie lange es dauert, bis alles abbezahlt ist.",
+  "tour.debt.list.title": "Alle Verbindlichkeiten",
+  "tour.debt.list.body":
+    "Kredite, Hypotheken und Kreditlinien aus deinen Konten, mit Zins und Abzahldatum. Sortier nach Zins, um zu sehen, was dich am meisten kostet.",
+  "tour.debt.plan.title": "Lawine oder Schneeball",
+  "tour.debt.plan.body":
+    "Zusätzliches Geld geht entweder auf die teuerste oder auf die kleinste Schuld. Der Plan zeigt, was dich die jeweilige Wahl kostet.",
+  "tour.health.gauges.title": "Vier Kennzahlen",
+  "tour.health.gauges.body":
+    "Notgroschen, Sparquote, Schuldenlast und Vermögen im Verhältnis zum Einkommen. Zusammen sagen sie mehr als jede einzelne Zahl.",
+  "tour.health.sources.title": "Woher die Zahlen kommen",
+  "tour.health.sources.body":
+    "Sie werden aus deinen Konten und deinen Ausgaben berechnet. Je vollständiger die sind, desto aussagekräftiger sind die Werte.",
+  "tour.fire.inputs.title": "Deine Annahmen",
+  "tour.fire.inputs.body":
+    "Entnahmerate, Jahresausgaben, monatliche Sparrate und erwartete Rendite. Alles darunter reagiert darauf.",
+  "tour.fire.targets.title": "Lean, normal, fat",
+  "tour.fire.targets.body":
+    "Drei Zielsummen für drei Lebensstile, jeweils mit dem Jahr, in dem du sie im aktuellen Tempo erreichst.",
+  "tour.fire.simulation.title": "Gegen Pech testen",
+  "tour.fire.simulation.body":
+    "Die Simulation rechnet tausende Marktverläufe durch. So siehst du, wie oft der Plan ein schlechtes Jahrzehnt übersteht, nicht nur den Durchschnittsfall.",
+  "tour.household.create.title": "Mit jemandem teilen",
+  "tour.household.create.body":
+    "Leg einen Haushalt an, um deine Daten mit jemandem zu teilen. Ohne Haushalt bleibt alles nur bei dir.",
+  "tour.household.members.title": "Wer dabei ist",
+  "tour.household.members.body":
+    "Alle hier gelisteten Personen sehen die geteilten Daten. Du kannst jederzeit jemanden entfernen oder selbst austreten.",
+  "tour.household.invite.title": "Einladung schicken",
+  "tour.household.invite.body":
+    "Lade per E-Mail ein. Die andere Seite muss annehmen, bevor irgendetwas geteilt wird.",
+  "tour.dividends.kpis.title": "Was tatsächlich ankam",
+  "tour.dividends.kpis.body":
+    "Ausschüttungen der letzten zwölf Monate und seit Beginn, dazu deine persönliche Rendite auf den heutigen Wert und auf deinen Einstand.",
+  "tour.dividends.income.title": "Monat für Monat",
+  "tour.dividends.income.body":
+    "Echte Zahlungstermine, skaliert auf die Stückzahl, die du am jeweiligen Zahltag hattest. Thesaurierende Fonds zeigen hier bewusst nichts.",
+  "tour.dividends.upcoming.title": "Die nächsten zwölf Monate",
+  "tour.dividends.upcoming.body":
+    "Eine Hochrechnung aus deinen bisherigen Ausschüttungen bei heutiger Stückzahl. Ein offiziell angekündigter Termin ersetzt den geschätzten; der Betrag bleibt immer geschätzt.",
+  "tour.xray.table.title": "In deine Fonds hineinschauen",
+  "tour.xray.table.body":
+    "Deine ETFs werden in die Unternehmen dahinter zerlegt und mit deinen direkt gehaltenen Aktien zusammengezählt. So siehst du deine echte Position pro Unternehmen.",
+  "tour.xray.limits.title": "Nur was bekannt ist",
+  "tour.xray.limits.body":
+    "Die Aufschlüsselung erfasst Fonds, deren Bestandteile im Katalog liegen. Alles andere bleibt im nicht zugeordneten Rest und verschwindet nicht stillschweigend.",
+  "tour.analysis.tabs.title": "Fünf Sichten auf ein Portfolio",
+  "tour.analysis.tabs.body":
+    "Verteilung, Rendite, Trades, Risiko und Steuern. Jeder Tab hat eigene Regler, und der gewählte Tab steht in der URL.",
   "tour.assetTags.what.title": "Was sind Tags?",
   "tour.assetTags.what.body":
     "Tags sind gruppierte Schlüssel-Wert-Label, die du selbst festlegst, zum Beispiel Strategie: gamble. Nutze sie, um Positionen so zu markieren, wie es für dich Sinn ergibt.",
@@ -2764,13 +2914,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.simulation.configurePrompt": "Starte die Simulation, um die Chancen zu sehen",
   "fire.unit.years": "Jahre",
 
-  "debt.title": "Schuldenabbau",
+  "debt.title": "Verbindlichkeiten",
   "debt.subtitle": "Tilgungspläne und ein Avalanche-/Schneeball-Plan für deine Verbindlichkeiten.",
-  "debt.totals.debt": "Gesamtschulden",
+  "debt.totals.debt": "Offene Verbindlichkeiten",
   "debt.totals.minPayment": "Mindestzahlungen gesamt",
   "debt.totals.months": "Zeit bis schuldenfrei",
   "debt.totals.monthsValue": "{n} Monate",
-  "debt.list.title": "Deine Schulden",
+  "debt.list.title": "Deine Verbindlichkeiten",
   "debt.list.empty": "Noch keine Verbindlichkeiten. Füge auf der Konten-Seite eine hinzu.",
   "debt.list.name": "Name",
   "debt.list.balance": "Saldo",
@@ -2779,7 +2929,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.list.editDetails": "Zinssatz & Zahlung",
   "debt.list.needsDetails": "Zinssatz & Mindestzahlung eintragen",
   "debt.list.neverPaysOff": "Wird bei diesem Satz nie getilgt",
-  "debt.details.title": "Schuldendetails — {name}",
+  "debt.details.title": "Details — {name}",
   "debt.details.intro": "Trage den jährlichen Zinssatz und die monatliche Mindestzahlung ein, um diese Schuld in einen Tilgungsplan aufzunehmen.",
   "debt.details.rateLabel": "Jährlicher Zinssatz (%)",
   "debt.details.minPaymentLabel": "Monatliche Mindestzahlung ({currency})",
@@ -3513,7 +3663,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.goals": "Metas",
   "nav.health": "Salud",
   "nav.fire": "FIRE",
-  "nav.debt": "Deudas",
+  "nav.debt": "Pasivos",
   "nav.household": "Hogar",
   "nav.analysis": "Análisis",
   "nav.dividends": "Dividendos",
@@ -3817,6 +3967,81 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.simulation.chart.body":
     "Ejecuta una simulación para ver aquí el rango de resultados probables: las bandas de color son rangos de probabilidad alrededor de la mediana, y una línea discontinua marca el cambio a la fase de retirada.",
 
+  // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
+  "tour.accounts.totals.title": "Activos menos deudas",
+  "tour.accounts.totals.body":
+    "Las tres cifras son tus cuentas: lo que tienes, lo que debes y la diferencia. Todo eso entra en el patrimonio neto del panel.",
+  "tour.accounts.form.title": "Añade una cuenta",
+  "tour.accounts.form.body":
+    "Ponle un nombre y un saldo inicial. El tipo decide si cuenta como activo o como deuda.",
+  "tour.accounts.list.title": "Mantén los saldos al día",
+  "tour.accounts.list.body":
+    "Cada cuenta guarda una lista de saldos con fecha. Añade uno nuevo cuando consultes el banco; el gráfico arrastra el último.",
+  "tour.spending.totals.title": "Ingresos y gastos",
+  "tour.spending.totals.body": "Lo que entró, lo que salió y lo que queda.",
+  "tour.spending.form.title": "Registra en segundos",
+  "tour.spending.form.body":
+    "Elige la cuenta y escribe el importe y el beneficiario. La categoría se sugiere según cómo clasificaste antes a ese beneficiario.",
+  "tour.spending.table.title": "Tu registro",
+  "tour.spending.table.body":
+    "Cada apunte, ordenable por cualquier columna. Importa aquí un extracto bancario en vez de teclear meses de historial.",
+  "tour.goals.form.title": "Define un objetivo",
+  "tour.goals.form.body":
+    "Ponle nombre, importe y fecha. Vincula una cuenta para que el progreso se actualice solo; si vinculas una deuda, el objetivo pasa a ser saldarla.",
+  "tour.goals.list.title": "Progreso y ritmo",
+  "tour.goals.list.body":
+    "Cada objetivo muestra cuánto llevas y cuánto tendrías que apartar al mes para llegar a la fecha.",
+  "tour.debt.totals.title": "Lo que debes",
+  "tour.debt.totals.body":
+    "Deuda total, el mínimo que pagas cada mes y cuánto falta hasta saldarlo todo.",
+  "tour.debt.list.title": "Todas las deudas",
+  "tour.debt.list.body":
+    "Préstamos, hipotecas y líneas de crédito de tus cuentas, con su interés y fecha de liquidación. Ordena por interés para ver qué te cuesta más.",
+  "tour.debt.plan.title": "Avalancha o bola de nieve",
+  "tour.debt.plan.body":
+    "El dinero extra va a la deuda más cara o a la más pequeña. El plan muestra lo que te cuesta cada opción.",
+  "tour.health.gauges.title": "Cuatro señales vitales",
+  "tour.health.gauges.body":
+    "Colchón de emergencia, tasa de ahorro, carga de deuda y patrimonio en relación con tus ingresos. Juntas dicen más que cualquier cifra suelta.",
+  "tour.health.sources.title": "De dónde salen las cifras",
+  "tour.health.sources.body":
+    "Se calculan a partir de tus cuentas y tus gastos. Cuanto más completos estén, más valen los números.",
+  "tour.fire.inputs.title": "Tus supuestos",
+  "tour.fire.inputs.body":
+    "Tasa de retiro, gastos anuales, lo que aportas cada mes y el rendimiento que esperas. Todo lo de abajo reacciona a esto.",
+  "tour.fire.targets.title": "Lean, normal, fat",
+  "tour.fire.targets.body":
+    "Tres importes objetivo para tres estilos de vida, cada uno con el año en que llegarías a tu ritmo actual.",
+  "tour.fire.simulation.title": "Ponlo a prueba",
+  "tour.fire.simulation.body":
+    "La simulación recorre miles de trayectorias de mercado, así ves con qué frecuencia el plan sobrevive a una mala década y no solo al caso medio.",
+  "tour.household.create.title": "Compártelo con alguien",
+  "tour.household.create.body":
+    "Crea un hogar para compartir tus datos con otra persona. Sin él, todo sigue siendo solo tuyo.",
+  "tour.household.members.title": "Quién está dentro",
+  "tour.household.members.body":
+    "Todas las personas de esta lista ven los datos compartidos. Puedes quitar a alguien o salir del hogar cuando quieras.",
+  "tour.household.invite.title": "Envía una invitación",
+  "tour.household.invite.body":
+    "Invita por correo. La otra persona debe aceptar antes de compartir nada.",
+  "tour.dividends.kpis.title": "Lo que realmente llegó",
+  "tour.dividends.kpis.body":
+    "Pagos de los últimos doce meses y desde el inicio, además de tu rendimiento personal sobre el valor actual y sobre lo que pagaste.",
+  "tour.dividends.income.title": "Mes a mes",
+  "tour.dividends.income.body":
+    "Pagos reales, escalados a las participaciones que tenías en cada fecha de pago. Los fondos de acumulación no muestran nada aquí, y es intencionado.",
+  "tour.dividends.upcoming.title": "Los próximos doce meses",
+  "tour.dividends.upcoming.body":
+    "Una proyección de tus pagos anteriores con el número de participaciones actual. Una fecha anunciada oficialmente sustituye a la estimada; el importe sigue siendo siempre una estimación.",
+  "tour.xray.table.title": "Dentro de tus fondos",
+  "tour.xray.table.body":
+    "Tus ETFs se descomponen en las empresas que hay detrás y se suman a las acciones que tienes en directo, así ves tu exposición real por empresa.",
+  "tour.xray.limits.title": "Solo lo conocido",
+  "tour.xray.limits.body":
+    "El desglose cubre los fondos cuyos componentes están en el catálogo. El resto se queda en el remanente sin clasificar en lugar de descartarse en silencio.",
+  "tour.analysis.tabs.title": "Cinco vistas de una cartera",
+  "tour.analysis.tabs.body":
+    "Distribución, rentabilidad, operaciones, riesgo e impuestos. Cada pestaña tiene sus propios controles y la pestaña elegida queda en la URL.",
   "tour.assetTags.what.title": "¿Qué son las etiquetas?",
   "tour.assetTags.what.body":
     "Las etiquetas son pares clave-valor agrupados que tú defines, como Strategie: gamble. Úsalas para marcar posiciones como tenga sentido para ti.",
@@ -4511,13 +4736,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.simulation.configurePrompt": "Ejecuta la simulación para ver las probabilidades",
   "fire.unit.years": "años",
 
-  "debt.title": "Pago de deudas",
+  "debt.title": "Pasivos",
   "debt.subtitle": "Planes de amortización y un plan avalancha/bola de nieve para tus pasivos.",
-  "debt.totals.debt": "Deuda total",
+  "debt.totals.debt": "Total pendiente",
   "debt.totals.minPayment": "Pagos mínimos totales",
   "debt.totals.months": "Tiempo hasta estar libre de deudas",
   "debt.totals.monthsValue": "{n} meses",
-  "debt.list.title": "Tus deudas",
+  "debt.list.title": "Tus pasivos",
   "debt.list.empty": "Aún no hay cuentas de pasivo. Añade una en la página de Cuentas.",
   "debt.list.name": "Nombre",
   "debt.list.balance": "Saldo",
@@ -4526,7 +4751,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.list.editDetails": "Tasa y pago",
   "debt.list.needsDetails": "Añade tasa y pago mínimo",
   "debt.list.neverPaysOff": "Nunca se salda a esta tasa",
-  "debt.details.title": "Detalles de la deuda — {name}",
+  "debt.details.title": "Detalles del pasivo — {name}",
   "debt.details.intro": "Introduce la tasa de interés anual y el pago mínimo mensual para incluir esta deuda en un plan de pago.",
   "debt.details.rateLabel": "Tasa de interés anual (%)",
   "debt.details.minPaymentLabel": "Pago mínimo mensual ({currency})",

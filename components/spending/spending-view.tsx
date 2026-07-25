@@ -190,7 +190,7 @@ export function SpendingView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="spending-totals">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label={t("spending.totals.income")} value={formatCurrency(totals.income, base)} isPrivate />
           <Stat label={t("spending.totals.expense")} value={formatCurrency(totals.expense, base)} isPrivate />
@@ -207,7 +207,7 @@ export function SpendingView() {
 
       <BudgetsCard />
 
-      <Card>
+      <Card data-tour="spending-form">
         <h2 className="text-lg font-semibold">{t("spending.form.title")}</h2>
         {data.accounts.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-500">{t("spending.form.noAccounts")}</p>
@@ -345,7 +345,7 @@ export function SpendingView() {
         )}
       </Card>
 
-      <Card>
+      <Card data-tour="spending-table">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t("spending.list.title")}</h2>
           <div className="flex gap-2">

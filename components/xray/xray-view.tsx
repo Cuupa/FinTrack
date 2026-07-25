@@ -73,7 +73,7 @@ export function XrayView() {
   const maxPercent = Math.max(...xray.exposures.map((e) => e.percent), 0) || 1;
 
   return (
-    <Card>
+    <Card data-tour="xray-table">
       <SectionTitle
         actions={
           <p className="text-sm text-zinc-500">

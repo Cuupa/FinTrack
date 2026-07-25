@@ -41,6 +41,9 @@ vi.mock("@/lib/catalog/catalog", () => ({
 
 vi.mock("@/lib/flags/flags-context", () => ({
   useFeatureFlag: () => true,
+  // The card resolves its own paywall state now: enabled and unlocked here,
+  // so the test exercises the real card, not the ProTeaser preview.
+  useFeature: () => ({ enabled: true, locked: false }),
   usePlanLimit: () => ({ limit: null }),
 }));
 

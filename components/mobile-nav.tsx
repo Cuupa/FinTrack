@@ -15,6 +15,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
+import { LockIcon } from "@/components/billing/pro-teaser";
 import { useFocusTrap } from "./ui/use-focus-trap";
 import {
   NAV_ROUTES,
@@ -48,11 +49,15 @@ function NavIcon({ children, className }: { children: ReactNode; className: stri
 export function MobileNav() {
   const pathname = usePathname();
   const { t } = useI18n();
-  const { isEnabled } = useFeatureFlags();
+  const { getFeature } = useFeatureFlags();
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  const visible = NAV_ROUTES.filter((r) => !r.flag || isEnabled(r.flag));
+  // Same rule as the sidebar: a Pro-locked route stays visible (its page
+  // shows the blurred teaser), only an off flag removes the entry.
+  const featureState = (r: NavRoute) =>
+    r.flag ? getFeature(r.flag) : { enabled: true, locked: false };
+  const visible = NAV_ROUTES.filter((r) => featureState(r).enabled);
   const tabs = visible.filter((r) => r.primary).slice(0, TAB_BUDGET);
   const rest = visible.filter((r) => !tabs.includes(r));
 
@@ -99,6 +104,9 @@ export function MobileNav() {
       >
         <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
         <span className="truncate">{t(route.key)}</span>
+        {featureState(route).locked && (
+          <LockIcon className="ml-auto h-4 w-4 shrink-0 text-zinc-400" />
+        )}
       </Link>
     );
   };

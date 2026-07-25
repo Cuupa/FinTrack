@@ -114,7 +114,7 @@ export function GoalsView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="goals-form">
         <h2 className="text-lg font-semibold">{t("goals.form.title")}</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
@@ -212,7 +212,7 @@ export function GoalsView() {
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </Card>
 
-      <Card>
+      <Card data-tour="goals-list">
         <h2 className="text-lg font-semibold">{t("goals.list.title")}</h2>
         {data.goals.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("goals.list.empty")}</p>

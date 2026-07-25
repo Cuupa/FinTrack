@@ -117,7 +117,7 @@ export function AccountsView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="accounts-totals">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label={t("accounts.totals.assets")} value={formatCurrency(totals.assets, base)} isPrivate />
           <Stat
@@ -148,7 +148,7 @@ export function AccountsView() {
         </p>
       </Card>
 
-      <Card>
+      <Card data-tour="accounts-form">
         <h2 className="text-lg font-semibold">{t("accounts.form.title")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("accounts.form.intro")}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -233,7 +233,7 @@ export function AccountsView() {
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </Card>
 
-      <Card>
+      <Card data-tour="accounts-list">
         <h2 className="text-lg font-semibold">{t("accounts.list.title")}</h2>
         {data.accounts.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.list.empty")}</p>

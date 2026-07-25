@@ -19,7 +19,6 @@ import {
 } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { pendingBookings } from "@/lib/finance/contract-bookings";
-import { ContractsTour } from "@/components/onboarding/page-tours";
 import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -238,7 +237,6 @@ export function ContractsView() {
     <div className="space-y-6">
       {/* Mount placement is the auto-start gate, same as the other page tours:
           this view only renders once the contracts surface is reachable. */}
-      <ContractsTour />
 
       {insuranceEnabled && gaps.length > 0 && (
         <Card>

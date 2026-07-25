@@ -265,7 +265,7 @@ export function FireView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="fire-inputs">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Stat label={t("fire.netWorth.label")} value={formatCurrency(netWorth, currency)} isPrivate />
           <div>
@@ -316,7 +316,7 @@ export function FireView() {
         <p className="mt-1 text-xs text-zinc-500">{t("fire.annualReturn.hint")}</p>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div data-tour="fire-targets" className="grid gap-4 sm:grid-cols-3">
         <FireTile label={t("fire.lean.label")} amount={plan.lean} years={plan.yearsToLean} currency={currency} t={t} />
         <FireTile
           label={t("fire.regular.label")}
@@ -328,7 +328,7 @@ export function FireView() {
         <FireTile label={t("fire.fat.label")} amount={plan.fat} years={plan.yearsToFat} currency={currency} t={t} />
       </div>
 
-      <Card>
+      <Card data-tour="fire-simulation">
         <h2 className="text-lg font-semibold">{t("fire.simulation.title")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("fire.simulation.subtitle")}</p>
         <p className="mt-1 text-xs text-zinc-500">
