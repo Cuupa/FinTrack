@@ -218,6 +218,22 @@ export interface SpendingTransaction {
   payee: string;
   note: string | null;
   recurringId: string | null;
+  /**
+   * Set when this booking moved money to another {@link Account} of the user's
+   * own rather than spending it: a loan instalment, or a premium paid into a
+   * wealth-building policy (Riester, kapitalbildende Lebensversicherung).
+   *
+   * Such a booking is NOT income and NOT expense — net worth is unchanged at
+   * the moment of payment, only its composition shifts — so every aggregation
+   * in `lib/finance/spending.ts` skips it. Without this, a Riester premium
+   * booked by a contract would read as pure consumption and the spending
+   * picture would be wrong by the full premium every month.
+   *
+   * It deliberately does not move either account's balance: in this app an
+   * account's value is its opening balance plus the dated readings the user
+   * maintains, and ordinary spending does not move it either.
+   */
+  transferAccountId?: string | null;
 }
 
 /**
@@ -316,6 +332,16 @@ export interface Contract {
    *  only after the user confirms the due bookings, mirroring
    *  `SavingsPlan.lastRunDate`. */
   lastBookedDate?: string | null;
+  /**
+   * Where the money goes when this contract is not consumption: the loan being
+   * repaid, or the policy being paid into. Set, the contract's bookings carry
+   * `SpendingTransaction.transferAccountId` and stop counting as expense.
+   *
+   * This is what separates "Netflix" from "Riester" and from an
+   * Annuitätendarlehen — all three are recurring charges, but only the first
+   * one is money spent.
+   */
+  targetAccountId?: string | null;
 }
 
 /** Insurance types tracked on a {@link Contract} (ROADMAP item #10, flag

@@ -83,8 +83,15 @@ export interface PendingBooking {
   accountId: string;
   categoryId: string | null;
   date: string;
-  /** Signed for the spending ledger: a contract charge is always an expense. */
+  /** Signed for the spending ledger: money leaves the account either way. */
   amount: number;
+  /**
+   * Set when the contract pays into another account of the user's own — a loan
+   * being repaid, or a wealth-building policy. Such a booking is a transfer,
+   * not consumption, and `lib/finance/spending.ts` keeps it out of every
+   * income/expense aggregation.
+   */
+  transferAccountId: string | null;
 }
 
 /**
@@ -102,6 +109,7 @@ export function pendingBookings(contracts: Contract[], today: string): PendingBo
         categoryId: contract.categoryId,
         date,
         amount: -Math.abs(contract.amount),
+        transferAccountId: contract.targetAccountId ?? null,
       });
     }
   }

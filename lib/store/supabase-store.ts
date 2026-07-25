@@ -192,6 +192,8 @@ interface SpendingTransactionRow {
   payee: string;
   note: string | null;
   recurring_id: string | null;
+  // Migration 0096; optional so a database that has not run it still loads.
+  transfer_account_id?: string | null;
 }
 
 function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
@@ -204,6 +206,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     payee: r.payee,
     note: r.note,
     recurringId: r.recurring_id,
+    transferAccountId: r.transfer_account_id ?? null,
   };
 }
 
@@ -232,6 +235,7 @@ interface ContractRow {
   account_id?: string | null;
   booking_start_date?: string | null;
   last_booked_date?: string | null;
+  target_account_id?: string | null;
 }
 
 function contractFromRow(r: ContractRow): Contract {
@@ -248,6 +252,7 @@ function contractFromRow(r: ContractRow): Contract {
     accountId: r.account_id ?? null,
     bookingStartDate: r.booking_start_date ?? null,
     lastBookedDate: r.last_booked_date ?? null,
+    targetAccountId: r.target_account_id ?? null,
   };
 }
 
@@ -365,7 +370,7 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("spending_transactions")
-        .select("id, account_id, category_id, date, amount, payee, note, recurring_id")
+        .select("id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id")
         .order("date", { ascending: false }),
       this.supabase
         .from("budgets")
@@ -1087,6 +1092,7 @@ export class SupabaseStore implements DataStore {
         payee: input.payee,
         note: input.note,
         recurring_id: input.recurringId,
+        transfer_account_id: input.transferAccountId ?? null,
       })
       .select("id")
       .single();
@@ -1106,6 +1112,7 @@ export class SupabaseStore implements DataStore {
     if (patch.payee !== undefined) upd.payee = patch.payee;
     if (patch.note !== undefined) upd.note = patch.note;
     if (patch.recurringId !== undefined) upd.recurring_id = patch.recurringId;
+    if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase
@@ -1178,6 +1185,7 @@ export class SupabaseStore implements DataStore {
         account_id: input.accountId ?? null,
         booking_start_date: input.bookingStartDate ?? null,
         last_booked_date: input.lastBookedDate ?? null,
+        target_account_id: input.targetAccountId ?? null,
       })
       .select("id")
       .single();
@@ -1200,6 +1208,7 @@ export class SupabaseStore implements DataStore {
     if (patch.accountId !== undefined) upd.account_id = patch.accountId;
     if (patch.bookingStartDate !== undefined) upd.booking_start_date = patch.bookingStartDate;
     if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
+    if (patch.targetAccountId !== undefined) upd.target_account_id = patch.targetAccountId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's contract too.
     const { data, error } = await this.supabase

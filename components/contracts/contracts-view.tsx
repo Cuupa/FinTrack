@@ -70,6 +70,7 @@ export function ContractsView() {
   const [insuranceType, setInsuranceType] = useState<InsuranceType | "">("");
   const [isInsurance, setIsInsurance] = useState(false);
   const [accountId, setAccountId] = useState("");
+  const [targetAccountId, setTargetAccountId] = useState("");
   const [booking, setBooking] = useState(false);
 
   const due = useMemo(() => pendingBookings(data.contracts, today()), [data.contracts]);
@@ -96,6 +97,7 @@ export function ContractsView() {
           payee: b.contractName,
           note: null,
           recurringId: b.contractId,
+          transferAccountId: b.transferAccountId,
         });
         const prev = newest.get(b.contractId);
         if (!prev || b.date > prev) newest.set(b.contractId, b.date);
@@ -174,6 +176,7 @@ export function ContractsView() {
         cancellationNoticeDays: notice !== null && Number.isFinite(notice) ? notice : null,
         categoryId: categoryId || null,
         accountId: accountId || null,
+        targetAccountId: (accountId && targetAccountId) || null,
         // Booking starts today rather than back-filling the contract's whole
         // history: nobody wants a new contract to post two years of charges.
         bookingStartDate: accountId ? today() : null,
@@ -196,6 +199,7 @@ export function ContractsView() {
       setSumInsured("");
       setIsInsurance(false);
       setAccountId("");
+      setTargetAccountId("");
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.form.error"));
     } finally {
@@ -366,6 +370,33 @@ export function ContractsView() {
               {accountId ? t("contracts.form.accountHintOn") : t("contracts.form.accountHintOff")}
             </p>
           </div>
+          {/* Only meaningful once the contract books: it says the money is not
+              consumed but moved somewhere of yours — a loan being repaid, or a
+              policy building value. Those bookings stay out of the income and
+              expense figures, which is what stops a Riester premium reading as
+              250 EUR spent every month. */}
+          {accountId && (
+            <div>
+              <label className="text-sm font-medium">{t("contracts.form.targetLabel")}</label>
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("contracts.form.targetLabel")}
+                value={targetAccountId}
+                onChange={setTargetAccountId}
+                options={[
+                  { value: "", label: t("contracts.form.targetNone") },
+                  ...data.accounts
+                    .filter((a) => a.id !== accountId)
+                    .map((a) => ({ value: a.id, label: a.name })),
+                ]}
+              />
+              <p className="mt-1 text-sm text-zinc-500">
+                {targetAccountId
+                  ? t("contracts.form.targetHintOn")
+                  : t("contracts.form.targetHintOff")}
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium">{t("contracts.form.categoryLabel")}</label>
             <SelectMenu

@@ -101,8 +101,18 @@ describe("pendingBookings", () => {
         categoryId: null,
         date: "2024-01-15",
         amount: -12.99,
+        transferAccountId: null,
       },
     ]);
+  });
+
+  it("carries the target account so the booking counts as a transfer", () => {
+    // A Riester premium or a loan instalment: money moved, not consumed.
+    const rows = pendingBookings(
+      [contract({ name: "Riester", amount: 250, targetAccountId: "acc-policy" })],
+      "2024-01-20",
+    );
+    expect(rows[0]).toMatchObject({ amount: -250, transferAccountId: "acc-policy" });
   });
 
   it("keeps the charge an expense even if the amount was stored negative", () => {

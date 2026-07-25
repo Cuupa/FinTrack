@@ -10,6 +10,51 @@ import {
 } from "@/lib/finance/spending";
 import type { Account, Budget, SpendingCategory, SpendingTransaction } from "@/lib/types";
 
+describe("transfers are neither income nor expense", () => {
+  // A Riester premium, a kapitalbildende Lebensversicherung, a loan
+  // instalment: the money moves to another account of the user's own, so net
+  // worth is unchanged and only its composition shifts. Counting them as
+  // spending overstated expenses by the full premium every month.
+  const salary = () => tx({ id: "i1", date: "2024-01-01", amount: 3000, payee: "Salary" });
+  const groceries = () =>
+    tx({ id: "e1", date: "2024-01-05", amount: -200, payee: "Rewe", categoryId: "cat-food" });
+  const riester = () =>
+    tx({
+      id: "t1",
+      date: "2024-01-10",
+      amount: -250,
+      payee: "Riester",
+      categoryId: "cat-food",
+      transferAccountId: "acc-policy",
+    });
+
+  it("excludes them from the income and expense split", () => {
+    const split = incomeExpenseSplit([salary(), groceries(), riester()]);
+    expect(split).toEqual({ income: 3000, expense: 200, net: 2800 });
+  });
+
+  it("excludes them from category totals", () => {
+    const totals = byCategoryAndMonth([groceries(), riester()]);
+    expect(totals).toEqual([{ month: "2024-01", categoryId: "cat-food", amount: -200 }]);
+  });
+
+  it("does not let them eat a budget", () => {
+    const budgets: Budget[] = [{ id: "b1", categoryId: "cat-food", amount: 300 }];
+    const [progress] = budgetProgress([groceries(), riester()], budgets, "2024-01");
+    expect(progress.spent).toBe(200);
+    expect(progress.overBudget).toBe(false);
+  });
+
+  it("excludes them from safe-to-spend", () => {
+    expect(safeToSpend([salary(), groceries(), riester()], "2024-01-01")).toBe(2800);
+  });
+
+  it("still counts an ordinary charge that has no transfer target", () => {
+    const netflix = tx({ id: "n1", date: "2024-01-12", amount: -12.99, payee: "Netflix" });
+    expect(incomeExpenseSplit([netflix]).expense).toBe(12.99);
+  });
+});
+
 const labels: SpendingSankeyLabels = {
   total: "Total",
   savings: "Savings",

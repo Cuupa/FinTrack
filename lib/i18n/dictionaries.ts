@@ -924,6 +924,16 @@ export const en = {
   "contracts.form.accountNone": "Do not book",
   "contracts.form.accountHintOn": "The charge is booked into your spending from today on.",
   "contracts.form.accountHintOff": "Kept as a register entry only, with no bookings.",
+  "spending.list.makeContract": "Make a contract",
+  "spending.list.makeContractTitle": "Turn this into a contract?",
+  "spending.list.makeContractMsg":
+    "Creates a monthly contract for {payee} from this booking. You can change the interval and everything else on the Contracts page.",
+  "contracts.form.targetLabel": "Paid into (optional)",
+  "contracts.form.targetNone": "Nothing, the money is spent",
+  "contracts.form.targetHintOn":
+    "Counted as a transfer, not as spending: the money moves to that account instead of being consumed.",
+  "contracts.form.targetHintOff":
+    "For a loan instalment or a policy that builds value, pick the account it pays into.",
   "contracts.due.title": "Due bookings",
   "contracts.due.intro": "{n} charge(s) are due. Check them before they are booked.",
   "contracts.due.book": "Book now",
@@ -2664,6 +2674,16 @@ export const de: Partial<Record<MessageKey, string>> = {
   "contracts.form.accountNone": "Nicht buchen",
   "contracts.form.accountHintOn": "Der Betrag wird ab heute in deine Ausgaben gebucht.",
   "contracts.form.accountHintOff": "Nur als Eintrag im Register, ohne Buchungen.",
+  "spending.list.makeContract": "Vertrag daraus machen",
+  "spending.list.makeContractTitle": "Daraus einen Vertrag machen?",
+  "spending.list.makeContractMsg":
+    "Legt aus dieser Buchung einen monatlichen Vertrag für {payee} an. Intervall und alles Weitere kannst du auf der Verträge-Seite ändern.",
+  "contracts.form.targetLabel": "Zahlt ein auf (optional)",
+  "contracts.form.targetNone": "Nichts, das Geld ist ausgegeben",
+  "contracts.form.targetHintOn":
+    "Zählt als Umbuchung, nicht als Ausgabe: das Geld wandert auf dieses Konto, statt verbraucht zu werden.",
+  "contracts.form.targetHintOff":
+    "Bei einer Kreditrate oder einer Police, die Wert aufbaut, wähl das Konto, auf das sie einzahlt.",
   "contracts.due.title": "Fällige Buchungen",
   "contracts.due.intro": "{n} Buchung(en) sind fällig. Prüf sie, bevor sie gebucht werden.",
   "contracts.due.book": "Jetzt buchen",
@@ -4401,6 +4421,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   "contracts.form.accountNone": "No registrar",
   "contracts.form.accountHintOn": "El cargo se registra en tus gastos a partir de hoy.",
   "contracts.form.accountHintOff": "Solo como entrada del registro, sin movimientos.",
+  "spending.list.makeContract": "Convertir en contrato",
+  "spending.list.makeContractTitle": "¿Convertirlo en un contrato?",
+  "spending.list.makeContractMsg":
+    "Crea un contrato mensual para {payee} a partir de este movimiento. Puedes cambiar la periodicidad y lo demás en la página de contratos.",
+  "contracts.form.targetLabel": "Ingresa en (opcional)",
+  "contracts.form.targetNone": "Nada, el dinero se gasta",
+  "contracts.form.targetHintOn":
+    "Cuenta como traspaso, no como gasto: el dinero pasa a esa cuenta en vez de consumirse.",
+  "contracts.form.targetHintOff":
+    "Para la cuota de un préstamo o una póliza que acumula valor, elige la cuenta en la que ingresa.",
   "contracts.due.title": "Cargos pendientes",
   "contracts.due.intro": "Hay {n} cargo(s) pendiente(s). Revísalos antes de registrarlos.",
   "contracts.due.book": "Registrar ahora",

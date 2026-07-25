@@ -587,7 +587,17 @@ create table if not exists public.spending_transactions (
   recurring_id uuid,
   created_at timestamptz not null default now()
 );
+-- Transfer marker (migration 0096): set when the booking moved money to
+-- another account of the user's own (loan instalment, wealth-building premium)
+-- rather than spending it. Every aggregation in lib/finance/spending.ts skips
+-- these rows -- they are neither income nor expense. Does not move any
+-- balance; account values come from their readings, and ordinary spending does
+-- not move them either.
+alter table public.spending_transactions
+  add column if not exists transfer_account_id uuid references public.accounts (id) on delete set null;
+
 create index if not exists spending_transactions_account_id_idx on public.spending_transactions (account_id);
+create index if not exists spending_transactions_transfer_account_id_idx on public.spending_transactions (transfer_account_id);
 create index if not exists spending_transactions_category_id_idx on public.spending_transactions (category_id);
 create index if not exists spending_transactions_user_id_idx on public.spending_transactions (user_id);
 
@@ -635,6 +645,11 @@ alter table public.contracts
   add column if not exists booking_start_date date;
 alter table public.contracts
   add column if not exists last_booked_date date;
+-- Migration 0096: where the money goes when the contract is not consumption
+-- (the loan being repaid, the policy being paid into). Set, its bookings carry
+-- transfer_account_id and stop counting as expense.
+alter table public.contracts
+  add column if not exists target_account_id uuid references public.accounts (id) on delete set null;
 
 create index if not exists contracts_user_id_idx on public.contracts (user_id);
 create index if not exists contracts_account_id_idx on public.contracts (account_id);
