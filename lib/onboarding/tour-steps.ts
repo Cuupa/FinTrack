@@ -35,6 +35,14 @@ export const TOUR_STEPS: TourStep[] = [
     titleKey: "tour.holdings.title",
     bodyKey: "tour.holdings.body",
   },
+  {
+    // Sits right after the holdings so the tour tells the same story the page
+    // now does: net worth, then everyday money, then investments.
+    key: "areas",
+    target: "areas",
+    titleKey: "tour.areas.title",
+    bodyKey: "tour.areas.body",
+  },
   { key: "nav", target: "nav", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
   {
     key: "themeToggle",
@@ -106,6 +114,30 @@ export const REBALANCING_TOUR_STEPS: TourStep[] = [
     target: "rebalance-orders",
     titleKey: "tour.rebalancing.orders.title",
     bodyKey: "tour.rebalancing.orders.body",
+  },
+];
+
+/** Contracts register (components/contracts/contracts-view.tsx). Covers the
+ *  three things that surface there and nowhere else: what kind of commitment
+ *  a row is, whether it posts bookings, and where detected charges come from. */
+export const CONTRACTS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "contractsKind",
+    target: "contract-kind",
+    titleKey: "tour.contracts.kind.title",
+    bodyKey: "tour.contracts.kind.body",
+  },
+  {
+    key: "contractsBooking",
+    target: "contract-account",
+    titleKey: "tour.contracts.booking.title",
+    bodyKey: "tour.contracts.booking.body",
+  },
+  {
+    key: "contractsSuggestions",
+    target: "contract-suggestions",
+    titleKey: "tour.contracts.suggestions.title",
+    bodyKey: "tour.contracts.suggestions.body",
   },
 ];
 

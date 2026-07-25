@@ -19,6 +19,7 @@ import {
 } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { pendingBookings } from "@/lib/finance/contract-bookings";
+import { ContractsTour } from "@/components/onboarding/page-tours";
 import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -231,6 +232,10 @@ export function ContractsView() {
 
   return (
     <div className="space-y-6">
+      {/* Mount placement is the auto-start gate, same as the other page tours:
+          this view only renders once the contracts surface is reachable. */}
+      <ContractsTour />
+
       {insuranceEnabled && gaps.length > 0 && (
         <Card>
           <h2 className="text-lg font-semibold">{t("contracts.coverage.title")}</h2>
@@ -273,7 +278,7 @@ export function ContractsView() {
       )}
 
       {visibleCandidates.length > 0 && (
-        <Card>
+        <Card data-tour="contract-suggestions">
           <h2 className="text-lg font-semibold">{t("contracts.suggestions.title")}</h2>
           <p className="mt-1 text-sm text-zinc-500">{t("contracts.suggestions.intro")}</p>
           <ul className="mt-4 space-y-2">
@@ -345,7 +350,7 @@ export function ContractsView() {
           {/* Choosing an account is what turns a register entry into something
               that actually posts the charge. Left empty (the default, and how
               every contract behaved before booking existed) it stays a note. */}
-          <div>
+          <div data-tour="contract-account">
             <label className="text-sm font-medium">{t("contracts.form.accountLabel")}</label>
             <SelectMenu
               className="mt-1 w-full"
@@ -385,7 +390,7 @@ export function ContractsView() {
               was always the discriminator; this just makes the choice
               explicit and hides the fields that do not apply. */}
           {insuranceEnabled && (
-            <div>
+            <div data-tour="contract-kind">
               <label className="text-sm font-medium">{t("contracts.form.kindLabel")}</label>
               <div className="mt-1">
                 <SegmentedControl

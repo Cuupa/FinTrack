@@ -249,6 +249,18 @@ export const en = {
   "tour.holdings.title": "Your holdings",
   "tour.holdings.body":
     "Every position lives here, sortable by column. Click a row to open its details.",
+  "tour.areas.title": "Your everyday money",
+  "tour.areas.body":
+    "Accounts, spending and goals each get a card here, so the home screen covers your whole financial picture and not just the portfolio. Click a card's title to open that area.",
+  "tour.contracts.kind.title": "Contract or insurance?",
+  "tour.contracts.kind.body":
+    "Pick what the entry is first. Insurance adds a type and a sum insured; an ordinary contract like a subscription is not asked for either.",
+  "tour.contracts.booking.title": "Let it book itself",
+  "tour.contracts.booking.body":
+    "Choose a booking account and the charge is posted into your spending on schedule, from today on. Leave it empty to keep the contract as a note only.",
+  "tour.contracts.suggestions.title": "Detected charges",
+  "tour.contracts.suggestions.body":
+    "A payment that repeats at a regular cadence shows up here so you can take it into the register. Loan instalments are left out: paying a debt down is a transfer, not a running cost.",
   "tour.nav.title": "More to explore",
   "tour.nav.body": "Analysis, dividends, and simulation all live in this menu.",
   "tour.themeToggle.title": "Dark mode",
@@ -1977,6 +1989,18 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.holdings.title": "Deine Positionen",
   "tour.holdings.body":
     "Alle Positionen findest du hier, sortierbar nach Spalte. Klicke auf eine Zeile für die Details.",
+  "tour.areas.title": "Dein Alltagsgeld",
+  "tour.areas.body":
+    "Konten, Ausgaben und Ziele bekommen hier je eine Karte, damit die Startseite dein ganzes Finanzbild zeigt und nicht nur das Depot. Klick auf den Titel einer Karte, um den Bereich zu öffnen.",
+  "tour.contracts.kind.title": "Vertrag oder Versicherung?",
+  "tour.contracts.kind.body":
+    "Wähl zuerst, worum es sich handelt. Bei einer Versicherung kommen Art und Versicherungssumme dazu; ein normaler Vertrag wie ein Abo wird danach gar nicht erst gefragt.",
+  "tour.contracts.booking.title": "Automatisch buchen lassen",
+  "tour.contracts.booking.body":
+    "Wähl ein Buchungskonto, dann wird der Betrag ab heute regelmäßig in deine Ausgaben gebucht. Lass es leer, wenn der Vertrag nur ein Eintrag bleiben soll.",
+  "tour.contracts.suggestions.title": "Erkannte Zahlungen",
+  "tour.contracts.suggestions.body":
+    "Zahlungen, die sich regelmäßig wiederholen, tauchen hier auf und lassen sich ins Register übernehmen. Kreditraten bleiben außen vor: Schulden tilgen ist eine Umbuchung, keine laufende Ausgabe.",
   "tour.nav.title": "Mehr entdecken",
   "tour.nav.body": "Analyse, Dividenden und Simulation findest du in diesem Menü.",
   "tour.themeToggle.title": "Dunkler Modus",
@@ -3704,6 +3728,18 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.holdings.title": "Tus posiciones",
   "tour.holdings.body":
     "Aquí están todas tus posiciones, ordenables por columna. Haz clic en una fila para ver sus detalles.",
+  "tour.areas.title": "Tu dinero del día a día",
+  "tour.areas.body":
+    "Cuentas, gastos y objetivos tienen aquí su propia tarjeta, para que la pantalla de inicio cubra toda tu situación financiera y no solo la cartera. Pulsa el título de una tarjeta para abrir esa área.",
+  "tour.contracts.kind.title": "¿Contrato o seguro?",
+  "tour.contracts.kind.body":
+    "Elige primero de qué se trata. Un seguro añade el tipo y la suma asegurada; a un contrato normal como una suscripción no se le pregunta nada de eso.",
+  "tour.contracts.booking.title": "Deja que se registre solo",
+  "tour.contracts.booking.body":
+    "Elige una cuenta de cargo y el importe se registrará en tus gastos según su periodicidad, a partir de hoy. Déjala vacía si el contrato debe quedarse solo como anotación.",
+  "tour.contracts.suggestions.title": "Cargos detectados",
+  "tour.contracts.suggestions.body":
+    "Los pagos que se repiten con una cadencia regular aparecen aquí para que los pases al registro. Las cuotas de préstamo quedan fuera: amortizar deuda es una transferencia, no un gasto corriente.",
   "tour.nav.title": "Más por explorar",
   "tour.nav.body": "Análisis, dividendos y simulación están en este menú.",
   "tour.themeToggle.title": "Modo oscuro",

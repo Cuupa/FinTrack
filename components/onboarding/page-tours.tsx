@@ -17,6 +17,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {
   ASSET_TAGS_TOUR_STEPS,
+  CONTRACTS_TOUR_STEPS,
   REBALANCING_TOUR_STEPS,
   RISK_TOUR_STEPS,
   SIMULATION_TOUR_STEPS,
@@ -55,6 +56,24 @@ export function RebalancingTour({ restartToken = 0 }: PageTourProps) {
       markDone={() =>
         updateProfile({
           toursDone: { ...data.profile.toursDone, rebalancing: new Date().toISOString() },
+        })
+      }
+      forceOpen={restartToken > 0}
+    />
+  );
+}
+
+export function ContractsTour({ restartToken = 0 }: PageTourProps) {
+  const { data, updateProfile } = usePortfolio();
+  return (
+    <TourOverlay
+      key={restartToken}
+      tourId="contracts"
+      steps={CONTRACTS_TOUR_STEPS}
+      isDone={data.profile.toursDone.contracts != null}
+      markDone={() =>
+        updateProfile({
+          toursDone: { ...data.profile.toursDone, contracts: new Date().toISOString() },
         })
       }
       forceOpen={restartToken > 0}

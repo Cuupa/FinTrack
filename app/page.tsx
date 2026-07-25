@@ -120,7 +120,9 @@ export default function DashboardPage() {
               home screen used to be the holdings table with a net-worth chart
               on top, so accounts and spending were only ever a sidebar click
               away and the product read as a portfolio tracker with extras. */}
-          <AreaCards />
+          <div data-tour="areas">
+            <AreaCards />
+          </div>
 
           {/* Investments are one section of the home screen now, not the whole
               of it — hence the heading, which the page never had. */}
