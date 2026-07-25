@@ -487,6 +487,7 @@ export const en = {
 
   "stat.netWorth": "Net worth",
   "dash.madeUpOf": "Made up of",
+  "dash.thisMonth": "This month",
   "stat.change": "Change",
   "stat.unrealized": "Unrealized P&L",
   "stat.realized": "Realized P&L",
@@ -2162,6 +2163,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "stat.netWorth": "Nettovermögen",
   "dash.madeUpOf": "Setzt sich zusammen aus",
+  "dash.thisMonth": "Diesen Monat",
   "stat.change": "Veränderung",
   "stat.unrealized": "Nicht realisierter G/V",
   "stat.realized": "Realisierter G/V",
@@ -3838,6 +3840,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "stat.netWorth": "Patrimonio neto",
   "dash.madeUpOf": "Se compone de",
+  "dash.thisMonth": "Este mes",
   "stat.change": "Variación",
   "stat.unrealized": "P&G no realizada",
   "stat.realized": "P&G realizada",
