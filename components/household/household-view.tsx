@@ -1,0 +1,244 @@
+"use client";
+
+// Household collaboration (ROADMAP item #13, flag `household`): create or
+// join a household, invite/accept members, manage roles. Registered-mode
+// only -- household-context.tsx has no LocalStore/OfflineStore equivalent,
+// same as billing.
+
+import { useState } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
+import { useHousehold } from "@/lib/household/household-context";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { Button, Card } from "@/components/ui/primitives";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { HouseholdInvite, HouseholdMember } from "@/lib/types";
+
+const inputCls =
+  "flex-1 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+
+export function HouseholdView() {
+  const { user } = useAuth();
+  const {
+    household,
+    members,
+    memberEmails,
+    sentInvites,
+    receivedInvites,
+    loading,
+    createHousehold,
+    renameHousehold,
+    inviteMember,
+    revokeInvite,
+    acceptInvite,
+    declineInvite,
+    removeMember,
+    leaveHousehold,
+  } = useHousehold();
+  const { t } = useI18n();
+
+  const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<HouseholdMember | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const isOwner = members.some((m) => m.userId === user?.id && m.role === "owner");
+
+  async function run(action: () => Promise<void>) {
+    setError(null);
+    setBusy(true);
+    try {
+      await action();
+    } catch {
+      setError(t("household.actionError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <Skeleton className="h-6 w-40" />
+        <div className="mt-4 space-y-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {receivedInvites.length > 0 && (
+        <Card>
+          <h2 className="text-lg font-semibold">{t("household.invitesReceived")}</h2>
+          <ul className="mt-3 space-y-2">
+            {receivedInvites.map((invite: HouseholdInvite) => (
+              <li
+                key={invite.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+              >
+                <span>{t("household.invitedYou")}</span>
+                <span className="flex gap-2">
+                  <Button size="sm" variant="primary" disabled={busy} onClick={() => run(() => acceptInvite(invite))}>
+                    {t("household.accept")}
+                  </Button>
+                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(() => declineInvite(invite.id))}>
+                    {t("household.decline")}
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {!household ? (
+        <Card>
+          <h2 className="text-lg font-semibold">{t("household.createTitle")}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{t("household.createSubtitle")}</p>
+          <div className="mt-3 flex gap-2">
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder={t("household.namePlaceholder")}
+              aria-label={t("household.namePlaceholder")}
+              className={inputCls}
+            />
+            <Button
+              variant="primary"
+              disabled={busy || !newName.trim()}
+              onClick={() =>
+                run(async () => {
+                  await createHousehold(newName.trim());
+                  setNewName("");
+                })
+              }
+            >
+              {t("household.create")}
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <div className="flex items-center justify-between gap-3">
+              <input
+                defaultValue={household.name}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== household.name) void run(() => renameHousehold(v));
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+                aria-label={t("household.namePlaceholder")}
+                disabled={!isOwner}
+                className="flex-1 rounded-md px-2 py-1 text-lg font-semibold outline-none hover:bg-zinc-100 focus:border focus:border-zinc-500 disabled:hover:bg-transparent dark:hover:bg-zinc-800"
+              />
+              <Button size="sm" variant="danger" disabled={busy} onClick={() => setConfirmLeave(true)}>
+                {t("household.leave")}
+              </Button>
+            </div>
+
+            <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              {t("household.members")}
+            </h3>
+            <ul className="mt-2 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {members.map((m) => (
+                <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="truncate">
+                    {memberEmails[m.userId] ?? m.userId}
+                    {m.userId === user?.id && ` (${t("household.you")})`}
+                    {" · "}
+                    {t(m.role === "owner" ? "household.roleOwner" : "household.roleMember")}
+                  </span>
+                  {isOwner && m.userId !== user?.id && (
+                    <Button size="sm" variant="danger" disabled={busy} onClick={() => setConfirmRemove(m)}>
+                      {t("household.remove")}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-semibold">{t("household.inviteTitle")}</h2>
+            <div className="mt-3 flex gap-2">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder={t("household.emailPlaceholder")}
+                aria-label={t("household.emailPlaceholder")}
+                className={inputCls}
+              />
+              <Button
+                variant="primary"
+                disabled={busy || !inviteEmail.trim()}
+                onClick={() =>
+                  run(async () => {
+                    await inviteMember(inviteEmail.trim());
+                    setInviteEmail("");
+                  })
+                }
+              >
+                {t("household.invite")}
+              </Button>
+            </div>
+            {sentInvites.length > 0 && (
+              <ul className="mt-4 space-y-2">
+                {sentInvites.map((invite) => (
+                  <li
+                    key={invite.id}
+                    className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                  >
+                    <span className="truncate">{invite.email}</span>
+                    <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(() => revokeInvite(invite.id))}>
+                      {t("household.revoke")}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </>
+      )}
+
+      <ConfirmDialog
+        open={confirmLeave}
+        title={t("household.leave")}
+        message={t("household.leaveConfirm")}
+        confirmLabel={t("household.leave")}
+        onConfirm={() => {
+          setConfirmLeave(false);
+          void run(() => leaveHousehold());
+        }}
+        onCancel={() => setConfirmLeave(false)}
+      />
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        title={t("household.remove")}
+        message={
+          confirmRemove
+            ? t("household.removeConfirm", { email: memberEmails[confirmRemove.userId] ?? confirmRemove.userId })
+            : undefined
+        }
+        confirmLabel={t("household.remove")}
+        onConfirm={() => {
+          const m = confirmRemove;
+          setConfirmRemove(null);
+          if (m) void run(() => removeMember(m.id));
+        }}
+        onCancel={() => setConfirmRemove(null)}
+      />
+    </div>
+  );
+}

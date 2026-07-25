@@ -469,6 +469,90 @@ create unique index if not exists account_balances_unique_key
 create index if not exists account_balances_account_id_idx on public.account_balances (account_id);
 create index if not exists account_balances_user_id_idx on public.account_balances (user_id);
 
+-- Household / collaboration (ROADMAP #13, flag `household`): shared
+-- read/write access to another registered user's financial data. v1 caps
+-- membership at ONE household per user (household_members.user_id has a
+-- unique index) -- this sidesteps "which household's accounts am I seeing"
+-- ambiguity entirely. No transactional-email infra exists in this app, so
+-- invites are NOT emailed: an invite is a row keyed by the invitee's email;
+-- the invited user sees it in-app (their own signed-in email matches a
+-- pending invite) and accepts/declines from there. See migration
+-- 0091_households.sql / 0092_household_accounts.sql for the full rationale.
+create table if not exists public.households (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_by uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.household_members (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  role text not null default 'member' check (role in ('owner', 'member')),
+  joined_at timestamptz not null default now()
+);
+create unique index if not exists household_members_one_per_user
+  on public.household_members (user_id);
+create index if not exists household_members_household_id_idx
+  on public.household_members (household_id);
+
+create table if not exists public.household_invites (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households (id) on delete cascade,
+  email text not null,
+  invited_by uuid not null references auth.users (id) on delete cascade,
+  role text not null default 'member' check (role in ('owner', 'member')),
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'revoked')),
+  created_at timestamptz not null default now()
+);
+create index if not exists household_invites_email_idx
+  on public.household_invites (lower(email));
+create index if not exists household_invites_household_id_idx
+  on public.household_invites (household_id);
+
+-- SECURITY DEFINER helpers so per-table RLS policies (accounts today, more
+-- tables in later rounds) can extend "own row" to "own row OR a household
+-- peer's row" without those policies needing their own read access to
+-- household_members, and without household_members' own policies becoming
+-- self-referential (a function owned by the table owner bypasses that
+-- table's RLS internally).
+create or replace function public.my_household_id()
+returns uuid language sql stable security definer set search_path = public as $$
+  select household_id from public.household_members where user_id = auth.uid() limit 1;
+$$;
+grant execute on function public.my_household_id() to authenticated;
+
+create or replace function public.household_peer_ids()
+returns setof uuid language sql stable security definer set search_path = public as $$
+  select user_id from public.household_members
+  where household_id = (select household_id from public.household_members where user_id = auth.uid() limit 1);
+$$;
+grant execute on function public.household_peer_ids() to authenticated;
+
+create or replace function public.is_household_owner(p_household_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.household_members
+    where household_id = p_household_id and user_id = auth.uid() and role = 'owner'
+  );
+$$;
+grant execute on function public.is_household_owner(uuid) to authenticated;
+
+-- auth.users is not directly selectable by clients; this exposes only the
+-- emails of people the caller already shares a household with (mutual
+-- disclosure -- they already know each other's email from the invite),
+-- never the full user list.
+create or replace function public.household_member_emails()
+returns table (user_id uuid, email text)
+language sql stable security definer set search_path = public, auth as $$
+  select hm.user_id, u.email
+  from public.household_members hm
+  join auth.users u on u.id = hm.user_id
+  where hm.household_id = public.my_household_id();
+$$;
+grant execute on function public.household_member_emails() to authenticated;
+
 -- Spending transactions & categories (ROADMAP #2, flag `spending`):
 -- expense/income against an accounts row, categorised. `spending_categories`
 -- is a flat taxonomy (group_name + name); a transaction carries exactly one
@@ -842,13 +926,85 @@ drop policy if exists "own asset valuations" on public.asset_valuations;
 create policy "own asset valuations" on public.asset_valuations
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Household-shared (ROADMAP #13 round 2, migration 0092): a household peer
+-- can see and edit every member's accounts + balances, not just their own.
+-- household_peer_ids() returns an empty set for anyone not in a household,
+-- so this reduces to plain self-ownership by default.
 drop policy if exists "own accounts" on public.accounts;
 create policy "own accounts" on public.accounts
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own account balances" on public.account_balances;
 create policy "own account balances" on public.account_balances
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
+
+alter table public.households enable row level security;
+alter table public.household_members enable row level security;
+alter table public.household_invites enable row level security;
+
+-- `or created_by = auth.uid()` matters at creation time: the creator's own
+-- household_members row (role owner) doesn't exist yet when they insert it,
+-- so my_household_id() is still null and, without this clause, the
+-- household_members INSERT policy's "did I create this household" subquery
+-- below would never see the household row it just created (RLS on a plain
+-- subquery is evaluated against the referencing role's own visibility, not
+-- bypassed just because the row matches created_by).
+drop policy if exists "member households" on public.households;
+create policy "member households" on public.households
+  for select using (id = public.my_household_id() or created_by = auth.uid());
+drop policy if exists "create household" on public.households;
+create policy "create household" on public.households
+  for insert with check (created_by = auth.uid());
+drop policy if exists "owner updates household" on public.households;
+create policy "owner updates household" on public.households
+  for update using (public.is_household_owner(id));
+drop policy if exists "owner deletes household" on public.households;
+create policy "owner deletes household" on public.households
+  for delete using (public.is_household_owner(id));
+
+drop policy if exists "view household members" on public.household_members;
+create policy "view household members" on public.household_members
+  for select using (household_id = public.my_household_id());
+drop policy if exists "join household" on public.household_members;
+create policy "join household" on public.household_members
+  for insert with check (
+    user_id = auth.uid()
+    and (
+      exists (select 1 from public.households h where h.id = household_id and h.created_by = auth.uid())
+      or exists (
+        select 1 from public.household_invites i
+        where i.household_id = household_members.household_id
+          and lower(i.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+          and i.status = 'pending'
+      )
+    )
+  );
+drop policy if exists "leave or owner removes member" on public.household_members;
+create policy "leave or owner removes member" on public.household_members
+  for delete using (user_id = auth.uid() or public.is_household_owner(household_id));
+drop policy if exists "owner updates member role" on public.household_members;
+create policy "owner updates member role" on public.household_members
+  for update using (public.is_household_owner(household_id))
+  with check (public.is_household_owner(household_id));
+
+drop policy if exists "view own sent or received invites" on public.household_invites;
+create policy "view own sent or received invites" on public.household_invites
+  for select using (
+    invited_by = auth.uid()
+    or lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+    or public.is_household_owner(household_id)
+  );
+drop policy if exists "member creates invite" on public.household_invites;
+create policy "member creates invite" on public.household_invites
+  for insert with check (invited_by = auth.uid() and household_id = public.my_household_id());
+drop policy if exists "invitee or owner updates invite" on public.household_invites;
+create policy "invitee or owner updates invite" on public.household_invites
+  for update using (
+    lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+    or public.is_household_owner(household_id)
+  );
 
 drop policy if exists "own spending categories" on public.spending_categories;
 create policy "own spending categories" on public.spending_categories
@@ -1094,6 +1250,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('taxPack', false, 'Tax pack: deductible-expense tagging on spending categories + a year-end advisor/Elster export')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('household', false, 'Household collaboration: shared households with invite/accept, and household-peer access to accounts (more entities follow in later rounds)')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays

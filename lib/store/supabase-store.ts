@@ -341,17 +341,19 @@ export class SupabaseStore implements DataStore {
         .select("asset_id, valued_on, value")
         .eq("user_id", this.userId)
         .order("valued_on", { ascending: true }),
+      // No explicit .eq("user_id", ...) filter: RLS alone decides which rows
+      // are visible, so a household peer's accounts (migration 0092) are
+      // included automatically without the store needing to know about
+      // households at all.
       this.supabase
         .from("accounts")
         .select(
           "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, min_payment",
         )
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("account_balances")
         .select("account_id, balance_on, balance")
-        .eq("user_id", this.userId)
         .order("balance_on", { ascending: true }),
       this.supabase
         .from("spending_categories")
@@ -968,11 +970,13 @@ export class SupabaseStore implements DataStore {
     if (patch.interestRate !== undefined) upd.interest_rate = patch.interestRate;
     if (patch.minPayment !== undefined) upd.min_payment = patch.minPayment;
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's account
+    // (migration 0092) too, and the row's user_id is left unchanged either
+    // way — only `id` scopes the match, matching RLS's own authorization.
     const { data, error } = await this.supabase
       .from("accounts")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     // See updateAsset — a zero-row match must be distinguishable for replay.
@@ -981,11 +985,8 @@ export class SupabaseStore implements DataStore {
 
   async deleteAccount(id: string): Promise<void> {
     // account_balances and spending_transactions cascade via the account_id FK.
-    const { error } = await this.supabase
-      .from("accounts")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's account too.
+    const { error } = await this.supabase.from("accounts").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -993,18 +994,30 @@ export class SupabaseStore implements DataStore {
     accountId: string,
     points: { date: string; balance: number }[],
   ): Promise<void> {
+    // Balance rows are attributed to the ACCOUNT's owner, not the acting
+    // editor — a household peer editing someone else's account must not
+    // reassign the balance history to themselves. Looked up via RLS (which
+    // now permits reading a peer's account row, migration 0092).
+    const { data: acct, error: acctErr } = await this.supabase
+      .from("accounts")
+      .select("user_id")
+      .eq("id", accountId)
+      .single();
+    if (acctErr) throw acctErr;
+    const ownerId = (acct as { user_id: string }).user_id;
+
     // Replace-set: clear the account's readings, then re-insert — idempotent
-    // and replay-safe (like setAssetValuations).
+    // and replay-safe (like setAssetValuations). No .eq("user_id", ...):
+    // RLS permits clearing a household peer's account balances too.
     const { error: delErr } = await this.supabase
       .from("account_balances")
       .delete()
-      .eq("account_id", accountId)
-      .eq("user_id", this.userId);
+      .eq("account_id", accountId);
     if (delErr) throw delErr;
     if (points.length === 0) return;
     const { error: insErr } = await this.supabase.from("account_balances").insert(
       points.map((p) => ({
-        user_id: this.userId,
+        user_id: ownerId,
         account_id: accountId,
         balance_on: p.date,
         balance: p.balance,

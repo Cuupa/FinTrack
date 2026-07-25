@@ -229,6 +229,41 @@ export interface Budget {
   amount: number;
 }
 
+/**
+ * A household (ROADMAP item #13, flag `household`): a group of registered
+ * users who share read/write access to each other's financial data. v1 caps
+ * membership at one household per user (enforced in the DB, see migration
+ * 0091_households.sql) -- there is no multi-household selection UI.
+ */
+export interface Household {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export type HouseholdRole = "owner" | "member";
+
+export interface HouseholdMember {
+  id: string;
+  householdId: string;
+  userId: string;
+  role: HouseholdRole;
+  joinedAt: string;
+}
+
+export type HouseholdInviteStatus = "pending" | "accepted" | "declined" | "revoked";
+
+export interface HouseholdInvite {
+  id: string;
+  householdId: string;
+  email: string;
+  invitedBy: string;
+  role: HouseholdRole;
+  status: HouseholdInviteStatus;
+  createdAt: string;
+}
+
 /** How often a contract charges (ROADMAP item #5, flag `contracts`). */
 export type ContractInterval = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 

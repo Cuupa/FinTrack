@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { BillingProvider } from "@/lib/billing/billing-context";
+import { HouseholdProvider } from "@/lib/household/household-context";
 import { FeatureFlagsProvider } from "@/lib/flags/flags-context";
 import { PortfolioProvider } from "@/lib/portfolio/portfolio-context";
 import { CatalogProvider } from "@/lib/catalog/catalog-context";
@@ -26,32 +27,37 @@ export function Providers({ children }: { children: ReactNode }) {
               (lib/flags/resolve.ts) consumes usePlan(), which reads this
               context (lib/billing/use-plan.ts). */}
           <BillingProvider>
-            <FeatureFlagsProvider>
-              <CatalogProvider>
-                <PortfolioProvider>
-                  {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
-                      phase 3), sits just inside it, same as every other provider
-                      here that depends on portfolio data. LlmConfigProvider is a
-                      thin adapter over usePortfolio() (round-22 tags precedent),
-                      so it lives at this level too, not at the top like before
-                      the config moved onto the DataStore seam. */}
-                  <SyncProvider>
-                    <LivePricesProvider>
-                      <PrivacyProvider>
-                        <TagsProvider>
-                          <LlmConfigProvider>
-                            <LocaleSync />
-                            <ThemeSync />
-                            <ErrorReporter />
-                            {children}
-                          </LlmConfigProvider>
-                        </TagsProvider>
-                      </PrivacyProvider>
-                    </LivePricesProvider>
-                  </SyncProvider>
-                </PortfolioProvider>
-              </CatalogProvider>
-            </FeatureFlagsProvider>
+            {/* Household membership is per-user like billing, not per-portfolio,
+                so it sits at this level too -- above PortfolioProvider, no
+                dependency on portfolio data. */}
+            <HouseholdProvider>
+              <FeatureFlagsProvider>
+                <CatalogProvider>
+                  <PortfolioProvider>
+                    {/* Needs the store from PortfolioProvider (OFFLINE_DESIGN.md §2
+                        phase 3), sits just inside it, same as every other provider
+                        here that depends on portfolio data. LlmConfigProvider is a
+                        thin adapter over usePortfolio() (round-22 tags precedent),
+                        so it lives at this level too, not at the top like before
+                        the config moved onto the DataStore seam. */}
+                    <SyncProvider>
+                      <LivePricesProvider>
+                        <PrivacyProvider>
+                          <TagsProvider>
+                            <LlmConfigProvider>
+                              <LocaleSync />
+                              <ThemeSync />
+                              <ErrorReporter />
+                              {children}
+                            </LlmConfigProvider>
+                          </TagsProvider>
+                        </PrivacyProvider>
+                      </LivePricesProvider>
+                    </SyncProvider>
+                  </PortfolioProvider>
+                </CatalogProvider>
+              </FeatureFlagsProvider>
+            </HouseholdProvider>
           </BillingProvider>
         </AuthProvider>
       </I18nProvider>
