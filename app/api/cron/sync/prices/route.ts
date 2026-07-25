@@ -36,6 +36,7 @@ interface InstrumentRow {
   isin: string | null;
   wkn: string | null;
   symbol: string | null;
+  name: string | null;
   currency: string | null;
   type: string;
   quote_source: string | null;
@@ -140,7 +141,13 @@ async function syncEquities(
       // below already handle the difference.
       const want = isCommodity && hint ? "" : r.currency || "";
       try {
-        const resolved = await resolveQuote(query, want, hint);
+        // Name fallback (as /api/quotes and /api/price already do): some real
+        // ISINs (LU-domiciled mutual fund share classes, JE-domiciled ETCs)
+        // aren't in Yahoo's search index by identifier alone, so the cron
+        // must also try the instrument's name or it can never learn/refresh
+        // a listing for them. Skipped for COMMODITY (search-based resolution
+        // is never trusted for those, see the guard above).
+        const resolved = await resolveQuote(query, want, hint, isCommodity ? undefined : r.name || undefined);
         if (isCommodity && hasHint && (!resolved || resolved.symbol !== hint)) {
           // The hinted listing failed (no data / currency mismatch) or
           // resolveQuote fell through to search and picked a different one -
@@ -293,7 +300,7 @@ async function handle(req: Request): Promise<Response> {
   // CoinGecko id, so only rows that already carry one are synced.
   const { data, error } = await supabase
     .from("instruments")
-    .select("id, isin, wkn, symbol, currency, type, quote_source, quote_id, quote_scale, last_price");
+    .select("id, isin, wkn, symbol, name, currency, type, quote_source, quote_id, quote_scale, last_price");
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const rows = (data ?? []) as InstrumentRow[];
