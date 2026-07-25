@@ -134,12 +134,16 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  titleAdornment,
   children,
 }: {
   title: string;
   subtitle?: string;
   /** Primary/secondary actions for the whole page, e.g. "+ Add asset". */
   actions?: ReactNode;
+  /** Sits inline after the title rather than out in the actions group —
+      the ghost "?" tour replay button every tour surface carries. */
+  titleAdornment?: ReactNode;
   /** Anything that belongs under the header but above the content, such as
       a scope selector. */
   children?: ReactNode;
@@ -147,7 +151,10 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          {titleAdornment}
+        </div>
         {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
         {children}
       </div>

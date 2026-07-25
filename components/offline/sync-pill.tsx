@@ -72,7 +72,7 @@ export function SyncPill() {
           <button
             type="button"
             onClick={dismissDropped}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="shrink-0 rounded-full text-amber-500 hover:text-amber-800 dark:hover:text-amber-100"
           >
             ✕

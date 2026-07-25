@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { useFocusTrap } from "./use-focus-trap";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function Modal({
   open,
@@ -19,6 +20,7 @@ export function Modal({
   maxWidthClass?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +58,7 @@ export function Modal({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
           className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         >
           ✕
