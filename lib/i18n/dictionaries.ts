@@ -453,6 +453,14 @@ export const en = {
   "common.other": "Other",
   "common.copy": "Copy",
   "common.close": "Close",
+
+  "system.title": "System",
+  "system.subtitle": "Database migrations applied to this instance.",
+  "system.migrations": "Migrations",
+  "system.none":
+    "None recorded (Supabase not configured, or the schema_migrations table is empty).",
+  "system.colVersion": "Version",
+  "system.colApplied": "Applied",
   "common.loading": "Loading…",
 
   "benchmark.addCustom": "Add benchmark",
@@ -2116,6 +2124,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.other": "Andere",
   "common.copy": "Kopieren",
   "common.close": "Schließen",
+
+  "system.title": "System",
+  "system.subtitle": "Datenbank-Migrationen, die auf dieser Instanz angewendet wurden.",
+  "system.migrations": "Migrationen",
+  "system.none":
+    "Keine erfasst (Supabase ist nicht konfiguriert oder die Tabelle schema_migrations ist leer).",
+  "system.colVersion": "Version",
+  "system.colApplied": "Angewendet",
   "common.loading": "Wird geladen…",
 
   "benchmark.addCustom": "Benchmark hinzufügen",
@@ -3780,6 +3796,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.other": "Otros",
   "common.copy": "Copiar",
   "common.close": "Cerrar",
+
+  "system.title": "Sistema",
+  "system.subtitle": "Migraciones de base de datos aplicadas a esta instancia.",
+  "system.migrations": "Migraciones",
+  "system.none":
+    "Ninguna registrada (Supabase no está configurado o la tabla schema_migrations está vacía).",
+  "system.colVersion": "Versión",
+  "system.colApplied": "Aplicada",
   "common.loading": "Cargando…",
 
   "benchmark.addCustom": "Añadir benchmark",
