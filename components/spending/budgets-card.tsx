@@ -22,7 +22,7 @@ import { isStorageFullError } from "@/lib/store/errors";
 import type { Budget } from "@/lib/types";
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function BudgetsCard() {
   const enabled = useFeatureFlag("budgets");
@@ -155,7 +155,7 @@ export function BudgetsCard() {
                               if (e.key === "Enter") e.currentTarget.blur();
                               if (e.key === "Escape") setEditingId(null);
                             }}
-                            className="w-24 rounded-md border border-zinc-300 bg-transparent px-2 py-0.5 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                            className="w-24 rounded-sm border border-zinc-300 bg-transparent px-2 py-0.5 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                             data-private
                           />
                         ) : (

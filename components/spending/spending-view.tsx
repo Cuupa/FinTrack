@@ -27,7 +27,7 @@ import { BudgetsCard } from "./budgets-card";
 import type { SpendingTransaction } from "@/lib/types";
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 type SortKey = "date" | "payee" | "category" | "account" | "amount";
 type TxType = "expense" | "income";
@@ -262,7 +262,7 @@ export function SpendingView() {
                         close();
                         setManagingCategories(true);
                       }}
-                      className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                      className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                     >
                       {t("spending.categories.manage")}
                     </button>

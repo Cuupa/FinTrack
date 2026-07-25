@@ -402,7 +402,7 @@ function ChartTooltip({
   if (!active || rows.length === 0) return null;
   const fmt = (v: number) => (pctMode ? formatPercent(v) : formatCurrency(v, currency));
   return (
-    <div className="min-w-[12rem] rounded-lg border border-zinc-200 bg-white p-3 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="min-w-[12rem] rounded-md border border-zinc-200 bg-white p-3 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
       <div className="mb-2 font-semibold text-zinc-900 dark:text-zinc-100">
         {label ? shortDate(String(label)) : ""}
       </div>

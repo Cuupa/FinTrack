@@ -254,13 +254,13 @@ export function RiskView() {
             <div data-tour="risk-scope">
               <ScopeSelect options={scopeOptions} selected={scope} onChange={setScope} />
             </div>
-            <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+            <div className="inline-flex flex-wrap gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
               {TF_OPTIONS.map((opt) => (
                 <button
                   key={opt}
                   onClick={() => setTf(opt)}
                   aria-pressed={tf === opt}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                     tf === opt
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                       : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -532,7 +532,7 @@ function MetricCard({
   return (
     <div
       title={`${label}: ${info}`}
-      className="group rounded-xl border border-zinc-200/70 bg-white p-3.5 transition-shadow hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+      className="group rounded-lg border border-zinc-200/70 bg-white p-3.5 transition-shadow hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
     >
       <div className="flex items-center gap-1 text-xs font-medium text-zinc-500">
         <span className="truncate">{label}</span>

@@ -37,20 +37,20 @@ export function AssetDetailSkeleton() {
           <SkeletonText className="mt-2 h-8 w-64" />
           <SkeletonText className="mt-2 h-5 w-40" />
         </div>
-        <Skeleton className="h-9 w-28 rounded-lg" />
+        <Skeleton className="h-9 w-28 rounded-md" />
       </div>
 
       {/* Price chart card. */}
       <Card>
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <Skeleton className="h-8 w-56 rounded-lg" />
-          <Skeleton className="ml-auto h-8 w-28 rounded-lg" />
+          <Skeleton className="h-8 w-56 rounded-md" />
+          <Skeleton className="ml-auto h-8 w-28 rounded-md" />
         </div>
         <div className="mt-3 flex items-center justify-between gap-2">
           <Skeleton className="h-5 w-20 rounded" />
         </div>
         <div className="mt-4">
-          <Skeleton className="h-[320px] w-full rounded-lg" />
+          <Skeleton className="h-[320px] w-full rounded-md" />
         </div>
         <div className="mt-2 flex flex-wrap gap-4">
           {Array.from({ length: 3 }).map((_, i) => (

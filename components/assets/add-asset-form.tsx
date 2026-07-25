@@ -28,7 +28,7 @@ import { atLimit } from "@/lib/billing/limits";
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
@@ -371,7 +371,7 @@ export function AddAssetForm({
 
       {/* Detected summary (auto-imported) */}
       {importStatus === "found" && !manual && (
-        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
+        <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
           <div className="flex items-center justify-between">
             <span className="font-medium">{name}</span>
             <span className="rounded-full border border-emerald-400 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300">
@@ -403,7 +403,7 @@ export function AddAssetForm({
                     onClick={() => !disabled && selectType(t)}
                     disabled={disabled}
                     title={disabled ? tr("addAsset.cashExists") : undefined}
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                    className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
                       type === t
                         ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
                         : disabled
@@ -631,7 +631,7 @@ export function AddAssetForm({
                             setNewPortfolio("");
                           }
                         }}
-                        className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                        className="w-full rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                       />
                     ) : portfoliosCapped ? (
                       <p className="px-2 py-1.5 text-xs text-zinc-500">
@@ -652,7 +652,7 @@ export function AddAssetForm({
                       <button
                         type="button"
                         onClick={() => setAddingPortfolio(true)}
-                        className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                        className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                       >
                         {tr("nav.newPortfolio")}
                       </button>

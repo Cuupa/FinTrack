@@ -187,13 +187,13 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+          <div className="inline-flex flex-wrap gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
             {TFS.map((t) => (
               <button
                 key={t}
                 onClick={() => setTf(t)}
                 aria-pressed={tf === t}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                   tf === t
                     ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                     : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -204,13 +204,13 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
             ))}
           </div>
           {wealthSeries && (
-            <div className="inline-flex gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+            <div className="inline-flex gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
               {(["currency", "percent"] as ChartMode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
                   aria-pressed={mode === m}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                     mode === m
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                       : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"

@@ -152,7 +152,7 @@ export function SpendingSankeyCard() {
                   if (!active || !payload || payload.length === 0) return null;
                   const entry = payload[0];
                   return (
-                    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
                       <div className="font-medium">{entry.name}</div>
                       <div className="tabular-nums text-zinc-500" data-private>
                         {formatCurrency(Number(entry.value) || 0, base)}

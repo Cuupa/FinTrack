@@ -42,7 +42,7 @@ export function RiskDisclaimer({
 
   return (
     <div
-      className={`rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 ${className}`}
+      className={`rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 ${className}`}
     >
       <p className="font-medium text-zinc-700 dark:text-zinc-300">{t("disclaimer.title")}</p>
       <p className="mt-1">

@@ -36,7 +36,7 @@ export function ExportMenu() {
         {t("export.menu")}
       </Button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {csvEnabled && (
             <button
               type="button"

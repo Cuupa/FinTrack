@@ -44,10 +44,10 @@ export function DividendsSkeleton() {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SkeletonText className="h-5 w-32" />
-          <Skeleton className="h-7 w-40 rounded-lg" />
+          <Skeleton className="h-7 w-40 rounded-md" />
         </div>
         <div className="mt-3">
-          <Skeleton className="h-[260px] w-full rounded-lg" />
+          <Skeleton className="h-[260px] w-full rounded-md" />
         </div>
       </Card>
 

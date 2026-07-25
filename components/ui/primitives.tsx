@@ -13,7 +13,7 @@ export function Card({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
+      className={`rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
       {...rest}
     >
       {children}
@@ -102,7 +102,7 @@ export function Button({
       : "px-3.5 py-2 text-sm";
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeCls} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeCls} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
@@ -122,13 +122,13 @@ export function SegmentedControl<T extends string>({
 }) {
   const pad = size === "sm" ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm";
   return (
-    <div className="inline-flex flex-wrap rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-800 dark:bg-zinc-800/50">
+    <div className="inline-flex flex-wrap rounded-md border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-800 dark:bg-zinc-800/50">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={opt.value === value}
-          className={`rounded-md font-medium transition-colors ${pad} ${
+          className={`rounded-sm font-medium transition-colors ${pad} ${
             opt.value === value
               ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
               : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"

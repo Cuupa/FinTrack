@@ -268,7 +268,7 @@ export function RebalancingView() {
             <button
               type="button"
               onClick={normalize}
-              className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              className="rounded-sm border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
             >
               {t("rebalance.normalise")}
             </button>
@@ -318,7 +318,7 @@ export function RebalancingView() {
                           <input
                             value={r.name}
                             onChange={(e) => renameCustom(r.id, e.target.value)}
-                            className="w-40 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                            className="w-40 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                           />
                         ) : (
                           <span className="font-medium">{r.name}</span>
@@ -336,7 +336,7 @@ export function RebalancingView() {
                         min={0}
                         value={r.pct}
                         onChange={(e) => setPct(r.id, e.target.value)}
-                        className="w-20 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-20 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums" data-private>
@@ -375,7 +375,7 @@ export function RebalancingView() {
           <button
             type="button"
             onClick={addCustom}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
             {t("rebalance.addPosition")}
           </button>

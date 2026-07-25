@@ -148,13 +148,13 @@ export function AllocationView() {
       <Card>
         {/* Breakdown selector: a contained pill group, distinct from the page's
             primary underline tabs. */}
-        <div className="inline-flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/50">
+        <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/50">
           {TABS.map((key) => (
             <button
               key={key}
               onClick={() => selectTab(key)}
               aria-pressed={tab === key}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 tab === key
                   ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"

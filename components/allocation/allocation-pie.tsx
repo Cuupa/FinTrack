@@ -204,7 +204,7 @@ export function AllocationPie({
               onMouseEnter={() => setActive(i)}
               onMouseLeave={() => setActive(null)}
               title={s.label}
-              className={`flex min-w-0 cursor-default items-center gap-3 rounded-lg px-3 py-1.5 transition-colors ${
+              className={`flex min-w-0 cursor-default items-center gap-3 rounded-md px-3 py-1.5 transition-colors ${
                 isActive ? "bg-zinc-100 dark:bg-zinc-800" : ""
               } ${dim ? "opacity-50" : ""}`}
             >

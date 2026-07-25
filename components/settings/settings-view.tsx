@@ -32,7 +32,7 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
 const CHURCH_TAX_RATES = [0, 0.08, 0.09];
 
 const feeInputCls =
-  "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 // Only a NEW password (this change-password form) is floored at this length;
 // existing accounts can still sign in with a shorter one.
@@ -221,7 +221,7 @@ export function SettingsView() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={t("settings.namePlaceholder")}
-                      className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   </Field>
 
@@ -280,7 +280,7 @@ export function SettingsView() {
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
                         minLength={NEW_PASSWORD_MIN_LENGTH}
-                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                        className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                       />
                     </Field>
                     <Field label={t("settings.confirmPassword")}>
@@ -290,7 +290,7 @@ export function SettingsView() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         autoComplete="new-password"
                         minLength={NEW_PASSWORD_MIN_LENGTH}
-                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                        className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                       />
                     </Field>
                     <div className="flex items-center gap-3">
@@ -321,7 +321,7 @@ export function SettingsView() {
                           value={deletePassword}
                           onChange={(e) => setDeletePassword(e.target.value)}
                           autoComplete="current-password"
-                          className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                          className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
                         />
                       </Field>
                     )}
@@ -331,7 +331,7 @@ export function SettingsView() {
                         onChange={(e) => setDeleteConfirm(e.target.value)}
                         placeholder="delete"
                         autoComplete="off"
-                        className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
+                        className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
                       />
                     </Field>
                     <div className="flex items-center gap-3">
@@ -371,7 +371,7 @@ export function SettingsView() {
                     step={1}
                     value={taxAllowance}
                     onChange={(e) => setTaxAllowance(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                   />
                 </Field>
 
@@ -732,7 +732,7 @@ function AiAssistantSection() {
               onChange={(e) => setKey(e.target.value)}
               autoComplete="off"
               placeholder={t("settings.ai.apiKeyPlaceholder")}
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 pr-16 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 pr-16 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
             <button
               type="button"
@@ -749,14 +749,14 @@ function AiAssistantSection() {
             <span className="mb-1 block text-xs font-medium text-zinc-500">
               {t("settings.ai.scope.label")}
             </span>
-            <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+            <div className="inline-flex flex-wrap gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
               {(["account", "browser"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setScope(s)}
                   aria-pressed={scope === s}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                     scope === s
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                       : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"

@@ -332,7 +332,7 @@ export default function AdminFlagsPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
           {error}
         </div>
       )}
@@ -428,11 +428,11 @@ export default function AdminFlagsPage() {
             value={emailQuery}
             onChange={(e) => setEmailQuery(e.target.value)}
             placeholder={t("admin.flags.searchEmailPlaceholder")}
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+            className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
           />
           {searchingEmail && <p className="mt-1 text-xs text-zinc-500">{t("admin.flags.searching")}</p>}
           {!searchingEmail && trimmedEmailQuery.length >= 2 && emailResults !== null && (
-            <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border border-zinc-200 dark:border-zinc-700">
               {emailResults.length === 0 ? (
                 <li className="px-3 py-2 text-xs text-zinc-500">{t("admin.flags.searchNoResults")}</li>
               ) : (
@@ -468,7 +468,7 @@ export default function AdminFlagsPage() {
                 setChosenEmail(null);
               }}
               placeholder={t("admin.flags.userIdPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
             {chosenEmail && (
               <p className="mt-1 text-xs text-zinc-500">

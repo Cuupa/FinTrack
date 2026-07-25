@@ -53,7 +53,7 @@ function LockPitch() {
       {billingEnabled && (
         <Link
           href="/pricing"
-          className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+          className="mt-2 inline-flex items-center justify-center gap-2 rounded-md bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
         >
           {t("common.proFeatureUpgrade")}
         </Link>
@@ -86,7 +86,7 @@ export function ProTeaser({
           {children}
         </div>
         <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="max-w-sm rounded-2xl border border-zinc-200 bg-white/85 px-6 py-8 shadow-lg backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/85">
+          <div className="max-w-sm rounded-xl border border-zinc-200 bg-white/85 px-6 py-8 shadow-lg backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/85">
             <LockPitch />
           </div>
         </div>

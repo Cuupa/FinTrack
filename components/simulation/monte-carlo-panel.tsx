@@ -739,7 +739,7 @@ function PortfolioModelNote({
     }, 0) / totalWeight;
 
   return (
-    <div className={`rounded-xl border p-3.5 text-xs ${theme.box}`}>
+    <div className={`rounded-lg border p-3.5 text-xs ${theme.box}`}>
       <div className={`flex items-center justify-between gap-2 ${theme.head}`}>
         <span className="font-semibold">{t("sim.perAssetModel")}</span>
         <span className="text-right text-[11px] font-medium">
@@ -880,7 +880,7 @@ function OverrideInput({
         step="0.1"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full min-w-0 rounded-md border border-zinc-300 bg-white/60 px-2 py-1 text-right text-xs tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+        className="w-full min-w-0 rounded-sm border border-zinc-300 bg-white/60 px-2 py-1 text-right text-xs tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
       />
     </label>
   );
@@ -895,7 +895,7 @@ function CustomAssumptionsNote({
 }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
+    <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
       <div className="flex items-center justify-between">
         <span className="font-medium text-indigo-900 dark:text-indigo-200">
           {t("sim.customAssumptions")}
@@ -937,7 +937,7 @@ function WithdrawalStat({
 }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <div className="text-sm text-zinc-500">{label}</div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}>
         {formatCurrency(annual, currency)}
@@ -1073,7 +1073,7 @@ function SliderField({
             max={max}
             value={value}
             onChange={(e) => onChange(Number(e.target.value))}
-            className={`w-full rounded-lg border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+            className={`w-full rounded-md border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
               suffix ? "pr-12" : "pr-3"
             }`}
           />
@@ -1119,7 +1119,7 @@ function Legend({
 }) {
   return (
     <span
-      className="inline-flex cursor-default items-center gap-1.5 rounded-md px-1 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+      className="inline-flex cursor-default items-center gap-1.5 rounded-sm px-1 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       onMouseEnter={() => seriesKey && onHover?.(seriesKey)}
       onMouseLeave={() => onHover?.(null)}
     >

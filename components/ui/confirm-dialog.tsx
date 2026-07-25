@@ -56,7 +56,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="relative z-10 w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-5 shadow-xl outline-none dark:border-zinc-800 dark:bg-zinc-900"
+        className="relative z-10 w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-5 shadow-xl outline-none dark:border-zinc-800 dark:bg-zinc-900"
       >
         <h2 className="text-lg font-semibold">{title}</h2>
         {message && <p className="mt-2 text-sm text-zinc-500">{message}</p>}

@@ -492,14 +492,14 @@ function EditableAmountRow({
                   if (e.key === "Enter") void commit();
                   if (e.key === "Escape") discard();
                 }}
-                className="w-32 rounded-lg border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="w-32 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
               <button
                 type="button"
                 onClick={() => void commit()}
                 title={t("tax.applyAriaLabel", { field: ariaLabel })}
                 aria-label={t("tax.applyAriaLabel", { field: ariaLabel })}
-                className="shrink-0 rounded-md px-2 py-1 text-sm text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                className="shrink-0 rounded-sm px-2 py-1 text-sm text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
               >
                 ✓
               </button>
@@ -508,7 +508,7 @@ function EditableAmountRow({
                 onClick={discard}
                 title={t("tax.discardAriaLabel", { field: ariaLabel })}
                 aria-label={t("tax.discardAriaLabel", { field: ariaLabel })}
-                className="shrink-0 rounded-md px-2 py-1 text-sm text-zinc-400 hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-800"
+                className="shrink-0 rounded-sm px-2 py-1 text-sm text-zinc-400 hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-800"
               >
                 ✕
               </button>

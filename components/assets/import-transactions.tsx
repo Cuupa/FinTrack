@@ -370,7 +370,7 @@ export function ImportTransactions({
     <div className="space-y-4">
       {/* File chooser + (once loaded) target portfolio picker with inline create. */}
       <div className="flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+        <label className="cursor-pointer rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
           {hasFile ? t("import.reselectFile") : t("import.selectFile")}
           <input
             type="file"
@@ -420,7 +420,7 @@ export function ImportTransactions({
                           setNewPortfolio("");
                         }
                       }}
-                      className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      className="w-full rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   ) : portfoliosCapped ? (
                     <p className="px-2 py-1.5 text-xs text-zinc-500">
@@ -441,7 +441,7 @@ export function ImportTransactions({
                     <button
                       type="button"
                       onClick={() => setAddingPortfolio(true)}
-                      className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                      className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                     >
                       {t("nav.newPortfolio")}
                     </button>
@@ -548,7 +548,7 @@ export function ImportTransactions({
                   </button>
                 </div>
               </div>
-              <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+              <div className="divide-y divide-zinc-200 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
                 {newRowGroups.map((g) => {
                   const allChecked = g.rows.every((x) => included[x.i] ?? false);
                   const noneChecked = g.rows.every((x) => !(included[x.i] ?? false));
@@ -604,7 +604,7 @@ export function ImportTransactions({
               these exact values — nothing to decide, so just list them
               collapsed instead of forcing 20 merge cards with no signal. */}
           {identicalRows.length > 0 && (
-            <details className="group rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <details className="group rounded-md border border-zinc-200 dark:border-zinc-800">
               <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-zinc-500 marker:content-none">
                 <span className="mr-1 inline-block transition-transform group-open:rotate-90">
                   ›
@@ -721,7 +721,7 @@ function ConflictMerge({
     onResolution({ ...resolution, [f]: side });
 
   const sideCls = (active: boolean, changed: boolean) =>
-    `flex min-w-0 items-center gap-1 rounded-md px-2 py-1 text-sm tabular-nums ${
+    `flex min-w-0 items-center gap-1 rounded-sm px-2 py-1 text-sm tabular-nums ${
       changed
         ? active
           ? "bg-emerald-50 ring-1 ring-emerald-300 dark:bg-emerald-950/40 dark:ring-emerald-800"
@@ -732,7 +732,7 @@ function ConflictMerge({
     "shrink-0 rounded px-1 text-zinc-400 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300";
 
   return (
-    <div className="rounded-xl border border-amber-300/60 bg-amber-50/40 p-3 dark:border-amber-900/40 dark:bg-amber-950/10">
+    <div className="rounded-lg border border-amber-300/60 bg-amber-50/40 p-3 dark:border-amber-900/40 dark:bg-amber-950/10">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{p.name}</div>
@@ -792,7 +792,7 @@ function ConflictMerge({
                   )}
                 </div>
                 <div
-                  className={`rounded-md px-2 py-1 text-sm tabular-nums ${
+                  className={`rounded-sm px-2 py-1 text-sm tabular-nums ${
                     changed && side === "incoming"
                       ? "bg-emerald-100/70 font-medium dark:bg-emerald-900/40"
                       : changed

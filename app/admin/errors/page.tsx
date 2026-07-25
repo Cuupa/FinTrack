@@ -162,7 +162,7 @@ export default function AdminErrorsPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
           {error}
         </div>
       )}
@@ -192,7 +192,7 @@ export default function AdminErrorsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("admin.errors.filterPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
           </div>
           <div>
@@ -201,7 +201,7 @@ export default function AdminErrorsPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              className="mt-1 rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
           </div>
           <div className="ml-auto flex gap-2">

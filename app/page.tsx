@@ -126,7 +126,7 @@ export default function DashboardPage() {
           modal above already closed by the time this shows. Sits above the
           mobile nav (z-20) but below the modal (z-50). */}
       {importStatus && (
-        <div className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg md:bottom-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg md:bottom-6 dark:border-zinc-800 dark:bg-zinc-900">
           {importStatus.kind === "running" && (
             <>
               <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />

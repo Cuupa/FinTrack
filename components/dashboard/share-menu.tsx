@@ -18,7 +18,7 @@ import { buildSharePayload, encodeShare, type SharePayload } from "@/lib/share/s
 import { SelectMenu } from "@/components/ui/select-menu";
 
 const inputCls =
-  "w-full rounded-lg border border-zinc-300 bg-transparent px-2 py-1.5 text-xs outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-xs outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function ShareMenu() {
   const { user } = useAuth();
@@ -104,7 +104,7 @@ export function ShareMenu() {
         disabled={disabled}
         title={t("share.button")}
         aria-label={t("share.button")}
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
       >
         <svg
           viewBox="0 0 24 24"
@@ -124,7 +124,7 @@ export function ShareMenu() {
         <span className="hidden sm:inline">{t("share.button")}</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {/* Snapshot vs Live mode. Live keeps the shared view in sync as the
               owner's portfolio changes; it needs an account. */}
           <div className="flex items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
@@ -166,7 +166,7 @@ export function ShareMenu() {
                       key={p.id}
                       type="button"
                       onClick={() => togglePortfolio(p.id)}
-                      className="flex items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
                       <span
                         className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
@@ -241,14 +241,14 @@ export function ShareMenu() {
                       readOnly
                       value={link}
                       onFocus={(e) => e.currentTarget.select()}
-                      className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300"
+                      className="min-w-0 flex-1 rounded-sm border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300"
                     />
                     <button
                       type="button"
                       onClick={copy}
                       title={t("share.copy")}
                       aria-label={t("share.copy")}
-                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border transition-colors ${
                         copied
                           ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
                           : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"

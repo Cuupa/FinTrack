@@ -42,7 +42,7 @@ export function SyncPill() {
   return (
     <div className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-2 md:bottom-6">
       {showStatusPill && (
-        <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {status === "syncing" && (
             <>
               <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
@@ -65,7 +65,7 @@ export function SyncPill() {
         </div>
       )}
       {showDroppedToast && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 shadow-lg dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 shadow-lg dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
           <span>
             {dropped} {t("sync.droppedUnit")}
           </span>

@@ -362,7 +362,7 @@ export default function AdminBillingPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
           {error}
         </div>
       )}
@@ -388,7 +388,7 @@ export default function AdminBillingPage() {
                 value={secretKeyDraft}
                 onChange={(e) => setSecretKeyDraft(e.target.value)}
                 placeholder={t("admin.billing.secretKeyPlaceholder")}
-                className="mt-1 w-full max-w-md rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-full max-w-md rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
               <div className="mt-1.5 flex items-center gap-3">
                 <p className="text-xs text-zinc-500">
@@ -418,7 +418,7 @@ export default function AdminBillingPage() {
                 value={webhookSecretDraft}
                 onChange={(e) => setWebhookSecretDraft(e.target.value)}
                 placeholder={t("admin.billing.webhookSecretPlaceholder")}
-                className="mt-1 w-full max-w-md rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-full max-w-md rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
               <div className="mt-1.5 flex items-center gap-3">
                 <p className="text-xs text-zinc-500">
@@ -473,7 +473,7 @@ export default function AdminBillingPage() {
                 value={priceMonthlyValue}
                 onChange={(e) => setPriceMonthlyDraft(e.target.value)}
                 placeholder={t("admin.billing.priceIdPlaceholder")}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </div>
 
@@ -485,7 +485,7 @@ export default function AdminBillingPage() {
                 value={priceYearlyValue}
                 onChange={(e) => setPriceYearlyDraft(e.target.value)}
                 placeholder={t("admin.billing.priceIdPlaceholder")}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </div>
 
@@ -497,7 +497,7 @@ export default function AdminBillingPage() {
                 value={priceMonthlyDisplayValue}
                 onChange={(e) => setPriceMonthlyDisplayDraft(e.target.value)}
                 placeholder={t("admin.billing.priceDisplayPlaceholder")}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </div>
 
@@ -509,7 +509,7 @@ export default function AdminBillingPage() {
                 value={priceYearlyDisplayValue}
                 onChange={(e) => setPriceYearlyDisplayDraft(e.target.value)}
                 placeholder={t("admin.billing.priceDisplayPlaceholder")}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             </div>
 
@@ -559,13 +559,13 @@ export default function AdminBillingPage() {
               setChosenUser(null);
             }}
             placeholder={t("admin.billing.grantSearchEmailPlaceholder")}
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+            className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
           />
           {searchingEmail && (
             <p className="mt-1 text-xs text-zinc-500">{t("admin.billing.grantSearching")}</p>
           )}
           {!searchingEmail && trimmedEmailQuery.length >= 2 && emailResults !== null && (
-            <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border border-zinc-200 dark:border-zinc-700">
               {emailResults.length === 0 ? (
                 <li className="px-3 py-2 text-xs text-zinc-500">
                   {t("admin.billing.grantSearchNoResults")}
@@ -606,7 +606,7 @@ export default function AdminBillingPage() {
               type="date"
               value={expiresAtDraft}
               onChange={(e) => setExpiresAtDraft(e.target.value)}
-              className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              className="mt-1 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
           </div>
           <div className="min-w-[220px] flex-1">
@@ -617,7 +617,7 @@ export default function AdminBillingPage() {
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder={t("admin.billing.grantNotePlaceholder")}
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
             />
           </div>
           <Button variant="primary" onClick={grantUser} disabled={granting || !chosenUser}>

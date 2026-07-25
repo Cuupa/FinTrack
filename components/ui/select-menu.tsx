@@ -72,14 +72,14 @@ export function SelectMenu({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
       >
         <span className="truncate">{selected?.label ?? "—"}</span>
         <span className="text-[10px] text-zinc-400">▾</span>
       </button>
 
       {open && (
-        <div className="absolute left-0 z-30 mt-2 w-full min-w-[10rem] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute left-0 z-30 mt-2 w-full min-w-[10rem] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {searchable && (
             <div className="border-b border-zinc-100 p-1.5 dark:border-zinc-800">
               <input
@@ -101,7 +101,7 @@ export function SelectMenu({
                 }}
                 placeholder={t("select.search")}
                 aria-label={t("select.search")}
-                className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+                className="w-full rounded-sm border border-zinc-300 px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
           )}

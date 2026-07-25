@@ -121,21 +121,21 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
 
   return (
     <>
-    <div data-tour="holdings" className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div data-tour="holdings" className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="text-lg font-semibold">{t("table.holdings")}</h2>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("table.filter")}
-          className="ml-auto w-full max-w-xs rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+          className="ml-auto w-full max-w-xs rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
         />
         <div className="flex gap-1">
           {TYPE_FILTERS.map((_t) => (
             <button
               key={_t}
               onClick={() => setTypeFilter(_t)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+              className={`rounded-sm px-2.5 py-1 text-xs font-medium ${
                 typeFilter === _t
                   ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
                   : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -285,7 +285,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     </div>
 
     {pastHoldings.length > 0 && (
-      <details className="group mt-4 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <details className="group mt-4 rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <summary className="flex cursor-pointer list-none items-center gap-1 px-4 py-4 text-lg font-semibold marker:content-none">
           <span className="inline-block text-sm transition-transform group-open:rotate-90">
             ›

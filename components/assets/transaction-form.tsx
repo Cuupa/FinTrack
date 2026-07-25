@@ -23,7 +23,7 @@ import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { atLimit } from "@/lib/billing/limits";
 
 const inputCls =
-  "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function TransactionForm({
   asset,
@@ -186,7 +186,7 @@ export function TransactionForm({
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-4">
       {/* Buy / Sell / Booking / Split (or Interest, for cash) segmented toggle */}
       <div
-        className={`grid w-full gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/60 sm:inline-flex sm:w-fit ${
+        className={`grid w-full gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/60 sm:inline-flex sm:w-fit ${
           isCash ? "grid-cols-3" : "grid-cols-4"
         }`}
       >
@@ -225,7 +225,7 @@ export function TransactionForm({
               key={tt}
               type="button"
               onClick={() => setType(tt)}
-              className={`rounded-lg py-2 text-sm font-semibold transition-colors sm:px-4 lg:px-6 ${
+              className={`rounded-md py-2 text-sm font-semibold transition-colors sm:px-4 lg:px-6 ${
                 active
                   ? `${activeBg} text-white shadow-sm`
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -237,17 +237,17 @@ export function TransactionForm({
         })}
       </div>
       {isBooking && (
-        <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+        <p className="rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
           {t("tx.bookingHint")}
         </p>
       )}
       {isInterest && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
           {t("tx.interestHint")}
         </p>
       )}
       {isSplit && (
-        <p className="rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+        <p className="rounded-md bg-purple-50 px-3 py-2 text-xs text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
           {t("tx.splitHint")}
         </p>
       )}
@@ -376,7 +376,7 @@ export function TransactionForm({
                         setNewPortfolio("");
                       }
                     }}
-                    className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    className="w-full rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                   />
                 ) : portfoliosCapped ? (
                   <p className="px-2 py-1.5 text-xs text-zinc-500">
@@ -397,7 +397,7 @@ export function TransactionForm({
                   <button
                     type="button"
                     onClick={() => setAddingPortfolio(true)}
-                    className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                    className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                   >
                     {t("nav.newPortfolio")}
                   </button>
@@ -420,7 +420,7 @@ export function TransactionForm({
             {t("tx.splitPreview", { ratio: quantity || "0" })}
           </p>
         ) : (
-          <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40 sm:flex-1">
+          <div className="flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-800/40 sm:flex-1">
             <span className="text-zinc-500">
               {isBuy
                 ? isCash

@@ -237,7 +237,7 @@ export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false
     <div className="fixed inset-0 z-50">
       {targetRect ? (
         <div
-          className="pointer-events-none absolute rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] ring-2 ring-emerald-500/80 transition-all duration-200"
+          className="pointer-events-none absolute rounded-md shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] ring-2 ring-emerald-500/80 transition-all duration-200"
           style={{
             top: targetRect.top - HIGHLIGHT_PAD,
             left: targetRect.left - HIGHLIGHT_PAD,
@@ -256,7 +256,7 @@ export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false
         aria-labelledby="tour-title"
         aria-describedby="tour-body"
         tabIndex={-1}
-        className="fixed z-50 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-zinc-200 bg-white p-4 shadow-lg outline-none transition-all duration-200 dark:border-zinc-800 dark:bg-zinc-900"
+        className="fixed z-50 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-4 shadow-lg outline-none transition-all duration-200 dark:border-zinc-800 dark:bg-zinc-900"
         style={{ top: pos.top, left: pos.left }}
       >
         <h2 id="tour-title" className="text-base font-semibold">

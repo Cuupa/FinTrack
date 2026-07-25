@@ -363,7 +363,7 @@ export function DividendsView() {
         </div>
         {showSkeleton ? (
           <div className="mt-3">
-            <Skeleton className="h-[260px] w-full rounded-lg" />
+            <Skeleton className="h-[260px] w-full rounded-md" />
           </div>
         ) : barData.every((d) => d.value === 0) ? (
           <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>

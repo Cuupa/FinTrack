@@ -72,7 +72,7 @@ export function ChatPanel({ chat, onClose }: { chat: PortfolioChat; onClose: () 
       aria-modal="true"
       aria-label={t("llm.chat.title")}
       tabIndex={-1}
-      className="fixed inset-0 z-50 flex flex-col bg-white outline-none dark:bg-zinc-950 md:inset-auto md:bottom-6 md:right-4 md:h-[min(600px,80vh)] md:w-[420px] md:rounded-xl md:border md:border-zinc-200 md:shadow-2xl md:dark:border-zinc-800"
+      className="fixed inset-0 z-50 flex flex-col bg-white outline-none dark:bg-zinc-950 md:inset-auto md:bottom-6 md:right-4 md:h-[min(600px,80vh)] md:w-[420px] md:rounded-lg md:border md:border-zinc-200 md:shadow-2xl md:dark:border-zinc-800"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-start justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
@@ -133,7 +133,7 @@ export function ChatPanel({ chat, onClose }: { chat: PortfolioChat; onClose: () 
             disabled={chat.streaming}
             rows={1}
             placeholder={t("llm.chat.placeholder")}
-            className="max-h-32 min-h-[2.5rem] flex-1 resize-none rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-60 dark:border-zinc-700"
+            className="max-h-32 min-h-[2.5rem] flex-1 resize-none rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-60 dark:border-zinc-700"
           />
           {chat.streaming ? (
             <Button type="button" variant="secondary" onClick={chat.stop}>
@@ -155,7 +155,7 @@ function MessageRow({ role, content }: { role: "user" | "assistant"; content: st
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] break-words rounded-2xl px-3 py-2 text-sm ${
+        className={`max-w-[85%] break-words rounded-xl px-3 py-2 text-sm ${
           isUser
             ? "whitespace-pre-wrap rounded-br-sm bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
             : "rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
@@ -175,7 +175,7 @@ function TypingRow() {
       <div
         role="status"
         aria-label={t("llm.chat.typing")}
-        className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2.5 dark:bg-zinc-800"
+        className="flex items-center gap-1 rounded-xl rounded-bl-sm bg-zinc-100 px-3 py-2.5 dark:bg-zinc-800"
       >
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s] motion-reduce:animate-none dark:bg-zinc-500" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s] motion-reduce:animate-none dark:bg-zinc-500" />
@@ -207,7 +207,7 @@ function StarterPrompts({ onPick, disabled }: { onPick: (text: string) => void; 
             type="button"
             disabled={disabled}
             onClick={() => onPick(p)}
-            className="rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
+            className="rounded-md border border-zinc-200 px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
           >
             {p}
           </button>

@@ -25,7 +25,7 @@ import { useFormTouched, missingFieldCls, missingLabelCls } from "@/lib/forms/re
 import { isStorageFullError } from "@/lib/store/errors";
 
 export const inputCls =
-  "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export const INTERVAL_KEY: Record<SavingsPlanInterval, MessageKey> = {
   WEEKLY: "sp.weekly",
@@ -194,7 +194,7 @@ export function PlanForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="mt-3 space-y-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
     >
       <div className="grid grid-cols-2 gap-3">
         <label className="col-span-2 block">
@@ -223,14 +223,14 @@ export function PlanForm({
                       close();
                       openAddAsset();
                     }}
-                    className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                    className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                   >
                     {t("sp.newAsset")}
                   </button>
                 )}
               />
               {addingAsset && (
-                <div className="mt-2 flex items-center gap-2 rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
+                <div className="mt-2 flex items-center gap-2 rounded-md border border-zinc-200 p-2 dark:border-zinc-800">
                   <input
                     type="text"
                     autoFocus
@@ -315,14 +315,14 @@ export function PlanForm({
           <span className="mb-1 block text-xs font-medium text-zinc-500">
             {t("sp.bookingType")}
           </span>
-          <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+          <div className="inline-flex flex-wrap gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
             {(["BUY", "BOOKING"] as const).map((bt) => (
               <button
                 key={bt}
                 type="button"
                 onClick={() => setBookingType(bt)}
                 aria-pressed={bookingType === bt}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                   bookingType === bt
                     ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                     : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"

@@ -178,7 +178,7 @@ export default function AdminPricesPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
           {error}
         </div>
       )}
@@ -189,7 +189,7 @@ export default function AdminPricesPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("admin.prices.filterPlaceholder")}
-            className="w-full max-w-xs rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+            className="w-full max-w-xs rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
           />
           <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
             <input

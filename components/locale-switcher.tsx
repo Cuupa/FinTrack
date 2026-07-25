@@ -10,7 +10,7 @@ export function LocaleSwitcher() {
   const { locale, setLocale } = useI18n();
   const { updateProfile } = usePortfolio();
   return (
-    <div className="inline-flex rounded-lg border border-zinc-300 p-0.5 dark:border-zinc-700">
+    <div className="inline-flex rounded-md border border-zinc-300 p-0.5 dark:border-zinc-700">
       {LOCALES.map((l) => (
         <button
           key={l.code}
@@ -21,7 +21,7 @@ export function LocaleSwitcher() {
             void updateProfile({ locale: l.code });
           }}
           aria-pressed={locale === l.code}
-          className={`rounded-md px-2 py-1 text-xs font-medium uppercase transition-colors ${
+          className={`rounded-sm px-2 py-1 text-xs font-medium uppercase transition-colors ${
             locale === l.code
               ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
               : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"

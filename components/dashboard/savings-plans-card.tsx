@@ -31,7 +31,7 @@ import { isStorageFullError } from "@/lib/store/errors";
 import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
 
 const rowInputCls =
-  "w-24 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "w-24 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 /** Round to a fixed number of decimals (banker's-rounding-free, plain half-up). */
 function round(value: number, digits: number): number {
@@ -384,7 +384,7 @@ export function SavingsPlansCard() {
       {error && !reviewing && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {due.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
           <span className="text-sm text-amber-800 dark:text-amber-300">
             {t("sp.due", { count: due.length })}
           </span>

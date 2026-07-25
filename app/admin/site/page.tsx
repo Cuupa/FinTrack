@@ -195,7 +195,7 @@ export default function AdminSitePage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+        <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
           {error}
         </div>
       )}
@@ -225,7 +225,7 @@ export default function AdminSitePage() {
                       onChange={(e) =>
                         setDrafts((d) => ({ ...d, [key]: e.target.value }))
                       }
-                      className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   </div>
                   <Button
@@ -268,7 +268,7 @@ export default function AdminSitePage() {
                 value={maxUsersValue}
                 onChange={(e) => setMaxUsersDraft(e.target.value)}
                 placeholder={t("admin.site.maxUsersPlaceholder")}
-                className="mt-1 w-32 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="mt-1 w-32 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             )}
           </div>
@@ -306,7 +306,7 @@ export default function AdminSitePage() {
                     value={limitInputValue(key, "free")}
                     onChange={(e) => setLimitDraft(key, "free", e.target.value)}
                     placeholder={t("admin.site.limitPlaceholder")}
-                    className="mt-1 w-28 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    className="mt-1 w-28 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                   />
                 </div>
                 <div className="w-28">
@@ -318,7 +318,7 @@ export default function AdminSitePage() {
                     value={limitInputValue(key, "pro")}
                     onChange={(e) => setLimitDraft(key, "pro", e.target.value)}
                     placeholder={t("admin.site.limitPlaceholder")}
-                    className="mt-1 w-28 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    className="mt-1 w-28 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                   />
                 </div>
                 <Button

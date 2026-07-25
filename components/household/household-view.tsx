@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { HouseholdInvite, HouseholdMember } from "@/lib/types";
 
 const inputCls =
-  "flex-1 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "flex-1 rounded-sm border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function HouseholdView() {
   const { user } = useAuth();
@@ -82,7 +82,7 @@ export function HouseholdView() {
             {receivedInvites.map((invite: HouseholdInvite) => (
               <li
                 key={invite.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                className="flex items-center justify-between gap-3 rounded-sm border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
               >
                 <span>{t("household.invitedYou")}</span>
                 <span className="flex gap-2">
@@ -140,7 +140,7 @@ export function HouseholdView() {
                 }}
                 aria-label={t("household.namePlaceholder")}
                 disabled={!isOwner}
-                className="flex-1 rounded-md px-2 py-1 text-lg font-semibold outline-none hover:bg-zinc-100 focus:border focus:border-zinc-500 disabled:hover:bg-transparent dark:hover:bg-zinc-800"
+                className="flex-1 rounded-sm px-2 py-1 text-lg font-semibold outline-none hover:bg-zinc-100 focus:border focus:border-zinc-500 disabled:hover:bg-transparent dark:hover:bg-zinc-800"
               />
               <Button size="sm" variant="danger" disabled={busy} onClick={() => setConfirmLeave(true)}>
                 {t("household.leave")}
@@ -198,7 +198,7 @@ export function HouseholdView() {
                 {sentInvites.map((invite) => (
                   <li
                     key={invite.id}
-                    className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                    className="flex items-center justify-between gap-3 rounded-sm border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
                   >
                     <span className="truncate">{invite.email}</span>
                     <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(() => revokeInvite(invite.id))}>

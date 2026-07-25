@@ -58,7 +58,7 @@ export function ProfileMenu() {
         {initials(name, email)}
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           <div className="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
             {name && <div className="truncate text-sm font-medium">{name}</div>}
             <div className="truncate text-xs text-zinc-500">{email}</div>

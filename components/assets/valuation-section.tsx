@@ -19,7 +19,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 type SortKey = "date" | "value";
 

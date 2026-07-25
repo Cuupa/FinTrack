@@ -639,7 +639,7 @@ export function AssetDetail({
         </div>
         <div className="mt-4">
           {historyLoading ? (
-            <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
+            <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-md border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
               <p className="text-sm">{t("chart.loading")}</p>
             </div>
@@ -882,7 +882,7 @@ export function AssetDetail({
         </div>
 
         {pendingSplitEvents.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
             <span className="text-sm text-amber-800 dark:text-amber-300">
               {t("splits.detected", { count: pendingSplitEvents.length })}
             </span>
@@ -893,7 +893,7 @@ export function AssetDetail({
         )}
 
         {assetPlans.length > 0 && (
-          <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <div className="mt-3 rounded-md border border-zinc-200 dark:border-zinc-800">
             <h3 className="border-b border-zinc-200 px-3 py-2 text-sm font-semibold dark:border-zinc-800">
               {t("sp.title")}
             </h3>
@@ -973,7 +973,7 @@ export function AssetDetail({
           </div>
         )}
 
-        <div className="mt-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
           <TransactionForm asset={asset} ensureAsset={held ? undefined : ensureHeldAsset} />
         </div>
@@ -1030,7 +1030,7 @@ export function AssetDetail({
               {pendingSplitEvents.map((event) => (
                 <div
                   key={event.date}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800"
+                  className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 dark:border-zinc-800"
                 >
                   <span className="text-sm">{formatDate(event.date)}</span>
                   <label className="flex items-center gap-2 text-sm text-zinc-500">
@@ -1041,7 +1041,7 @@ export function AssetDetail({
                       onChange={(e) =>
                         setSplitRowEdit(event.date, stripLeadingZero(e.target.value))
                       }
-                      className="w-20 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      className="w-20 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   </label>
                 </div>
@@ -1353,7 +1353,7 @@ function TransactionEditRow({
   const [portfolioId, setPortfolioId] = useState(tx.portfolioId);
 
   const { t: tr } = useI18n();
-  const cell = "w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  const cell = "w-full rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
   const save = () => {
     const qty = parseDecimal(quantity);

@@ -158,7 +158,7 @@ export function ImportSpending({ onDone }: { onDone?: () => void }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+        <label className="cursor-pointer rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
           {hasFile ? t("import.reselectFile") : t("import.selectFile")}
           <input
             type="file"
@@ -219,7 +219,7 @@ export function ImportSpending({ onDone }: { onDone?: () => void }) {
                 {t("import.conflictSection")}{" "}
                 <span className="font-normal text-zinc-400">({conflictRows.length})</span>
               </h3>
-              <div className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+              <div className="divide-y divide-zinc-200 rounded-md border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
                 {conflictRows.map(({ r, i }) => (
                   <div key={i} className="flex items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1">
@@ -285,7 +285,7 @@ export function ImportSpending({ onDone }: { onDone?: () => void }) {
                   </button>
                 </div>
               </div>
-              <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 dark:divide-zinc-800/60 dark:border-zinc-800">
+              <div className="divide-y divide-zinc-100 rounded-md border border-zinc-200 dark:divide-zinc-800/60 dark:border-zinc-800">
                 {newRows.map(({ r, i }) => (
                   <div key={i} className="flex flex-wrap items-center gap-3 px-3 py-2">
                     <input

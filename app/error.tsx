@@ -52,7 +52,7 @@ function ErrorBody({
         </Button>
         <Link
           href="/"
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-300 px-3.5 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-zinc-300 px-3.5 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
           {strings.backHome}
         </Link>

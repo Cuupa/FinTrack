@@ -21,7 +21,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -177,7 +177,7 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
       </div>
 
       {due.length > 0 ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
           <span className="text-sm text-amber-800 dark:text-amber-300" data-private>
             {t("cashInterest.due", { count: due.length, total: formatCurrency(dueTotal, cur) })}
           </span>
@@ -203,7 +203,7 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
             {rows.map((r) => (
               <div
                 key={r.date}
-                className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
               >
                 <span className="text-sm">{formatDate(r.date)}</span>
                 <label className="flex items-center gap-2 text-sm text-zinc-500">
@@ -220,7 +220,7 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
                         return next;
                       });
                     }}
-                    className="w-24 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    className="w-24 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     data-private
                   />
                 </label>

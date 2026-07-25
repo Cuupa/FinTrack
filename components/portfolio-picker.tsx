@@ -89,7 +89,7 @@ export function PortfolioPicker() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-9 w-full max-w-[8rem] items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:max-w-[12rem] dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="inline-flex h-9 w-full max-w-[8rem] items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:max-w-[12rem] dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         title="Portfolios"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0" strokeLinecap="round" strokeLinejoin="round">
@@ -101,7 +101,7 @@ export function PortfolioPicker() {
       </button>
 
       {open && (
-        <div className="absolute left-0 z-30 mt-2 w-72 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute left-0 z-30 mt-2 w-72 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center justify-between border-b border-zinc-100 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800">
             <span>Portfolios</span>
             <button
@@ -128,14 +128,14 @@ export function PortfolioPicker() {
                         if (e.key === "Escape") setRenaming(null);
                       }}
                       onBlur={() => void submitRename(p.id)}
-                      className="flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      className="flex-1 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   ) : (
                     <>
                       <button
                         type="button"
                         onClick={() => toggle(p.id)}
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       >
                         <span
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
@@ -188,14 +188,14 @@ export function PortfolioPicker() {
                   if (e.key === "Escape") setAdding(false);
                 }}
                 onBlur={() => void submitNew()}
-                className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="w-full rounded-sm border border-zinc-300 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             ) : (
               <button
                 type="button"
                 onClick={() => setAdding(true)}
                 disabled={portfolios.length >= MAX_PORTFOLIOS || portfoliosCapped}
-                className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-zinc-800"
               >
                 {t("nav.newPortfolio")}
               </button>

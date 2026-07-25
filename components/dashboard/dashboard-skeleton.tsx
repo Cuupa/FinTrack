@@ -66,20 +66,20 @@ export function DashboardSkeleton() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 md:mt-4 md:gap-3">
-          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-8 w-56 rounded-md" />
           <div className="ml-auto flex flex-wrap gap-2 md:gap-3">
-            <Skeleton className="h-8 w-28 rounded-lg" />
-            <Skeleton className="h-8 w-32 rounded-lg" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-32 rounded-md" />
           </div>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2 md:mt-3">
           <Skeleton className="h-5 w-20 rounded" />
-          <Skeleton className="h-8 w-24 rounded-lg" />
+          <Skeleton className="h-8 w-24 rounded-md" />
         </div>
 
         <div className="mt-3 md:mt-4">
-          <Skeleton className="h-[320px] w-full rounded-lg" />
+          <Skeleton className="h-[320px] w-full rounded-md" />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 sm:grid-cols-3 lg:grid-cols-5 dark:border-zinc-800">
@@ -90,11 +90,11 @@ export function DashboardSkeleton() {
       </Card>
 
       {/* Holdings table: header bar + a handful of rows. */}
-      <div className="mt-4 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-4 rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
           <Skeleton className="h-6 w-32 rounded" />
-          <Skeleton className="h-8 w-28 rounded-lg" />
-          <Skeleton className="ml-auto h-8 w-full max-w-xs rounded-lg" />
+          <Skeleton className="h-8 w-28 rounded-md" />
+          <Skeleton className="ml-auto h-8 w-full max-w-xs rounded-md" />
         </div>
         {/* Column-header row (the real table's <thead>). */}
         <div className="flex items-center gap-4 border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">

@@ -26,7 +26,7 @@ import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 type SortKey = "name" | "interval" | "amount" | "renewalDate";
 
@@ -188,7 +188,7 @@ export function ContractsView() {
             {visibleCandidates.map((c) => (
               <li
                 key={`${c.payee}|${c.amount}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
               >
                 <span data-private>
                   <span className="font-medium">{c.payee}</span>{" "}

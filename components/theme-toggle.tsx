@@ -35,7 +35,7 @@ export function ThemeToggle({
       title={label}
       aria-label={label}
       data-tour={dataTour}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

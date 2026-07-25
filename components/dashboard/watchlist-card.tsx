@@ -181,7 +181,7 @@ export function WatchlistCard() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("watchlist.placeholder")}
             aria-label={t("watchlist.placeholder")}
-            className="w-44 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 md:w-56 dark:border-zinc-700"
+            className="w-44 rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 md:w-56 dark:border-zinc-700"
           />
           <SelectMenu
             value={addCurrency}

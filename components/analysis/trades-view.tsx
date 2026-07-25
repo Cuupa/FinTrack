@@ -312,7 +312,7 @@ function MoverList({
             <li key={m.id}>
               <Link
                 href={`/assets/${m.id}`}
-                className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               >
                 <span className="min-w-0 truncate text-sm font-medium">
                   {m.name}

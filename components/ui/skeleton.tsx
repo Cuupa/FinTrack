@@ -8,7 +8,7 @@ export function Skeleton({ className = "", ...props }: HTMLAttributes<HTMLDivEle
   return (
     <div
       aria-hidden="true"
-      className={`animate-pulse rounded-md bg-zinc-200 motion-reduce:animate-none dark:bg-zinc-800 ${className}`}
+      className={`animate-pulse rounded-sm bg-zinc-200 motion-reduce:animate-none dark:bg-zinc-800 ${className}`}
       {...props}
     />
   );

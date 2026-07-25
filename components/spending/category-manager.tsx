@@ -17,7 +17,7 @@ import { Button, Card } from "@/components/ui/primitives";
 import type { SpendingCategory } from "@/lib/types";
 
 const inputCls =
-  "flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+  "flex-1 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function CategoryManager({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data, addSpendingCategory, updateSpendingCategory, deleteSpendingCategory } =
@@ -147,7 +147,7 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.currentTarget.blur();
                       }}
-                      className="flex-1 rounded-md px-2 py-1 text-sm font-semibold outline-none hover:bg-zinc-100 focus:border focus:border-zinc-500 dark:hover:bg-zinc-800"
+                      className="flex-1 rounded-sm px-2 py-1 text-sm font-semibold outline-none hover:bg-zinc-100 focus:border focus:border-zinc-500 dark:hover:bg-zinc-800"
                     />
                     <Button size="sm" variant="danger" onClick={() => setDeletingGroup(groupName)}>
                       {t("spending.categories.deleteGroup")}
@@ -172,7 +172,7 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
                           <button
                             type="button"
                             onClick={() => startRename(c)}
-                            className="flex-1 truncate rounded-md px-2 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            className="flex-1 truncate rounded-sm px-2 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                           >
                             {c.name}
                           </button>
@@ -212,7 +212,7 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
                       <button
                         type="button"
                         onClick={() => setAddingTo(groupName)}
-                        className="mt-1 w-full rounded-md px-2 py-1 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                        className="mt-1 w-full rounded-sm px-2 py-1 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
                       >
                         {t("spending.categories.newCategory")}
                       </button>
@@ -258,7 +258,7 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
               <button
                 type="button"
                 onClick={() => setAddingGroup(true)}
-                className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
               >
                 {t("spending.categories.newGroup")}
               </button>

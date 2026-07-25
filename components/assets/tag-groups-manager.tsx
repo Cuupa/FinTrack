@@ -76,13 +76,13 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
                         if (e.key === "Escape") setRenaming(null);
                       }}
                       onBlur={() => commitRename(group.id)}
-                      className="flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                      className="flex-1 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                     />
                   ) : (
                     <button
                       type="button"
                       onClick={() => startRename(group)}
-                      className="flex-1 truncate rounded-md px-2 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      className="flex-1 truncate rounded-sm px-2 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
                       {group.name}
                     </button>
@@ -113,13 +113,13 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
                 onBlur={commitNew}
                 placeholder={t("tags.groupNamePlaceholder")}
                 aria-label={t("tags.groupNamePlaceholder")}
-                className="w-full rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                className="w-full rounded-sm border border-zinc-300 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
             ) : (
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
               >
                 {t("tags.newGroup")}
               </button>

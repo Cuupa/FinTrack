@@ -242,7 +242,7 @@ export function ReturnsView() {
                     return (
                       <div
                         key={q}
-                        className="rounded-md px-1 py-2 text-center tabular-nums"
+                        className="rounded-sm px-1 py-2 text-center tabular-nums"
                         style={{ backgroundColor: r ? heatColor(r.ret) : undefined }}
                       >
                         {r ? formatPercent(r.ret, 1) : "·"}
@@ -257,7 +257,7 @@ export function ReturnsView() {
               {[...heatReturns].reverse().map((r) => (
                 <div
                   key={r.key}
-                  className="min-w-[5.5rem] rounded-lg px-4 py-3 text-center"
+                  className="min-w-[5.5rem] rounded-md px-4 py-3 text-center"
                   style={{ backgroundColor: heatColor(r.ret) }}
                 >
                   <div className="text-xs font-semibold text-zinc-100">{r.year}</div>
@@ -323,13 +323,13 @@ export function ReturnsView() {
           </h3>
           <div className="flex flex-wrap items-center gap-3">
             <ScopeSelect options={scopeOptions} selected={scopeMap} onChange={setScopeMap} />
-            <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
+            <div className="inline-flex flex-wrap gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
               {(["1M", "3M", "YTD", "1Y", "5Y", "MAX"] as Timeframe[]).map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setMapTf(tf)}
                   aria-pressed={mapTf === tf}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
                     mapTf === tf
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
                       : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -410,7 +410,7 @@ function MapTooltip({ currency, active, payload }: MapTooltipProps) {
   const p: TreeNode = payload[0].payload ?? payload[0];
   if (!p || p.name == null) return null;
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="rounded-md border border-zinc-200 bg-white p-2.5 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
       <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.name}</div>
       <div className="mt-0.5 text-zinc-500">
         {formatCurrency(p.size ?? 0, currency)} · {formatPercent(p.ret ?? 0)}

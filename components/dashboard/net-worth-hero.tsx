@@ -350,7 +350,7 @@ function RiskStat({
 function LoadingChart() {
   const { t } = useI18n();
   return (
-    <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
+    <div className="flex h-[320px] flex-col items-center justify-center gap-3 rounded-md border border-dashed border-zinc-200 text-center text-zinc-400 dark:border-zinc-800">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
       <p className="text-sm">{t("chart.loading")}</p>
     </div>
@@ -360,7 +360,7 @@ function LoadingChart() {
 function EmptyChart() {
   const { t } = useI18n();
   return (
-    <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 text-center text-zinc-500 dark:border-zinc-700">
+    <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-zinc-300 text-center text-zinc-500 dark:border-zinc-700">
       <p className="font-medium">{t("empty.noHoldings")}</p>
       <p className="text-sm">{t("empty.addFirst")}</p>
     </div>

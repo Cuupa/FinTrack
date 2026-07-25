@@ -48,18 +48,18 @@ export function ScopeSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
       >
         <span className="text-zinc-400">{t("common.scope")}:</span>
         {summary}
         <span className="text-[10px] text-zinc-400">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 max-h-80 w-64 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="absolute right-0 z-20 mt-2 max-h-80 w-64 overflow-y-auto rounded-md border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           <button
             type="button"
             onClick={() => onChange([])}
-            className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+            className={`flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
               selected.length === 0 ? "font-semibold text-emerald-600 dark:text-emerald-400" : ""
             }`}
           >
@@ -73,7 +73,7 @@ export function ScopeSelect({
                 key={o.id}
                 type="button"
                 onClick={() => toggle(o.id)}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 <span
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${

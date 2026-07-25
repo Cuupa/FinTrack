@@ -65,7 +65,7 @@ export function InfoTip({
         pos && (
           <span
             role="tooltip"
-            className="pointer-events-none fixed z-30 w-56 -translate-x-1/2 -translate-y-full rounded-lg border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal normal-case leading-snug text-zinc-600 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            className="pointer-events-none fixed z-30 w-56 -translate-x-1/2 -translate-y-full rounded-md border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal normal-case leading-snug text-zinc-600 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
             style={{ top: pos.top, left: pos.left }}
           >
             {text}
@@ -74,7 +74,7 @@ export function InfoTip({
       ) : (
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal leading-snug text-zinc-600 shadow-lg group-hover:block group-focus-within:block dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-56 -translate-x-1/2 rounded-md border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal leading-snug text-zinc-600 shadow-lg group-hover:block group-focus-within:block dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
         >
           {text}
         </span>
