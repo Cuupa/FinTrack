@@ -389,10 +389,10 @@ export const en = {
     "Your ETFs are broken down into the companies behind them and added to the shares you hold directly, so you see your real exposure per company.",
   "tour.xray.limits.title": "Only what is known",
   "tour.xray.limits.body":
-    "The breakdown covers funds whose constituents are in the catalog. Everything else stays in the unclassified remainder rather than being dropped silently.",
+    "Funds whose holdings are known get broken down. Everything else stays visible as an unclassified remainder instead of quietly disappearing.",
   "tour.analysis.tabs.title": "Five views on one portfolio",
   "tour.analysis.tabs.body":
-    "Distribution, returns, trades, risk and taxes. Each tab keeps its own controls, and the tab you pick stays in the URL.",
+    "Distribution, returns, trades, risk and taxes. Each tab answers a different question about the same portfolio.",
   "tour.assetTags.what.title": "What are tags?",
   "tour.assetTags.what.body":
     "Tags are grouped key-value labels you define, like Strategie: gamble. Use them to mark holdings however makes sense to you.",
@@ -2214,10 +2214,10 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Deine ETFs werden in die Unternehmen dahinter zerlegt und mit deinen direkt gehaltenen Aktien zusammengezählt. So siehst du deine echte Position pro Unternehmen.",
   "tour.xray.limits.title": "Nur was bekannt ist",
   "tour.xray.limits.body":
-    "Die Aufschlüsselung erfasst Fonds, deren Bestandteile im Katalog liegen. Alles andere bleibt im nicht zugeordneten Rest und verschwindet nicht stillschweigend.",
+    "Fonds, deren Bestandteile bekannt sind, werden aufgeschlüsselt. Alles andere bleibt als nicht zugeordneter Anteil sichtbar, statt stillschweigend zu verschwinden.",
   "tour.analysis.tabs.title": "Fünf Sichten auf ein Portfolio",
   "tour.analysis.tabs.body":
-    "Verteilung, Rendite, Trades, Risiko und Steuern. Jeder Tab hat eigene Regler, und der gewählte Tab steht in der URL.",
+    "Verteilung, Rendite, Trades, Risiko und Steuern. Jeder Tab beantwortet eine andere Frage zum selben Portfolio.",
   "tour.assetTags.what.title": "Was sind Tags?",
   "tour.assetTags.what.body":
     "Tags sind gruppierte Schlüssel-Wert-Label, die du selbst festlegst, zum Beispiel Strategie: gamble. Nutze sie, um Positionen so zu markieren, wie es für dich Sinn ergibt.",
@@ -4038,10 +4038,10 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Tus ETFs se descomponen en las empresas que hay detrás y se suman a las acciones que tienes en directo, así ves tu exposición real por empresa.",
   "tour.xray.limits.title": "Solo lo conocido",
   "tour.xray.limits.body":
-    "El desglose cubre los fondos cuyos componentes están en el catálogo. El resto se queda en el remanente sin clasificar en lugar de descartarse en silencio.",
+    "Los fondos cuyas posiciones se conocen se desglosan. El resto sigue visible como remanente sin clasificar en vez de desaparecer sin más.",
   "tour.analysis.tabs.title": "Cinco vistas de una cartera",
   "tour.analysis.tabs.body":
-    "Distribución, rentabilidad, operaciones, riesgo e impuestos. Cada pestaña tiene sus propios controles y la pestaña elegida queda en la URL.",
+    "Distribución, rentabilidad, operaciones, riesgo e impuestos. Cada pestaña responde a una pregunta distinta sobre la misma cartera.",
   "tour.assetTags.what.title": "¿Qué son las etiquetas?",
   "tour.assetTags.what.body":
     "Las etiquetas son pares clave-valor agrupados que tú defines, como Strategie: gamble. Úsalas para marcar posiciones como tenga sentido para ti.",
