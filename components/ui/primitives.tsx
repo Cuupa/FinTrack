@@ -1,4 +1,10 @@
 // Small Tailwind UI primitives shared across the app.
+//
+// The layout primitives at the bottom (PageHeader, SectionTitle, EmptyState)
+// exist because ~18 pages had reimplemented the same page header markup and
+// the same "nothing here yet" message six different ways. Their job is to
+// hold one spacing and typography scale so a new surface inherits it instead
+// of picking new values.
 
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { InfoTip } from "./info-tip";
@@ -105,6 +111,98 @@ export function Button({
       className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeCls} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Layout scale
+   -------------------------------------------------------------------------- */
+
+/** Vertical rhythm between the major blocks of a page (header, then cards).
+    Exported rather than inlined so a page never quietly picks its own. */
+export const PAGE_STACK = "space-y-6";
+
+/** Rhythm between sections inside one card. */
+export const SECTION_STACK = "space-y-4";
+
+/**
+ * The standard page header: title, optional one-line subtitle, optional
+ * right-aligned actions. Actions wrap under the title on narrow screens
+ * rather than squeezing it.
+ */
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  /** Primary/secondary actions for the whole page, e.g. "+ Add asset". */
+  actions?: ReactNode;
+  /** Anything that belongs under the header but above the content, such as
+      a scope selector. */
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
+        {children}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Heading for a card or a section within one — the canonical h2 treatment
+    (the app had drifted between text-lg and text-base with no rule). */
+export function SectionTitle({
+  children,
+  info,
+  actions,
+}: {
+  children: ReactNode;
+  /** Optional short explanation shown via an ⓘ tooltip. */
+  info?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+        {children}
+        {info && <InfoTip text={info} />}
+      </h2>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/**
+ * "Nothing here yet" for an empty list or chart.
+ *
+ * `action` is deliberately prominent in the signature: the six shapes this
+ * replaces all told the user the surface was empty without offering the one
+ * thing they could do about it.
+ */
+export function EmptyState({
+  title,
+  hint,
+  action,
+  className = "",
+}: {
+  title: string;
+  hint?: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col items-center justify-center px-4 py-12 text-center ${className}`}>
+      <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{title}</p>
+      {hint && <p className="mt-1 max-w-sm text-sm text-zinc-500">{hint}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   );
 }
 
