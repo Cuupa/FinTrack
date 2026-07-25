@@ -352,7 +352,7 @@ export const en = {
   "login.privacyPolicyLink": "Privacy Policy",
 
   "dashboard.title": "Dashboard",
-  "dashboard.subtitle": "Your portfolio at a glance.",
+  "dashboard.subtitle": "Everything you own, owe and spend, in one place.",
   "dashboard.addAsset": "+ Add asset",
   "addAsset.manual": "Add manually",
   "addAsset.import": "Import CSV",
@@ -2028,7 +2028,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "login.privacyPolicyLink": "Datenschutzerklärung",
 
   "dashboard.title": "Übersicht",
-  "dashboard.subtitle": "Dein Portfolio auf einen Blick.",
+  "dashboard.subtitle": "Alles, was du besitzt, schuldest und ausgibst, an einem Ort.",
   "dashboard.addAsset": "+ Position hinzufügen",
   "addAsset.manual": "Manuell hinzufügen",
   "addAsset.import": "CSV importieren",
@@ -3703,7 +3703,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "login.privacyPolicyLink": "Política de privacidad",
 
   "dashboard.title": "Inicio",
-  "dashboard.subtitle": "Tu cartera de un vistazo.",
+  "dashboard.subtitle": "Todo lo que tienes, debes y gastas, en un solo lugar.",
   "dashboard.addAsset": "+ Añadir activo",
   "addAsset.manual": "Añadir manualmente",
   "addAsset.import": "Importar CSV",
