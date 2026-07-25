@@ -3,6 +3,8 @@
 // browser download. No server round-trip — the data already lives in memory.
 
 import type { PortfolioData } from "../types";
+import type { TaxYearBreakdown } from "../finance/tax";
+import type { TaxPackYear } from "../finance/tax-pack";
 
 /** Quote a CSV field per RFC 4180 when it contains a comma, quote, or newline. */
 function csvCell(value: unknown): string {
@@ -96,4 +98,70 @@ export function exportPortfolioJson(data: PortfolioData): void {
 
 export function exportPortfolioCsv(data: PortfolioData): void {
   downloadFile(`fintrack-${stamp()}.csv`, portfolioToCsv(data), "text/csv;charset=utf-8");
+}
+
+/**
+ * Advisor/Elster-prep export for one tax year (ROADMAP item #11): the
+ * capital-gains waterfall (`TaxYearBreakdown`) plus deductible expenses and
+ * income context from the spending ledger (`TaxPackYear`), in the profile's
+ * base currency. `pack` is undefined when the spending ledger has no rows
+ * for the year -- the deductible/income sections are then empty, not absent.
+ */
+export function taxPackYearToCsv(
+  breakdown: TaxYearBreakdown,
+  pack: TaxPackYear | undefined,
+  currency: string,
+): string {
+  const capitalRows: (string | number | null)[][] = [
+    ["# Capital income", breakdown.year],
+    ["item", "amount", "currency"],
+    ["Stock gains", breakdown.stockGains, currency],
+    ["Fund gains", breakdown.fundGains, currency],
+    ["Dividends (stock)", breakdown.dividendsStock, currency],
+    ["Dividends (fund)", breakdown.dividendsFund, currency],
+    ["Interest", breakdown.interest, currency],
+    ["Vorabpauschale", breakdown.vorabpauschale, currency],
+    ["Kapitalerträge (taxable pots)", breakdown.kapitalertraege, currency],
+    ["Allowance used (Sparerpauschbetrag)", breakdown.allowanceUsed, currency],
+    ["Taxable after allowance", breakdown.taxableAfterAllowance, currency],
+    ["Estimated tax", breakdown.estimatedTax, currency],
+    ["Tax withheld by broker", breakdown.taxWithheld, currency],
+    ["Private sale gains (crypto/commodities, informational)", breakdown.privateSale, currency],
+  ];
+
+  const deductibleRows: (string | number | null)[][] = [
+    ["# Deductible expenses", breakdown.year],
+    ["group", "category", "amount", "currency"],
+    ...(pack?.deductibleByCategory ?? []).map((c) => [c.groupName, c.name, c.amount, currency]),
+    ["Total", "", pack?.deductibleTotal ?? 0, currency],
+  ];
+
+  const incomeRows: (string | number | null)[][] = [
+    ["# Other income & expense (spending ledger)", breakdown.year],
+    ["item", "amount", "currency"],
+    ["Income", pack?.income ?? 0, currency],
+    ["Expense", pack?.expense ?? 0, currency],
+  ];
+
+  return [
+    `# FinTrack tax pack ${breakdown.year}: base currency ${currency}. Estimate for orientation only, not tax advice.`,
+    toCsvRows(capitalRows),
+    "",
+    toCsvRows(deductibleRows),
+    "",
+    toCsvRows(incomeRows),
+    "",
+  ].join("\n");
+}
+
+export function exportTaxPackYear(
+  breakdown: TaxYearBreakdown,
+  pack: TaxPackYear | undefined,
+  currency: string,
+): void {
+  downloadFile(
+    `fintrack-tax-pack-${breakdown.year}.csv`,
+    taxPackYearToCsv(breakdown, pack, currency),
+    "text/csv;charset=utf-8",
+  );
 }

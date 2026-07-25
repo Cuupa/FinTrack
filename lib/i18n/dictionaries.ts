@@ -1157,6 +1157,14 @@ export const en = {
   "tax.discardAriaLabel": "Discard changes to {field}",
   "tax.saveError": "Could not save. Please try again.",
   "tax.empty": "No taxable events yet. Sell a position, or receive interest or dividends, to see a report here.",
+  "taxPack.title": "Tax pack",
+  "taxPack.tip": "Deductible expenses and income context from your spending ledger, plus an export for your advisor or Elster filing. Not tax advice.",
+  "taxPack.deductibleLabel": "Tax deductible",
+  "taxPack.noDeductible": "No deductible expenses tagged for this year.",
+  "taxPack.deductibleTotal": "Total deductible",
+  "taxPack.income": "Other income",
+  "taxPack.expense": "Other expense",
+  "taxPack.export": "Export tax pack (CSV)",
 
   // X-Ray
   "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
@@ -2783,6 +2791,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tax.discardAriaLabel": "Änderungen an {field} verwerfen",
   "tax.saveError": "Konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "tax.empty": "Noch keine steuerlich relevanten Ereignisse. Verkaufe eine Position oder erhalte Zinsen oder Dividenden, um hier einen Report zu sehen.",
+  "taxPack.title": "Steuerpaket",
+  "taxPack.tip": "Absetzbare Ausgaben und Einkommenskontext aus deinem Haushaltsbuch, plus ein Export für deinen Steuerberater oder Elster. Keine Steuerberatung.",
+  "taxPack.deductibleLabel": "Steuerlich absetzbar",
+  "taxPack.noDeductible": "Für dieses Jahr sind keine absetzbaren Ausgaben markiert.",
+  "taxPack.deductibleTotal": "Absetzbar gesamt",
+  "taxPack.income": "Sonstiges Einkommen",
+  "taxPack.expense": "Sonstige Ausgaben",
+  "taxPack.export": "Steuerpaket exportieren (CSV)",
 
   // X-Ray
   "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
@@ -4406,6 +4422,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tax.discardAriaLabel": "Descartar cambios en {field}",
   "tax.saveError": "No se ha podido guardar. Inténtalo de nuevo.",
   "tax.empty": "Todavía no hay eventos fiscalmente relevantes. Vende una posición, o recibe intereses o dividendos, para ver aquí un informe.",
+  "taxPack.title": "Paquete fiscal",
+  "taxPack.tip": "Gastos deducibles y contexto de ingresos de tu registro de gastos, más una exportación para tu asesor o la declaración Elster. No es asesoramiento fiscal.",
+  "taxPack.deductibleLabel": "Deducible de impuestos",
+  "taxPack.noDeductible": "No hay gastos deducibles marcados para este año.",
+  "taxPack.deductibleTotal": "Total deducible",
+  "taxPack.income": "Otros ingresos",
+  "taxPack.expense": "Otros gastos",
+  "taxPack.export": "Exportar paquete fiscal (CSV)",
 
   // X-Ray
   "xray.subtitle": "Tu exposición real a acciones individuales, mirando a través de tus fondos.",

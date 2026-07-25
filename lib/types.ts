@@ -186,6 +186,12 @@ export interface SpendingCategory {
   id: string;
   groupName: string;
   name: string;
+  /**
+   * Tax-deductible expense category (ROADMAP item #11, flag `taxPack`) --
+   * feeds the year-end tax pack's deductible-expenses summary. Optional:
+   * existing categories predate this field and default to "not deductible".
+   */
+  taxDeductible?: boolean;
 }
 
 /**

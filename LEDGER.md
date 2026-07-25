@@ -1,61 +1,41 @@
-# LEDGER — ROADMAP items #9-#10
+# LEDGER — ROADMAP items #11, #13 (skip #12 per instruction)
 
-Continuing the sequence from items #5-#8 (see git history). Each item fully
+Continuing the sequence from items #1-#10 (see git history). Each item fully
 shipped (data model + store seam + finance module + UI + i18n en/de/es +
 tests + build/lint green) and committed before moving to the next.
 
-## Item #9: Debt payoff (flag `debtPayoff`)
-- [x] Migration 0088 + schema.sql: `accounts` gains nullable `interest_rate`
-      (annual %) + `min_payment` columns, flag seeded disabled
-- [x] `lib/types.ts`: `Account.interestRate`/`minPayment` (optional, nullable)
-- [x] `lib/finance/dates.ts`: `addMonthsToDate` helper
-- [x] `lib/finance/debt.ts` (pure): `amortizationSchedule` (single debt),
-      `planPayoff` (avalanche/snowball multi-debt simulator with extra
-      payment)
-- [x] Store seam: supabase-store.ts row mapping only (Local/Offline/sync are
+## Item #11: Tax pack (flag `taxPack`) — DONE
+- [x] Migration 0090 + schema.sql: `spending_categories.tax_deductible`
+      (nullable boolean) + flag seeded disabled
+- [x] `lib/types.ts`: `SpendingCategory.taxDeductible?: boolean`
+- [x] Store seam: supabase-store.ts row mapping (Local/Offline/sync are
       generic passthrough, no changes needed)
-- [x] UI: `/debt` route, sidebar nav entry (desktop only)
-- [x] i18n en/de/es (`nav.debt` + `debt.*` block, es parity test green)
-- [x] Unit tests: 19 cases in tests/debt.test.ts (amortization + avalanche/
-      snowball + addMonthsToDate)
-- [x] Verify: build + lint + unit tests green (891 passing), browser smoke
-      test in Guest Mode EN+DE (liability account -> rate/payment dialog ->
-      schedule + payoff plan + strategy switch + extra-payment savings
-      sentence, zero console errors)
-
-## Item #10: Insurance register + coverage prompts (flag `insurance`)
-- [x] Migration 0089 + schema.sql: `contracts` gains nullable
-      `insurance_type` + `sum_insured` columns, flag seeded disabled
-- [x] `lib/types.ts`: `InsuranceType`, `Contract.insuranceType`/`sumInsured`
-      (optional, nullable)
-- [x] `lib/finance/insurance.ts` (pure): `coverageGaps` over core DACH
-      insurance types
-- [x] Store seam: supabase-store.ts row mapping only
-- [x] UI: extended `/contracts` (contracts-view.tsx) with insurance
-      type/sum-insured form fields + a coverage-gap prompt card, both gated
-      on the `insurance` flag; list rows show the insurance type + sum
-      insured as plain subtext (no badges)
+- [x] `lib/finance/tax-pack.ts` (pure): `taxPackByYear` — deductible expense
+      totals by category + income/expense context per calendar year, from
+      the spending ledger
+- [x] Export: extend `lib/export/export.ts` with a per-year advisor/Elster
+      CSV export combining `TaxYearBreakdown` (capital gains) + `TaxPackYear`
+      (deductible expenses + income context)
+- [x] UI: extend `components/analysis/tax-view.tsx`'s existing "Steuern" tab
+      with a deductible-expenses section + export button per year (gated on
+      `taxPack`), plus standalone cards for spending-only years that have no
+      capital-gains event (taxYearBreakdown only returns years with a
+      taxable event, so a pure-spending year would otherwise never render);
+      `components/spending/category-manager.tsx` gains a tax-deductible
+      toggle per category (gated on `taxPack`)
 - [x] i18n en/de/es
-- [x] Unit tests: 5 cases in tests/insurance.test.ts
-- [x] Verify: build + lint + unit tests green, browser smoke test in Guest
-      Mode (added a "Personal liability" contract, coverage-gaps card
-      dropped it from the list, zero console errors)
+- [x] Unit tests: 5 cases in tests/tax-pack.test.ts
+- [x] Verify: build + lint + unit tests green (901 passing), browser smoke
+      test in Guest Mode EN+DE (account -> tax-deductible category -> 300 EUR
+      spend -> Steuern/Tax tab shows the deductible total + export button ->
+      CSV downloads with correct capital/deductible/income sections, zero
+      console errors)
 
-## Notes
-- No new tables for either item — both extend an existing entity
-  (accounts / contracts), matching the roadmap's framing ("liability
-  accounts gain amortisation", "typed rows on the contract entity from #5").
-- New Account/Contract fields are optional (`?:`) so existing call sites
-  (accounts-view.tsx, contracts-view.tsx submit/acceptCandidate) don't need
-  edits to keep compiling.
-- `/datenschutz` not touched: both items add fields to already-disclosed
-  entities (accounts, contracts), not a new data category or provider.
-- AI context (`lib/llm/context.ts`) not extended, matching the precedent set
-  by items #5-#8 (none of them extended it either, despite the roadmap's
-  "as each item ships" cross-cutting note).
-- Found and fixed a real amortization bug during unit testing: the last
-  month's principal was capped against the original balance parameter
-  instead of the current remaining balance, causing a small overpayment.
-- Exported `accountFxRate` from `lib/finance/accounts.ts` (was a private
-  `rateFor`) so the debt view can convert `minPayment` to the base currency
-  the same way the account balance itself already is.
+## Item #13: Household / collaboration (flag `household`)
+Scope TBD — XL effort, flagged in ROADMAP.md "Open decisions #4" as needing
+an owner call on the data model before starting. Will scope a v1 and check
+with the user before writing schema/RLS given the security blast radius of
+getting shared-data access wrong.
+
+## Skipped
+- #12 Document vault — explicitly excluded by user instruction this round.

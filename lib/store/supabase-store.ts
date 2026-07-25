@@ -170,10 +170,16 @@ interface SpendingCategoryRow {
   id: string;
   group_name: string;
   name: string;
+  tax_deductible: boolean | null;
 }
 
 function spendingCategoryFromRow(r: SpendingCategoryRow): SpendingCategory {
-  return { id: r.id, groupName: r.group_name, name: r.name };
+  return {
+    id: r.id,
+    groupName: r.group_name,
+    name: r.name,
+    taxDeductible: r.tax_deductible ?? undefined,
+  };
 }
 
 interface SpendingTransactionRow {
@@ -349,7 +355,7 @@ export class SupabaseStore implements DataStore {
         .order("balance_on", { ascending: true }),
       this.supabase
         .from("spending_categories")
-        .select("id, group_name, name")
+        .select("id, group_name, name, tax_deductible")
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
@@ -1015,6 +1021,7 @@ export class SupabaseStore implements DataStore {
         user_id: this.userId,
         group_name: input.groupName,
         name: input.name,
+        tax_deductible: input.taxDeductible ?? null,
       })
       .select("id")
       .single();
@@ -1026,6 +1033,7 @@ export class SupabaseStore implements DataStore {
     const upd: Record<string, unknown> = {};
     if (patch.groupName !== undefined) upd.group_name = patch.groupName;
     if (patch.name !== undefined) upd.name = patch.name;
+    if (patch.taxDeductible !== undefined) upd.tax_deductible = patch.taxDeductible;
     if (Object.keys(upd).length === 0) return;
     const { data, error } = await this.supabase
       .from("spending_categories")

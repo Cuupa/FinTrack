@@ -23,17 +23,22 @@ import {
   taxYearBreakdown,
   estimateVorabpauschaleByYear,
   type TaxSettings,
+  type TaxYearBreakdown,
   type YearDividends,
 } from "@/lib/finance/tax";
+import { taxPackByYear, type TaxPackYear } from "@/lib/finance/tax-pack";
+import { toBaseCurrency } from "@/lib/finance/spending";
+import { exportTaxPackYear } from "@/lib/export/export";
 import { useBasiszins } from "@/lib/tax/use-basiszins";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
 import { isStorageFullError } from "@/lib/store/errors";
-import { Card } from "@/components/ui/primitives";
+import { Button, Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 export function TaxView() {
   const { data, updateProfile } = usePortfolio();
@@ -66,8 +71,17 @@ export function TaxView() {
   );
   const { histories: fundHistories, fx: fundFxHistory } = useHistory(fundItems, "10y", currency);
   const vorabEnabled = useFeatureFlag("vorabEstimate");
+  const taxPackEnabled = useFeatureFlag("taxPack");
   const basiszinsByYear = useBasiszins();
   const currentYear = new Date().getFullYear();
+
+  // Tax pack (ROADMAP #11): deductible expenses + income context per year,
+  // from the spending ledger converted to the profile's base currency.
+  const packByYear = useMemo(() => {
+    if (!taxPackEnabled) return new Map<string, ReturnType<typeof taxPackByYear>[number]>();
+    const converted = toBaseCurrency(data.spendingTransactions, data.accounts, currency, valuation.fx);
+    return new Map(taxPackByYear(converted, data.spendingCategories).map((p) => [p.year, p]));
+  }, [taxPackEnabled, data.spendingTransactions, data.accounts, data.spendingCategories, currency, valuation.fx]);
 
   const estimatedVorab = useMemo(() => {
     if (!vorabEnabled) return {};
@@ -160,6 +174,12 @@ export function TaxView() {
     portfolioAllowances,
     valuation,
   ]);
+
+  const extraPackYears = useMemo(() => {
+    if (!taxPackEnabled) return [];
+    const covered = new Set(years.map((y) => y.year));
+    return [...packByYear.keys()].filter((y) => !covered.has(y)).sort();
+  }, [taxPackEnabled, years, packByYear]);
 
   const portfolioName = (id: string) => data.portfolios.find((p) => p.id === id)?.name ?? id;
 
@@ -352,9 +372,38 @@ export function TaxView() {
                     </dl>
                   </>
                 )}
+
+                {taxPackEnabled && (
+                  <TaxPackSection
+                    breakdownForExport={y}
+                    pack={packByYear.get(y.year)}
+                    currency={currency}
+                    t={t}
+                  />
+                )}
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Years with deductible expenses or spending activity but no capital-gains
+          event (taxYearBreakdown only returns years with a taxable event) still
+          get a card, so the tax pack isn't silently missing for a non-investor
+          year. */}
+      {taxPackEnabled && extraPackYears.length > 0 && (
+        <div className="space-y-4">
+          {extraPackYears.map((year) => (
+            <Card key={year}>
+              <h3 className="text-base font-semibold">{year}</h3>
+              <TaxPackSection
+                breakdownForExport={zeroTaxYearBreakdown(year)}
+                pack={packByYear.get(year)}
+                currency={currency}
+                t={t}
+              />
+            </Card>
+          ))}
         </div>
       )}
     </div>
@@ -517,5 +566,85 @@ function Row({
         {value}
       </dd>
     </div>
+  );
+}
+
+/** A zero-filled breakdown for a year with spending activity but no capital-
+ *  gains event, so `exportTaxPackYear` still has a shape to write. */
+function zeroTaxYearBreakdown(year: string): TaxYearBreakdown {
+  return {
+    year,
+    stockGains: 0,
+    fundGains: 0,
+    dividendsStock: 0,
+    dividendsFund: 0,
+    interest: 0,
+    privateSale: 0,
+    teilfreistellungApplied: false,
+    kapitalertraege: 0,
+    allowanceUsed: 0,
+    taxableAfterAllowance: 0,
+    effectiveRate: 0,
+    estimatedTax: 0,
+    taxWithheld: 0,
+    taxWithheldComputed: 0,
+    vorabpauschale: 0,
+  };
+}
+
+/** Deductible-expenses + income-context section of the tax pack (ROADMAP
+ *  #11), shared between a year with capital-gains events and a spending-only
+ *  year that has no capital-gains card of its own. */
+function TaxPackSection({
+  pack,
+  currency,
+  t,
+  breakdownForExport,
+}: {
+  pack: TaxPackYear | undefined;
+  currency: string;
+  t: (key: MessageKey, params?: Record<string, string | number>) => string;
+  breakdownForExport: TaxYearBreakdown;
+}) {
+  const deductible = pack?.deductibleByCategory ?? [];
+  return (
+    <>
+      <h4 className="mt-4 border-t border-zinc-200 pt-3 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:border-zinc-800">
+        {t("taxPack.title")}
+        <InfoTip text={t("taxPack.tip")} className="ml-1" />
+      </h4>
+      <dl className="mt-2 space-y-1.5 text-sm">
+        {deductible.length === 0 ? (
+          <p className="text-zinc-500">{t("taxPack.noDeductible")}</p>
+        ) : (
+          deductible.map((c) => (
+            <Row
+              key={c.categoryId}
+              label={`${c.groupName} · ${c.name}`}
+              value={formatCurrency(c.amount, currency)}
+            />
+          ))
+        )}
+        {deductible.length > 0 && (
+          <Row
+            label={t("taxPack.deductibleTotal")}
+            value={formatCurrency(pack?.deductibleTotal ?? 0, currency)}
+            bold
+          />
+        )}
+        <div className="!mt-2.5 border-t border-zinc-200 pt-1.5 dark:border-zinc-800">
+          <Row label={t("taxPack.income")} value={formatCurrency(pack?.income ?? 0, currency)} />
+          <Row label={t("taxPack.expense")} value={formatCurrency(pack?.expense ?? 0, currency)} />
+        </div>
+      </dl>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="mt-3"
+        onClick={() => exportTaxPackYear(breakdownForExport, pack, currency)}
+      >
+        {t("taxPack.export")}
+      </Button>
+    </>
   );
 }

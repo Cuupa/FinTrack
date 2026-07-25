@@ -9,6 +9,7 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,6 +23,7 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
   const { data, addSpendingCategory, updateSpendingCategory, deleteSpendingCategory } =
     usePortfolio();
   const { t } = useI18n();
+  const taxPackEnabled = useFeatureFlag("taxPack");
 
   const [error, setError] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -76,6 +78,14 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
     if (!name) return;
     try {
       await addSpendingCategory({ groupName, name });
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
+  async function toggleTaxDeductible(c: SpendingCategory) {
+    try {
+      await updateSpendingCategory(c.id, { taxDeductible: !c.taxDeductible });
     } catch (err) {
       reportError(err);
     }
@@ -166,6 +176,16 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
                           >
                             {c.name}
                           </button>
+                        )}
+                        {taxPackEnabled && (
+                          <label className="flex shrink-0 items-center gap-1.5 text-xs text-zinc-500">
+                            <input
+                              type="checkbox"
+                              checked={c.taxDeductible ?? false}
+                              onChange={() => void toggleTaxDeductible(c)}
+                            />
+                            {t("taxPack.deductibleLabel")}
+                          </label>
                         )}
                         <Button size="sm" variant="danger" onClick={() => setDeletingCategory(c)}>
                           {t("spending.categories.delete")}

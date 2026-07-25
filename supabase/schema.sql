@@ -479,6 +479,9 @@ create table if not exists public.spending_categories (
   user_id uuid not null references auth.users (id) on delete cascade,
   group_name text not null,
   name text not null,
+  -- Tax-deductible flag (ROADMAP #11, flag `taxPack`): nullable, feeds the
+  -- tax pack's deductible-expenses summary. Unset = not deductible.
+  tax_deductible boolean,
   created_at timestamptz not null default now()
 );
 create unique index if not exists spending_categories_unique_key
@@ -1088,6 +1091,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('insurance', false, 'Insurance register (typed contracts: type + sum insured) with coverage-gap prompts')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('taxPack', false, 'Tax pack: deductible-expense tagging on spending categories + a year-end advisor/Elster export')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays
