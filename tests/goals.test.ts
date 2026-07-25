@@ -45,6 +45,29 @@ describe("goalProgress", () => {
     expect(goalProgress(g, [a], balances)).toBe(4000);
   });
 
+  it("counts what has been repaid when the linked account is a liability", () => {
+    // 12000 borrowed, 7500 still owed -> 4500 paid off.
+    const loan = account({ kind: "loan", isLiability: true, openingBalance: 12000 });
+    const balances: AccountBalance[] = [{ accountId: "a1", date: "2024-06-01", balance: 7500 }];
+    const g = goal({ name: "Pay off car loan", targetAmount: 12000, linkedAccountId: "a1" });
+    expect(goalProgress(g, [loan], balances)).toBe(4500);
+  });
+
+  it("reports a fully repaid liability as complete", () => {
+    const loan = account({ kind: "loan", isLiability: true, openingBalance: 12000 });
+    const balances: AccountBalance[] = [{ accountId: "a1", date: "2024-06-01", balance: 0 }];
+    const g = goal({ targetAmount: 12000, linkedAccountId: "a1" });
+    expect(goalProgress(g, [loan], balances)).toBe(12000);
+    expect(goalProgressPct(g.targetAmount, goalProgress(g, [loan], balances))).toBe(100);
+  });
+
+  it("clamps payoff progress at 0 when the debt grew past its original amount", () => {
+    const loan = account({ kind: "loan", isLiability: true, openingBalance: 12000 });
+    const balances: AccountBalance[] = [{ accountId: "a1", date: "2024-06-01", balance: 15000 }];
+    const g = goal({ targetAmount: 12000, linkedAccountId: "a1" });
+    expect(goalProgress(g, [loan], balances)).toBe(0);
+  });
+
   it("FX-converts a linked account's native-currency balance to base", () => {
     const a = account({ currency: "USD", openingBalance: 1000 });
     const g = goal({ linkedAccountId: "a1" });

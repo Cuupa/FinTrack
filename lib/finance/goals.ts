@@ -39,7 +39,16 @@ export function goalProgress(
   if (goal.linkedAccountId) {
     const account = accounts.find((a) => a.id === goal.linkedAccountId);
     if (!account) return 0;
-    return currentAccountBalance(account, accountBalances) * rateFor(account, valuation);
+    const balance = currentAccountBalance(account, accountBalances) * rateFor(account, valuation);
+
+    // Paying a debt off is progress running the other way: the account's
+    // balance is what is still OWED, so it falls as the goal is met. Progress
+    // is therefore what has already been repaid, against a target holding the
+    // original debt. Returning the raw balance here (as this did before) made
+    // a payoff goal read as more complete the deeper into debt you went.
+    if (account.isLiability) return Math.max(0, goal.targetAmount - balance);
+
+    return balance;
   }
   return goal.manualCurrentAmount ?? 0;
 }

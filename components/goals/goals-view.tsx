@@ -43,6 +43,9 @@ export function GoalsView() {
   const [targetAmount, setTargetAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [linkedAccountId, setLinkedAccountId] = useState(MANUAL_TRACKING);
+  const linkedIsLiability = Boolean(
+    linkedAccountId && data.accounts.find((a) => a.id === linkedAccountId)?.isLiability,
+  );
   const [manualCurrentAmount, setManualCurrentAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,9 +165,20 @@ export function GoalsView() {
               onChange={setLinkedAccountId}
               options={[
                 { value: MANUAL_TRACKING, label: t("goals.form.manualTracking") },
-                ...data.accounts.map((a) => ({ value: a.id, label: a.name })),
+                // Liabilities are marked, because linking one flips what the
+                // goal means: progress becomes what has been repaid, not the
+                // balance itself.
+                ...data.accounts.map((a) => ({
+                  value: a.id,
+                  label: a.isLiability ? `${a.name} — ${t("goals.form.payOff")}` : a.name,
+                })),
               ]}
             />
+            {linkedIsLiability && (
+              <p className="mt-1 text-sm text-zinc-500">
+                {t("goals.form.payOffHint", { currency: base })}
+              </p>
+            )}
           </div>
           {!linkedAccountId && (
             <div>
