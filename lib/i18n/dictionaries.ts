@@ -730,7 +730,7 @@ export const en = {
   "accounts.totals.assets": "Total assets",
   "accounts.totals.liabilities": "Total liabilities",
   "accounts.totals.net": "Net",
-  "accounts.totals.partOfNetWorth": "This net figure is part of your",
+  "accounts.totals.partOfNetWorth": "This net figure counts toward your",
   "accounts.form.title": "Add an account",
   "accounts.form.intro": "Enter a starting balance on an opening date; liabilities subtract from your net worth.",
   "accounts.form.nameLabel": "Name",
@@ -2409,7 +2409,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.totals.assets": "Vermögen gesamt",
   "accounts.totals.liabilities": "Verbindlichkeiten gesamt",
   "accounts.totals.net": "Netto",
-  "accounts.totals.partOfNetWorth": "Dieser Netto-Wert ist Teil deines",
+  // Phrased with a dative so the linked term stays the plain "Nettovermögen"
+  // ("Teil deines Nettovermögen" would need a genitive -s on the link text).
+  "accounts.totals.partOfNetWorth": "Dieser Netto-Wert zählt zu deinem",
   "accounts.form.title": "Konto hinzufügen",
   "accounts.form.intro": "Gib einen Startsaldo zu einem Eröffnungsdatum ein; Verbindlichkeiten verringern dein Nettovermögen.",
   "accounts.form.nameLabel": "Name",
@@ -3390,7 +3392,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.portfolioLimitHint": "El plan gratuito incluye hasta {n} carteras.",
   "nav.deletePortfolioTitle": "¿Eliminar cartera?",
   "nav.deletePortfolioMsg":
-    "Sus transacciones y los activos que solo estén en esta cartera se eliminarán definitivamente.",
+    "Tus transacciones y los activos que solo estén en esta cartera se eliminarán definitivamente.",
   "nav.nOfM": "{n} de {m}",
   "nav.expandSidebar": "Expandir la barra lateral",
   "nav.collapseSidebar": "Contraer la barra lateral",
@@ -4087,7 +4089,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.totals.assets": "Activos totales",
   "accounts.totals.liabilities": "Pasivos totales",
   "accounts.totals.net": "Neto",
-  "accounts.totals.partOfNetWorth": "Esta cifra neta forma parte de tu",
+  "accounts.totals.partOfNetWorth": "Esta cifra neta cuenta para tu",
   "accounts.form.title": "Añadir una cuenta",
   "accounts.form.intro": "Introduce un saldo inicial en una fecha de apertura; los pasivos restan de tu patrimonio neto.",
   "accounts.form.nameLabel": "Nombre",
