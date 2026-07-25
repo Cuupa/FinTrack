@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { decodeShare, type SharePayload } from "@/lib/share/share";
 import { Card } from "@/components/ui/primitives";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SharedPortfolioView } from "@/components/shared/shared-portfolio-view";
 
 export default function SharedFragmentPage() {
@@ -20,7 +21,16 @@ export default function SharedFragmentPage() {
   }, []);
 
   if (payload === null) {
-    return <div className="py-16 text-center text-sm text-zinc-500">Loading…</div>;
+    // Skeleton, not a "Loading…" label: the project rule is placeholders
+    // that match the shape of what is coming, and this text was also the
+    // only untranslated string on an otherwise English-by-design surface.
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
   }
   if (payload === "missing") {
     return (

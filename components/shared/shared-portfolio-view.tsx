@@ -296,7 +296,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
               {sortedHoldings.map((h, i) => (
                 <tr
                   key={`${h.name}-${i}`}
-                  className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
+                  className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                 >
                   <td className="py-2 pr-3 font-medium">{h.name}</td>
                   <td className="py-2 pr-3 text-zinc-500">{h.type}</td>
