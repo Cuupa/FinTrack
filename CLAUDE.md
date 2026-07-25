@@ -112,8 +112,18 @@ Supabase = free/on, so a DB lagging migration 0065 behaves exactly as before.
 (`enabled && !locked`) so call sites that haven't adopted `useFeature` still
 just hide a locked feature. The shared `<ProTeaser feature="...">`
 (`components/billing/pro-teaser.tsx`, MONETIZATION.md Phase 3) is adopted on
-the five surfaces that gate on a Pro flag — the /analysis risk and tax tabs
-(tab stays visible), /dividends, /simulation, /xray, /rebalancing. It renders
+**every** surface that gates on a Pro flag (round 24, owner rule: a paywalled
+feature stays visible, never hidden) — the /analysis risk and tax tabs (tab
+stays visible), /dividends, /simulation, /xray, /rebalancing, the flag-gated
+pages /accounts, /spending, /goals, /health, /fire, /debt, /contracts,
+/household, the dashboard `AreaCards` (a locked area keeps its grid slot) and
+the self-gated cards (watchlist, savings plans, budgets — each split into a
+gate wrapper plus a `*Inner` holding the hooks). The navigation matches:
+`Sidebar`/`MobileNav` filter on `getFeature(flag).enabled`, so a **locked**
+route stays in the list (with a `LockIcon`, exported from pro-teaser.tsx) and
+only a flag that is off outright disappears. The preview is clipped to
+`max-h-[70vh]` so the paywall message never sits below the fold on a tall
+page. It renders
 the real feature UI passed as `children` **blurred + `inert`** underneath a
 centered paywall message (lock icon + "Pro feature" copy + upgrade CTA) so the
 user sees a preview of what Pro unlocks rather than a blank card; each call
@@ -684,6 +694,21 @@ client pages (see `app/assets/[id]/page.tsx`).
   placement, no enabled prop) and every tour surface has a ghost "?" replay
   button. Step registries live in `lib/onboarding/tour-steps.ts` (pure,
   unit-tested).
+  Round 24 generalised this: `PageTour` (id + steps, persisted in
+  `toursDone[tourId]`) is the one wrapper the named tours alias, and
+  `PageHeaderWithTour` pairs a `PageHeader` with its "?" so **every primary
+  page** carries the affordance next to its heading (/accounts, /spending,
+  /goals, /health, /fire, /debt, /contracts, /household, /dividends, /xray,
+  /analysis; the dashboard, risk, rebalancing, simulation and asset-tags
+  tours keep their existing card-level buttons). Its `ready` prop is the
+  page's "content is on screen" condition (loaded, not errored, not locked)
+  — `TourOverlay` computes its visible step set **once per mount**, so a tour
+  mounted over a skeleton would find none of its `data-tour` targets and stay
+  empty for that whole mount.
+- The /debt area is **named after what it holds, not after the word "debt"**
+  (owner rule, round 24): "Liabilities" / "Verbindlichkeiten" / "Pasivos" in
+  the nav, page title and list heading. The route, the `debtPayoff` flag and
+  `lib/finance/debt.ts` keep their internal names.
 - **Dates** are timezone-stable `YYYY-MM-DD` strings throughout; use the
   helpers in `lib/finance/dates.ts`, not raw `Date` math.
 - Next 16's `react-hooks/set-state-in-effect` lint rule **fails the build** on
