@@ -20,6 +20,11 @@ import {
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { accountsTotals, accountsValueOn } from "@/lib/finance/accounts";
 import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
+import { goalProgress } from "@/lib/finance/goals";
+
+/** Shared by the cross-area links under the KPI row (spending, goals). */
+const AREA_LINK_CLS =
+  "flex items-center gap-1.5 rounded-sm px-1 py-0.5 transition-colors hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600 dark:hover:bg-zinc-800 dark:focus-visible:outline-emerald-400";
 import { NetWorthComposition } from "./net-worth-composition";
 import Link from "next/link";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
@@ -159,6 +164,21 @@ export function NetWorthHero({
     return expense > 0 ? expense : null;
   }, [spendingEnabled, data.spendingTransactions, data.accounts, currency, valuation.fx]);
 
+  // How many goals are already met. Like spending, not a term of net worth —
+  // it is the planning area's headline, and the home screen should show that
+  // the area exists rather than leaving it to the sidebar.
+  const goalsEnabled = useFeatureFlag("goals");
+  const goalsSummary = useMemo(() => {
+    if (!goalsEnabled || data.goals.length === 0) return null;
+    const valuationForGoals = { base: currency, fx: valuation.fx };
+    const reached = data.goals.filter(
+      (g) =>
+        g.targetAmount > 0 &&
+        goalProgress(g, data.accounts, data.accountBalances, valuationForGoals) >= g.targetAmount,
+    ).length;
+    return { reached, total: data.goals.length };
+  }, [goalsEnabled, data.goals, data.accounts, data.accountBalances, currency, valuation.fx]);
+
   // Split of that same number, so the headline can show what it is made of
   // rather than presenting a portfolio figure with accounts silently folded in.
   const acctSplit = useMemo(
@@ -266,18 +286,27 @@ export function NetWorthHero({
         currency={currency}
       />
 
-      {monthExpense != null && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <span className="text-zinc-500">{t("dash.thisMonth")}</span>
-          <Link
-            href="/spending"
-            className="flex items-center gap-1.5 rounded-sm px-1 py-0.5 transition-colors hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600 dark:hover:bg-zinc-800 dark:focus-visible:outline-emerald-400"
-          >
-            <span className="text-zinc-500">{t("nav.spending")}</span>
-            <span className="font-medium tabular-nums" data-private="">
-              {formatCurrency(monthExpense, currency)}
-            </span>
-          </Link>
+      {(monthExpense != null || goalsSummary) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+          {monthExpense != null && (
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-500">{t("dash.thisMonth")}</span>
+              <Link href="/spending" className={AREA_LINK_CLS}>
+                <span className="text-zinc-500">{t("nav.spending")}</span>
+                <span className="font-medium tabular-nums" data-private="">
+                  {formatCurrency(monthExpense, currency)}
+                </span>
+              </Link>
+            </div>
+          )}
+          {goalsSummary && (
+            <Link href="/goals" className={AREA_LINK_CLS}>
+              <span className="text-zinc-500">{t("nav.goals")}</span>
+              <span className="font-medium tabular-nums">
+                {t("dash.goalsReached", { n: goalsSummary.reached, m: goalsSummary.total })}
+              </span>
+            </Link>
+          )}
         </div>
       )}
 
