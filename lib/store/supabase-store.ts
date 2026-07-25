@@ -148,6 +148,8 @@ interface AccountRow {
   is_liability: boolean;
   opening_balance: number | string | null;
   opened_on: string;
+  interest_rate: number | string | null;
+  min_payment: number | string | null;
 }
 
 function accountFromRow(r: AccountRow): Account {
@@ -159,6 +161,8 @@ function accountFromRow(r: AccountRow): Account {
     isLiability: !!r.is_liability,
     openingBalance: r.opening_balance != null ? Number(r.opening_balance) : 0,
     openedOn: r.opened_on,
+    interestRate: r.interest_rate != null ? Number(r.interest_rate) : null,
+    minPayment: r.min_payment != null ? Number(r.min_payment) : null,
   };
 }
 
@@ -214,6 +218,8 @@ interface ContractRow {
   renewal_date: string | null;
   cancellation_notice_days: number | null;
   category_id: string | null;
+  insurance_type: string | null;
+  sum_insured: number | string | null;
 }
 
 function contractFromRow(r: ContractRow): Contract {
@@ -225,6 +231,8 @@ function contractFromRow(r: ContractRow): Contract {
     renewalDate: r.renewal_date,
     cancellationNoticeDays: r.cancellation_notice_days,
     categoryId: r.category_id,
+    insuranceType: r.insurance_type as Contract["insuranceType"],
+    sumInsured: r.sum_insured != null ? Number(r.sum_insured) : null,
   };
 }
 
@@ -329,7 +337,9 @@ export class SupabaseStore implements DataStore {
         .order("valued_on", { ascending: true }),
       this.supabase
         .from("accounts")
-        .select("id, name, kind, currency, is_liability, opening_balance, opened_on")
+        .select(
+          "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, min_payment",
+        )
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
@@ -354,7 +364,9 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("contracts")
-        .select("id, name, amount, interval, renewal_date, cancellation_notice_days, category_id")
+        .select(
+          "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured",
+        )
         .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
@@ -930,6 +942,8 @@ export class SupabaseStore implements DataStore {
         is_liability: input.isLiability,
         opening_balance: input.openingBalance,
         opened_on: input.openedOn,
+        interest_rate: input.interestRate ?? null,
+        min_payment: input.minPayment ?? null,
       })
       .select("id")
       .single();
@@ -945,6 +959,8 @@ export class SupabaseStore implements DataStore {
     if (patch.isLiability !== undefined) upd.is_liability = patch.isLiability;
     if (patch.openingBalance !== undefined) upd.opening_balance = patch.openingBalance;
     if (patch.openedOn !== undefined) upd.opened_on = patch.openedOn;
+    if (patch.interestRate !== undefined) upd.interest_rate = patch.interestRate;
+    if (patch.minPayment !== undefined) upd.min_payment = patch.minPayment;
     if (Object.keys(upd).length === 0) return;
     const { data, error } = await this.supabase
       .from("accounts")
@@ -1139,6 +1155,8 @@ export class SupabaseStore implements DataStore {
         renewal_date: input.renewalDate,
         cancellation_notice_days: input.cancellationNoticeDays,
         category_id: input.categoryId,
+        insurance_type: input.insuranceType ?? null,
+        sum_insured: input.sumInsured ?? null,
       })
       .select("id")
       .single();
@@ -1156,6 +1174,8 @@ export class SupabaseStore implements DataStore {
       upd.cancellation_notice_days = patch.cancellationNoticeDays;
     }
     if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
+    if (patch.insuranceType !== undefined) upd.insurance_type = patch.insuranceType;
+    if (patch.sumInsured !== undefined) upd.sum_insured = patch.sumInsured;
     if (Object.keys(upd).length === 0) return;
     const { data, error } = await this.supabase
       .from("contracts")

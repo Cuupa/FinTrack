@@ -70,11 +70,18 @@ export function currentAccountBalance(account: Account, balances: AccountBalance
   return series.length ? series[series.length - 1].balance : account.openingBalance;
 }
 
-function rateFor(account: Account, v?: AccountValuation): number {
+/** Spot native-currency -> base FX rate for one account (1 if unset/base).
+ *  Exported for callers that need to convert a native-currency amount other
+ *  than the balance itself (e.g. ROADMAP #9's debt minimum payment). */
+export function accountFxRate(account: Account, v?: AccountValuation): number {
   if (!v) return 1;
   const cur = account.currency ?? v.base;
   if (!cur || cur === v.base) return 1;
   return v.fx?.[cur] ?? 1;
+}
+
+function rateFor(account: Account, v?: AccountValuation): number {
+  return accountFxRate(account, v);
 }
 
 /**

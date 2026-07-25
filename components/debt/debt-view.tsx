@@ -1,0 +1,289 @@
+"use client";
+
+// Debt payoff planner (ROADMAP #9, flag `debtPayoff`): liability accounts
+// (ROADMAP #1) gain amortisation. Interest rate + minimum payment are entered
+// per account via `DebtDetailsDialog`; this view turns them into a per-debt
+// schedule and an avalanche/snowball extra-payment simulator
+// (lib/finance/debt.ts). Everything rides the store seam via usePortfolio();
+// no mode branching.
+
+import { useMemo, useState } from "react";
+import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { useLivePrices } from "@/lib/live/live-prices-context";
+import { today, addMonthsToDate } from "@/lib/finance/dates";
+import { currentAccountBalance, accountFxRate } from "@/lib/finance/accounts";
+import {
+  amortizationSchedule,
+  planPayoff,
+  type DebtInput,
+  type DebtStrategy,
+} from "@/lib/finance/debt";
+import type { Account } from "@/lib/types";
+import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { Button, Card, Stat } from "@/components/ui/primitives";
+import { SelectMenu } from "@/components/ui/select-menu";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { DebtDetailsDialog } from "./debt-details-dialog";
+
+type SortKey = "name" | "balance" | "rate" | "payoffDate";
+
+export function DebtView() {
+  const { data } = usePortfolio();
+  const { valuation } = useLivePrices();
+  const { t } = useI18n();
+  const base = data.profile.currency;
+  const todayIso = today();
+
+  const liabilityAccounts = useMemo(
+    () => data.accounts.filter((a) => a.isLiability),
+    [data.accounts],
+  );
+
+  const rows = useMemo(() => {
+    return liabilityAccounts.map((account) => {
+      const rate = accountFxRate(account, valuation);
+      const balance = currentAccountBalance(account, data.accountBalances) * rate;
+      const hasSchedule = account.interestRate != null && account.minPayment != null;
+      const schedule = hasSchedule
+        ? amortizationSchedule(balance, account.interestRate!, account.minPayment! * rate, todayIso)
+        : null;
+      return { account, balance, schedule };
+    });
+  }, [liabilityAccounts, data.accountBalances, valuation, todayIso]);
+
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "balance",
+    dir: "desc",
+  });
+  const [detailsFor, setDetailsFor] = useState<Account | null>(null);
+  const [strategy, setStrategy] = useState<DebtStrategy>("avalanche");
+  const [extra, setExtra] = useState("");
+
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((x, y) => {
+      let cmp = 0;
+      if (sort.key === "name") cmp = x.account.name.localeCompare(y.account.name);
+      else if (sort.key === "balance") cmp = x.balance - y.balance;
+      else if (sort.key === "rate") cmp = (x.account.interestRate ?? -1) - (y.account.interestRate ?? -1);
+      else cmp = (x.schedule?.months ?? Infinity) - (y.schedule?.months ?? Infinity);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [rows, sort]);
+
+  function toggleSort(key: SortKey) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
+
+  const totalDebt = rows.reduce((s, r) => s + r.balance, 0);
+  const totalMinPayment = rows.reduce(
+    (s, r) => s + (r.account.minPayment ?? 0) * accountFxRate(r.account, valuation),
+    0,
+  );
+
+  const planDebts: DebtInput[] = rows
+    .filter((r) => r.schedule !== null)
+    .map((r) => ({
+      id: r.account.id,
+      name: r.account.name,
+      balance: r.balance,
+      annualRatePct: r.account.interestRate!,
+      minPayment: r.account.minPayment! * accountFxRate(r.account, valuation),
+    }));
+
+  const extraVal = extra.trim() ? parseDecimal(extra) : 0;
+  const plan = useMemo(
+    () => planPayoff(planDebts, strategy, Number.isFinite(extraVal) ? extraVal : 0),
+    [planDebts, strategy, extraVal],
+  );
+  const baseline = useMemo(() => planPayoff(planDebts, strategy, 0), [planDebts, strategy]);
+
+  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
+  const thCls =
+    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
+
+  const planEntryById = new Map(plan.perDebt.map((p) => [p.id, p]));
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Stat label={t("debt.totals.debt")} value={formatCurrency(totalDebt, base)} isPrivate />
+          <Stat
+            label={t("debt.totals.minPayment")}
+            value={formatCurrency(totalMinPayment, base)}
+            isPrivate
+          />
+          <Stat
+            label={t("debt.totals.months")}
+            value={
+              plan.totalMonths != null ? t("debt.totals.monthsValue", { n: plan.totalMonths }) : "—"
+            }
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">{t("debt.list.title")}</h2>
+        {liabilityAccounts.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">{t("debt.list.empty")}</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                  <th className={thCls} onClick={() => toggleSort("name")}>
+                    {t("debt.list.name")}
+                    {arrow("name")}
+                  </th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("balance")}>
+                    {t("debt.list.balance")}
+                    {arrow("balance")}
+                  </th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("rate")}>
+                    {t("debt.list.rate")}
+                    {arrow("rate")}
+                  </th>
+                  <th className={thCls} onClick={() => toggleSort("payoffDate")}>
+                    {t("debt.list.payoffDate")}
+                    {arrow("payoffDate")}
+                  </th>
+                  <th className="px-3 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRows.map(({ account, balance, schedule }) => (
+                  <tr
+                    key={account.id}
+                    className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                  >
+                    <td className="px-3 py-2 font-medium" data-private>
+                      {account.name}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums" data-private>
+                      {formatCurrency(balance, base)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {account.interestRate != null ? `${account.interestRate}%` : "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {schedule ? (
+                        schedule.payoffDate ? (
+                          formatDate(schedule.payoffDate)
+                        ) : (
+                          t("debt.list.neverPaysOff")
+                        )
+                      ) : (
+                        <span className="text-zinc-500">{t("debt.list.needsDetails")}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Button size="sm" variant="secondary" onClick={() => setDetailsFor(account)}>
+                        {t("debt.list.editDetails")}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {planDebts.length > 0 && (
+        <Card>
+          <h2 className="text-lg font-semibold">{t("debt.plan.title")}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{t("debt.plan.intro")}</p>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">{t("debt.plan.strategyLabel")}</label>
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("debt.plan.strategyLabel")}
+                value={strategy}
+                onChange={(v) => setStrategy(v as DebtStrategy)}
+                options={[
+                  { value: "avalanche", label: t("debt.plan.strategy.avalanche") },
+                  { value: "snowball", label: t("debt.plan.strategy.snowball") },
+                ]}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium" htmlFor="debt-extra">
+                {t("debt.plan.extraLabel", { currency: base })}
+              </label>
+              <input
+                id="debt-extra"
+                inputMode="decimal"
+                value={extra}
+                onChange={(e) => setExtra(stripLeadingZero(e.target.value))}
+                placeholder="0"
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                data-private
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Stat
+              label={t("debt.plan.totalMonths")}
+              value={plan.totalMonths != null ? t("debt.totals.monthsValue", { n: plan.totalMonths }) : "—"}
+            />
+            <Stat label={t("debt.plan.totalInterest")} value={formatCurrency(plan.totalInterest, base)} isPrivate />
+          </div>
+
+          {extraVal > 0 && baseline.totalMonths != null && plan.totalMonths != null && (
+            <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+              {t("debt.plan.savings", {
+                months: baseline.totalMonths - plan.totalMonths,
+                amount: formatCurrency(Math.max(0, baseline.totalInterest - plan.totalInterest), base),
+              })}
+            </p>
+          )}
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                  <th className={thCls}>{t("debt.plan.order")}</th>
+                  <th className={thCls}>{t("debt.list.name")}</th>
+                  <th className={thCls}>{t("debt.list.payoffDate")}</th>
+                  <th className={`${thCls} text-right`}>{t("debt.plan.totalInterest")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.order.map((id, i) => {
+                  const entry = planEntryById.get(id);
+                  if (!entry) return null;
+                  return (
+                    <tr
+                      key={id}
+                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+                    >
+                      <td className="px-3 py-2 tabular-nums text-zinc-500">{i + 1}</td>
+                      <td className="px-3 py-2 font-medium" data-private>
+                        {entry.name}
+                      </td>
+                      <td className="px-3 py-2">
+                        {entry.payoffMonth != null ? formatDate(addMonthsToDate(todayIso, entry.payoffMonth)) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums" data-private>
+                        {formatCurrency(entry.totalInterest, base)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {detailsFor && (
+        <DebtDetailsDialog account={detailsFor} open={detailsFor !== null} onClose={() => setDetailsFor(null)} />
+      )}
+    </div>
+  );
+}

@@ -41,6 +41,19 @@ export function daysBetween(fromISO: string, toISO: string): number {
   );
 }
 
+/** Adds `months` to a full "YYYY-MM-DD" date, clamping the day-of-month to
+ *  the target month's length (e.g. Jan 31 + 1 month -> Feb 28/29). */
+export function addMonthsToDate(iso: string, months: number): string {
+  const d = parseISODate(iso);
+  const day = d.getUTCDate();
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1));
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return toISODate(target);
+}
+
 export function today(): string {
   return toISODate(new Date());
 }

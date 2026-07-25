@@ -153,6 +153,13 @@ export interface Account {
   openingBalance: number;
   /** YYYY-MM-DD the account was opened; before this it contributes 0. */
   openedOn: string;
+  /** Annual interest rate as a percent (e.g. 4.5 = 4.5%), ROADMAP item #9
+   *  (flag `debtPayoff`). Optional/nullable -- only entered once the user
+   *  wants an amortisation schedule for a liability account. */
+  interestRate?: number | null;
+  /** Minimum monthly payment, native currency, ROADMAP item #9. Optional/
+   *  nullable like `interestRate`. */
+  minPayment?: number | null;
 }
 
 /**
@@ -243,7 +250,39 @@ export interface Contract {
   /** Notice period required before `renewalDate` to cancel, or null. */
   cancellationNoticeDays: number | null;
   categoryId: string | null;
+  /** Insurance type, ROADMAP item #10 (flag `insurance`) -- insurance rows
+   *  are typed contracts on this same entity rather than a separate table.
+   *  Null/absent means this is an ordinary (non-insurance) contract. */
+  insuranceType?: InsuranceType | null;
+  /** Sum insured (coverage amount), profile base currency, ROADMAP item #10.
+   *  Only meaningful alongside `insuranceType`. */
+  sumInsured?: number | null;
 }
+
+/** Insurance types tracked on a {@link Contract} (ROADMAP item #10, flag
+ *  `insurance`). Covers the core DACH household coverage set used by
+ *  `lib/finance/insurance.ts`'s coverage-gap prompts, plus a few common
+ *  extras and a catch-all. */
+export type InsuranceType =
+  | "liability"
+  | "health"
+  | "household"
+  | "legal"
+  | "disability"
+  | "life"
+  | "vehicle"
+  | "other";
+
+export const INSURANCE_TYPES: InsuranceType[] = [
+  "liability",
+  "health",
+  "household",
+  "legal",
+  "disability",
+  "life",
+  "vehicle",
+  "other",
+];
 
 /**
  * A named savings goal (ROADMAP item #6, flag `goals`) -- a target amount,

@@ -21,6 +21,13 @@ const LINKS: { href: string; key: MessageKey; icon: ReactNode; flag?: FeatureFla
     flag: "accounts",
   },
   {
+    href: "/debt",
+    key: "nav.debt",
+    // Downward trending bar chart glyph: paying a balance down over time.
+    icon: <path d="M4 20h16M6 20V13l4 2 4-6 4 3v8" />,
+    flag: "debtPayoff",
+  },
+  {
     href: "/spending",
     key: "nav.spending",
     // Receipt glyph: bordered rect + itemized lines.

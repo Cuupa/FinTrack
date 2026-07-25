@@ -9,12 +9,20 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today, addDays } from "@/lib/finance/dates";
 import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
-import { CONTRACT_INTERVALS, type Contract, type ContractInterval } from "@/lib/types";
+import { coverageGaps } from "@/lib/finance/insurance";
+import {
+  CONTRACT_INTERVALS,
+  INSURANCE_TYPES,
+  type Contract,
+  type ContractInterval,
+  type InsuranceType,
+} from "@/lib/types";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
@@ -25,7 +33,12 @@ type SortKey = "name" | "interval" | "amount" | "renewalDate";
 export function ContractsView() {
   const { data, addContract, deleteContract, updateSpendingTransaction } = usePortfolio();
   const { t } = useI18n();
+  const insuranceEnabled = useFeatureFlag("insurance");
   const base = data.profile.currency;
+
+  const insuranceTypeLabel = (i: InsuranceType) =>
+    t(`contracts.insuranceType.${i}` as Parameters<typeof t>[0]);
+  const gaps = useMemo(() => coverageGaps(data.contracts), [data.contracts]);
 
   const categoriesById = useMemo(
     () => new Map(data.spendingCategories.map((c) => [c.id, c])),
@@ -45,6 +58,8 @@ export function ContractsView() {
   const [categoryId, setCategoryId] = useState("");
   const [renewalDate, setRenewalDate] = useState("");
   const [noticeDays, setNoticeDays] = useState("");
+  const [insuranceType, setInsuranceType] = useState<InsuranceType | "">("");
+  const [sumInsured, setSumInsured] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +113,7 @@ export function ContractsView() {
     setError(null);
     try {
       const notice = noticeDays.trim() ? Number.parseInt(noticeDays, 10) : null;
+      const sumInsuredVal = sumInsured.trim() ? parseDecimal(sumInsured) : null;
       await addContract({
         name: trimmed,
         amount: value,
@@ -105,6 +121,8 @@ export function ContractsView() {
         renewalDate: renewalDate || null,
         cancellationNoticeDays: notice !== null && Number.isFinite(notice) ? notice : null,
         categoryId: categoryId || null,
+        insuranceType: insuranceType || null,
+        sumInsured: sumInsuredVal != null && Number.isFinite(sumInsuredVal) ? sumInsuredVal : null,
       });
       setName("");
       setAmount("");
@@ -112,6 +130,8 @@ export function ContractsView() {
       setCategoryId("");
       setRenewalDate("");
       setNoticeDays("");
+      setInsuranceType("");
+      setSumInsured("");
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.form.error"));
     } finally {
@@ -148,6 +168,18 @@ export function ContractsView() {
 
   return (
     <div className="space-y-6">
+      {insuranceEnabled && gaps.length > 0 && (
+        <Card>
+          <h2 className="text-lg font-semibold">{t("contracts.coverage.title")}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{t("contracts.coverage.intro")}</p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700 dark:text-zinc-300">
+            {gaps.map((g) => (
+              <li key={g}>{insuranceTypeLabel(g)}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {visibleCandidates.length > 0 && (
         <Card>
           <h2 className="text-lg font-semibold">{t("contracts.suggestions.title")}</h2>
@@ -235,6 +267,37 @@ export function ContractsView() {
               ]}
             />
           </div>
+          {insuranceEnabled && (
+            <div>
+              <label className="text-sm font-medium">{t("contracts.form.insuranceTypeLabel")}</label>
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("contracts.form.insuranceTypeLabel")}
+                value={insuranceType}
+                onChange={(v) => setInsuranceType(v as InsuranceType | "")}
+                options={[
+                  { value: "", label: t("contracts.form.insuranceTypeNone") },
+                  ...INSURANCE_TYPES.map((i) => ({ value: i, label: insuranceTypeLabel(i) })),
+                ]}
+              />
+            </div>
+          )}
+          {insuranceEnabled && insuranceType && (
+            <div>
+              <label className="text-sm font-medium" htmlFor="contract-sum-insured">
+                {t("contracts.form.sumInsuredLabel", { currency: base })}
+              </label>
+              <input
+                id="contract-sum-insured"
+                inputMode="decimal"
+                value={sumInsured}
+                onChange={(e) => setSumInsured(stripLeadingZero(e.target.value))}
+                placeholder="0"
+                className={inputCls}
+                data-private
+              />
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium" htmlFor="contract-renewal">
               {t("contracts.form.renewalLabel")}
@@ -316,6 +379,14 @@ export function ContractsView() {
                       {contract.name}
                       <div className="text-xs font-normal text-zinc-500">
                         {categoryLabel(contract.categoryId)}
+                        {insuranceEnabled && contract.insuranceType && (
+                          <>
+                            {" · "}
+                            {insuranceTypeLabel(contract.insuranceType)}
+                            {contract.sumInsured != null &&
+                              ` (${formatCurrency(contract.sumInsured, base)})`}
+                          </>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-zinc-500">{intervalLabel(contract.interval)}</td>

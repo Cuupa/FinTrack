@@ -1,70 +1,61 @@
-# LEDGER — ROADMAP items #5-#8
+# LEDGER — ROADMAP items #9-#10
 
-(Item #3 bank-statement import shipped and committed in 082cc6b; task 4 in its
-old ledger entry was actually done, just left unchecked. Superseded below.)
+Continuing the sequence from items #5-#8 (see git history). Each item fully
+shipped (data model + store seam + finance module + UI + i18n en/de/es +
+tests + build/lint green) and committed before moving to the next.
 
-Working four items in sequence, each fully shipped (data model + store seam +
-finance module + UI + i18n en/de/es + tests + build/lint green) and committed
-before moving to the next.
+## Item #9: Debt payoff (flag `debtPayoff`)
+- [x] Migration 0088 + schema.sql: `accounts` gains nullable `interest_rate`
+      (annual %) + `min_payment` columns, flag seeded disabled
+- [x] `lib/types.ts`: `Account.interestRate`/`minPayment` (optional, nullable)
+- [x] `lib/finance/dates.ts`: `addMonthsToDate` helper
+- [x] `lib/finance/debt.ts` (pure): `amortizationSchedule` (single debt),
+      `planPayoff` (avalanche/snowball multi-debt simulator with extra
+      payment)
+- [x] Store seam: supabase-store.ts row mapping only (Local/Offline/sync are
+      generic passthrough, no changes needed)
+- [x] UI: `/debt` route, sidebar nav entry (desktop only)
+- [x] i18n en/de/es (`nav.debt` + `debt.*` block, es parity test green)
+- [x] Unit tests: 19 cases in tests/debt.test.ts (amortization + avalanche/
+      snowball + addMonthsToDate)
+- [x] Verify: build + lint + unit tests green (891 passing), browser smoke
+      test in Guest Mode EN+DE (liability account -> rate/payment dialog ->
+      schedule + payoff plan + strategy switch + extra-payment savings
+      sentence, zero console errors)
 
-## Item #5: Recurring detection + contract register (flag `contracts`)
-- [x] Migration 0084 + schema.sql: `contracts` table, RLS, flag seeded disabled
-- [x] `lib/types.ts`: `Contract`, `ContractInterval`, `CONTRACT_INTERVALS`,
-      `PortfolioData.contracts`
-- [x] Store seam: types.ts (`ContractInput` + CRUD), LocalStore, SupabaseStore,
-      OfflineStore, `lib/offline/sync.ts`, PortfolioProvider
-- [x] `lib/finance/recurring.ts` (pure): `detectRecurringCandidates` — clusters
-      spending transactions by payee+amount, classifies period, skips rows
-      already linked via `recurringId`
-- [x] UI: `/contracts` route, sidebar + mobile nav entry, `FeatureFlag` union
+## Item #10: Insurance register + coverage prompts (flag `insurance`)
+- [x] Migration 0089 + schema.sql: `contracts` gains nullable
+      `insurance_type` + `sum_insured` columns, flag seeded disabled
+- [x] `lib/types.ts`: `InsuranceType`, `Contract.insuranceType`/`sumInsured`
+      (optional, nullable)
+- [x] `lib/finance/insurance.ts` (pure): `coverageGaps` over core DACH
+      insurance types
+- [x] Store seam: supabase-store.ts row mapping only
+- [x] UI: extended `/contracts` (contracts-view.tsx) with insurance
+      type/sum-insured form fields + a coverage-gap prompt card, both gated
+      on the `insurance` flag; list rows show the insurance type + sum
+      insured as plain subtext (no badges)
 - [x] i18n en/de/es
-- [x] Unit tests: recurring detection
-- [x] Verify: build + lint + unit tests green
-
-## Item #6: Named savings goals (flag `goals`)
-- [x] Migration 0085 + schema.sql: `goals` table, RLS, flag seeded disabled
-- [x] `lib/types.ts`: `Goal`, `PortfolioData.goals`
-- [x] Store seam (all layers)
-- [x] `lib/finance/goals.ts` (pure): progress + required monthly contribution
-- [x] UI: `/goals` route, nav entry
-- [x] i18n en/de/es
-- [x] Unit tests
-- [x] Verify: build + lint + unit tests green
-
-## Item #7: Financial-health gauges (flag `finHealth`)
-- [x] No new tables — derives from accounts/spending/budgets already in tree
-- [x] `lib/finance/health.ts` (pure): months-of-expenses, savings rate,
-      debt-to-income, net-worth-to-income
-- [x] Feature flag `finHealth` seeded disabled (feature_flags row via migration
-      0086 + schema.sql)
-- [x] UI: `/health` route (read-only 4-tile gauge dashboard, no CRUD), nav entry
-- [x] i18n en/de/es
-- [x] Unit tests
-- [x] Verify: build + lint + unit tests green, browser smoke test (empty +
-      populated gauge states, zero console errors)
-
-## Item #8: Retirement / FIRE planner (flag `firePlanner`)
-- [x] No new tables — reframes existing monte-carlo.ts + stats.ts (migration
-      0087 + schema.sql seeds only the flag row)
-- [x] `lib/finance/fire.ts` (pure): `fireNumber`/`leanFireNumber`/
-      `fatFireNumber`, `yearsToFire` (deterministic compounding, capped at
-      100y), `trailingAnnualExpenses`, `computeFirePlan`
-- [x] Feature flag `firePlanner` seeded disabled
-- [x] UI: `/fire` route (lean/regular/fat tiles + live withdrawal-rate and
-      manual-override inputs, worker-run Monte Carlo section reusing
-      DistributionChart + the loadSimulation/saveSimulation cache seam),
-      sidebar entry (desktop only, mobile nav intentionally untouched)
-- [x] i18n en/de/es (`nav.fire` + `fire.*` block, es parity test green)
-- [x] Unit tests: 17 cases in tests/fire.test.ts
-- [x] Verify: build + lint + unit tests green (872 passing, +17 from
-      baseline 855), browser smoke test in Guest Mode EN+DE (live
-      withdrawal-rate recompute, manual override inputs, Monte Carlo run
-      completing in under a second with correct probability-fan chart and
-      success-probability stat, zero console errors)
+- [x] Unit tests: 5 cases in tests/insurance.test.ts
+- [x] Verify: build + lint + unit tests green, browser smoke test in Guest
+      Mode (added a "Personal liability" contract, coverage-gaps card
+      dropped it from the list, zero console errors)
 
 ## Notes
-- Following the accounts/spending/budgets pattern exactly: full DataStore
-  seam (Local/Supabase/Offline + sync.ts replay), flag-gated route with
-  `FeatureUnavailable`/skeleton/`LoadError`, sortable table with hover
-  highlight (CLAUDE.md rule), no badges (CLAUDE.md rule).
-- Committing after each item lands, short precise messages.
+- No new tables for either item — both extend an existing entity
+  (accounts / contracts), matching the roadmap's framing ("liability
+  accounts gain amortisation", "typed rows on the contract entity from #5").
+- New Account/Contract fields are optional (`?:`) so existing call sites
+  (accounts-view.tsx, contracts-view.tsx submit/acceptCandidate) don't need
+  edits to keep compiling.
+- `/datenschutz` not touched: both items add fields to already-disclosed
+  entities (accounts, contracts), not a new data category or provider.
+- AI context (`lib/llm/context.ts`) not extended, matching the precedent set
+  by items #5-#8 (none of them extended it either, despite the roadmap's
+  "as each item ships" cross-cutting note).
+- Found and fixed a real amortization bug during unit testing: the last
+  month's principal was capped against the original balance parameter
+  instead of the current remaining balance, causing a small overpayment.
+- Exported `accountFxRate` from `lib/finance/accounts.ts` (was a private
+  `rateFor`) so the debt view can convert `minPayment` to the base currency
+  the same way the account balance itself already is.

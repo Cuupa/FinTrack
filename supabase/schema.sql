@@ -442,6 +442,12 @@ create table if not exists public.accounts (
   opened_on date not null,
   created_at timestamptz not null default now()
 );
+-- Debt payoff (ROADMAP #9, flag `debtPayoff`): optional per-account
+-- amortisation inputs, nullable until the user wants a payoff schedule.
+alter table public.accounts
+  add column if not exists interest_rate numeric;
+alter table public.accounts
+  add column if not exists min_payment numeric;
 alter table public.accounts
   drop constraint if exists accounts_kind_check;
 alter table public.accounts
@@ -529,6 +535,20 @@ create table if not exists public.contracts (
 );
 create index if not exists contracts_user_id_idx on public.contracts (user_id);
 create index if not exists contracts_category_id_idx on public.contracts (category_id);
+-- Insurance register (ROADMAP #10, flag `insurance`): typed rows on this same
+-- contract entity. Null insurance_type = an ordinary (non-insurance) contract.
+alter table public.contracts
+  add column if not exists insurance_type text;
+alter table public.contracts
+  drop constraint if exists contracts_insurance_type_check;
+alter table public.contracts
+  add constraint contracts_insurance_type_check check (
+    insurance_type is null or insurance_type in (
+      'liability', 'health', 'household', 'legal', 'disability', 'life', 'vehicle', 'other'
+    )
+  );
+alter table public.contracts
+  add column if not exists sum_insured numeric;
 
 -- Named savings goals (ROADMAP #6, flag `goals`): a target amount, optionally
 -- by a target date, whose progress either mirrors a linked account's current
@@ -1062,6 +1082,12 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('firePlanner', false, 'Retirement / FIRE planner: lean/regular/fat FIRE numbers, years-to-FI, and a withdrawal-rate Monte Carlo run')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('debtPayoff', false, 'Debt payoff planner: amortisation schedules and an avalanche/snowball extra-payment simulator for liability accounts')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('insurance', false, 'Insurance register (typed contracts: type + sum insured) with coverage-gap prompts')
 on conflict (flag) do nothing;
 
 -- Plan gating (MONETIZATION.md Phase 2, dark launch — every flag stays
