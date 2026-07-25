@@ -9,7 +9,7 @@ import { PrivacyToggle } from "./privacy-toggle";
 import { ThemeToggle } from "./theme-toggle";
 import { ProfileMenu } from "./profile-menu";
 import { PortfolioPicker } from "./portfolio-picker";
-import { hidesNavigation } from "@/lib/nav/routes";
+import { hidesNavigation, scopesToPortfolio } from "@/lib/nav/routes";
 
 export function SiteNav() {
   const pathname = usePathname();
@@ -51,7 +51,10 @@ export function SiteNav() {
         </Link>
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
-          <PortfolioPicker />
+          {/* Only where a portfolio actually scopes the content. On /accounts,
+              /spending, /goals and friends it filtered nothing while implying
+              the whole app lived inside a portfolio. */}
+          {scopesToPortfolio(pathname) && <PortfolioPicker />}
           <ThemeToggle dataTour="theme-toggle" />
           <PrivacyToggle dataTour="privacy-toggle" />
           {mode === "registered" ? (

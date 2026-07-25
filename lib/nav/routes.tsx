@@ -198,3 +198,31 @@ export function isActiveRoute(href: string, pathname: string): boolean {
 export function hidesNavigation(pathname: string): boolean {
   return pathname.startsWith("/shared");
 }
+
+/** Routes whose content is actually filtered by the selected portfolio. */
+const PORTFOLIO_SCOPED = [
+  "/analysis",
+  "/dividends",
+  "/xray",
+  "/rebalancing",
+  "/simulation",
+  "/assets",
+  "/instruments",
+];
+
+/**
+ * Whether the header's portfolio picker means anything on this route.
+ *
+ * A portfolio is a broker holding assets and transactions — those are the only
+ * two entities carrying a `portfolioId`. Accounts, spending, contracts, goals,
+ * debt and household are per-user, so the picker sitting above them scoped
+ * nothing while implying the whole app lived inside a portfolio. That is a
+ * large part of why the product still read as a portfolio tool with other
+ * features attached.
+ *
+ * The dashboard keeps it: it still carries the holdings section.
+ */
+export function scopesToPortfolio(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return PORTFOLIO_SCOPED.some((prefix) => pathname.startsWith(prefix));
+}
