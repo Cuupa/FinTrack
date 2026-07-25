@@ -91,6 +91,10 @@ export interface Asset {
   /** CASH only: how often interest is credited/compounded. Null/undefined when
    *  no rate is set. */
   interestFrequency?: InterestFrequency | null;
+  /** CASH only: which calendar day interest posts on. Null/undefined keeps the
+   *  legacy behaviour (the day-of-month of the asset's first transaction,
+   *  clamped to shorter months). */
+  interestPostDay?: InterestPostDay | null;
 }
 
 /**
@@ -354,6 +358,11 @@ export interface Goal {
 export type InterestFrequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 
 export const INTEREST_FREQUENCIES: InterestFrequency[] = ["MONTHLY", "QUARTERLY", "ANNUAL"];
+
+/** Which calendar day interest posts on, within its period. */
+export type InterestPostDay = "first" | "last";
+
+export const INTEREST_POST_DAYS: InterestPostDay[] = ["first", "last"];
 
 /** The identifier fields shared by assets and watchlist items. */
 export type InstrumentRef = Pick<Asset, "isin" | "wkn" | "symbol" | "name">;

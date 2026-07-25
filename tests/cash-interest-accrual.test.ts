@@ -115,6 +115,20 @@ describe("dueInterest", () => {
     // Jan 31 -> Feb 28 (2026 is not a leap year).
     expect(due[0].date).toBe("2026-02-28");
   });
+
+  it("posts on the first day of the month when interestPostDay is 'first'", () => {
+    // Anchor is the 15th, but 'first' overrides the day-of-month entirely.
+    const txs = [tx({ quantity: 1000, date: "2026-01-15" })];
+    const due = dueInterest(cash({ interestPostDay: "first" }), txs, "2026-03-01");
+    expect(due.map((d) => d.date)).toEqual(["2026-02-01", "2026-03-01"]);
+  });
+
+  it("posts on the last day of the month when interestPostDay is 'last'", () => {
+    const txs = [tx({ quantity: 1000, date: "2026-01-15" })];
+    const due = dueInterest(cash({ interestPostDay: "last" }), txs, "2026-04-01");
+    // 2026 Feb has 28 days, Mar has 31.
+    expect(due.map((d) => d.date)).toEqual(["2026-02-28", "2026-03-31"]);
+  });
 });
 
 describe("nextInterestDate", () => {

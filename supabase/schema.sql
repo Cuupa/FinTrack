@@ -276,6 +276,9 @@ alter table public.assets add column if not exists currency text;
 -- Null on non-cash / non-interest-bearing balances.
 alter table public.assets add column if not exists interest_rate numeric;
 alter table public.assets add column if not exists interest_frequency text;
+-- Which calendar day interest posts on: 'first'|'last', null = the legacy
+-- day-of-month-of-first-transaction behaviour (lib/finance/cash-interest.ts).
+alter table public.assets add column if not exists interest_post_day text;
 create index if not exists assets_user_id_idx on public.assets (user_id);
 create index if not exists assets_instrument_id_idx on public.assets (instrument_id);
 

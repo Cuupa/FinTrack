@@ -12,7 +12,14 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { dueInterest, nextInterestDate } from "@/lib/finance/cash-interest";
 import { today } from "@/lib/finance/dates";
-import { INTEREST_FREQUENCIES, type Asset, type InterestFrequency, type Transaction } from "@/lib/types";
+import {
+  INTEREST_FREQUENCIES,
+  INTEREST_POST_DAYS,
+  type Asset,
+  type InterestFrequency,
+  type InterestPostDay,
+  type Transaction,
+} from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
@@ -38,13 +45,19 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
   // off (dueInterest ignores a null/<=0 rate).
   const [rate, setRate] = useState(asset.interestRate != null ? String(asset.interestRate) : "");
   const [freq, setFreq] = useState<InterestFrequency>(asset.interestFrequency ?? "MONTHLY");
+  // Defaults to "last" (the common banking convention) for an asset that has
+  // never had this set before.
+  const [postDay, setPostDay] = useState<InterestPostDay>(asset.interestPostDay ?? "last");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const parsedRate = parseDecimal(rate);
   const nextRate = rate.trim() === "" || !Number.isFinite(parsedRate) || parsedRate <= 0 ? null : parsedRate;
-  const dirty = nextRate !== (asset.interestRate ?? null) || freq !== (asset.interestFrequency ?? "MONTHLY");
+  const dirty =
+    nextRate !== (asset.interestRate ?? null) ||
+    freq !== (asset.interestFrequency ?? "MONTHLY") ||
+    postDay !== (asset.interestPostDay ?? "last");
 
   async function save() {
     setSaving(true);
@@ -52,9 +65,10 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
     try {
       await updateAsset(asset.id, {
         interestRate: nextRate,
-        // Keep a frequency on record even when the rate is cleared, so
-        // re-enabling later restores the last choice.
+        // Keep a frequency/post-day on record even when the rate is cleared,
+        // so re-enabling later restores the last choice.
         interestFrequency: freq,
+        interestPostDay: postDay,
       });
       setSaved(true);
     } catch (err) {
@@ -128,7 +142,7 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
       <h2 className="text-lg font-semibold">{t("cashInterest.title")}</h2>
       <p className="mt-1 text-sm text-zinc-500">{t("cashInterest.intro")}</p>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <div>
           <label className="text-sm font-medium" htmlFor="interest-rate">
             {t("cashInterest.rateLabel")}
@@ -158,6 +172,23 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
               options={INTEREST_FREQUENCIES.map((f) => ({
                 value: f,
                 label: t(`cashInterest.freq.${f}`),
+              }))}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium">{t("cashInterest.postDayLabel")}</label>
+          <div className="mt-1">
+            <SelectMenu
+              value={postDay}
+              ariaLabel={t("cashInterest.postDayLabel")}
+              onChange={(v) => {
+                setPostDay(v as InterestPostDay);
+                setSaved(false);
+              }}
+              options={INTEREST_POST_DAYS.map((d) => ({
+                value: d,
+                label: t(`cashInterest.postDay.${d}`),
               }))}
             />
           </div>

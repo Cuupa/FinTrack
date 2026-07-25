@@ -5,7 +5,7 @@
 // materialized as INTEREST transactions after an explicit review, exactly like
 // due savings-plan occurrences become BUY/BOOKING transactions.
 
-import type { Asset, InterestFrequency, Transaction } from "../types";
+import type { Asset, InterestFrequency, InterestPostDay, Transaction } from "../types";
 import { dateKey } from "./dates";
 
 /** Hard cap on materialized interest payouts per asset per review, so a stale
@@ -29,13 +29,16 @@ function ymd(year: number, month0: number, day: number): string {
 
 /**
  * The k-th payout date (k = 1 is the first credit, one full period after the
- * anchor). Keeps the anchor's day-of-month, clamping to shorter months, like a
- * bank crediting interest on the same calendar day each period.
+ * anchor). With no `postDay`, keeps the anchor's day-of-month (clamped to
+ * shorter months), like a bank crediting interest on the same calendar day
+ * each period. `postDay` "first"/"last" instead pins every payout to the
+ * first or last day of its period's month, ignoring the anchor's day.
  */
-function payoutDate(anchor: string, freq: InterestFrequency, k: number): string {
+function payoutDate(anchor: string, freq: InterestFrequency, k: number, postDay?: InterestPostDay | null): string {
   const [y, m, d] = anchor.split("-").map(Number);
   const step = freq === "MONTHLY" ? 1 : freq === "QUARTERLY" ? 3 : 12;
-  return ymd(y, m - 1 + step * k, d);
+  const day = postDay === "first" ? 1 : postDay === "last" ? 31 : d;
+  return ymd(y, m - 1 + step * k, day);
 }
 
 /** Round to 2 decimals (plain half-up), matching the money precision used
@@ -115,7 +118,7 @@ export function dueInterest(
 
   const out: DueInterest[] = [];
   for (let k = 1; out.length < max; k++) {
-    const date = payoutDate(anchor, freq, k);
+    const date = payoutDate(anchor, freq, k, asset.interestPostDay);
     if (date > today) break;
     if (lastBooked && date <= lastBooked) continue;
     const balance = balanceOn(date);
@@ -144,7 +147,7 @@ export function nextInterestDate(
   if (dates.length === 0) return null;
   const anchor = dates[0];
   for (let k = 1; k <= 1000; k++) {
-    const date = payoutDate(anchor, asset.interestFrequency, k);
+    const date = payoutDate(anchor, asset.interestFrequency, k, asset.interestPostDay);
     if (date > today) return date;
   }
   return null;

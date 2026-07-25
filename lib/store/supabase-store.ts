@@ -99,6 +99,7 @@ interface AssetRow {
   currency: string | null;
   interest_rate: number | null;
   interest_frequency: Asset["interestFrequency"] | null;
+  interest_post_day: Asset["interestPostDay"] | null;
   instrument: InstrumentEmbed | InstrumentEmbed[] | null;
 }
 
@@ -314,7 +315,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("assets")
         .select(
-          "id, notes, currency, interest_rate, interest_frequency, instrument:instruments (isin, wkn, symbol, name, type, currency)",
+          "id, notes, currency, interest_rate, interest_frequency, interest_post_day, instrument:instruments (isin, wkn, symbol, name, type, currency)",
         ),
       // RLS scopes transactions to the user's (or a household peer's) assets
       // — no user_id column of its own.
@@ -455,6 +456,7 @@ export class SupabaseStore implements DataStore {
         notes: r.notes,
         interestRate: r.interest_rate,
         interestFrequency: r.interest_frequency,
+        interestPostDay: r.interest_post_day,
       };
     });
 
@@ -651,6 +653,7 @@ export class SupabaseStore implements DataStore {
         notes: input.notes,
         interest_rate: input.interestRate ?? null,
         interest_frequency: input.interestFrequency ?? null,
+        interest_post_day: input.interestPostDay ?? null,
       })
       .select("id")
       .single();
@@ -665,6 +668,7 @@ export class SupabaseStore implements DataStore {
     if (patch.notes !== undefined) update.notes = patch.notes;
     if (patch.interestRate !== undefined) update.interest_rate = patch.interestRate;
     if (patch.interestFrequency !== undefined) update.interest_frequency = patch.interestFrequency;
+    if (patch.interestPostDay !== undefined) update.interest_post_day = patch.interestPostDay;
     if (Object.keys(update).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's asset
     // too (migration 0093).
