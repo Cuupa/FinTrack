@@ -722,9 +722,12 @@ create index if not exists imported_spending_rows_transaction_id_idx
 
 alter table public.imported_spending_rows enable row level security;
 
+-- Household-shared (ROADMAP #13 round 3, migration 0093) so re-import
+-- dedupe keeps working once spending_transactions itself is shared.
 drop policy if exists "own imported spending rows" on public.imported_spending_rows;
 create policy "own imported spending rows" on public.imported_spending_rows
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 -- Applied-migrations registry (system table) --------------------------------
 create table if not exists public.schema_migrations (
@@ -902,29 +905,38 @@ drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 
+-- Household-shared (ROADMAP #13 round 3, migration 0093): see that
+-- migration's module comment for the full list of what's shared vs kept
+-- strictly personal (llm_settings, simulation_runs, profiles).
 drop policy if exists "own portfolios" on public.portfolios;
 create policy "own portfolios" on public.portfolios
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own assets" on public.assets;
 create policy "own assets" on public.assets
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own watchlist" on public.watchlist_items;
 create policy "own watchlist" on public.watchlist_items
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own savings plans" on public.savings_plans;
 create policy "own savings plans" on public.savings_plans
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own tag groups" on public.tag_groups;
 create policy "own tag groups" on public.tag_groups
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own asset valuations" on public.asset_valuations;
 create policy "own asset valuations" on public.asset_valuations
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 -- Household-shared (ROADMAP #13 round 2, migration 0092): a household peer
 -- can see and edit every member's accounts + balances, not just their own.
@@ -1008,28 +1020,36 @@ create policy "invitee or owner updates invite" on public.household_invites
 
 drop policy if exists "own spending categories" on public.spending_categories;
 create policy "own spending categories" on public.spending_categories
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own spending transactions" on public.spending_transactions;
 create policy "own spending transactions" on public.spending_transactions
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own budgets" on public.budgets;
 create policy "own budgets" on public.budgets
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own contracts" on public.contracts;
 create policy "own contracts" on public.contracts
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own goals" on public.goals;
 create policy "own goals" on public.goals
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 drop policy if exists "own asset tags" on public.asset_tags;
 create policy "own asset tags" on public.asset_tags
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
+-- llm_settings deliberately stays personal (can hold a live BYO API key,
+-- see migration 0093's module comment).
 drop policy if exists "own llm settings" on public.llm_settings;
 create policy "own llm settings" on public.llm_settings
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -1040,13 +1060,25 @@ create policy "own simulations" on public.simulation_runs
 
 drop policy if exists "own imported rows" on public.imported_rows;
 create policy "own imported rows" on public.imported_rows
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
--- Transactions are owned via their asset (no user_id column).
+-- Transactions are owned via their asset (no user_id column) -- this
+-- subquery extends the same way the assets policy above did.
 drop policy if exists "own transactions" on public.transactions;
 create policy "own transactions" on public.transactions for all
-  using (asset_id in (select id from public.assets where user_id = auth.uid()))
-  with check (asset_id in (select id from public.assets where user_id = auth.uid()));
+  using (
+    asset_id in (
+      select id from public.assets
+      where user_id = auth.uid() or user_id in (select public.household_peer_ids())
+    )
+  )
+  with check (
+    asset_id in (
+      select id from public.assets
+      where user_id = auth.uid() or user_id in (select public.household_peer_ids())
+    )
+  );
 
 -- Auto-create a profile row when a new auth user signs up --------------------
 create or replace function public.handle_new_user()

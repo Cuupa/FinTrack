@@ -89,12 +89,51 @@ two parts, explicitly:
       accept as B, confirm B sees A's accounts and vice versa, confirm a
       third unrelated user sees neither).
 
-**Explicitly NOT done this round** (documented in ROADMAP.md as follow-up):
-portfolios, assets, transactions, spending_categories/spending_transactions,
-budgets, contracts, goals, watchlist_items, savings_plans, tag_groups/
-asset_tags, llm_settings do not get household-peer visibility yet. Same
-`household_peer_ids()` pattern applies mechanically per table -- each is a
-small, independently reviewable migration + store change, not a redesign.
+## Item #13 round 3: extend household sharing to the remaining entities
+User asked to "implement all remaining points" (everything but #12). The
+only genuinely incomplete work left was #13's deferred entity list above --
+#1-#11 were already DONE, #12 stays explicitly excluded.
+
+- [x] Migration 0093 + schema.sql: extended `household_peer_ids()` RLS to
+      portfolios, assets, transactions (owned via assets, no user_id column
+      of its own -- the policy's subquery needed the same extension),
+      watchlist_items, savings_plans, tag_groups, asset_tags,
+      asset_valuations, spending_categories, spending_transactions, budgets,
+      contracts, goals, imported_rows, imported_spending_rows (the last two
+      follow transactions/spending_transactions so re-import dedupe keeps
+      working once a peer re-imports a statement into a shared portfolio)
+- [x] Deliberately did **NOT** extend: `llm_settings` (can hold a live BYO
+      LLM API key -- auto-sharing that would let a peer spend against a
+      member's own API billing, a decision this round doesn't make
+      unilaterally), `simulation_runs` (pure Monte Carlo result cache, not
+      financial data), `profiles` (per-user preferences incl. individual tax
+      settings like Sparerpauschbetrag that don't unify across a household),
+      and everything account-security/billing-shaped (push_subscriptions,
+      billing_customers, subscriptions, plan_grants, user_feature_flags,
+      admins) -- never a candidate, unrelated to financial data.
+- [x] Store seam: `lib/store/supabase-store.ts` -- every load query for the
+      15 extended tables drops its explicit `.eq("user_id", ...)` filter
+      (RLS alone decides visibility now); every update/delete drops it too;
+      `setAssetValuations` gets the same owner-attribution fix as
+      `setAccountBalances` (round 2) -- valuation history is attributed to
+      the ASSET's owner, not the acting editor, so a peer valuing someone
+      else's OTHER asset doesn't reassign its history. Left untouched on
+      purpose: `createPortfolio`'s plan-limit count and `deletePortfolio`'s
+      "keep at least one portfolio" count both stay scoped to the acting
+      user's own portfolios -- these are per-account safety/plan-limit
+      rails, not data-visibility RLS, and household sharing shouldn't let
+      members inflate or evade each other's portfolio cap.
+- [x] Verify: build + lint + unit tests green (896 passing). **Not**
+      live-tested against a real Supabase project for the same reason as
+      round 2 -- local dev has no Supabase connection and these migrations
+      were not applied to production. The owner must run migrations 0091,
+      0092, AND 0093 (in order) before flipping the `household` flag on, and
+      the two-account smoke test from round 2 should now additionally cover:
+      a shared portfolio's holdings/transactions, a shared watchlist item,
+      spending categories/transactions/budgets, contracts, and goals all
+      appearing for both members; confirm `llm_settings` does NOT appear for
+      the peer (the one deliberate exclusion).
 
 ## Skipped
-- #12 Document vault — explicitly excluded by user instruction this round.
+- #12 Document vault — explicitly excluded by user instruction, twice now
+  (this round's instruction repeated the exclusion).

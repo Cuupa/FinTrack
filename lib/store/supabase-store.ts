@@ -302,49 +302,44 @@ export class SupabaseStore implements DataStore {
         )
         .eq("id", this.userId)
         .maybeSingle(),
+      // Household-shared tables (migrations 0092/0093): no explicit
+      // .eq("user_id", ...) filter — RLS alone decides which rows are
+      // visible, so a household peer's rows are included automatically
+      // without the store needing to know about households at all.
+      // llm_settings/profiles (below) deliberately stay self-only.
       this.supabase
         .from("portfolios")
         .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan, tax_allowance")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("assets")
         .select(
           "id, notes, currency, interest_rate, interest_frequency, instrument:instruments (isin, wkn, symbol, name, type, currency)",
-        )
-        .eq("user_id", this.userId),
-      // RLS scopes transactions to the user's assets — no user_id column.
+        ),
+      // RLS scopes transactions to the user's (or a household peer's) assets
+      // — no user_id column of its own.
       this.supabase
         .from("transactions")
         .select("id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at"),
       this.supabase
         .from("watchlist_items")
         .select("id, currency, instrument:instruments (isin, wkn, symbol, name, type, currency)")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("savings_plans")
         .select("id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("tag_groups")
         .select("id, name")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("asset_tags")
-        .select("asset_id, group_id, value")
-        .eq("user_id", this.userId),
+        .select("asset_id, group_id, value"),
       this.supabase
         .from("asset_valuations")
         .select("asset_id, valued_on, value")
-        .eq("user_id", this.userId)
         .order("valued_on", { ascending: true }),
-      // No explicit .eq("user_id", ...) filter: RLS alone decides which rows
-      // are visible, so a household peer's accounts (migration 0092) are
-      // included automatically without the store needing to know about
-      // households at all.
       this.supabase
         .from("accounts")
         .select(
@@ -358,30 +353,26 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("spending_categories")
         .select("id, group_name, name, tax_deductible")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("spending_transactions")
         .select("id, account_id, category_id, date, amount, payee, note, recurring_id")
-        .eq("user_id", this.userId)
         .order("date", { ascending: false }),
       this.supabase
         .from("budgets")
         .select("id, category_id, amount")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("contracts")
         .select(
           "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured",
         )
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("goals")
         .select("id, name, target_amount, target_date, linked_account_id, manual_current_amount")
-        .eq("user_id", this.userId)
         .order("created_at", { ascending: true }),
+      // Personal, never household-shared (see migration 0093's comment).
       this.supabase
         .from("llm_settings")
         .select("provider, model, api_key")
@@ -675,11 +666,12 @@ export class SupabaseStore implements DataStore {
     if (patch.interestRate !== undefined) update.interest_rate = patch.interestRate;
     if (patch.interestFrequency !== undefined) update.interest_frequency = patch.interestFrequency;
     if (Object.keys(update).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's asset
+    // too (migration 0093).
     const { data, error } = await this.supabase
       .from("assets")
       .update(update)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     // Postgres doesn't error on an UPDATE that matches zero rows — `.select()`
@@ -689,12 +681,9 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAsset(id: string): Promise<void> {
-    // Transactions cascade via the asset_id FK.
-    const { error } = await this.supabase
-      .from("assets")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // Transactions cascade via the asset_id FK. No .eq("user_id", ...): RLS
+    // permits deleting a household peer's asset too.
+    const { error } = await this.supabase.from("assets").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -778,22 +767,19 @@ export class SupabaseStore implements DataStore {
   }
 
   async removeWatchlistItem(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("watchlist_items")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits removing a household peer's item too.
+    const { error } = await this.supabase.from("watchlist_items").delete().eq("id", id);
     if (error) throw error;
   }
 
   async updateWatchlistItem(id: string, patch: Partial<WatchlistInput>): Promise<void> {
     // Only `currency` is item-level; master data lives on the instrument.
+    // No .eq("user_id", ...): RLS permits editing a household peer's item too.
     if (patch.currency === undefined) return;
     const { data, error } = await this.supabase
       .from("watchlist_items")
       .update({ currency: patch.currency })
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     // See updateAsset above: a zero-row match must be distinguishable from a
@@ -833,11 +819,11 @@ export class SupabaseStore implements DataStore {
     if (patch.active !== undefined) upd.active = patch.active;
     if (patch.lastRunDate !== undefined) upd.last_run_date = patch.lastRunDate;
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's plan too.
     const { data, error } = await this.supabase
       .from("savings_plans")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     // See updateAsset — a zero-row match must be distinguishable for replay.
@@ -845,11 +831,8 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteSavingsPlan(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("savings_plans")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's plan too.
+    const { error } = await this.supabase.from("savings_plans").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -871,11 +854,11 @@ export class SupabaseStore implements DataStore {
   async renameTagGroup(id: string, name: string): Promise<void> {
     const n = name.trim();
     if (!n) return;
+    // No .eq("user_id", ...): RLS permits renaming a household peer's group too.
     const { data, error } = await this.supabase
       .from("tag_groups")
       .update({ name: n })
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     // See updateAsset above — a zero-row match must be distinguishable for replay.
@@ -883,24 +866,23 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteTagGroup(id: string): Promise<void> {
-    // asset_tags rows cascade via the group_id FK.
-    const { error } = await this.supabase
-      .from("tag_groups")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // asset_tags rows cascade via the group_id FK. No .eq("user_id", ...):
+    // RLS permits deleting a household peer's group too.
+    const { error } = await this.supabase.from("tag_groups").delete().eq("id", id);
     if (error) throw error;
   }
 
   async setAssetTags(assetId: string, groupId: string, values: string[]): Promise<void> {
     // Replace-set: clear the pair, then re-insert — idempotent, replay-safe
-    // regardless of how many times it's applied.
+    // regardless of how many times it's applied. No .eq("user_id", ...) on
+    // the delete: RLS permits clearing a household peer's asset's tags too
+    // (the inserted rows below stay attributed to whoever is acting, same as
+    // tag_groups/asset_tags carry no other ownership-sensitive display).
     const { error: delErr } = await this.supabase
       .from("asset_tags")
       .delete()
       .eq("asset_id", assetId)
-      .eq("group_id", groupId)
-      .eq("user_id", this.userId);
+      .eq("group_id", groupId);
     if (delErr) throw delErr;
     if (values.length === 0) return;
     const { error: insErr } = await this.supabase.from("asset_tags").insert(
@@ -918,18 +900,30 @@ export class SupabaseStore implements DataStore {
     assetId: string,
     points: { date: string; value: number }[],
   ): Promise<void> {
+    // Valuation rows are attributed to the ASSET's owner, not the acting
+    // editor — same reasoning as setAccountBalances: a household peer
+    // valuing someone else's OTHER asset must not reassign its history.
+    const { data: asset, error: assetErr } = await this.supabase
+      .from("assets")
+      .select("user_id")
+      .eq("id", assetId)
+      .single();
+    if (assetErr) throw assetErr;
+    const ownerId = (asset as { user_id: string }).user_id;
+
     // Replace-set: clear the asset's points, then re-insert — idempotent and
     // replay-safe regardless of how many times it's applied (like setAssetTags).
+    // No .eq("user_id", ...) on the delete: RLS permits clearing a household
+    // peer's asset valuations too.
     const { error: delErr } = await this.supabase
       .from("asset_valuations")
       .delete()
-      .eq("asset_id", assetId)
-      .eq("user_id", this.userId);
+      .eq("asset_id", assetId);
     if (delErr) throw delErr;
     if (points.length === 0) return;
     const { error: insErr } = await this.supabase.from("asset_valuations").insert(
       points.map((p) => ({
-        user_id: this.userId,
+        user_id: ownerId,
         asset_id: assetId,
         valued_on: p.date,
         value: p.value,
@@ -1048,11 +1042,11 @@ export class SupabaseStore implements DataStore {
     if (patch.name !== undefined) upd.name = patch.name;
     if (patch.taxDeductible !== undefined) upd.tax_deductible = patch.taxDeductible;
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's category too.
     const { data, error } = await this.supabase
       .from("spending_categories")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) throw new RowNotFoundError(`spending category ${id} not found`);
@@ -1060,11 +1054,8 @@ export class SupabaseStore implements DataStore {
 
   async deleteSpendingCategory(id: string): Promise<void> {
     // Referencing spending_transactions.category_id sets null via the FK.
-    const { error } = await this.supabase
-      .from("spending_categories")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's category too.
+    const { error } = await this.supabase.from("spending_categories").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -1104,11 +1095,11 @@ export class SupabaseStore implements DataStore {
     if (patch.note !== undefined) upd.note = patch.note;
     if (patch.recurringId !== undefined) upd.recurring_id = patch.recurringId;
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase
       .from("spending_transactions")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) {
@@ -1117,11 +1108,8 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteSpendingTransaction(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("spending_transactions")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's transaction too.
+    const { error } = await this.supabase.from("spending_transactions").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -1145,22 +1133,19 @@ export class SupabaseStore implements DataStore {
     if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
     if (patch.amount !== undefined) upd.amount = patch.amount;
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's budget too.
     const { data, error } = await this.supabase
       .from("budgets")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) throw new RowNotFoundError(`budget ${id} not found`);
   }
 
   async deleteBudget(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("budgets")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's budget too.
+    const { error } = await this.supabase.from("budgets").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -1198,22 +1183,19 @@ export class SupabaseStore implements DataStore {
     if (patch.insuranceType !== undefined) upd.insurance_type = patch.insuranceType;
     if (patch.sumInsured !== undefined) upd.sum_insured = patch.sumInsured;
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's contract too.
     const { data, error } = await this.supabase
       .from("contracts")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) throw new RowNotFoundError(`contract ${id} not found`);
   }
 
   async deleteContract(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("contracts")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's contract too.
+    const { error } = await this.supabase.from("contracts").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -1245,22 +1227,19 @@ export class SupabaseStore implements DataStore {
       upd.manual_current_amount = patch.manualCurrentAmount;
     }
     if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's goal too.
     const { data, error } = await this.supabase
       .from("goals")
       .update(upd)
       .eq("id", id)
-      .eq("user_id", this.userId)
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) throw new RowNotFoundError(`goal ${id} not found`);
   }
 
   async deleteGoal(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("goals")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's goal too.
+    const { error } = await this.supabase.from("goals").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -1318,18 +1297,17 @@ export class SupabaseStore implements DataStore {
     if (patch.feeSavingsPlan !== undefined) upd.fee_savings_plan = patch.feeSavingsPlan;
     if (patch.taxAllowance !== undefined) upd.tax_allowance = patch.taxAllowance;
     if (Object.keys(upd).length === 0) return;
-    const { error } = await this.supabase
-      .from("portfolios")
-      .update(upd)
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits editing a household peer's portfolio too.
+    const { error } = await this.supabase.from("portfolios").update(upd).eq("id", id);
     if (error) throw error;
   }
 
   async deletePortfolio(id: string): Promise<void> {
     // imported_rows cleanup for these transactions rides on the
     // transaction_id FK's on-delete-cascade — nothing extra needed here.
-    // Keep at least one portfolio.
+    // "Keep at least one portfolio" is a per-account safety rail, deliberately
+    // scoped to the acting user's own portfolios (unaffected by household
+    // sharing) — a household member always keeps at least one of their own.
     const { count } = await this.supabase
       .from("portfolios")
       .select("id", { count: "exact", head: true })
@@ -1359,20 +1337,16 @@ export class SupabaseStore implements DataStore {
       const stillUsed = new Set((stillUsedRows ?? []).map((r) => r.asset_id as string));
       const orphans = doomed.filter((a) => !stillUsed.has(a));
       if (orphans.length > 0) {
-        const { error: assetErr } = await this.supabase
-          .from("assets")
-          .delete()
-          .in("id", orphans)
-          .eq("user_id", this.userId);
+        // No .eq("user_id", ...): a shared portfolio's orphaned assets may
+        // belong to a household peer, not the acting user; RLS still scopes
+        // this to household-visible assets.
+        const { error: assetErr } = await this.supabase.from("assets").delete().in("id", orphans);
         if (assetErr) throw assetErr;
       }
     }
 
-    const { error } = await this.supabase
-      .from("portfolios")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): RLS permits deleting a household peer's portfolio too.
+    const { error } = await this.supabase.from("portfolios").delete().eq("id", id);
     if (error) throw error;
   }
 
@@ -1403,10 +1377,10 @@ export class SupabaseStore implements DataStore {
   }
 
   async loadImportedFingerprints(): Promise<string[]> {
-    const { data } = await this.supabase
-      .from("imported_rows")
-      .select("fingerprint")
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): a household peer's already-imported rows count
+    // too, so re-importing the same statement into a shared portfolio stays
+    // a no-op regardless of which member imports it (migration 0093).
+    const { data } = await this.supabase.from("imported_rows").select("fingerprint");
     return ((data ?? []) as { fingerprint: string }[]).map((r) => r.fingerprint);
   }
 
@@ -1425,10 +1399,8 @@ export class SupabaseStore implements DataStore {
   }
 
   async loadImportedSpendingFingerprints(): Promise<string[]> {
-    const { data } = await this.supabase
-      .from("imported_spending_rows")
-      .select("fingerprint")
-      .eq("user_id", this.userId);
+    // No .eq("user_id", ...): same reasoning as loadImportedFingerprints above.
+    const { data } = await this.supabase.from("imported_spending_rows").select("fingerprint");
     return ((data ?? []) as { fingerprint: string }[]).map((r) => r.fingerprint);
   }
 
