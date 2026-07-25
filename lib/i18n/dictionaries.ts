@@ -36,6 +36,7 @@ export const en = {
   "nav.expandSidebar": "Expand sidebar",
   "nav.collapseSidebar": "Collapse sidebar",
   "nav.collapse": "Collapse",
+  "nav.more": "More",
 
   "theme.toggleToDark": "Switch to dark mode",
   "theme.toggleToLight": "Switch to light mode",
@@ -451,6 +452,7 @@ export const en = {
   "common.compare": "Compare",
   "common.other": "Other",
   "common.copy": "Copy",
+  "common.close": "Close",
   "common.loading": "Loading…",
 
   "benchmark.addCustom": "Add benchmark",
@@ -1698,6 +1700,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.expandSidebar": "Seitenleiste ausklappen",
   "nav.collapseSidebar": "Seitenleiste einklappen",
   "nav.collapse": "Einklappen",
+  "nav.more": "Mehr",
 
   "theme.toggleToDark": "Zum dunklen Modus wechseln",
   "theme.toggleToLight": "Zum hellen Modus wechseln",
@@ -2111,6 +2114,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.compare": "Vergleichen",
   "common.other": "Andere",
   "common.copy": "Kopieren",
+  "common.close": "Schließen",
   "common.loading": "Wird geladen…",
 
   "benchmark.addCustom": "Benchmark hinzufügen",
@@ -3359,6 +3363,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.expandSidebar": "Expandir la barra lateral",
   "nav.collapseSidebar": "Contraer la barra lateral",
   "nav.collapse": "Contraer",
+  "nav.more": "Más",
 
   "theme.toggleToDark": "Cambiar a modo oscuro",
   "theme.toggleToLight": "Cambiar a modo claro",
@@ -3772,6 +3777,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.compare": "Comparar",
   "common.other": "Otros",
   "common.copy": "Copiar",
+  "common.close": "Cerrar",
   "common.loading": "Cargando…",
 
   "benchmark.addCustom": "Añadir benchmark",
