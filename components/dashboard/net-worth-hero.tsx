@@ -18,7 +18,8 @@ import {
   twrSeries,
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
-import { accountsValueOn } from "@/lib/finance/accounts";
+import { accountsTotals, accountsValueOn } from "@/lib/finance/accounts";
+import { NetWorthComposition } from "./net-worth-composition";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { today } from "@/lib/finance/dates";
 import { useDividends } from "@/lib/history/use-dividends";
@@ -141,6 +142,16 @@ export function NetWorthHero({
   );
   const netWorth = totals.marketValue + accountsNet;
 
+  // Split of that same number, so the headline can show what it is made of
+  // rather than presenting a portfolio figure with accounts silently folded in.
+  const acctSplit = useMemo(
+    () =>
+      accounts
+        ? accountsTotals(accounts, accountBalances ?? [], valuation)
+        : { assets: 0, liabilities: 0, net: 0 },
+    [accounts, accountBalances, valuation],
+  );
+
   // Money-weighted return (IRR / interner Zinsfuß) across all cash flows.
   const irr = useMemo(() => {
     const flows = netFlows(data.assets, data.transactions, valuation).map((f) => ({
@@ -230,6 +241,14 @@ export function NetWorthHero({
           />
         </div>
       </div>
+
+      <NetWorthComposition
+        investments={totals.marketValue}
+        accountAssets={acctSplit.assets}
+        liabilities={acctSplit.liabilities}
+        currency={currency}
+      />
+
 
       <div className="mt-3 md:mt-4">
         <ChartControls

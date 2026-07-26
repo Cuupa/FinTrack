@@ -7,6 +7,7 @@
 // seam via usePortfolio(); no mode branching.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today } from "@/lib/finance/dates";
@@ -116,7 +117,7 @@ export function AccountsView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="accounts-totals">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label={t("accounts.totals.assets")} value={formatCurrency(totals.assets, base)} isPrivate />
           <Stat
@@ -132,9 +133,22 @@ export function AccountsView() {
             isPrivate
           />
         </div>
+
+        {/* "Netto" here and "Nettovermögen" on the dashboard are the same idea
+            computed in two places, which is exactly what made the areas read as
+            unrelated. Say the relation out loud and link it. */}
+        <p className="mt-4 border-t border-zinc-200 pt-3 text-sm text-zinc-500 dark:border-zinc-800">
+          {t("accounts.totals.partOfNetWorth")}{" "}
+          <Link
+            href="/"
+            className="font-medium text-zinc-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600 dark:text-zinc-200 dark:focus-visible:outline-emerald-400"
+          >
+            {t("stat.netWorth")}
+          </Link>
+        </p>
       </Card>
 
-      <Card>
+      <Card data-tour="accounts-form">
         <h2 className="text-lg font-semibold">{t("accounts.form.title")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("accounts.form.intro")}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -219,7 +233,7 @@ export function AccountsView() {
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </Card>
 
-      <Card>
+      <Card data-tour="accounts-list">
         <h2 className="text-lg font-semibold">{t("accounts.list.title")}</h2>
         {data.accounts.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.list.empty")}</p>

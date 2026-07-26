@@ -129,8 +129,15 @@ export class LocalStore implements DataStore {
         budgets: parsed.budgets ?? [],
         // Backfill blobs saved before contracts existed.
         contracts: parsed.contracts ?? [],
-        // Backfill blobs saved before goals existed.
-        goals: parsed.goals ?? [],
+        // Backfill blobs saved before goals existed; the per-goal backfill
+        // covers blobs written before goals could track the depot or carry
+        // sub-goals.
+        goals: (parsed.goals ?? []).map((g) => ({
+          ...g,
+          tracksInvestments: g.tracksInvestments ?? false,
+          linkedPortfolioId: g.linkedPortfolioId ?? null,
+          parentGoalId: g.parentGoalId ?? null,
+        })),
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
@@ -369,6 +376,11 @@ export class LocalStore implements DataStore {
     data.goals = data.goals.map((g) =>
       g.linkedAccountId === id ? { ...g, linkedAccountId: null } : g,
     );
+    // Likewise a contract: it stops booking but stays in the register
+    // (migration 0095's on delete set null).
+    data.contracts = data.contracts.map((c) =>
+      c.accountId === id ? { ...c, accountId: null, bookingStartDate: null } : c,
+    );
     this.write(data);
     this.pruneImportedSpendingFingerprints(removedTxIds);
   }
@@ -505,7 +517,9 @@ export class LocalStore implements DataStore {
 
   async deleteGoal(id: string) {
     const data = this.read();
-    data.goals = data.goals.filter((g) => g.id !== id);
+    // Sub-goals go with their parent (mirrors the DB's on delete cascade):
+    // "hotel" without the trip it belongs to means nothing.
+    data.goals = data.goals.filter((g) => g.id !== id && g.parentGoalId !== id);
     this.write(data);
   }
 

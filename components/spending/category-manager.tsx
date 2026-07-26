@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button, Card } from "@/components/ui/primitives";
 import type { SpendingCategory } from "@/lib/types";
+import { missingDefaults } from "@/lib/finance/default-categories";
 
 const inputCls =
   "flex-1 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -38,6 +39,20 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
 
   function reportError(err: unknown) {
     setError(isStorageFullError(err) ? t("common.storageFull") : t("spending.categories.actionError"));
+  }
+
+  // Seeds the starter set. Sequential rather than Promise.all: each add is a
+  // store mutation appending to the same list, and OfflineStore queues them
+  // in order.
+  async function addDefaults() {
+    setError(null);
+    try {
+      for (const c of missingDefaults(data.spendingCategories, t)) {
+        await addSpendingCategory(c);
+      }
+    } catch (err) {
+      reportError(err);
+    }
   }
 
   const groups = useMemo(() => {
@@ -135,7 +150,14 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
           {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           {groups.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("spending.categories.empty")}</p>
+            // The starter set matters most exactly here: categorising from a
+            // blank list is the step people stall on.
+            <div className="mt-3">
+              <p className="text-sm text-zinc-500">{t("spending.categories.empty")}</p>
+              <Button className="mt-3" variant="primary" onClick={addDefaults}>
+                {t("spending.categories.addDefaults")}
+              </Button>
+            </div>
           ) : (
             <div className="mt-3 space-y-4">
               {groups.map(({ groupName, categories }) => (
@@ -255,13 +277,25 @@ export function CategoryManager({ open, onClose }: { open: boolean; onClose: () 
                 </Button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setAddingGroup(true)}
-                className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
-              >
-                {t("spending.categories.newGroup")}
-              </button>
+              <div className="flex flex-wrap items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAddingGroup(true)}
+                  className="rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                >
+                  {t("spending.categories.newGroup")}
+                </button>
+                {/* Still offered with categories present: it only adds the
+                    starter entries that are missing, so it doubles as a way to
+                    restore one that was deleted. */}
+                <button
+                  type="button"
+                  onClick={addDefaults}
+                  className="rounded-sm px-2 py-1.5 text-left text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                >
+                  {t("spending.categories.addDefaults")}
+                </button>
+              </div>
             )}
           </div>
         </Card>

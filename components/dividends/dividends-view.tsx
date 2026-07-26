@@ -306,7 +306,7 @@ export function DividendsView() {
       aria-busy={showSkeleton || undefined}
       aria-label={showSkeleton ? t("common.loading") : undefined}
     >
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div data-tour="dividends-kpis" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {showSkeleton ? (
           Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
@@ -345,7 +345,7 @@ export function DividendsView() {
         )}
       </div>
 
-      <Card>
+      <Card data-tour="dividends-income">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">
             {t("div.income")}
@@ -398,7 +398,7 @@ export function DividendsView() {
         )}
       </Card>
 
-      <Card>
+      <Card data-tour="dividends-upcoming">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">
             {t("div.upcoming")}

@@ -19,6 +19,7 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
 import { ImportSpending } from "./import-spending";
@@ -38,9 +39,11 @@ export function SpendingView() {
     addSpendingTransaction,
     updateSpendingTransaction,
     deleteSpendingTransaction,
+    addContract,
   } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
+  const contractsEnabled = useFeatureFlag("contracts");
   const base = data.profile.currency;
 
   const accountsById = useMemo(
@@ -80,6 +83,36 @@ export function SpendingView() {
     dir: "desc",
   });
   const [confirmDelete, setConfirmDelete] = useState<SpendingTransaction | null>(null);
+  const [toContract, setToContract] = useState<SpendingTransaction | null>(null);
+
+  /**
+   * Turns one booking into a monthly contract, prefilled from the row the user
+   * clicked, and links the booking to it so the recurring detector stops
+   * offering the same charge as a suggestion.
+   *
+   * Monthly is assumed because a single booking carries no cadence; the
+   * contracts page is where the interval, the booking account and the transfer
+   * target get adjusted.
+   */
+  async function makeContract(tx: SpendingTransaction) {
+    const contract = await addContract({
+      name: tx.payee,
+      amount: Math.abs(tx.amount),
+      interval: "MONTHLY",
+      renewalDate: null,
+      cancellationNoticeDays: null,
+      categoryId: tx.categoryId,
+      accountId: tx.accountId,
+      // Booking resumes after the charge that seeded it, so this one is not
+      // posted a second time.
+      bookingStartDate: tx.date,
+      lastBookedDate: tx.date,
+      targetAccountId: null,
+      insuranceType: null,
+      sumInsured: null,
+    });
+    await updateSpendingTransaction(tx.id, { recurringId: contract.id });
+  }
 
   function categoryLabel(id: string | null): string {
     if (!id) return t("spending.list.uncategorized");
@@ -157,7 +190,7 @@ export function SpendingView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="spending-totals">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label={t("spending.totals.income")} value={formatCurrency(totals.income, base)} isPrivate />
           <Stat label={t("spending.totals.expense")} value={formatCurrency(totals.expense, base)} isPrivate />
@@ -174,7 +207,7 @@ export function SpendingView() {
 
       <BudgetsCard />
 
-      <Card>
+      <Card data-tour="spending-form">
         <h2 className="text-lg font-semibold">{t("spending.form.title")}</h2>
         {data.accounts.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-500">{t("spending.form.noAccounts")}</p>
@@ -312,7 +345,7 @@ export function SpendingView() {
         )}
       </Card>
 
-      <Card>
+      <Card data-tour="spending-table">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t("spending.list.title")}</h2>
           <div className="flex gap-2">
@@ -383,7 +416,16 @@ export function SpendingView() {
                         {formatCurrency(tx.amount, currency)}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                          {/* Offered only on an expense that is not already
+                              tied to a contract: turning income, or a
+                              contract's own booking, into a contract is
+                              meaningless. */}
+                          {contractsEnabled && tx.amount < 0 && !tx.recurringId && (
+                            <Button size="sm" onClick={() => setToContract(tx)}>
+                              {t("spending.list.makeContract")}
+                            </Button>
+                          )}
                           <Button size="sm" variant="danger" onClick={() => setConfirmDelete(tx)}>
                             {t("spending.list.delete")}
                           </Button>
@@ -419,6 +461,21 @@ export function SpendingView() {
           setConfirmDelete(null);
         }}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* Creating is not destructive, but it does add a recurring commitment
+          that will start booking — worth one confirmation. */}
+      <ConfirmDialog
+        open={toContract !== null}
+        title={t("spending.list.makeContractTitle")}
+        message={t("spending.list.makeContractMsg", { payee: toContract?.payee ?? "" })}
+        confirmLabel={t("spending.list.makeContract")}
+        onConfirm={() => {
+          const tx = toContract;
+          setToContract(null);
+          if (tx) void makeContract(tx);
+        }}
+        onCancel={() => setToContract(null)}
       />
     </div>
   );

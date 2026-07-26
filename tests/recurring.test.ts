@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { detectRecurringCandidates } from "@/lib/finance/recurring";
-import type { SpendingTransaction } from "@/lib/types";
+import type { Account, SpendingTransaction } from "@/lib/types";
+
+function account(overrides: Partial<Account> = {}): Account {
+  return {
+    id: "acc-loan",
+    name: "Autokredit",
+    kind: "loan",
+    currency: null,
+    isLiability: true,
+    openingBalance: 12000,
+    openedOn: "2024-01-01",
+    ...overrides,
+  };
+}
 
 function tx(overrides: Partial<SpendingTransaction> = {}): SpendingTransaction {
   return {
@@ -15,6 +28,52 @@ function tx(overrides: Partial<SpendingTransaction> = {}): SpendingTransaction {
     ...overrides,
   };
 }
+
+describe("detectRecurringCandidates — loan instalments", () => {
+  const instalments: SpendingTransaction[] = [
+    tx({ id: "l1", date: "2024-01-05", amount: -299, payee: "Autokredit" }),
+    tx({ id: "l2", date: "2024-02-05", amount: -299, payee: "Autokredit" }),
+    tx({ id: "l3", date: "2024-03-06", amount: -299, payee: "Autokredit" }),
+  ];
+
+  it("suggests them as a contract when no accounts are known", () => {
+    // The old single-argument behaviour, unchanged for existing call sites.
+    expect(detectRecurringCandidates(instalments)).toHaveLength(1);
+  });
+
+  it("drops them once the matching liability account is known", () => {
+    expect(detectRecurringCandidates(instalments, [account()])).toEqual([]);
+  });
+
+  it("matches the payee case- and whitespace-insensitively", () => {
+    const messy = instalments.map((t) => ({ ...t, payee: "  AUTOKREDIT " }));
+    expect(detectRecurringCandidates(messy, [account()])).toEqual([]);
+  });
+
+  it("keeps suggesting a real contract paid to an asset account's namesake", () => {
+    // Only liabilities are excluded; an asset account named like a payee must
+    // not silently swallow a genuine subscription.
+    const checking = account({ id: "acc-1", name: "Netflix", kind: "checking", isLiability: false });
+    const subs = [
+      tx({ id: "s1", date: "2024-01-05", amount: -12.99 }),
+      tx({ id: "s2", date: "2024-02-05", amount: -12.99 }),
+      tx({ id: "s3", date: "2024-03-06", amount: -12.99 }),
+    ];
+    expect(detectRecurringCandidates(subs, [checking])).toHaveLength(1);
+  });
+
+  it("leaves unrelated payees alone when a liability exists", () => {
+    const mixed = [
+      ...instalments,
+      tx({ id: "s1", date: "2024-01-07", amount: -12.99 }),
+      tx({ id: "s2", date: "2024-02-07", amount: -12.99 }),
+      tx({ id: "s3", date: "2024-03-08", amount: -12.99 }),
+    ];
+    const found = detectRecurringCandidates(mixed, [account()]);
+    expect(found).toHaveLength(1);
+    expect(found[0].payee).toBe("Netflix");
+  });
+});
 
 describe("detectRecurringCandidates", () => {
   it("detects a monthly-cadence expense cluster", () => {

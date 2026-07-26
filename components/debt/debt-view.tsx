@@ -107,7 +107,7 @@ export function DebtView() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card data-tour="debt-totals">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label={t("debt.totals.debt")} value={formatCurrency(totalDebt, base)} isPrivate />
           <Stat
@@ -124,7 +124,7 @@ export function DebtView() {
         </div>
       </Card>
 
-      <Card>
+      <Card data-tour="debt-list">
         <h2 className="text-lg font-semibold">{t("debt.list.title")}</h2>
         {liabilityAccounts.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("debt.list.empty")}</p>
@@ -192,7 +192,7 @@ export function DebtView() {
       </Card>
 
       {planDebts.length > 0 && (
-        <Card>
+        <Card data-tour="debt-plan">
           <h2 className="text-lg font-semibold">{t("debt.plan.title")}</h2>
           <p className="mt-1 text-sm text-zinc-500">{t("debt.plan.intro")}</p>
 

@@ -5,7 +5,7 @@
 // `Contract` register entry. Only expenses are considered: contracts (rent,
 // subscriptions, insurance) are money going out, not income streams.
 
-import type { ContractInterval, SpendingTransaction } from "../types";
+import type { Account, ContractInterval, SpendingTransaction } from "../types";
 import { daysBetween } from "./dates";
 
 export interface RecurringCandidate {
@@ -48,21 +48,56 @@ function classifyInterval(gaps: number[]): ContractInterval | null {
   return null;
 }
 
+function normalizePayee(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/**
+ * Names of the user's liability accounts, for telling a loan instalment apart
+ * from a contract.
+ *
+ * A contract is a recurring EXPENSE: the money is spent and net worth drops.
+ * A loan instalment (an Annuitätendarlehen, say) is a TRANSFER: cash falls and
+ * the debt falls with it, so net worth is unchanged at the moment of payment
+ * and only the interest share is real expense. Suggesting one as a contract
+ * would double-count it against the liability the user already tracks under
+ * Accounts, and it belongs to a payoff goal instead.
+ *
+ * The available signal is the payee: the instalment is booked FROM the
+ * checking account, so the liability appears only in who it went to. Matching
+ * the transaction's own `accountId` would be wrong — a card purchase is booked
+ * against a liability account and is still an ordinary expense.
+ */
+function liabilityPayees(accounts: Account[]): Set<string> {
+  const names = new Set<string>();
+  for (const a of accounts) {
+    if (!a.isLiability) continue;
+    const name = normalizePayee(a.name);
+    if (name) names.add(name);
+  }
+  return names;
+}
+
 /**
  * Groups expense transactions by normalized payee + roughly-equal amount,
  * and returns clusters whose gaps between occurrences classify into a
  * regular monthly/quarterly/annual cadence. Transactions already linked to a
  * contract (`recurringId` set) are excluded — they are already registered.
+ *
+ * Pass `accounts` to keep loan instalments out of the suggestions; see
+ * {@link liabilityPayees} for why they are not contracts.
  */
 export function detectRecurringCandidates(
   transactions: SpendingTransaction[],
+  accounts: Account[] = [],
 ): RecurringCandidate[] {
   const expenses = transactions.filter((t) => t.amount < 0 && t.recurringId === null);
+  const debtPayees = liabilityPayees(accounts);
 
   const byPayee = new Map<string, SpendingTransaction[]>();
   for (const t of expenses) {
-    const key = t.payee.trim().toLowerCase();
-    if (!key) continue;
+    const key = normalizePayee(t.payee);
+    if (!key || debtPayees.has(key)) continue;
     (byPayee.get(key) ?? byPayee.set(key, []).get(key)!).push(t);
   }
 

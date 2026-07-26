@@ -9,6 +9,7 @@ import { PrivacyToggle } from "./privacy-toggle";
 import { ThemeToggle } from "./theme-toggle";
 import { ProfileMenu } from "./profile-menu";
 import { PortfolioPicker } from "./portfolio-picker";
+import { hidesNavigation, scopesToPortfolio } from "@/lib/nav/routes";
 
 export function SiteNav() {
   const pathname = usePathname();
@@ -17,7 +18,7 @@ export function SiteNav() {
 
   // A shared portfolio is a read-only view of someone else's data: no app
   // navigation, no privacy switcher — just a notice and a way back to the app.
-  if (pathname.startsWith("/shared")) {
+  if (hidesNavigation(pathname)) {
     return (
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
         <nav className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3">
@@ -50,7 +51,10 @@ export function SiteNav() {
         </Link>
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
-          <PortfolioPicker />
+          {/* Only where a portfolio actually scopes the content. On /accounts,
+              /spending, /goals and friends it filtered nothing while implying
+              the whole app lived inside a portfolio. */}
+          {scopesToPortfolio(pathname) && <PortfolioPicker />}
           <ThemeToggle dataTour="theme-toggle" />
           <PrivacyToggle dataTour="privacy-toggle" />
           {mode === "registered" ? (

@@ -6,6 +6,22 @@
 
 import type { Account, Budget, SpendingCategory, SpendingTransaction } from "../types";
 
+/**
+ * A booking that moved money between the user's own accounts — a loan
+ * instalment, a premium into a wealth-building policy — is neither income nor
+ * expense: net worth is unchanged, only its composition shifts. Every
+ * aggregation below drops these, so a 250 EUR Riester premium stops reading as
+ * 250 EUR consumed each month.
+ */
+export function isTransfer(t: SpendingTransaction): boolean {
+  return t.transferAccountId != null;
+}
+
+/** The subset that is genuinely income or expense. */
+export function withoutTransfers(transactions: SpendingTransaction[]): SpendingTransaction[] {
+  return transactions.filter((t) => !isTransfer(t));
+}
+
 export interface CategoryMonthTotal {
   /** YYYY-MM. */
   month: string;
@@ -21,6 +37,7 @@ export interface CategoryMonthTotal {
 export function byCategoryAndMonth(transactions: SpendingTransaction[]): CategoryMonthTotal[] {
   const byKey = new Map<string, CategoryMonthTotal>();
   for (const t of transactions) {
+    if (isTransfer(t)) continue;
     const month = t.date.slice(0, 7);
     const key = `${month}|${t.categoryId ?? ""}`;
     const existing = byKey.get(key);
@@ -44,6 +61,7 @@ export function incomeExpenseSplit(transactions: SpendingTransaction[]): IncomeE
   let income = 0;
   let expense = 0;
   for (const t of transactions) {
+    if (isTransfer(t)) continue;
     if (t.amount >= 0) income += t.amount;
     else expense += -t.amount;
   }
@@ -87,7 +105,7 @@ export function budgetProgress(
 ): BudgetProgress[] {
   const spentByCategory = new Map<string, number>();
   for (const t of transactions) {
-    if (t.amount >= 0 || t.date.slice(0, 7) !== month || !t.categoryId) continue;
+    if (isTransfer(t) || t.amount >= 0 || t.date.slice(0, 7) !== month || !t.categoryId) continue;
     spentByCategory.set(t.categoryId, (spentByCategory.get(t.categoryId) ?? 0) + -t.amount);
   }
   return budgets.map((b) => {
@@ -179,8 +197,12 @@ export function spendingSankeyData(
   const groupLabel = (categoryId: string | null, fallback: string) =>
     (categoryId && groupNameById.get(categoryId)) || fallback;
 
-  const income = transactions.filter((t) => t.amount > 0);
-  const expense = transactions.filter((t) => t.amount < 0);
+  // Transfers are excluded here too: a cash-flow diagram showing a Riester
+  // premium as an outflow to "Ohne Kategorie" would tell the same wrong story
+  // the income/expense split used to.
+  const flows = withoutTransfers(transactions);
+  const income = flows.filter((t) => t.amount > 0);
+  const expense = flows.filter((t) => t.amount < 0);
   const incomeTotal = income.reduce((s, t) => s + t.amount, 0);
   const expenseTotal = expense.reduce((s, t) => s - t.amount, 0);
   if (incomeTotal <= 0 && expenseTotal <= 0) return { nodes: [], links: [] };
