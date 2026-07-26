@@ -2,7 +2,7 @@
 // locale (set via the i18n provider); pass `undefined` historically meant "use
 // the runtime default" — now we route through the chosen preference.
 
-import { intlLocale } from "./i18n/locale";
+import { getActiveLocale, intlLocale } from "./i18n/locale";
 
 /** Decode the few HTML entities that appear in seeded/fetched asset names. */
 export function decodeEntities(s: string): string {
@@ -15,12 +15,56 @@ export function decodeEntities(s: string): string {
 }
 
 /**
- * Parse a user-entered number tolerant of a decimal comma (de-DE) and spaces —
- * e.g. "0,25" → 0.25. Returns NaN for blank/invalid input.
+ * Parse a user-entered number tolerant of a decimal comma (de-DE/es-ES), of
+ * THOUSANDS separators in either convention, and of spaces — "0,25" → 0.25,
+ * "250.000" → 250000 (de), "250,000.50" → 250000.5 (en). Returns NaN for
+ * blank/invalid input.
+ *
+ * Grouping support is not cosmetic: replacing only the first comma turned a
+ * mortgage typed as "250.000" into 250 euros (silently — the caller just sees a
+ * finite number) and "250.000,00" into NaN, which every call site drops with a
+ * bare `return`, so the form looked broken.
+ *
+ * Which separator is the decimal point:
+ * - both present  => the LAST one (the other groups): "1.234,50", "1,234.50".
+ * - one, repeated => grouping, and only in a well-formed pattern ("1.2.3" is
+ *   not a number in any locale, so it stays NaN).
+ * - one, once     => the decimal point, UNLESS it is the active locale's
+ *   grouping separator in front of exactly three digits. So "1.5" is 1.5 even
+ *   on a German UI, while "250.000" there is 250000.
  */
 export function parseDecimal(s: string): number {
-  const cleaned = String(s).trim().replace(/\s/g, "").replace(",", ".");
-  return cleaned === "" ? NaN : Number(cleaned);
+  // \s covers the non-breaking and narrow no-break spaces Intl emits, so a
+  // pasted "250 000,50" round-trips.
+  const cleaned = String(s).replace(/\s/g, "");
+  if (cleaned === "") return NaN;
+
+  const dot = cleaned.lastIndexOf(".");
+  const comma = cleaned.lastIndexOf(",");
+  if (dot < 0 && comma < 0) return Number(cleaned);
+
+  // null = there is no decimal point at all, every separator groups.
+  let decimal: "." | "," | null;
+  if (dot >= 0 && comma >= 0) {
+    decimal = dot > comma ? "." : ",";
+  } else {
+    const sep: "." | "," = dot >= 0 ? "." : ",";
+    const at = Math.max(dot, comma);
+    if (cleaned.indexOf(sep) !== at) {
+      if (!new RegExp(`^-?\\d{1,3}(?:\\${sep}\\d{3})+$`).test(cleaned)) return NaN;
+      decimal = null;
+    } else if (!/^\d{3}$/.test(cleaned.slice(at + 1))) {
+      decimal = sep;
+    } else {
+      decimal = sep === (getActiveLocale() === "en" ? "." : ",") ? sep : null;
+    }
+  }
+
+  const normalized =
+    decimal === null
+      ? cleaned.replace(/[.,]/g, "")
+      : cleaned.split(decimal === "." ? "," : ".").join("").replace(decimal, ".");
+  return normalized === "" ? NaN : Number(normalized);
 }
 
 /**

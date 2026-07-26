@@ -39,8 +39,15 @@ export function DebtDetailsDialog({
   async function save() {
     const rateVal = rate.trim() ? parseDecimal(rate) : null;
     const paymentVal = minPayment.trim() ? parseDecimal(minPayment) : null;
-    if (rateVal != null && !Number.isFinite(rateVal)) return;
-    if (paymentVal != null && !Number.isFinite(paymentVal)) return;
+    // Same rule as the accounts forms: an unparseable figure gets a message,
+    // never a silent no-op on the save button.
+    if (
+      (rateVal != null && !Number.isFinite(rateVal)) ||
+      (paymentVal != null && !Number.isFinite(paymentVal))
+    ) {
+      setError(t("common.invalidAmount"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

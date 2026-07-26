@@ -87,7 +87,13 @@ export function AccountBalancesDialog({
 
   async function add() {
     const v = parseDecimal(value);
-    if (!date || !Number.isFinite(v)) return;
+    if (!date) return;
+    // An unparseable amount used to return silently, so clicking "add" did
+    // nothing and said nothing (a balance typed as "250.000,00" hit this).
+    if (!Number.isFinite(v)) {
+      setError(t("common.invalidAmount"));
+      return;
+    }
     // Upsert by date: a new balance on an existing date overwrites it.
     const next = points
       .filter((p) => p.date !== date)

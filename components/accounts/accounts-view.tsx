@@ -25,6 +25,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import { AccountBalancesDialog } from "./account-balances-dialog";
+import { AccountEditDialog } from "./account-edit-dialog";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -56,6 +57,7 @@ export function AccountsView() {
     dir: "asc",
   });
   const [balancesFor, setBalancesFor] = useState<Account | null>(null);
+  const [editing, setEditing] = useState<Account | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
 
   const kindLabel = (k: AccountKind) => t(`accounts.kind.${k}` as Parameters<typeof t>[0]);
@@ -86,7 +88,13 @@ export function AccountsView() {
   async function submit() {
     const trimmed = name.trim();
     const openingVal = opening.trim() ? parseDecimal(opening) : 0;
-    if (!trimmed || !openedOn || !Number.isFinite(openingVal)) return;
+    if (!trimmed || !openedOn) return;
+    // Never drop an unparseable amount silently: "250.000,00" used to reach
+    // here as NaN and the button did nothing at all.
+    if (!Number.isFinite(openingVal)) {
+      setError(t("common.invalidAmount"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -279,6 +287,9 @@ export function AccountsView() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => setEditing(account)}>
+                            {t("accounts.list.edit")}
+                          </Button>
                           <Button size="sm" variant="secondary" onClick={() => setBalancesFor(account)}>
                             {t("accounts.list.editBalances")}
                           </Button>
@@ -301,6 +312,17 @@ export function AccountsView() {
           account={balancesFor}
           open={balancesFor !== null}
           onClose={() => setBalancesFor(null)}
+        />
+      )}
+
+      {editing && (
+        // Keyed on the id so reopening for another account remounts the form
+        // with that account's values instead of keeping the first one's state.
+        <AccountEditDialog
+          key={editing.id}
+          account={editing}
+          open={editing !== null}
+          onClose={() => setEditing(null)}
         />
       )}
 

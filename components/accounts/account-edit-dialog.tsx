@@ -1,0 +1,178 @@
+"use client";
+
+// Editor for an existing account's own master data (flag `accounts`): name,
+// kind, currency, opening balance and opening date. Without this the figures
+// typed once when adding an account were effectively write-once -- a mortgage
+// entered with the wrong amount could only be deleted and re-created, which
+// cascades its balance readings, spending transactions, planned cashflows and
+// any goal link with it. Rides the same generic `updateAccount` patch on the
+// store seam that DebtDetailsDialog uses for rate/minimum payment.
+
+import { useState } from "react";
+import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { today } from "@/lib/finance/dates";
+import { ACCOUNT_KINDS, LIABILITY_KINDS, type Account, type AccountKind } from "@/lib/types";
+import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { Button, Card } from "@/components/ui/primitives";
+import { Modal } from "@/components/ui/modal";
+import { SelectMenu } from "@/components/ui/select-menu";
+import { useI18n } from "@/lib/i18n/i18n-context";
+import { isStorageFullError } from "@/lib/store/errors";
+
+const inputCls =
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+
+export function AccountEditDialog({
+  account,
+  open,
+  onClose,
+}: {
+  account: Account;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { data, updateAccount } = usePortfolio();
+  const { t } = useI18n();
+  const base = data.profile.currency;
+
+  const [name, setName] = useState(account.name);
+  const [kind, setKind] = useState<AccountKind>(account.kind);
+  const [currency, setCurrency] = useState(account.currency || base);
+  const [opening, setOpening] = useState(String(account.openingBalance));
+  const [openedOn, setOpenedOn] = useState(account.openedOn);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const kindLabel = (k: AccountKind) => t(`accounts.kind.${k}` as Parameters<typeof t>[0]);
+
+  // A dated reading always wins over the opening balance (balanceSeries in
+  // lib/finance/accounts.ts), so correcting the opening figure alone would look
+  // like it did nothing on an account that already has readings. Say so.
+  const hasReadings = data.accountBalances.some((b) => b.accountId === account.id);
+
+  async function save() {
+    const trimmed = name.trim();
+    const openingVal = parseDecimal(opening);
+    if (!trimmed || !openedOn) return;
+    if (!Number.isFinite(openingVal)) {
+      setError(t("common.invalidAmount"));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const cur = currency.trim().toUpperCase();
+      await updateAccount(account.id, {
+        name: trimmed,
+        kind,
+        currency: !cur || cur === base ? null : cur,
+        // Kind and liability-ness are one decision, exactly as in the add form.
+        isLiability: LIABILITY_KINDS.includes(kind),
+        openingBalance: openingVal,
+        openedOn,
+      });
+      onClose();
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("accounts.edit.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Card>
+        <h2 className="text-lg font-semibold" data-private>
+          {t("accounts.edit.title", { name: account.name })}
+        </h2>
+        <p className="mt-1 text-sm text-zinc-500">{t("accounts.edit.intro")}</p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium" htmlFor="account-edit-name">
+              {t("accounts.form.nameLabel")}
+            </label>
+            <input
+              id="account-edit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls}
+              data-private
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">{t("accounts.form.kindLabel")}</label>
+            <SelectMenu
+              className="mt-1 w-full"
+              ariaLabel={t("accounts.form.kindLabel")}
+              value={kind}
+              onChange={(v) => setKind(v as AccountKind)}
+              options={ACCOUNT_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium" htmlFor="account-edit-currency">
+              {t("accounts.form.currencyLabel")}
+            </label>
+            <input
+              id="account-edit-currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+              placeholder={base}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium" htmlFor="account-edit-opening">
+              {t("accounts.form.openingLabel", { currency: currency.trim() || base })}
+            </label>
+            <input
+              id="account-edit-opening"
+              inputMode="decimal"
+              value={opening}
+              onChange={(e) => setOpening(stripLeadingZero(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void save();
+              }}
+              placeholder="0"
+              className={inputCls}
+              data-private
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium" htmlFor="account-edit-opened">
+              {t("accounts.form.openedLabel")}
+            </label>
+            <input
+              id="account-edit-opened"
+              type="date"
+              value={openedOn}
+              max={today()}
+              onChange={(e) => setOpenedOn(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        {LIABILITY_KINDS.includes(kind) && (
+          <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
+        )}
+        {hasReadings && <p className="mt-2 text-sm text-zinc-500">{t("accounts.edit.hasReadings")}</p>}
+        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            {t("tx.cancel")}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={busy || !name.trim() || !openedOn}
+            onClick={() => void save()}
+          >
+            {t("accounts.edit.save")}
+          </Button>
+        </div>
+      </Card>
+    </Modal>
+  );
+}

@@ -8,10 +8,16 @@
 
 import type { Plan } from "./plan";
 
-/** `plan_limits.limit_key` values (migration 0065_plan_gating.sql). */
-export type LimitKey = "watchlistItems" | "savingsPlans" | "portfolios";
+/** `plan_limits.limit_key` values (migration 0065_plan_gating.sql;
+ *  `householdMembers` added by 0101_household_pro.sql). */
+export type LimitKey = "watchlistItems" | "savingsPlans" | "portfolios" | "householdMembers";
 
-export const LIMIT_KEYS: readonly LimitKey[] = ["watchlistItems", "savingsPlans", "portfolios"];
+export const LIMIT_KEYS: readonly LimitKey[] = [
+  "watchlistItems",
+  "savingsPlans",
+  "portfolios",
+  "householdMembers",
+];
 
 /** A `plan_limits` row as read off the wire — `freeValue`/`proValue` are
  *  `unknown` on purpose: a DB value is trusted Postgres `integer | null`, but

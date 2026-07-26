@@ -526,6 +526,11 @@ returns uuid language sql stable security definer set search_path = public as $$
 $$;
 grant execute on function public.my_household_id() to authenticated;
 
+-- NOTE: this plain version exists only so the policies further down can be
+-- created; it is REPLACED below (see "Household sharing is a paid family
+-- plan") by one that also requires a Pro member once the `household` flag is
+-- tiered to 'pro'. The redefinition has to sit after the billing tables it
+-- reads, because Postgres validates a SQL function body at creation time.
 create or replace function public.household_peer_ids()
 returns setof uuid language sql stable security definer set search_path = public as $$
   select user_id from public.household_members
@@ -913,7 +918,8 @@ insert into public.schema_migrations (version) values
   ('0085_goals'),
   ('0086_fin_health_flag'),
   ('0087_fire_planner_flag'),
-  ('0100_planned_cashflows')
+  ('0100_planned_cashflows'),
+  ('0101_household_pro')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1411,7 +1417,9 @@ create policy "plan limits readable" on public.plan_limits
 insert into public.plan_limits (limit_key, free_value, pro_value) values
   ('watchlistItems', null, null),
   ('savingsPlans', null, null),
-  ('portfolios', null, null)
+  ('portfolios', null, null),
+  -- People in a household, including yourself (migration 0101).
+  ('householdMembers', null, null)
 on conflict (limit_key) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the
@@ -1532,6 +1540,144 @@ alter table public.plan_grants enable row level security;
 drop policy if exists "own plan grants" on public.plan_grants;
 create policy "own plan grants" on public.plan_grants
   for select using (auth.uid() = user_id);
+
+-- Household sharing is a paid family plan (migration 0101) -------------------
+--
+-- Sharing is enforced by RLS (household_peer_ids(), used by every
+-- household-shared policy above), and RLS knew nothing about plans: tiering
+-- the `household` flag to 'pro' only hid the /household page client-side,
+-- while every shared row stayed visible on the dashboard, /spending and
+-- /goals after a downgrade. This block moves the gate to where the sharing
+-- actually happens.
+--
+-- Shape: ONE Pro subscription per household, members free. The gate is
+-- therefore per-HOUSEHOLD ("does at least one member have Pro"), never
+-- per-member, and re-evaluated on every read rather than only at join time.
+-- It is conditional on the flag's own tier, so with every flag seeded
+-- required_plan = 'free' nothing locks until the owner re-tiers the row on
+-- /admin/flags -- one toggle then flips both the teaser and this enforcement.
+--
+-- These functions read plan_grants/subscriptions/feature_flags, which is why
+-- they sit here and not next to the other household helpers: a SQL function
+-- body is validated at creation time, so it cannot reference a table that a
+-- fresh install has not created yet.
+
+-- Mirrors resolvePlan (lib/billing/plan.ts) exactly: active/trialing, a 7-day
+-- past_due grace, plus a standalone plan_grants path. The subscription branch
+-- ignores `subscriptions.plan` because resolvePlan does; the grant branch
+-- requires plan = 'pro' because resolvePlan does. Keep the two in step -- one
+-- rule, expressed once for the client and once for RLS.
+create or replace function public.user_has_pro(p_user_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.plan_grants g
+    where g.user_id = p_user_id
+      and g.plan = 'pro'
+      and (g.expires_at is null or g.expires_at > now())
+  ) or exists (
+    select 1 from public.subscriptions s
+    where s.user_id = p_user_id
+      and (
+        s.status in ('active', 'trialing')
+        or (s.status = 'past_due' and now() < s.current_period_end + interval '7 days')
+      )
+  );
+$$;
+-- Never client-callable (and revoked from the PUBLIC default): it would let
+-- any signed-in user probe whether an arbitrary user id pays. The
+-- security-definer functions below run as the owner and need no grant.
+revoke execute on function public.user_has_pro(uuid) from public;
+
+-- Is the household tier being sold right now? A missing row or a lagging
+-- migration reads as 'free' => no gate, the same fail-open default the rest of
+-- the flag/limit resolution uses.
+create or replace function public.household_pro_required()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select required_plan = 'pro' from public.feature_flags where flag = 'household'),
+    false
+  );
+$$;
+revoke execute on function public.household_pro_required() from public;
+
+create or replace function public.household_has_pro(p_household_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.household_members hm
+    where hm.household_id = p_household_id and public.user_has_pro(hm.user_id)
+  );
+$$;
+revoke execute on function public.household_has_pro(uuid) from public;
+
+-- The single predicate every sharing path consults.
+create or replace function public.household_sharing_enabled(p_household_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_household_id is not null
+    and (not public.household_pro_required() or public.household_has_pro(p_household_id));
+$$;
+revoke execute on function public.household_sharing_enabled(uuid) from public;
+
+-- Client-readable aggregate for the caller's OWN household only, so /household
+-- can say "sharing is paused, nobody here has Pro" instead of silently showing
+-- two disconnected datasets (owner rule: never leave a failed state looking
+-- like a normal one). It discloses only whether the caller's own household
+-- shares, never which member pays.
+create or replace function public.household_sharing_active()
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.household_sharing_enabled(public.my_household_id());
+$$;
+grant execute on function public.household_sharing_active() to authenticated;
+
+-- The enforcement point, replacing the plain version defined next to the other
+-- household helpers. An empty set collapses every household-shared policy back
+-- to plain self-ownership: nothing is deleted or reassigned, both members
+-- simply see their own data again until someone subscribes.
+create or replace function public.household_peer_ids()
+returns setof uuid language sql stable security definer set search_path = public as $$
+  with mine as (
+    select household_id from public.household_members where user_id = auth.uid() limit 1
+  )
+  select hm.user_id
+  from public.household_members hm
+  join mine on mine.household_id = hm.household_id
+  where public.household_sharing_enabled(mine.household_id);
+$$;
+grant execute on function public.household_peer_ids() to authenticated;
+
+-- Joining needs Pro somewhere too, otherwise a free pair sits in a household
+-- that shares nothing and looks broken. Either side may carry it: the
+-- creator/owner (the normal case) or the person accepting the invite (a Pro
+-- user joining their partner's free account) -- household_peer_ids keeps the
+-- invariant "at least one member has Pro" true either way.
+drop policy if exists "join household" on public.household_members;
+create policy "join household" on public.household_members
+  for insert with check (
+    user_id = auth.uid()
+    and (
+      exists (select 1 from public.households h where h.id = household_id and h.created_by = auth.uid())
+      or exists (
+        select 1 from public.household_invites i
+        where i.household_id = household_members.household_id
+          and lower(i.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+          and i.status = 'pending'
+      )
+    )
+    and (
+      not public.household_pro_required()
+      or public.user_has_pro(auth.uid())
+      or public.household_has_pro(household_id)
+    )
+  );
+
+-- Fail loudly at invite time rather than creating invitations that could never
+-- lead to sharing.
+drop policy if exists "member creates invite" on public.household_invites;
+create policy "member creates invite" on public.household_invites
+  for insert with check (
+    invited_by = auth.uid()
+    and household_id = public.my_household_id()
+    and public.household_sharing_enabled(household_id)
+  );
 
 -- Seed the instruments catalog -----------------------------------------------
 insert into public.instruments

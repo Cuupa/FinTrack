@@ -872,7 +872,15 @@ export const en = {
   "accounts.list.name": "Name",
   "accounts.list.kind": "Type",
   "accounts.list.balance": "Balance",
+  "accounts.list.edit": "Edit",
   "accounts.list.editBalances": "Balances",
+  "accounts.edit.title": "Edit {name}",
+  "accounts.edit.intro":
+    "Correct the account's own details. The opening balance is the figure on the opening date, not today's balance.",
+  "accounts.edit.hasReadings":
+    "This account has dated balance readings, and the latest one is what net worth uses. To change the current figure, edit the balances instead.",
+  "accounts.edit.save": "Save",
+  "accounts.edit.error": "Could not save the account. Please try again.",
   "accounts.list.delete": "Delete",
   "accounts.delete.title": "Delete account",
   "accounts.delete.message": "Delete \"{name}\" and all its balance history? This cannot be undone.",
@@ -1198,9 +1206,10 @@ export const en = {
   "debt.list.editDetails": "Rate & payment",
   "debt.list.needsDetails": "Add rate & minimum payment",
   "debt.list.neverPaysOff": "Never pays off at this rate",
-  "debt.details.title": "Liability details — {name}",
-  "debt.details.intro": "Enter the annual interest rate and minimum monthly payment to include this debt in a payoff schedule.",
-  "debt.details.rateLabel": "Annual interest rate (%)",
+  "debt.details.title": "Liability details: {name}",
+  "debt.details.intro":
+    "Enter the nominal annual rate and the minimum monthly payment to include this debt in a payoff schedule. Use the nominal rate, not the effective rate or APR: the schedule charges one twelfth of it per month.",
+  "debt.details.rateLabel": "Nominal annual rate (%)",
   "debt.details.minPaymentLabel": "Minimum monthly payment ({currency})",
   "debt.details.save": "Save",
   "debt.details.error": "Could not save. Please try again.",
@@ -1630,6 +1639,7 @@ export const en = {
   "common.retry": "Retry",
   "common.storageFull":
     "Storage is full. Your last change was not saved. Register to store your data online.",
+  "common.invalidAmount": "That is not a valid amount. Example: 250.000,50 or 250,000.50.",
 
   // Admin
   "admin.menuItem": "Admin",
@@ -1712,6 +1722,7 @@ export const en = {
   "admin.site.limitKey.watchlistItems": "Watchlist items",
   "admin.site.limitKey.savingsPlans": "Savings plans",
   "admin.site.limitKey.portfolios": "Portfolios",
+  "admin.site.limitKey.householdMembers": "Household members",
   "admin.site.limitFree": "Free",
   "admin.site.limitPro": "Pro",
   "admin.site.limitPlaceholder": "Unlimited",
@@ -2798,7 +2809,15 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.list.name": "Name",
   "accounts.list.kind": "Typ",
   "accounts.list.balance": "Saldo",
+  "accounts.list.edit": "Bearbeiten",
   "accounts.list.editBalances": "Salden",
+  "accounts.edit.title": "{name} bearbeiten",
+  "accounts.edit.intro":
+    "Korrigiere die Stammdaten des Kontos. Der Anfangssaldo ist der Stand am Eröffnungsdatum, nicht der heutige.",
+  "accounts.edit.hasReadings":
+    "Für dieses Konto sind Salden mit Datum erfasst, und der neueste davon zählt für dein Vermögen. Wenn du den aktuellen Betrag ändern willst, bearbeite die Salden.",
+  "accounts.edit.save": "Speichern",
+  "accounts.edit.error": "Konto konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "accounts.list.delete": "Löschen",
   "accounts.delete.title": "Konto löschen",
   "accounts.delete.message": "\"{name}\" und den gesamten Saldoverlauf löschen? Das kann nicht rückgängig gemacht werden.",
@@ -3121,14 +3140,15 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.list.empty": "Noch keine Verbindlichkeiten. Füge auf der Konten-Seite eine hinzu.",
   "debt.list.name": "Name",
   "debt.list.balance": "Saldo",
-  "debt.list.rate": "Zinssatz",
+  "debt.list.rate": "Sollzins",
   "debt.list.payoffDate": "Tilgungsdatum",
   "debt.list.editDetails": "Zinssatz & Zahlung",
   "debt.list.needsDetails": "Zinssatz & Mindestzahlung eintragen",
   "debt.list.neverPaysOff": "Wird bei diesem Satz nie getilgt",
-  "debt.details.title": "Details — {name}",
-  "debt.details.intro": "Trage den jährlichen Zinssatz und die monatliche Mindestzahlung ein, um diese Schuld in einen Tilgungsplan aufzunehmen.",
-  "debt.details.rateLabel": "Jährlicher Zinssatz (%)",
+  "debt.details.title": "Details: {name}",
+  "debt.details.intro":
+    "Trage den Sollzinssatz pro Jahr und die monatliche Mindestzahlung ein, um diese Schuld in einen Tilgungsplan aufzunehmen. Nimm den Sollzins, nicht den Effektivzins: der Plan rechnet pro Monat mit einem Zwölftel davon.",
+  "debt.details.rateLabel": "Sollzinssatz p. a. (%)",
   "debt.details.minPaymentLabel": "Monatliche Mindestzahlung ({currency})",
   "debt.details.save": "Speichern",
   "debt.details.error": "Konnte nicht gespeichert werden. Bitte versuch es erneut.",
@@ -3559,6 +3579,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.retry": "Erneut versuchen",
   "common.storageFull":
     "Der Speicher ist voll. Deine letzte Änderung wurde nicht gespeichert. Registriere dich, um deine Daten online zu speichern.",
+  "common.invalidAmount": "Das ist kein gültiger Betrag. Beispiel: 250.000,50 oder 250000,50.",
 
   // Admin
   "admin.menuItem": "Admin",
@@ -3641,6 +3662,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.site.limitKey.watchlistItems": "Watchlist-Einträge",
   "admin.site.limitKey.savingsPlans": "Sparpläne",
   "admin.site.limitKey.portfolios": "Portfolios",
+  "admin.site.limitKey.householdMembers": "Haushaltsmitglieder",
   "admin.site.limitFree": "Free",
   "admin.site.limitPro": "Pro",
   "admin.site.limitPlaceholder": "Unbegrenzt",
@@ -4723,7 +4745,15 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.list.name": "Nombre",
   "accounts.list.kind": "Tipo",
   "accounts.list.balance": "Saldo",
+  "accounts.list.edit": "Editar",
   "accounts.list.editBalances": "Saldos",
+  "accounts.edit.title": "Editar {name}",
+  "accounts.edit.intro":
+    "Corrige los datos de la cuenta. El saldo inicial es el importe en la fecha de apertura, no el de hoy.",
+  "accounts.edit.hasReadings":
+    "Esta cuenta tiene saldos con fecha y el más reciente es el que cuenta para tu patrimonio. Si quieres cambiar el importe actual, edita los saldos.",
+  "accounts.edit.save": "Guardar",
+  "accounts.edit.error": "No se pudo guardar la cuenta. Inténtalo de nuevo.",
   "accounts.list.delete": "Eliminar",
   "accounts.delete.title": "Eliminar cuenta",
   "accounts.delete.message": "¿Eliminar \"{name}\" y todo su historial de saldos? Esto no se puede deshacer.",
@@ -5050,9 +5080,10 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.list.editDetails": "Tasa y pago",
   "debt.list.needsDetails": "Añade tasa y pago mínimo",
   "debt.list.neverPaysOff": "Nunca se salda a esta tasa",
-  "debt.details.title": "Detalles del pasivo — {name}",
-  "debt.details.intro": "Introduce la tasa de interés anual y el pago mínimo mensual para incluir esta deuda en un plan de pago.",
-  "debt.details.rateLabel": "Tasa de interés anual (%)",
+  "debt.details.title": "Detalles del pasivo: {name}",
+  "debt.details.intro":
+    "Introduce el tipo de interés nominal anual y el pago mínimo mensual para incluir esta deuda en un plan de pago. Usa el tipo nominal, no la TAE: el plan aplica una doceava parte cada mes.",
+  "debt.details.rateLabel": "Tipo de interés nominal anual (%)",
   "debt.details.minPaymentLabel": "Pago mínimo mensual ({currency})",
   "debt.details.save": "Guardar",
   "debt.details.error": "No se pudo guardar. Inténtalo de nuevo.",
@@ -5482,6 +5513,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.retry": "Reintentar",
   "common.storageFull":
     "El almacenamiento está lleno. Tu último cambio no se ha guardado. Regístrate para guardar tus datos en línea.",
+  "common.invalidAmount": "No es un importe válido. Ejemplo: 250.000,50 o 250000,50.",
 
   // Admin
   "admin.menuItem": "Admin",
@@ -5564,6 +5596,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.site.limitKey.watchlistItems": "Elementos de la lista de seguimiento",
   "admin.site.limitKey.savingsPlans": "Planes de ahorro",
   "admin.site.limitKey.portfolios": "Carteras",
+  "admin.site.limitKey.householdMembers": "Miembros del hogar",
   "admin.site.limitFree": "Free",
   "admin.site.limitPro": "Pro",
   "admin.site.limitPlaceholder": "Sin límite",

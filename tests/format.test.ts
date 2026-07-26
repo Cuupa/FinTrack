@@ -16,6 +16,46 @@ describe("parseDecimal", () => {
     expect(Number.isNaN(parseDecimal(""))).toBe(true);
     expect(Number.isNaN(parseDecimal("   "))).toBe(true);
   });
+
+  // The mortgage case: a German user types the amount with grouping dots. This
+  // used to parse to 250 (Number("250.000")) and book 250 euros of debt, or to
+  // NaN once decimals were added, which call sites drop with a bare `return`.
+  describe("thousands separators", () => {
+    afterEach(() => setActiveLocale("en"));
+
+    it("reads a lone grouping dot as grouping on a German UI", () => {
+      setActiveLocale("de");
+      expect(parseDecimal("250.000")).toBe(250000);
+      expect(parseDecimal("-250.000")).toBe(-250000);
+    });
+    it("still reads a lone dot before fewer than three digits as a decimal point", () => {
+      setActiveLocale("de");
+      expect(parseDecimal("1.5")).toBe(1.5);
+      expect(parseDecimal("1.25")).toBe(1.25);
+    });
+    it("lets the last separator win when both appear", () => {
+      setActiveLocale("de");
+      expect(parseDecimal("250.000,50")).toBe(250000.5);
+      expect(parseDecimal("1.234.567,89")).toBe(1234567.89);
+      setActiveLocale("en");
+      expect(parseDecimal("250,000.50")).toBe(250000.5);
+      expect(parseDecimal("1,234,567.89")).toBe(1234567.89);
+    });
+    it("reads a repeated separator as grouping in either locale", () => {
+      setActiveLocale("en");
+      expect(parseDecimal("1.000.000")).toBe(1000000);
+      expect(parseDecimal("1,000,000")).toBe(1000000);
+    });
+    it("reads a lone grouping comma as grouping on an English UI", () => {
+      setActiveLocale("en");
+      expect(parseDecimal("1,234")).toBe(1234);
+      expect(parseDecimal("1,5")).toBe(1.5);
+    });
+    it("rejects a malformed group pattern rather than inventing a number", () => {
+      expect(Number.isNaN(parseDecimal("1.2.3"))).toBe(true);
+      expect(Number.isNaN(parseDecimal("12.34.567"))).toBe(true);
+    });
+  });
 });
 
 describe("formatPercent", () => {
