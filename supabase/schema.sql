@@ -682,10 +682,16 @@ create table if not exists public.goals (
   target_date date,
   linked_account_id uuid references public.accounts (id) on delete set null,
   manual_current_amount numeric,
+  -- Depot-tracking goals (migration 0097): progress is the portfolio's market
+  -- value instead of an account balance. linked_portfolio_id null = every
+  -- broker combined.
+  tracks_investments boolean not null default false,
+  linked_portfolio_id uuid references public.portfolios (id) on delete set null,
   created_at timestamptz not null default now()
 );
 create index if not exists goals_user_id_idx on public.goals (user_id);
 create index if not exists goals_linked_account_id_idx on public.goals (linked_account_id);
+create index if not exists goals_linked_portfolio_id_idx on public.goals (linked_portfolio_id);
 
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its

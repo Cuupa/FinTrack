@@ -23,7 +23,12 @@ import { formatCurrency } from "@/lib/format";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { accountsTotals, currentAccountBalance } from "@/lib/finance/accounts";
 import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
-import { goalProgress, goalProgressPct } from "@/lib/finance/goals";
+import {
+  goalInvestments,
+  goalProgress,
+  goalProgressPct,
+  liabilityPayoffGoals,
+} from "@/lib/finance/goals";
 import { today } from "@/lib/finance/dates";
 
 /** Card head: the area's name links to its surface, the figure sits right. */
@@ -189,39 +194,52 @@ function GoalsCard() {
   const currency = data.profile.currency;
   const { t } = useI18n();
 
+  // A goal can track the depot's value; that needs the holdings, not just
+  // the accounts (lib/finance/goals.ts).
+  const investments = useMemo(
+    () => goalInvestments(data.assets, data.transactions, data.portfolios, valuation),
+    [data.assets, data.transactions, data.portfolios, valuation],
+  );
+
+  // Liabilities carry their own derived payoff goals (lib/finance/goals.ts),
+  // so the card counts what /goals lists, not just the typed-in ones.
+  const goals = useMemo(() => {
+    const v = { base: currency, fx: valuation.fx };
+    return [
+      ...liabilityPayoffGoals(data.accounts, data.accountBalances, data.goals, today(), v),
+      ...data.goals,
+    ];
+  }, [data.goals, data.accounts, data.accountBalances, currency, valuation.fx]);
+
   const rows = useMemo(() => {
     const v = { base: currency, fx: valuation.fx };
-    return data.goals
+    return goals
       .map((goal) => {
-        const current = goalProgress(goal, data.accounts, data.accountBalances, v);
+        const current = goalProgress(goal, data.accounts, data.accountBalances, v, investments);
         return { goal, pct: goalProgressPct(goal.targetAmount, current) };
       })
       // Closest to done first: the ones worth a glance.
       .sort((a, b) => b.pct - a.pct)
       .slice(0, 3);
-  }, [data.goals, data.accounts, data.accountBalances, currency, valuation.fx]);
+  }, [goals, data.accounts, data.accountBalances, currency, valuation.fx, investments]);
 
   const reached = useMemo(() => {
     const v = { base: currency, fx: valuation.fx };
-    return data.goals.filter(
+    return goals.filter(
       (g) =>
         g.targetAmount > 0 &&
-        goalProgress(g, data.accounts, data.accountBalances, v) >= g.targetAmount,
+        goalProgress(g, data.accounts, data.accountBalances, v, investments) >= g.targetAmount,
     ).length;
-  }, [data.goals, data.accounts, data.accountBalances, currency, valuation.fx]);
+  }, [goals, data.accounts, data.accountBalances, currency, valuation.fx, investments]);
 
   return (
     <Card>
       <AreaHead
         href="/goals"
         label={t("nav.goals")}
-        value={
-          data.goals.length > 0
-            ? t("dash.goalsReached", { n: reached, m: data.goals.length })
-            : undefined
-        }
+        value={goals.length > 0 ? t("dash.goalsReached", { n: reached, m: goals.length }) : undefined}
       />
-      {data.goals.length === 0 ? (
+      {goals.length === 0 ? (
         <EmptyState
           className="py-6"
           title={t("dash.area.noGoals")}

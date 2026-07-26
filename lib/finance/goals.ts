@@ -4,9 +4,46 @@
 // convention as `accountsTotals` in lib/finance/accounts.ts) or is entered
 // manually.
 
-import type { Account, AccountBalance, Goal } from "../types";
-import { currentAccountBalance } from "./accounts";
+import type { Account, AccountBalance, Asset, Goal, Transaction } from "../types";
+import { summarizeAll, type ValuationContext } from "./portfolio";
+import { balanceSeries, currentAccountBalance } from "./accounts";
+import { amortizationSchedule } from "./debt";
 import { daysBetween } from "./dates";
+
+/**
+ * Depot value, base currency, for goals that track investments rather than an
+ * account. Passed in rather than computed here so this module stays free of
+ * the holdings/valuation machinery (and testable without it).
+ */
+export interface GoalInvestments {
+  /** Market value of every holding. */
+  total: number;
+  /** Market value per portfolio (= per broker) id. */
+  byPortfolio: Record<string, number>;
+}
+
+/**
+ * Current depot value overall and per broker. A holding belongs to a broker
+ * through its TRANSACTIONS (an `Asset` carries no portfolio id), so the
+ * per-broker figure is a full re-summary over that broker's transactions,
+ * not a regrouping of the combined one. Portfolio counts are single digits,
+ * so the repeated pass is cheaper than threading portfolio ids through the
+ * holding summaries.
+ */
+export function goalInvestments(
+  assets: Asset[],
+  transactions: Transaction[],
+  portfolios: readonly { id: string }[],
+  v?: ValuationContext,
+): GoalInvestments {
+  const sum = (txs: Transaction[]) =>
+    summarizeAll(assets, txs, v).reduce((acc, h) => acc + h.marketValue, 0);
+  const byPortfolio: Record<string, number> = {};
+  for (const p of portfolios) {
+    byPortfolio[p.id] = sum(transactions.filter((t) => t.portfolioId === p.id));
+  }
+  return { total: sum(transactions), byPortfolio };
+}
 
 /** Spot FX + base currency for converting a linked account's native balance. */
 export interface GoalValuation {
@@ -24,6 +61,8 @@ function rateFor(account: Account, v?: GoalValuation): number {
 
 /**
  * Current progress toward `goal.targetAmount`, in the base currency. When
+ * the goal tracks investments, this is the depot's current market value (of
+ * one broker, or all of them). Otherwise, when
  * linked to an account, this is that account's latest balance, FX-converted
  * at spot (same convention as `accountsTotals`); falls back to 0 if the
  * linked account no longer exists (deleted -- `linkedAccountId` set null
@@ -35,7 +74,17 @@ export function goalProgress(
   accounts: Account[],
   accountBalances: AccountBalance[],
   valuation?: GoalValuation,
+  investments?: GoalInvestments,
 ): number {
+  // The depot wins over a linked account: a goal is one or the other, and
+  // this order keeps a stale `linkedAccountId` from a re-pointed goal from
+  // silently taking over.
+  if (goal.tracksInvestments) {
+    if (!investments) return 0;
+    return goal.linkedPortfolioId
+      ? (investments.byPortfolio[goal.linkedPortfolioId] ?? 0)
+      : investments.total;
+  }
   if (goal.linkedAccountId) {
     const account = accounts.find((a) => a.id === goal.linkedAccountId);
     if (!account) return 0;
@@ -56,6 +105,74 @@ export function goalProgress(
 /** Progress percentage toward the target, clamped to [0, 100]. */
 export function goalProgressPct(targetAmount: number, current: number): number {
   return Math.min(100, Math.max(0, targetAmount > 0 ? (current / targetAmount) * 100 : 0));
+}
+
+/**
+ * Id prefix of a payoff goal derived from a liability account (sentinel id,
+ * same trick as the `wl:`/`cat:` ids in lib/finance/instrument-asset.ts).
+ * Such a goal is never stored -- it exists only for as long as the liability
+ * does.
+ */
+export const PAYOFF_GOAL_PREFIX = "debt:";
+
+/** True for a goal derived from a liability account rather than entered by
+ *  the user (no delete, no edit -- the account owns it). */
+export function isPayoffGoal(goal: Goal): boolean {
+  return goal.id.startsWith(PAYOFF_GOAL_PREFIX);
+}
+
+/**
+ * One payoff goal per liability account, derived rather than typed: owing
+ * money IS a goal to pay it off, so the user shouldn't have to restate a
+ * liability as a goal by hand.
+ *
+ * - target = the highest balance ever recorded for that account (the opening
+ *   balance plus every reading), so repayments read as progress and taking on
+ *   more debt later moves the target, not the progress, to 0.
+ * - target date = the amortisation payoff date when the account carries an
+ *   interest rate and a minimum payment (ROADMAP #9), otherwise open-ended.
+ *   No guessed date: the schedule is the only honest one.
+ * - a liability the user already tracks with a goal of their own is skipped,
+ *   so a manual goal always wins over the derived one.
+ *
+ * Amounts come out in the base currency, like every other goal figure.
+ */
+export function liabilityPayoffGoals(
+  accounts: Account[],
+  accountBalances: AccountBalance[],
+  goals: Goal[],
+  todayIso: string,
+  valuation?: GoalValuation,
+): Goal[] {
+  const tracked = new Set(goals.map((g) => g.linkedAccountId).filter(Boolean));
+  const out: Goal[] = [];
+  for (const account of accounts) {
+    if (!account.isLiability || tracked.has(account.id)) continue;
+    const rate = rateFor(account, valuation);
+    const peak =
+      Math.max(
+        account.openingBalance,
+        ...balanceSeries(account, accountBalances).map((p) => p.balance),
+      ) * rate;
+    // A liability that never owed anything is noise, not a goal.
+    if (!(peak > 0)) continue;
+    const balance = currentAccountBalance(account, accountBalances) * rate;
+    const schedule =
+      account.interestRate != null && account.minPayment != null
+        ? amortizationSchedule(balance, account.interestRate, account.minPayment * rate, todayIso)
+        : null;
+    out.push({
+      id: `${PAYOFF_GOAL_PREFIX}${account.id}`,
+      name: account.name,
+      targetAmount: peak,
+      targetDate: schedule?.payoffDate ?? null,
+      linkedAccountId: account.id,
+      manualCurrentAmount: null,
+      tracksInvestments: false,
+      linkedPortfolioId: null,
+    });
+  }
+  return out;
 }
 
 /** Average days per calendar month, used to convert a day span into months. */

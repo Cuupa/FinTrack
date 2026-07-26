@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { goalProgress, goalProgressPct, requiredMonthlyContribution } from "@/lib/finance/goals";
+import {
+  goalProgress,
+  goalProgressPct,
+  isPayoffGoal,
+  liabilityPayoffGoals,
+  requiredMonthlyContribution,
+} from "@/lib/finance/goals";
 import type { Account, AccountBalance, Goal } from "@/lib/types";
 
 function goal(overrides: Partial<Goal> = {}): Goal {
@@ -10,6 +16,8 @@ function goal(overrides: Partial<Goal> = {}): Goal {
     targetDate: null,
     linkedAccountId: null,
     manualCurrentAmount: null,
+    tracksInvestments: false,
+    linkedPortfolioId: null,
     ...overrides,
   };
 }
@@ -86,6 +94,35 @@ describe("goalProgress", () => {
   });
 });
 
+describe("goalProgress with depot tracking", () => {
+  const depot = { total: 25000, byPortfolio: { p1: 15000, p2: 10000 } };
+
+  it("uses the combined depot value when no broker is linked", () => {
+    const g = goal({ tracksInvestments: true, targetAmount: 100000 });
+    expect(goalProgress(g, [], [], undefined, depot)).toBe(25000);
+  });
+
+  it("uses one broker's depot value when a portfolio is linked", () => {
+    const g = goal({ tracksInvestments: true, linkedPortfolioId: "p2" });
+    expect(goalProgress(g, [], [], undefined, depot)).toBe(10000);
+  });
+
+  it("reads 0 for a broker with no holdings", () => {
+    const g = goal({ tracksInvestments: true, linkedPortfolioId: "gone" });
+    expect(goalProgress(g, [], [], undefined, depot)).toBe(0);
+  });
+
+  it("reads 0 while the depot value has not been supplied", () => {
+    const g = goal({ tracksInvestments: true });
+    expect(goalProgress(g, [], [], undefined, undefined)).toBe(0);
+  });
+
+  it("wins over a leftover linked account", () => {
+    const g = goal({ tracksInvestments: true, linkedAccountId: "a1" });
+    expect(goalProgress(g, [account({ openingBalance: 4000 })], [], undefined, depot)).toBe(25000);
+  });
+});
+
 describe("goalProgressPct", () => {
   it("clamps at 0 for a negative/zero current amount", () => {
     expect(goalProgressPct(1000, -50)).toBe(0);
@@ -138,5 +175,69 @@ describe("requiredMonthlyContribution", () => {
     expect(result).not.toBeNull();
     expect(Number.isFinite(result!)).toBe(true);
     expect(result!).toBeGreaterThan(0);
+  });
+});
+
+describe("liabilityPayoffGoals", () => {
+  const loan = account({
+    id: "l1",
+    name: "Car loan",
+    kind: "loan",
+    isLiability: true,
+    openingBalance: 20000,
+    openedOn: "2024-01-01",
+  });
+
+  it("derives one payoff goal per liability, without the user creating it", () => {
+    const derived = liabilityPayoffGoals([loan], [], [], "2024-06-01");
+    expect(derived).toHaveLength(1);
+    expect(derived[0].name).toBe("Car loan");
+    expect(derived[0].linkedAccountId).toBe("l1");
+    expect(isPayoffGoal(derived[0])).toBe(true);
+  });
+
+  it("ignores non-liability accounts", () => {
+    expect(liabilityPayoffGoals([account()], [], [], "2024-06-01")).toEqual([]);
+  });
+
+  it("targets the highest balance ever owed, so repayments read as progress", () => {
+    const balances: AccountBalance[] = [
+      { accountId: "l1", date: "2024-03-01", balance: 25000 },
+      { accountId: "l1", date: "2024-05-01", balance: 15000 },
+    ];
+    const [g] = liabilityPayoffGoals([loan], balances, [], "2024-06-01");
+    expect(g.targetAmount).toBe(25000);
+    expect(goalProgress(g, [loan], balances)).toBe(10000);
+  });
+
+  it("skips a liability the user already tracks with a goal of their own", () => {
+    const manual = goal({ id: "g1", linkedAccountId: "l1" });
+    expect(liabilityPayoffGoals([loan], [], [manual], "2024-06-01")).toEqual([]);
+  });
+
+  it("skips a liability that never owed anything", () => {
+    const empty = account({ id: "l2", isLiability: true, openingBalance: 0 });
+    expect(liabilityPayoffGoals([empty], [], [], "2024-06-01")).toEqual([]);
+  });
+
+  it("stays open-ended without an amortisation schedule", () => {
+    const [g] = liabilityPayoffGoals([loan], [], [], "2024-06-01");
+    expect(g.targetDate).toBeNull();
+  });
+
+  it("takes its target date from the amortisation schedule when one exists", () => {
+    const withSchedule = { ...loan, interestRate: 5, minPayment: 500 };
+    const [g] = liabilityPayoffGoals([withSchedule], [], [], "2024-06-01");
+    expect(g.targetDate).not.toBeNull();
+    expect(g.targetDate! > "2024-06-01").toBe(true);
+  });
+
+  it("converts a foreign-currency liability to the base currency", () => {
+    const usd = { ...loan, currency: "USD" };
+    const [g] = liabilityPayoffGoals([usd], [], [], "2024-06-01", {
+      base: "EUR",
+      fx: { USD: 0.9 },
+    });
+    expect(g.targetAmount).toBeCloseTo(18000, 6);
   });
 });

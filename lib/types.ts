@@ -390,8 +390,16 @@ export interface Goal {
    *  progress. Null means progress is tracked manually. */
   linkedAccountId: string | null;
   /** Manually-entered current progress, base currency. Only used/shown when
-   *  linkedAccountId is null. Null = 0 progress so far. */
+   *  the goal tracks neither an account nor the depot. Null = 0 so far. */
   manualCurrentAmount: number | null;
+  /** Progress mirrors the depot's current market value instead of an account
+   *  balance. A depot value is derived from the transaction log and live
+   *  prices, so there is no account to link — hence its own flag. Wins over
+   *  `linkedAccountId`. */
+  tracksInvestments: boolean;
+  /** Which broker's depot is tracked; null = every portfolio combined. Only
+   *  meaningful when `tracksInvestments`. */
+  linkedPortfolioId: string | null;
 }
 
 /** How often a cash position's interest is credited and compounded. */

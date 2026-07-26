@@ -263,6 +263,9 @@ interface GoalRow {
   target_date: string | null;
   linked_account_id: string | null;
   manual_current_amount: number | string | null;
+  // Optional: a DB that predates migration 0097 doesn't return these.
+  tracks_investments?: boolean | null;
+  linked_portfolio_id?: string | null;
 }
 
 function goalFromRow(r: GoalRow): Goal {
@@ -273,6 +276,10 @@ function goalFromRow(r: GoalRow): Goal {
     targetDate: r.target_date,
     linkedAccountId: r.linked_account_id,
     manualCurrentAmount: r.manual_current_amount != null ? Number(r.manual_current_amount) : null,
+    // Defaulted, so a DB that predates migration 0097 reads as "account or
+    // manual" exactly like before.
+    tracksInvestments: r.tracks_investments ?? false,
+    linkedPortfolioId: r.linked_portfolio_id ?? null,
   };
 }
 
@@ -384,7 +391,9 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("goals")
-        .select("id, name, target_amount, target_date, linked_account_id, manual_current_amount")
+        .select(
+          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id",
+        )
         .order("created_at", { ascending: true }),
       // Personal, never household-shared (see migration 0093's comment).
       this.supabase
@@ -1237,6 +1246,8 @@ export class SupabaseStore implements DataStore {
         target_date: input.targetDate,
         linked_account_id: input.linkedAccountId,
         manual_current_amount: input.manualCurrentAmount,
+        tracks_investments: input.tracksInvestments,
+        linked_portfolio_id: input.linkedPortfolioId,
       })
       .select("id")
       .single();
@@ -1250,6 +1261,10 @@ export class SupabaseStore implements DataStore {
     if (patch.targetAmount !== undefined) upd.target_amount = patch.targetAmount;
     if (patch.targetDate !== undefined) upd.target_date = patch.targetDate;
     if (patch.linkedAccountId !== undefined) upd.linked_account_id = patch.linkedAccountId;
+    if (patch.tracksInvestments !== undefined) upd.tracks_investments = patch.tracksInvestments;
+    if (patch.linkedPortfolioId !== undefined) {
+      upd.linked_portfolio_id = patch.linkedPortfolioId;
+    }
     if (patch.manualCurrentAmount !== undefined) {
       upd.manual_current_amount = patch.manualCurrentAmount;
     }

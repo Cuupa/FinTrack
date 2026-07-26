@@ -637,6 +637,15 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
   add-account form + sortable list + per-account dated-balance editor
 - `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
   #2): quick-add form + sortable transaction table + category manager modal
+- `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
+  optional** (open-ended goals are first class; a date only buys the
+  monthly-needed figure). Every liability account is listed as a **derived**
+  payoff goal (`liabilityPayoffGoals`, sentinel id `debt:<accountId>`, never
+  stored): target = the highest balance ever owed, progress = what has been
+  repaid, target date = the amortisation payoff date only when the account
+  carries a rate + minimum payment. A user-made goal linked to that account
+  replaces the derived one. Owner rule: never make the user restate a
+  liability as a goal by hand.
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/instruments/[key]` — same detail view for non-held instruments (watchlist
   click-through / catalog), reduced to master data + chart + look-through,

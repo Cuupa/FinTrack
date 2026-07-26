@@ -129,8 +129,13 @@ export class LocalStore implements DataStore {
         budgets: parsed.budgets ?? [],
         // Backfill blobs saved before contracts existed.
         contracts: parsed.contracts ?? [],
-        // Backfill blobs saved before goals existed.
-        goals: parsed.goals ?? [],
+        // Backfill blobs saved before goals existed; the per-goal backfill
+        // covers blobs written before goals could track the depot.
+        goals: (parsed.goals ?? []).map((g) => ({
+          ...g,
+          tracksInvestments: g.tracksInvestments ?? false,
+          linkedPortfolioId: g.linkedPortfolioId ?? null,
+        })),
         // Backfill portfolios saved before the LLM config moved onto the
         // store seam (it used to live in a separate `fintrack-llm` key).
         llmConfig: parsed.llmConfig ?? null,
