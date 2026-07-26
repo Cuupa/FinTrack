@@ -451,6 +451,14 @@ alter table public.accounts
   add column if not exists interest_rate numeric;
 alter table public.accounts
   add column if not exists min_payment numeric;
+-- Fixed-rate period (migration 0102): up to `rate_fixed_until` the account's
+-- `interest_rate` applies, from the day after `follow_up_rate` does. Two
+-- columns rather than one, so entering the assumed follow-up rate never
+-- rewrites the rate in force today.
+alter table public.accounts
+  add column if not exists rate_fixed_until date;
+alter table public.accounts
+  add column if not exists follow_up_rate numeric;
 alter table public.accounts
   drop constraint if exists accounts_kind_check;
 alter table public.accounts

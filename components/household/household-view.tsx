@@ -4,11 +4,23 @@
 // join a household, invite/accept members, manage roles. Registered-mode
 // only -- household-context.tsx has no LocalStore/OfflineStore equivalent,
 // same as billing.
+//
+// Pro gating is per SUB-SURFACE, not per page (family plan, migration 0101:
+// one Pro subscription per household, members free). Forming or growing a
+// household -- the create card and the invite card -- is what Pro buys, so
+// only those two sit behind <ProGate>. Seeing your invitations, your household,
+// its members and the button to leave stays open to everyone: a free partner
+// who cannot accept an invitation makes a family plan pointless, and a member
+// locked out of "leave household" would be stuck in it.
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useHousehold } from "@/lib/household/household-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeature, useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
+import { atLimit } from "@/lib/billing/limits";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,8 +46,13 @@ export function HouseholdView() {
     declineInvite,
     removeMember,
     leaveHousehold,
+    sharingActive,
   } = useHousehold();
   const { t } = useI18n();
+  // `locked` = the flag is visible but this user's plan doesn't unlock it.
+  const { locked } = useFeature("household");
+  const billingEnabled = useFeatureFlag("billing");
+  const { limit: memberLimit } = usePlanLimit("householdMembers");
 
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -45,6 +62,9 @@ export function HouseholdView() {
   const [busy, setBusy] = useState(false);
 
   const isOwner = members.some((m) => m.userId === user?.id && m.role === "owner");
+  // A pending invitation already reserves its seat, otherwise the cap could be
+  // walked past by sending several at once.
+  const seatsCapped = atLimit(memberLimit, members.length + sentInvites.length);
 
   async function run(action: () => Promise<void>) {
     setError(null);
@@ -100,6 +120,7 @@ export function HouseholdView() {
       )}
 
       {!household ? (
+        <ProGate locked={locked} feature="household">
         <Card data-tour="household-create">
           <h2 className="text-lg font-semibold">{t("household.createTitle")}</h2>
           <p className="mt-1 text-sm text-zinc-500">{t("household.createSubtitle")}</p>
@@ -125,6 +146,7 @@ export function HouseholdView() {
             </Button>
           </div>
         </Card>
+        </ProGate>
       ) : (
         <>
           <Card data-tour="household-members">
@@ -167,8 +189,29 @@ export function HouseholdView() {
                 </li>
               ))}
             </ul>
+
+            {/* Sharing collapsed back to self-ownership because nobody here
+                carries the plan. Without this the two members would simply see
+                their own data and think the household never worked. */}
+            {!sharingActive && (
+              <p className="mt-4 border-t border-zinc-200 pt-3 text-sm text-amber-700 dark:border-zinc-800 dark:text-amber-500">
+                {t("household.sharingPaused")}
+                {billingEnabled && (
+                  <>
+                    {" "}
+                    <Link
+                      href="/pricing"
+                      className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                    >
+                      {t("common.proFeatureUpgrade")}
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
           </Card>
 
+          <ProGate locked={locked} feature="household">
           <Card data-tour="household-invite">
             <h2 className="text-lg font-semibold">{t("household.inviteTitle")}</h2>
             <div className="mt-3 flex gap-2">
@@ -182,7 +225,7 @@ export function HouseholdView() {
               />
               <Button
                 variant="primary"
-                disabled={busy || !inviteEmail.trim()}
+                disabled={busy || !inviteEmail.trim() || seatsCapped}
                 onClick={() =>
                   run(async () => {
                     await inviteMember(inviteEmail.trim());
@@ -193,6 +236,22 @@ export function HouseholdView() {
                 {t("household.invite")}
               </Button>
             </div>
+            {seatsCapped && (
+              <p className="mt-2 text-sm text-zinc-500">
+                {t("household.limitHint", { n: String(memberLimit) })}
+                {billingEnabled && (
+                  <>
+                    {" "}
+                    <Link
+                      href="/pricing"
+                      className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                    >
+                      {t("common.proFeatureUpgrade")}
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
             {sentInvites.length > 0 && (
               <ul className="mt-4 space-y-2">
                 {sentInvites.map((invite) => (
@@ -209,6 +268,7 @@ export function HouseholdView() {
               </ul>
             )}
           </Card>
+          </ProGate>
         </>
       )}
 

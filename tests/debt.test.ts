@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { amortizationSchedule, planPayoff, type DebtInput } from "@/lib/finance/debt";
+import {
+  accountRateSteps,
+  amortizationSchedule,
+  planPayoff,
+  rateOnDate,
+  yearlySplit,
+  type DebtInput,
+} from "@/lib/finance/debt";
 import { addMonthsToDate } from "@/lib/finance/dates";
 
 describe("addMonthsToDate", () => {
@@ -62,7 +69,7 @@ function debt(overrides: Partial<DebtInput> = {}): DebtInput {
 describe("planPayoff", () => {
   it("returns an empty plan for no debts", () => {
     const r = planPayoff([], "avalanche", 0);
-    expect(r).toEqual({ order: [], perDebt: [], totalMonths: 0, totalInterest: 0 });
+    expect(r).toEqual({ order: [], perDebt: [], totalMonths: 0, totalInterest: 0, series: [] });
   });
 
   it("pays off a single debt matching a standalone amortization schedule's month count", () => {
@@ -112,5 +119,126 @@ describe("planPayoff", () => {
     const d = debt({ balance: 100000, annualRatePct: 30, minPayment: 10 });
     const r = planPayoff([d], "avalanche", 0);
     expect(r.totalMonths).toBeNull();
+  });
+});
+
+describe("rate schedule", () => {
+  it("keeps the initial rate before the first step and switches on its date", () => {
+    const steps = [{ from: "2030-01-01", annualRatePct: 6 }];
+    expect(rateOnDate(3, steps, "2029-12-31")).toBe(3);
+    expect(rateOnDate(3, steps, "2030-01-01")).toBe(6);
+    expect(rateOnDate(3, steps, "2044-07-01")).toBe(6);
+  });
+
+  it("derives a step from an account's fixed-rate period, starting the day after", () => {
+    const account = {
+      id: "a1",
+      name: "Mortgage",
+      kind: "mortgage" as const,
+      currency: null,
+      isLiability: true,
+      openingBalance: 300000,
+      openedOn: "2024-01-01",
+      interestRate: 4,
+      minPayment: 1400,
+      rateFixedUntil: "2036-07-31",
+      followUpRate: 5.5,
+    };
+    expect(accountRateSteps(account)).toEqual([{ from: "2036-08-01", annualRatePct: 5.5 }]);
+    // Half a pair is not a schedule: it would silently change nothing.
+    expect(accountRateSteps({ ...account, followUpRate: null })).toEqual([]);
+    expect(accountRateSteps({ ...account, rateFixedUntil: null })).toEqual([]);
+  });
+
+  it("charges the follow-up rate only after the fixed period, leaving today's rate alone", () => {
+    const flat = amortizationSchedule(100000, 3, 600, "2024-01-01");
+    const stepped = amortizationSchedule(100000, 3, 600, "2024-01-01", [
+      { from: "2030-01-01", annualRatePct: 8 },
+    ]);
+    // Identical while the rate is still fixed...
+    expect(stepped.points[0].annualRatePct).toBe(3);
+    expect(stepped.points[0].interest).toBeCloseTo(flat.points[0].interest, 8);
+    // ...and more expensive afterwards.
+    const afterStep = stepped.points.find((p) => p.date >= "2030-01-01")!;
+    expect(afterStep.annualRatePct).toBe(8);
+    expect(stepped.totalInterest).toBeGreaterThan(flat.totalInterest);
+  });
+
+  it("still pays off when a payment too small at first is enough after a rate drop", () => {
+    // 10% on 10000 is ~83/month interest; 60 doesn't cover it until the rate
+    // falls, so the balance grows first and shrinks later.
+    const r = amortizationSchedule(10000, 10, 60, "2024-01-01", [
+      { from: "2026-01-01", annualRatePct: 1 },
+    ]);
+    expect(r.months).not.toBeNull();
+    expect(r.points[0].principal).toBeLessThan(0);
+  });
+});
+
+describe("planPayoff rollover", () => {
+  const two = () => [
+    debt({ id: "small", balance: 5000, annualRatePct: 15, minPayment: 200 }),
+    debt({ id: "big", balance: 40000, annualRatePct: 4, minPayment: 300 }),
+  ];
+
+  it("keeps a cleared debt's payment working on the rest for good, not for one month", () => {
+    const plan = planPayoff(two(), "avalanche", 0, "2024-01-01");
+    const alone = amortizationSchedule(40000, 4, 300, "2024-01-01");
+    // Once "small" is gone its 200/month rolls into "big", so the plan must
+    // beat servicing "big" on its own minimum forever.
+    expect(plan.totalMonths).not.toBeNull();
+    expect(plan.totalMonths!).toBeLessThan(alone.months!);
+    const big = plan.perDebt.find((p) => p.id === "big")!;
+    expect(big.totalInterest).toBeLessThan(alone.totalInterest);
+  });
+
+  it("makes the strategy change the outcome even with no extra payment", () => {
+    // Three debts, because with two the freed payment has only one possible
+    // target and every strategy agrees by default. The rate order and the
+    // balance order deliberately disagree.
+    const three = () => [
+      debt({ id: "first", balance: 4000, annualRatePct: 4, minPayment: 200 }),
+      debt({ id: "highRate", balance: 8000, annualRatePct: 20, minPayment: 100 }),
+      debt({ id: "smallest", balance: 3000, annualRatePct: 6, minPayment: 100 }),
+    ];
+    const avalanche = planPayoff(three(), "avalanche", 0, "2024-01-01");
+    const snowball = planPayoff(three(), "snowball", 0, "2024-01-01");
+    expect(avalanche.totalInterest).not.toBeCloseTo(snowball.totalInterest, 2);
+    expect(avalanche.totalInterest).toBeLessThanOrEqual(snowball.totalInterest);
+  });
+});
+
+describe("plan series", () => {
+  it("opens at the full balance and ends at zero", () => {
+    const r = planPayoff([debt({ balance: 1200, annualRatePct: 0, minPayment: 100 })], "avalanche", 0, "2024-01-01");
+    expect(r.series[0]).toMatchObject({ month: 0, date: "2024-01-01", balance: 1200 });
+    expect(r.series).toHaveLength(13);
+    expect(r.series[12].balance).toBeCloseTo(0, 6);
+    expect(r.series[12].date).toBe("2025-01-01");
+  });
+
+  it("splits into calendar years whose principal reconstructs the balance", () => {
+    const r = planPayoff([debt({ balance: 12000, annualRatePct: 5, minPayment: 400 })], "avalanche", 0, "2024-01-01");
+    const years = yearlySplit(r.series);
+    expect(years[0].year).toBe(2024);
+    expect(years.reduce((s, y) => s + y.principal, 0)).toBeCloseTo(12000, 4);
+    expect(years.reduce((s, y) => s + y.interest, 0)).toBeCloseTo(r.totalInterest, 4);
+    expect(years[years.length - 1].endBalance).toBeCloseTo(0, 6);
+  });
+
+  it("narrows to one debt when given its id", () => {
+    const r = planPayoff(
+      [
+        debt({ id: "a", balance: 3000, annualRatePct: 10, minPayment: 200 }),
+        debt({ id: "b", balance: 6000, annualRatePct: 5, minPayment: 200 }),
+      ],
+      "avalanche",
+      0,
+      "2024-01-01",
+    );
+    const onlyA = yearlySplit(r.series, "a");
+    expect(onlyA.reduce((s, y) => s + y.principal, 0)).toBeCloseTo(3000, 4);
+    const a = r.perDebt.find((p) => p.id === "a")!;
+    expect(onlyA.reduce((s, y) => s + y.interest, 0)).toBeCloseTo(a.totalInterest, 4);
   });
 });

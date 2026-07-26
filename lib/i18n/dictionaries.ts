@@ -1191,6 +1191,13 @@ export const en = {
   "fire.simulation.configurePrompt": "Run the simulation to see the odds",
   "fire.unit.years": "years",
 
+  "duration.year": "1 year",
+  "duration.years": "{n} years",
+  "duration.month": "1 month",
+  "duration.months": "{n} months",
+  "duration.yearsShort": "{n}y",
+  "duration.monthsShort": "{n}mo",
+
   "debt.title": "Liabilities",
   "debt.subtitle": "Amortisation schedules and an avalanche/snowball plan for your liabilities.",
   "debt.totals.debt": "Total outstanding",
@@ -1223,6 +1230,32 @@ export const en = {
   "debt.plan.totalInterest": "Total interest",
   "debt.plan.savings": "{months} months and {amount} in interest saved versus minimum payments only.",
   "debt.plan.order": "#",
+  "debt.totals.debtFreeOn": "Debt-free on",
+  "debt.totals.interestLeft": "Interest still to pay",
+  "debt.list.term": "Remaining term",
+  "debt.list.payment": "Monthly payment",
+  "debt.list.fixedUntil": "Fixed rate until",
+  "debt.list.followUp": "then {rate}%",
+  "debt.list.noFixedPeriod": "Whole term",
+  "debt.details.rateSectionTitle": "Fixed-rate period",
+  "debt.details.rateFixedUntilLabel": "Fixed rate ends on",
+  "debt.details.followUpRateLabel": "Assumed rate afterwards (%)",
+  "debt.details.followUpHint":
+    "Leave both empty if the rate holds for the whole term. The rate above keeps applying up to this date; only the months after it are charged the follow-up rate.",
+  "debt.chart.title": "How the debt develops",
+  "debt.chart.intro":
+    "Remaining balance month by month under the plan below, and where each year's money actually goes.",
+  "debt.chart.scopeLabel": "Show",
+  "debt.chart.all": "All liabilities",
+  "debt.chart.remaining": "Remaining debt",
+  "debt.chart.baseline": "Minimum payments only",
+  "debt.chart.interest": "Interest",
+  "debt.chart.principal": "Principal",
+  "debt.chart.fixedRateEnd": "End of fixed rate",
+  "debt.chart.aria": "Remaining debt over time",
+  "debt.chart.splitTitle": "Interest vs principal per year",
+  "debt.chart.splitAria": "Interest and principal paid per year",
+  "debt.chart.paidOff": "Paid off",
   "addAsset.otherValue": "Current value ({currency})",
 
   // Analysis
@@ -1457,6 +1490,9 @@ export const en = {
   "household.invitedYou": "You've been invited to join a household.",
   "household.accept": "Accept",
   "household.decline": "Decline",
+  "household.sharingPaused":
+    "Sharing is paused: nobody in this household is on Pro right now, so everyone only sees their own data. Nothing was deleted, sharing resumes as soon as one member subscribes.",
+  "household.limitHint": "Your plan includes up to {n} people per household (pending invitations count).",
 
   // X-Ray
   "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
@@ -3130,6 +3166,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.simulation.configurePrompt": "Starte die Simulation, um die Chancen zu sehen",
   "fire.unit.years": "Jahre",
 
+  "duration.year": "1 Jahr",
+  "duration.years": "{n} Jahre",
+  "duration.month": "1 Monat",
+  "duration.months": "{n} Monate",
+  "duration.yearsShort": "{n} J.",
+  "duration.monthsShort": "{n} Mon.",
+
   "debt.title": "Verbindlichkeiten",
   "debt.subtitle": "Tilgungspläne und ein Avalanche-/Schneeball-Plan für deine Verbindlichkeiten.",
   "debt.totals.debt": "Offene Verbindlichkeiten",
@@ -3162,6 +3205,32 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.plan.totalInterest": "Zinsen gesamt",
   "debt.plan.savings": "{months} Monate und {amount} an Zinsen gespart gegenüber reinen Mindestzahlungen.",
   "debt.plan.order": "#",
+  "debt.totals.debtFreeOn": "Schuldenfrei am",
+  "debt.totals.interestLeft": "Noch zu zahlende Zinsen",
+  "debt.list.term": "Restlaufzeit",
+  "debt.list.payment": "Monatliche Rate",
+  "debt.list.fixedUntil": "Zinsbindung bis",
+  "debt.list.followUp": "danach {rate}%",
+  "debt.list.noFixedPeriod": "Volle Laufzeit",
+  "debt.details.rateSectionTitle": "Zinsbindung",
+  "debt.details.rateFixedUntilLabel": "Zinsbindung endet am",
+  "debt.details.followUpRateLabel": "Angenommener Anschlusszins (%)",
+  "debt.details.followUpHint":
+    "Lass beides leer, wenn der Zinssatz über die ganze Laufzeit gilt. Der Sollzins oben gilt bis zu diesem Datum, erst die Monate danach rechnen mit dem Anschlusszins.",
+  "debt.chart.title": "So entwickelt sich deine Schuld",
+  "debt.chart.intro":
+    "Restschuld Monat für Monat nach dem Plan unten, und wohin das Geld jedes Jahr tatsächlich fließt.",
+  "debt.chart.scopeLabel": "Anzeigen",
+  "debt.chart.all": "Alle Verbindlichkeiten",
+  "debt.chart.remaining": "Restschuld",
+  "debt.chart.baseline": "Nur Mindestzahlungen",
+  "debt.chart.interest": "Zinsanteil",
+  "debt.chart.principal": "Tilgungsanteil",
+  "debt.chart.fixedRateEnd": "Ende der Zinsbindung",
+  "debt.chart.aria": "Restschuld im Zeitverlauf",
+  "debt.chart.splitTitle": "Zins und Tilgung pro Jahr",
+  "debt.chart.splitAria": "Gezahlte Zinsen und Tilgung pro Jahr",
+  "debt.chart.paidOff": "Getilgt",
   "addAsset.otherValue": "Aktueller Wert ({currency})",
 
   // Analysis
@@ -3397,6 +3466,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "household.invitedYou": "Du wurdest eingeladen, einem Haushalt beizutreten.",
   "household.accept": "Annehmen",
   "household.decline": "Ablehnen",
+  "household.sharingPaused":
+    "Das Teilen ist pausiert: niemand in diesem Haushalt hat gerade Pro, deshalb sieht jede Person nur die eigenen Daten. Es wurde nichts gelöscht, das Teilen läuft weiter, sobald ein Mitglied ein Abo hat.",
+  "household.limitHint": "Dein Plan umfasst bis zu {n} Personen pro Haushalt (offene Einladungen zählen mit).",
 
   // X-Ray
   "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
@@ -5065,6 +5137,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.simulation.configurePrompt": "Ejecuta la simulación para ver las probabilidades",
   "fire.unit.years": "años",
 
+  "duration.year": "1 año",
+  "duration.years": "{n} años",
+  "duration.month": "1 mes",
+  "duration.months": "{n} meses",
+  "duration.yearsShort": "{n} a.",
+  "duration.monthsShort": "{n} m.",
+
   "debt.title": "Pasivos",
   "debt.subtitle": "Planes de amortización y un plan avalancha/bola de nieve para tus pasivos.",
   "debt.totals.debt": "Total pendiente",
@@ -5097,6 +5176,32 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.plan.totalInterest": "Interés total",
   "debt.plan.savings": "{months} meses y {amount} de interés ahorrados frente a solo pagos mínimos.",
   "debt.plan.order": "#",
+  "debt.totals.debtFreeOn": "Libre de deudas el",
+  "debt.totals.interestLeft": "Intereses pendientes",
+  "debt.list.term": "Plazo restante",
+  "debt.list.payment": "Cuota mensual",
+  "debt.list.fixedUntil": "Tipo fijo hasta",
+  "debt.list.followUp": "luego {rate}%",
+  "debt.list.noFixedPeriod": "Todo el plazo",
+  "debt.details.rateSectionTitle": "Periodo de tipo fijo",
+  "debt.details.rateFixedUntilLabel": "El tipo fijo termina el",
+  "debt.details.followUpRateLabel": "Tipo estimado posterior (%)",
+  "debt.details.followUpHint":
+    "Déjalo vacío si el tipo se mantiene durante todo el plazo. El tipo de arriba se aplica hasta esa fecha; solo los meses posteriores usan el tipo estimado.",
+  "debt.chart.title": "Cómo evoluciona tu deuda",
+  "debt.chart.intro":
+    "Saldo pendiente mes a mes según el plan de abajo, y a dónde va realmente el dinero cada año.",
+  "debt.chart.scopeLabel": "Mostrar",
+  "debt.chart.all": "Todos los pasivos",
+  "debt.chart.remaining": "Deuda pendiente",
+  "debt.chart.baseline": "Solo pagos mínimos",
+  "debt.chart.interest": "Intereses",
+  "debt.chart.principal": "Amortización",
+  "debt.chart.fixedRateEnd": "Fin del tipo fijo",
+  "debt.chart.aria": "Deuda pendiente a lo largo del tiempo",
+  "debt.chart.splitTitle": "Intereses y amortización por año",
+  "debt.chart.splitAria": "Intereses y amortización pagados por año",
+  "debt.chart.paidOff": "Saldada",
   "addAsset.otherValue": "Valor actual ({currency})",
 
   // Analysis
@@ -5331,6 +5436,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "household.invitedYou": "Te han invitado a unirte a un hogar.",
   "household.accept": "Aceptar",
   "household.decline": "Rechazar",
+  "household.sharingPaused":
+    "El uso compartido está en pausa: ahora mismo nadie de este hogar tiene Pro, así que cada persona solo ve sus propios datos. No se ha borrado nada y volverá a funcionar en cuanto un miembro se suscriba.",
+  "household.limitHint": "Tu plan incluye hasta {n} personas por hogar (las invitaciones pendientes cuentan).",
 
   // X-Ray
   "xray.subtitle": "Tu exposición real a acciones individuales, mirando a través de tus fondos.",

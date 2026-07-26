@@ -75,6 +75,15 @@ interface HouseholdState {
   sentInvites: HouseholdInvite[];
   /** Invites addressed to the signed-in user's own email, pending. */
   receivedInvites: HouseholdInvite[];
+  /**
+   * Whether RLS is actually sharing data across this household right now
+   * (`household_sharing_active()`, migration 0101). False when the `household`
+   * flag is tiered to Pro and nobody here has it: sharing then collapses back
+   * to self-ownership, which is invisible from the client otherwise, so the
+   * view can say so instead of showing two silently disconnected datasets.
+   * True for anyone not in a household, and on a DB predating the migration.
+   */
+  sharingActive: boolean;
 }
 
 interface HouseholdContextValue extends Omit<HouseholdState, "userId"> {
@@ -96,6 +105,7 @@ const EMPTY_STATE: Omit<HouseholdState, "userId"> = {
   memberEmails: {},
   sentInvites: [],
   receivedInvites: [],
+  sharingActive: true,
 };
 
 const HouseholdContext = createContext<HouseholdContextValue>({
@@ -141,7 +151,7 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
   const own = members.find((m) => m.userId === userId);
   if (!own) return { ...EMPTY_STATE, receivedInvites };
 
-  const [householdRes, sentInvitesRes] = await Promise.all([
+  const [householdRes, sentInvitesRes, sharingRes] = await Promise.all([
     supabase.from("households").select("id, name, created_by, created_at").eq("id", own.householdId).maybeSingle<HouseholdRow>(),
     supabase
       .from("household_invites")
@@ -149,6 +159,7 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
       .eq("household_id", own.householdId)
       .eq("status", "pending")
       .returns<InviteRow[]>(),
+    supabase.rpc("household_sharing_active"),
   ]);
 
   return {
@@ -157,6 +168,10 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
     memberEmails,
     sentInvites: (sentInvitesRes.data ?? []).map(inviteFromRow),
     receivedInvites,
+    // Anything other than an explicit `false` counts as sharing (a DB that
+    // predates migration 0101 has no such function and errors) — the same
+    // fail-open direction the flag and limit resolution take.
+    sharingActive: sharingRes.data !== false,
   };
 }
 
@@ -307,6 +322,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       memberEmails: state?.memberEmails ?? {},
       sentInvites: state?.sentInvites ?? [],
       receivedInvites: state?.receivedInvites ?? [],
+      sharingActive: state?.sharingActive ?? true,
       loading,
       createHousehold,
       renameHousehold,

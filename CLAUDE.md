@@ -124,7 +124,7 @@ read `useFeature` and render a teaser when locked. The shared
 feature stays visible, never hidden) — the /analysis risk and tax tabs (tab
 stays visible), /dividends, /simulation, /xray, /rebalancing, the flag-gated
 pages /accounts, /spending, /goals, /health, /fire, /debt, /contracts,
-/household, the dashboard `AreaCards` (a locked area keeps its grid slot) and
+the dashboard `AreaCards` (a locked area keeps its grid slot) and
 the self-gated cards (watchlist, savings plans, budgets — each split into a
 gate wrapper plus a `*Inner` holding the hooks). The navigation matches:
 `Sidebar`/`MobileNav` filter on `getFeature(flag).enabled`, so a **locked**
@@ -146,8 +146,9 @@ gates without repeating the ternary: `<ProGate locked feature>` renders its
 children plainly or blurred behind the teaser (used by the simulation's
 parameter panel + withdrawal phase, the settings AI tab, the notifications
 card, the tax-pack sections, the insurance coverage-gaps card, the add-asset
-CSV-import tab, and the asset-detail cash-interest / manual-valuation
-sections), and `<ProMenuItem label>` keeps a locked **dropdown row** listed
+CSV-import tab, the asset-detail cash-interest / manual-valuation
+sections, and /household's create + invite cards), and `<ProMenuItem label>`
+keeps a locked **dropdown row** listed
 with a padlock linking to /pricing (export CSV/JSON in the dashboard and
 profile menus) — a blurred preview makes no sense for a single menu row.
 Cell-level enrichments that cannot carry a teaser (a value inside a `dl`, one
@@ -167,8 +168,9 @@ since flag resolution consumes it), which loads the signed-in user's own
 active/trialing/past_due+7d grace, pure). Guests / no Supabase / not yet
 loaded all resolve `"free"`.
 `plan_limits` (free/pro caps per `limit_key` — `watchlistItems`,
-`savingsPlans`, `portfolios` — null = unlimited, seeded unlimited) is
-enforced (Phase 4) at its three add-surfaces: watchlist add
+`savingsPlans`, `portfolios`, `householdMembers` — null = unlimited, seeded
+unlimited) is
+enforced (Phase 4) at its add-surfaces: watchlist add
 (`components/dashboard/watchlist-card.tsx`), savings-plan create
 (`components/savings/plan-form.tsx`, shared by the dashboard card and the
 asset-detail page's "new plan" entry point), and portfolio create
@@ -196,6 +198,31 @@ alongside their subscription and `resolvePlan` honors an active grant as a
 standalone path to `"pro"`. Grants are issued/revoked on `/admin/billing`'s
 "Premium grants" card (service-role writes only, every grant/revoke
 audited).
+
+**Household = a paid family plan (migration 0101)**: household sharing is
+enforced by RLS (`household_peer_ids()`), and RLS knew nothing about plans, so
+tiering the `household` flag to Pro only hid the /household page while every
+shared row stayed visible on the dashboard, /spending and /goals after a
+downgrade. The gate now lives where the sharing happens: `user_has_pro()`
+mirrors `resolvePlan` in SQL (keep the two in step — same rule, twice),
+`household_sharing_enabled()` = "flag not tiered to pro OR **some** member has
+Pro", and `household_peer_ids()` returns an empty set when it is false, which
+collapses every shared policy back to plain self-ownership without deleting or
+reassigning anything. So the unit of payment is the **household**, never the
+member: one subscription covers everyone, and either side may carry it (the
+`join household` policy accepts the creator's Pro or a joining invitee's).
+`user_has_pro`/`household_has_pro` are deliberately **not** client-callable
+(revoked from PUBLIC) — they would let anyone probe who pays; the client only
+gets the own-household aggregate `household_sharing_active()`, surfaced as
+`useHousehold().sharingActive` and rendered as a "sharing is paused" notice
+(never leave a collapsed state looking normal). Consequently /household gates
+per **sub-surface**: create + invite sit behind `<ProGate>`, while the
+invitations card, the members list and "leave household" stay free — a free
+partner who cannot accept makes a family plan pointless, and a member locked
+out of leaving would be trapped. `plan_limits.householdMembers` caps head
+count (pending invitations reserve a seat). Everything is seeded
+`required_plan='free'` / unlimited, so nothing changes until the owner
+re-tiers the flag.
 
 **Billing (MONETIZATION.md Phase 1, dark-launched behind the `billing` flag,
 seeded disabled)**: Stripe Checkout + Billing portal, redirect-based only —

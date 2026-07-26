@@ -164,6 +164,14 @@ export interface Account {
   /** Minimum monthly payment, native currency, ROADMAP item #9. Optional/
    *  nullable like `interestRate`. */
   minPayment?: number | null;
+  /** End of the fixed-rate period (Zinsbindung), YYYY-MM-DD. Up to this date
+   *  `interestRate` applies; from the day after, `followUpRate` does. Setting
+   *  a follow-up rate must never mean rewriting the rate in force today --
+   *  that is the whole reason these are two separate fields, not one. */
+  rateFixedUntil?: string | null;
+  /** Assumed annual rate (percent) after `rateFixedUntil`. Null = keep
+   *  `interestRate` for the whole term. */
+  followUpRate?: number | null;
 }
 
 /**

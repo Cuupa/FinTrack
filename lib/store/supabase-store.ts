@@ -153,6 +153,8 @@ interface AccountRow {
   opened_on: string;
   interest_rate: number | string | null;
   min_payment: number | string | null;
+  rate_fixed_until?: string | null;
+  follow_up_rate?: number | string | null;
 }
 
 function accountFromRow(r: AccountRow): Account {
@@ -166,6 +168,8 @@ function accountFromRow(r: AccountRow): Account {
     openedOn: r.opened_on,
     interestRate: r.interest_rate != null ? Number(r.interest_rate) : null,
     minPayment: r.min_payment != null ? Number(r.min_payment) : null,
+    rateFixedUntil: r.rate_fixed_until ?? null,
+    followUpRate: r.follow_up_rate != null ? Number(r.follow_up_rate) : null,
   };
 }
 
@@ -405,7 +409,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("accounts")
         .select(
-          "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, min_payment",
+          "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, min_payment, rate_fixed_until, follow_up_rate",
         )
         .order("created_at", { ascending: true }),
       this.supabase
@@ -1027,6 +1031,8 @@ export class SupabaseStore implements DataStore {
         opened_on: input.openedOn,
         interest_rate: input.interestRate ?? null,
         min_payment: input.minPayment ?? null,
+        rate_fixed_until: input.rateFixedUntil ?? null,
+        follow_up_rate: input.followUpRate ?? null,
       })
       .select("id")
       .single();
@@ -1044,6 +1050,8 @@ export class SupabaseStore implements DataStore {
     if (patch.openedOn !== undefined) upd.opened_on = patch.openedOn;
     if (patch.interestRate !== undefined) upd.interest_rate = patch.interestRate;
     if (patch.minPayment !== undefined) upd.min_payment = patch.minPayment;
+    if (patch.rateFixedUntil !== undefined) upd.rate_fixed_until = patch.rateFixedUntil;
+    if (patch.followUpRate !== undefined) upd.follow_up_rate = patch.followUpRate;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's account
     // (migration 0092) too, and the row's user_id is left unchanged either

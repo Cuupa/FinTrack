@@ -25,7 +25,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
-import { isStorageFullError } from "@/lib/store/errors";
+import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
+import { reportError } from "@/lib/errors/report";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -89,6 +90,23 @@ export function ContractsView() {
    * exists would double-charge, whereas a failure between the two only leaves
    * the contract looking due again, which the next run resolves.
    */
+  /**
+   * A failed write must say WHY. The store surfaces the database's own
+   * message (missing column, check constraint, RLS refusal); hiding it behind
+   * "please try again" turns a fixable schema problem into a form that fails
+   * forever in silence. Reported to the error log too, per the owner rule
+   * that an error only visible in the browser does not exist.
+   */
+  function saveFailed(err: unknown, fallback: string): string {
+    if (isStorageFullError(err)) return t("common.storageFull");
+    const reason = storeErrorReason(err);
+    if (reason) {
+      reportError({ kind: "console", level: "error", message: `contracts: ${reason}` });
+      return `${fallback} ${reason}`;
+    }
+    return fallback;
+  }
+
   async function bookDue() {
     setBooking(true);
     setError(null);
@@ -112,7 +130,7 @@ export function ContractsView() {
         await updateContract(contractId, { lastBookedDate });
       }
     } catch (err) {
-      setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.due.error"));
+      setError(saveFailed(err, t("contracts.due.error")));
     } finally {
       setBooking(false);
     }
@@ -207,7 +225,7 @@ export function ContractsView() {
       setAccountId("");
       setTargetAccountId("");
     } catch (err) {
-      setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.form.error"));
+      setError(saveFailed(err, t("contracts.form.error")));
     } finally {
       setBusy(false);
     }
@@ -228,7 +246,7 @@ export function ContractsView() {
       );
       setDismissed((d) => new Set(d).add(`${c.payee}|${c.amount}`));
     } catch (err) {
-      setError(isStorageFullError(err) ? t("common.storageFull") : t("contracts.form.error"));
+      setError(saveFailed(err, t("contracts.form.error")));
     }
   }
 

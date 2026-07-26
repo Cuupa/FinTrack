@@ -7,7 +7,7 @@
 import type { Account, AccountBalance, Asset, Goal, Transaction } from "../types";
 import { summarizeAll, type ValuationContext } from "./portfolio";
 import { balanceSeries, currentAccountBalance } from "./accounts";
-import { amortizationSchedule } from "./debt";
+import { accountRateSteps, amortizationSchedule } from "./debt";
 import { daysBetween } from "./dates";
 
 /**
@@ -239,7 +239,15 @@ export function liabilityPayoffGoals(
     const balance = currentAccountBalance(account, accountBalances) * rate;
     const schedule =
       account.interestRate != null && account.minPayment != null
-        ? amortizationSchedule(balance, account.interestRate, account.minPayment * rate, todayIso)
+        ? amortizationSchedule(
+            balance,
+            account.interestRate,
+            account.minPayment * rate,
+            todayIso,
+            // Same schedule the /debt page amortises on, so a payoff goal's
+            // target date does not contradict the payoff table next door.
+            accountRateSteps(account),
+          )
         : null;
     out.push({
       id: `${PAYOFF_GOAL_PREFIX}${account.id}`,
