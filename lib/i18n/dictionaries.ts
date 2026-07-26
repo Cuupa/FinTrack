@@ -348,6 +348,9 @@ export const en = {
   "tour.debt.list.title": "Every liability",
   "tour.debt.list.body":
     "Loans, mortgages and credit lines from your accounts, with their rate and payoff date. Sort by rate to see what costs you most.",
+  "tour.debt.chart.title": "The shape of the debt",
+  "tour.debt.chart.body":
+    "How the balance falls month by month, where a fixed-rate period ends, and how much of each year goes to interest rather than principal.",
   "tour.debt.plan.title": "Avalanche or snowball",
   "tour.debt.plan.body":
     "Extra money goes either to the most expensive debt or to the smallest one. The plan shows what each choice costs you.",
@@ -1203,7 +1206,6 @@ export const en = {
   "debt.totals.debt": "Total outstanding",
   "debt.totals.minPayment": "Total minimum payments",
   "debt.totals.months": "Time to debt-free",
-  "debt.totals.monthsValue": "{n} months",
   "debt.list.title": "Your liabilities",
   "debt.list.empty": "No liability accounts yet. Add one on the Accounts page.",
   "debt.list.name": "Name",
@@ -2321,6 +2323,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.debt.list.title": "Alle Verbindlichkeiten",
   "tour.debt.list.body":
     "Kredite, Hypotheken und Kreditlinien aus deinen Konten, mit Zins und Abzahldatum. Sortier nach Zins, um zu sehen, was dich am meisten kostet.",
+  "tour.debt.chart.title": "Der Verlauf deiner Schuld",
+  "tour.debt.chart.body":
+    "Wie die Restschuld Monat für Monat sinkt, wo eine Zinsbindung endet und wie viel von jedem Jahr in Zinsen statt in Tilgung geht.",
   "tour.debt.plan.title": "Lawine oder Schneeball",
   "tour.debt.plan.body":
     "Zusätzliches Geld geht entweder auf die teuerste oder auf die kleinste Schuld. Der Plan zeigt, was dich die jeweilige Wahl kostet.",
@@ -3178,7 +3183,6 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.totals.debt": "Offene Verbindlichkeiten",
   "debt.totals.minPayment": "Mindestzahlungen gesamt",
   "debt.totals.months": "Zeit bis schuldenfrei",
-  "debt.totals.monthsValue": "{n} Monate",
   "debt.list.title": "Deine Verbindlichkeiten",
   "debt.list.empty": "Noch keine Verbindlichkeiten. Füge auf der Konten-Seite eine hinzu.",
   "debt.list.name": "Name",
@@ -4295,6 +4299,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.debt.list.title": "Todas las deudas",
   "tour.debt.list.body":
     "Préstamos, hipotecas y líneas de crédito de tus cuentas, con su interés y fecha de liquidación. Ordena por interés para ver qué te cuesta más.",
+  "tour.debt.chart.title": "La forma de tu deuda",
+  "tour.debt.chart.body":
+    "Cómo baja el saldo mes a mes, dónde termina un periodo de tipo fijo y cuánto de cada año se va en intereses en lugar de amortización.",
   "tour.debt.plan.title": "Avalancha o bola de nieve",
   "tour.debt.plan.body":
     "El dinero extra va a la deuda más cara o a la más pequeña. El plan muestra lo que te cuesta cada opción.",
@@ -5149,7 +5156,6 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.totals.debt": "Total pendiente",
   "debt.totals.minPayment": "Pagos mínimos totales",
   "debt.totals.months": "Tiempo hasta estar libre de deudas",
-  "debt.totals.monthsValue": "{n} meses",
   "debt.list.title": "Tus pasivos",
   "debt.list.empty": "Aún no hay cuentas de pasivo. Añade una en la página de Cuentas.",
   "debt.list.name": "Nombre",

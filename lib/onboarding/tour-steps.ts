@@ -276,6 +276,12 @@ export const DEBT_TOUR_STEPS: TourStep[] = [
     bodyKey: "tour.debt.list.body",
   },
   {
+    key: "debtChart",
+    target: "debt-chart",
+    titleKey: "tour.debt.chart.title",
+    bodyKey: "tour.debt.chart.body",
+  },
+  {
     key: "debtPlan",
     target: "debt-plan",
     titleKey: "tour.debt.plan.title",
