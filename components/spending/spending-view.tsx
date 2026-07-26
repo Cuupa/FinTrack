@@ -20,8 +20,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
-import { isStorageFullError } from "@/lib/store/errors";
+import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
+import { TransactionEditDialog } from "./transaction-edit-dialog";
 import { ImportSpending } from "./import-spending";
 import { SpendingSankeyCard } from "./spending-sankey-card";
 import { BudgetsCard } from "./budgets-card";
@@ -85,6 +86,9 @@ export function SpendingView() {
     dir: "desc",
   });
   const [confirmDelete, setConfirmDelete] = useState<SpendingTransaction | null>(null);
+  const [editingTx, setEditingTx] = useState<SpendingTransaction | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [toContract, setToContract] = useState<SpendingTransaction | null>(null);
 
   /**
@@ -432,6 +436,9 @@ export function SpendingView() {
                               {t("spending.list.makeContract")}
                             </Button>
                           )}
+                          <Button size="sm" variant="secondary" onClick={() => setEditingTx(tx)}>
+                            {t("spending.list.edit")}
+                          </Button>
                           <Button size="sm" variant="danger" onClick={() => setConfirmDelete(tx)}>
                             {t("spending.list.delete")}
                           </Button>
@@ -445,6 +452,42 @@ export function SpendingView() {
           </div>
         )}
       </Card>
+
+      {/* A booking is the row you get wrong most often (bank-abbreviated payee,
+          guessed category, mistyped amount), so it is editable rather than
+          delete-and-retype — which would also throw away its `recurringId`. */}
+      <TransactionEditDialog
+        transaction={editingTx}
+        accounts={data.accounts}
+        categories={data.spendingCategories}
+        busy={editBusy}
+        error={editError}
+        onSave={async (id, patch) => {
+          setEditBusy(true);
+          setEditError(null);
+          try {
+            await updateSpendingTransaction(id, patch);
+            setEditingTx(null);
+          } catch (err) {
+            // A failed write must say WHY: the store surfaces the database's
+            // own message (missing column, check constraint, RLS refusal).
+            const reason = storeErrorReason(err);
+            setEditError(
+              isStorageFullError(err)
+                ? t("common.storageFull")
+                : reason
+                  ? `${t("spending.form.error")} ${reason}`
+                  : t("spending.form.error"),
+            );
+          } finally {
+            setEditBusy(false);
+          }
+        }}
+        onClose={() => {
+          setEditingTx(null);
+          setEditError(null);
+        }}
+      />
 
       <CategoryManager open={managingCategories} onClose={() => setManagingCategories(false)} />
 

@@ -433,7 +433,13 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("contracts")
         .select(
-          "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured",
+          // The booking columns (migration 0095) MUST be listed here. They were
+          // written on insert and mapped in `contractFromRow`, but never
+          // selected -- so every contract came back with accountId null, which
+          // `booksSpending()` reads as "this contract does not post anything".
+          // A contract with an account and a start date therefore sat in the
+          // register forever without a single charge reaching the ledger.
+          "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured, account_id, booking_start_date, last_booked_date, target_account_id",
         )
         .order("created_at", { ascending: true }),
       this.supabase

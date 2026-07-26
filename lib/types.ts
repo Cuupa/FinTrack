@@ -237,9 +237,14 @@ export interface SpendingTransaction {
    * booked by a contract would read as pure consumption and the spending
    * picture would be wrong by the full premium every month.
    *
-   * It deliberately does not move either account's balance: in this app an
-   * account's value is its opening balance plus the dated readings the user
-   * maintains, and ordinary spending does not move it either.
+   * It moves BOTH accounts' balances: `lib/finance/account-ledger.ts` derives
+   * a movement on each side, and `lib/finance/accounts.ts` carries them
+   * forward from the most recent reading. That is what makes a loan instalment
+   * actually retire debt. (Before the ledger rework a balance was the opening
+   * value plus the readings the user typed and nothing else, so a contract
+   * could post a 450 EUR instalment every month while the loan never moved.)
+   * A dated reading still wins outright and re-anchors the chain, so a
+   * movement can never be counted twice.
    */
   transferAccountId?: string | null;
   /**

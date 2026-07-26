@@ -432,7 +432,10 @@ export function ContractsView() {
           the contract — including the three fields that decide whether it
           books at all (account, target account, start date), which is the
           whole point: a contract you cannot change is a dead entry. */}
-      <Modal open={editing !== null} onClose={() => setEditing(null)}>
+      {/* Wide enough for the form's three-column grid: at the default width the
+          fields stacked into one narrow column and the category dropdown, whose
+          options carry a "group · name" label, overflowed its own popover. */}
+      <Modal open={editing !== null} onClose={() => setEditing(null)} maxWidthClass="max-w-5xl">
         {editing && (
           <Card>
             <h2 className="text-lg font-semibold">{t("contracts.edit.title")}</h2>
