@@ -143,8 +143,14 @@ export function DebtView() {
     () => yearlySplit(plan.series, scopeId === ALL ? undefined : scopeId),
     [plan.series, scopeId],
   );
-  const markers = useMemo(
-    () =>
+  // A ReferenceLine on a categorical axis only draws when its x matches a
+  // data point exactly, and the series lands on today's day-of-month -- so the
+  // fixed-rate end date is snapped to the first plan month at or after it
+  // instead of silently drawing nothing.
+  const markers = useMemo(() => {
+    const dates = plan.series.map((p) => p.date);
+    const snap = (iso: string) => dates.find((d) => d >= iso) ?? dates[dates.length - 1];
+    return (
       rows
         .filter(
           (r) =>
@@ -154,14 +160,14 @@ export function DebtView() {
             r.account.rateFixedUntil! > todayIso,
         )
         .map((r) => ({
-          date: r.account.rateFixedUntil!,
+          date: snap(r.account.rateFixedUntil!),
           label:
             scopeId === ALL && rows.length > 1
               ? `${r.account.name}: ${t("debt.chart.fixedRateEnd")}`
               : t("debt.chart.fixedRateEnd"),
-        })),
-    [rows, scopeId, todayIso, t],
-  );
+        }))
+    );
+  }, [rows, scopeId, todayIso, t, plan.series]);
 
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
@@ -255,8 +261,10 @@ export function DebtView() {
                     <td className="px-3 py-2 text-xs text-zinc-500">
                       {account.rateFixedUntil && account.followUpRate != null ? (
                         <>
-                          {formatDate(account.rateFixedUntil)}
-                          <span className="ml-1">
+                          <span className="whitespace-nowrap">
+                            {formatDate(account.rateFixedUntil)}
+                          </span>
+                          <span className="block whitespace-nowrap">
                             {t("debt.list.followUp", { rate: account.followUpRate })}
                           </span>
                         </>
