@@ -620,7 +620,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const deleteGoal = useCallback(
     async (id: string) => {
       await store.deleteGoal(id);
-      setData((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) }));
+      // Sub-goals go with their parent, mirroring the DB's on delete cascade.
+      setData((d) => ({
+        ...d,
+        goals: d.goals.filter((g) => g.id !== id && g.parentGoalId !== id),
+      }));
     },
     [store],
   );

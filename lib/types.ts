@@ -378,6 +378,13 @@ export const INSURANCE_TYPES: InsuranceType[] = [
  * nullable and set null (not cascade-deleted) when its account goes away --
  * mirrors `Contract.categoryId`'s "still means something" precedent -- the
  * goal simply falls back to manual tracking.
+ *
+ * A goal is either atomic ("emergency fund") or composite ("trip to the USA"
+ * = flight + hotel + taxi). Composition is expressed by the SUB-goals
+ * pointing at their parent via `parentGoalId`, so an atomic goal needs no
+ * extra fields at all. A parent's target and progress are then DERIVED from
+ * its children (`goalTotals` in lib/finance/goals.ts) -- its own
+ * `targetAmount` and tracking fields stop being used the moment it has one.
  */
 export interface Goal {
   id: string;
@@ -400,6 +407,11 @@ export interface Goal {
   /** Which broker's depot is tracked; null = every portfolio combined. Only
    *  meaningful when `tracksInvestments`. */
   linkedPortfolioId: string | null;
+  /** The goal this one is a sub-goal of; null = a top-level goal. Nesting is
+   *  deliberately one level deep: a sub-goal is a line item ("flight"), not
+   *  another project. Deleting a parent cascades to its sub-goals -- a
+   *  sub-goal on its own means nothing. */
+  parentGoalId: string | null;
 }
 
 /** How often a cash position's interest is credited and compounded. */

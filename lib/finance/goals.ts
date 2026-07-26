@@ -102,6 +102,61 @@ export function goalProgress(
   return goal.manualCurrentAmount ?? 0;
 }
 
+/**
+ * The sub-goals of `parentId`, in list order. A goal is composite ("trip to
+ * the USA") when it has any and atomic ("emergency fund") when it has none --
+ * there is no separate flag to keep in sync.
+ */
+export function subGoals(goals: readonly Goal[], parentId: string): Goal[] {
+  return goals.filter((g) => g.parentGoalId === parentId);
+}
+
+/** Every goal that is not a sub-goal of another one. */
+export function topLevelGoals(goals: readonly Goal[]): Goal[] {
+  return goals.filter((g) => !g.parentGoalId);
+}
+
+/** A goal's target and current progress, both in the base currency. */
+export interface GoalTotals {
+  target: number;
+  current: number;
+}
+
+/**
+ * Target and progress of a goal that may be composite. With sub-goals both
+ * are the SUM over them -- the whole point of splitting a trip into flight +
+ * hotel + taxi is that the trip costs what its parts cost, so a parent's own
+ * `targetAmount` and tracking fields are ignored while it has children (they
+ * would otherwise double-count the same money). With no sub-goals this is
+ * exactly `goal.targetAmount` and {@link goalProgress}, so atomic goals are
+ * unaffected.
+ *
+ * Nesting is one level deep (see `Goal.parentGoalId`), so a child's own
+ * target is always its stored one -- no recursion needed.
+ */
+export function goalTotals(
+  goal: Goal,
+  children: readonly Goal[],
+  accounts: Account[],
+  accountBalances: AccountBalance[],
+  valuation?: GoalValuation,
+  investments?: GoalInvestments,
+): GoalTotals {
+  if (children.length === 0) {
+    return {
+      target: goal.targetAmount,
+      current: goalProgress(goal, accounts, accountBalances, valuation, investments),
+    };
+  }
+  let target = 0;
+  let current = 0;
+  for (const child of children) {
+    target += child.targetAmount;
+    current += goalProgress(child, accounts, accountBalances, valuation, investments);
+  }
+  return { target, current };
+}
+
 /** Progress percentage toward the target, clamped to [0, 100]. */
 export function goalProgressPct(targetAmount: number, current: number): number {
   return Math.min(100, Math.max(0, targetAmount > 0 ? (current / targetAmount) * 100 : 0));
@@ -170,6 +225,7 @@ export function liabilityPayoffGoals(
       manualCurrentAmount: null,
       tracksInvestments: false,
       linkedPortfolioId: null,
+      parentGoalId: null,
     });
   }
   return out;
@@ -179,20 +235,25 @@ export function liabilityPayoffGoals(
 const AVG_DAYS_PER_MONTH = 30.44;
 
 /**
- * Monthly contribution required to reach `goal.targetAmount` by
+ * Monthly contribution required to reach the goal's target by
  * `goal.targetDate`, in the base currency. Null when there's no target date,
  * or the target is already met. Months remaining is floored at a minimum of
  * 1 so a same-day or past-due target date never divides by zero or produces
  * a negative/infinite result.
+ *
+ * `target` defaults to the goal's own amount; a composite goal passes the
+ * summed target from {@link goalTotals} instead, since that is the figure
+ * actually being saved toward.
  */
 export function requiredMonthlyContribution(
   goal: Goal,
   current: number,
   todayIso: string,
+  target: number = goal.targetAmount,
 ): number | null {
   if (!goal.targetDate) return null;
-  if (current >= goal.targetAmount) return null;
+  if (current >= target) return null;
   const days = daysBetween(todayIso, goal.targetDate);
   const monthsRemaining = Math.max(1, days / AVG_DAYS_PER_MONTH);
-  return (goal.targetAmount - current) / monthsRemaining;
+  return (target - current) / monthsRemaining;
 }

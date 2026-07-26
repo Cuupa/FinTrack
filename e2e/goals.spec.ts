@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { dismissTour } from "./helpers";
 
-// Goals (/goals, flag `goals`) in Guest Mode. Two rules the unit tests can't
-// see because they live in the wiring: a goal needs no target date, and a
+// Goals (/goals, flag `goals`) in Guest Mode. Three rules the unit tests
+// can't see because they live in the wiring: a goal needs no target date, a
 // liability account shows up as a payoff goal without the user restating it
-// as one.
+// as one, and a goal built from sub-goals takes its target from their sum.
 
 /** Add a liability account through the /accounts form (network-free). */
 async function addLoan(page: Page, name: string, opening: string) {
@@ -33,6 +33,46 @@ test("a liability is listed as a payoff goal without being created by hand", asy
   await expect(row.getByRole("button", { name: "Delete" })).toHaveCount(0);
   // No interest rate / minimum payment entered, so there is no honest date.
   await expect(row).toContainText("Open-ended");
+});
+
+test("a goal made of sub-goals is worth the sum of its parts", async ({ page }) => {
+  await page.goto("/goals");
+  await dismissTour(page);
+
+  /** Fill the add-goal form, optionally filing the goal under a parent. */
+  async function addGoal(name: string, target: string, parent?: string) {
+    await page.locator("#goal-name").fill(name);
+    await page.locator("#goal-target").fill(target);
+    if (parent) {
+      await page.getByRole("button", { name: "Part of" }).click();
+      // Not exact: options carry an always-rendered check glyph (see addLoan).
+      await page.getByRole("option", { name: parent }).click();
+    }
+    await page.getByRole("button", { name: "Add goal", exact: true }).click();
+  }
+
+  // The parent's own target (1) is deliberately nonsense: once it has parts,
+  // it is the sum of them that counts.
+  await addGoal("Trip to the USA", "1");
+  await addGoal("Flight", "800", "Trip to the USA");
+  await addGoal("Hotel", "600", "Trip to the USA");
+
+  const rows = page.locator('[data-tour="goals-list"] tbody tr');
+  const trip = rows.filter({ hasText: "Trip to the USA" });
+  await expect(trip).toContainText("Sum of 2 parts");
+  await expect(trip).toContainText("€1,400.00");
+
+  // A sub-goal is offered as a part, never as a parent of its own.
+  await page.getByRole("button", { name: "Part of" }).click();
+  await expect(page.getByRole("option", { name: "Flight" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // Deleting the whole goal takes its parts with it (store + DB cascade).
+  await trip.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("its 2 parts");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+  await expect(rows.filter({ hasText: "Flight" })).toHaveCount(0);
+  await expect(rows.filter({ hasText: "Hotel" })).toHaveCount(0);
 });
 
 test("a goal saves without a target date and reads as open-ended", async ({ page }) => {

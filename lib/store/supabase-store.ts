@@ -266,6 +266,8 @@ interface GoalRow {
   // Optional: a DB that predates migration 0097 doesn't return these.
   tracks_investments?: boolean | null;
   linked_portfolio_id?: string | null;
+  // Optional: a DB that predates migration 0098 doesn't return this.
+  parent_goal_id?: string | null;
 }
 
 function goalFromRow(r: GoalRow): Goal {
@@ -280,6 +282,9 @@ function goalFromRow(r: GoalRow): Goal {
     // manual" exactly like before.
     tracksInvestments: r.tracks_investments ?? false,
     linkedPortfolioId: r.linked_portfolio_id ?? null,
+    // Defaulted, so a DB that predates migration 0098 reads every goal as
+    // top-level exactly like before.
+    parentGoalId: r.parent_goal_id ?? null,
   };
 }
 
@@ -392,7 +397,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("goals")
         .select(
-          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id",
+          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id, parent_goal_id",
         )
         .order("created_at", { ascending: true }),
       // Personal, never household-shared (see migration 0093's comment).
@@ -1248,6 +1253,7 @@ export class SupabaseStore implements DataStore {
         manual_current_amount: input.manualCurrentAmount,
         tracks_investments: input.tracksInvestments,
         linked_portfolio_id: input.linkedPortfolioId,
+        parent_goal_id: input.parentGoalId,
       })
       .select("id")
       .single();
@@ -1268,6 +1274,7 @@ export class SupabaseStore implements DataStore {
     if (patch.manualCurrentAmount !== undefined) {
       upd.manual_current_amount = patch.manualCurrentAmount;
     }
+    if (patch.parentGoalId !== undefined) upd.parent_goal_id = patch.parentGoalId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's goal too.
     const { data, error } = await this.supabase

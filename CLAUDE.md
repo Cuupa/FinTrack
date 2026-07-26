@@ -639,7 +639,17 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
   #2): quick-add form + sortable transaction table + category manager modal
 - `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
   optional** (open-ended goals are first class; a date only buys the
-  monthly-needed figure). Every liability account is listed as a **derived**
+  monthly-needed figure). A goal is either atomic ("emergency fund") or
+  **composite** ("trip to the USA" = flight + hotel + taxi): sub-goals point
+  at their parent through `Goal.parentGoalId` (migration 0098, self-FK, `on
+  delete cascade` — a sub-goal without its parent means nothing, so the DB,
+  `LocalStore.deleteGoal` and `PortfolioProvider` all drop them together and
+  the ConfirmDialog says how many). Nesting is **one level deep**: the parent
+  picker only ever offers top-level goals. A parent's target and progress are
+  DERIVED as the sum over its parts (`goalTotals`, pure) — its own
+  `targetAmount` and tracking fields stop being used the moment it has one,
+  so nothing is counted twice. The dashboard `GoalsCard` counts
+  `topLevelGoals` only, for the same reason. Every liability account is listed as a **derived**
   payoff goal (`liabilityPayoffGoals`, sentinel id `debt:<accountId>`, never
   stored): target = the highest balance ever owed, progress = what has been
   repaid, target date = the amortisation payoff date only when the account

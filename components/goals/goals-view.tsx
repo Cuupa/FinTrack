@@ -16,11 +16,13 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today } from "@/lib/finance/dates";
 import {
   goalInvestments,
-  goalProgress,
   goalProgressPct,
+  goalTotals,
   isPayoffGoal,
   liabilityPayoffGoals,
   requiredMonthlyContribution,
+  subGoals,
+  topLevelGoals,
 } from "@/lib/finance/goals";
 import type { Goal } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
@@ -43,6 +45,23 @@ const DEPOT_ALL = DEPOT_PREFIX;
 const isDepotTracking = (v: string) => v.startsWith(DEPOT_PREFIX);
 
 type SortKey = "name" | "progress" | "targetAmount" | "targetDate";
+
+/** A goal plus the figures shown for it. `target`/`current` are the derived
+ *  ones, so a composite goal reports the sum over its sub-goals. */
+interface Row {
+  goal: Goal;
+  target: number;
+  current: number;
+  pct: number;
+  monthly: number | null;
+}
+
+/** One top-level goal with its sub-goals, in display order. */
+interface TreeRow extends Row {
+  children: Row[];
+}
+
+const NO_PARENT = "";
 
 export function GoalsView() {
   const { data, addGoal, deleteGoal } = usePortfolio();
@@ -67,6 +86,9 @@ export function GoalsView() {
       data.accounts.find((a) => a.id === tracking)?.isLiability,
   );
   const [manualCurrentAmount, setManualCurrentAmount] = useState("");
+  // Empty = a standalone goal. Only top-level goals are offered: a sub-goal
+  // is a line item ("flight"), never a project of its own.
+  const [parentGoalId, setParentGoalId] = useState(NO_PARENT);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +99,7 @@ export function GoalsView() {
     dir: "desc",
   });
   const [confirmDelete, setConfirmDelete] = useState<Goal | null>(null);
+  const deletedSubGoals = confirmDelete ? subGoals(data.goals, confirmDelete.id).length : 0;
 
   // Depot value overall and per broker, for goals that track investments.
   const investments = useMemo(
@@ -93,25 +116,51 @@ export function GoalsView() {
     [data.accounts, data.accountBalances, data.goals, todayIso, valuation],
   );
 
+  // Only top-level goals can take sub-goals (one level deep), and a derived
+  // payoff goal is owned by its account, so it is no candidate either.
+  const parentCandidates = useMemo(() => topLevelGoals(data.goals), [data.goals]);
+
   const rows = useMemo(() => {
-    const withProgress = [...payoffGoals, ...data.goals].map((g) => {
-      const current = goalProgress(g, data.accounts, data.accountBalances, valuation, investments);
-      const pct = goalProgressPct(g.targetAmount, current);
-      // The monthly figure a payoff goal needs is its minimum payment plus
-      // interest, which /debt already amortises properly -- dividing the
-      // remaining principal by the months would understate it here.
-      const monthly = isPayoffGoal(g) ? null : requiredMonthlyContribution(g, current, todayIso);
-      return { goal: g, current, pct, monthly };
-    });
-    withProgress.sort((x, y) => {
+    const measure = (goal: Goal, children: Goal[]): Row => {
+      const { target, current } = goalTotals(
+        goal,
+        children,
+        data.accounts,
+        data.accountBalances,
+        valuation,
+        investments,
+      );
+      return {
+        goal,
+        target,
+        current,
+        pct: goalProgressPct(target, current),
+        // The monthly figure a payoff goal needs is its minimum payment plus
+        // interest, which /debt already amortises properly -- dividing the
+        // remaining principal by the months would understate it here.
+        monthly: isPayoffGoal(goal)
+          ? null
+          : requiredMonthlyContribution(goal, current, todayIso, target),
+      };
+    };
+
+    const bySort = (x: Row, y: Row) => {
       let cmp = 0;
       if (sort.key === "name") cmp = x.goal.name.localeCompare(y.goal.name);
       else if (sort.key === "progress") cmp = x.pct - y.pct;
-      else if (sort.key === "targetAmount") cmp = x.goal.targetAmount - y.goal.targetAmount;
+      else if (sort.key === "targetAmount") cmp = x.target - y.target;
       else cmp = (x.goal.targetDate ?? "").localeCompare(y.goal.targetDate ?? "");
       return sort.dir === "asc" ? cmp : -cmp;
+    };
+
+    // Sub-goals stay under their parent; sorting reorders the top level and,
+    // inside each composite goal, its own parts.
+    const tree: TreeRow[] = [...payoffGoals, ...topLevelGoals(data.goals)].map((g) => {
+      const children = subGoals(data.goals, g.id);
+      return { ...measure(g, children), children: children.map((c) => measure(c, [])).sort(bySort) };
     });
-    return withProgress;
+    tree.sort(bySort);
+    return tree;
   }, [
     data.goals,
     data.accounts,
@@ -147,17 +196,101 @@ export function GoalsView() {
         linkedPortfolioId: depot ? tracking.slice(DEPOT_PREFIX.length) || null : null,
         manualCurrentAmount:
           tracking || manual === null || !Number.isFinite(manual) ? null : manual,
+        // Re-checked against the live list: the picked parent may have been
+        // deleted (or turned into a sub-goal) since it was selected.
+        parentGoalId: parentCandidates.some((g) => g.id === parentGoalId) ? parentGoalId : null,
       });
       setName("");
       setTargetAmount("");
       setTargetDate("");
       setTracking(MANUAL_TRACKING);
       setManualCurrentAmount("");
+      setParentGoalId(NO_PARENT);
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("goals.form.error"));
     } finally {
       setBusy(false);
     }
+  }
+
+  /**
+   * One table row. `childCount` > 0 marks a composite goal, whose figures are
+   * the sum over its parts -- its own tracking is not shown, because it is
+   * not used (lib/finance/goals.ts `goalTotals`). `isChild` indents a
+   * sub-goal under the goal it belongs to.
+   */
+  function renderRow({ goal, target, current, pct, monthly }: Row, childCount: number, isChild = false) {
+    const color = colorForLabel(goal.name);
+    const derived = isPayoffGoal(goal);
+    const linkedAccount = goal.linkedAccountId ? accountsById.get(goal.linkedAccountId) : null;
+    const depotBroker =
+      goal.tracksInvestments && goal.linkedPortfolioId
+        ? data.portfolios.find((p) => p.id === goal.linkedPortfolioId)
+        : null;
+    return (
+      <tr
+        key={goal.id}
+        className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+      >
+        <td className={`px-3 py-2 font-medium ${isChild ? "pl-8" : ""}`} data-private>
+          {isChild && <span className="mr-1 text-zinc-400">↳</span>}
+          {goal.name}
+          <div className="text-xs font-normal text-zinc-500">
+            {childCount > 0
+              ? t("goals.list.sumOfSubGoals", { n: childCount })
+              : derived
+                ? t("goals.list.autoPayoff")
+                : goal.tracksInvestments
+                  ? depotBroker
+                    ? t("goals.form.brokerDepot", { name: depotBroker.name })
+                    : t("goals.form.wholeDepot")
+                  : linkedAccount
+                    ? t("goals.list.linkedTo", { name: linkedAccount.name })
+                    : t("goals.list.manualTracking")}
+          </div>
+        </td>
+        <td className="px-3 py-2">
+          <div className="min-w-[10rem]">
+            <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
+              <span data-private>
+                {formatCurrency(current, base)} / {formatCurrency(target, base)}
+              </span>
+              <span>{Math.round(pct)}%</span>
+            </div>
+            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${pct}%`, backgroundColor: color }}
+              />
+            </div>
+            {monthly !== null && (
+              <p className="mt-1 text-xs text-zinc-500">
+                {t("goals.list.monthlyNeeded", { amount: formatCurrency(monthly, base) })}
+              </p>
+            )}
+          </div>
+        </td>
+        <td className="px-3 py-2 text-right tabular-nums" data-private>
+          {formatCurrency(target, base)}
+        </td>
+        <td className="px-3 py-2">
+          {goal.targetDate ? (
+            formatDate(goal.targetDate)
+          ) : (
+            <span className="text-zinc-500">{t("goals.list.openEnded")}</span>
+          )}
+        </td>
+        <td className="px-3 py-2">
+          <div className="flex items-center justify-end gap-2">
+            {!derived && (
+              <Button size="sm" variant="danger" onClick={() => setConfirmDelete(goal)}>
+                {t("goals.list.delete")}
+              </Button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
   }
 
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
@@ -240,6 +373,22 @@ export function GoalsView() {
               </p>
             )}
           </div>
+          {parentCandidates.length > 0 && (
+            <div>
+              <label className="text-sm font-medium">{t("goals.form.parentLabel")}</label>
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("goals.form.parentLabel")}
+                value={parentGoalId}
+                onChange={setParentGoalId}
+                options={[
+                  { value: NO_PARENT, label: t("goals.form.noParent") },
+                  ...parentCandidates.map((g) => ({ value: g.id, label: g.name })),
+                ]}
+              />
+              <p className="mt-1 text-sm text-zinc-500">{t("goals.form.parentHint")}</p>
+            </div>
+          )}
           {!tracking && (
             <div>
               <label className="text-sm font-medium" htmlFor="goal-manual-current">
@@ -301,82 +450,10 @@ export function GoalsView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ goal, current, pct, monthly }) => {
-                  const color = colorForLabel(goal.name);
-                  const derived = isPayoffGoal(goal);
-                  const linkedAccount = goal.linkedAccountId
-                    ? accountsById.get(goal.linkedAccountId)
-                    : null;
-                  const depotBroker =
-                    goal.tracksInvestments && goal.linkedPortfolioId
-                      ? data.portfolios.find((p) => p.id === goal.linkedPortfolioId)
-                      : null;
-                  return (
-                    <tr
-                      key={goal.id}
-                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                    >
-                      <td className="px-3 py-2 font-medium" data-private>
-                        {goal.name}
-                        <div className="text-xs font-normal text-zinc-500">
-                          {derived
-                            ? t("goals.list.autoPayoff")
-                            : goal.tracksInvestments
-                              ? depotBroker
-                                ? t("goals.form.brokerDepot", { name: depotBroker.name })
-                                : t("goals.form.wholeDepot")
-                              : linkedAccount
-                                ? t("goals.list.linkedTo", { name: linkedAccount.name })
-                                : t("goals.list.manualTracking")}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="min-w-[10rem]">
-                          <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
-                            <span data-private>
-                              {formatCurrency(current, base)} / {formatCurrency(goal.targetAmount, base)}
-                            </span>
-                            <span>{Math.round(pct)}%</span>
-                          </div>
-                          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{ width: `${pct}%`, backgroundColor: color }}
-                            />
-                          </div>
-                          {monthly !== null && (
-                            <p className="mt-1 text-xs text-zinc-500">
-                              {t("goals.list.monthlyNeeded", { amount: formatCurrency(monthly, base) })}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums" data-private>
-                        {formatCurrency(goal.targetAmount, base)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {goal.targetDate ? (
-                          formatDate(goal.targetDate)
-                        ) : (
-                          <span className="text-zinc-500">{t("goals.list.openEnded")}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center justify-end gap-2">
-                          {!derived && (
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => setConfirmDelete(goal)}
-                            >
-                              {t("goals.list.delete")}
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rows.flatMap((row) => [
+                  renderRow(row, row.children.length),
+                  ...row.children.map((child) => renderRow(child, 0, true)),
+                ])}
               </tbody>
             </table>
           </div>
@@ -386,7 +463,18 @@ export function GoalsView() {
       <ConfirmDialog
         open={confirmDelete !== null}
         title={t("goals.delete.title")}
-        message={confirmDelete ? t("goals.delete.message", { name: confirmDelete.name }) : undefined}
+        // Deleting a parent takes its sub-goals with it (store + DB cascade),
+        // so the confirmation says how many.
+        message={
+          confirmDelete
+            ? deletedSubGoals > 0
+              ? t("goals.delete.messageWithSubGoals", {
+                  name: confirmDelete.name,
+                  n: deletedSubGoals,
+                })
+              : t("goals.delete.message", { name: confirmDelete.name })
+            : undefined
+        }
         confirmLabel={t("goals.list.delete")}
         onConfirm={() => {
           if (confirmDelete) void deleteGoal(confirmDelete.id);

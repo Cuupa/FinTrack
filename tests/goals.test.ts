@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   goalProgress,
   goalProgressPct,
+  goalTotals,
   isPayoffGoal,
   liabilityPayoffGoals,
   requiredMonthlyContribution,
+  subGoals,
+  topLevelGoals,
 } from "@/lib/finance/goals";
 import type { Account, AccountBalance, Goal } from "@/lib/types";
 
@@ -18,6 +21,7 @@ function goal(overrides: Partial<Goal> = {}): Goal {
     manualCurrentAmount: null,
     tracksInvestments: false,
     linkedPortfolioId: null,
+    parentGoalId: null,
     ...overrides,
   };
 }
@@ -120,6 +124,60 @@ describe("goalProgress with depot tracking", () => {
   it("wins over a leftover linked account", () => {
     const g = goal({ tracksInvestments: true, linkedAccountId: "a1" });
     expect(goalProgress(g, [account({ openingBalance: 4000 })], [], undefined, depot)).toBe(25000);
+  });
+});
+
+describe("sub-goals", () => {
+  // "A trip to the USA" is flight + hotel + taxi; "emergency fund" is atomic.
+  const trip = goal({ id: "trip", name: "USA", targetAmount: 1, manualCurrentAmount: 5 });
+  const flight = goal({
+    id: "flight",
+    targetAmount: 800,
+    manualCurrentAmount: 200,
+    parentGoalId: "trip",
+  });
+  const hotel = goal({
+    id: "hotel",
+    targetAmount: 600,
+    manualCurrentAmount: 100,
+    parentGoalId: "trip",
+  });
+  const taxi = goal({ id: "taxi", targetAmount: 100, parentGoalId: "trip" });
+  const all = [trip, flight, hotel, taxi];
+
+  it("finds the parts of a goal", () => {
+    expect(subGoals(all, "trip").map((g) => g.id)).toEqual(["flight", "hotel", "taxi"]);
+    expect(subGoals(all, "flight")).toEqual([]);
+  });
+
+  it("lists only goals that are not part of another", () => {
+    expect(topLevelGoals(all).map((g) => g.id)).toEqual(["trip"]);
+  });
+
+  it("sums the parts into the whole goal's target and progress", () => {
+    const totals = goalTotals(trip, subGoals(all, "trip"), [], []);
+    expect(totals.target).toBe(1500);
+    expect(totals.current).toBe(300);
+  });
+
+  it("ignores the parent's own amount and tracking once it has parts", () => {
+    const linked = goal({ ...trip, linkedAccountId: "a1", targetAmount: 99999 });
+    const totals = goalTotals(linked, [flight], [account({ id: "a1", openingBalance: 4000 })], []);
+    expect(totals.target).toBe(800);
+    expect(totals.current).toBe(200);
+  });
+
+  it("falls back to the goal's own figures when it has no parts", () => {
+    const atomic = goal({ targetAmount: 10000, manualCurrentAmount: 2500 });
+    expect(goalTotals(atomic, [], [], [])).toEqual({ target: 10000, current: 2500 });
+  });
+
+  it("paces the monthly contribution off the summed target", () => {
+    const dated = goal({ ...trip, targetDate: "2024-07-01" });
+    const totals = goalTotals(dated, subGoals(all, "trip"), [], []);
+    const monthly = requiredMonthlyContribution(dated, totals.current, "2024-01-01", totals.target);
+    // (1500 - 300) spread over the ~6 months to the target date.
+    expect(monthly).toBeCloseTo(1200 / (182 / 30.44), 5);
   });
 });
 

@@ -25,9 +25,11 @@ import { accountsTotals, currentAccountBalance } from "@/lib/finance/accounts";
 import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
 import {
   goalInvestments,
-  goalProgress,
   goalProgressPct,
+  goalTotals,
   liabilityPayoffGoals,
+  subGoals,
+  topLevelGoals,
 } from "@/lib/finance/goals";
 import { today } from "@/lib/finance/dates";
 
@@ -202,35 +204,48 @@ function GoalsCard() {
   );
 
   // Liabilities carry their own derived payoff goals (lib/finance/goals.ts),
-  // so the card counts what /goals lists, not just the typed-in ones.
+  // so the card counts what /goals lists, not just the typed-in ones. Only
+  // top-level goals count: a sub-goal is part of one of them, not a goal of
+  // its own (it would otherwise show up twice, once alone and once inside its
+  // parent's summed total).
   const goals = useMemo(() => {
     const v = { base: currency, fx: valuation.fx };
     return [
       ...liabilityPayoffGoals(data.accounts, data.accountBalances, data.goals, today(), v),
-      ...data.goals,
+      ...topLevelGoals(data.goals),
     ];
   }, [data.goals, data.accounts, data.accountBalances, currency, valuation.fx]);
 
-  const rows = useMemo(() => {
+  // Target and progress per goal, summed over its sub-goals where it has any.
+  const totals = useMemo(() => {
     const v = { base: currency, fx: valuation.fx };
-    return goals
-      .map((goal) => {
-        const current = goalProgress(goal, data.accounts, data.accountBalances, v, investments);
-        return { goal, pct: goalProgressPct(goal.targetAmount, current) };
-      })
-      // Closest to done first: the ones worth a glance.
-      .sort((a, b) => b.pct - a.pct)
-      .slice(0, 3);
-  }, [goals, data.accounts, data.accountBalances, currency, valuation.fx, investments]);
+    return goals.map((goal) => ({
+      goal,
+      ...goalTotals(
+        goal,
+        subGoals(data.goals, goal.id),
+        data.accounts,
+        data.accountBalances,
+        v,
+        investments,
+      ),
+    }));
+  }, [goals, data.goals, data.accounts, data.accountBalances, currency, valuation.fx, investments]);
 
-  const reached = useMemo(() => {
-    const v = { base: currency, fx: valuation.fx };
-    return goals.filter(
-      (g) =>
-        g.targetAmount > 0 &&
-        goalProgress(g, data.accounts, data.accountBalances, v, investments) >= g.targetAmount,
-    ).length;
-  }, [goals, data.accounts, data.accountBalances, currency, valuation.fx, investments]);
+  const rows = useMemo(
+    () =>
+      totals
+        .map(({ goal, target, current }) => ({ goal, pct: goalProgressPct(target, current) }))
+        // Closest to done first: the ones worth a glance.
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 3),
+    [totals],
+  );
+
+  const reached = useMemo(
+    () => totals.filter(({ target, current }) => target > 0 && current >= target).length,
+    [totals],
+  );
 
   return (
     <Card>
