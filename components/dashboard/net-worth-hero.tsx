@@ -19,6 +19,7 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { accountsTotals, accountsValueOn } from "@/lib/finance/accounts";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { NetWorthComposition } from "./net-worth-composition";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { today } from "@/lib/finance/dates";
@@ -107,6 +108,10 @@ export function NetWorthHero({
     return { ...valuation, fxHistory: fx };
   }, [valuation, fx]);
 
+  // Bookings move balances (lib/finance/account-ledger.ts): the chart carries
+  // each account forward from its last reading instead of holding it flat.
+  const movements = useAccountMovements();
+
   const { points: series, containsSynthetic } = useMemo(
     () =>
       netWorthSeries(
@@ -117,8 +122,18 @@ export function NetWorthHero({
         histories,
         accounts,
         accountBalances,
+        movements,
       ),
-    [data.assets, data.transactions, timeframe, effectiveValuation, histories, accounts, accountBalances],
+    [
+      data.assets,
+      data.transactions,
+      timeframe,
+      effectiveValuation,
+      histories,
+      accounts,
+      accountBalances,
+      movements,
+    ],
   );
   // True time-weighted cumulative return (price-based, deposits never counted),
   // for "Return" mode — what brokers plot as TWROR.
@@ -137,8 +152,9 @@ export function NetWorthHero({
   // Net worth includes balance accounts & liabilities (ROADMAP #1): holdings
   // market value plus the signed sum of every account, in the base currency.
   const accountsNet = useMemo(
-    () => (accounts ? accountsValueOn(accounts, accountBalances ?? [], today(), valuation) : 0),
-    [accounts, accountBalances, valuation],
+    () =>
+      accounts ? accountsValueOn(accounts, accountBalances ?? [], today(), valuation, movements) : 0,
+    [accounts, accountBalances, valuation, movements],
   );
   const netWorth = totals.marketValue + accountsNet;
 
@@ -147,9 +163,9 @@ export function NetWorthHero({
   const acctSplit = useMemo(
     () =>
       accounts
-        ? accountsTotals(accounts, accountBalances ?? [], valuation)
+        ? accountsTotals(accounts, accountBalances ?? [], valuation, movements)
         : { assets: 0, liabilities: 0, net: 0 },
-    [accounts, accountBalances, valuation],
+    [accounts, accountBalances, valuation, movements],
   );
 
   // Money-weighted return (IRR / interner Zinsfuß) across all cash flows.

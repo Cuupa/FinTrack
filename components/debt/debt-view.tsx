@@ -16,6 +16,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today, addMonthsToDate } from "@/lib/finance/dates";
 import { currentAccountBalance, accountFxRate } from "@/lib/finance/accounts";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import {
   accountRateSteps,
   amortizationSchedule,
@@ -51,10 +52,12 @@ export function DebtView() {
     [data.accounts],
   );
 
+  const movements = useAccountMovements();
+
   const rows = useMemo(() => {
     return liabilityAccounts.map((account) => {
       const rate = accountFxRate(account, valuation);
-      const balance = currentAccountBalance(account, data.accountBalances) * rate;
+      const balance = currentAccountBalance(account, data.accountBalances, movements) * rate;
       const hasSchedule = account.interestRate != null && account.minPayment != null;
       const steps = accountRateSteps(account);
       const schedule = hasSchedule
@@ -68,7 +71,7 @@ export function DebtView() {
         : null;
       return { account, balance, payment: (account.minPayment ?? 0) * rate, steps, schedule };
     });
-  }, [liabilityAccounts, data.accountBalances, valuation, todayIso]);
+  }, [liabilityAccounts, data.accountBalances, valuation, todayIso, movements]);
 
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "balance",

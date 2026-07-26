@@ -18,6 +18,7 @@ import {
   type AccountKind,
 } from "@/lib/types";
 import { accountsTotals, currentAccountBalance } from "@/lib/finance/accounts";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -38,9 +39,11 @@ export function AccountsView() {
   const { t } = useI18n();
   const base = data.profile.currency;
 
+  const movements = useAccountMovements();
+
   const totals = useMemo(
-    () => accountsTotals(data.accounts, data.accountBalances, valuation),
-    [data.accounts, data.accountBalances, valuation],
+    () => accountsTotals(data.accounts, data.accountBalances, valuation, movements),
+    [data.accounts, data.accountBalances, valuation, movements],
   );
 
   // Add-account form state.
@@ -64,7 +67,7 @@ export function AccountsView() {
 
   const rows = useMemo(() => {
     const withValues = data.accounts.map((a) => {
-      const magnitude = currentAccountBalance(a, data.accountBalances);
+      const magnitude = currentAccountBalance(a, data.accountBalances, movements);
       const signed = a.isLiability ? -magnitude : magnitude;
       return { account: a, signed };
     });

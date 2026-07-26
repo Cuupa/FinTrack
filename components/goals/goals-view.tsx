@@ -27,6 +27,7 @@ import {
   subGoals,
   topLevelGoals,
 } from "@/lib/finance/goals";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import type { Account, Goal, Portfolio } from "@/lib/types";
 import type { GoalInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
@@ -367,10 +368,19 @@ export function GoalsView() {
   // Every liability is a payoff goal already; the user only has to say so for
   // the ones they want to track differently (a top-level goal of their own on
   // the same account replaces the derived one).
+  const movements = useAccountMovements();
+
   const payoffGoals = useMemo(
     () =>
-      liabilityPayoffGoals(data.accounts, data.accountBalances, data.goals, todayIso, valuation),
-    [data.accounts, data.accountBalances, data.goals, todayIso, valuation],
+      liabilityPayoffGoals(
+        data.accounts,
+        data.accountBalances,
+        data.goals,
+        todayIso,
+        valuation,
+        movements,
+      ),
+    [data.accounts, data.accountBalances, data.goals, todayIso, valuation, movements],
   );
 
   // Only top-level goals can take sub-goals (one level deep), and a derived
@@ -395,6 +405,7 @@ export function GoalsView() {
         data.accountBalances,
         valuation,
         investments,
+        movements,
       );
       return {
         goal,
@@ -436,6 +447,7 @@ export function GoalsView() {
     sort,
     todayIso,
     investments,
+    movements,
   ]);
 
   function toggleSort(key: SortKey) {

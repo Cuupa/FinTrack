@@ -842,6 +842,34 @@ client pages (see `app/assets/[id]/page.tsx`).
   (owner rule, round 24): "Liabilities" / "Verbindlichkeiten" / "Pasivos" in
   the nav, page title and list heading. The route, the `debtPayoff` flag and
   `lib/finance/debt.ts` keep their internal names.
+- **Debt rates are a schedule, never a scalar** (owner rule, round 26): an
+  account carries `interestRate` **plus** `rateFixedUntil`/`followUpRate`
+  (migration 0102), and `accountRateSteps` turns the pair into the `RateStep[]`
+  that `amortizationSchedule`/`planPayoff` charge per month — entering an
+  assumed follow-up rate must never overwrite the rate in force today. A
+  payment too small to cover the interest no longer aborts the schedule (it
+  amortises negatively and keeps running), because a later step can make the
+  same payment sufficient. `planPayoff`'s **rollover is permanent**: a cleared
+  debt's minimum keeps funding the rest for good. Resetting it after one month
+  (the round-26 bug) silently degraded every plan to "each debt on its own
+  minimum" — total interest equalled the do-nothing case and the
+  avalanche/snowball choice changed nothing at all. Durations reach the UI
+  through `formatMonths`/`formatMonthsShort` (`lib/i18n/duration.ts`), never as
+  a raw month count ("490 Monate"), and `planPayoff` returns a monthly `series`
+  (`yearlySplit` aggregates it) feeding `DebtBalanceChart`/`DebtSplitChart`.
+- **Never delete a migration file** because `supabase/schema.sql` still
+  describes its result. schema.sql only builds a FRESH database; an existing
+  one gets columns exclusively from `supabase/migrations/*.sql`. Migrations
+  0001–0097 were deleted in a housekeeping commit, so a database that had not
+  yet run 0096/0097 was left with no way to get those columns — surfacing as
+  PostgREST `PGRST204` ("Could not find the 'target_account_id' column of
+  'contracts'") on every contract with a target account. Repaired idempotently
+  by migration 0103.
+- **A failed mutation must say why.** `storeErrorReason` (`lib/store/errors.ts`)
+  extracts the PostgrestError's `message`/`details`/`code` and forms append it
+  to their own "could not save" line (contracts, debt details) instead of
+  swallowing it — the generic sentence alone turned a one-line schema fix into
+  an unfixable-looking form. Same rule the admin fetch helpers already follow.
 - **Dates** are timezone-stable `YYYY-MM-DD` strings throughout; use the
   helpers in `lib/finance/dates.ts`, not raw `Date` math.
 - Next 16's `react-hooks/set-state-in-effect` lint rule **fails the build** on

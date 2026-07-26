@@ -9,27 +9,18 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today, addDays } from "@/lib/finance/dates";
 import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
-import { coverageGaps } from "@/lib/finance/insurance";
-import {
-  CONTRACT_INTERVALS,
-  INSURANCE_TYPES,
-  type Contract,
-  type ContractInterval,
-  type InsuranceType,
-} from "@/lib/types";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { type Contract, type ContractInterval, type InsuranceType } from "@/lib/types";
+import type { ContractInput } from "@/lib/store/types";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { pendingBookings } from "@/lib/finance/contract-bookings";
-import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
-import { SelectMenu } from "@/components/ui/select-menu";
+import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
+import { ContractForm } from "@/components/contracts/contract-form";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature } from "@/lib/flags/flags-context";
-import { ProGate } from "@/components/billing/pro-teaser";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 type SortKey = "name" | "interval" | "amount" | "renewalDate";
 
@@ -43,18 +34,15 @@ export function ContractsView() {
     addSpendingTransaction,
   } = usePortfolio();
   const { t } = useI18n();
-  // The coverage-gaps card is the insurance feature's showcase surface, so it
-  // renders blurred behind the paywall when Pro-locked; the insurance FIELDS
-  // on the contract form stay hidden while locked, since letting the user
-  // type data a locked feature can't act on would be worse than not offering
-  // it (`insuranceEnabled` = enabled AND unlocked, below).
+  // The insurance FIELDS on the contract form stay hidden while the feature is
+  // locked: letting the user type data a locked feature can't act on would be
+  // worse than not offering it (`insuranceEnabled` = enabled AND unlocked).
   const insurance = useFeature("insurance");
   const insuranceEnabled = insurance.enabled && !insurance.locked;
   const base = data.profile.currency;
 
   const insuranceTypeLabel = (i: InsuranceType) =>
     t(`contracts.insuranceType.${i}` as Parameters<typeof t>[0]);
-  const gaps = useMemo(() => coverageGaps(data.contracts), [data.contracts]);
 
   const categoriesById = useMemo(
     () => new Map(data.spendingCategories.map((c) => [c.id, c])),
@@ -67,20 +55,24 @@ export function ContractsView() {
   const intervalLabel = (i: ContractInterval) =>
     t(`contracts.interval.${i}` as Parameters<typeof t>[0]);
 
-  // Add-contract form state.
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [interval, setInterval] = useState<ContractInterval>("MONTHLY");
-  const [categoryId, setCategoryId] = useState("");
-  const [renewalDate, setRenewalDate] = useState("");
-  const [noticeDays, setNoticeDays] = useState("");
-  const [insuranceType, setInsuranceType] = useState<InsuranceType | "">("");
-  const [isInsurance, setIsInsurance] = useState(false);
-  const [accountId, setAccountId] = useState("");
-  const [targetAccountId, setTargetAccountId] = useState("");
   const [booking, setBooking] = useState(false);
+  // Remounts the add form after a successful save: `ContractForm` seeds its
+  // draft state from `initial` on mount, so bumping the key is how the card
+  // clears itself without the form having to expose a reset.
+  const [formKey, setFormKey] = useState(0);
+  const [editing, setEditing] = useState<Contract | null>(null);
 
   const due = useMemo(() => pendingBookings(data.contracts, today()), [data.contracts]);
+
+  // Which due charges will actually be posted. A past-dated start date can put
+  // a year of catch-up charges in this list, and not all of them are
+  // necessarily real (the contract may have been paused, or already booked by
+  // hand), so each row is individually deselectable instead of the list being
+  // all-or-nothing. Everything starts selected: the common case is "yes, book
+  // them", and the exceptions are the point of the checkboxes.
+  const dueKey = (b: { contractId: string; date: string }) => `${b.contractId}|${b.date}`;
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const selectedDue = due.filter((b) => !excluded.has(dueKey(b)));
 
   /**
    * Posts every due charge as a spending transaction and advances each
@@ -112,7 +104,7 @@ export function ContractsView() {
     setError(null);
     try {
       const newest = new Map<string, string>();
-      for (const b of due) {
+      for (const b of selectedDue) {
         await addSpendingTransaction({
           accountId: b.accountId,
           categoryId: b.categoryId,
@@ -135,7 +127,6 @@ export function ContractsView() {
       setBooking(false);
     }
   }
-  const [sumInsured, setSumInsured] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -183,47 +174,26 @@ export function ContractsView() {
     );
   }
 
-  async function submit() {
-    const trimmed = name.trim();
-    const value = parseDecimal(amount);
-    if (!trimmed || !Number.isFinite(value) || value <= 0) return;
+  async function submit(input: ContractInput) {
     setBusy(true);
     setError(null);
     try {
-      const notice = noticeDays.trim() ? Number.parseInt(noticeDays, 10) : null;
-      const sumInsuredVal = sumInsured.trim() ? parseDecimal(sumInsured) : null;
-      await addContract({
-        name: trimmed,
-        amount: value,
-        interval,
-        renewalDate: renewalDate || null,
-        cancellationNoticeDays: notice !== null && Number.isFinite(notice) ? notice : null,
-        categoryId: categoryId || null,
-        accountId: accountId || null,
-        targetAccountId: (accountId && targetAccountId) || null,
-        // Booking starts today rather than back-filling the contract's whole
-        // history: nobody wants a new contract to post two years of charges.
-        bookingStartDate: accountId ? today() : null,
-        lastBookedDate: null,
-        // The kind toggle is authoritative: an ordinary contract never carries
-        // an insurance type or a sum insured, whatever the fields last held.
-        insuranceType: isInsurance ? insuranceType || null : null,
-        sumInsured:
-          isInsurance && sumInsuredVal != null && Number.isFinite(sumInsuredVal)
-            ? sumInsuredVal
-            : null,
-      });
-      setName("");
-      setAmount("");
-      setInterval("MONTHLY");
-      setCategoryId("");
-      setRenewalDate("");
-      setNoticeDays("");
-      setInsuranceType("");
-      setSumInsured("");
-      setIsInsurance(false);
-      setAccountId("");
-      setTargetAccountId("");
+      await addContract(input);
+      setFormKey((k) => k + 1);
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveEdit(input: ContractInput) {
+    if (!editing) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateContract(editing.id, input);
+      setEditing(null);
     } catch (err) {
       setError(saveFailed(err, t("contracts.form.error")));
     } finally {
@@ -240,6 +210,16 @@ export function ContractsView() {
         renewalDate: null,
         cancellationNoticeDays: null,
         categoryId: c.categoryId,
+        // A detected candidate already knows where it was charged and when it
+        // last ran, so the accepted contract books from the NEXT occurrence
+        // rather than landing in the register inert. Anchoring the start on
+        // the cluster's first date keeps the schedule aligned with the real
+        // charging day, and `lastBookedDate` on its last one means the charges
+        // it was detected from are never offered a second time.
+        accountId: c.accountId,
+        targetAccountId: null,
+        bookingStartDate: c.dates[0] ?? today(),
+        lastBookedDate: c.dates[c.dates.length - 1] ?? null,
       });
       await Promise.all(
         c.transactionIds.map((id) => updateSpendingTransaction(id, { recurringId: contract.id })),
@@ -263,20 +243,6 @@ export function ContractsView() {
       {/* Mount placement is the auto-start gate, same as the other page tours:
           this view only renders once the contracts surface is reachable. */}
 
-      {insurance.enabled && gaps.length > 0 && (
-        <ProGate locked={insurance.locked} feature="insurance">
-          <Card>
-            <h2 className="text-lg font-semibold">{t("contracts.coverage.title")}</h2>
-            <p className="mt-1 text-sm text-zinc-500">{t("contracts.coverage.intro")}</p>
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700 dark:text-zinc-300">
-              {gaps.map((g) => (
-                <li key={g}>{insuranceTypeLabel(g)}</li>
-              ))}
-            </ul>
-          </Card>
-        </ProGate>
-      )}
-
       {/* Due bookings, reviewed before anything is written — the same rule the
           savings-plans card follows: never post money movements silently. */}
       {due.length > 0 && (
@@ -286,22 +252,51 @@ export function ContractsView() {
             {t("contracts.due.intro", { n: due.length })}
           </p>
           <ul className="mt-4 space-y-2">
-            {due.map((b) => (
-              <li
-                key={`${b.contractId}|${b.date}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
-              >
-                <span>
-                  {b.contractName} <span className="text-zinc-500">{formatDate(b.date)}</span>
-                </span>
-                <span className="tabular-nums text-red-600 dark:text-red-400" data-private>
-                  {formatCurrency(b.amount, base)}
-                </span>
-              </li>
-            ))}
+            {due.map((b) => {
+              const key = dueKey(b);
+              const checked = !excluded.has(key);
+              return (
+                <li
+                  key={key}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                >
+                  <label className="flex flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setExcluded((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(key);
+                          else next.delete(key);
+                          return next;
+                        })
+                      }
+                      className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                    />
+                    <span className={checked ? "" : "text-zinc-400 line-through"}>
+                      {b.contractName} <span className="text-zinc-500">{formatDate(b.date)}</span>
+                    </span>
+                  </label>
+                  <span
+                    className={`tabular-nums ${
+                      checked ? "text-red-600 dark:text-red-400" : "text-zinc-400 line-through"
+                    }`}
+                    data-private
+                  >
+                    {formatCurrency(b.amount, base)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
-          <Button className="mt-4" variant="primary" disabled={booking} onClick={bookDue}>
-            {t("contracts.due.book")}
+          <Button
+            className="mt-4"
+            variant="primary"
+            disabled={booking || selectedDue.length === 0}
+            onClick={bookDue}
+          >
+            {t("contracts.due.bookSelected", { n: selectedDue.length })}
           </Button>
         </Card>
       )}
@@ -338,205 +333,16 @@ export function ContractsView() {
 
       <Card>
         <h2 className="text-lg font-semibold">{t("contracts.form.title")}</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className="text-sm font-medium" htmlFor="contract-name">
-              {t("contracts.form.nameLabel")}
-            </label>
-            <input
-              id="contract-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("contracts.form.namePlaceholder")}
-              className={inputCls}
-              data-private
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="contract-amount">
-              {t("contracts.form.amountLabel", { currency: base })}
-            </label>
-            <input
-              id="contract-amount"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
-              placeholder="0"
-              className={inputCls}
-              data-private
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">{t("contracts.form.intervalLabel")}</label>
-            <SelectMenu
-              className="mt-1 w-full"
-              ariaLabel={t("contracts.form.intervalLabel")}
-              value={interval}
-              onChange={(v) => setInterval(v as ContractInterval)}
-              options={CONTRACT_INTERVALS.map((i) => ({ value: i, label: intervalLabel(i) }))}
-            />
-          </div>
-          {/* Choosing an account is what turns a register entry into something
-              that actually posts the charge. Left empty (the default, and how
-              every contract behaved before booking existed) it stays a note. */}
-          <div data-tour="contract-account">
-            <label className="text-sm font-medium">{t("contracts.form.accountLabel")}</label>
-            <SelectMenu
-              className="mt-1 w-full"
-              ariaLabel={t("contracts.form.accountLabel")}
-              value={accountId}
-              onChange={setAccountId}
-              options={[
-                { value: "", label: t("contracts.form.accountNone") },
-                ...data.accounts.map((a) => ({ value: a.id, label: a.name })),
-              ]}
-            />
-            <p className="mt-1 text-sm text-zinc-500">
-              {accountId ? t("contracts.form.accountHintOn") : t("contracts.form.accountHintOff")}
-            </p>
-          </div>
-          {/* Only meaningful once the contract books: it says the money is not
-              consumed but moved somewhere of yours — a loan being repaid, or a
-              policy building value. Those bookings stay out of the income and
-              expense figures, which is what stops a Riester premium reading as
-              250 EUR spent every month. */}
-          {accountId && (
-            <div>
-              <label className="text-sm font-medium">{t("contracts.form.targetLabel")}</label>
-              <SelectMenu
-                className="mt-1 w-full"
-                ariaLabel={t("contracts.form.targetLabel")}
-                value={targetAccountId}
-                onChange={setTargetAccountId}
-                options={[
-                  { value: "", label: t("contracts.form.targetNone") },
-                  ...data.accounts
-                    .filter((a) => a.id !== accountId)
-                    .map((a) => ({ value: a.id, label: a.name })),
-                ]}
-              />
-              <p className="mt-1 text-sm text-zinc-500">
-                {targetAccountId
-                  ? t("contracts.form.targetHintOn")
-                  : t("contracts.form.targetHintOff")}
-              </p>
-            </div>
-          )}
-          <div>
-            <label className="text-sm font-medium">{t("contracts.form.categoryLabel")}</label>
-            <SelectMenu
-              className="mt-1 w-full"
-              ariaLabel={t("contracts.form.categoryLabel")}
-              value={categoryId}
-              onChange={setCategoryId}
-              searchable
-              options={[
-                { value: "", label: t("contracts.list.noCategory") },
-                ...data.spendingCategories.map((c) => ({
-                  value: c.id,
-                  label: `${c.groupName} · ${c.name}`,
-                })),
-              ]}
-            />
-          </div>
-          {/* Ask what KIND of commitment this is before asking anything about
-              insurance. The insurance-type dropdown used to render on every
-              contract with a "not an insurance" first option, so a streaming
-              subscription was asked which insurance it was. `insuranceType`
-              was always the discriminator; this just makes the choice
-              explicit and hides the fields that do not apply. */}
-          {insuranceEnabled && (
-            <div data-tour="contract-kind">
-              <label className="text-sm font-medium">{t("contracts.form.kindLabel")}</label>
-              <div className="mt-1">
-                <SegmentedControl
-                  options={[
-                    { value: "contract", label: t("contracts.form.kindContract") },
-                    { value: "insurance", label: t("contracts.form.kindInsurance") },
-                  ]}
-                  value={isInsurance ? "insurance" : "contract"}
-                  onChange={(v) => {
-                    const next = v === "insurance";
-                    setIsInsurance(next);
-                    // Leaving insurance must not keep a stale type/sum behind
-                    // on a contract that is no longer one.
-                    if (!next) {
-                      setInsuranceType("");
-                      setSumInsured("");
-                    } else if (!insuranceType) {
-                      setInsuranceType("other");
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          )}
-          {insuranceEnabled && isInsurance && (
-            <div>
-              <label className="text-sm font-medium">{t("contracts.form.insuranceTypeLabel")}</label>
-              <SelectMenu
-                className="mt-1 w-full"
-                ariaLabel={t("contracts.form.insuranceTypeLabel")}
-                value={insuranceType}
-                onChange={(v) => setInsuranceType(v as InsuranceType | "")}
-                options={INSURANCE_TYPES.map((i) => ({ value: i, label: insuranceTypeLabel(i) }))}
-              />
-            </div>
-          )}
-          {insuranceEnabled && isInsurance && insuranceType && (
-            <div>
-              <label className="text-sm font-medium" htmlFor="contract-sum-insured">
-                {t("contracts.form.sumInsuredLabel", { currency: base })}
-              </label>
-              <input
-                id="contract-sum-insured"
-                inputMode="decimal"
-                value={sumInsured}
-                onChange={(e) => setSumInsured(stripLeadingZero(e.target.value))}
-                placeholder="0"
-                className={inputCls}
-                data-private
-              />
-            </div>
-          )}
-          <div>
-            <label className="text-sm font-medium" htmlFor="contract-renewal">
-              {t("contracts.form.renewalLabel")}
-            </label>
-            <input
-              id="contract-renewal"
-              type="date"
-              value={renewalDate}
-              onChange={(e) => setRenewalDate(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="contract-notice">
-              {t("contracts.form.noticeLabel")}
-            </label>
-            <input
-              id="contract-notice"
-              inputMode="numeric"
-              value={noticeDays}
-              onChange={(e) => setNoticeDays(e.target.value.replace(/[^\d]/g, ""))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void submit();
-              }}
-              placeholder="0"
-              className={inputCls}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              variant="primary"
-              disabled={busy || !name.trim() || !amount.trim()}
-              onClick={() => void submit()}
-            >
-              {t("contracts.form.add")}
-            </Button>
-          </div>
-        </div>
+        <ContractForm
+          key={formKey}
+          accounts={data.accounts}
+          categories={data.spendingCategories}
+          base={base}
+          insuranceEnabled={insuranceEnabled}
+          submitLabel={t("contracts.form.add")}
+          busy={busy}
+          onSubmit={submit}
+        />
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </Card>
 
@@ -606,6 +412,9 @@ export function ContractsView() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setEditing(contract)}>
+                          {t("contracts.list.edit")}
+                        </Button>
                         <Button size="sm" variant="danger" onClick={() => setConfirmDelete(contract)}>
                           {t("contracts.list.delete")}
                         </Button>
@@ -618,6 +427,32 @@ export function ContractsView() {
           </div>
         )}
       </Card>
+
+      {/* Editing reuses the very same form the add card renders, seeded from
+          the contract — including the three fields that decide whether it
+          books at all (account, target account, start date), which is the
+          whole point: a contract you cannot change is a dead entry. */}
+      <Modal open={editing !== null} onClose={() => setEditing(null)}>
+        {editing && (
+          <Card>
+            <h2 className="text-lg font-semibold">{t("contracts.edit.title")}</h2>
+            {/* Keyed on the contract so opening another row re-seeds the fields. */}
+            <ContractForm
+              key={editing.id}
+              accounts={data.accounts}
+              categories={data.spendingCategories}
+              base={base}
+              insuranceEnabled={insuranceEnabled}
+              initial={editing}
+              submitLabel={t("contracts.edit.save")}
+              busy={busy}
+              onSubmit={saveEdit}
+              onCancel={() => setEditing(null)}
+            />
+            {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          </Card>
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={confirmDelete !== null}

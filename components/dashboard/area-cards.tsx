@@ -22,6 +22,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { formatCurrency } from "@/lib/format";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { accountsTotals, currentAccountBalance } from "@/lib/finance/accounts";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
 import {
   goalInvestments,
@@ -68,19 +69,30 @@ function AccountsCard() {
   const currency = data.profile.currency;
   const { t } = useI18n();
 
+  const movements = useAccountMovements();
+
   const totals = useMemo(
-    () => accountsTotals(data.accounts, data.accountBalances, { base: currency, fx: valuation.fx }),
-    [data.accounts, data.accountBalances, currency, valuation.fx],
+    () =>
+      accountsTotals(
+        data.accounts,
+        data.accountBalances,
+        { base: currency, fx: valuation.fx },
+        movements,
+      ),
+    [data.accounts, data.accountBalances, currency, valuation.fx, movements],
   );
 
   // Largest first: on a summary card the big balances are what you check.
   const rows = useMemo(
     () =>
       [...data.accounts]
-        .map((a) => ({ account: a, balance: currentAccountBalance(a, data.accountBalances) }))
+        .map((a) => ({
+          account: a,
+          balance: currentAccountBalance(a, data.accountBalances, movements),
+        }))
         .sort((x, y) => Math.abs(y.balance) - Math.abs(x.balance))
         .slice(0, 3),
-    [data.accounts, data.accountBalances],
+    [data.accounts, data.accountBalances, movements],
   );
 
   return (
@@ -208,13 +220,22 @@ function GoalsCard() {
   // top-level goals count: a sub-goal is part of one of them, not a goal of
   // its own (it would otherwise show up twice, once alone and once inside its
   // parent's summed total).
+  const movements = useAccountMovements();
+
   const goals = useMemo(() => {
     const v = { base: currency, fx: valuation.fx };
     return [
-      ...liabilityPayoffGoals(data.accounts, data.accountBalances, data.goals, today(), v),
+      ...liabilityPayoffGoals(
+        data.accounts,
+        data.accountBalances,
+        data.goals,
+        today(),
+        v,
+        movements,
+      ),
       ...topLevelGoals(data.goals),
     ];
-  }, [data.goals, data.accounts, data.accountBalances, currency, valuation.fx]);
+  }, [data.goals, data.accounts, data.accountBalances, currency, valuation.fx, movements]);
 
   // Target and progress per goal, summed over its sub-goals where it has any.
   const totals = useMemo(() => {
@@ -228,9 +249,19 @@ function GoalsCard() {
         data.accountBalances,
         v,
         investments,
+        movements,
       ),
     }));
-  }, [goals, data.goals, data.accounts, data.accountBalances, currency, valuation.fx, investments]);
+  }, [
+    goals,
+    data.goals,
+    data.accounts,
+    data.accountBalances,
+    currency,
+    valuation.fx,
+    investments,
+    movements,
+  ]);
 
   const rows = useMemo(
     () =>

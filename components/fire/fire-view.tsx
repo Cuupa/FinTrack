@@ -21,6 +21,7 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { today } from "@/lib/finance/dates";
 import { accountsValueOn } from "@/lib/finance/accounts";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { portfolioTotals, summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
@@ -111,11 +112,27 @@ export function FireView() {
 
   // Same net-worth figure as the dashboard hero / /health: holdings market
   // value plus the signed sum of every balance account.
+  const movements = useAccountMovements();
+
   const netWorth = useMemo(() => {
     const totals = portfolioTotals(summarizeAll(data.assets, data.transactions, valuation));
-    const accountsNet = accountsValueOn(data.accounts, data.accountBalances, todayIso, valuation);
+    const accountsNet = accountsValueOn(
+      data.accounts,
+      data.accountBalances,
+      todayIso,
+      valuation,
+      movements,
+    );
     return totals.marketValue + accountsNet;
-  }, [data.assets, data.transactions, data.accounts, data.accountBalances, valuation, todayIso]);
+  }, [
+    data.assets,
+    data.transactions,
+    data.accounts,
+    data.accountBalances,
+    valuation,
+    todayIso,
+    movements,
+  ]);
 
   const autoAnnualExpenses = useMemo(
     () => trailingAnnualExpenses(data.spendingTransactions, todayIso),

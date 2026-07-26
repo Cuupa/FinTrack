@@ -6,7 +6,8 @@
 // proceeds).
 
 import { assetPriceKey, type Account, type AccountBalance, type Asset, type Transaction } from "../types";
-import { accountsValueOn } from "./accounts";
+import { accountsValueSeries } from "./accounts";
+import type { AccountMovements } from "./account-ledger";
 import {
   dateKey,
   dateRange,
@@ -372,6 +373,7 @@ export function netWorthSeries(
   history?: HistoryMap,
   accounts?: Account[],
   accountBalances?: AccountBalance[],
+  movements?: AccountMovements,
 ): NetWorthSeriesResult {
   const end = today();
   // MAX/YTD anchor on the earliest transaction OR the earliest account opening
@@ -401,19 +403,25 @@ export function netWorthSeries(
 
   // Accounts fold in as real user data (like CASH / manual valuations), so they
   // never trip the synthetic flag. Signed by is_liability, FX-converted at spot.
-  const accountVal =
+  // Built for the whole window in one pass: each account's balance series is
+  // derived once and walked with a shared cursor. Asking `accountsValueOn` per
+  // date re-derived every series for every point, which only stayed cheap while
+  // a series was a handful of typed readings — with the ledger feeding it
+  // (`movements`), a series is every booking the account has ever seen.
+  const accountValues =
     accounts && accounts.length
-      ? { accounts, balances: accountBalances ?? [], base: v?.base, fx: v?.fx }
+      ? accountsValueSeries(
+          accounts,
+          accountBalances ?? [],
+          dates,
+          { base: v?.base ?? "", fx: v?.fx },
+          movements,
+        )
       : null;
 
   let containsSynthetic = false;
-  const points = dates.map((date) => {
-    let value = accountVal
-      ? accountsValueOn(accountVal.accounts, accountVal.balances, date, {
-          base: accountVal.base ?? "",
-          fx: accountVal.fx,
-        })
-      : 0;
+  const points = dates.map((date, i) => {
+    let value = accountValues ? accountValues[i] : 0;
     for (const { asset, txs: atxs, key, cur, factor, hist } of byAsset) {
       const shares = sharesAt(atxs, date);
       if (shares === 0) continue;

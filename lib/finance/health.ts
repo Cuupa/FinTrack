@@ -12,6 +12,7 @@
 
 import type { Account, AccountBalance, AccountKind, SpendingTransaction } from "../types";
 import { accountsTotals, currentAccountBalance } from "./accounts";
+import { accountMovements, type AccountMovements } from "./account-ledger";
 import { byCategoryAndMonth, incomeExpenseSplit } from "./spending";
 import { shiftMonth } from "./dates";
 
@@ -48,11 +49,12 @@ export function liquidBalance(
   accounts: Account[],
   balances: AccountBalance[],
   v?: HealthValuation,
+  movements?: AccountMovements,
 ): number {
   let sum = 0;
   for (const a of accounts) {
     if (a.isLiability || !LIQUID_ACCOUNT_KINDS.includes(a.kind)) continue;
-    sum += currentAccountBalance(a, balances) * rateFor(a, v);
+    sum += currentAccountBalance(a, balances, movements) * rateFor(a, v);
   }
   return sum;
 }
@@ -155,8 +157,13 @@ export function computeFinancialHealth(
   const avgMonthlyExpense = expense / denominator;
   const annualIncome = avgMonthlyIncome * 12;
 
-  const liquid = liquidBalance(accounts, accountBalances, v);
-  const { liabilities } = accountsTotals(accounts, accountBalances, v);
+  // Derived from EVERY booking, not from `windowed`: the trailing-12-month
+  // filter above scopes the income/expense averages, but a balance is the sum
+  // of its whole history. Nothing extra needs passing in -- the ledger and the
+  // accounts are both already arguments here.
+  const movements = accountMovements(spendingTransactions, accounts);
+  const liquid = liquidBalance(accounts, accountBalances, v, movements);
+  const { liabilities } = accountsTotals(accounts, accountBalances, v, movements);
 
   return {
     monthsOfExpensesCovered: monthsOfExpensesCovered(liquid, avgMonthlyExpense),

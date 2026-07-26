@@ -7,6 +7,7 @@
 import type { Account, AccountBalance, Asset, Goal, Transaction } from "../types";
 import { summarizeAll, type ValuationContext } from "./portfolio";
 import { balanceSeries, currentAccountBalance } from "./accounts";
+import type { AccountMovements } from "./account-ledger";
 import { accountRateSteps, amortizationSchedule } from "./debt";
 import { daysBetween } from "./dates";
 
@@ -57,10 +58,14 @@ export interface GoalValuation {
  * balance plus every later reading. For a liability that is the most that was
  * ever owed, which is what repayment progress is measured from.
  */
-function peakBalance(account: Account, accountBalances: AccountBalance[]): number {
+function peakBalance(
+  account: Account,
+  accountBalances: AccountBalance[],
+  movements?: AccountMovements,
+): number {
   return Math.max(
     account.openingBalance,
-    ...balanceSeries(account, accountBalances).map((p) => p.balance),
+    ...balanceSeries(account, accountBalances, movements).map((p) => p.balance),
   );
 }
 
@@ -87,6 +92,7 @@ export function goalProgress(
   accountBalances: AccountBalance[],
   valuation?: GoalValuation,
   investments?: GoalInvestments,
+  movements?: AccountMovements,
 ): number {
   // The depot wins over a linked account: a goal is one or the other, and
   // this order keeps a stale `linkedAccountId` from a re-pointed goal from
@@ -100,7 +106,8 @@ export function goalProgress(
   if (goal.linkedAccountId) {
     const account = accounts.find((a) => a.id === goal.linkedAccountId);
     if (!account) return 0;
-    const balance = currentAccountBalance(account, accountBalances) * rateFor(account, valuation);
+    const balance =
+      currentAccountBalance(account, accountBalances, movements) * rateFor(account, valuation);
 
     // Paying a debt off is progress running the other way: the account's
     // balance is what is still OWED, so it falls as the goal is met. Progress
@@ -114,7 +121,7 @@ export function goalProgress(
     // worse still -- a payoff goal would look more complete the deeper into
     // debt you went.
     if (account.isLiability) {
-      const peak = peakBalance(account, accountBalances) * rateFor(account, valuation);
+      const peak = peakBalance(account, accountBalances, movements) * rateFor(account, valuation);
       return Math.max(0, peak - balance);
     }
 
@@ -162,18 +169,19 @@ export function goalTotals(
   accountBalances: AccountBalance[],
   valuation?: GoalValuation,
   investments?: GoalInvestments,
+  movements?: AccountMovements,
 ): GoalTotals {
   if (children.length === 0) {
     return {
       target: goal.targetAmount,
-      current: goalProgress(goal, accounts, accountBalances, valuation, investments),
+      current: goalProgress(goal, accounts, accountBalances, valuation, investments, movements),
     };
   }
   let target = 0;
   let current = 0;
   for (const child of children) {
     target += child.targetAmount;
-    current += goalProgress(child, accounts, accountBalances, valuation, investments);
+    current += goalProgress(child, accounts, accountBalances, valuation, investments, movements);
   }
   return { target, current };
 }
@@ -222,6 +230,7 @@ export function liabilityPayoffGoals(
   goals: Goal[],
   todayIso: string,
   valuation?: GoalValuation,
+  movements?: AccountMovements,
 ): Goal[] {
   const tracked = new Set(
     goals
@@ -233,10 +242,10 @@ export function liabilityPayoffGoals(
   for (const account of accounts) {
     if (!account.isLiability || tracked.has(account.id)) continue;
     const rate = rateFor(account, valuation);
-    const peak = peakBalance(account, accountBalances) * rate;
+    const peak = peakBalance(account, accountBalances, movements) * rate;
     // A liability that never owed anything is noise, not a goal.
     if (!(peak > 0)) continue;
-    const balance = currentAccountBalance(account, accountBalances) * rate;
+    const balance = currentAccountBalance(account, accountBalances, movements) * rate;
     const schedule =
       account.interestRate != null && account.minPayment != null
         ? amortizationSchedule(

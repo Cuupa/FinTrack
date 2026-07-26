@@ -34,6 +34,7 @@ import { llmErrorMessageKey } from "@/lib/llm/error-messages";
 import { buildPortfolioContext, buildSystemPrompt } from "@/lib/llm/context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import { accountValueOn } from "@/lib/finance/accounts";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { nextPlannedOccurrence, plannedMonthlyTotals } from "@/lib/finance/planned";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { byAssetClass, byCountry, byCurrency } from "@/lib/finance/allocation";
@@ -92,6 +93,9 @@ const HISTORY_RANGE = "5Y";
 export function usePortfolioChat(active: boolean): PortfolioChat {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
+  // Same carried-forward balances the dashboard shows, so the assistant never
+  // quotes a figure the user cannot find anywhere on screen.
+  const movements = useAccountMovements();
   // Subscribed for `version` so histItems (and the dividend-yield/country
   // lookups) refresh once the catalog finishes loading — lookups themselves
   // go through the module-level lib/catalog/catalog.ts functions, same as
@@ -212,7 +216,13 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
             kind: a.kind,
             currency: a.currency ?? base,
             isLiability: a.isLiability,
-            balance: accountValueOn(a, data.accountBalances, today(), { base, fx: fxSpot }),
+            balance: accountValueOn(
+              a,
+              data.accountBalances,
+              today(),
+              { base, fx: fxSpot },
+              movements,
+            ),
           }))
         : undefined,
       // Planned income/expenses (flag `plannedCashflow`) — id-free, base
@@ -241,6 +251,7 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     histLoading,
     benchLevels,
     compare,
+    movements,
   ]);
 
   const send = useCallback(

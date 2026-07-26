@@ -11,6 +11,12 @@ import { daysBetween } from "./dates";
 export interface RecurringCandidate {
   payee: string;
   categoryId: string | null;
+  /**
+   * Account the detected series was charged against. Carried through so an
+   * accepted candidate becomes a contract that actually books, instead of a
+   * register entry the user has to re-point at an account by hand.
+   */
+  accountId: string;
   /** Typical (median) per-occurrence magnitude, positive, native currency. */
   amount: number;
   interval: ContractInterval;
@@ -133,6 +139,7 @@ export function detectRecurringCandidates(
       candidates.push({
         payee: cluster[0].payee,
         categoryId: cluster[cluster.length - 1].categoryId,
+        accountId: cluster[0].accountId,
         amount: median(cluster.map((t) => Math.abs(t.amount))),
         interval,
         dates: cluster.map((t) => t.date),
