@@ -80,7 +80,7 @@ export function AccountsView() {
     });
     return withValues;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.accounts, data.accountBalances, sort]);
+  }, [data.accounts, data.accountBalances, sort, movements]);
 
   function toggleSort(key: SortKey) {
     setSort((s) =>
