@@ -36,8 +36,15 @@ describe("resolveFeature", () => {
     });
   });
 
-  it("override true unlocks a Pro flag for a free-plan user", () => {
+  it("override true does NOT unlock a Pro flag for a free-plan user", () => {
+    // Owner rule (2026-07-26): a feature flag switches a feature on/off for
+    // testing, it is never a Pro grant. Granting Pro to a single user is
+    // `plan_grants` (/admin/billing), which lifts `plan` to 'pro' instead.
     expect(resolveFeature(PRO_ON, true, "free", true, true)).toEqual({
+      enabled: true,
+      locked: true,
+    });
+    expect(resolveFeature(PRO_ON, true, "pro", true, true)).toEqual({
       enabled: true,
       locked: false,
     });
@@ -50,8 +57,20 @@ describe("resolveFeature", () => {
     });
   });
 
-  it("override wins outright even over a kill-switched global", () => {
+  it("override decides visibility even over a kill-switched global", () => {
     expect(resolveFeature(OFF, true, "free", true, true)).toEqual({
+      enabled: true,
+      locked: false,
+    });
+    // ...but the plan gate still applies to what the override made visible.
+    expect(resolveFeature(PRO_OFF, true, "free", true, true)).toEqual({
+      enabled: true,
+      locked: true,
+    });
+  });
+
+  it("override on a flag with no global row: visible, unlocked (nothing declares it Pro)", () => {
+    expect(resolveFeature(undefined, true, "free", true, true)).toEqual({
       enabled: true,
       locked: false,
     });

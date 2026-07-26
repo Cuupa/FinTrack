@@ -1414,7 +1414,8 @@ export const en = {
   "admin.flags.planPro": "Pro",
   "admin.flags.colEnabled": "Enabled",
   "admin.flags.overridesTitle": "Per-user overrides",
-  "admin.flags.overridesSubtitle": "Overrides win over the global value for that user.",
+  "admin.flags.overridesSubtitle":
+    "Overrides win over the global on/off value for that user. They do not grant Pro: a Pro flag stays locked until the user's plan is Pro (see Premium grants under Billing).",
   "admin.flags.searchEmail": "Find user by email",
   "admin.flags.searchEmailPlaceholder": "Type at least 2 characters",
   "admin.flags.searching": "Searching...",
@@ -3076,7 +3077,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.flags.planPro": "Pro",
   "admin.flags.colEnabled": "Aktiviert",
   "admin.flags.overridesTitle": "Overrides pro Nutzer",
-  "admin.flags.overridesSubtitle": "Overrides gewinnen für diesen Nutzer gegenüber dem globalen Wert.",
+  "admin.flags.overridesSubtitle":
+    "Overrides gewinnen für diesen Nutzer gegenüber dem globalen An/Aus-Wert. Sie schalten kein Pro frei: ein Pro-Flag bleibt gesperrt, bis der Plan des Nutzers Pro ist (siehe Premium-Freischaltungen unter Abrechnung).",
   "admin.flags.searchEmail": "Nutzer per E-Mail finden",
   "admin.flags.searchEmailPlaceholder": "Mindestens 2 Zeichen eingeben",
   "admin.flags.searching": "Suche läuft...",
@@ -4735,7 +4737,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.flags.planPro": "Pro",
   "admin.flags.colEnabled": "Activado",
   "admin.flags.overridesTitle": "Overrides por usuario",
-  "admin.flags.overridesSubtitle": "Los overrides prevalecen sobre el valor global para ese usuario.",
+  "admin.flags.overridesSubtitle":
+    "Los overrides prevalecen sobre el valor global de activado/desactivado para ese usuario. No conceden Pro: una flag Pro sigue bloqueada hasta que el plan del usuario sea Pro (ver Concesiones premium en Facturación).",
   "admin.flags.searchEmail": "Buscar usuario por correo",
   "admin.flags.searchEmailPlaceholder": "Escribe al menos 2 caracteres",
   "admin.flags.searching": "Buscando...",

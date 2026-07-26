@@ -11,7 +11,8 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { SubscriptionCard } from "@/components/settings/subscription-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { useLlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
@@ -52,9 +53,12 @@ export function SettingsView() {
   const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
-  const aiEnabled = useFeatureFlag("llmChat");
+  // The AI tab is visible whenever the flag is on — including when it is
+  // Pro-locked, in which case the panel below renders behind <ProGate> rather
+  // than disappearing (owner rule: a paywalled feature stays visible).
+  const ai = useFeature("llmChat");
 
-  const visibleTabs: TabKey[] = aiEnabled ? [...TABS] : TABS.filter((key) => key !== "ai");
+  const visibleTabs: TabKey[] = ai.enabled ? [...TABS] : TABS.filter((key) => key !== "ai");
 
   const [tab, setTab] = useState<TabKey>("general");
   // Falls back to "general" if the "ai" tab was selected and then the flag
@@ -441,12 +445,14 @@ export function SettingsView() {
         </Card>
       )}
 
-      {activeTab === "ai" && aiEnabled && (
-        <Card>
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            <AiAssistantSection />
-          </div>
-        </Card>
+      {activeTab === "ai" && ai.enabled && (
+        <ProGate locked={ai.locked} feature="llmChat">
+          <Card>
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              <AiAssistantSection />
+            </div>
+          </Card>
+        </ProGate>
       )}
     </div>
   );

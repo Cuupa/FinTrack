@@ -104,13 +104,21 @@ Flags SDK (explicitly rejected).
 **Plan gating (MONETIZATION.md Phase 2, dark-launched)**: `feature_flags`
 also carries `required_plan` ('free'|'pro', default 'free' — every flag is
 seeded free; the owner re-tiers rows on /admin/flags at runtime). Resolution
-(`lib/flags/resolve.ts`, pure/unit-tested): user override wins outright (and
-doubles as a Pro grant) > kill switch (`enabled=false` = invisible) >
-pro-required + free plan = `{enabled, locked}` > on; missing column/row or no
-Supabase = free/on, so a DB lagging migration 0065 behaves exactly as before.
+(`lib/flags/resolve.ts`, pure/unit-tested) has **two independent axes**
+(owner rule, 2026-07-26): the flag decides VISIBILITY — per-user override,
+else the global `enabled` (missing row = off) — and the plan decides
+UNLOCKED: visible + pro-required + free plan = `{enabled, locked}`. A
+per-user override is therefore **never a Pro grant**; it is the general
+on/off + testing switch, and it can also switch a feature OFF for one user.
+Granting Pro to a single person is `plan_grants` (/admin/billing "Premium
+grants"), which lifts the plan itself. Missing column/row or no Supabase =
+free/on, so a DB lagging migration 0065 behaves exactly as before.
 `useFeature(flag)` returns `{enabled, locked}`; `useFeatureFlag` stays boolean
-(`enabled && !locked`) so call sites that haven't adopted `useFeature` still
-just hide a locked feature. The shared `<ProTeaser feature="...">`
+(`enabled && !locked`), which HIDES a locked feature — correct **only** for
+infrastructural flags with nothing to sell (`offline`, `historyCache`,
+`errorLogging`, `billing`, `estimated-badge`). Every user-facing surface must
+read `useFeature` and render a teaser when locked. The shared
+`<ProTeaser feature="...">`
 (`components/billing/pro-teaser.tsx`, MONETIZATION.md Phase 3) is adopted on
 the five surfaces that gate on a Pro flag — the /analysis risk and tax tabs
 (tab stays visible), /dividends, /simulation, /xray, /rebalancing. It renders
@@ -123,6 +131,21 @@ site passes the same view it renders when unlocked (e.g.
 still-loading page shows its skeleton, not a blurred empty state. Called
 without `children` it falls back to the old standalone empty-state card. Its
 upgrade button only shows when the `billing` flag is on.
+Two smaller wrappers live next to it (round 25) so a **sub-surface** of a page
+gates without repeating the ternary: `<ProGate locked feature>` renders its
+children plainly or blurred behind the teaser (used by the simulation's
+per-mode sections + withdrawal phase, the settings AI tab, the notifications
+card, the tax-pack sections, the insurance coverage-gaps card, the add-asset
+CSV-import tab, and the asset-detail cash-interest / manual-valuation
+sections), and `<ProMenuItem label>` keeps a locked **dropdown row** listed
+with a padlock linking to /pricing (export CSV/JSON in the dashboard and
+profile menus) — a blurred preview makes no sense for a single menu row.
+Cell-level enrichments that cannot carry a teaser (a value inside a `dl`, one
+column of a table, a row action, an option in a select: `vorabEstimate`,
+`dividendCalendar`, `splitDetection`, `contracts`' recurring-row button,
+`manualValuation`'s asset-type option, `taxPack`'s category field) still hide
+while locked — do not tier those to Pro on their own, tier the surface that
+owns them.
 Still dark in prod: every flag is seeded `required_plan='free'`, so nothing
 locks (and no teaser renders) until the owner re-tiers a flag on
 /admin/flags.

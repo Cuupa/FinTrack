@@ -7,7 +7,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Button, Card } from "@/components/ui/primitives";
 import {
@@ -20,9 +21,15 @@ import {
 
 export function NotificationsCard() {
   const { mode } = useAuth();
-  const enabled = useFeatureFlag("pushNotifications");
+  // Flag off ⇒ hidden. Flag on but Pro-locked ⇒ the real card renders blurred
+  // behind the paywall (owner rule: a paywalled feature stays visible).
+  const { enabled, locked } = useFeature("pushNotifications");
   if (mode !== "registered" || !enabled) return null;
-  return <NotificationsCardContent />;
+  return (
+    <ProGate locked={locked} feature="pushNotifications">
+      <NotificationsCardContent />
+    </ProGate>
+  );
 }
 
 function NotificationsCardContent() {

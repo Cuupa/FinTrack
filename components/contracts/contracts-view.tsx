@@ -22,7 +22,8 @@ import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
@@ -33,7 +34,13 @@ type SortKey = "name" | "interval" | "amount" | "renewalDate";
 export function ContractsView() {
   const { data, addContract, deleteContract, updateSpendingTransaction } = usePortfolio();
   const { t } = useI18n();
-  const insuranceEnabled = useFeatureFlag("insurance");
+  // The coverage-gaps card is the insurance feature's showcase surface, so it
+  // renders blurred behind the paywall when Pro-locked; the insurance FIELDS
+  // on the contract form stay hidden while locked, since letting the user
+  // type data a locked feature can't act on would be worse than not offering
+  // it (`insuranceEnabled` = enabled AND unlocked, below).
+  const insurance = useFeature("insurance");
+  const insuranceEnabled = insurance.enabled && !insurance.locked;
   const base = data.profile.currency;
 
   const insuranceTypeLabel = (i: InsuranceType) =>

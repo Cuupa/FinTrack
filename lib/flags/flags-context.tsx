@@ -14,16 +14,23 @@
 //
 // Plan layer (MONETIZATION.md section 4, supabase/migrations/0065_plan_gating.sql):
 // each global row additionally carries `required_plan` ('free' | 'pro'). The
-// pure resolution order (no Supabase -> globals not loaded -> override ->
-// kill switch -> pro-required-and-free -> on) lives in `lib/flags/resolve.ts`
-// (`resolveFeature`) so it is unit-testable without the fetch/effect
-// plumbing here; this provider just wires the DB rows and `usePlan()`
-// (lib/billing/use-plan.ts) into it. `useFeatureFlag(flag)` keeps its
-// existing boolean contract (`enabled && !locked`) so none of the ~40
-// existing call sites need to change; surfaces that want to show a Pro
-// upsell teaser instead of hiding adopt the new `useFeature(flag)` hook,
-// which also exposes `locked`. As of Phase 2 every flag is still seeded
-// 'free' (dark launch) so `locked` is never actually true yet.
+// pure resolution order (no Supabase -> globals not loaded -> visibility
+// (override, else global) -> pro-required-and-free -> on) lives in
+// `lib/flags/resolve.ts` (`resolveFeature`) so it is unit-testable without
+// the fetch/effect plumbing here; this provider just wires the DB rows and
+// `usePlan()` (lib/billing/use-plan.ts) into it.
+//
+// The two axes are INDEPENDENT (owner rule, 2026-07-26): the flag (global +
+// per-user override) decides whether a feature is VISIBLE — that is the
+// on/off and testing switch — and the plan decides whether it is UNLOCKED. A
+// per-user override is therefore not a Pro grant; granting Pro to a single
+// user is `plan_grants` (/admin/billing "Premium grants"), which lifts the
+// plan itself. `useFeatureFlag(flag)` keeps its boolean contract
+// (`enabled && !locked`), which HIDES a locked feature -- only correct for
+// infrastructural flags with nothing to sell (offline, historyCache,
+// errorLogging, billing). Every user-facing surface reads `useFeature(flag)`
+// and renders `<ProTeaser>` when `locked`, per the owner rule that a
+// paywalled feature stays visible.
 //
 // Quantity limits (Phase 4, supabase/migrations/0065_plan_gating.sql
 // `plan_limits`, seeded unlimited): loaded here rather than in
@@ -232,11 +239,16 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
 
   const getFeature = useCallback(
     (flag: FeatureFlag): FeatureState => {
-      // A sub-feature of the simulation is only available if the simulation
-      // itself resolves to enabled-and-unlocked.
+      // A sub-feature of the simulation inherits its parent: the parent being
+      // OFF hides the child outright, the parent being Pro-LOCKED locks the
+      // child too (rather than hiding it) so the blurred preview under the
+      // page-level teaser still shows the real UI.
       if (SIMULATION_SUBFLAGS.includes(flag)) {
         const parent = resolveFlag("simulation");
-        if (!parent.enabled || parent.locked) return CLOSED_FEATURE;
+        if (!parent.enabled) return CLOSED_FEATURE;
+        const child = resolveFlag(flag);
+        if (!child.enabled) return CLOSED_FEATURE;
+        return { enabled: true, locked: child.locked || parent.locked };
       }
       return resolveFlag(flag);
     },

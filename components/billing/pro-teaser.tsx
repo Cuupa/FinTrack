@@ -62,6 +62,66 @@ function LockPitch() {
   );
 }
 
+/**
+ * A Pro-locked entry inside a dropdown menu. A blurred preview makes no sense
+ * for a single menu row, so the row stays listed with a padlock and links to
+ * /pricing — visible, self-explanatory, and never silently missing. With the
+ * `billing` flag off there is nowhere to upgrade, so it renders inert.
+ */
+export function ProMenuItem({ label, className = "" }: { label: string; className?: string }) {
+  const { t } = useI18n();
+  const billingEnabled = useFeatureFlag("billing");
+  const base = `flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-500 ${className}`;
+  const body = (
+    <>
+      <span className="flex-1 truncate">{label}</span>
+      <LockIcon className="h-4 w-4 shrink-0 text-zinc-400" />
+    </>
+  );
+  if (!billingEnabled) {
+    return (
+      <div className={base} title={t("common.proFeature")}>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <Link
+      href="/pricing"
+      className={`${base} hover:bg-zinc-100 dark:hover:bg-zinc-800`}
+      title={t("common.proFeature")}
+    >
+      {body}
+    </Link>
+  );
+}
+
+/**
+ * Conditional wrapper: renders `children` untouched, or blurred behind the
+ * paywall when `locked`. Sub-surfaces (a tab panel, one section of a form,
+ * one card inside a page) gate this way instead of repeating the ternary —
+ * the duplication that let several surfaces silently HIDE a Pro feature
+ * instead of teasing it.
+ */
+export function ProGate({
+  locked,
+  feature,
+  children,
+  className,
+}: {
+  locked: boolean;
+  feature: FeatureFlag;
+  children: ReactNode;
+  className?: string;
+}) {
+  if (!locked) return <>{children}</>;
+  return (
+    <ProTeaser feature={feature} className={className}>
+      {children}
+    </ProTeaser>
+  );
+}
+
 export function ProTeaser({
   feature,
   children,

@@ -30,7 +30,8 @@ import { taxPackByYear, type TaxPackYear } from "@/lib/finance/tax-pack";
 import { toBaseCurrency } from "@/lib/finance/spending";
 import { exportTaxPackYear } from "@/lib/export/export";
 import { useBasiszins } from "@/lib/tax/use-basiszins";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature, useFeatureFlag } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { assetPriceKey } from "@/lib/types";
 import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
 import { isStorageFullError } from "@/lib/store/errors";
@@ -71,7 +72,11 @@ export function TaxView() {
   );
   const { histories: fundHistories, fx: fundFxHistory } = useHistory(fundItems, "10y", currency);
   const vorabEnabled = useFeatureFlag("vorabEstimate");
-  const taxPackEnabled = useFeatureFlag("taxPack");
+  // Pro-locked ⇒ the tax-pack sections still render (blurred behind
+  // <ProGate>), so the figures behind the paywall are computed as usual:
+  // `enabled` is the compute/visibility gate, `locked` only the paywall.
+  const taxPack = useFeature("taxPack");
+  const taxPackEnabled = taxPack.enabled;
   const basiszinsByYear = useBasiszins();
   const currentYear = new Date().getFullYear();
 
@@ -373,13 +378,15 @@ export function TaxView() {
                   </>
                 )}
 
-                {taxPackEnabled && (
-                  <TaxPackSection
-                    breakdownForExport={y}
-                    pack={packByYear.get(y.year)}
-                    currency={currency}
-                    t={t}
-                  />
+                {taxPack.enabled && (
+                  <ProGate locked={taxPack.locked} feature="taxPack">
+                    <TaxPackSection
+                      breakdownForExport={y}
+                      pack={packByYear.get(y.year)}
+                      currency={currency}
+                      t={t}
+                    />
+                  </ProGate>
                 )}
               </Card>
             );
@@ -391,17 +398,19 @@ export function TaxView() {
           event (taxYearBreakdown only returns years with a taxable event) still
           get a card, so the tax pack isn't silently missing for a non-investor
           year. */}
-      {taxPackEnabled && extraPackYears.length > 0 && (
+      {taxPack.enabled && extraPackYears.length > 0 && (
         <div className="space-y-4">
           {extraPackYears.map((year) => (
             <Card key={year}>
               <h3 className="text-base font-semibold">{year}</h3>
-              <TaxPackSection
-                breakdownForExport={zeroTaxYearBreakdown(year)}
-                pack={packByYear.get(year)}
-                currency={currency}
-                t={t}
-              />
+              <ProGate locked={taxPack.locked} feature="taxPack">
+                <TaxPackSection
+                  breakdownForExport={zeroTaxYearBreakdown(year)}
+                  pack={packByYear.get(year)}
+                  currency={currency}
+                  t={t}
+                />
+              </ProGate>
             </Card>
           ))}
         </div>

@@ -28,6 +28,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { SimulationTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 type SimMode = "portfolio" | "custom";
@@ -166,21 +167,34 @@ export function MonteCarloPanel() {
     [holdings, lookbackYears, histories],
   );
   // Sub-feature flags: the "My portfolio" and "Custom" sections, and the
-  // withdrawal phase, can each be turned off independently.
-  const { isEnabled } = useFeatureFlags();
-  const portfolioAllowed = isEnabled("simulationPortfolio");
-  const customAllowed = isEnabled("simulationCustom");
-  const withdrawalAllowed = isEnabled("simulationWithdrawal");
+  // withdrawal phase, can each be turned off independently — and each be
+  // tiered to Pro on its own. A flag that is OFF hides its section; a flag
+  // that is Pro-LOCKED keeps the section visible and blurs it behind the
+  // <ProTeaser> (owner rule: a paywalled feature stays visible, never
+  // hidden), so `enabled` drives visibility and `!locked` drives function.
+  const { getFeature } = useFeatureFlags();
+  const portfolioFeature = getFeature("simulationPortfolio");
+  const customFeature = getFeature("simulationCustom");
+  const withdrawalFeature = getFeature("simulationWithdrawal");
+  const withdrawalAllowed = withdrawalFeature.enabled && !withdrawalFeature.locked;
 
-  const hasPortfolio = model !== null && model.assets.length > 0 && portfolioAllowed;
-  // Pick a mode honouring the flags: custom off ⇒ force portfolio; portfolio
-  // unavailable ⇒ force custom; otherwise use the user's choice.
-  const effectiveMode: SimMode = !customAllowed
+  const hasPortfolioData = model !== null && model.assets.length > 0;
+  const portfolioVisible = hasPortfolioData && portfolioFeature.enabled;
+  const customVisible = customFeature.enabled;
+  // Pick a mode honouring the flags: custom hidden ⇒ force portfolio;
+  // portfolio unavailable ⇒ force custom; otherwise use the user's choice.
+  // A Pro-locked mode still counts as visible and stays selectable — picking
+  // it is how the user sees what Pro would unlock.
+  const effectiveMode: SimMode = !customVisible
     ? "portfolio"
-    : !hasPortfolio
+    : !portfolioVisible
       ? "custom"
       : mode;
-  const showModeToggle = hasPortfolio && customAllowed;
+  const showModeToggle = portfolioVisible && customVisible;
+  // Paywall state of the selected mode: blurs the model parameters and blocks
+  // the run, since a locked mode must never actually compute.
+  const modeLocked =
+    effectiveMode === "portfolio" ? portfolioFeature.locked : customFeature.locked;
   // Estimated parameters are the defaults; overrides (if the user edits a
   // field) take precedence. Derived rather than synced via an effect.
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
@@ -235,6 +249,8 @@ export function MonteCarloPanel() {
   }
 
   function run() {
+    // A Pro-locked mode is previewed, never computed.
+    if (modeLocked) return;
     const years = Math.max(1, Math.round(form.years));
     // Clamp to [1,000, 25,000] paths.
     const runs = Math.min(25000, Math.max(1000, Math.round(form.runs)));
@@ -439,39 +455,42 @@ export function MonteCarloPanel() {
             </div>
           </div>
 
-          {/* Withdrawal phase (feature-flagged decumulation). */}
-          {withdrawalAllowed && (
-            <div data-tour="sim-withdrawal" className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                {t("sim.withdrawalYears")}
-              </h3>
-              <div className="mt-3 space-y-3">
-                <SliderField
-                  label={t("sim.withdrawalDuration")}
-                  suffix={t("sim.years")}
-                  value={form.withdrawalYears}
-                  onChange={(v) => update("withdrawalYears", v)}
-                  min={0}
-                  max={40}
-                  step={1}
-                />
-                {form.withdrawalYears > 0 && (
-                  <div className="space-y-2">
-                    <SliderField
-                      label={t("sim.withdrawalRate")}
-                      suffix="%"
-                      value={form.withdrawalRate}
-                      onChange={(v) => update("withdrawalRate", v)}
-                      min={0}
-                      max={10}
-                      step={0.1}
-                      digits={1}
-                    />
-                    <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
-                  </div>
-                )}
+          {/* Withdrawal phase (feature-flagged decumulation). Pro-locked ⇒
+              the real sliders stay on screen, blurred behind the teaser. */}
+          {withdrawalFeature.enabled && (
+            <ProGate locked={withdrawalFeature.locked} feature="simulationWithdrawal">
+              <div data-tour="sim-withdrawal" className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  {t("sim.withdrawalYears")}
+                </h3>
+                <div className="mt-3 space-y-3">
+                  <SliderField
+                    label={t("sim.withdrawalDuration")}
+                    suffix={t("sim.years")}
+                    value={form.withdrawalYears}
+                    onChange={(v) => update("withdrawalYears", v)}
+                    min={0}
+                    max={40}
+                    step={1}
+                  />
+                  {form.withdrawalYears > 0 && (
+                    <div className="space-y-2">
+                      <SliderField
+                        label={t("sim.withdrawalRate")}
+                        suffix="%"
+                        value={form.withdrawalRate}
+                        onChange={(v) => update("withdrawalRate", v)}
+                        min={0}
+                        max={10}
+                        step={0.1}
+                        digits={1}
+                      />
+                      <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </ProGate>
           )}
 
           {/* Model: My portfolio / Custom, the model note, rebalancing (a
@@ -502,56 +521,69 @@ export function MonteCarloPanel() {
                 </div>
               )}
 
-              {effectiveMode === "portfolio" && model ? (
-                <PortfolioModelNote
-                  model={model}
-                  overrides={assetOverrides}
-                  onOverride={(name, patch) =>
-                    setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
-                  }
-                  onResetOverrides={() => setAssetOverrides({})}
-                />
-              ) : (
-                <>
-                  <CustomAssumptionsNote
-                    usingEstimates={usingEstimates}
-                    onReset={resetToEstimates}
-                  />
-                  <SliderField
-                    label={t("sim.expectedReturn")}
-                    suffix="%"
-                    value={expectedReturn}
-                    onChange={(v) => setReturnOverride(v)}
-                    min={-5}
-                    max={20}
-                    step={0.1}
-                    digits={1}
-                  />
-                  <SliderField
-                    label={t("sim.volatility")}
-                    suffix="%"
-                    value={volatility}
-                    onChange={(v) => setVolOverride(v)}
-                    min={0}
-                    max={60}
-                    step={0.5}
-                    digits={1}
-                  />
-                </>
-              )}
+              {/* The parameters of the SELECTED model. When that mode is
+                  Pro-locked they stay on screen, blurred behind the teaser —
+                  the segmented control above stays live so the user can
+                  switch back to a mode they do have. */}
+              <ProGate
+                locked={modeLocked}
+                feature={
+                  effectiveMode === "portfolio" ? "simulationPortfolio" : "simulationCustom"
+                }
+              >
+                <div className="space-y-4">
+                  {effectiveMode === "portfolio" && model ? (
+                    <PortfolioModelNote
+                      model={model}
+                      overrides={assetOverrides}
+                      onOverride={(name, patch) =>
+                        setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
+                      }
+                      onResetOverrides={() => setAssetOverrides({})}
+                    />
+                  ) : (
+                    <>
+                      <CustomAssumptionsNote
+                        usingEstimates={usingEstimates}
+                        onReset={resetToEstimates}
+                      />
+                      <SliderField
+                        label={t("sim.expectedReturn")}
+                        suffix="%"
+                        value={expectedReturn}
+                        onChange={(v) => setReturnOverride(v)}
+                        min={-5}
+                        max={20}
+                        step={0.1}
+                        digits={1}
+                      />
+                      <SliderField
+                        label={t("sim.volatility")}
+                        suffix="%"
+                        value={volatility}
+                        onChange={(v) => setVolOverride(v)}
+                        min={0}
+                        max={60}
+                        step={0.5}
+                        digits={1}
+                      />
+                    </>
+                  )}
 
-              {effectiveMode === "portfolio" && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={rebalanceYearly}
-                    onChange={(e) => setRebalanceYearly(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
-                  />
-                  <span>{t("sim.rebalanceYearly")}</span>
-                  <InfoTip text={t("sim.rebalanceYearlyTip")} />
-                </label>
-              )}
+                  {effectiveMode === "portfolio" && (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={rebalanceYearly}
+                        onChange={(e) => setRebalanceYearly(e.target.checked)}
+                        className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+                      />
+                      <span>{t("sim.rebalanceYearly")}</span>
+                      <InfoTip text={t("sim.rebalanceYearlyTip")} />
+                    </label>
+                  )}
+                </div>
+              </ProGate>
 
               <SliderField
                 label={t("sim.runs")}
@@ -564,7 +596,12 @@ export function MonteCarloPanel() {
             </div>
           </div>
 
-          <Button variant="primary" className="w-full" onClick={run} disabled={running}>
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={run}
+            disabled={running || modeLocked}
+          >
             {running ? t("sim.running") : t("sim.run")}
           </Button>
         </div>

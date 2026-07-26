@@ -55,7 +55,8 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
 import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
-import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { useFeature, useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { CashInterestSection } from "@/components/assets/cash-interest-section";
@@ -139,8 +140,10 @@ export function AssetDetail({
   const router = useRouter();
   const savingsPlansEnabled = useFeatureFlag("savingsPlans");
   const splitDetectionEnabled = useFeatureFlag("splitDetection");
-  const cashInterestEnabled = useFeatureFlag("cashInterest");
-  const manualValuationEnabled = useFeatureFlag("manualValuation");
+  // Whole sections of this page: Pro-locked ⇒ the real section renders
+  // blurred behind the paywall instead of vanishing.
+  const cashInterest = useFeature("cashInterest");
+  const manualValuation = useFeature("manualValuation");
   const billingEnabled = useFeatureFlag("billing");
   const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
@@ -826,12 +829,16 @@ export function AssetDetail({
           </dl>
         </Card>
 
-        {held && asset.type === "CASH" && cashInterestEnabled && (
-          <CashInterestSection asset={asset} txs={txs} />
+        {held && asset.type === "CASH" && cashInterest.enabled && (
+          <ProGate locked={cashInterest.locked} feature="cashInterest">
+            <CashInterestSection asset={asset} txs={txs} />
+          </ProGate>
         )}
 
-        {held && asset.type === "OTHER" && manualValuationEnabled && (
-          <ValuationSection asset={asset} />
+        {held && asset.type === "OTHER" && manualValuation.enabled && (
+          <ProGate locked={manualValuation.locked} feature="manualValuation">
+            <ValuationSection asset={asset} />
+          </ProGate>
         )}
 
         {constituents.length > 0 && (

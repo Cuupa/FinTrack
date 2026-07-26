@@ -7,7 +7,8 @@ import { useState } from "react";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { AddAssetForm } from "./add-asset-form";
 import { ImportTransactions } from "./import-transactions";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 type Tab = "manual" | "import";
@@ -22,8 +23,11 @@ export function AddAssetPanel({
 }) {
   const [tab, setTab] = useState<Tab>("manual");
   const { t } = useI18n();
-  const csvImport = useFeatureFlag("csvImport");
   // With CSV import off, the modal is manual-only — no tab switcher needed.
+  // Pro-locked keeps the tab (and its real UI, blurred behind the paywall):
+  // hiding the tab would make the feature invisible to exactly the users it
+  // is meant to be sold to.
+  const { enabled: csvImport, locked: csvLocked } = useFeature("csvImport");
   const activeTab = csvImport ? tab : "manual";
   return (
     <Card>
@@ -48,7 +52,9 @@ export function AddAssetPanel({
       </div>
       {csvImport && (
         <div className={activeTab === "import" ? "" : "hidden"}>
-          <ImportTransactions onDone={onDone} onRun={onRun} />
+          <ProGate locked={csvLocked} feature="csvImport">
+            <ImportTransactions onDone={onDone} onRun={onRun} />
+          </ProGate>
         </div>
       )}
     </Card>
