@@ -52,6 +52,18 @@ export interface GoalValuation {
   fx?: Record<string, number>;
 }
 
+/**
+ * Highest balance ever recorded for an account, native currency: the opening
+ * balance plus every later reading. For a liability that is the most that was
+ * ever owed, which is what repayment progress is measured from.
+ */
+function peakBalance(account: Account, accountBalances: AccountBalance[]): number {
+  return Math.max(
+    account.openingBalance,
+    ...balanceSeries(account, accountBalances).map((p) => p.balance),
+  );
+}
+
 function rateFor(account: Account, v?: GoalValuation): number {
   if (!v) return 1;
   const cur = account.currency ?? v.base;
@@ -92,10 +104,19 @@ export function goalProgress(
 
     // Paying a debt off is progress running the other way: the account's
     // balance is what is still OWED, so it falls as the goal is met. Progress
-    // is therefore what has already been repaid, against a target holding the
-    // original debt. Returning the raw balance here (as this did before) made
-    // a payoff goal read as more complete the deeper into debt you went.
-    if (account.isLiability) return Math.max(0, goal.targetAmount - balance);
+    // is therefore what has already been repaid, measured from the highest
+    // balance ever owed -- the same yardstick the derived payoff goal uses
+    // (see `liabilityPayoffGoals`). Measuring against `goal.targetAmount`
+    // instead (as this did before) silently required the user to have typed
+    // the original debt as their target: a goal to repay 100 of a 12,000
+    // mortgage then read 0 % forever, and one whose target was below the
+    // remaining balance always read 0. Returning the raw balance would be
+    // worse still -- a payoff goal would look more complete the deeper into
+    // debt you went.
+    if (account.isLiability) {
+      const peak = peakBalance(account, accountBalances) * rateFor(account, valuation);
+      return Math.max(0, peak - balance);
+    }
 
     return balance;
   }
@@ -212,11 +233,7 @@ export function liabilityPayoffGoals(
   for (const account of accounts) {
     if (!account.isLiability || tracked.has(account.id)) continue;
     const rate = rateFor(account, valuation);
-    const peak =
-      Math.max(
-        account.openingBalance,
-        ...balanceSeries(account, accountBalances).map((p) => p.balance),
-      ) * rate;
+    const peak = peakBalance(account, accountBalances) * rate;
     // A liability that never owed anything is noise, not a goal.
     if (!(peak > 0)) continue;
     const balance = currentAccountBalance(account, accountBalances) * rate;

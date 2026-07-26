@@ -590,7 +590,7 @@ export const en = {
 
   "goals.form.payOff": "pay off",
   "goals.form.payOffHint":
-    "Progress is what you have already repaid. Enter the original debt as the target amount in {currency}.",
+    "Progress is what you have already repaid, measured from the highest balance ever owed. The target amount ({currency}) is how much of it you want to pay off.",
 
   "spending.categories.addDefaults": "Add standard categories",
   "cat.group.home": "Home",
@@ -1001,8 +1001,8 @@ export const en = {
   "contracts.form.accountNone": "Do not book",
   "contracts.form.accountHintOn": "The charge is booked into your spending from today on.",
   "contracts.form.accountHintOff": "Kept as a register entry only, with no bookings.",
-  "spending.list.makeContract": "Make a contract",
-  "spending.list.makeContractTitle": "Turn this into a contract?",
+  "spending.list.makeContract": "Add as contract",
+  "spending.list.makeContractTitle": "Add this booking as a contract?",
   "spending.list.makeContractMsg":
     "Creates a monthly contract for {payee} from this booking. You can change the interval and everything else on the Contracts page.",
   "contracts.form.targetLabel": "Paid into (optional)",
@@ -1057,16 +1057,18 @@ export const en = {
   "goals.list.edit": "Edit",
   "goals.edit.title": "Edit goal",
   "goals.edit.save": "Save changes",
+  "goals.edit.compositeHint":
+    "Target amount and progress come from this goal's parts ({n}), so they are not set here. Edit a part to change them.",
   "goals.list.manualTracking": "Manually tracked",
   "goals.list.linkedTo": "Linked to {name}",
   "goals.list.autoPayoff": "Automatic: paying off this liability",
   "goals.list.openEnded": "Open-ended",
   "goals.list.monthlyNeeded": "{amount} / month needed",
-  "goals.list.sumOfSubGoals": "Sum of {n} parts",
+  "goals.list.sumOfSubGoals": "Sum of its parts ({n})",
   "goals.delete.title": "Delete goal",
   "goals.delete.message": "Delete \"{name}\"? This cannot be undone.",
   "goals.delete.messageWithSubGoals":
-    "Delete \"{name}\" and its {n} parts? This cannot be undone.",
+    "Delete \"{name}\" and its parts ({n})? This cannot be undone.",
   "health.title": "Financial health",
   "health.subtitle": "Four quick gauges derived from your accounts, spending and net worth.",
   "health.gauge.monthsOfExpenses.label": "Months of expenses covered",
@@ -2432,7 +2434,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "goals.form.payOff": "abbezahlen",
   "goals.form.payOffHint":
-    "Der Fortschritt ist das, was du schon zurückgezahlt hast. Trag als Zielbetrag die ursprüngliche Schuld in {currency} ein.",
+    "Der Fortschritt ist das, was du schon zurückgezahlt hast, gemessen am höchsten Schuldenstand. Der Zielbetrag ({currency}) ist, wie viel davon du abbezahlen willst.",
 
   "spending.categories.addDefaults": "Standardkategorien hinzufügen",
   "cat.group.home": "Wohnen",
@@ -2846,10 +2848,10 @@ export const de: Partial<Record<MessageKey, string>> = {
   "contracts.form.accountNone": "Nicht buchen",
   "contracts.form.accountHintOn": "Der Betrag wird ab heute in deine Ausgaben gebucht.",
   "contracts.form.accountHintOff": "Nur als Eintrag im Register, ohne Buchungen.",
-  "spending.list.makeContract": "Vertrag daraus machen",
-  "spending.list.makeContractTitle": "Daraus einen Vertrag machen?",
+  "spending.list.makeContract": "Als Vertrag anlegen",
+  "spending.list.makeContractTitle": "Diese Buchung als Vertrag anlegen?",
   "spending.list.makeContractMsg":
-    "Legt aus dieser Buchung einen monatlichen Vertrag für {payee} an. Intervall und alles Weitere kannst du auf der Verträge-Seite ändern.",
+    "Legt aus dieser Buchung einen monatlichen Vertrag für {payee} an. Intervall und alles Weitere kannst du auf der Seite Verträge ändern.",
   "contracts.form.targetLabel": "Zahlt ein auf (optional)",
   "contracts.form.targetNone": "Nichts, das Geld ist ausgegeben",
   "contracts.form.targetHintOn":
@@ -2902,16 +2904,18 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.list.edit": "Bearbeiten",
   "goals.edit.title": "Ziel bearbeiten",
   "goals.edit.save": "Änderungen speichern",
+  "goals.edit.compositeHint":
+    "Zielbetrag und Fortschritt ergeben sich aus den Teilzielen ({n}) und werden deshalb hier nicht gesetzt. Bearbeite ein Teilziel, um sie zu ändern.",
   "goals.list.manualTracking": "Manuell erfasst",
   "goals.list.linkedTo": "Verknüpft mit {name}",
   "goals.list.autoPayoff": "Automatisch: Tilgung dieser Verbindlichkeit",
   "goals.list.openEnded": "Ohne Enddatum",
   "goals.list.monthlyNeeded": "{amount} / Monat nötig",
-  "goals.list.sumOfSubGoals": "Summe aus {n} Teilzielen",
+  "goals.list.sumOfSubGoals": "Summe der Teilziele ({n})",
   "goals.delete.title": "Ziel löschen",
   "goals.delete.message": "\"{name}\" löschen? Das kann nicht rückgängig gemacht werden.",
   "goals.delete.messageWithSubGoals":
-    "\"{name}\" mit {n} Teilzielen löschen? Das kann nicht rückgängig gemacht werden.",
+    "\"{name}\" mit seinen Teilzielen ({n}) löschen? Das kann nicht rückgängig gemacht werden.",
   "health.title": "Finanzielle Gesundheit",
   "health.subtitle": "Vier schnelle Kennzahlen aus deinen Konten, Ausgaben und deinem Nettovermögen.",
   "health.gauge.monthsOfExpenses.label": "Abgedeckte Monate",
@@ -4277,7 +4281,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "goals.form.payOff": "amortizar",
   "goals.form.payOffHint":
-    "El progreso es lo que ya has devuelto. Introduce la deuda original como importe objetivo en {currency}.",
+    "El progreso es lo que ya has devuelto, medido desde el saldo más alto que llegaste a deber. El importe objetivo ({currency}) es cuánto de esa deuda quieres amortizar.",
 
   "spending.categories.addDefaults": "Añadir categorías estándar",
   "cat.group.home": "Vivienda",
@@ -4688,8 +4692,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "contracts.form.accountNone": "No registrar",
   "contracts.form.accountHintOn": "El cargo se registra en tus gastos a partir de hoy.",
   "contracts.form.accountHintOff": "Solo como entrada del registro, sin movimientos.",
-  "spending.list.makeContract": "Convertir en contrato",
-  "spending.list.makeContractTitle": "¿Convertirlo en un contrato?",
+  "spending.list.makeContract": "Añadir como contrato",
+  "spending.list.makeContractTitle": "¿Añadir este movimiento como contrato?",
   "spending.list.makeContractMsg":
     "Crea un contrato mensual para {payee} a partir de este movimiento. Puedes cambiar la periodicidad y lo demás en la página de contratos.",
   "contracts.form.targetLabel": "Ingresa en (opcional)",
@@ -4744,16 +4748,18 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.list.edit": "Editar",
   "goals.edit.title": "Editar meta",
   "goals.edit.save": "Guardar cambios",
+  "goals.edit.compositeHint":
+    "El importe objetivo y el progreso salen de las partes de esta meta ({n}), así que no se fijan aquí. Edita una parte para cambiarlos.",
   "goals.list.manualTracking": "Seguimiento manual",
   "goals.list.linkedTo": "Vinculada a {name}",
   "goals.list.autoPayoff": "Automática: amortización de este pasivo",
   "goals.list.openEnded": "Sin fecha límite",
   "goals.list.monthlyNeeded": "{amount} / mes necesario",
-  "goals.list.sumOfSubGoals": "Suma de {n} partes",
+  "goals.list.sumOfSubGoals": "Suma de sus partes ({n})",
   "goals.delete.title": "Eliminar meta",
   "goals.delete.message": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
   "goals.delete.messageWithSubGoals":
-    "¿Eliminar \"{name}\" y sus {n} partes? Esta acción no se puede deshacer.",
+    "¿Eliminar \"{name}\" y sus partes ({n})? Esta acción no se puede deshacer.",
   "health.title": "Salud financiera",
   "health.subtitle": "Cuatro indicadores rápidos derivados de tus cuentas, tus gastos y tu patrimonio neto.",
   "health.gauge.monthsOfExpenses.label": "Meses de gastos cubiertos",

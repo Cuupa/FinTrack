@@ -73,6 +73,16 @@ describe("goalProgress", () => {
     expect(goalProgressPct(g.targetAmount, goalProgress(g, [loan], balances))).toBe(100);
   });
 
+  it("measures repayment from the highest balance ever owed, not from the target", () => {
+    // Repaying 3000 of a 12000 loan: 9000 still owed. The user's target says
+    // how much they mean to repay (5000) and must not distort the progress.
+    const loan = account({ kind: "loan", isLiability: true, openingBalance: 12000 });
+    const balances: AccountBalance[] = [{ accountId: "a1", date: "2024-06-01", balance: 9000 }];
+    const g = goal({ targetAmount: 5000, linkedAccountId: "a1" });
+    expect(goalProgress(g, [loan], balances)).toBe(3000);
+    expect(goalProgressPct(g.targetAmount, goalProgress(g, [loan], balances))).toBe(60);
+  });
+
   it("clamps payoff progress at 0 when the debt grew past its original amount", () => {
     const loan = account({ kind: "loan", isLiability: true, openingBalance: 12000 });
     const balances: AccountBalance[] = [{ accountId: "a1", date: "2024-06-01", balance: 15000 }];

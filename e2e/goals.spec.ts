@@ -60,7 +60,7 @@ test("a goal made of sub-goals is worth the sum of its parts", async ({ page }) 
 
   const rows = page.locator('[data-tour="goals-list"] tbody tr');
   const trip = rows.filter({ hasText: "Trip to the USA" });
-  await expect(trip).toContainText("Sum of 2 parts");
+  await expect(trip).toContainText("Sum of its parts (2)");
   await expect(trip).toContainText("€1,400.00");
 
   // A sub-goal is offered as a part, never as a parent of its own.
@@ -70,7 +70,7 @@ test("a goal made of sub-goals is worth the sum of its parts", async ({ page }) 
 
   // Deleting the whole goal takes its parts with it (store + DB cascade).
   await trip.getByRole("button", { name: "Delete" }).click();
-  await expect(page.getByRole("alertdialog")).toContainText("its 2 parts");
+  await expect(page.getByRole("alertdialog")).toContainText("its parts (2)");
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
   await expect(rows.filter({ hasText: "Flight" })).toHaveCount(0);
   await expect(rows.filter({ hasText: "Hotel" })).toHaveCount(0);

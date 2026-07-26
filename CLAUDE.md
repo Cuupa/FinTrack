@@ -658,13 +658,25 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
   since its progress is summed into its parent and it renders indented under
   it, so suppressing the derived goal would leave the debt with no row of its
   own. Owner rule: never make the user restate a liability as a goal by hand.
+  Progress on **any** goal linked to a liability (derived or user-made) is
+  what has been repaid measured from the **highest balance ever owed**
+  (`peakBalance`), never `targetAmount - balance`: the old formula silently
+  required the user to have typed the original debt as their target, so a goal
+  to repay part of a mortgage read 0 % forever. The target only says how much
+  of the debt they mean to repay.
   Every stored goal is **editable after the fact** (row "Edit" -> dialog): one
   `GoalForm` (`components/goals/goals-view.tsx`) serves both the add card and
   the edit dialog through the existing `updateGoal` store method, so putting
   more money aside means changing the goal's current amount, never recreating
-  it. Derived payoff rows have no edit/delete (the account owns them), a goal
-  can never become its own part, and one that already has parts is not offered
-  a parent (nesting stays one level deep).
+  it. A **composite** goal's dialog shows only name + date plus a line saying
+  the figures come from its parts, and carries the stored amount/tracking
+  fields over untouched — those fields are dead for a goal with parts
+  (`goalTotals`), and showing them contradicted every number in its row.
+  Derived payoff rows have no edit/delete (the account owns them), a goal can
+  never become its own part, and one that already has parts is not offered a
+  parent (nesting stays one level deep). Counted copy on this page is phrased
+  "... ({n})" rather than "{n} parts": `t()` has no plural forms, so "Summe aus
+  1 Teilzielen" was simply wrong German.
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/instruments/[key]` — same detail view for non-held instruments (watchlist
   click-through / catalog), reduced to master data + chart + look-through,
