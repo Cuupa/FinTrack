@@ -573,6 +573,11 @@ create table if not exists public.spending_categories (
 );
 create unique index if not exists spending_categories_unique_key
   on public.spending_categories (user_id, group_name, name);
+-- Post-launch column (spending_categories shipped in 0081): the tax-pack
+-- deductible flag, also in the load() SELECT list.
+alter table public.spending_categories
+  add column if not exists tax_deductible boolean;
+
 create index if not exists spending_categories_user_id_idx on public.spending_categories (user_id);
 
 create table if not exists public.spending_transactions (
@@ -595,6 +600,10 @@ create table if not exists public.spending_transactions (
 -- not move them either.
 alter table public.spending_transactions
   add column if not exists transfer_account_id uuid references public.accounts (id) on delete set null;
+-- Contract booking link (migration 0095) -- post-launch like the transfer
+-- marker above, and equally part of the load() SELECT list.
+alter table public.spending_transactions
+  add column if not exists recurring_id uuid;
 
 create index if not exists spending_transactions_account_id_idx on public.spending_transactions (account_id);
 create index if not exists spending_transactions_transfer_account_id_idx on public.spending_transactions (transfer_account_id);
@@ -694,6 +703,18 @@ create table if not exists public.goals (
   parent_goal_id uuid references public.goals (id) on delete cascade,
   created_at timestamptz not null default now()
 );
+-- Post-launch columns (goals shipped in 0085): guarded so an EXISTING
+-- database gets them too -- the inline definitions above only ever run on a
+-- fresh install, and the indexes below would otherwise abort with 42703.
+-- SupabaseStore.load() selects all three, so a database missing them fails
+-- the whole portfolio load, not just /goals.
+alter table public.goals
+  add column if not exists tracks_investments boolean not null default false;
+alter table public.goals
+  add column if not exists linked_portfolio_id uuid references public.portfolios (id) on delete set null;
+alter table public.goals
+  add column if not exists parent_goal_id uuid references public.goals (id) on delete cascade;
+
 create index if not exists goals_user_id_idx on public.goals (user_id);
 create index if not exists goals_linked_account_id_idx on public.goals (linked_account_id);
 create index if not exists goals_linked_portfolio_id_idx on public.goals (linked_portfolio_id);
@@ -1160,6 +1181,15 @@ create table if not exists public.app_settings (
   vapid_subject text,
   updated_at timestamptz not null default now()
 );
+-- Post-launch columns on this singleton row: the Stripe keys (migration
+-- 0067) and the VAPID push keys (0076). Guarded so an existing database
+-- gets them -- getStripeKeys()/getVapidKeys() select them by name.
+alter table public.app_settings add column if not exists stripe_secret_key text;
+alter table public.app_settings add column if not exists stripe_webhook_secret text;
+alter table public.app_settings add column if not exists vapid_public_key text;
+alter table public.app_settings add column if not exists vapid_private_key text;
+alter table public.app_settings add column if not exists vapid_subject text;
+
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
 
 -- Web push subscriptions (COMPETITION.md F5): one row per browser/device, prefs
@@ -1445,6 +1475,11 @@ create table if not exists public.billing_config (
   enabled boolean not null default false,
   updated_at timestamptz not null default now()
 );
+-- Post-launch columns (migration 0070): the owner-typed display price
+-- strings shown on /pricing, distinct from the Stripe price ids above.
+alter table public.billing_config add column if not exists price_monthly_display text;
+alter table public.billing_config add column if not exists price_yearly_display text;
+
 alter table public.billing_config enable row level security;
 drop policy if exists "billing config readable" on public.billing_config;
 create policy "billing config readable" on public.billing_config
@@ -1764,6 +1799,13 @@ create table if not exists public.error_logs (
   user_agent text,
   created_at timestamptz not null default now()
 );
+-- `level` shipped after the table did (migration 0069). Inline above, it only
+-- ever reaches a FRESH install -- on an existing database the create is a
+-- no-op, and the index below then aborts the whole apply with 42703 (which,
+-- in one transaction, rolls back every guarded statement earlier in this
+-- file too). Same guard rule as every other post-launch column here.
+alter table public.error_logs
+  add column if not exists level text not null default 'error';
 alter table public.error_logs enable row level security;
 drop policy if exists "error logs admin readable" on public.error_logs;
 create policy "error logs admin readable" on public.error_logs for select using (public.is_admin());

@@ -8,6 +8,7 @@
 // shapes, so the rest of the app is unaffected.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reportError } from "../errors/report";
 import {
   DEFAULT_PROFILE,
   EMPTY_REBALANCE_PLAN,
@@ -33,6 +34,35 @@ import {
   type ValuationPoint,
   type WatchlistItem,
 } from "../types";
+
+/**
+ * Postgres error codes that mean "this database is behind this build": the
+ * table (42P01 undefined_table) or the column (42703 undefined_column) a
+ * feature selects has not been migrated yet. Everything else — RLS, auth,
+ * network, timeouts — is a real failure and must keep surfacing.
+ */
+function isSchemaLag(error: { code?: string } | null): boolean {
+  return error?.code === "42P01" || error?.code === "42703";
+}
+
+/**
+ * Rethrows anything that is not a schema lag. A lagging table/column is
+ * reported to the self-hosted error log as a warning (so it is visible on
+ * /admin/errors instead of only in someone's console) and then swallowed —
+ * its `res.data` is already null, so the caller's `?? []` yields an empty
+ * feature rather than a failed load. `reportError` never throws and
+ * self-throttles, so this is safe on every load.
+ */
+function failUnlessSchemaLag(table: string, error: { code?: string; message?: string } | null) {
+  if (!error) return;
+  if (!isSchemaLag(error)) throw error;
+  reportError({
+    kind: "window",
+    level: "warn",
+    message: `Schema lag: ${table} is missing a table or column this build selects (${error.code}: ${error.message}). Feature degraded to empty; apply the pending migrations.`,
+    route: "store/load",
+  });
+}
 
 /** Coerce a jsonb `rebalance_targets` value (which may be `{}` from the column
  *  default, null, or a partial object) into a complete RebalancePlan. */
@@ -408,27 +438,42 @@ export class SupabaseStore implements DataStore {
         .maybeSingle(),
     ]);
 
+    // Core resources: the app means nothing without them, so any error fails
+    // the load loudly and retryably.
+    //
     // Profile errors were previously swallowed, silently resetting the whole
     // profile (currency, tax settings, theme, tour state) to defaults whenever
     // the SELECT failed — e.g. a profile column that lags its migration. Fail
     // loud like every sibling resource so the load surfaces a retryable error
     // instead of quietly discarding the user's settings.
     if (profileRes.error) throw profileRes.error;
+    // Was unchecked: a failed portfolios SELECT left `portfolios` empty, which
+    // the block below reads as "pre-multi-portfolio account" and answers by
+    // CREATING a "Main" portfolio and reassigning every orphaned transaction
+    // to it. A transient read error must never trigger a write like that.
+    if (portfoliosRes.error) throw portfoliosRes.error;
     if (assetsRes.error) throw assetsRes.error;
     if (txRes.error) throw txRes.error;
-    if (watchRes.error) throw watchRes.error;
-    if (plansRes.error) throw plansRes.error;
-    if (tagGroupsRes.error) throw tagGroupsRes.error;
-    if (assetTagsRes.error) throw assetTagsRes.error;
-    if (valuationsRes.error) throw valuationsRes.error;
-    if (accountsRes.error) throw accountsRes.error;
-    if (accountBalancesRes.error) throw accountBalancesRes.error;
-    if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
-    if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
-    if (budgetsRes.error) throw budgetsRes.error;
-    if (contractsRes.error) throw contractsRes.error;
-    if (goalsRes.error) throw goalsRes.error;
-    if (llmSettingsRes.error) throw llmSettingsRes.error;
+
+    // Feature resources: a table/column this build selects but the database
+    // has not been migrated to yet degrades THAT feature to empty (reported
+    // as a warning) instead of taking the whole app down. A feature flag
+    // hides the UI of an unlaunched feature; only this keeps its unmigrated
+    // schema from failing the load for every user. Any other error still
+    // throws — an RLS or network failure must not masquerade as "no data".
+    failUnlessSchemaLag("watchlist_items", watchRes.error);
+    failUnlessSchemaLag("savings_plans", plansRes.error);
+    failUnlessSchemaLag("tag_groups", tagGroupsRes.error);
+    failUnlessSchemaLag("asset_tags", assetTagsRes.error);
+    failUnlessSchemaLag("asset_valuations", valuationsRes.error);
+    failUnlessSchemaLag("accounts", accountsRes.error);
+    failUnlessSchemaLag("account_balances", accountBalancesRes.error);
+    failUnlessSchemaLag("spending_categories", spendingCategoriesRes.error);
+    failUnlessSchemaLag("spending_transactions", spendingTransactionsRes.error);
+    failUnlessSchemaLag("budgets", budgetsRes.error);
+    failUnlessSchemaLag("contracts", contractsRes.error);
+    failUnlessSchemaLag("goals", goalsRes.error);
+    failUnlessSchemaLag("llm_settings", llmSettingsRes.error);
 
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.

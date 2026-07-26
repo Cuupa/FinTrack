@@ -3,6 +3,11 @@
 // Holds the active portfolio in memory and exposes mutations. Backed by the
 // store chosen from auth state, so switching between Guest and Registered mode
 // transparently swaps localStorage for Supabase and reloads.
+//
+// A failed load is the single most user-visible failure this app has (the
+// whole page degrades to a retry screen), so it goes to the self-hosted error
+// log as `fatal`, not just to the console — it used to be console-only, which
+// is why a production-breaking 42703 never showed up on /admin/errors.
 
 import {
   createContext,
@@ -14,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import { getSupabaseClient } from "../supabase/client";
+import { reportError } from "../errors/report";
 import { createStore, type DataStore } from "../store";
 import type {
   AccountInput,
@@ -136,6 +142,33 @@ interface PortfolioContextValue {
   deletePortfolio(id: string): Promise<void>;
 }
 
+/**
+ * Log a failed portfolio load to the console AND to the self-hosted error log
+ * (`/admin/errors`). Supabase rejects with a PostgrestError — a plain object
+ * carrying `code`/`message`/`details`/`hint`, NOT an Error — so `err.message`
+ * alone would read "undefined" and `err.stack` is absent; the code is what
+ * identifies the failure (e.g. 42703 = a column this build selects that the
+ * database has not been migrated to). `reportError` never throws and
+ * self-throttles, so this is safe on a retry loop.
+ */
+function reportLoadFailure(label: string, err: unknown): void {
+  console.error(label, err);
+  const e = err as { code?: string; message?: string; details?: string; hint?: string } | null;
+  const parts = [
+    label,
+    e?.code ? `[${e.code}]` : null,
+    e?.message ?? (err instanceof Error ? err.message : String(err)),
+    e?.details || null,
+  ].filter(Boolean);
+  reportError({
+    kind: "window",
+    level: "fatal",
+    message: parts.join(" "),
+    stack: err instanceof Error ? (err.stack ?? null) : null,
+    route: "portfolio/load",
+  });
+}
+
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
@@ -169,7 +202,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       // Keep whatever `data` already holds — never fall back to an empty
       // portfolio on a failed refresh — and surface the failure instead.
-      console.error("Failed to reload portfolio", err);
+      reportLoadFailure("Failed to reload portfolio", err);
       setLoadError(true);
     } finally {
       setLoading(false);
@@ -198,7 +231,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         if (!active) return;
         // Same rule as `reload`: don't wipe existing data, just surface the
         // failure so the UI can stop hanging on the loading skeleton.
-        console.error("Failed to load portfolio", err);
+        reportLoadFailure("Failed to load portfolio", err);
         setLoadError(true);
         setLoading(false);
       },
