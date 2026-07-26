@@ -653,9 +653,18 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
   payoff goal (`liabilityPayoffGoals`, sentinel id `debt:<accountId>`, never
   stored): target = the highest balance ever owed, progress = what has been
   repaid, target date = the amortisation payoff date only when the account
-  carries a rate + minimum payment. A user-made goal linked to that account
-  replaces the derived one. Owner rule: never make the user restate a
-  liability as a goal by hand.
+  carries a rate + minimum payment. A user-made **top-level** goal linked to
+  that account replaces the derived one; a *sub*-goal linked to it does not,
+  since its progress is summed into its parent and it renders indented under
+  it, so suppressing the derived goal would leave the debt with no row of its
+  own. Owner rule: never make the user restate a liability as a goal by hand.
+  Every stored goal is **editable after the fact** (row "Edit" -> dialog): one
+  `GoalForm` (`components/goals/goals-view.tsx`) serves both the add card and
+  the edit dialog through the existing `updateGoal` store method, so putting
+  more money aside means changing the goal's current amount, never recreating
+  it. Derived payoff rows have no edit/delete (the account owns them), a goal
+  can never become its own part, and one that already has parts is not offered
+  a parent (nesting stays one level deep).
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/instruments/[key]` — same detail view for non-held instruments (watchlist
   click-through / catalog), reduced to master data + chart + look-through,

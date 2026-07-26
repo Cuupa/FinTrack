@@ -187,8 +187,11 @@ export function isPayoffGoal(goal: Goal): boolean {
  * - target date = the amortisation payoff date when the account carries an
  *   interest rate and a minimum payment (ROADMAP #9), otherwise open-ended.
  *   No guessed date: the schedule is the only honest one.
- * - a liability the user already tracks with a goal of their own is skipped,
- *   so a manual goal always wins over the derived one.
+ * - a liability the user already tracks with a TOP-LEVEL goal of their own is
+ *   skipped, so a manual goal always wins over the derived one. A sub-goal
+ *   linked to the same account does not count: its progress is summed into its
+ *   parent's target and it renders indented under that parent, so suppressing
+ *   the derived goal would leave the debt with no row of its own at all.
  *
  * Amounts come out in the base currency, like every other goal figure.
  */
@@ -199,7 +202,12 @@ export function liabilityPayoffGoals(
   todayIso: string,
   valuation?: GoalValuation,
 ): Goal[] {
-  const tracked = new Set(goals.map((g) => g.linkedAccountId).filter(Boolean));
+  const tracked = new Set(
+    goals
+      .filter((g) => !g.parentGoalId)
+      .map((g) => g.linkedAccountId)
+      .filter(Boolean),
+  );
   const out: Goal[] = [];
   for (const account of accounts) {
     if (!account.isLiability || tracked.has(account.id)) continue;

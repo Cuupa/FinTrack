@@ -1039,6 +1039,8 @@ export const en = {
   "goals.form.wholeDepot": "Whole depot (all brokers)",
   "goals.form.brokerDepot": "Depot at {name}",
   "goals.form.manualCurrentLabel": "Current amount ({currency})",
+  "goals.form.manualCurrentHint":
+    "What you have put aside for this goal so far. Edit the goal to change it whenever you add money.",
   "goals.form.parentLabel": "Part of",
   "goals.form.noParent": "A goal of its own",
   "goals.form.parentHint":
@@ -1052,6 +1054,9 @@ export const en = {
   "goals.list.target": "Target",
   "goals.list.targetDate": "Target date",
   "goals.list.delete": "Delete",
+  "goals.list.edit": "Edit",
+  "goals.edit.title": "Edit goal",
+  "goals.edit.save": "Save changes",
   "goals.list.manualTracking": "Manually tracked",
   "goals.list.linkedTo": "Linked to {name}",
   "goals.list.autoPayoff": "Automatic: paying off this liability",
@@ -2879,6 +2884,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.form.wholeDepot": "Gesamtes Depot (alle Broker)",
   "goals.form.brokerDepot": "Depot bei {name}",
   "goals.form.manualCurrentLabel": "Aktueller Betrag ({currency})",
+  "goals.form.manualCurrentHint":
+    "Was du für dieses Ziel bisher zurückgelegt hast. Bearbeite das Ziel, um den Betrag zu ändern, wenn Geld dazukommt.",
   "goals.form.parentLabel": "Teil von",
   "goals.form.noParent": "Eigenständiges Ziel",
   "goals.form.parentHint":
@@ -2892,6 +2899,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.list.target": "Ziel",
   "goals.list.targetDate": "Zieldatum",
   "goals.list.delete": "Löschen",
+  "goals.list.edit": "Bearbeiten",
+  "goals.edit.title": "Ziel bearbeiten",
+  "goals.edit.save": "Änderungen speichern",
   "goals.list.manualTracking": "Manuell erfasst",
   "goals.list.linkedTo": "Verknüpft mit {name}",
   "goals.list.autoPayoff": "Automatisch: Tilgung dieser Verbindlichkeit",
@@ -4716,6 +4726,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.form.wholeDepot": "Toda la cartera (todos los brókeres)",
   "goals.form.brokerDepot": "Cartera en {name}",
   "goals.form.manualCurrentLabel": "Importe actual ({currency})",
+  "goals.form.manualCurrentHint":
+    "Lo que has apartado para esta meta hasta ahora. Edita la meta para cambiarlo cuando añadas dinero.",
   "goals.form.parentLabel": "Parte de",
   "goals.form.noParent": "Meta independiente",
   "goals.form.parentHint":
@@ -4729,6 +4741,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.list.target": "Objetivo",
   "goals.list.targetDate": "Fecha objetivo",
   "goals.list.delete": "Eliminar",
+  "goals.list.edit": "Editar",
+  "goals.edit.title": "Editar meta",
+  "goals.edit.save": "Guardar cambios",
   "goals.list.manualTracking": "Seguimiento manual",
   "goals.list.linkedTo": "Vinculada a {name}",
   "goals.list.autoPayoff": "Automática: amortización de este pasivo",

@@ -1,14 +1,17 @@
 "use client";
 
 // Named savings goals (ROADMAP #6, flag `goals`): a target amount, optionally
-// by a target date, whose progress either mirrors a linked account's current
-// balance or is entered manually. Everything rides the store seam via
-// usePortfolio(); no mode branching.
+// by a target date, whose progress either mirrors a linked account's balance,
+// the depot's value, or an amount the user keeps up to date by hand.
+// Everything rides the store seam via usePortfolio(); no mode branching.
 //
 // The list also carries the payoff goals derived from the user's liability
 // accounts (`liabilityPayoffGoals`) -- owing money already IS a goal, so it
 // shows up without being restated by hand. Those rows are read-only here: the
 // account behind them owns their numbers.
+//
+// The same `GoalForm` serves the add card and the edit dialog, so a goal's
+// amount (and every other field) stays changeable after it was created.
 
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
@@ -24,12 +27,14 @@ import {
   subGoals,
   topLevelGoals,
 } from "@/lib/finance/goals";
-import type { Goal } from "@/lib/types";
+import type { Account, Goal, Portfolio } from "@/lib/types";
+import type { GoalInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 
@@ -43,6 +48,12 @@ const MANUAL_TRACKING = "";
 const DEPOT_PREFIX = "depot:";
 const DEPOT_ALL = DEPOT_PREFIX;
 const isDepotTracking = (v: string) => v.startsWith(DEPOT_PREFIX);
+
+/** A stored goal, back as the tagged value of the tracking picker. */
+function trackingOf(goal: Goal): string {
+  if (goal.tracksInvestments) return `${DEPOT_PREFIX}${goal.linkedPortfolioId ?? ""}`;
+  return goal.linkedAccountId ?? MANUAL_TRACKING;
+}
 
 type SortKey = "name" | "progress" | "targetAmount" | "targetDate";
 
@@ -63,8 +74,228 @@ interface TreeRow extends Row {
 
 const NO_PARENT = "";
 
+/**
+ * Add/edit form for a single goal. Seeded from `initial` when editing, empty
+ * when adding; the caller decides which goals may be picked as a parent (one
+ * level deep, never itself) and what happens after a successful save.
+ */
+function GoalForm({
+  base,
+  accounts,
+  portfolios,
+  parentCandidates,
+  initial,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  onDone,
+  // Tailwind breakpoints are viewport-based, so the dialog has to ask for
+  // fewer columns itself: three of them in a max-w-2xl panel are cramped.
+  gridCls = "sm:grid-cols-2 lg:grid-cols-3",
+}: {
+  base: string;
+  accounts: Account[];
+  portfolios: Portfolio[];
+  parentCandidates: Goal[];
+  initial?: Goal;
+  submitLabel: string;
+  onSubmit: (input: GoalInput) => Promise<unknown>;
+  onCancel?: () => void;
+  onDone?: () => void;
+  gridCls?: string;
+}) {
+  const { t } = useI18n();
+  const [name, setName] = useState(initial?.name ?? "");
+  const [targetAmount, setTargetAmount] = useState(initial ? String(initial.targetAmount) : "");
+  const [targetDate, setTargetDate] = useState(initial?.targetDate ?? "");
+  const [tracking, setTracking] = useState(initial ? trackingOf(initial) : MANUAL_TRACKING);
+  const [manualCurrentAmount, setManualCurrentAmount] = useState(
+    initial?.manualCurrentAmount != null ? String(initial.manualCurrentAmount) : "",
+  );
+  // Empty = a standalone goal. Only top-level goals are offered: a sub-goal
+  // is a line item ("flight"), never a project of its own.
+  const [parentGoalId, setParentGoalId] = useState(initial?.parentGoalId ?? NO_PARENT);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const linkedIsLiability = Boolean(
+    tracking && !isDepotTracking(tracking) && accounts.find((a) => a.id === tracking)?.isLiability,
+  );
+
+  async function submit() {
+    const trimmedName = name.trim();
+    const value = parseDecimal(targetAmount);
+    if (!trimmedName || !Number.isFinite(value) || value <= 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const manual = manualCurrentAmount.trim() ? parseDecimal(manualCurrentAmount) : null;
+      const depot = isDepotTracking(tracking);
+      await onSubmit({
+        name: trimmedName,
+        targetAmount: value,
+        targetDate: targetDate || null,
+        linkedAccountId: depot ? null : tracking || null,
+        tracksInvestments: depot,
+        linkedPortfolioId: depot ? tracking.slice(DEPOT_PREFIX.length) || null : null,
+        manualCurrentAmount:
+          tracking || manual === null || !Number.isFinite(manual) ? null : manual,
+        // Re-checked against the live list: the picked parent may have been
+        // deleted (or turned into a sub-goal) since it was selected.
+        parentGoalId: parentCandidates.some((g) => g.id === parentGoalId) ? parentGoalId : null,
+      });
+      if (!initial) {
+        setName("");
+        setTargetAmount("");
+        setTargetDate("");
+        setTracking(MANUAL_TRACKING);
+        setManualCurrentAmount("");
+        setParentGoalId(NO_PARENT);
+      }
+      onDone?.();
+    } catch (err) {
+      setError(isStorageFullError(err) ? t("common.storageFull") : t("goals.form.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Prefixed while editing so the dialog's inputs never share an id with the
+  // add form behind it.
+  const id = (field: string) => `goal-${initial ? "edit-" : ""}${field}`;
+
+  return (
+    <>
+      <div className={`mt-4 grid gap-4 ${gridCls}`}>
+        <div>
+          <label className="text-sm font-medium" htmlFor={id("name")}>
+            {t("goals.form.nameLabel")}
+          </label>
+          <input
+            id={id("name")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("goals.form.namePlaceholder")}
+            className={inputCls}
+            data-private
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor={id("target")}>
+            {t("goals.form.targetLabel", { currency: base })}
+          </label>
+          <input
+            id={id("target")}
+            inputMode="decimal"
+            value={targetAmount}
+            onChange={(e) => setTargetAmount(stripLeadingZero(e.target.value))}
+            placeholder="0"
+            className={inputCls}
+            data-private
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor={id("date")}>
+            {t("goals.form.dateLabel")}
+          </label>
+          <input
+            id={id("date")}
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className={inputCls}
+          />
+          <p className="mt-1 text-sm text-zinc-500">{t("goals.form.dateHint")}</p>
+        </div>
+        <div>
+          <label className="text-sm font-medium">{t("goals.form.linkedAccountLabel")}</label>
+          <SelectMenu
+            className="mt-1 w-full"
+            ariaLabel={t("goals.form.linkedAccountLabel")}
+            value={tracking}
+            onChange={setTracking}
+            options={[
+              { value: MANUAL_TRACKING, label: t("goals.form.manualTracking") },
+              // The depot has no account to link to (its value is derived
+              // from the transaction log), so it gets its own entries.
+              { value: DEPOT_ALL, label: t("goals.form.wholeDepot") },
+              ...portfolios.map((p) => ({
+                value: `${DEPOT_PREFIX}${p.id}`,
+                label: t("goals.form.brokerDepot", { name: p.name }),
+              })),
+              // Liabilities are marked, because linking one flips what the
+              // goal means: progress becomes what has been repaid, not the
+              // balance itself.
+              ...accounts.map((a) => ({
+                value: a.id,
+                label: a.isLiability ? `${a.name} — ${t("goals.form.payOff")}` : a.name,
+              })),
+            ]}
+          />
+          {linkedIsLiability && (
+            <p className="mt-1 text-sm text-zinc-500">
+              {t("goals.form.payOffHint", { currency: base })}
+            </p>
+          )}
+        </div>
+        {parentCandidates.length > 0 && (
+          <div>
+            <label className="text-sm font-medium">{t("goals.form.parentLabel")}</label>
+            <SelectMenu
+              className="mt-1 w-full"
+              ariaLabel={t("goals.form.parentLabel")}
+              value={parentGoalId}
+              onChange={setParentGoalId}
+              options={[
+                { value: NO_PARENT, label: t("goals.form.noParent") },
+                ...parentCandidates.map((g) => ({ value: g.id, label: g.name })),
+              ]}
+            />
+            <p className="mt-1 text-sm text-zinc-500">{t("goals.form.parentHint")}</p>
+          </div>
+        )}
+        {!tracking && (
+          <div>
+            <label className="text-sm font-medium" htmlFor={id("manual-current")}>
+              {t("goals.form.manualCurrentLabel", { currency: base })}
+            </label>
+            <input
+              id={id("manual-current")}
+              inputMode="decimal"
+              value={manualCurrentAmount}
+              onChange={(e) => setManualCurrentAmount(stripLeadingZero(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void submit();
+              }}
+              placeholder="0"
+              className={inputCls}
+              data-private
+            />
+            <p className="mt-1 text-sm text-zinc-500">{t("goals.form.manualCurrentHint")}</p>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <Button
+            variant="primary"
+            disabled={busy || !name.trim() || !targetAmount.trim()}
+            onClick={() => void submit()}
+          >
+            {submitLabel}
+          </Button>
+          {onCancel && (
+            <Button variant="secondary" disabled={busy} onClick={onCancel}>
+              {t("common.cancel")}
+            </Button>
+          )}
+        </div>
+      </div>
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+    </>
+  );
+}
+
 export function GoalsView() {
-  const { data, addGoal, deleteGoal } = usePortfolio();
+  const { data, addGoal, updateGoal, deleteGoal } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
   const base = data.profile.currency;
@@ -75,23 +306,6 @@ export function GoalsView() {
     [data.accounts],
   );
 
-  // Add-goal form state.
-  const [name, setName] = useState("");
-  const [targetAmount, setTargetAmount] = useState("");
-  const [targetDate, setTargetDate] = useState("");
-  const [tracking, setTracking] = useState(MANUAL_TRACKING);
-  const linkedIsLiability = Boolean(
-    tracking &&
-      !isDepotTracking(tracking) &&
-      data.accounts.find((a) => a.id === tracking)?.isLiability,
-  );
-  const [manualCurrentAmount, setManualCurrentAmount] = useState("");
-  // Empty = a standalone goal. Only top-level goals are offered: a sub-goal
-  // is a line item ("flight"), never a project of its own.
-  const [parentGoalId, setParentGoalId] = useState(NO_PARENT);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   // Not targetDate: an open-ended goal is a first-class goal, so the default
   // order must not be the one column it deliberately leaves empty.
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
@@ -100,6 +314,7 @@ export function GoalsView() {
   });
   const [confirmDelete, setConfirmDelete] = useState<Goal | null>(null);
   const deletedSubGoals = confirmDelete ? subGoals(data.goals, confirmDelete.id).length : 0;
+  const [editing, setEditing] = useState<Goal | null>(null);
 
   // Depot value overall and per broker, for goals that track investments.
   const investments = useMemo(
@@ -108,8 +323,8 @@ export function GoalsView() {
   );
 
   // Every liability is a payoff goal already; the user only has to say so for
-  // the ones they want to track differently (a manual goal on the same
-  // account replaces the derived one).
+  // the ones they want to track differently (a top-level goal of their own on
+  // the same account replaces the derived one).
   const payoffGoals = useMemo(
     () =>
       liabilityPayoffGoals(data.accounts, data.accountBalances, data.goals, todayIso, valuation),
@@ -119,6 +334,15 @@ export function GoalsView() {
   // Only top-level goals can take sub-goals (one level deep), and a derived
   // payoff goal is owned by its account, so it is no candidate either.
   const parentCandidates = useMemo(() => topLevelGoals(data.goals), [data.goals]);
+
+  // Editing: a goal can never become its own part, and one that already has
+  // parts cannot be demoted to a part itself (nesting stays one level deep) --
+  // then the picker is dropped entirely.
+  const editParentCandidates = useMemo(() => {
+    if (!editing) return [];
+    if (subGoals(data.goals, editing.id).length > 0) return [];
+    return parentCandidates.filter((g) => g.id !== editing.id);
+  }, [editing, data.goals, parentCandidates]);
 
   const rows = useMemo(() => {
     const measure = (goal: Goal, children: Goal[]): Row => {
@@ -178,48 +402,17 @@ export function GoalsView() {
     );
   }
 
-  async function submit() {
-    const trimmedName = name.trim();
-    const value = parseDecimal(targetAmount);
-    if (!trimmedName || !Number.isFinite(value) || value <= 0) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const manual = manualCurrentAmount.trim() ? parseDecimal(manualCurrentAmount) : null;
-      const depot = isDepotTracking(tracking);
-      await addGoal({
-        name: trimmedName,
-        targetAmount: value,
-        targetDate: targetDate || null,
-        linkedAccountId: depot ? null : tracking || null,
-        tracksInvestments: depot,
-        linkedPortfolioId: depot ? tracking.slice(DEPOT_PREFIX.length) || null : null,
-        manualCurrentAmount:
-          tracking || manual === null || !Number.isFinite(manual) ? null : manual,
-        // Re-checked against the live list: the picked parent may have been
-        // deleted (or turned into a sub-goal) since it was selected.
-        parentGoalId: parentCandidates.some((g) => g.id === parentGoalId) ? parentGoalId : null,
-      });
-      setName("");
-      setTargetAmount("");
-      setTargetDate("");
-      setTracking(MANUAL_TRACKING);
-      setManualCurrentAmount("");
-      setParentGoalId(NO_PARENT);
-    } catch (err) {
-      setError(isStorageFullError(err) ? t("common.storageFull") : t("goals.form.error"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   /**
    * One table row. `childCount` > 0 marks a composite goal, whose figures are
    * the sum over its parts -- its own tracking is not shown, because it is
    * not used (lib/finance/goals.ts `goalTotals`). `isChild` indents a
    * sub-goal under the goal it belongs to.
    */
-  function renderRow({ goal, target, current, pct, monthly }: Row, childCount: number, isChild = false) {
+  function renderRow(
+    { goal, target, current, pct, monthly }: Row,
+    childCount: number,
+    isChild = false,
+  ) {
     const color = colorForLabel(goal.name);
     const derived = isPayoffGoal(goal);
     const linkedAccount = goal.linkedAccountId ? accountsById.get(goal.linkedAccountId) : null;
@@ -283,9 +476,14 @@ export function GoalsView() {
         <td className="px-3 py-2">
           <div className="flex items-center justify-end gap-2">
             {!derived && (
-              <Button size="sm" variant="danger" onClick={() => setConfirmDelete(goal)}>
-                {t("goals.list.delete")}
-              </Button>
+              <>
+                <Button size="sm" variant="secondary" onClick={() => setEditing(goal)}>
+                  {t("goals.list.edit")}
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => setConfirmDelete(goal)}>
+                  {t("goals.list.delete")}
+                </Button>
+              </>
             )}
           </div>
         </td>
@@ -301,124 +499,14 @@ export function GoalsView() {
     <div className="space-y-6">
       <Card data-tour="goals-form">
         <h2 className="text-lg font-semibold">{t("goals.form.title")}</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className="text-sm font-medium" htmlFor="goal-name">
-              {t("goals.form.nameLabel")}
-            </label>
-            <input
-              id="goal-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("goals.form.namePlaceholder")}
-              className={inputCls}
-              data-private
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="goal-target">
-              {t("goals.form.targetLabel", { currency: base })}
-            </label>
-            <input
-              id="goal-target"
-              inputMode="decimal"
-              value={targetAmount}
-              onChange={(e) => setTargetAmount(stripLeadingZero(e.target.value))}
-              placeholder="0"
-              className={inputCls}
-              data-private
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="goal-date">
-              {t("goals.form.dateLabel")}
-            </label>
-            <input
-              id="goal-date"
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className={inputCls}
-            />
-            <p className="mt-1 text-sm text-zinc-500">{t("goals.form.dateHint")}</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium">{t("goals.form.linkedAccountLabel")}</label>
-            <SelectMenu
-              className="mt-1 w-full"
-              ariaLabel={t("goals.form.linkedAccountLabel")}
-              value={tracking}
-              onChange={setTracking}
-              options={[
-                { value: MANUAL_TRACKING, label: t("goals.form.manualTracking") },
-                // The depot has no account to link to (its value is derived
-                // from the transaction log), so it gets its own entries.
-                { value: DEPOT_ALL, label: t("goals.form.wholeDepot") },
-                ...data.portfolios.map((p) => ({
-                  value: `${DEPOT_PREFIX}${p.id}`,
-                  label: t("goals.form.brokerDepot", { name: p.name }),
-                })),
-                // Liabilities are marked, because linking one flips what the
-                // goal means: progress becomes what has been repaid, not the
-                // balance itself.
-                ...data.accounts.map((a) => ({
-                  value: a.id,
-                  label: a.isLiability ? `${a.name} — ${t("goals.form.payOff")}` : a.name,
-                })),
-              ]}
-            />
-            {linkedIsLiability && (
-              <p className="mt-1 text-sm text-zinc-500">
-                {t("goals.form.payOffHint", { currency: base })}
-              </p>
-            )}
-          </div>
-          {parentCandidates.length > 0 && (
-            <div>
-              <label className="text-sm font-medium">{t("goals.form.parentLabel")}</label>
-              <SelectMenu
-                className="mt-1 w-full"
-                ariaLabel={t("goals.form.parentLabel")}
-                value={parentGoalId}
-                onChange={setParentGoalId}
-                options={[
-                  { value: NO_PARENT, label: t("goals.form.noParent") },
-                  ...parentCandidates.map((g) => ({ value: g.id, label: g.name })),
-                ]}
-              />
-              <p className="mt-1 text-sm text-zinc-500">{t("goals.form.parentHint")}</p>
-            </div>
-          )}
-          {!tracking && (
-            <div>
-              <label className="text-sm font-medium" htmlFor="goal-manual-current">
-                {t("goals.form.manualCurrentLabel", { currency: base })}
-              </label>
-              <input
-                id="goal-manual-current"
-                inputMode="decimal"
-                value={manualCurrentAmount}
-                onChange={(e) => setManualCurrentAmount(stripLeadingZero(e.target.value))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void submit();
-                }}
-                placeholder="0"
-                className={inputCls}
-                data-private
-              />
-            </div>
-          )}
-          <div className="flex items-end">
-            <Button
-              variant="primary"
-              disabled={busy || !name.trim() || !targetAmount.trim()}
-              onClick={() => void submit()}
-            >
-              {t("goals.form.add")}
-            </Button>
-          </div>
-        </div>
-        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <GoalForm
+          base={base}
+          accounts={data.accounts}
+          portfolios={data.portfolios}
+          parentCandidates={parentCandidates}
+          submitLabel={t("goals.form.add")}
+          onSubmit={addGoal}
+        />
       </Card>
 
       <Card data-tour="goals-list">
@@ -459,6 +547,28 @@ export function GoalsView() {
           </div>
         )}
       </Card>
+
+      <Modal open={editing !== null} onClose={() => setEditing(null)}>
+        {editing && (
+          <Card>
+            <h2 className="text-lg font-semibold">{t("goals.edit.title")}</h2>
+            {/* Keyed on the goal so opening another row re-seeds the fields. */}
+            <GoalForm
+              key={editing.id}
+              base={base}
+              accounts={data.accounts}
+              portfolios={data.portfolios}
+              parentCandidates={editParentCandidates}
+              initial={editing}
+              gridCls="sm:grid-cols-2"
+              submitLabel={t("goals.edit.save")}
+              onSubmit={(input) => updateGoal(editing.id, input)}
+              onCancel={() => setEditing(null)}
+              onDone={() => setEditing(null)}
+            />
+          </Card>
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={confirmDelete !== null}

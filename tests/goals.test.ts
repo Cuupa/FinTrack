@@ -273,6 +273,16 @@ describe("liabilityPayoffGoals", () => {
     expect(liabilityPayoffGoals([loan], [], [manual], "2024-06-01")).toEqual([]);
   });
 
+  it("keeps the derived goal when only a SUB-goal links the liability", () => {
+    // A sub-goal's progress is summed into its parent, and it renders indented
+    // under that parent -- it does not stand in for the debt's own row.
+    const parent = goal({ id: "p1" });
+    const part = goal({ id: "g1", linkedAccountId: "l1", parentGoalId: "p1" });
+    const derived = liabilityPayoffGoals([loan], [], [parent, part], "2024-06-01");
+    expect(derived).toHaveLength(1);
+    expect(derived[0].linkedAccountId).toBe("l1");
+  });
+
   it("skips a liability that never owed anything", () => {
     const empty = account({ id: "l2", isLiability: true, openingBalance: 0 });
     expect(liabilityPayoffGoals([empty], [], [], "2024-06-01")).toEqual([]);
