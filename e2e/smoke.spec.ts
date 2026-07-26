@@ -10,7 +10,7 @@ test.describe("dashboard boot & i18n", () => {
     await page.goto("/");
     await dismissTour(page);
     // Guest default locale is English.
-    await expect(page.getByText("Your portfolio at a glance.")).toBeVisible();
+    await expect(page.getByText("Everything you own, owe and spend, in one place.")).toBeVisible();
     // The add-asset entry point is always present with no data.
     await expect(page.locator('[data-tour="add-asset"]')).toBeVisible();
   });
@@ -21,16 +21,16 @@ test.describe("dashboard boot & i18n", () => {
     await setLocale(page, "de");
     await page.goto("/");
     await dismissTour(page);
-    await expect(page.getByText("Dein Portfolio auf einen Blick.")).toBeVisible();
+    await expect(page.getByText("Alles, was du besitzt, schuldest und ausgibst, an einem Ort.")).toBeVisible();
 
     await setLocale(page, "es");
     await page.goto("/");
     await dismissTour(page);
-    await expect(page.getByText("Tu cartera de un vistazo.")).toBeVisible();
+    await expect(page.getByText("Todo lo que tienes, debes y gastas, en un solo lugar.")).toBeVisible();
 
     await setLocale(page, "en");
     await page.goto("/");
     await dismissTour(page);
-    await expect(page.getByText("Your portfolio at a glance.")).toBeVisible();
+    await expect(page.getByText("Everything you own, owe and spend, in one place.")).toBeVisible();
   });
 });
