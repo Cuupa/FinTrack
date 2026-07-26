@@ -245,16 +245,18 @@ export function ContractsView() {
       {/* Mount placement is the auto-start gate, same as the other page tours:
           this view only renders once the contracts surface is reachable. */}
 
-      {insuranceEnabled && gaps.length > 0 && (
-        <Card>
-          <h2 className="text-lg font-semibold">{t("contracts.coverage.title")}</h2>
-          <p className="mt-1 text-sm text-zinc-500">{t("contracts.coverage.intro")}</p>
-          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700 dark:text-zinc-300">
-            {gaps.map((g) => (
-              <li key={g}>{insuranceTypeLabel(g)}</li>
-            ))}
-          </ul>
-        </Card>
+      {insurance.enabled && gaps.length > 0 && (
+        <ProGate locked={insurance.locked} feature="insurance">
+          <Card>
+            <h2 className="text-lg font-semibold">{t("contracts.coverage.title")}</h2>
+            <p className="mt-1 text-sm text-zinc-500">{t("contracts.coverage.intro")}</p>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-700 dark:text-zinc-300">
+              {gaps.map((g) => (
+                <li key={g}>{insuranceTypeLabel(g)}</li>
+              ))}
+            </ul>
+          </Card>
+        </ProGate>
       )}
 
       {/* Due bookings, reviewed before anything is written — the same rule the

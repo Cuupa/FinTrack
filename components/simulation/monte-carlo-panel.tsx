@@ -27,8 +27,8 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
-import { useFeatureFlags } from "@/lib/flags/flags-context";
-import { ProGate } from "@/components/billing/pro-teaser";
+import { useFeatureFlags, type FeatureState } from "@/lib/flags/flags-context";
+import { LockIcon, ProGate } from "@/components/billing/pro-teaser";
 import { SimulationTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 type SimMode = "portfolio" | "custom";
@@ -195,6 +195,19 @@ export function MonteCarloPanel() {
   // the run, since a locked mode must never actually compute.
   const modeLocked =
     effectiveMode === "portfolio" ? portfolioFeature.locked : customFeature.locked;
+  // Tab strip source: only the modes that are visible, in a fixed order.
+  const MODE_TABS: {
+    value: SimMode;
+    labelKey: "sim.myPortfolio" | "sim.custom";
+    feature: FeatureState;
+  }[] = [
+    ...(portfolioVisible
+      ? [{ value: "portfolio" as const, labelKey: "sim.myPortfolio" as const, feature: portfolioFeature }]
+      : []),
+    ...(customVisible
+      ? [{ value: "custom" as const, labelKey: "sim.custom" as const, feature: customFeature }]
+      : []),
+  ];
   // Estimated parameters are the defaults; overrides (if the user edits a
   // field) take precedence. Derived rather than synced via an effect.
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
@@ -381,6 +394,50 @@ export function MonteCarloPanel() {
           {t("sim.parameters")}
           {holdings.length > 0 && <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />}
         </h2>
+
+        {/* The model is what the ENTIRE panel below configures, so it is a tab
+            strip at the top of the card rather than a toggle buried inside a
+            "Model" section halfway down. A Pro-locked mode keeps its tab (with
+            a padlock) and gates the panel as a whole — blurring only a
+            fragment in the middle of the form read as a rendering glitch. */}
+        {showModeToggle && (
+          <div
+            data-tour="sim-model"
+            className="mt-3 border-b border-zinc-200 dark:border-zinc-800"
+          >
+            <div role="tablist" className="-mb-px flex gap-6">
+              {MODE_TABS.map(({ value, labelKey, feature }) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMode === value}
+                  onClick={() => setMode(value)}
+                  className={`flex items-center gap-1.5 border-b-2 pb-2.5 text-sm font-medium transition-colors ${
+                    effectiveMode === value
+                      ? "border-emerald-500 text-zinc-900 dark:text-white"
+                      : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {t(labelKey)}
+                  {feature.locked && <LockIcon className="h-3.5 w-3.5 text-zinc-400" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {showModeToggle && (
+          <p className="mt-2 text-xs text-zinc-500">
+            {effectiveMode === "portfolio"
+              ? t("sim.modelPortfolioDesc")
+              : t("sim.modelCustomDesc")}
+          </p>
+        )}
+
+        <ProGate
+          locked={modeLocked}
+          feature={effectiveMode === "portfolio" ? "simulationPortfolio" : "simulationCustom"}
+        >
         <div className="mt-4 space-y-4">
           {/* Accumulation phase: initial capital, contribution, horizon. */}
           <div data-tour="sim-accumulation">
@@ -493,9 +550,10 @@ export function MonteCarloPanel() {
             </ProGate>
           )}
 
-          {/* Model: My portfolio / Custom, the model note, rebalancing (a
-              property of the portfolio model), and the run count. */}
-          <div data-tour="sim-model" className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          {/* Assumptions of the selected model, rebalancing (a property of the
+              portfolio model) and the run count. The model CHOICE itself is
+              the tab strip at the top of the card. */}
+          <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
             <div className="flex items-center gap-1.5">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 {t("sim.model")}
@@ -503,87 +561,56 @@ export function MonteCarloPanel() {
               <InfoTip text={t("sim.guidelinesTip")} />
             </div>
             <div className="mt-3 space-y-4">
-              {showModeToggle && (
-                <div>
-                  <SegmentedControl<SimMode>
-                    value={effectiveMode}
-                    onChange={setMode}
-                    options={[
-                      { label: t("sim.myPortfolio"), value: "portfolio" },
-                      { label: t("sim.custom"), value: "custom" },
-                    ]}
+              {effectiveMode === "portfolio" && model ? (
+                <PortfolioModelNote
+                  model={model}
+                  overrides={assetOverrides}
+                  onOverride={(name, patch) =>
+                    setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
+                  }
+                  onResetOverrides={() => setAssetOverrides({})}
+                />
+              ) : (
+                <>
+                  <CustomAssumptionsNote
+                    usingEstimates={usingEstimates}
+                    onReset={resetToEstimates}
                   />
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {effectiveMode === "portfolio"
-                      ? t("sim.modelPortfolioDesc")
-                      : t("sim.modelCustomDesc")}
-                  </p>
-                </div>
+                  <SliderField
+                    label={t("sim.expectedReturn")}
+                    suffix="%"
+                    value={expectedReturn}
+                    onChange={(v) => setReturnOverride(v)}
+                    min={-5}
+                    max={20}
+                    step={0.1}
+                    digits={1}
+                  />
+                  <SliderField
+                    label={t("sim.volatility")}
+                    suffix="%"
+                    value={volatility}
+                    onChange={(v) => setVolOverride(v)}
+                    min={0}
+                    max={60}
+                    step={0.5}
+                    digits={1}
+                  />
+                </>
               )}
 
-              {/* The parameters of the SELECTED model. When that mode is
-                  Pro-locked they stay on screen, blurred behind the teaser —
-                  the segmented control above stays live so the user can
-                  switch back to a mode they do have. */}
-              <ProGate
-                locked={modeLocked}
-                feature={
-                  effectiveMode === "portfolio" ? "simulationPortfolio" : "simulationCustom"
-                }
-              >
-                <div className="space-y-4">
-                  {effectiveMode === "portfolio" && model ? (
-                    <PortfolioModelNote
-                      model={model}
-                      overrides={assetOverrides}
-                      onOverride={(name, patch) =>
-                        setAssetOverrides((o) => ({ ...o, [name]: { ...o[name], ...patch } }))
-                      }
-                      onResetOverrides={() => setAssetOverrides({})}
-                    />
-                  ) : (
-                    <>
-                      <CustomAssumptionsNote
-                        usingEstimates={usingEstimates}
-                        onReset={resetToEstimates}
-                      />
-                      <SliderField
-                        label={t("sim.expectedReturn")}
-                        suffix="%"
-                        value={expectedReturn}
-                        onChange={(v) => setReturnOverride(v)}
-                        min={-5}
-                        max={20}
-                        step={0.1}
-                        digits={1}
-                      />
-                      <SliderField
-                        label={t("sim.volatility")}
-                        suffix="%"
-                        value={volatility}
-                        onChange={(v) => setVolOverride(v)}
-                        min={0}
-                        max={60}
-                        step={0.5}
-                        digits={1}
-                      />
-                    </>
-                  )}
-
-                  {effectiveMode === "portfolio" && (
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={rebalanceYearly}
-                        onChange={(e) => setRebalanceYearly(e.target.checked)}
-                        className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
-                      />
-                      <span>{t("sim.rebalanceYearly")}</span>
-                      <InfoTip text={t("sim.rebalanceYearlyTip")} />
-                    </label>
-                  )}
-                </div>
-              </ProGate>
+              {effectiveMode === "portfolio" && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={rebalanceYearly}
+                    onChange={(e) => setRebalanceYearly(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+                  />
+                  <span>{t("sim.rebalanceYearly")}</span>
+                  <InfoTip text={t("sim.rebalanceYearlyTip")} />
+                </label>
+              )}
 
               <SliderField
                 label={t("sim.runs")}
@@ -605,6 +632,7 @@ export function MonteCarloPanel() {
             {running ? t("sim.running") : t("sim.run")}
           </Button>
         </div>
+        </ProGate>
       </Card>
 
       <div className="space-y-6 lg:col-span-2">

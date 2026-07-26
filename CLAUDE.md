@@ -144,7 +144,7 @@ upgrade button only shows when the `billing` flag is on.
 Two smaller wrappers live next to it (round 25) so a **sub-surface** of a page
 gates without repeating the ternary: `<ProGate locked feature>` renders its
 children plainly or blurred behind the teaser (used by the simulation's
-per-mode sections + withdrawal phase, the settings AI tab, the notifications
+parameter panel + withdrawal phase, the settings AI tab, the notifications
 card, the tax-pack sections, the insurance coverage-gaps card, the add-asset
 CSV-import tab, and the asset-detail cash-interest / manual-valuation
 sections), and `<ProMenuItem label>` keeps a locked **dropdown row** listed
@@ -707,7 +707,14 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
 - `/dividends` — dividend dashboard: income by month/year, personal yield +
   yield-on-cost, per-holding breakdown, 12-month forecast from trailing
   payouts (flag `dividends`)
-- `/simulation` — Monte Carlo simulation
+- `/simulation` — Monte Carlo simulation. The model choice ("My portfolio" /
+  "Custom") is a **tab strip at the top of the Parameters card**, not a
+  control inside the form (owner rule, round 25): the mode is what the whole
+  panel configures. A mode whose flag is Pro-locked keeps its tab (with a
+  `LockIcon`) and gates the panel **as a whole** behind `<ProGate>` — blurring
+  only the model fragment mid-form read as a rendering glitch. A mode whose
+  flag is off outright loses its tab; with a single visible mode the strip
+  disappears entirely.
 - `/login` — Supabase email/password + Google/GitHub OAuth
 - `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
   linked via `LegalFooter` in the root layout). The privacy policy makes
