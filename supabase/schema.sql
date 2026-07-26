@@ -587,7 +587,17 @@ create table if not exists public.spending_transactions (
   recurring_id uuid,
   created_at timestamptz not null default now()
 );
+-- Transfer marker (migration 0096): set when the booking moved money to
+-- another account of the user's own (loan instalment, wealth-building premium)
+-- rather than spending it. Every aggregation in lib/finance/spending.ts skips
+-- these rows -- they are neither income nor expense. Does not move any
+-- balance; account values come from their readings, and ordinary spending does
+-- not move them either.
+alter table public.spending_transactions
+  add column if not exists transfer_account_id uuid references public.accounts (id) on delete set null;
+
 create index if not exists spending_transactions_account_id_idx on public.spending_transactions (account_id);
+create index if not exists spending_transactions_transfer_account_id_idx on public.spending_transactions (transfer_account_id);
 create index if not exists spending_transactions_category_id_idx on public.spending_transactions (category_id);
 create index if not exists spending_transactions_user_id_idx on public.spending_transactions (user_id);
 
@@ -623,7 +633,26 @@ create table if not exists public.contracts (
   category_id uuid references public.spending_categories (id) on delete set null,
   created_at timestamptz not null default now()
 );
+-- Booking columns (migration 0095): a contract with an `account_id` posts its
+-- charge into spending on the schedule derived from
+-- (booking_start_date, interval, last_booked_date). Null account_id = register
+-- entry only, which is how contracts behaved before booking existed.
+-- `on delete set null` matches category_id above: losing the account stops the
+-- booking but does not delete the contract.
+alter table public.contracts
+  add column if not exists account_id uuid references public.accounts (id) on delete set null;
+alter table public.contracts
+  add column if not exists booking_start_date date;
+alter table public.contracts
+  add column if not exists last_booked_date date;
+-- Migration 0096: where the money goes when the contract is not consumption
+-- (the loan being repaid, the policy being paid into). Set, its bookings carry
+-- transfer_account_id and stop counting as expense.
+alter table public.contracts
+  add column if not exists target_account_id uuid references public.accounts (id) on delete set null;
+
 create index if not exists contracts_user_id_idx on public.contracts (user_id);
+create index if not exists contracts_account_id_idx on public.contracts (account_id);
 create index if not exists contracts_category_id_idx on public.contracts (category_id);
 -- Insurance register (ROADMAP #10, flag `insurance`): typed rows on this same
 -- contract entity. Null insurance_type = an ordinary (non-insurance) contract.
@@ -653,10 +682,22 @@ create table if not exists public.goals (
   target_date date,
   linked_account_id uuid references public.accounts (id) on delete set null,
   manual_current_amount numeric,
+  -- Depot-tracking goals (migration 0097): progress is the portfolio's market
+  -- value instead of an account balance. linked_portfolio_id null = every
+  -- broker combined.
+  tracks_investments boolean not null default false,
+  linked_portfolio_id uuid references public.portfolios (id) on delete set null,
+  -- Sub-goals (migration 0098): a composite goal ("trip to the USA") is the
+  -- sum of its parts (flight, hotel, taxi), expressed by the children
+  -- pointing here. Cascade, unlike linked_account_id's set null: a sub-goal
+  -- without its parent means nothing.
+  parent_goal_id uuid references public.goals (id) on delete cascade,
   created_at timestamptz not null default now()
 );
 create index if not exists goals_user_id_idx on public.goals (user_id);
 create index if not exists goals_linked_account_id_idx on public.goals (linked_account_id);
+create index if not exists goals_linked_portfolio_id_idx on public.goals (linked_portfolio_id);
+create index if not exists goals_parent_goal_id_idx on public.goals (parent_goal_id);
 
 -- LLM assistant config (provider, model, API key) — one row per user; rides
 -- the same DataStore seam as tags above (Guest Mode keeps it in its

@@ -120,8 +120,18 @@ infrastructural flags with nothing to sell (`offline`, `historyCache`,
 read `useFeature` and render a teaser when locked. The shared
 `<ProTeaser feature="...">`
 (`components/billing/pro-teaser.tsx`, MONETIZATION.md Phase 3) is adopted on
-the five surfaces that gate on a Pro flag — the /analysis risk and tax tabs
-(tab stays visible), /dividends, /simulation, /xray, /rebalancing. It renders
+**every** surface that gates on a Pro flag (round 24, owner rule: a paywalled
+feature stays visible, never hidden) — the /analysis risk and tax tabs (tab
+stays visible), /dividends, /simulation, /xray, /rebalancing, the flag-gated
+pages /accounts, /spending, /goals, /health, /fire, /debt, /contracts,
+/household, the dashboard `AreaCards` (a locked area keeps its grid slot) and
+the self-gated cards (watchlist, savings plans, budgets — each split into a
+gate wrapper plus a `*Inner` holding the hooks). The navigation matches:
+`Sidebar`/`MobileNav` filter on `getFeature(flag).enabled`, so a **locked**
+route stays in the list (with a `LockIcon`, exported from pro-teaser.tsx) and
+only a flag that is off outright disappears. The preview is clipped to
+`max-h-[70vh]` so the paywall message never sits below the fold on a tall
+page. It renders
 the real feature UI passed as `children` **blurred + `inert`** underneath a
 centered paywall message (lock icon + "Pro feature" copy + upgrade CTA) so the
 user sees a preview of what Pro unlocks rather than a blank card; each call
@@ -650,6 +660,46 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
   add-account form + sortable list + per-account dated-balance editor
 - `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
   #2): quick-add form + sortable transaction table + category manager modal
+- `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
+  optional** (open-ended goals are first class; a date only buys the
+  monthly-needed figure). A goal is either atomic ("emergency fund") or
+  **composite** ("trip to the USA" = flight + hotel + taxi): sub-goals point
+  at their parent through `Goal.parentGoalId` (migration 0098, self-FK, `on
+  delete cascade` — a sub-goal without its parent means nothing, so the DB,
+  `LocalStore.deleteGoal` and `PortfolioProvider` all drop them together and
+  the ConfirmDialog says how many). Nesting is **one level deep**: the parent
+  picker only ever offers top-level goals. A parent's target and progress are
+  DERIVED as the sum over its parts (`goalTotals`, pure) — its own
+  `targetAmount` and tracking fields stop being used the moment it has one,
+  so nothing is counted twice. The dashboard `GoalsCard` counts
+  `topLevelGoals` only, for the same reason. Every liability account is listed as a **derived**
+  payoff goal (`liabilityPayoffGoals`, sentinel id `debt:<accountId>`, never
+  stored): target = the highest balance ever owed, progress = what has been
+  repaid, target date = the amortisation payoff date only when the account
+  carries a rate + minimum payment. A user-made **top-level** goal linked to
+  that account replaces the derived one; a *sub*-goal linked to it does not,
+  since its progress is summed into its parent and it renders indented under
+  it, so suppressing the derived goal would leave the debt with no row of its
+  own. Owner rule: never make the user restate a liability as a goal by hand.
+  Progress on **any** goal linked to a liability (derived or user-made) is
+  what has been repaid measured from the **highest balance ever owed**
+  (`peakBalance`), never `targetAmount - balance`: the old formula silently
+  required the user to have typed the original debt as their target, so a goal
+  to repay part of a mortgage read 0 % forever. The target only says how much
+  of the debt they mean to repay.
+  Every stored goal is **editable after the fact** (row "Edit" -> dialog): one
+  `GoalForm` (`components/goals/goals-view.tsx`) serves both the add card and
+  the edit dialog through the existing `updateGoal` store method, so putting
+  more money aside means changing the goal's current amount, never recreating
+  it. A **composite** goal's dialog shows only name + date plus a line saying
+  the figures come from its parts, and carries the stored amount/tracking
+  fields over untouched — those fields are dead for a goal with parts
+  (`goalTotals`), and showing them contradicted every number in its row.
+  Derived payoff rows have no edit/delete (the account owns them), a goal can
+  never become its own part, and one that already has parts is not offered a
+  parent (nesting stays one level deep). Counted copy on this page is phrased
+  "... ({n})" rather than "{n} parts": `t()` has no plural forms, so "Summe aus
+  1 Teilzielen" was simply wrong German.
 - `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
 - `/instruments/[key]` — same detail view for non-held instruments (watchlist
   click-through / catalog), reduced to master data + chart + look-through,
@@ -707,6 +757,21 @@ client pages (see `app/assets/[id]/page.tsx`).
   placement, no enabled prop) and every tour surface has a ghost "?" replay
   button. Step registries live in `lib/onboarding/tour-steps.ts` (pure,
   unit-tested).
+  Round 24 generalised this: `PageTour` (id + steps, persisted in
+  `toursDone[tourId]`) is the one wrapper the named tours alias, and
+  `PageHeaderWithTour` pairs a `PageHeader` with its "?" so **every primary
+  page** carries the affordance next to its heading (/accounts, /spending,
+  /goals, /health, /fire, /debt, /contracts, /household, /dividends, /xray,
+  /analysis; the dashboard, risk, rebalancing, simulation and asset-tags
+  tours keep their existing card-level buttons). Its `ready` prop is the
+  page's "content is on screen" condition (loaded, not errored, not locked)
+  — `TourOverlay` computes its visible step set **once per mount**, so a tour
+  mounted over a skeleton would find none of its `data-tour` targets and stay
+  empty for that whole mount.
+- The /debt area is **named after what it holds, not after the word "debt"**
+  (owner rule, round 24): "Liabilities" / "Verbindlichkeiten" / "Pasivos" in
+  the nav, page title and list heading. The route, the `debtPayoff` flag and
+  `lib/finance/debt.ts` keep their internal names.
 - **Dates** are timezone-stable `YYYY-MM-DD` strings throughout; use the
   helpers in `lib/finance/dates.ts`, not raw `Date` math.
 - Next 16's `react-hooks/set-state-in-effect` lint rule **fails the build** on

@@ -443,6 +443,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         spendingTransactions: d.spendingTransactions.filter((t) => t.accountId !== id),
         // A goal keeps existing with no linked account (mirrors the DB's on delete set null).
         goals: d.goals.map((g) => (g.linkedAccountId === id ? { ...g, linkedAccountId: null } : g)),
+        // Likewise a contract: it stops booking but stays in the register
+        // (migration 0095's on delete set null).
+        contracts: d.contracts.map((c) =>
+          c.accountId === id ? { ...c, accountId: null, bookingStartDate: null } : c,
+        ),
       }));
     },
     [store],
@@ -615,7 +620,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const deleteGoal = useCallback(
     async (id: string) => {
       await store.deleteGoal(id);
-      setData((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) }));
+      // Sub-goals go with their parent, mirroring the DB's on delete cascade.
+      setData((d) => ({
+        ...d,
+        goals: d.goals.filter((g) => g.id !== id && g.parentGoalId !== id),
+      }));
     },
     [store],
   );

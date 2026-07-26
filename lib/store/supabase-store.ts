@@ -192,6 +192,8 @@ interface SpendingTransactionRow {
   payee: string;
   note: string | null;
   recurring_id: string | null;
+  // Migration 0096; optional so a database that has not run it still loads.
+  transfer_account_id?: string | null;
 }
 
 function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
@@ -204,6 +206,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     payee: r.payee,
     note: r.note,
     recurringId: r.recurring_id,
+    transferAccountId: r.transfer_account_id ?? null,
   };
 }
 
@@ -227,6 +230,12 @@ interface ContractRow {
   category_id: string | null;
   insurance_type: string | null;
   sum_insured: number | string | null;
+  // Migration 0095. Optional on the row type so a database that has not run
+  // it yet still deserialises instead of throwing.
+  account_id?: string | null;
+  booking_start_date?: string | null;
+  last_booked_date?: string | null;
+  target_account_id?: string | null;
 }
 
 function contractFromRow(r: ContractRow): Contract {
@@ -240,6 +249,10 @@ function contractFromRow(r: ContractRow): Contract {
     categoryId: r.category_id,
     insuranceType: r.insurance_type as Contract["insuranceType"],
     sumInsured: r.sum_insured != null ? Number(r.sum_insured) : null,
+    accountId: r.account_id ?? null,
+    bookingStartDate: r.booking_start_date ?? null,
+    lastBookedDate: r.last_booked_date ?? null,
+    targetAccountId: r.target_account_id ?? null,
   };
 }
 
@@ -250,6 +263,11 @@ interface GoalRow {
   target_date: string | null;
   linked_account_id: string | null;
   manual_current_amount: number | string | null;
+  // Optional: a DB that predates migration 0097 doesn't return these.
+  tracks_investments?: boolean | null;
+  linked_portfolio_id?: string | null;
+  // Optional: a DB that predates migration 0098 doesn't return this.
+  parent_goal_id?: string | null;
 }
 
 function goalFromRow(r: GoalRow): Goal {
@@ -260,6 +278,13 @@ function goalFromRow(r: GoalRow): Goal {
     targetDate: r.target_date,
     linkedAccountId: r.linked_account_id,
     manualCurrentAmount: r.manual_current_amount != null ? Number(r.manual_current_amount) : null,
+    // Defaulted, so a DB that predates migration 0097 reads as "account or
+    // manual" exactly like before.
+    tracksInvestments: r.tracks_investments ?? false,
+    linkedPortfolioId: r.linked_portfolio_id ?? null,
+    // Defaulted, so a DB that predates migration 0098 reads every goal as
+    // top-level exactly like before.
+    parentGoalId: r.parent_goal_id ?? null,
   };
 }
 
@@ -357,7 +382,7 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("spending_transactions")
-        .select("id, account_id, category_id, date, amount, payee, note, recurring_id")
+        .select("id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id")
         .order("date", { ascending: false }),
       this.supabase
         .from("budgets")
@@ -371,7 +396,9 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("goals")
-        .select("id, name, target_amount, target_date, linked_account_id, manual_current_amount")
+        .select(
+          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id, parent_goal_id",
+        )
         .order("created_at", { ascending: true }),
       // Personal, never household-shared (see migration 0093's comment).
       this.supabase
@@ -1079,6 +1106,7 @@ export class SupabaseStore implements DataStore {
         payee: input.payee,
         note: input.note,
         recurring_id: input.recurringId,
+        transfer_account_id: input.transferAccountId ?? null,
       })
       .select("id")
       .single();
@@ -1098,6 +1126,7 @@ export class SupabaseStore implements DataStore {
     if (patch.payee !== undefined) upd.payee = patch.payee;
     if (patch.note !== undefined) upd.note = patch.note;
     if (patch.recurringId !== undefined) upd.recurring_id = patch.recurringId;
+    if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase
@@ -1167,6 +1196,10 @@ export class SupabaseStore implements DataStore {
         category_id: input.categoryId,
         insurance_type: input.insuranceType ?? null,
         sum_insured: input.sumInsured ?? null,
+        account_id: input.accountId ?? null,
+        booking_start_date: input.bookingStartDate ?? null,
+        last_booked_date: input.lastBookedDate ?? null,
+        target_account_id: input.targetAccountId ?? null,
       })
       .select("id")
       .single();
@@ -1186,6 +1219,10 @@ export class SupabaseStore implements DataStore {
     if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
     if (patch.insuranceType !== undefined) upd.insurance_type = patch.insuranceType;
     if (patch.sumInsured !== undefined) upd.sum_insured = patch.sumInsured;
+    if (patch.accountId !== undefined) upd.account_id = patch.accountId;
+    if (patch.bookingStartDate !== undefined) upd.booking_start_date = patch.bookingStartDate;
+    if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
+    if (patch.targetAccountId !== undefined) upd.target_account_id = patch.targetAccountId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's contract too.
     const { data, error } = await this.supabase
@@ -1214,6 +1251,9 @@ export class SupabaseStore implements DataStore {
         target_date: input.targetDate,
         linked_account_id: input.linkedAccountId,
         manual_current_amount: input.manualCurrentAmount,
+        tracks_investments: input.tracksInvestments,
+        linked_portfolio_id: input.linkedPortfolioId,
+        parent_goal_id: input.parentGoalId,
       })
       .select("id")
       .single();
@@ -1227,9 +1267,14 @@ export class SupabaseStore implements DataStore {
     if (patch.targetAmount !== undefined) upd.target_amount = patch.targetAmount;
     if (patch.targetDate !== undefined) upd.target_date = patch.targetDate;
     if (patch.linkedAccountId !== undefined) upd.linked_account_id = patch.linkedAccountId;
+    if (patch.tracksInvestments !== undefined) upd.tracks_investments = patch.tracksInvestments;
+    if (patch.linkedPortfolioId !== undefined) {
+      upd.linked_portfolio_id = patch.linkedPortfolioId;
+    }
     if (patch.manualCurrentAmount !== undefined) {
       upd.manual_current_amount = patch.manualCurrentAmount;
     }
+    if (patch.parentGoalId !== undefined) upd.parent_goal_id = patch.parentGoalId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's goal too.
     const { data, error } = await this.supabase

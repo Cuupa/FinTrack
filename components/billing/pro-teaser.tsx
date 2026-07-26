@@ -30,24 +30,32 @@ import { Card } from "@/components/ui/primitives";
 import { useFeatureFlag, type FeatureFlag } from "@/lib/flags/flags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
+/** The padlock, shared with the navigation so a locked entry and its teaser
+    read as the same thing. Stroke-only, inherits the surrounding color. */
+export function LockIcon({ className = "h-8 w-8 text-zinc-400" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="5" y="11" width="14" height="9" rx="1.5" />
+      <path d="M8 11V7.5a4 4 0 0 1 8 0V11" />
+    </svg>
+  );
+}
+
 function LockPitch() {
   const { t } = useI18n();
   const billingEnabled = useFeatureFlag("billing");
   return (
     <div className="flex flex-col items-center gap-2 text-center text-zinc-500">
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="h-8 w-8 text-zinc-400"
-        aria-hidden="true"
-      >
-        <rect x="5" y="11" width="14" height="9" rx="1.5" />
-        <path d="M8 11V7.5a4 4 0 0 1 8 0V11" />
-      </svg>
+      <LockIcon />
       <p className="font-medium text-zinc-700 dark:text-zinc-300">{t("common.proFeature")}</p>
       <p className="max-w-xs text-sm">{t("common.proFeatureHint")}</p>
       {billingEnabled && (
@@ -138,8 +146,12 @@ export function ProTeaser({
   if (children) {
     return (
       <div className={`relative ${className}`} data-locked-feature={feature}>
+        {/* The preview is clipped to roughly a screenful: a locked full page
+            is often far taller than the viewport, and letting it run at full
+            height would park the paywall message a thousand pixels below the
+            fold with nothing but blur visible on arrival. */}
         <div
-          className="pointer-events-none select-none blur-[5px] opacity-60"
+          className="pointer-events-none max-h-[70vh] select-none overflow-hidden blur-[5px] opacity-60"
           aria-hidden="true"
           inert
         >

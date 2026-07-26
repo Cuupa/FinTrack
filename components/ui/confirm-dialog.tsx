@@ -7,23 +7,26 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "./primitives";
 import { useFocusTrap } from "./use-focus-trap";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Delete",
+  confirmLabel,
   onConfirm,
   onCancel,
 }: {
   open: boolean;
   title: string;
   message?: string;
+  /** Defaults to a localized "Delete" -- destructive is the common case. */
   confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -62,10 +65,10 @@ export function ConfirmDialog({
         {message && <p className="mt-2 text-sm text-zinc-500">{message}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? t("common.delete")}
           </Button>
         </div>
       </div>

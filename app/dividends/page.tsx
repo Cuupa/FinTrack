@@ -8,6 +8,8 @@ import { LoadError } from "@/components/ui/load-error";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
+import { DIVIDENDS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 
 export default function DividendsPage() {
   const { t } = useI18n();
@@ -15,10 +17,13 @@ export default function DividendsPage() {
   const { enabled, locked } = useFeature("dividends");
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("div.title")}</h1>
-        <p className="text-sm text-zinc-500">{t("div.subtitle")}</p>
-      </div>
+      <PageHeaderWithTour
+        title={t("div.title")}
+        subtitle={t("div.subtitle")}
+        tourId="dividends"
+        steps={DIVIDENDS_TOUR_STEPS}
+        ready={enabled && !locked && !loading && !loadError}
+      />
       {!enabled ? (
         <FeatureUnavailable />
       ) : loading ? (

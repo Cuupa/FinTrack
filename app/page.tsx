@@ -15,7 +15,14 @@ import { GuidedTour } from "@/components/onboarding/guided-tour";
 import { TourReplayButton } from "@/components/onboarding/page-tours";
 import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
-import { Button } from "@/components/ui/primitives";
+import {
+  Button,
+  PAGE_STACK,
+  PageHeader,
+  SECTION_STACK,
+  SectionTitle,
+} from "@/components/ui/primitives";
+import { AreaCards } from "@/components/dashboard/area-cards";
 import { Modal } from "@/components/ui/modal";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -70,35 +77,35 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
-            {!loading && !loadError && (
-              <TourReplayButton onClick={() => setTourRestart((n) => n + 1)} />
+    <div className={PAGE_STACK}>
+      <PageHeader
+        title={t("dashboard.title")}
+        subtitle={t("dashboard.subtitle")}
+        titleAdornment={
+          !loading && !loadError ? (
+            <TourReplayButton onClick={() => setTourRestart((n) => n + 1)} />
+          ) : undefined
+        }
+        actions={
+          <>
+            <ShareMenu />
+            {/* Registered users export from the profile menu; guests (no profile
+                menu) keep the standalone export button here. */}
+            {mode !== "registered" && <ExportMenu />}
+            {!adding && (
+              <Button
+                variant="primary"
+                size="sm"
+                className="shrink-0 whitespace-nowrap"
+                data-tour="add-asset"
+                onClick={() => setAdding(true)}
+              >
+                {t("dashboard.addAsset")}
+              </Button>
             )}
-          </div>
-          <p className="text-sm text-zinc-500">{t("dashboard.subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <ShareMenu />
-          {/* Registered users export from the profile menu; guests (no profile
-              menu) keep the standalone export button here. */}
-          {mode !== "registered" && <ExportMenu />}
-          {!adding && (
-            <Button
-              variant="primary"
-              size="sm"
-              className="shrink-0 whitespace-nowrap"
-              data-tour="add-asset"
-              onClick={() => setAdding(true)}
-            >
-              {t("dashboard.addAsset")}
-            </Button>
-          )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {loading ? (
         <DashboardSkeleton />
@@ -108,9 +115,24 @@ export default function DashboardPage() {
         <>
           <LiveShareSync />
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
-          <AssetTable timeframe={timeframe} />
-          <SavingsPlansCard />
-          <WatchlistCard />
+
+          {/* Everyday money before investments. The order is the argument: the
+              home screen used to be the holdings table with a net-worth chart
+              on top, so accounts and spending were only ever a sidebar click
+              away and the product read as a portfolio tracker with extras. */}
+          <div data-tour="areas">
+            <AreaCards />
+          </div>
+
+          {/* Investments are one section of the home screen now, not the whole
+              of it — hence the heading, which the page never had. */}
+          <div className={SECTION_STACK}>
+            <SectionTitle>{t("nav.group.invest")}</SectionTitle>
+            <AssetTable timeframe={timeframe} />
+            <SavingsPlansCard />
+            <WatchlistCard />
+          </div>
+
           <GuidedTour restartToken={tourRestart} />
         </>
       )}
@@ -144,7 +166,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setImportStatus(null)}
-                aria-label="Close"
+                aria-label={t("common.close")}
                 className="shrink-0 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
               >
                 ✕

@@ -22,11 +22,14 @@ test.describe("navigation", () => {
     for (const { link, heading } of routes) {
       await page.getByRole("link", { name: link }).first().click();
       await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+      // Every primary page carries its own guided tour (round 24), whose
+      // full-screen overlay would swallow the next sidebar click.
+      await dismissTour(page);
     }
 
     // …and back to the dashboard.
     await page.getByRole("link", { name: /^Dashboard$/ }).first().click();
-    await expect(page.getByText("Your portfolio at a glance.")).toBeVisible();
+    await expect(page.getByText("Everything you own, owe and spend, in one place.")).toBeVisible();
   });
 
   test("settings and legal pages render", async ({ page }) => {

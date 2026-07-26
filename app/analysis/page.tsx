@@ -10,6 +10,8 @@ import { RiskView } from "@/components/analysis/risk-view";
 import { TaxView } from "@/components/analysis/tax-view";
 import { RiskDisclaimer } from "@/components/ui/risk-disclaimer";
 import { ProTeaser } from "@/components/billing/pro-teaser";
+import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
+import { ANALYSIS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 import { useFeature } from "@/lib/flags/flags-context";
 
 const TABS = ["distributions", "returns", "trades", "risks", "tax"] as const;
@@ -70,16 +72,18 @@ function AnalysisPageInner() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{tr("analysis.title")}</h1>
-        <p className="text-sm text-zinc-500">{tr(`analysis.blurb.${tab}`)}</p>
-      </div>
+      <PageHeaderWithTour
+        title={tr("analysis.title")}
+        subtitle={tr(`analysis.blurb.${tab}`)}
+        tourId="analysis"
+        steps={ANALYSIS_TOUR_STEPS}
+      />
 
       <RiskDisclaimer variant="compact" />
 
       {/* Primary tabs: underline style, visually distinct from the in-card
           breakdown pills. */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800">
+      <div data-tour="analysis-tabs" className="border-b border-zinc-200 dark:border-zinc-800">
         <div className="-mb-px flex gap-6">
           {tabs.map((key) => (
             <button

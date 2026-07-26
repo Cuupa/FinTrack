@@ -35,6 +35,14 @@ export const TOUR_STEPS: TourStep[] = [
     titleKey: "tour.holdings.title",
     bodyKey: "tour.holdings.body",
   },
+  {
+    // Sits right after the holdings so the tour tells the same story the page
+    // now does: net worth, then everyday money, then investments.
+    key: "areas",
+    target: "areas",
+    titleKey: "tour.areas.title",
+    bodyKey: "tour.areas.body",
+  },
   { key: "nav", target: "nav", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
   {
     key: "themeToggle",
@@ -109,6 +117,30 @@ export const REBALANCING_TOUR_STEPS: TourStep[] = [
   },
 ];
 
+/** Contracts register (components/contracts/contracts-view.tsx). Covers the
+ *  three things that surface there and nowhere else: what kind of commitment
+ *  a row is, whether it posts bookings, and where detected charges come from. */
+export const CONTRACTS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "contractsKind",
+    target: "contract-kind",
+    titleKey: "tour.contracts.kind.title",
+    bodyKey: "tour.contracts.kind.body",
+  },
+  {
+    key: "contractsBooking",
+    target: "contract-account",
+    titleKey: "tour.contracts.booking.title",
+    bodyKey: "tour.contracts.booking.body",
+  },
+  {
+    key: "contractsSuggestions",
+    target: "contract-suggestions",
+    titleKey: "tour.contracts.suggestions.title",
+    bodyKey: "tour.contracts.suggestions.body",
+  },
+];
+
 /** Monte Carlo simulation (components/simulation/monte-carlo-panel.tsx). */
 export const SIMULATION_TOUR_STEPS: TourStep[] = [
   {
@@ -162,6 +194,200 @@ export const ASSET_TAGS_TOUR_STEPS: TourStep[] = [
     target: null,
     titleKey: "tour.assetTags.local.title",
     bodyKey: "tour.assetTags.local.body",
+  },
+];
+
+// Round-24 page tours: every primary surface carries one, so the "?" next
+// to its heading always has something to replay. Same shape as the tours
+// above; the targets are the `data-tour` anchors on each view's cards.
+
+/** Accounts & liabilities (/accounts, components/accounts/accounts-view.tsx). */
+export const ACCOUNTS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "accountsTotals",
+    target: "accounts-totals",
+    titleKey: "tour.accounts.totals.title",
+    bodyKey: "tour.accounts.totals.body",
+  },
+  {
+    key: "accountsForm",
+    target: "accounts-form",
+    titleKey: "tour.accounts.form.title",
+    bodyKey: "tour.accounts.form.body",
+  },
+  {
+    key: "accountsList",
+    target: "accounts-list",
+    titleKey: "tour.accounts.list.title",
+    bodyKey: "tour.accounts.list.body",
+  },
+];
+
+/** Spending ledger (/spending, components/spending/spending-view.tsx). */
+export const SPENDING_TOUR_STEPS: TourStep[] = [
+  {
+    key: "spendingTotals",
+    target: "spending-totals",
+    titleKey: "tour.spending.totals.title",
+    bodyKey: "tour.spending.totals.body",
+  },
+  {
+    key: "spendingForm",
+    target: "spending-form",
+    titleKey: "tour.spending.form.title",
+    bodyKey: "tour.spending.form.body",
+  },
+  {
+    key: "spendingTable",
+    target: "spending-table",
+    titleKey: "tour.spending.table.title",
+    bodyKey: "tour.spending.table.body",
+  },
+];
+
+/** Goals (/goals, components/goals/goals-view.tsx). */
+export const GOALS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "goalsForm",
+    target: "goals-form",
+    titleKey: "tour.goals.form.title",
+    bodyKey: "tour.goals.form.body",
+  },
+  {
+    key: "goalsList",
+    target: "goals-list",
+    titleKey: "tour.goals.list.title",
+    bodyKey: "tour.goals.list.body",
+  },
+];
+
+/** Debt payoff (/debt, components/debt/debt-view.tsx). */
+export const DEBT_TOUR_STEPS: TourStep[] = [
+  {
+    key: "debtTotals",
+    target: "debt-totals",
+    titleKey: "tour.debt.totals.title",
+    bodyKey: "tour.debt.totals.body",
+  },
+  {
+    key: "debtList",
+    target: "debt-list",
+    titleKey: "tour.debt.list.title",
+    bodyKey: "tour.debt.list.body",
+  },
+  {
+    key: "debtPlan",
+    target: "debt-plan",
+    titleKey: "tour.debt.plan.title",
+    bodyKey: "tour.debt.plan.body",
+  },
+];
+
+/** Financial health (/health, components/health/health-view.tsx). */
+export const HEALTH_TOUR_STEPS: TourStep[] = [
+  {
+    key: "healthGauges",
+    target: "health-gauges",
+    titleKey: "tour.health.gauges.title",
+    bodyKey: "tour.health.gauges.body",
+  },
+  {
+    key: "healthSources",
+    target: null,
+    titleKey: "tour.health.sources.title",
+    bodyKey: "tour.health.sources.body",
+  },
+];
+
+/** FIRE planner (/fire, components/fire/fire-view.tsx). */
+export const FIRE_TOUR_STEPS: TourStep[] = [
+  {
+    key: "fireInputs",
+    target: "fire-inputs",
+    titleKey: "tour.fire.inputs.title",
+    bodyKey: "tour.fire.inputs.body",
+  },
+  {
+    key: "fireTargets",
+    target: "fire-targets",
+    titleKey: "tour.fire.targets.title",
+    bodyKey: "tour.fire.targets.body",
+  },
+  {
+    key: "fireSimulation",
+    target: "fire-simulation",
+    titleKey: "tour.fire.simulation.title",
+    bodyKey: "tour.fire.simulation.body",
+  },
+];
+
+/** Household sharing (/household, components/household/household-view.tsx). */
+export const HOUSEHOLD_TOUR_STEPS: TourStep[] = [
+  {
+    key: "householdCreate",
+    target: "household-create",
+    titleKey: "tour.household.create.title",
+    bodyKey: "tour.household.create.body",
+  },
+  {
+    key: "householdMembers",
+    target: "household-members",
+    titleKey: "tour.household.members.title",
+    bodyKey: "tour.household.members.body",
+  },
+  {
+    key: "householdInvite",
+    target: "household-invite",
+    titleKey: "tour.household.invite.title",
+    bodyKey: "tour.household.invite.body",
+  },
+];
+
+/** Dividends (/dividends, components/dividends/dividends-view.tsx). */
+export const DIVIDENDS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "dividendsKpis",
+    target: "dividends-kpis",
+    titleKey: "tour.dividends.kpis.title",
+    bodyKey: "tour.dividends.kpis.body",
+  },
+  {
+    key: "dividendsIncome",
+    target: "dividends-income",
+    titleKey: "tour.dividends.income.title",
+    bodyKey: "tour.dividends.income.body",
+  },
+  {
+    key: "dividendsUpcoming",
+    target: "dividends-upcoming",
+    titleKey: "tour.dividends.upcoming.title",
+    bodyKey: "tour.dividends.upcoming.body",
+  },
+];
+
+/** ETF look-through (/xray, components/xray/xray-view.tsx). */
+export const XRAY_TOUR_STEPS: TourStep[] = [
+  {
+    key: "xrayTable",
+    target: "xray-table",
+    titleKey: "tour.xray.table.title",
+    bodyKey: "tour.xray.table.body",
+  },
+  {
+    key: "xrayLimits",
+    target: null,
+    titleKey: "tour.xray.limits.title",
+    bodyKey: "tour.xray.limits.body",
+  },
+];
+
+/** Analysis (/analysis) -- the tab bar, not any single tab; the risk tab keeps its own tour. */
+export const ANALYSIS_TOUR_STEPS: TourStep[] = [
+  {
+    key: "analysisTabs",
+    target: "analysis-tabs",
+    titleKey: "tour.analysis.tabs.title",
+    bodyKey: "tour.analysis.tabs.body",
   },
 ];
 

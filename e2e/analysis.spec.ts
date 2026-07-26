@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openDashboard, addOtherAsset } from "./helpers";
+import { dismissTour, openDashboard, addOtherAsset } from "./helpers";
 
 // The Analysis page composes the allocation, returns and trades views over the
 // derived holdings, each rendering Recharts charts. Tab switching + a chart
@@ -14,6 +14,9 @@ test.describe("analysis (Guest Mode)", () => {
   test("distributions renders an allocation chart and tabs switch", async ({ page }) => {
     await page.getByRole("link", { name: /^Analysis$/ }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Analysis" })).toBeVisible();
+    // This page runs its own guided tour (round 24); its overlay covers the
+    // tab bar until dismissed.
+    await dismissTour(page);
 
     // Distributions is the default tab: a breakdown pill + a rendered pie.
     await expect(page.getByRole("button", { name: "Investments" })).toBeVisible();

@@ -202,8 +202,10 @@ export interface SpendingCategory {
  * An expense/income transaction against an {@link Account} (ROADMAP item #2,
  * flag `spending`). `amount` is signed in the account's native currency:
  * income positive, expense negative. `categoryId` is nullable (uncategorised
- * spend still books). `recurringId` is a forward-looking hook for ROADMAP item
- * #5 (contract/recurring-charge register) — nothing sets it yet.
+ * spend still books). `recurringId` holds the {@link Contract} that posted
+ * this booking, and is null for anything the user entered or imported
+ * themselves — `detectRecurringCandidates` uses it to skip charges that are
+ * already registered.
  */
 export interface SpendingTransaction {
   id: string;
@@ -216,6 +218,22 @@ export interface SpendingTransaction {
   payee: string;
   note: string | null;
   recurringId: string | null;
+  /**
+   * Set when this booking moved money to another {@link Account} of the user's
+   * own rather than spending it: a loan instalment, or a premium paid into a
+   * wealth-building policy (Riester, kapitalbildende Lebensversicherung).
+   *
+   * Such a booking is NOT income and NOT expense — net worth is unchanged at
+   * the moment of payment, only its composition shifts — so every aggregation
+   * in `lib/finance/spending.ts` skips it. Without this, a Riester premium
+   * booked by a contract would read as pure consumption and the spending
+   * picture would be wrong by the full premium every month.
+   *
+   * It deliberately does not move either account's balance: in this app an
+   * account's value is its opening balance plus the dated readings the user
+   * maintains, and ordinary spending does not move it either.
+   */
+  transferAccountId?: string | null;
 }
 
 /**
@@ -302,6 +320,28 @@ export interface Contract {
   /** Sum insured (coverage amount), profile base currency, ROADMAP item #10.
    *  Only meaningful alongside `insuranceType`. */
   sumInsured?: number | null;
+  /** Account the recurring charge is posted against. Null (the default) keeps
+   *  the contract a register entry only: it never books anything, which is how
+   *  every contract behaved before booking existed. */
+  accountId?: string | null;
+  /** First date a booking is due. Anchors the occurrence series exactly like
+   *  `SavingsPlan.startDate`, so the schedule stays derivable rather than
+   *  stored per occurrence. Null whenever `accountId` is null. */
+  bookingStartDate?: string | null;
+  /** Last date a booking was actually posted, or null if none yet. Advanced
+   *  only after the user confirms the due bookings, mirroring
+   *  `SavingsPlan.lastRunDate`. */
+  lastBookedDate?: string | null;
+  /**
+   * Where the money goes when this contract is not consumption: the loan being
+   * repaid, or the policy being paid into. Set, the contract's bookings carry
+   * `SpendingTransaction.transferAccountId` and stop counting as expense.
+   *
+   * This is what separates "Netflix" from "Riester" and from an
+   * Annuitätendarlehen — all three are recurring charges, but only the first
+   * one is money spent.
+   */
+  targetAccountId?: string | null;
 }
 
 /** Insurance types tracked on a {@link Contract} (ROADMAP item #10, flag
@@ -338,6 +378,13 @@ export const INSURANCE_TYPES: InsuranceType[] = [
  * nullable and set null (not cascade-deleted) when its account goes away --
  * mirrors `Contract.categoryId`'s "still means something" precedent -- the
  * goal simply falls back to manual tracking.
+ *
+ * A goal is either atomic ("emergency fund") or composite ("trip to the USA"
+ * = flight + hotel + taxi). Composition is expressed by the SUB-goals
+ * pointing at their parent via `parentGoalId`, so an atomic goal needs no
+ * extra fields at all. A parent's target and progress are then DERIVED from
+ * its children (`goalTotals` in lib/finance/goals.ts) -- its own
+ * `targetAmount` and tracking fields stop being used the moment it has one.
  */
 export interface Goal {
   id: string;
@@ -350,8 +397,21 @@ export interface Goal {
    *  progress. Null means progress is tracked manually. */
   linkedAccountId: string | null;
   /** Manually-entered current progress, base currency. Only used/shown when
-   *  linkedAccountId is null. Null = 0 progress so far. */
+   *  the goal tracks neither an account nor the depot. Null = 0 so far. */
   manualCurrentAmount: number | null;
+  /** Progress mirrors the depot's current market value instead of an account
+   *  balance. A depot value is derived from the transaction log and live
+   *  prices, so there is no account to link — hence its own flag. Wins over
+   *  `linkedAccountId`. */
+  tracksInvestments: boolean;
+  /** Which broker's depot is tracked; null = every portfolio combined. Only
+   *  meaningful when `tracksInvestments`. */
+  linkedPortfolioId: string | null;
+  /** The goal this one is a sub-goal of; null = a top-level goal. Nesting is
+   *  deliberately one level deep: a sub-goal is a line item ("flight"), not
+   *  another project. Deleting a parent cascades to its sub-goals -- a
+   *  sub-goal on its own means nothing. */
+  parentGoalId: string | null;
 }
 
 /** How often a cash position's interest is credited and compounded. */

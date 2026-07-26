@@ -12,6 +12,12 @@ import { defineConfig, devices } from "@playwright/test";
 // Browser: reuses the system-cached Chromium (revision 1228, matching
 // @playwright/test 1.61.x) — no per-run download. On a fresh machine run
 // `npx playwright install chromium` once.
+// Port 3000 unless PORT says otherwise: `reuseExistingServer` happily adopts
+// whatever already listens there, so another project's dev server on the
+// default port would silently run the whole suite against the wrong app.
+const PORT = process.env.PORT ?? "3000";
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: "./e2e",
   // One dev server, shared; keep the run serial so the single Next dev process
@@ -24,7 +30,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: BASE_URL,
     // Owner rule: emulate desktop at 1080p.
     viewport: { width: 1920, height: 1080 },
     trace: "on-first-retry",
@@ -41,8 +47,8 @@ export default defineConfig({
   // production build (`next start`, after `npm run build`): faster and steadier
   // than on-the-fly dev compilation, and it exercises the prod-only CSP headers.
   webServer: {
-    command: process.env.CI ? "npm run start" : "npm run dev",
-    url: "http://localhost:3000",
+    command: `${process.env.CI ? "npm run start" : "npm run dev"} -- --port ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

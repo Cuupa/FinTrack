@@ -9,7 +9,8 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProTeaser } from "@/components/billing/pro-teaser";
 import { today, shiftMonth } from "@/lib/finance/dates";
 import { budgetProgress, toBaseCurrency } from "@/lib/finance/spending";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
@@ -24,8 +25,24 @@ import type { Budget } from "@/lib/types";
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
+/**
+ * The card is self-gated: hidden when the flag is off, and — when the flag is
+ * on but the feature requires Pro on a free plan — rendered blurred and inert
+ * behind the paywall message instead of disappearing (MONETIZATION.md Phase 3).
+ */
 export function BudgetsCard() {
-  const enabled = useFeatureFlag("budgets");
+  const { enabled, locked } = useFeature("budgets");
+  if (!enabled) return null;
+  if (locked)
+    return (
+      <ProTeaser feature="budgets">
+        <BudgetsCardInner />
+      </ProTeaser>
+    );
+  return <BudgetsCardInner />;
+}
+
+function BudgetsCardInner() {
   const { data, addBudget, updateBudget, deleteBudget } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t, locale } = useI18n();
@@ -71,8 +88,6 @@ export function BudgetsCard() {
       new Date(Date.UTC(y, m - 1, 1)),
     );
   }, [month, locale]);
-
-  if (!enabled) return null;
 
   function reportError(err: unknown) {
     setError(isStorageFullError(err) ? t("common.storageFull") : t("spending.budgets.error"));

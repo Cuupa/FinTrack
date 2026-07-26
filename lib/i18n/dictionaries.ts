@@ -9,12 +9,12 @@ export type MessageKey = keyof typeof en;
 export const en = {
   "nav.dashboard": "Dashboard",
   "nav.accounts": "Accounts",
-  "nav.spending": "Spending",
+  "nav.spending": "Income & spending",
   "nav.contracts": "Contracts",
   "nav.goals": "Goals",
   "nav.health": "Health",
   "nav.fire": "FIRE",
-  "nav.debt": "Debt",
+  "nav.debt": "Liabilities",
   "nav.household": "Household",
   "nav.analysis": "Analysis",
   "nav.dividends": "Dividends",
@@ -36,6 +36,10 @@ export const en = {
   "nav.expandSidebar": "Expand sidebar",
   "nav.collapseSidebar": "Collapse sidebar",
   "nav.collapse": "Collapse",
+  "nav.more": "More",
+  "nav.group.everyday": "Everyday",
+  "nav.group.invest": "Investments",
+  "nav.group.plan": "Planning",
 
   "theme.toggleToDark": "Switch to dark mode",
   "theme.toggleToLight": "Switch to light mode",
@@ -245,6 +249,18 @@ export const en = {
   "tour.holdings.title": "Your holdings",
   "tour.holdings.body":
     "Every position lives here, sortable by column. Click a row to open its details.",
+  "tour.areas.title": "Your everyday money",
+  "tour.areas.body":
+    "Accounts, spending and goals each get a card here, so the home screen covers your whole financial picture and not just the portfolio. Click a card's title to open that area.",
+  "tour.contracts.kind.title": "Contract or insurance?",
+  "tour.contracts.kind.body":
+    "Pick what the entry is first. Insurance adds a type and a sum insured; an ordinary contract like a subscription is not asked for either.",
+  "tour.contracts.booking.title": "Let it book itself",
+  "tour.contracts.booking.body":
+    "Choose a booking account and the charge is posted into your spending on schedule, from today on. Leave it empty to keep the contract as a note only.",
+  "tour.contracts.suggestions.title": "Detected charges",
+  "tour.contracts.suggestions.body":
+    "A payment that repeats at a regular cadence shows up here so you can take it into the register. Loan instalments are left out: paying a debt down is a transfer, not a running cost.",
   "tour.nav.title": "More to explore",
   "tour.nav.body": "Analysis, dividends, and simulation all live in this menu.",
   "tour.themeToggle.title": "Dark mode",
@@ -302,6 +318,81 @@ export const en = {
   "tour.simulation.chart.body":
     "Run a simulation to see the range of likely outcomes here: shaded bands are probability ranges around the median line, and a dashed line marks the switch to withdrawals.",
 
+  // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
+  "tour.accounts.totals.title": "Assets minus debts",
+  "tour.accounts.totals.body":
+    "The three figures are your accounts: what you own, what you owe, and the difference. All of it flows into the net worth on the dashboard.",
+  "tour.accounts.form.title": "Add an account",
+  "tour.accounts.form.body":
+    "Give it a name and a starting balance. The kind decides whether it counts as an asset or as a debt.",
+  "tour.accounts.list.title": "Keep balances current",
+  "tour.accounts.list.body":
+    "Every account keeps a dated list of balances. Add a reading whenever you check your bank; the chart carries the last one forward.",
+  "tour.spending.totals.title": "Income vs. expenses",
+  "tour.spending.totals.body": "What came in, what went out, and what is left over.",
+  "tour.spending.form.title": "Book in seconds",
+  "tour.spending.form.body":
+    "Pick the account, type the amount and the payee. The category is suggested from how you filed that payee before.",
+  "tour.spending.table.title": "Your ledger",
+  "tour.spending.table.body":
+    "Every booking, sortable by any column. Import a bank statement here instead of typing months of history.",
+  "tour.goals.form.title": "Set a goal",
+  "tour.goals.form.body":
+    "Name it, set the amount and the date. Link an account so progress updates itself; link a debt and the goal becomes paying it off.",
+  "tour.goals.list.title": "Progress and pace",
+  "tour.goals.list.body":
+    "Each goal shows how far along it is and what you would have to put aside monthly to make the date.",
+  "tour.debt.totals.title": "What you owe",
+  "tour.debt.totals.body":
+    "Total debt, the minimum you have to pay each month, and how long until everything is repaid.",
+  "tour.debt.list.title": "Every liability",
+  "tour.debt.list.body":
+    "Loans, mortgages and credit lines from your accounts, with their rate and payoff date. Sort by rate to see what costs you most.",
+  "tour.debt.plan.title": "Avalanche or snowball",
+  "tour.debt.plan.body":
+    "Extra money goes either to the most expensive debt or to the smallest one. The plan shows what each choice costs you.",
+  "tour.health.gauges.title": "Four vital signs",
+  "tour.health.gauges.body":
+    "Emergency buffer, savings rate, debt load and net worth relative to income. Together they say more than any single number.",
+  "tour.health.sources.title": "Where the numbers come from",
+  "tour.health.sources.body":
+    "They are computed from your accounts and your spending. The more complete those are, the more the figures are worth.",
+  "tour.fire.inputs.title": "Your assumptions",
+  "tour.fire.inputs.body":
+    "Withdrawal rate, annual expenses, what you add each month and the return you expect. Everything below reacts to these.",
+  "tour.fire.targets.title": "Lean, regular, fat",
+  "tour.fire.targets.body":
+    "Three target sums for three lifestyles, each with the year you would reach it at your current pace.",
+  "tour.fire.simulation.title": "Test it against bad luck",
+  "tour.fire.simulation.body":
+    "The simulation runs thousands of market paths, so you see how often the plan survives a rough decade, not just the average case.",
+  "tour.household.create.title": "Share with someone",
+  "tour.household.create.body":
+    "Create a household to share your data with a partner. Without one, everything stays yours alone.",
+  "tour.household.members.title": "Who is in",
+  "tour.household.members.body":
+    "Everyone listed here sees the shared data. You can remove a member or leave the household at any time.",
+  "tour.household.invite.title": "Send an invite",
+  "tour.household.invite.body":
+    "Invite by email. The other side has to accept before anything is shared.",
+  "tour.dividends.kpis.title": "What actually arrived",
+  "tour.dividends.kpis.body":
+    "Payouts of the last twelve months and since the start, plus your personal yield on today's value and on what you paid.",
+  "tour.dividends.income.title": "Month by month",
+  "tour.dividends.income.body":
+    "Real payment events, scaled to the shares you held on each pay date. Accumulating funds show nothing here on purpose.",
+  "tour.dividends.upcoming.title": "The next twelve months",
+  "tour.dividends.upcoming.body":
+    "A projection from your trailing payouts at today's share count. An officially announced date replaces the estimated one; the amount always stays an estimate.",
+  "tour.xray.table.title": "Inside your funds",
+  "tour.xray.table.body":
+    "Your ETFs are broken down into the companies behind them and added to the shares you hold directly, so you see your real exposure per company.",
+  "tour.xray.limits.title": "Only what is known",
+  "tour.xray.limits.body":
+    "Funds whose holdings are known get broken down. Everything else stays visible as an unclassified remainder instead of quietly disappearing.",
+  "tour.analysis.tabs.title": "Five views on one portfolio",
+  "tour.analysis.tabs.body":
+    "Distribution, returns, trades, risk and taxes. Each tab answers a different question about the same portfolio.",
   "tour.assetTags.what.title": "What are tags?",
   "tour.assetTags.what.body":
     "Tags are grouped key-value labels you define, like Strategie: gamble. Use them to mark holdings however makes sense to you.",
@@ -348,7 +439,7 @@ export const en = {
   "login.privacyPolicyLink": "Privacy Policy",
 
   "dashboard.title": "Dashboard",
-  "dashboard.subtitle": "Your portfolio at a glance.",
+  "dashboard.subtitle": "Everything you own, owe and spend, in one place.",
   "dashboard.addAsset": "+ Add asset",
   "addAsset.manual": "Add manually",
   "addAsset.import": "Import CSV",
@@ -451,6 +542,17 @@ export const en = {
   "common.compare": "Compare",
   "common.other": "Other",
   "common.copy": "Copy",
+  "common.close": "Close",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
+
+  "system.title": "System",
+  "system.subtitle": "Database migrations applied to this instance.",
+  "system.migrations": "Migrations",
+  "system.none":
+    "None recorded (Supabase not configured, or the schema_migrations table is empty).",
+  "system.colVersion": "Version",
+  "system.colApplied": "Applied",
   "common.loading": "Loading…",
 
   "benchmark.addCustom": "Add benchmark",
@@ -473,6 +575,45 @@ export const en = {
   "privacy.hideFigures": "Hide figures",
 
   "stat.netWorth": "Net worth",
+  "dash.madeUpOf": "Made up of",
+  "dash.thisMonth": "This month",
+  "dash.goalsReached": "{n} of {m} reached",
+  "dash.area.noAccounts": "No accounts yet",
+  "dash.area.addAccount": "Add an account",
+  "dash.area.noSpending": "Nothing booked this month",
+  "dash.area.addSpending": "Book an expense",
+  "dash.area.noGoals": "No goals yet",
+  "dash.area.addGoal": "Set a goal",
+  "dash.area.thisMonthExpense": "Expenses",
+  "dash.area.thisMonthIncome": "Income",
+  "dash.area.thisMonthNet": "Net",
+
+  "goals.form.payOff": "pay off",
+  "goals.form.payOffHint":
+    "Progress is what you have already repaid, measured from the highest balance ever owed. The target amount ({currency}) is how much of it you want to pay off.",
+
+  "spending.categories.addDefaults": "Add standard categories",
+  "cat.group.home": "Home",
+  "cat.group.living": "Living",
+  "cat.group.transport": "Transport",
+  "cat.group.insurance": "Insurance & health",
+  "cat.group.leisure": "Leisure",
+  "cat.group.income": "Income",
+  "cat.home.rent": "Rent",
+  "cat.home.utilities": "Utilities",
+  "cat.home.internet": "Phone & internet",
+  "cat.living.groceries": "Groceries",
+  "cat.living.eatingOut": "Eating out",
+  "cat.living.household": "Household & drugstore",
+  "cat.transport.car": "Car & fuel",
+  "cat.transport.public": "Public transport",
+  "cat.insurance.insurance": "Insurance",
+  "cat.insurance.health": "Health",
+  "cat.leisure.subscriptions": "Subscriptions",
+  "cat.leisure.hobby": "Sport & hobbies",
+  "cat.leisure.holiday": "Holidays",
+  "cat.income.salary": "Salary",
+  "cat.income.other": "Other income",
   "stat.change": "Change",
   "stat.unrealized": "Unrealized P&L",
   "stat.realized": "Realized P&L",
@@ -714,6 +855,7 @@ export const en = {
   "accounts.totals.assets": "Total assets",
   "accounts.totals.liabilities": "Total liabilities",
   "accounts.totals.net": "Net",
+  "accounts.totals.partOfNetWorth": "This net figure counts toward your",
   "accounts.form.title": "Add an account",
   "accounts.form.intro": "Enter a starting balance on an opening date; liabilities subtract from your net worth.",
   "accounts.form.nameLabel": "Name",
@@ -750,7 +892,7 @@ export const en = {
   "accounts.balances.empty": "No balance updates yet. The opening balance is carried forward until you add one.",
   "accounts.balances.remove": "Remove balance",
   "accounts.balances.error": "Could not save the balance. Please try again.",
-  "spending.title": "Spending",
+  "spending.title": "Income & spending",
   "spending.subtitle": "Expense and income transactions against your accounts, categorised.",
   "spending.totals.income": "Income",
   "spending.totals.expense": "Expense",
@@ -852,7 +994,27 @@ export const en = {
   "contracts.coverage.title": "Coverage check",
   "contracts.coverage.intro": "A few common types of coverage don't have a matching contract in your register yet. Just a gentle nudge, not a requirement.",
   "contracts.form.insuranceTypeLabel": "Insurance type",
-  "contracts.form.insuranceTypeNone": "Not insurance",
+  "contracts.form.kindLabel": "What is this?",
+  "contracts.form.kindContract": "Contract",
+  "contracts.form.kindInsurance": "Insurance",
+  "contracts.form.accountLabel": "Booking account",
+  "contracts.form.accountNone": "Do not book",
+  "contracts.form.accountHintOn": "The charge is booked into your spending from today on.",
+  "contracts.form.accountHintOff": "Kept as a register entry only, with no bookings.",
+  "spending.list.makeContract": "Add as contract",
+  "spending.list.makeContractTitle": "Add this booking as a contract?",
+  "spending.list.makeContractMsg":
+    "Creates a monthly contract for {payee} from this booking. You can change the interval and everything else on the Contracts page.",
+  "contracts.form.targetLabel": "Paid into (optional)",
+  "contracts.form.targetNone": "Nothing, the money is spent",
+  "contracts.form.targetHintOn":
+    "Counted as a transfer, not as spending: the money moves to that account instead of being consumed.",
+  "contracts.form.targetHintOff":
+    "For a loan instalment or a policy that builds value, pick the account it pays into.",
+  "contracts.due.title": "Due bookings",
+  "contracts.due.intro": "{n} charge(s) are due. Check them before they are booked.",
+  "contracts.due.book": "Book now",
+  "contracts.due.error": "The bookings could not be saved.",
   "contracts.form.sumInsuredLabel": "Sum insured ({currency})",
   "contracts.insuranceType.liability": "Personal liability",
   "contracts.insuranceType.health": "Health",
@@ -863,15 +1025,26 @@ export const en = {
   "contracts.insuranceType.vehicle": "Vehicle",
   "contracts.insuranceType.other": "Other",
   "goals.title": "Goals",
-  "goals.subtitle": "Named savings goals, tracked by a linked account or by hand.",
+  "goals.subtitle":
+    "Saving up or paying a debt off, tracked by a linked account or by hand. Your liabilities show up as payoff goals on their own.",
   "goals.form.title": "Add a goal",
   "goals.form.nameLabel": "Name",
   "goals.form.namePlaceholder": "e.g. Emergency fund",
   "goals.form.targetLabel": "Target amount ({currency})",
-  "goals.form.dateLabel": "Target date",
-  "goals.form.linkedAccountLabel": "Linked account",
+  "goals.form.dateLabel": "Target date (optional)",
+  "goals.form.dateHint":
+    "Leave it empty for an open-ended goal. With a date we show how much per month is still missing.",
+  "goals.form.linkedAccountLabel": "Track progress with",
   "goals.form.manualTracking": "Manual tracking",
+  "goals.form.wholeDepot": "Whole depot (all brokers)",
+  "goals.form.brokerDepot": "Depot at {name}",
   "goals.form.manualCurrentLabel": "Current amount ({currency})",
+  "goals.form.manualCurrentHint":
+    "What you have put aside for this goal so far. Edit the goal to change it whenever you add money.",
+  "goals.form.parentLabel": "Part of",
+  "goals.form.noParent": "A goal of its own",
+  "goals.form.parentHint":
+    "Pick a goal to make this one of its parts. That goal's target is then the sum of its parts.",
   "goals.form.add": "Add goal",
   "goals.form.error": "Could not save the goal. Please try again.",
   "goals.list.title": "Your goals",
@@ -881,11 +1054,21 @@ export const en = {
   "goals.list.target": "Target",
   "goals.list.targetDate": "Target date",
   "goals.list.delete": "Delete",
+  "goals.list.edit": "Edit",
+  "goals.edit.title": "Edit goal",
+  "goals.edit.save": "Save changes",
+  "goals.edit.compositeHint":
+    "Target amount and progress come from this goal's parts ({n}), so they are not set here. Edit a part to change them.",
   "goals.list.manualTracking": "Manually tracked",
   "goals.list.linkedTo": "Linked to {name}",
+  "goals.list.autoPayoff": "Automatic: paying off this liability",
+  "goals.list.openEnded": "Open-ended",
   "goals.list.monthlyNeeded": "{amount} / month needed",
+  "goals.list.sumOfSubGoals": "Sum of its parts ({n})",
   "goals.delete.title": "Delete goal",
   "goals.delete.message": "Delete \"{name}\"? This cannot be undone.",
+  "goals.delete.messageWithSubGoals":
+    "Delete \"{name}\" and its parts ({n})? This cannot be undone.",
   "health.title": "Financial health",
   "health.subtitle": "Four quick gauges derived from your accounts, spending and net worth.",
   "health.gauge.monthsOfExpenses.label": "Months of expenses covered",
@@ -928,13 +1111,13 @@ export const en = {
   "fire.simulation.configurePrompt": "Run the simulation to see the odds",
   "fire.unit.years": "years",
 
-  "debt.title": "Debt payoff",
+  "debt.title": "Liabilities",
   "debt.subtitle": "Amortisation schedules and an avalanche/snowball plan for your liabilities.",
-  "debt.totals.debt": "Total debt",
+  "debt.totals.debt": "Total outstanding",
   "debt.totals.minPayment": "Total minimum payments",
   "debt.totals.months": "Time to debt-free",
   "debt.totals.monthsValue": "{n} months",
-  "debt.list.title": "Your debts",
+  "debt.list.title": "Your liabilities",
   "debt.list.empty": "No liability accounts yet. Add one on the Accounts page.",
   "debt.list.name": "Name",
   "debt.list.balance": "Balance",
@@ -943,7 +1126,7 @@ export const en = {
   "debt.list.editDetails": "Rate & payment",
   "debt.list.needsDetails": "Add rate & minimum payment",
   "debt.list.neverPaysOff": "Never pays off at this rate",
-  "debt.details.title": "Debt details — {name}",
+  "debt.details.title": "Liability details — {name}",
   "debt.details.intro": "Enter the annual interest rate and minimum monthly payment to include this debt in a payoff schedule.",
   "debt.details.rateLabel": "Annual interest rate (%)",
   "debt.details.minPaymentLabel": "Minimum monthly payment ({currency})",
@@ -1204,6 +1387,7 @@ export const en = {
   "xray.stockExposure": "Stock exposure (look-through)",
   "xray.inEquities": "in equities",
   "xray.otherNonEquity": "other / non-equity",
+  "xray.direct": "direct",
   "xray.colStock": "Stock",
   "xray.colHeldVia": "Held via",
   "xray.colExposure": "Exposure",
@@ -1672,12 +1856,12 @@ export const en = {
 export const de: Partial<Record<MessageKey, string>> = {
   "nav.dashboard": "Übersicht",
   "nav.accounts": "Konten",
-  "nav.spending": "Ausgaben",
+  "nav.spending": "Ein- & Ausgaben",
   "nav.contracts": "Verträge",
   "nav.goals": "Ziele",
   "nav.health": "Gesundheit",
   "nav.fire": "FIRE",
-  "nav.debt": "Schulden",
+  "nav.debt": "Verbindlichkeiten",
   "nav.household": "Haushalt",
   "nav.analysis": "Analyse",
   "nav.dividends": "Dividenden",
@@ -1699,6 +1883,10 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.expandSidebar": "Seitenleiste ausklappen",
   "nav.collapseSidebar": "Seitenleiste einklappen",
   "nav.collapse": "Einklappen",
+  "nav.more": "Mehr",
+  "nav.group.everyday": "Alltag",
+  "nav.group.invest": "Anlagen",
+  "nav.group.plan": "Planung",
 
   "theme.toggleToDark": "Zum dunklen Modus wechseln",
   "theme.toggleToLight": "Zum hellen Modus wechseln",
@@ -1909,6 +2097,18 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.holdings.title": "Deine Positionen",
   "tour.holdings.body":
     "Alle Positionen findest du hier, sortierbar nach Spalte. Klicke auf eine Zeile für die Details.",
+  "tour.areas.title": "Dein Alltagsgeld",
+  "tour.areas.body":
+    "Konten, Ausgaben und Ziele bekommen hier je eine Karte, damit die Startseite dein ganzes Finanzbild zeigt und nicht nur das Depot. Klick auf den Titel einer Karte, um den Bereich zu öffnen.",
+  "tour.contracts.kind.title": "Vertrag oder Versicherung?",
+  "tour.contracts.kind.body":
+    "Wähl zuerst, worum es sich handelt. Bei einer Versicherung kommen Art und Versicherungssumme dazu; ein normaler Vertrag wie ein Abo wird danach gar nicht erst gefragt.",
+  "tour.contracts.booking.title": "Automatisch buchen lassen",
+  "tour.contracts.booking.body":
+    "Wähl ein Buchungskonto, dann wird der Betrag ab heute regelmäßig in deine Ausgaben gebucht. Lass es leer, wenn der Vertrag nur ein Eintrag bleiben soll.",
+  "tour.contracts.suggestions.title": "Erkannte Zahlungen",
+  "tour.contracts.suggestions.body":
+    "Zahlungen, die sich regelmäßig wiederholen, tauchen hier auf und lassen sich ins Register übernehmen. Kreditraten bleiben außen vor: Schulden tilgen ist eine Umbuchung, keine laufende Ausgabe.",
   "tour.nav.title": "Mehr entdecken",
   "tour.nav.body": "Analyse, Dividenden und Simulation findest du in diesem Menü.",
   "tour.themeToggle.title": "Dunkler Modus",
@@ -1966,6 +2166,81 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.simulation.chart.body":
     "Starte eine Simulation, um hier die Bandbreite möglicher Verläufe zu sehen: Die farbigen Bänder sind Wahrscheinlichkeitsbereiche um die Medianlinie, eine gestrichelte Linie markiert den Wechsel zur Entnahme.",
 
+  // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
+  "tour.accounts.totals.title": "Vermögen minus Schulden",
+  "tour.accounts.totals.body":
+    "Die drei Zahlen sind deine Konten: was du besitzt, was du schuldest und die Differenz. Alles davon fließt ins Nettovermögen auf der Übersicht.",
+  "tour.accounts.form.title": "Konto anlegen",
+  "tour.accounts.form.body":
+    "Gib ihm einen Namen und einen Startsaldo. Die Art entscheidet, ob es als Vermögen oder als Schuld zählt.",
+  "tour.accounts.list.title": "Salden aktuell halten",
+  "tour.accounts.list.body":
+    "Jedes Konto führt eine datierte Liste von Ständen. Trag einen neuen ein, wenn du bei der Bank nachschaust; der Verlauf schreibt den letzten Stand fort.",
+  "tour.spending.totals.title": "Einnahmen und Ausgaben",
+  "tour.spending.totals.body": "Was reinkam, was rausging und was übrig bleibt.",
+  "tour.spending.form.title": "In Sekunden erfassen",
+  "tour.spending.form.body":
+    "Konto wählen, Betrag und Empfänger eintippen. Die Kategorie wird danach vorgeschlagen, wie du diesen Empfänger zuletzt einsortiert hast.",
+  "tour.spending.table.title": "Dein Ausgabenbuch",
+  "tour.spending.table.body":
+    "Jede Buchung, nach jeder Spalte sortierbar. Importier hier einen Kontoauszug, statt Monate von Hand zu tippen.",
+  "tour.goals.form.title": "Ziel festlegen",
+  "tour.goals.form.body":
+    "Benenn es, setz Betrag und Datum. Verknüpf ein Konto, damit der Fortschritt von allein mitläuft; verknüpfst du eine Schuld, wird daraus ein Abzahlziel.",
+  "tour.goals.list.title": "Fortschritt und Tempo",
+  "tour.goals.list.body":
+    "Jedes Ziel zeigt, wie weit es ist und was du monatlich zurücklegen müsstest, um das Datum zu schaffen.",
+  "tour.debt.totals.title": "Was du schuldest",
+  "tour.debt.totals.body":
+    "Gesamtschuld, die monatliche Mindestrate und wie lange es dauert, bis alles abbezahlt ist.",
+  "tour.debt.list.title": "Alle Verbindlichkeiten",
+  "tour.debt.list.body":
+    "Kredite, Hypotheken und Kreditlinien aus deinen Konten, mit Zins und Abzahldatum. Sortier nach Zins, um zu sehen, was dich am meisten kostet.",
+  "tour.debt.plan.title": "Lawine oder Schneeball",
+  "tour.debt.plan.body":
+    "Zusätzliches Geld geht entweder auf die teuerste oder auf die kleinste Schuld. Der Plan zeigt, was dich die jeweilige Wahl kostet.",
+  "tour.health.gauges.title": "Vier Kennzahlen",
+  "tour.health.gauges.body":
+    "Notgroschen, Sparquote, Schuldenlast und Vermögen im Verhältnis zum Einkommen. Zusammen sagen sie mehr als jede einzelne Zahl.",
+  "tour.health.sources.title": "Woher die Zahlen kommen",
+  "tour.health.sources.body":
+    "Sie werden aus deinen Konten und deinen Ausgaben berechnet. Je vollständiger die sind, desto aussagekräftiger sind die Werte.",
+  "tour.fire.inputs.title": "Deine Annahmen",
+  "tour.fire.inputs.body":
+    "Entnahmerate, Jahresausgaben, monatliche Sparrate und erwartete Rendite. Alles darunter reagiert darauf.",
+  "tour.fire.targets.title": "Lean, normal, fat",
+  "tour.fire.targets.body":
+    "Drei Zielsummen für drei Lebensstile, jeweils mit dem Jahr, in dem du sie im aktuellen Tempo erreichst.",
+  "tour.fire.simulation.title": "Gegen Pech testen",
+  "tour.fire.simulation.body":
+    "Die Simulation rechnet tausende Marktverläufe durch. So siehst du, wie oft der Plan ein schlechtes Jahrzehnt übersteht, nicht nur den Durchschnittsfall.",
+  "tour.household.create.title": "Mit jemandem teilen",
+  "tour.household.create.body":
+    "Leg einen Haushalt an, um deine Daten mit jemandem zu teilen. Ohne Haushalt bleibt alles nur bei dir.",
+  "tour.household.members.title": "Wer dabei ist",
+  "tour.household.members.body":
+    "Alle hier gelisteten Personen sehen die geteilten Daten. Du kannst jederzeit jemanden entfernen oder selbst austreten.",
+  "tour.household.invite.title": "Einladung schicken",
+  "tour.household.invite.body":
+    "Lade per E-Mail ein. Die andere Seite muss annehmen, bevor irgendetwas geteilt wird.",
+  "tour.dividends.kpis.title": "Was tatsächlich ankam",
+  "tour.dividends.kpis.body":
+    "Ausschüttungen der letzten zwölf Monate und seit Beginn, dazu deine persönliche Rendite auf den heutigen Wert und auf deinen Einstand.",
+  "tour.dividends.income.title": "Monat für Monat",
+  "tour.dividends.income.body":
+    "Echte Zahlungstermine, skaliert auf die Stückzahl, die du am jeweiligen Zahltag hattest. Thesaurierende Fonds zeigen hier bewusst nichts.",
+  "tour.dividends.upcoming.title": "Die nächsten zwölf Monate",
+  "tour.dividends.upcoming.body":
+    "Eine Hochrechnung aus deinen bisherigen Ausschüttungen bei heutiger Stückzahl. Ein offiziell angekündigter Termin ersetzt den geschätzten; der Betrag bleibt immer geschätzt.",
+  "tour.xray.table.title": "In deine Fonds hineinschauen",
+  "tour.xray.table.body":
+    "Deine ETFs werden in die Unternehmen dahinter zerlegt und mit deinen direkt gehaltenen Aktien zusammengezählt. So siehst du deine echte Position pro Unternehmen.",
+  "tour.xray.limits.title": "Nur was bekannt ist",
+  "tour.xray.limits.body":
+    "Fonds, deren Bestandteile bekannt sind, werden aufgeschlüsselt. Alles andere bleibt als nicht zugeordneter Anteil sichtbar, statt stillschweigend zu verschwinden.",
+  "tour.analysis.tabs.title": "Fünf Sichten auf ein Portfolio",
+  "tour.analysis.tabs.body":
+    "Verteilung, Rendite, Trades, Risiko und Steuern. Jeder Tab beantwortet eine andere Frage zum selben Portfolio.",
   "tour.assetTags.what.title": "Was sind Tags?",
   "tour.assetTags.what.body":
     "Tags sind gruppierte Schlüssel-Wert-Label, die du selbst festlegst, zum Beispiel Strategie: gamble. Nutze sie, um Positionen so zu markieren, wie es für dich Sinn ergibt.",
@@ -2010,7 +2285,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "login.privacyPolicyLink": "Datenschutzerklärung",
 
   "dashboard.title": "Übersicht",
-  "dashboard.subtitle": "Dein Portfolio auf einen Blick.",
+  "dashboard.subtitle": "Alles, was du besitzt, schuldest und ausgibst, an einem Ort.",
   "dashboard.addAsset": "+ Position hinzufügen",
   "addAsset.manual": "Manuell hinzufügen",
   "addAsset.import": "CSV importieren",
@@ -2112,6 +2387,17 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.compare": "Vergleichen",
   "common.other": "Andere",
   "common.copy": "Kopieren",
+  "common.close": "Schließen",
+  "common.cancel": "Abbrechen",
+  "common.delete": "Löschen",
+
+  "system.title": "System",
+  "system.subtitle": "Datenbank-Migrationen, die auf dieser Instanz angewendet wurden.",
+  "system.migrations": "Migrationen",
+  "system.none":
+    "Keine erfasst (Supabase ist nicht konfiguriert oder die Tabelle schema_migrations ist leer).",
+  "system.colVersion": "Version",
+  "system.colApplied": "Angewendet",
   "common.loading": "Wird geladen…",
 
   "benchmark.addCustom": "Benchmark hinzufügen",
@@ -2134,6 +2420,45 @@ export const de: Partial<Record<MessageKey, string>> = {
   "privacy.hideFigures": "Beträge ausblenden",
 
   "stat.netWorth": "Nettovermögen",
+  "dash.madeUpOf": "Setzt sich zusammen aus",
+  "dash.thisMonth": "Diesen Monat",
+  "dash.goalsReached": "{n} von {m} erreicht",
+  "dash.area.noAccounts": "Noch keine Konten",
+  "dash.area.addAccount": "Konto hinzufügen",
+  "dash.area.noSpending": "Diesen Monat nichts gebucht",
+  "dash.area.addSpending": "Ausgabe buchen",
+  "dash.area.noGoals": "Noch keine Ziele",
+  "dash.area.addGoal": "Ziel festlegen",
+  "dash.area.thisMonthExpense": "Ausgaben",
+  "dash.area.thisMonthIncome": "Einnahmen",
+  "dash.area.thisMonthNet": "Netto",
+
+  "goals.form.payOff": "abbezahlen",
+  "goals.form.payOffHint":
+    "Der Fortschritt ist das, was du schon zurückgezahlt hast, gemessen am höchsten Schuldenstand. Der Zielbetrag ({currency}) ist, wie viel davon du abbezahlen willst.",
+
+  "spending.categories.addDefaults": "Standardkategorien hinzufügen",
+  "cat.group.home": "Wohnen",
+  "cat.group.living": "Lebenshaltung",
+  "cat.group.transport": "Mobilität",
+  "cat.group.insurance": "Versicherung & Gesundheit",
+  "cat.group.leisure": "Freizeit",
+  "cat.group.income": "Einnahmen",
+  "cat.home.rent": "Miete",
+  "cat.home.utilities": "Nebenkosten",
+  "cat.home.internet": "Telefon & Internet",
+  "cat.living.groceries": "Lebensmittel",
+  "cat.living.eatingOut": "Restaurant & Café",
+  "cat.living.household": "Haushalt & Drogerie",
+  "cat.transport.car": "Auto & Kraftstoff",
+  "cat.transport.public": "Öffentliche Verkehrsmittel",
+  "cat.insurance.insurance": "Versicherungen",
+  "cat.insurance.health": "Gesundheit",
+  "cat.leisure.subscriptions": "Abos",
+  "cat.leisure.hobby": "Sport & Hobby",
+  "cat.leisure.holiday": "Urlaub",
+  "cat.income.salary": "Gehalt",
+  "cat.income.other": "Sonstige Einnahmen",
   "stat.change": "Veränderung",
   "stat.unrealized": "Nicht realisierter G/V",
   "stat.realized": "Realisierter G/V",
@@ -2376,6 +2701,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.totals.assets": "Vermögen gesamt",
   "accounts.totals.liabilities": "Verbindlichkeiten gesamt",
   "accounts.totals.net": "Netto",
+  // Phrased with a dative so the linked term stays the plain "Nettovermögen"
+  // ("Teil deines Nettovermögen" would need a genitive -s on the link text).
+  "accounts.totals.partOfNetWorth": "Dieser Netto-Wert zählt zu deinem",
   "accounts.form.title": "Konto hinzufügen",
   "accounts.form.intro": "Gib einen Startsaldo zu einem Eröffnungsdatum ein; Verbindlichkeiten verringern dein Nettovermögen.",
   "accounts.form.nameLabel": "Name",
@@ -2412,7 +2740,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.balances.empty": "Noch keine Saldoaktualisierungen. Der Startsaldo wird fortgeschrieben, bis du einen hinzufügst.",
   "accounts.balances.remove": "Saldo entfernen",
   "accounts.balances.error": "Der Saldo konnte nicht gespeichert werden. Bitte versuche es erneut.",
-  "spending.title": "Ausgaben",
+  "spending.title": "Ein- & Ausgaben",
   "spending.subtitle": "Ausgaben- und Einnahmenbuchungen auf deinen Konten, kategorisiert.",
   "spending.totals.income": "Einnahmen",
   "spending.totals.expense": "Ausgaben",
@@ -2514,7 +2842,27 @@ export const de: Partial<Record<MessageKey, string>> = {
   "contracts.coverage.title": "Absicherungs-Check",
   "contracts.coverage.intro": "Für ein paar gängige Versicherungsarten gibt es noch keinen passenden Vertrag in deinem Register. Nur ein sanfter Hinweis, keine Pflicht.",
   "contracts.form.insuranceTypeLabel": "Versicherungsart",
-  "contracts.form.insuranceTypeNone": "Keine Versicherung",
+  "contracts.form.kindLabel": "Worum handelt es sich?",
+  "contracts.form.kindContract": "Vertrag",
+  "contracts.form.kindInsurance": "Versicherung",
+  "contracts.form.accountLabel": "Buchungskonto",
+  "contracts.form.accountNone": "Nicht buchen",
+  "contracts.form.accountHintOn": "Der Betrag wird ab heute in deine Ausgaben gebucht.",
+  "contracts.form.accountHintOff": "Nur als Eintrag im Register, ohne Buchungen.",
+  "spending.list.makeContract": "Als Vertrag anlegen",
+  "spending.list.makeContractTitle": "Diese Buchung als Vertrag anlegen?",
+  "spending.list.makeContractMsg":
+    "Legt aus dieser Buchung einen monatlichen Vertrag für {payee} an. Intervall und alles Weitere kannst du auf der Seite Verträge ändern.",
+  "contracts.form.targetLabel": "Zahlt ein auf (optional)",
+  "contracts.form.targetNone": "Nichts, das Geld ist ausgegeben",
+  "contracts.form.targetHintOn":
+    "Zählt als Umbuchung, nicht als Ausgabe: das Geld wandert auf dieses Konto, statt verbraucht zu werden.",
+  "contracts.form.targetHintOff":
+    "Bei einer Kreditrate oder einer Police, die Wert aufbaut, wähl das Konto, auf das sie einzahlt.",
+  "contracts.due.title": "Fällige Buchungen",
+  "contracts.due.intro": "{n} Buchung(en) sind fällig. Prüf sie, bevor sie gebucht werden.",
+  "contracts.due.book": "Jetzt buchen",
+  "contracts.due.error": "Die Buchungen konnten nicht gespeichert werden.",
   "contracts.form.sumInsuredLabel": "Versicherungssumme ({currency})",
   "contracts.insuranceType.liability": "Privathaftpflicht",
   "contracts.insuranceType.health": "Kranken­versicherung",
@@ -2525,15 +2873,26 @@ export const de: Partial<Record<MessageKey, string>> = {
   "contracts.insuranceType.vehicle": "Fahrzeug",
   "contracts.insuranceType.other": "Sonstige",
   "goals.title": "Ziele",
-  "goals.subtitle": "Deine Sparziele, verfolgt über ein verknüpftes Konto oder manuell.",
+  "goals.subtitle":
+    "Sparen oder Schulden abbezahlen, verfolgt über ein verknüpftes Konto oder manuell. Deine Verbindlichkeiten erscheinen von selbst als Tilgungsziel.",
   "goals.form.title": "Ziel hinzufügen",
   "goals.form.nameLabel": "Name",
   "goals.form.namePlaceholder": "z.B. Notgroschen",
   "goals.form.targetLabel": "Zielbetrag ({currency})",
-  "goals.form.dateLabel": "Zieldatum",
-  "goals.form.linkedAccountLabel": "Verknüpftes Konto",
+  "goals.form.dateLabel": "Zieldatum (optional)",
+  "goals.form.dateHint":
+    "Lass es leer für ein Ziel ohne festes Enddatum. Mit Datum zeigen wir dir, wie viel pro Monat noch fehlt.",
+  "goals.form.linkedAccountLabel": "Fortschritt verfolgen über",
   "goals.form.manualTracking": "Manuelle Erfassung",
+  "goals.form.wholeDepot": "Gesamtes Depot (alle Broker)",
+  "goals.form.brokerDepot": "Depot bei {name}",
   "goals.form.manualCurrentLabel": "Aktueller Betrag ({currency})",
+  "goals.form.manualCurrentHint":
+    "Was du für dieses Ziel bisher zurückgelegt hast. Bearbeite das Ziel, um den Betrag zu ändern, wenn Geld dazukommt.",
+  "goals.form.parentLabel": "Teil von",
+  "goals.form.noParent": "Eigenständiges Ziel",
+  "goals.form.parentHint":
+    "Wähle ein Ziel, um dieses zu einem seiner Teilziele zu machen. Der Zielbetrag ist dann die Summe aller Teilziele.",
   "goals.form.add": "Ziel hinzufügen",
   "goals.form.error": "Das Ziel konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "goals.list.title": "Deine Ziele",
@@ -2543,11 +2902,21 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.list.target": "Ziel",
   "goals.list.targetDate": "Zieldatum",
   "goals.list.delete": "Löschen",
+  "goals.list.edit": "Bearbeiten",
+  "goals.edit.title": "Ziel bearbeiten",
+  "goals.edit.save": "Änderungen speichern",
+  "goals.edit.compositeHint":
+    "Zielbetrag und Fortschritt ergeben sich aus den Teilzielen ({n}) und werden deshalb hier nicht gesetzt. Bearbeite ein Teilziel, um sie zu ändern.",
   "goals.list.manualTracking": "Manuell erfasst",
   "goals.list.linkedTo": "Verknüpft mit {name}",
+  "goals.list.autoPayoff": "Automatisch: Tilgung dieser Verbindlichkeit",
+  "goals.list.openEnded": "Ohne Enddatum",
   "goals.list.monthlyNeeded": "{amount} / Monat nötig",
+  "goals.list.sumOfSubGoals": "Summe der Teilziele ({n})",
   "goals.delete.title": "Ziel löschen",
   "goals.delete.message": "\"{name}\" löschen? Das kann nicht rückgängig gemacht werden.",
+  "goals.delete.messageWithSubGoals":
+    "\"{name}\" mit seinen Teilzielen ({n}) löschen? Das kann nicht rückgängig gemacht werden.",
   "health.title": "Finanzielle Gesundheit",
   "health.subtitle": "Vier schnelle Kennzahlen aus deinen Konten, Ausgaben und deinem Nettovermögen.",
   "health.gauge.monthsOfExpenses.label": "Abgedeckte Monate",
@@ -2590,13 +2959,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.simulation.configurePrompt": "Starte die Simulation, um die Chancen zu sehen",
   "fire.unit.years": "Jahre",
 
-  "debt.title": "Schuldenabbau",
+  "debt.title": "Verbindlichkeiten",
   "debt.subtitle": "Tilgungspläne und ein Avalanche-/Schneeball-Plan für deine Verbindlichkeiten.",
-  "debt.totals.debt": "Gesamtschulden",
+  "debt.totals.debt": "Offene Verbindlichkeiten",
   "debt.totals.minPayment": "Mindestzahlungen gesamt",
   "debt.totals.months": "Zeit bis schuldenfrei",
   "debt.totals.monthsValue": "{n} Monate",
-  "debt.list.title": "Deine Schulden",
+  "debt.list.title": "Deine Verbindlichkeiten",
   "debt.list.empty": "Noch keine Verbindlichkeiten. Füge auf der Konten-Seite eine hinzu.",
   "debt.list.name": "Name",
   "debt.list.balance": "Saldo",
@@ -2605,7 +2974,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.list.editDetails": "Zinssatz & Zahlung",
   "debt.list.needsDetails": "Zinssatz & Mindestzahlung eintragen",
   "debt.list.neverPaysOff": "Wird bei diesem Satz nie getilgt",
-  "debt.details.title": "Schuldendetails — {name}",
+  "debt.details.title": "Details — {name}",
   "debt.details.intro": "Trage den jährlichen Zinssatz und die monatliche Mindestzahlung ein, um diese Schuld in einen Tilgungsplan aufzunehmen.",
   "debt.details.rateLabel": "Jährlicher Zinssatz (%)",
   "debt.details.minPaymentLabel": "Monatliche Mindestzahlung ({currency})",
@@ -2867,6 +3236,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "xray.stockExposure": "Aktien-Engagement (Durchschau)",
   "xray.inEquities": "in Aktien",
   "xray.otherNonEquity": "sonstige / nicht-Aktien",
+  "xray.direct": "direkt",
   "xray.colStock": "Aktie",
   "xray.colHeldVia": "Gehalten über",
   "xray.colExposure": "Engagement",
@@ -3334,12 +3704,12 @@ export const de: Partial<Record<MessageKey, string>> = {
 export const es: Partial<Record<MessageKey, string>> = {
   "nav.dashboard": "Inicio",
   "nav.accounts": "Cuentas",
-  "nav.spending": "Gastos",
+  "nav.spending": "Ingresos y gastos",
   "nav.contracts": "Contratos",
   "nav.goals": "Metas",
   "nav.health": "Salud",
   "nav.fire": "FIRE",
-  "nav.debt": "Deudas",
+  "nav.debt": "Pasivos",
   "nav.household": "Hogar",
   "nav.analysis": "Análisis",
   "nav.dividends": "Dividendos",
@@ -3356,11 +3726,15 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.portfolioLimitHint": "El plan gratuito incluye hasta {n} carteras.",
   "nav.deletePortfolioTitle": "¿Eliminar cartera?",
   "nav.deletePortfolioMsg":
-    "Sus transacciones y los activos que solo estén en esta cartera se eliminarán definitivamente.",
+    "Tus transacciones y los activos que solo estén en esta cartera se eliminarán definitivamente.",
   "nav.nOfM": "{n} de {m}",
   "nav.expandSidebar": "Expandir la barra lateral",
   "nav.collapseSidebar": "Contraer la barra lateral",
   "nav.collapse": "Contraer",
+  "nav.more": "Más",
+  "nav.group.everyday": "Día a día",
+  "nav.group.invest": "Inversiones",
+  "nav.group.plan": "Planificación",
 
   "theme.toggleToDark": "Cambiar a modo oscuro",
   "theme.toggleToLight": "Cambiar a modo claro",
@@ -3570,6 +3944,18 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.holdings.title": "Tus posiciones",
   "tour.holdings.body":
     "Aquí están todas tus posiciones, ordenables por columna. Haz clic en una fila para ver sus detalles.",
+  "tour.areas.title": "Tu dinero del día a día",
+  "tour.areas.body":
+    "Cuentas, gastos y objetivos tienen aquí su propia tarjeta, para que la pantalla de inicio cubra toda tu situación financiera y no solo la cartera. Pulsa el título de una tarjeta para abrir esa área.",
+  "tour.contracts.kind.title": "¿Contrato o seguro?",
+  "tour.contracts.kind.body":
+    "Elige primero de qué se trata. Un seguro añade el tipo y la suma asegurada; a un contrato normal como una suscripción no se le pregunta nada de eso.",
+  "tour.contracts.booking.title": "Deja que se registre solo",
+  "tour.contracts.booking.body":
+    "Elige una cuenta de cargo y el importe se registrará en tus gastos según su periodicidad, a partir de hoy. Déjala vacía si el contrato debe quedarse solo como anotación.",
+  "tour.contracts.suggestions.title": "Cargos detectados",
+  "tour.contracts.suggestions.body":
+    "Los pagos que se repiten con una cadencia regular aparecen aquí para que los pases al registro. Las cuotas de préstamo quedan fuera: amortizar deuda es una transferencia, no un gasto corriente.",
   "tour.nav.title": "Más por explorar",
   "tour.nav.body": "Análisis, dividendos y simulación están en este menú.",
   "tour.themeToggle.title": "Modo oscuro",
@@ -3627,6 +4013,81 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.simulation.chart.body":
     "Ejecuta una simulación para ver aquí el rango de resultados probables: las bandas de color son rangos de probabilidad alrededor de la mediana, y una línea discontinua marca el cambio a la fase de retirada.",
 
+  // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
+  "tour.accounts.totals.title": "Activos menos deudas",
+  "tour.accounts.totals.body":
+    "Las tres cifras son tus cuentas: lo que tienes, lo que debes y la diferencia. Todo eso entra en el patrimonio neto del panel.",
+  "tour.accounts.form.title": "Añade una cuenta",
+  "tour.accounts.form.body":
+    "Ponle un nombre y un saldo inicial. El tipo decide si cuenta como activo o como deuda.",
+  "tour.accounts.list.title": "Mantén los saldos al día",
+  "tour.accounts.list.body":
+    "Cada cuenta guarda una lista de saldos con fecha. Añade uno nuevo cuando consultes el banco; el gráfico arrastra el último.",
+  "tour.spending.totals.title": "Ingresos y gastos",
+  "tour.spending.totals.body": "Lo que entró, lo que salió y lo que queda.",
+  "tour.spending.form.title": "Registra en segundos",
+  "tour.spending.form.body":
+    "Elige la cuenta y escribe el importe y el beneficiario. La categoría se sugiere según cómo clasificaste antes a ese beneficiario.",
+  "tour.spending.table.title": "Tu registro",
+  "tour.spending.table.body":
+    "Cada apunte, ordenable por cualquier columna. Importa aquí un extracto bancario en vez de teclear meses de historial.",
+  "tour.goals.form.title": "Define un objetivo",
+  "tour.goals.form.body":
+    "Ponle nombre, importe y fecha. Vincula una cuenta para que el progreso se actualice solo; si vinculas una deuda, el objetivo pasa a ser saldarla.",
+  "tour.goals.list.title": "Progreso y ritmo",
+  "tour.goals.list.body":
+    "Cada objetivo muestra cuánto llevas y cuánto tendrías que apartar al mes para llegar a la fecha.",
+  "tour.debt.totals.title": "Lo que debes",
+  "tour.debt.totals.body":
+    "Deuda total, el mínimo que pagas cada mes y cuánto falta hasta saldarlo todo.",
+  "tour.debt.list.title": "Todas las deudas",
+  "tour.debt.list.body":
+    "Préstamos, hipotecas y líneas de crédito de tus cuentas, con su interés y fecha de liquidación. Ordena por interés para ver qué te cuesta más.",
+  "tour.debt.plan.title": "Avalancha o bola de nieve",
+  "tour.debt.plan.body":
+    "El dinero extra va a la deuda más cara o a la más pequeña. El plan muestra lo que te cuesta cada opción.",
+  "tour.health.gauges.title": "Cuatro señales vitales",
+  "tour.health.gauges.body":
+    "Colchón de emergencia, tasa de ahorro, carga de deuda y patrimonio en relación con tus ingresos. Juntas dicen más que cualquier cifra suelta.",
+  "tour.health.sources.title": "De dónde salen las cifras",
+  "tour.health.sources.body":
+    "Se calculan a partir de tus cuentas y tus gastos. Cuanto más completos estén, más valen los números.",
+  "tour.fire.inputs.title": "Tus supuestos",
+  "tour.fire.inputs.body":
+    "Tasa de retiro, gastos anuales, lo que aportas cada mes y el rendimiento que esperas. Todo lo de abajo reacciona a esto.",
+  "tour.fire.targets.title": "Lean, normal, fat",
+  "tour.fire.targets.body":
+    "Tres importes objetivo para tres estilos de vida, cada uno con el año en que llegarías a tu ritmo actual.",
+  "tour.fire.simulation.title": "Ponlo a prueba",
+  "tour.fire.simulation.body":
+    "La simulación recorre miles de trayectorias de mercado, así ves con qué frecuencia el plan sobrevive a una mala década y no solo al caso medio.",
+  "tour.household.create.title": "Compártelo con alguien",
+  "tour.household.create.body":
+    "Crea un hogar para compartir tus datos con otra persona. Sin él, todo sigue siendo solo tuyo.",
+  "tour.household.members.title": "Quién está dentro",
+  "tour.household.members.body":
+    "Todas las personas de esta lista ven los datos compartidos. Puedes quitar a alguien o salir del hogar cuando quieras.",
+  "tour.household.invite.title": "Envía una invitación",
+  "tour.household.invite.body":
+    "Invita por correo. La otra persona debe aceptar antes de compartir nada.",
+  "tour.dividends.kpis.title": "Lo que realmente llegó",
+  "tour.dividends.kpis.body":
+    "Pagos de los últimos doce meses y desde el inicio, además de tu rendimiento personal sobre el valor actual y sobre lo que pagaste.",
+  "tour.dividends.income.title": "Mes a mes",
+  "tour.dividends.income.body":
+    "Pagos reales, escalados a las participaciones que tenías en cada fecha de pago. Los fondos de acumulación no muestran nada aquí, y es intencionado.",
+  "tour.dividends.upcoming.title": "Los próximos doce meses",
+  "tour.dividends.upcoming.body":
+    "Una proyección de tus pagos anteriores con el número de participaciones actual. Una fecha anunciada oficialmente sustituye a la estimada; el importe sigue siendo siempre una estimación.",
+  "tour.xray.table.title": "Dentro de tus fondos",
+  "tour.xray.table.body":
+    "Tus ETFs se descomponen en las empresas que hay detrás y se suman a las acciones que tienes en directo, así ves tu exposición real por empresa.",
+  "tour.xray.limits.title": "Solo lo conocido",
+  "tour.xray.limits.body":
+    "Los fondos cuyas posiciones se conocen se desglosan. El resto sigue visible como remanente sin clasificar en vez de desaparecer sin más.",
+  "tour.analysis.tabs.title": "Cinco vistas de una cartera",
+  "tour.analysis.tabs.body":
+    "Distribución, rentabilidad, operaciones, riesgo e impuestos. Cada pestaña responde a una pregunta distinta sobre la misma cartera.",
   "tour.assetTags.what.title": "¿Qué son las etiquetas?",
   "tour.assetTags.what.body":
     "Las etiquetas son pares clave-valor agrupados que tú defines, como Strategie: gamble. Úsalas para marcar posiciones como tenga sentido para ti.",
@@ -3671,7 +4132,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "login.privacyPolicyLink": "Política de privacidad",
 
   "dashboard.title": "Inicio",
-  "dashboard.subtitle": "Tu cartera de un vistazo.",
+  "dashboard.subtitle": "Todo lo que tienes, debes y gastas, en un solo lugar.",
   "dashboard.addAsset": "+ Añadir activo",
   "addAsset.manual": "Añadir manualmente",
   "addAsset.import": "Importar CSV",
@@ -3774,6 +4235,17 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.compare": "Comparar",
   "common.other": "Otros",
   "common.copy": "Copiar",
+  "common.close": "Cerrar",
+  "common.cancel": "Cancelar",
+  "common.delete": "Eliminar",
+
+  "system.title": "Sistema",
+  "system.subtitle": "Migraciones de base de datos aplicadas a esta instancia.",
+  "system.migrations": "Migraciones",
+  "system.none":
+    "Ninguna registrada (Supabase no está configurado o la tabla schema_migrations está vacía).",
+  "system.colVersion": "Versión",
+  "system.colApplied": "Aplicada",
   "common.loading": "Cargando…",
 
   "benchmark.addCustom": "Añadir benchmark",
@@ -3796,6 +4268,45 @@ export const es: Partial<Record<MessageKey, string>> = {
   "privacy.hideFigures": "Ocultar importes",
 
   "stat.netWorth": "Patrimonio neto",
+  "dash.madeUpOf": "Se compone de",
+  "dash.thisMonth": "Este mes",
+  "dash.goalsReached": "{n} de {m} alcanzados",
+  "dash.area.noAccounts": "Aún no hay cuentas",
+  "dash.area.addAccount": "Añadir una cuenta",
+  "dash.area.noSpending": "Nada registrado este mes",
+  "dash.area.addSpending": "Registrar un gasto",
+  "dash.area.noGoals": "Aún no hay objetivos",
+  "dash.area.addGoal": "Fijar un objetivo",
+  "dash.area.thisMonthExpense": "Gastos",
+  "dash.area.thisMonthIncome": "Ingresos",
+  "dash.area.thisMonthNet": "Neto",
+
+  "goals.form.payOff": "amortizar",
+  "goals.form.payOffHint":
+    "El progreso es lo que ya has devuelto, medido desde el saldo más alto que llegaste a deber. El importe objetivo ({currency}) es cuánto de esa deuda quieres amortizar.",
+
+  "spending.categories.addDefaults": "Añadir categorías estándar",
+  "cat.group.home": "Vivienda",
+  "cat.group.living": "Vida diaria",
+  "cat.group.transport": "Transporte",
+  "cat.group.insurance": "Seguros y salud",
+  "cat.group.leisure": "Ocio",
+  "cat.group.income": "Ingresos",
+  "cat.home.rent": "Alquiler",
+  "cat.home.utilities": "Suministros",
+  "cat.home.internet": "Teléfono e internet",
+  "cat.living.groceries": "Supermercado",
+  "cat.living.eatingOut": "Restaurantes",
+  "cat.living.household": "Hogar y droguería",
+  "cat.transport.car": "Coche y combustible",
+  "cat.transport.public": "Transporte público",
+  "cat.insurance.insurance": "Seguros",
+  "cat.insurance.health": "Salud",
+  "cat.leisure.subscriptions": "Suscripciones",
+  "cat.leisure.hobby": "Deporte y aficiones",
+  "cat.leisure.holiday": "Vacaciones",
+  "cat.income.salary": "Salario",
+  "cat.income.other": "Otros ingresos",
   "stat.change": "Variación",
   "stat.unrealized": "P&G no realizada",
   "stat.realized": "P&G realizada",
@@ -4037,6 +4548,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.totals.assets": "Activos totales",
   "accounts.totals.liabilities": "Pasivos totales",
   "accounts.totals.net": "Neto",
+  "accounts.totals.partOfNetWorth": "Esta cifra neta cuenta para tu",
   "accounts.form.title": "Añadir una cuenta",
   "accounts.form.intro": "Introduce un saldo inicial en una fecha de apertura; los pasivos restan de tu patrimonio neto.",
   "accounts.form.nameLabel": "Nombre",
@@ -4073,7 +4585,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.balances.empty": "Aún no hay actualizaciones de saldo. El saldo inicial se arrastra hasta que añadas una.",
   "accounts.balances.remove": "Eliminar saldo",
   "accounts.balances.error": "No se pudo guardar el saldo. Inténtalo de nuevo.",
-  "spending.title": "Gastos",
+  "spending.title": "Ingresos y gastos",
   "spending.subtitle": "Movimientos de gastos e ingresos en tus cuentas, categorizados.",
   "spending.totals.income": "Ingresos",
   "spending.totals.expense": "Gastos",
@@ -4175,7 +4687,27 @@ export const es: Partial<Record<MessageKey, string>> = {
   "contracts.coverage.title": "Revisión de cobertura",
   "contracts.coverage.intro": "Todavía no hay un contrato que corresponda a algunos tipos de cobertura habituales en tu registro. Solo un recordatorio suave, no un requisito.",
   "contracts.form.insuranceTypeLabel": "Tipo de seguro",
-  "contracts.form.insuranceTypeNone": "No es un seguro",
+  "contracts.form.kindLabel": "¿De qué se trata?",
+  "contracts.form.kindContract": "Contrato",
+  "contracts.form.kindInsurance": "Seguro",
+  "contracts.form.accountLabel": "Cuenta de cargo",
+  "contracts.form.accountNone": "No registrar",
+  "contracts.form.accountHintOn": "El cargo se registra en tus gastos a partir de hoy.",
+  "contracts.form.accountHintOff": "Solo como entrada del registro, sin movimientos.",
+  "spending.list.makeContract": "Añadir como contrato",
+  "spending.list.makeContractTitle": "¿Añadir este movimiento como contrato?",
+  "spending.list.makeContractMsg":
+    "Crea un contrato mensual para {payee} a partir de este movimiento. Puedes cambiar la periodicidad y lo demás en la página de contratos.",
+  "contracts.form.targetLabel": "Ingresa en (opcional)",
+  "contracts.form.targetNone": "Nada, el dinero se gasta",
+  "contracts.form.targetHintOn":
+    "Cuenta como traspaso, no como gasto: el dinero pasa a esa cuenta en vez de consumirse.",
+  "contracts.form.targetHintOff":
+    "Para la cuota de un préstamo o una póliza que acumula valor, elige la cuenta en la que ingresa.",
+  "contracts.due.title": "Cargos pendientes",
+  "contracts.due.intro": "Hay {n} cargo(s) pendiente(s). Revísalos antes de registrarlos.",
+  "contracts.due.book": "Registrar ahora",
+  "contracts.due.error": "No se han podido guardar los movimientos.",
   "contracts.form.sumInsuredLabel": "Suma asegurada ({currency})",
   "contracts.insuranceType.liability": "Responsabilidad civil",
   "contracts.insuranceType.health": "Salud",
@@ -4186,15 +4718,26 @@ export const es: Partial<Record<MessageKey, string>> = {
   "contracts.insuranceType.vehicle": "Vehículo",
   "contracts.insuranceType.other": "Otro",
   "goals.title": "Metas",
-  "goals.subtitle": "Tus metas de ahorro, con seguimiento por una cuenta vinculada o manual.",
+  "goals.subtitle":
+    "Ahorrar o amortizar una deuda, con seguimiento por una cuenta vinculada o manual. Tus pasivos aparecen solos como meta de amortización.",
   "goals.form.title": "Añadir una meta",
   "goals.form.nameLabel": "Nombre",
   "goals.form.namePlaceholder": "p.ej. Fondo de emergencia",
   "goals.form.targetLabel": "Importe objetivo ({currency})",
-  "goals.form.dateLabel": "Fecha objetivo",
-  "goals.form.linkedAccountLabel": "Cuenta vinculada",
+  "goals.form.dateLabel": "Fecha objetivo (opcional)",
+  "goals.form.dateHint":
+    "Déjala vacía para una meta sin fecha límite. Con fecha te mostramos cuánto falta al mes.",
+  "goals.form.linkedAccountLabel": "Seguir el progreso con",
   "goals.form.manualTracking": "Seguimiento manual",
+  "goals.form.wholeDepot": "Toda la cartera (todos los brókeres)",
+  "goals.form.brokerDepot": "Cartera en {name}",
   "goals.form.manualCurrentLabel": "Importe actual ({currency})",
+  "goals.form.manualCurrentHint":
+    "Lo que has apartado para esta meta hasta ahora. Edita la meta para cambiarlo cuando añadas dinero.",
+  "goals.form.parentLabel": "Parte de",
+  "goals.form.noParent": "Meta independiente",
+  "goals.form.parentHint":
+    "Elige una meta para convertir esta en una de sus partes. El importe objetivo de esa meta será entonces la suma de sus partes.",
   "goals.form.add": "Añadir meta",
   "goals.form.error": "No se pudo guardar la meta. Inténtalo de nuevo.",
   "goals.list.title": "Tus metas",
@@ -4204,11 +4747,21 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.list.target": "Objetivo",
   "goals.list.targetDate": "Fecha objetivo",
   "goals.list.delete": "Eliminar",
+  "goals.list.edit": "Editar",
+  "goals.edit.title": "Editar meta",
+  "goals.edit.save": "Guardar cambios",
+  "goals.edit.compositeHint":
+    "El importe objetivo y el progreso salen de las partes de esta meta ({n}), así que no se fijan aquí. Edita una parte para cambiarlos.",
   "goals.list.manualTracking": "Seguimiento manual",
   "goals.list.linkedTo": "Vinculada a {name}",
+  "goals.list.autoPayoff": "Automática: amortización de este pasivo",
+  "goals.list.openEnded": "Sin fecha límite",
   "goals.list.monthlyNeeded": "{amount} / mes necesario",
+  "goals.list.sumOfSubGoals": "Suma de sus partes ({n})",
   "goals.delete.title": "Eliminar meta",
   "goals.delete.message": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+  "goals.delete.messageWithSubGoals":
+    "¿Eliminar \"{name}\" y sus partes ({n})? Esta acción no se puede deshacer.",
   "health.title": "Salud financiera",
   "health.subtitle": "Cuatro indicadores rápidos derivados de tus cuentas, tus gastos y tu patrimonio neto.",
   "health.gauge.monthsOfExpenses.label": "Meses de gastos cubiertos",
@@ -4251,13 +4804,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.simulation.configurePrompt": "Ejecuta la simulación para ver las probabilidades",
   "fire.unit.years": "años",
 
-  "debt.title": "Pago de deudas",
+  "debt.title": "Pasivos",
   "debt.subtitle": "Planes de amortización y un plan avalancha/bola de nieve para tus pasivos.",
-  "debt.totals.debt": "Deuda total",
+  "debt.totals.debt": "Total pendiente",
   "debt.totals.minPayment": "Pagos mínimos totales",
   "debt.totals.months": "Tiempo hasta estar libre de deudas",
   "debt.totals.monthsValue": "{n} meses",
-  "debt.list.title": "Tus deudas",
+  "debt.list.title": "Tus pasivos",
   "debt.list.empty": "Aún no hay cuentas de pasivo. Añade una en la página de Cuentas.",
   "debt.list.name": "Nombre",
   "debt.list.balance": "Saldo",
@@ -4266,7 +4819,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.list.editDetails": "Tasa y pago",
   "debt.list.needsDetails": "Añade tasa y pago mínimo",
   "debt.list.neverPaysOff": "Nunca se salda a esta tasa",
-  "debt.details.title": "Detalles de la deuda — {name}",
+  "debt.details.title": "Detalles del pasivo — {name}",
   "debt.details.intro": "Introduce la tasa de interés anual y el pago mínimo mensual para incluir esta deuda en un plan de pago.",
   "debt.details.rateLabel": "Tasa de interés anual (%)",
   "debt.details.minPaymentLabel": "Pago mínimo mensual ({currency})",
@@ -4527,6 +5080,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "xray.stockExposure": "Exposición en acciones (transparentada)",
   "xray.inEquities": "en renta variable",
   "xray.otherNonEquity": "otros / no renta variable",
+  "xray.direct": "directo",
   "xray.colStock": "Acción",
   "xray.colHeldVia": "En cartera a través de",
   "xray.colExposure": "Exposición",

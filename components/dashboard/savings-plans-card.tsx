@@ -12,7 +12,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { useFeature, useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { ProTeaser } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
 import { savingsPlanFee } from "@/lib/finance/fees";
@@ -123,8 +124,24 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
   return { priceInput, qtyInput, feeInput, effectivePrice, effectiveQty, effectiveFee, amount, edited };
 }
 
+/**
+ * The card is self-gated: hidden when the flag is off, and — when the flag is
+ * on but the feature requires Pro on a free plan — rendered blurred and inert
+ * behind the paywall message instead of disappearing (MONETIZATION.md Phase 3).
+ */
 export function SavingsPlansCard() {
-  const enabled = useFeatureFlag("savingsPlans");
+  const { enabled, locked } = useFeature("savingsPlans");
+  if (!enabled) return null;
+  if (locked)
+    return (
+      <ProTeaser feature="savingsPlans">
+        <SavingsPlansCardInner />
+      </ProTeaser>
+    );
+  return <SavingsPlansCardInner />;
+}
+
+function SavingsPlansCardInner() {
   const billingEnabled = useFeatureFlag("billing");
   const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   const { data, addSavingsPlan, updateSavingsPlan, deleteSavingsPlan, addTransaction } =
@@ -309,8 +326,6 @@ export function SavingsPlansCard() {
       return next;
     });
   }
-
-  if (!enabled) return null;
 
   async function confirmDue() {
     setBusy(true);

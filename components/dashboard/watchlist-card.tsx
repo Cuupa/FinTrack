@@ -11,7 +11,8 @@ import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { lookupInstrument } from "@/lib/catalog/catalog";
-import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { useFeature, useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
+import { ProTeaser } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { assetIdentifier, assetPriceKey, type WatchlistItem } from "@/lib/types";
@@ -26,8 +27,24 @@ import { isStorageFullError } from "@/lib/store/errors";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
 
+/**
+ * The card is self-gated: hidden when the flag is off, and — when the flag is
+ * on but the feature requires Pro on a free plan — rendered blurred and inert
+ * behind the paywall message instead of disappearing (MONETIZATION.md Phase 3).
+ */
 export function WatchlistCard() {
-  const enabled = useFeatureFlag("watchlist");
+  const { enabled, locked } = useFeature("watchlist");
+  if (!enabled) return null;
+  if (locked)
+    return (
+      <ProTeaser feature="watchlist">
+        <WatchlistCardInner />
+      </ProTeaser>
+    );
+  return <WatchlistCardInner />;
+}
+
+function WatchlistCardInner() {
   const billingEnabled = useFeatureFlag("billing");
   const { limit: watchlistLimit } = usePlanLimit("watchlistItems");
   const { data, addWatchlistItem, removeWatchlistItem } = usePortfolio();
@@ -124,8 +141,6 @@ export function WatchlistCard() {
     () => (uncachedSig && settledSig !== uncachedSig ? new Set(uncachedSig.split(",")) : new Set<string>()),
     [uncachedSig, settledSig],
   );
-
-  if (!enabled) return null;
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
