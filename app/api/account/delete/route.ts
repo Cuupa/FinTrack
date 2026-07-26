@@ -24,6 +24,7 @@
 // tied to a cascading FK) — those rows are deleted explicitly below.
 
 import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const verifier = supabasePublishable();
   if (!verifier) {
-    return Response.json({ error: "not configured" }, { status: 500 });
+    return serverFail("/api/account/delete", "not configured");
   }
 
   const { data: userData, error: userError } = await verifier.auth.getUser(token);
@@ -63,7 +64,7 @@ export async function POST(req: Request): Promise<Response> {
     // so it must not share `verifier`, which we still use to trust `user`.
     const authCheck = supabasePublishable();
     if (!authCheck) {
-      return Response.json({ error: "not configured" }, { status: 500 });
+      return serverFail("/api/account/delete", "not configured");
     }
     const { error: pwError } = await authCheck.auth.signInWithPassword({
       email: user.email!,
@@ -76,7 +77,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const admin = supabaseSecret();
   if (!admin) {
-    return Response.json({ error: "not configured" }, { status: 500 });
+    return serverFail("/api/account/delete", "not configured");
   }
 
   try {
@@ -88,7 +89,9 @@ export async function POST(req: Request): Promise<Response> {
     if (error) throw error;
 
     return new Response(null, { status: 204 });
-  } catch {
-    return Response.json({ error: "deletion failed" }, { status: 500 });
+  } catch (e) {
+    return serverFail("/api/account/delete", "deletion failed", {
+      detail: e instanceof Error ? e.message : String(e),
+    });
   }
 }

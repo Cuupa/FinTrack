@@ -9,6 +9,7 @@
 
 import { normalizeShare, validateExpiresAt } from "@/lib/share/share";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -80,8 +81,8 @@ export async function POST(req: Request): Promise<Response> {
       .insert({ id, payload, owner, mode, creator_ip: ip, expires_at: expiresAt });
     if (!error) return Response.json({ id, expiresAt });
     if (!/duplicate|unique/i.test(error.message)) {
-      return Response.json({ error: error.message }, { status: 500 });
+      return serverFail("/api/share", error.message);
     }
   }
-  return Response.json({ error: "could not allocate id" }, { status: 500 });
+  return serverFail("/api/share", "could not allocate id");
 }

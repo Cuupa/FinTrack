@@ -12,6 +12,7 @@
 // check, e.g. app/api/cron/sync/names/route.ts).
 
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -30,7 +31,7 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/error-logs", "secret key not configured");
   }
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -38,7 +39,7 @@ async function handle(req: Request): Promise<Response> {
     .from("error_logs")
     .delete({ count: "exact" })
     .lt("created_at", cutoff);
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/error-logs", error.message);
 
   return Response.json({ ok: true, deleted: count ?? 0 });
 }

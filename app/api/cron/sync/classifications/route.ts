@@ -12,6 +12,7 @@
 
 import { classify } from "@/lib/server/classify";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -48,7 +49,7 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/classifications", "secret key not configured");
   }
 
   // ETF constituents missing a sector — the bulk of the look-through.
@@ -57,7 +58,7 @@ async function handle(req: Request): Promise<Response> {
     .select("id, constituent_isin, constituent_symbol")
     .is("sector", null)
     .limit(BATCH);
-  if (consErr) return Response.json({ error: consErr.message }, { status: 500 });
+  if (consErr) return serverFail("/api/cron/sync/classifications", consErr.message);
 
   const constituents = await runPool(consRows ?? [], async (r) => {
     const q = r.constituent_symbol || r.constituent_isin;
@@ -78,7 +79,7 @@ async function handle(req: Request): Promise<Response> {
     .neq("type", "CASH")
     .is("sector", null)
     .limit(BATCH);
-  if (instErr) return Response.json({ error: instErr.message }, { status: 500 });
+  if (instErr) return serverFail("/api/cron/sync/classifications", instErr.message);
 
   const instruments = await runPool(instRows ?? [], async (r) => {
     const q = r.symbol || r.isin;

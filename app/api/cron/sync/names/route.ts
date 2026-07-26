@@ -16,6 +16,7 @@
 
 import { pickBest, searchInstruments } from "@/lib/server/search";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -52,7 +53,7 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/names", "secret key not configured");
   }
 
   const staleBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -63,7 +64,7 @@ async function handle(req: Request): Promise<Response> {
     .or(`name_synced_at.is.null,name_synced_at.lt.${staleBefore}`)
     .order("name_synced_at", { ascending: true, nullsFirst: true })
     .limit(BATCH);
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/names", error.message);
 
   const now = new Date().toISOString();
 

@@ -23,6 +23,7 @@
 // check, e.g. app/api/cron/sync/error-logs/route.ts).
 
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -43,7 +44,7 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/retention", "secret key not configured");
   }
 
   const simulationCutoff = new Date(
@@ -53,7 +54,7 @@ async function handle(req: Request): Promise<Response> {
     .from("simulation_runs")
     .delete({ count: "exact" })
     .lt("created_at", simulationCutoff);
-  if (simulationError) return Response.json({ error: simulationError.message }, { status: 500 });
+  if (simulationError) return serverFail("/api/cron/sync/retention", simulationError.message);
 
   const historyCutoff = new Date(
     Date.now() - HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000,
@@ -62,7 +63,7 @@ async function handle(req: Request): Promise<Response> {
     .from("instrument_history")
     .delete({ count: "exact" })
     .lt("synced_at", historyCutoff);
-  if (historyError) return Response.json({ error: historyError.message }, { status: 500 });
+  if (historyError) return serverFail("/api/cron/sync/retention", historyError.message);
 
   const stripeEventsCutoff = new Date(
     Date.now() - STRIPE_EVENTS_RETENTION_DAYS * 24 * 60 * 60 * 1000,
@@ -71,7 +72,7 @@ async function handle(req: Request): Promise<Response> {
     .from("stripe_events")
     .delete({ count: "exact" })
     .lt("received_at", stripeEventsCutoff);
-  if (stripeEventsError) return Response.json({ error: stripeEventsError.message }, { status: 500 });
+  if (stripeEventsError) return serverFail("/api/cron/sync/retention", stripeEventsError.message);
 
   return Response.json({
     ok: true,

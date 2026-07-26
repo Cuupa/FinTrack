@@ -2,6 +2,7 @@
 // user's own rows (endpoint + user_id) so a token can only delete its own.
 
 import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function POST(req: Request): Promise<Response> {
     .delete()
     .eq("user_id", user.id)
     .eq("endpoint", endpoint);
-  if (error) return Response.json({ error: "db error" }, { status: 500 });
+  if (error) return serverFail("/api/push/unsubscribe", "db error", { detail: error.message });
 
   return Response.json({ ok: true });
 }

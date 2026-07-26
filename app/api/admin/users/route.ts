@@ -14,6 +14,7 @@
 
 import { requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function GET(req: Request): Promise<Response> {
   if (!admin) return Response.json({ error: "admin not configured" }, { status: 503 });
 
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/users", error.message);
 
   const needle = q.toLowerCase();
   const users = data.users

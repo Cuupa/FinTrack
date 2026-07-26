@@ -9,6 +9,7 @@
 // a best-effort sweep, not a correctness-critical path.
 
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -34,7 +35,7 @@ async function handle(req: Request): Promise<Response> {
     .delete({ count: "exact" })
     .not("expires_at", "is", null)
     .lt("expires_at", new Date().toISOString());
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/shared-portfolios", error.message);
   return Response.json({ ok: true, deleted: count ?? 0 });
 }
 

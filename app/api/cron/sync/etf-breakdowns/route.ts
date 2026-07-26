@@ -11,6 +11,7 @@ import {
   fetchEtfCountryWeights,
 } from "@/lib/server/classify";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -27,13 +28,13 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/etf-breakdowns", "secret key not configured");
   }
   const { data, error } = await supabase
     .from("instruments")
     .select("isin, symbol")
     .eq("type", "ETF");
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/etf-breakdowns", error.message);
 
   const rows: { etf_key: string; kind: string; data: unknown }[] = [];
   let funds = 0;
@@ -56,7 +57,7 @@ async function handle(req: Request): Promise<Response> {
     const { error: upErr } = await supabase
       .from("etf_breakdowns")
       .upsert(rows, { onConflict: "etf_key,kind" });
-    if (upErr) return Response.json({ error: upErr.message }, { status: 500 });
+    if (upErr) return serverFail("/api/cron/sync/etf-breakdowns", upErr.message);
   }
 
   return Response.json({ ok: true, etfs: funds, cached: rows.length });

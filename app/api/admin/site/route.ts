@@ -35,6 +35,7 @@ import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 import { SITE_CONFIG_KEYS, type SiteConfigKey } from "@/lib/site-config-cache";
 import { parsePlanLimitBody } from "@/lib/server/plan-limits-admin";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export async function GET(req: Request): Promise<Response> {
     .select("max_users, updated_at")
     .eq("id", 1)
     .maybeSingle();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/site", error.message);
 
   // Self-hosted instances are expected to stay well under 1000 registered
   // users; a single page is enough to get an exact count without paginating.
@@ -110,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
     const { error } = await admin
       .from("site_config")
       .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/site", error.message);
     await audit(actor, "site.set", key, before ?? null, { value });
     return Response.json({ ok: true });
   }
@@ -129,7 +130,7 @@ export async function POST(req: Request): Promise<Response> {
       .from("app_settings")
       .update({ max_users: value, updated_at: new Date().toISOString() })
       .eq("id", 1);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/site", error.message);
     await audit(actor, "settings.set_max_users", "app_settings", before ?? null, { maxUsers: value });
     return Response.json({ ok: true });
   }
@@ -153,7 +154,7 @@ export async function POST(req: Request): Promise<Response> {
       },
       { onConflict: "limit_key" },
     );
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/site", error.message);
 
     await audit(actor, "site.set_limit", parsed.limitKey, before ?? null, {
       freeValue: parsed.freeValue,

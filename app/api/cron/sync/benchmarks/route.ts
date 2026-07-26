@@ -2,6 +2,8 @@
 // holds the fetch+store logic). POST only with `Authorization: Bearer
 // $CRON_SECRET`.
 
+import { serverFail } from "@/lib/server/error-log";
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
@@ -20,7 +22,9 @@ async function handle(req: Request): Promise<Response> {
     const r = await fetch(`${origin}/api/benchmarks?force=1`);
     return Response.json({ ok: r.ok });
   } catch (e) {
-    return Response.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    return serverFail("/api/cron/sync/benchmarks", e instanceof Error ? e.message : String(e), {
+      ok: false,
+    });
   }
 }
 

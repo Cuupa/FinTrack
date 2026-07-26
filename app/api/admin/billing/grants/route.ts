@@ -24,6 +24,7 @@
 import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 import { parseGrantBody } from "@/lib/server/billing-admin";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function GET(req: Request): Promise<Response> {
     .select("id, user_id, plan, expires_at, note, created_at, created_by")
     .order("created_at", { ascending: false })
     .returns<GrantRow[]>();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/billing/grants", error.message);
 
   // Same 1000-row listUsers bound as app/api/admin/users/route.ts: fine for
   // a self-hosted instance with a registration cap. A failure here degrades
@@ -111,7 +112,7 @@ export async function POST(req: Request): Promise<Response> {
     })
     .select("id")
     .single();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/billing/grants", error.message);
 
   await audit(actor, "billing.grant", parsed.userId, null, {
     expiresAt: parsed.expiresAt,
@@ -146,11 +147,11 @@ export async function DELETE(req: Request): Promise<Response> {
     .select("user_id, plan, expires_at, note")
     .eq("id", id)
     .maybeSingle();
-  if (beforeError) return Response.json({ error: beforeError.message }, { status: 500 });
+  if (beforeError) return serverFail("/api/admin/billing/grants", beforeError.message);
   if (!before) return Response.json({ error: "not found" }, { status: 404 });
 
   const { error } = await admin.from("plan_grants").delete().eq("id", id);
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/billing/grants", error.message);
 
   await audit(actor, "billing.grant.revoke", id, before, null);
   return Response.json({ ok: true });

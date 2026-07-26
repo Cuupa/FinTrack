@@ -29,6 +29,7 @@
 
 import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 import {
   parseBillingConfigBody,
   parseBillingKeysBody,
@@ -73,8 +74,8 @@ export async function GET(req: Request): Promise<Response> {
       .eq("id", 1)
       .maybeSingle<AppSettingsKeysRow>(),
   ]);
-  if (configRes.error) return Response.json({ error: configRes.error.message }, { status: 500 });
-  if (keysRes.error) return Response.json({ error: keysRes.error.message }, { status: 500 });
+  if (configRes.error) return serverFail("/api/admin/billing", configRes.error.message);
+  if (keysRes.error) return serverFail("/api/admin/billing", keysRes.error.message);
 
   return Response.json({
     priceMonthly: configRes.data?.price_monthly ?? null,
@@ -128,7 +129,7 @@ export async function POST(req: Request): Promise<Response> {
       },
       { onConflict: "id" },
     );
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/billing", error.message);
 
     await audit(
       actor,
@@ -159,7 +160,7 @@ export async function POST(req: Request): Promise<Response> {
     if ("webhookSecret" in parsed) update.stripe_webhook_secret = parsed.webhookSecret ?? null;
 
     const { error } = await admin.from("app_settings").update(update).eq("id", 1);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/billing", error.message);
 
     await audit(actor, "billing.set_keys", "app_settings", null, redactKeysForAudit(parsed));
     return Response.json({ ok: true });

@@ -10,6 +10,7 @@
 
 import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export async function DELETE(req: Request): Promise<Response> {
   }
 
   const { error, count } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/errors", error.message);
 
   await audit(actor, "error.purge", null, null, {
     olderThanDays: olderThanDays ?? null,

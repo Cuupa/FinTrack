@@ -234,6 +234,17 @@ export interface SpendingTransaction {
    * maintains, and ordinary spending does not move it either.
    */
   transferAccountId?: string | null;
+  /**
+   * The {@link PlannedCashflow} whose due occurrence this booking materialised;
+   * null for anything entered, imported, or posted by a contract.
+   *
+   * A field of its own rather than reusing `recurringId`: that one is a foreign
+   * key to `contracts`, and a planned cashflow lives in its own table, so a
+   * single nullable column cannot reference both.
+   * `detectRecurringCandidates` skips these rows for the same reason it skips
+   * `recurringId` rows -- the charge is already registered somewhere.
+   */
+  plannedId?: string | null;
 }
 
 /**
@@ -368,6 +379,65 @@ export const INSURANCE_TYPES: InsuranceType[] = [
   "vehicle",
   "other",
 ];
+
+/** How often a planned cashflow recurs (flag `plannedCashflow`). `ONCE` is a
+ *  single dated entry, which is what a {@link Contract} cannot express. */
+export type PlannedInterval = "ONCE" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL";
+
+export const PLANNED_INTERVALS: PlannedInterval[] = [
+  "ONCE",
+  "WEEKLY",
+  "MONTHLY",
+  "QUARTERLY",
+  "ANNUAL",
+];
+
+/**
+ * A planned income or expense (flag `plannedCashflow`): the salary landing at
+ * the end of the month, a bonus, a tax refund, or a one-off expense the user
+ * already knows about (a holiday, a new washing machine).
+ *
+ * A sibling of {@link Contract}, deliberately not an extension of it. A
+ * contract is a running commitment with a renewal date and a cancellation
+ * notice, it is always money going out, and `detectRecurringCandidates` is
+ * built for expenses only. Planned cashflows are the other half: expected
+ * money, in either direction, including the single dated entry a contract
+ * cannot express.
+ *
+ * `amount` follows {@link SpendingTransaction} rather than `Contract`/`Budget`:
+ * signed (income positive, expense negative) and in the ACCOUNT's native
+ * currency, since booking a due occurrence is then a straight copy and
+ * `incomeExpenseSplit`/`isTransfer` apply unchanged. `accountId` is required
+ * for the same reason -- an expected cashflow always lands in a concrete
+ * account, which is also where its currency comes from.
+ */
+export interface PlannedCashflow {
+  id: string;
+  name: string;
+  /** The account the money lands in or leaves from (source of the currency). */
+  accountId: string;
+  /** Nullable like `SpendingTransaction.categoryId`; set null on category delete. */
+  categoryId: string | null;
+  /** Signed, account's native currency: income positive, expense negative. */
+  amount: number;
+  interval: PlannedInterval;
+  /** YYYY-MM-DD of the first occurrence; anchors the series exactly like
+   *  `SavingsPlan.startDate`/`Contract.bookingStartDate`, so the schedule stays
+   *  derivable instead of stored per occurrence. */
+  startDate: string;
+  /** YYYY-MM-DD of the last occurrence (inclusive), or null for open-ended.
+   *  Fixed-term income like parental allowance ends after twelve payments. */
+  endDate: string | null;
+  /** Last date actually booked into the ledger, or null if none yet. Advanced
+   *  only after the user confirms the due bookings, like `Contract.lastBookedDate`. */
+  lastBookedDate: string | null;
+  /** Set when the cashflow moves money to another account of the user's own (a
+   *  standing transfer into savings): its bookings then carry
+   *  `SpendingTransaction.transferAccountId` and count as neither income nor
+   *  expense, same rule as a contract's transfer bookings. */
+  transferAccountId: string | null;
+  note: string | null;
+}
 
 /**
  * A named savings goal (ROADMAP item #6, flag `goals`) -- a target amount,
@@ -588,6 +658,8 @@ export interface PortfolioData {
   budgets: Budget[];
   /** Named recurring commitments (ROADMAP #5, flag `contracts`). */
   contracts: Contract[];
+  /** Planned income/expenses, e.g. salary (flag `plannedCashflow`). */
+  plannedCashflows: PlannedCashflow[];
   /** Named savings goals (ROADMAP #6, flag `goals`). */
   goals: Goal[];
   /** null = no key configured. */
@@ -626,6 +698,7 @@ export function emptyPortfolio(): PortfolioData {
     spendingTransactions: [],
     budgets: [],
     contracts: [],
+    plannedCashflows: [],
     goals: [],
     llmConfig: null,
   };

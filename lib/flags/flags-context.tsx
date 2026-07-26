@@ -95,6 +95,7 @@ export type FeatureFlag =
   | "spending"
   | "budgets"
   | "contracts"
+  | "plannedCashflow"
   | "goals"
   | "finHealth"
   | "firePlanner"

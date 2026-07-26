@@ -17,7 +17,17 @@
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { apiFetch } from "@/lib/api";
 
-export type ErrorReportKind = "boundary" | "window" | "unhandledrejection";
+// Capture source. "fetch" and "console" come from the global instrumentation
+// in lib/errors/instrument.ts; "server" is written straight into the table by
+// lib/server/error-log.ts and never travels through this module, but shares
+// the union so both sides classify rows the same way.
+export type ErrorReportKind =
+  | "boundary"
+  | "window"
+  | "unhandledrejection"
+  | "fetch"
+  | "console"
+  | "server";
 
 /** Severity classification, the primary axis of the error log (the
  *  admin filter and default sort); `kind` above stays a secondary
@@ -39,7 +49,12 @@ const STACK_MAX = 4000;
 const ROUTE_MAX = 200;
 const DIGEST_MAX = 100;
 
-const MAX_PER_WINDOW = 5;
+// Raised from 5 with the fetch/console instrumentation (lib/errors/instrument.ts):
+// a single broken page can legitimately produce a handful of DISTINCT failures
+// (one per request that 404s, plus React's console output), and a cap of 5
+// would drop exactly the ones that explain the others. Repeats are still cut
+// by the dedupe key below, so this budget only ever spends on new information.
+const MAX_PER_WINDOW = 25;
 const THROTTLE_WINDOW_MS = 60_000;
 const DEDUPE_WINDOW_MS = 60_000;
 

@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchConstituents } from "@/lib/server/constituents";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -48,14 +49,14 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/constituents", "secret key not configured");
   }
   const { data, error } = await supabase
     .from("instruments")
     .select("symbol, isin")
     .eq("type", "ETF")
     .not("symbol", "is", null);
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/constituents", error.message);
 
   const funds = Array.from(
     new Map(

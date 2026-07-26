@@ -18,6 +18,7 @@ import {
   type Asset,
   type Budget,
   type Contract,
+  type PlannedCashflow,
   type Goal,
   type LlmConfig,
   type Portfolio,
@@ -53,6 +54,7 @@ import type {
   AssetInput,
   BudgetInput,
   ContractInput,
+  PlannedCashflowInput,
   DataStore,
   GoalInput,
   PortfolioPatch,
@@ -194,6 +196,8 @@ interface SpendingTransactionRow {
   recurring_id: string | null;
   // Migration 0096; optional so a database that has not run it still loads.
   transfer_account_id?: string | null;
+  // Migration 0100, same reasoning.
+  planned_id?: string | null;
 }
 
 function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
@@ -207,6 +211,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     note: r.note,
     recurringId: r.recurring_id,
     transferAccountId: r.transfer_account_id ?? null,
+    plannedId: r.planned_id ?? null,
   };
 }
 
@@ -253,6 +258,36 @@ function contractFromRow(r: ContractRow): Contract {
     bookingStartDate: r.booking_start_date ?? null,
     lastBookedDate: r.last_booked_date ?? null,
     targetAccountId: r.target_account_id ?? null,
+  };
+}
+
+interface PlannedCashflowRow {
+  id: string;
+  name: string;
+  account_id: string;
+  category_id: string | null;
+  amount: number | string;
+  interval: string;
+  start_date: string;
+  end_date: string | null;
+  last_booked_date: string | null;
+  transfer_account_id: string | null;
+  note: string | null;
+}
+
+function plannedCashflowFromRow(r: PlannedCashflowRow): PlannedCashflow {
+  return {
+    id: r.id,
+    name: r.name,
+    accountId: r.account_id,
+    categoryId: r.category_id,
+    amount: Number(r.amount),
+    interval: r.interval as PlannedCashflow["interval"],
+    startDate: r.start_date,
+    endDate: r.end_date,
+    lastBookedDate: r.last_booked_date,
+    transferAccountId: r.transfer_account_id,
+    note: r.note,
   };
 }
 
@@ -318,6 +353,7 @@ export class SupabaseStore implements DataStore {
       spendingTransactionsRes,
       budgetsRes,
       contractsRes,
+      plannedRes,
       goalsRes,
       llmSettingsRes,
     ] = await Promise.all([
@@ -382,7 +418,9 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("spending_transactions")
-        .select("id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id")
+        .select(
+          "id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id, planned_id",
+        )
         .order("date", { ascending: false }),
       this.supabase
         .from("budgets")
@@ -394,6 +432,12 @@ export class SupabaseStore implements DataStore {
           "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured",
         )
         .order("created_at", { ascending: true }),
+      this.supabase
+        .from("planned_cashflows")
+        .select(
+          "id, name, account_id, category_id, amount, interval, start_date, end_date, last_booked_date, transfer_account_id, note",
+        )
+        .order("start_date", { ascending: true }),
       this.supabase
         .from("goals")
         .select(
@@ -427,6 +471,7 @@ export class SupabaseStore implements DataStore {
     if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
     if (budgetsRes.error) throw budgetsRes.error;
     if (contractsRes.error) throw contractsRes.error;
+    if (plannedRes.error) throw plannedRes.error;
     if (goalsRes.error) throw goalsRes.error;
     if (llmSettingsRes.error) throw llmSettingsRes.error;
 
@@ -561,6 +606,10 @@ export class SupabaseStore implements DataStore {
       contractFromRow,
     );
 
+    const plannedCashflows: PlannedCashflow[] = (
+      (plannedRes.data ?? []) as PlannedCashflowRow[]
+    ).map(plannedCashflowFromRow);
+
     const goals: Goal[] = ((goalsRes.data ?? []) as GoalRow[]).map(goalFromRow);
 
     const llmRow = llmSettingsRes.data as {
@@ -588,6 +637,7 @@ export class SupabaseStore implements DataStore {
       spendingTransactions,
       budgets,
       contracts,
+      plannedCashflows,
       goals,
       llmConfig,
     };
@@ -1107,6 +1157,7 @@ export class SupabaseStore implements DataStore {
         note: input.note,
         recurring_id: input.recurringId,
         transfer_account_id: input.transferAccountId ?? null,
+        planned_id: input.plannedId ?? null,
       })
       .select("id")
       .single();
@@ -1127,6 +1178,7 @@ export class SupabaseStore implements DataStore {
     if (patch.note !== undefined) upd.note = patch.note;
     if (patch.recurringId !== undefined) upd.recurring_id = patch.recurringId;
     if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
+    if (patch.plannedId !== undefined) upd.planned_id = patch.plannedId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase
@@ -1237,6 +1289,66 @@ export class SupabaseStore implements DataStore {
   async deleteContract(id: string): Promise<void> {
     // No .eq("user_id", ...): RLS permits deleting a household peer's contract too.
     const { error } = await this.supabase.from("contracts").delete().eq("id", id);
+    if (error) throw error;
+  }
+
+  async addPlannedCashflow(
+    input: PlannedCashflowInput,
+    id?: string,
+  ): Promise<PlannedCashflow> {
+    const { data, error } = await this.supabase
+      .from("planned_cashflows")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        name: input.name,
+        account_id: input.accountId,
+        category_id: input.categoryId,
+        amount: input.amount,
+        interval: input.interval,
+        start_date: input.startDate,
+        end_date: input.endDate,
+        last_booked_date: input.lastBookedDate,
+        transfer_account_id: input.transferAccountId,
+        note: input.note,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updatePlannedCashflow(
+    id: string,
+    patch: Partial<PlannedCashflowInput>,
+  ): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.name !== undefined) upd.name = patch.name;
+    if (patch.accountId !== undefined) upd.account_id = patch.accountId;
+    if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
+    if (patch.amount !== undefined) upd.amount = patch.amount;
+    if (patch.interval !== undefined) upd.interval = patch.interval;
+    if (patch.startDate !== undefined) upd.start_date = patch.startDate;
+    if (patch.endDate !== undefined) upd.end_date = patch.endDate;
+    if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
+    if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
+    if (patch.note !== undefined) upd.note = patch.note;
+    if (Object.keys(upd).length === 0) return;
+    // No .eq("user_id", ...): RLS permits editing a household peer's row too.
+    const { data, error } = await this.supabase
+      .from("planned_cashflows")
+      .update(upd)
+      .eq("id", id)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new RowNotFoundError(`planned cashflow ${id} not found`);
+    }
+  }
+
+  async deletePlannedCashflow(id: string): Promise<void> {
+    // No .eq("user_id", ...): RLS permits deleting a household peer's row too.
+    const { error } = await this.supabase.from("planned_cashflows").delete().eq("id", id);
     if (error) throw error;
   }
 

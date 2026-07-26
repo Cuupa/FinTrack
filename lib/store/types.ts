@@ -11,6 +11,7 @@ import type {
   Contract,
   Goal,
   LlmConfig,
+  PlannedCashflow,
   Portfolio,
   PortfolioData,
   Profile,
@@ -31,6 +32,7 @@ export type SpendingCategoryInput = Omit<SpendingCategory, "id">;
 export type SpendingTransactionInput = Omit<SpendingTransaction, "id">;
 export type BudgetInput = Omit<Budget, "id">;
 export type ContractInput = Omit<Contract, "id">;
+export type PlannedCashflowInput = Omit<PlannedCashflow, "id">;
 export type GoalInput = Omit<Goal, "id">;
 
 /** Patch shape for `DataStore.updatePortfolio` — every field optional, only
@@ -120,6 +122,11 @@ export interface DataStore {
   addContract(input: ContractInput, id?: string): Promise<Contract>;
   updateContract(id: string, patch: Partial<ContractInput>): Promise<void>;
   deleteContract(id: string): Promise<void>;
+  /** Creates a planned income/expense (salary, bonus, one-off cost).
+   *  `id` — see `addAsset`'s doc above. */
+  addPlannedCashflow(input: PlannedCashflowInput, id?: string): Promise<PlannedCashflow>;
+  updatePlannedCashflow(id: string, patch: Partial<PlannedCashflowInput>): Promise<void>;
+  deletePlannedCashflow(id: string): Promise<void>;
   /** Creates a named savings goal. `id` — see `addAsset`'s doc above. */
   addGoal(input: GoalInput, id?: string): Promise<Goal>;
   updateGoal(id: string, patch: Partial<GoalInput>): Promise<void>;

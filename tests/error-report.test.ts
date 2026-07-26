@@ -106,27 +106,27 @@ describe("reportError", () => {
     expect((body.stack as string).length).toBe(4000);
   });
 
-  it("drops calls beyond the 5-per-minute cap", () => {
-    for (let i = 0; i < 5; i++) {
+  it("drops calls beyond the 25-per-minute cap", () => {
+    for (let i = 0; i < 25; i++) {
       reportError({ kind: "boundary", message: `err-${i}`, route: `/r${i}` });
     }
-    expect(apiFetchMock).toHaveBeenCalledTimes(5);
+    expect(apiFetchMock).toHaveBeenCalledTimes(25);
 
-    // 6th distinct report in the same window is dropped by the cap, not the
+    // 26th distinct report in the same window is dropped by the cap, not the
     // dedupe (different message/route from every prior call).
-    reportError({ kind: "boundary", message: "err-6", route: "/r6" });
-    expect(apiFetchMock).toHaveBeenCalledTimes(5);
+    reportError({ kind: "boundary", message: "err-26", route: "/r26" });
+    expect(apiFetchMock).toHaveBeenCalledTimes(25);
   });
 
   it("allows reports again once the throttle window has passed", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 25; i++) {
       reportError({ kind: "boundary", message: `err-${i}`, route: `/r${i}` });
     }
-    expect(apiFetchMock).toHaveBeenCalledTimes(5);
+    expect(apiFetchMock).toHaveBeenCalledTimes(25);
 
     vi.setSystemTime(new Date("2026-01-01T00:01:01Z"));
     reportError({ kind: "boundary", message: "err-later", route: "/later" });
-    expect(apiFetchMock).toHaveBeenCalledTimes(6);
+    expect(apiFetchMock).toHaveBeenCalledTimes(26);
   });
 
   it("drops an identical kind+message+route repeat within 60s", () => {

@@ -18,6 +18,7 @@
 
 import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function GET(req: Request): Promise<Response> {
     .from("user_feature_flags")
     .select("user_id, flag, enabled, updated_at")
     .order("updated_at", { ascending: false });
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/flags", error.message);
 
   return Response.json({ overrides: data ?? [] });
 }
@@ -72,7 +73,7 @@ export async function POST(req: Request): Promise<Response> {
       .from("feature_flags")
       .update({ enabled, updated_at: new Date().toISOString() })
       .eq("flag", flag);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/flags", error.message);
     await audit(actor, "flag.set_global", flag, before ?? null, { enabled });
     return Response.json({ ok: true });
   }
@@ -94,7 +95,7 @@ export async function POST(req: Request): Promise<Response> {
       .from("feature_flags")
       .update({ required_plan: requiredPlan, updated_at: new Date().toISOString() })
       .eq("flag", flag);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/flags", error.message);
     await audit(actor, "flag.set_plan", flag, before ?? null, { requiredPlan });
     return Response.json({ ok: true });
   }
@@ -116,7 +117,7 @@ export async function POST(req: Request): Promise<Response> {
         { user_id: userId, flag, enabled, updated_at: new Date().toISOString() },
         { onConflict: "user_id,flag" },
       );
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/flags", error.message);
     await audit(actor, "flag.set_override", `${userId}:${flag}`, before ?? null, { enabled });
     return Response.json({ ok: true });
   }
@@ -137,7 +138,7 @@ export async function POST(req: Request): Promise<Response> {
       .delete()
       .eq("user_id", userId)
       .eq("flag", flag);
-    if (error) return Response.json({ error: error.message }, { status: 500 });
+    if (error) return serverFail("/api/admin/flags", error.message);
     await audit(actor, "flag.remove_override", `${userId}:${flag}`, before ?? null, null);
     return Response.json({ ok: true });
   }

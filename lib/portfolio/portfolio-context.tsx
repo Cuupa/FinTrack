@@ -20,6 +20,7 @@ import type {
   AssetInput,
   BudgetInput,
   ContractInput,
+  PlannedCashflowInput,
   GoalInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -35,6 +36,7 @@ import {
   type Asset,
   type Budget,
   type Contract,
+  type PlannedCashflow,
   type Goal,
   type LlmConfig,
   type Portfolio,
@@ -104,6 +106,9 @@ interface PortfolioContextValue {
   addBudget(input: BudgetInput): Promise<Budget>;
   updateBudget(id: string, patch: Partial<BudgetInput>): Promise<void>;
   deleteBudget(id: string): Promise<void>;
+  addPlannedCashflow(input: PlannedCashflowInput): Promise<PlannedCashflow>;
+  updatePlannedCashflow(id: string, patch: Partial<PlannedCashflowInput>): Promise<void>;
+  deletePlannedCashflow(id: string): Promise<void>;
   addContract(input: ContractInput): Promise<Contract>;
   updateContract(id: string, patch: Partial<ContractInput>): Promise<void>;
   deleteContract(id: string): Promise<void>;
@@ -448,6 +453,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         contracts: d.contracts.map((c) =>
           c.accountId === id ? { ...c, accountId: null, bookingStartDate: null } : c,
         ),
+        // A planned cashflow cannot survive its account, that is where the money
+        // lands and where its currency comes from (migration 0100 cascades).
+        // Being the transfer TARGET is optional, so that one is only cleared.
+        plannedCashflows: d.plannedCashflows
+          .filter((p) => p.accountId !== id)
+          .map((p) => (p.transferAccountId === id ? { ...p, transferAccountId: null } : p)),
       }));
     },
     [store],
@@ -503,6 +514,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         budgets: d.budgets.filter((b) => b.categoryId !== id),
         // A contract keeps existing with no category (mirrors the DB's on delete set null).
         contracts: d.contracts.map((c) => (c.categoryId === id ? { ...c, categoryId: null } : c)),
+        // Same for a planned cashflow: it still says when money arrives.
+        plannedCashflows: d.plannedCashflows.map((p) =>
+          p.categoryId === id ? { ...p, categoryId: null } : p,
+        ),
       }));
     },
     [store],
@@ -565,6 +580,42 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       await store.deleteBudget(id);
       setData((d) => ({ ...d, budgets: d.budgets.filter((b) => b.id !== id) }));
+    },
+    [store],
+  );
+
+  const addPlannedCashflow = useCallback(
+    async (input: PlannedCashflowInput) => {
+      const planned = await store.addPlannedCashflow(input);
+      setData((d) => ({ ...d, plannedCashflows: [...d.plannedCashflows, planned] }));
+      return planned;
+    },
+    [store],
+  );
+
+  const updatePlannedCashflow = useCallback(
+    async (id: string, patch: Partial<PlannedCashflowInput>) => {
+      await store.updatePlannedCashflow(id, patch);
+      setData((d) => ({
+        ...d,
+        plannedCashflows: d.plannedCashflows.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+      }));
+    },
+    [store],
+  );
+
+  const deletePlannedCashflow = useCallback(
+    async (id: string) => {
+      await store.deletePlannedCashflow(id);
+      setData((d) => ({
+        ...d,
+        plannedCashflows: d.plannedCashflows.filter((p) => p.id !== id),
+        // The bookings it already posted stay in the ledger, they just lose the
+        // link (mirrors the DB's on delete set null).
+        spendingTransactions: d.spendingTransactions.map((t) =>
+          t.plannedId === id ? { ...t, plannedId: null } : t,
+        ),
+      }));
     },
     [store],
   );
@@ -779,6 +830,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addContract,
     updateContract,
     deleteContract,
+    addPlannedCashflow,
+    updatePlannedCashflow,
+    deletePlannedCashflow,
     addGoal,
     updateGoal,
     deleteGoal,

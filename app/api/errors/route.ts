@@ -18,7 +18,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-const KIND_ALLOWLIST = new Set(["boundary", "window", "unhandledrejection"]);
+// "fetch" and "console" come from the global browser instrumentation
+// (lib/errors/instrument.ts); "server" is written directly by
+// lib/server/error-log.ts and never posted here, but stays in the set so a
+// row's kind means the same thing whichever side produced it.
+const KIND_ALLOWLIST = new Set([
+  "boundary",
+  "window",
+  "unhandledrejection",
+  "fetch",
+  "console",
+  "server",
+]);
 const LEVEL_ALLOWLIST = new Set(["debug", "info", "warn", "error", "fatal"]);
 const MESSAGE_MAX = 500;
 const STACK_MAX = 4000;

@@ -5,6 +5,7 @@
 
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export async function POST(req: Request): Promise<Response> {
     },
     { onConflict: "endpoint" },
   );
-  if (error) return Response.json({ error: "db error" }, { status: 500 });
+  if (error) return serverFail("/api/push/subscribe", "db error", { detail: error.message });
 
   return Response.json({ ok: true });
 }

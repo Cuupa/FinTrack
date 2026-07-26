@@ -24,6 +24,7 @@ import {
   resolveOnvistaInstrument,
 } from "@/lib/server/onvista";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 // Without this, the bulk sync's self-call (its own short-lived function
@@ -293,7 +294,7 @@ async function handle(req: Request): Promise<Response> {
   }
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "supabase secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/prices", "supabase secret key not configured");
   }
   // All instruments — including user-added ones that have no quote listing yet.
   // Equities/ETFs are resolved by identifier (ISIN/WKN/symbol); crypto needs a
@@ -301,7 +302,7 @@ async function handle(req: Request): Promise<Response> {
   const { data, error } = await supabase
     .from("instruments")
     .select("id, isin, wkn, symbol, name, currency, type, quote_source, quote_id, quote_scale, last_price");
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/prices", error.message);
 
   const rows = (data ?? []) as InstrumentRow[];
   const syncedAt = new Date().toISOString();

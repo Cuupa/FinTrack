@@ -82,7 +82,8 @@ function liabilityPayees(accounts: Account[]): Set<string> {
  * Groups expense transactions by normalized payee + roughly-equal amount,
  * and returns clusters whose gaps between occurrences classify into a
  * regular monthly/quarterly/annual cadence. Transactions already linked to a
- * contract (`recurringId` set) are excluded — they are already registered.
+ * contract (`recurringId` set) or posted by a planned cashflow (`plannedId`
+ * set) are excluded — they are already registered.
  *
  * Pass `accounts` to keep loan instalments out of the suggestions; see
  * {@link liabilityPayees} for why they are not contracts.
@@ -91,7 +92,9 @@ export function detectRecurringCandidates(
   transactions: SpendingTransaction[],
   accounts: Account[] = [],
 ): RecurringCandidate[] {
-  const expenses = transactions.filter((t) => t.amount < 0 && t.recurringId === null);
+  const expenses = transactions.filter(
+    (t) => t.amount < 0 && t.recurringId === null && !t.plannedId,
+  );
   const debtPayees = liabilityPayees(accounts);
 
   const byPayee = new Map<string, SpendingTransaction[]>();

@@ -14,6 +14,7 @@ import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { stripeFetch } from "@/lib/server/stripe";
 import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +103,7 @@ export async function POST(req: Request): Promise<Response> {
         { user_id: user.id, stripe_customer_id: customerId },
         { onConflict: "user_id" },
       );
-    if (mapErr) return Response.json({ error: "db error" }, { status: 500 });
+    if (mapErr) return serverFail("/api/billing/checkout", "db error", { detail: mapErr.message });
   }
 
   // 5. Create the Checkout Session.

@@ -18,6 +18,7 @@ import {
 } from "@/lib/server/stripe";
 import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -40,13 +41,13 @@ async function handle(req: Request): Promise<Response> {
 
   const supabase = supabaseSecret();
   if (!supabase) {
-    return Response.json({ error: "secret key not configured" }, { status: 500 });
+    return serverFail("/api/cron/sync/billing", "secret key not configured");
   }
 
   const { data: rows, error } = await supabase
     .from("subscriptions")
     .select("user_id, stripe_subscription_id");
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/cron/sync/billing", error.message);
 
   let reconciled = 0;
   let canceled = 0;

@@ -7,6 +7,7 @@
 
 import { fetchConstituents } from "@/lib/server/constituents";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export async function POST(req: Request): Promise<Response> {
     })),
     { onConflict: "etf_symbol,constituent_name", ignoreDuplicates: true },
   );
-  if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/constituents/ensure", error.message, { ok: false });
 
   return Response.json({ ok: true, fetched: rows.length });
 }

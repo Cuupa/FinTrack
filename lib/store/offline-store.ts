@@ -25,6 +25,7 @@ import type {
   Asset,
   Budget,
   Contract,
+  PlannedCashflow,
   Goal,
   LlmConfig,
   Portfolio,
@@ -45,6 +46,7 @@ import type {
   AssetInput,
   BudgetInput,
   ContractInput,
+  PlannedCashflowInput,
   DataStore,
   GoalInput,
   PortfolioPatch,
@@ -476,6 +478,35 @@ export class OfflineStore implements DataStore {
       await this.inner.deleteContract(id);
     } catch (err) {
       await this.handleFailure(err, "deleteContract", id, null);
+    }
+  }
+
+  async addPlannedCashflow(input: PlannedCashflowInput, id?: string): Promise<PlannedCashflow> {
+    const plannedId = id ?? newId();
+    const planned = await this.mirror.addPlannedCashflow(input, plannedId);
+    try {
+      await this.inner.addPlannedCashflow(input, plannedId);
+    } catch (err) {
+      await this.handleFailure(err, "addPlannedCashflow", plannedId, input);
+    }
+    return planned;
+  }
+
+  async updatePlannedCashflow(id: string, patch: Partial<PlannedCashflowInput>): Promise<void> {
+    await this.mirror.updatePlannedCashflow(id, patch);
+    try {
+      await this.inner.updatePlannedCashflow(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updatePlannedCashflow", id, patch);
+    }
+  }
+
+  async deletePlannedCashflow(id: string): Promise<void> {
+    await this.mirror.deletePlannedCashflow(id);
+    try {
+      await this.inner.deletePlannedCashflow(id);
+    } catch (err) {
+      await this.handleFailure(err, "deletePlannedCashflow", id, null);
     }
   }
 

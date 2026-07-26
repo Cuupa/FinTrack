@@ -635,6 +635,40 @@ FX-convert) always beats a wrong instrument in the right currency.
   stepper (`shiftMonth` in `lib/finance/dates.ts`) and a progress bar per
   budgeted category, turning red past 100%; adding a budget offers only
   categories that don't already have one (one cap per category, not a list).
+- **Planned income & expenses** (`planned_cashflows` table migration 0100, flag
+  `plannedCashflow`, seeded disabled): the salary, a bonus, a tax refund, a
+  one-off cost. A **sibling of `Contract`, deliberately not an extension** of
+  it: a contract is a running commitment with a renewal date and a cancellation
+  notice, it is always money going OUT, and `detectRecurringCandidates` is
+  expenses-only. `PlannedInterval` therefore adds `ONCE` (a single dated entry a
+  contract cannot express) and `WEEKLY`, plus an optional `endDate` (parental
+  allowance runs twelve months). `amount` follows `SpendingTransaction`, NOT
+  `Contract`/`Budget`: **signed** (income positive) and in the **account's
+  native currency**, and `accountId` is required — booking a due occurrence is
+  then a straight copy and `incomeExpenseSplit`/`isTransfer` apply unchanged.
+  Losing the account cascades the plan away (unlike a contract, which survives
+  as a register entry); losing the category only nulls `categoryId`.
+  `lib/finance/planned.ts` (pure, sibling of `contract-bookings.ts` for the same
+  reason that one is a sibling of `savings-plans.ts`) derives the occurrence
+  series, `duePlannedBookings`, `monthlyEquivalent` (null for `ONCE`) and
+  `plannedForecast`/`plannedMonthlyTotals`. Nothing is ever posted silently: due
+  occurrences collect until the user opens the review dialog on the
+  `PlannedCard`, where **each amount stays editable** (a salary is rarely the
+  planned figure) but the plan's sign decides the direction; booking writes the
+  transactions first and advances `lastBookedDate` second, same order and reason
+  as `ContractsView.bookDue`. A booking carries
+  `SpendingTransaction.plannedId` — its own column, since `recurringId` is a
+  foreign key to `contracts` and one nullable column cannot reference two
+  tables — and `detectRecurringCandidates` skips those rows too.
+  `plannedForecast` (`ForecastCard`, 6 months, stacked Recharts bars plus a
+  cumulative line) counts a month's ledger figures plus **every occurrence not
+  yet booked**, including one already due and still waiting in the review dialog
+  (money the ledger does not know about yet); registered contracts feed their
+  still-due charges in so fixed costs are not understated, and transfers drop
+  out on both sides. The AI context carries the monthly totals plus the next
+  payment per plan, id-free like the accounts block. Health/FIRE/dashboard
+  deliberately keep computing from actuals only — a booked salary reaches them
+  by itself.
 
 ### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
 
@@ -659,7 +693,9 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
 - `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1):
   add-account form + sortable list + per-account dated-balance editor
 - `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
-  #2): quick-add form + sortable transaction table + category manager modal
+  #2): quick-add form + sortable transaction table + category manager modal,
+  plus the cash-flow forecast and planned-income/expense cards (flag
+  `plannedCashflow`)
 - `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
   optional** (open-ended goals are first class; a date only buys the
   monthly-needed figure). A goal is either atomic ("emergency fund") or
@@ -844,9 +880,32 @@ client pages (see `app/assets/[id]/page.tsx`).
   its own duration budget, not a shared one.
 - The self-hosted error log (`error_logs`, migration 0069) is classified by
   severity `level` (`debug|info|warn|error|fatal`, the primary field and the
-  `/admin/errors` filter) with the capture-source `kind`
-  (boundary/window/unhandledrejection) as a secondary display column —
-  `reportError()` (`lib/errors/report.ts`) defaults `level` to `"error"`.
+  `/admin/errors` filter) with the capture-source `kind` as a secondary
+  display column — `reportError()` (`lib/errors/report.ts`) defaults `level`
+  to `"error"`. **Every error must reach this log** (owner rule, 2026-07-26:
+  an error that only ever appears in the browser console does not exist).
+  Four capture paths feed it, and a new failure mode belongs in one of them
+  rather than in a `catch {}`:
+  `boundary`/`window`/`unhandledrejection` (only ever see what nobody
+  handled); `fetch` + `console` (`lib/errors/instrument.ts`, installed by
+  `components/error-reporter.tsx` under the same `errorLogging` flag — a
+  global fetch wrapper reporting every non-ok response and network failure,
+  5xx/network as `error` and 4xx as `warn`, plus a console.error/warn
+  mirror); and `server` (`lib/server/error-log.ts`). Server-side, a route
+  NEVER hand-rolls a 5xx: `serverFail(route, message, { detail })` logs and
+  responds in one call, with `detail` carrying the real cause when the body
+  stays deliberately opaque ("db error"), and `onRequestError`
+  (`instrumentation.ts`) catches everything that throws. Two privacy rules
+  hold the /datenschutz claims up: a reported URL is stripped to
+  origin+pathname (a PostgREST query string spells out `user_id=eq.<uuid>`),
+  and nothing may be console.error'd that contains portfolio contents, since
+  console output is now stored.
+- Never leave a failed load looking like a pending one: a `catch` that leaves
+  state `null` while the view reads `null` as "loading" produces an eternal
+  skeleton (the /admin/billing grants card, 2026-07-26). Failed loads get
+  their own error state, the message, and a retry. Admin fetch helpers
+  (`lib/admin/client.ts`) throw with the route's own `{ error }` text so the
+  owner sees the actual reason on screen, not "request failed".
 - Allocation slice labels leave the pure finance layer as canonical English;
   the view translates the fixed vocabulary (asset classes, sectors in both
   Yahoo and GICS spellings, regions, volatility bands, sentinel buckets) via

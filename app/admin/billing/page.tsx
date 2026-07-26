@@ -113,6 +113,7 @@ export default function AdminBillingPage() {
   const { t } = useI18n();
 
   const [data, setData] = useState<BillingAdminData | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,6 +139,7 @@ export default function AdminBillingPage() {
   // Grants card: list + sort state, mirroring app/admin/flags/page.tsx's
   // overrides table.
   const [grants, setGrants] = useState<GrantRow[] | null>(null);
+  const [grantsError, setGrantsError] = useState<string | null>(null);
   const [grantsVersion, setGrantsVersion] = useState(0);
   const [grantSort, setGrantSort] = useState<{ key: GrantSortKey; dir: 1 | -1 }>({
     key: "createdAt",
@@ -195,9 +197,16 @@ export default function AdminBillingPage() {
       if (!token || !active) return;
       try {
         const body = await adminGet<{ grants: GrantRow[] }>("/api/admin/billing/grants", token);
-        if (active) setGrants(body.grants);
-      } catch {
-        // Leave grants null - the card keeps showing its skeleton.
+        if (active) {
+          setGrants(body.grants);
+          setGrantsError(null);
+        }
+      } catch (e) {
+        // A failed load used to leave `grants` null, which the card read as
+        // "still loading" and showed a skeleton forever. Say what went wrong
+        // and offer a retry instead — the skeleton is for loading, not for
+        // broken.
+        if (active) setGrantsError(e instanceof Error ? e.message : String(e));
       }
     };
     void run();
@@ -271,9 +280,14 @@ export default function AdminBillingPage() {
       if (!token || !active) return;
       try {
         const body = await adminGet<BillingAdminData>("/api/admin/billing", token);
-        if (active) setData(body);
-      } catch {
-        // Leave data null - both cards keep showing their skeleton.
+        if (active) {
+          setData(body);
+          setDataError(null);
+        }
+      } catch (e) {
+        // Same rule as the grants card above: a broken load reports itself
+        // rather than pretending to still be loading.
+        if (active) setDataError(e instanceof Error ? e.message : String(e));
       }
     };
     void run();
@@ -352,7 +366,9 @@ export default function AdminBillingPage() {
     }
   };
 
-  const initialLoad = data === null && dataVersion === 0;
+  // `dataError` ends the initial-load state: without it a failed first load
+  // left every card in its skeleton with no way out.
+  const initialLoad = data === null && dataVersion === 0 && dataError === null;
 
   return (
     <div className="space-y-6">
@@ -364,6 +380,15 @@ export default function AdminBillingPage() {
       {error && (
         <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
           {error}
+        </div>
+      )}
+
+      {dataError && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+          <span className="font-mono text-xs">{dataError}</span>
+          <Button variant="secondary" onClick={() => setDataVersion((v) => v + 1)}>
+            {t("common.retry")}
+          </Button>
         </div>
       )}
 
@@ -626,7 +651,14 @@ export default function AdminBillingPage() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          {grants === null ? (
+          {grantsError !== null ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-red-700 dark:text-red-400">
+              <span className="font-mono text-xs">{grantsError}</span>
+              <Button variant="secondary" onClick={() => setGrantsVersion((v) => v + 1)}>
+                {t("common.retry")}
+              </Button>
+            </div>
+          ) : grants === null ? (
             <div className="space-y-2">
               <Skeleton className="h-9 w-full" />
               <Skeleton className="h-9 w-full" />

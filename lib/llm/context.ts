@@ -59,6 +59,15 @@ export interface PortfolioContextInput {
     /** Signed current balance in the base currency (liabilities negative). */
     balance: number;
   }[];
+  /** Planned income/expenses (flag `plannedCashflow`), id-free: the recurring
+   *  figures normalised to one month plus the next upcoming payments. Only
+   *  passed when the flag is on; absent otherwise. */
+  planned?: {
+    /** `plannedMonthlyTotals` output, base currency. */
+    monthly: { income: number; expense: number; net: number };
+    /** The next expected payments, signed, base currency. */
+    upcoming: { name: string; date: string; amount: number }[];
+  } | null;
 }
 
 function round2(n: number): number {
@@ -147,6 +156,21 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
   }));
   const accountsNet = accounts.reduce((s, a) => s + a.balance, 0);
 
+  const planned = input.planned
+    ? {
+        monthly: {
+          income: round2(input.planned.monthly.income),
+          expense: round2(input.planned.monthly.expense),
+          net: round2(input.planned.monthly.net),
+        },
+        upcoming: input.planned.upcoming.map((p) => ({
+          name: p.name,
+          date: p.date,
+          amount: round2(p.amount),
+        })),
+      }
+    : null;
+
   const context = {
     baseCurrency: input.baseCurrency,
     today: input.today,
@@ -155,6 +179,7 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
     ...(accounts.length ? { netWorth: round2(totalValue + accountsNet) } : {}),
     holdings,
     ...(accounts.length ? { accounts } : {}),
+    ...(planned ? { plannedCashflows: planned } : {}),
     savingsPlans,
     risk:
       risk || perAsset.length > 0

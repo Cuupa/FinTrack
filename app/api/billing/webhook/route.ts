@@ -27,6 +27,7 @@ import {
 import { getStripeKeys } from "@/lib/server/billing-keys";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +107,7 @@ export async function POST(req: Request): Promise<Response> {
   const supabase = supabaseSecret();
   if (!supabase) {
     // No service key -> can't record idempotency or write state; let Stripe retry.
-    return Response.json({ error: "billing not configured" }, { status: 500 });
+    return serverFail("/api/billing/webhook", "billing not configured");
   }
 
   // 4. Idempotency claim. A duplicate delivery short-circuits to 200.
@@ -115,7 +116,7 @@ export async function POST(req: Request): Promise<Response> {
     if (claim.error.code === "23505") {
       return Response.json({ received: true, duplicate: true }, { status: 200 });
     }
-    return Response.json({ error: "db error" }, { status: 500 });
+    return serverFail("/api/billing/webhook", "db error", { detail: claim.error.message });
   }
 
   // 5. Process. On any failure, release the claim so the retry reprocesses.
@@ -123,12 +124,16 @@ export async function POST(req: Request): Promise<Response> {
     const ok = await applyEvent(supabase, event, secretKey);
     if (!ok) {
       await releaseClaim(supabase, event.id);
-      return Response.json({ error: "processing failed" }, { status: 500 });
+      return serverFail("/api/billing/webhook", "processing failed", {
+        detail: `applyEvent returned false for ${event.type}`,
+      });
     }
     return Response.json({ received: true }, { status: 200 });
-  } catch {
+  } catch (e) {
     await releaseClaim(supabase, event.id);
-    return Response.json({ error: "processing failed" }, { status: 500 });
+    return serverFail("/api/billing/webhook", "processing failed", {
+      detail: `${event.type}: ${e instanceof Error ? e.message : String(e)}`,
+    });
   }
 }
 

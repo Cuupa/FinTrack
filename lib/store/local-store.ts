@@ -17,6 +17,7 @@ import type {
   AssetInput,
   BudgetInput,
   ContractInput,
+  PlannedCashflowInput,
   DataStore,
   GoalInput,
   PortfolioPatch,
@@ -129,6 +130,8 @@ export class LocalStore implements DataStore {
         budgets: parsed.budgets ?? [],
         // Backfill blobs saved before contracts existed.
         contracts: parsed.contracts ?? [],
+        // Backfill blobs saved before planned cashflows existed.
+        plannedCashflows: parsed.plannedCashflows ?? [],
         // Backfill blobs saved before goals existed; the per-goal backfill
         // covers blobs written before goals could track the depot or carry
         // sub-goals.
@@ -381,6 +384,13 @@ export class LocalStore implements DataStore {
     data.contracts = data.contracts.map((c) =>
       c.accountId === id ? { ...c, accountId: null, bookingStartDate: null } : c,
     );
+    // A planned cashflow, unlike a contract, cannot survive its account: the
+    // account IS where the money lands and where its currency comes from
+    // (migration 0100's on delete cascade). Being the transfer TARGET is
+    // optional, so that one is only cleared.
+    data.plannedCashflows = data.plannedCashflows
+      .filter((p) => p.accountId !== id)
+      .map((p) => (p.transferAccountId === id ? { ...p, transferAccountId: null } : p));
     this.write(data);
     this.pruneImportedSpendingFingerprints(removedTxIds);
   }
@@ -424,6 +434,10 @@ export class LocalStore implements DataStore {
     // A contract keeps existing with no category (mirrors the DB's on delete set null).
     data.contracts = data.contracts.map((c) =>
       c.categoryId === id ? { ...c, categoryId: null } : c,
+    );
+    // Same for a planned cashflow: it still says when money arrives.
+    data.plannedCashflows = data.plannedCashflows.map((p) =>
+      p.categoryId === id ? { ...p, categoryId: null } : p,
     );
     this.write(data);
   }
@@ -495,6 +509,34 @@ export class LocalStore implements DataStore {
   async deleteContract(id: string) {
     const data = this.read();
     data.contracts = data.contracts.filter((c) => c.id !== id);
+    this.write(data);
+  }
+
+  async addPlannedCashflow(input: PlannedCashflowInput, id?: string) {
+    const data = this.read();
+    const planned = { ...input, id: id ?? newId() };
+    data.plannedCashflows.push(planned);
+    this.write(data);
+    return planned;
+  }
+
+  async updatePlannedCashflow(id: string, patch: Partial<PlannedCashflowInput>) {
+    const data = this.read();
+    const idx = data.plannedCashflows.findIndex((p) => p.id === id);
+    if (idx >= 0) {
+      data.plannedCashflows[idx] = { ...data.plannedCashflows[idx], ...patch };
+      this.write(data);
+    }
+  }
+
+  async deletePlannedCashflow(id: string) {
+    const data = this.read();
+    data.plannedCashflows = data.plannedCashflows.filter((p) => p.id !== id);
+    // The bookings it already posted stay in the ledger (they are real money
+    // that moved); they just lose the link, mirroring the DB's on delete set null.
+    data.spendingTransactions = data.spendingTransactions.map((t) =>
+      t.plannedId === id ? { ...t, plannedId: null } : t,
+    );
     this.write(data);
   }
 

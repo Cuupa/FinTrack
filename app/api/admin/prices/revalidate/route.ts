@@ -27,6 +27,7 @@
 
 import { audit, requireAdmin } from "@/lib/server/require-admin";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
+import { serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,7 @@ export async function POST(req: Request): Promise<Response> {
     .select("id, type, quote_id, last_price")
     .eq("id", instrumentId)
     .maybeSingle();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) return serverFail("/api/admin/prices/revalidate", error.message);
   if (!data) return Response.json({ error: "instrument not found" }, { status: 404 });
   const before = data as InstrumentRow;
 
@@ -98,7 +99,7 @@ export async function POST(req: Request): Promise<Response> {
       .from("instruments")
       .update({ quote_id: null, last_price: null })
       .eq("id", instrumentId);
-    if (updateError) return Response.json({ error: updateError.message }, { status: 500 });
+    if (updateError) return serverFail("/api/admin/prices/revalidate", updateError.message);
   }
 
   const result = await triggerSync(origin, secret, false);

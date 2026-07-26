@@ -669,6 +669,51 @@ alter table public.contracts
 alter table public.contracts
   add column if not exists sum_insured numeric;
 
+-- Planned income & expenses (migration 0100, flag `plannedCashflow`): the
+-- salary landing at the end of the month, a bonus, a tax refund, or a one-off
+-- expense the user already knows about. Sibling of `contracts`, not an
+-- extension of it: a contract is always money going out and has neither a ONCE
+-- cadence nor an end date, and recurring-charge detection is expenses-only.
+-- `amount` is SIGNED and in the ACCOUNT's native currency (mirrors
+-- spending_transactions, not contracts/budgets), so booking a due occurrence is
+-- a straight copy. account_id cascades, unlike contracts.account_id's set null:
+-- the account is where the money lands and where its currency comes from.
+create table if not exists public.planned_cashflows (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  account_id uuid not null references public.accounts (id) on delete cascade,
+  category_id uuid references public.spending_categories (id) on delete set null,
+  amount numeric not null,
+  interval text not null,
+  start_date date not null,
+  end_date date,
+  last_booked_date date,
+  transfer_account_id uuid references public.accounts (id) on delete set null,
+  note text,
+  created_at timestamptz not null default now()
+);
+alter table public.planned_cashflows
+  drop constraint if exists planned_cashflows_interval_check;
+alter table public.planned_cashflows
+  add constraint planned_cashflows_interval_check check (
+    interval in ('ONCE', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL')
+  );
+create index if not exists planned_cashflows_user_id_idx on public.planned_cashflows (user_id);
+create index if not exists planned_cashflows_account_id_idx on public.planned_cashflows (account_id);
+create index if not exists planned_cashflows_category_id_idx on public.planned_cashflows (category_id);
+create index if not exists planned_cashflows_transfer_account_id_idx
+  on public.planned_cashflows (transfer_account_id);
+
+-- Which planned cashflow posted a booking (migration 0100). A column of its own
+-- rather than reusing recurring_id: that one is a foreign key to contracts, and
+-- one nullable column cannot reference two tables. Set null on delete, so the
+-- booking (real money that moved) survives its plan.
+alter table public.spending_transactions
+  add column if not exists planned_id uuid references public.planned_cashflows (id) on delete set null;
+create index if not exists spending_transactions_planned_id_idx
+  on public.spending_transactions (planned_id);
+
 -- Named savings goals (ROADMAP #6, flag `goals`): a target amount, optionally
 -- by a target date, whose progress either mirrors a linked account's current
 -- balance or is entered manually. `linked_account_id` is nullable and set
@@ -867,7 +912,8 @@ insert into public.schema_migrations (version) values
   ('0084_contracts'),
   ('0085_goals'),
   ('0086_fin_health_flag'),
-  ('0087_fire_planner_flag')
+  ('0087_fire_planner_flag'),
+  ('0100_planned_cashflows')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -887,6 +933,7 @@ alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
 alter table public.budgets enable row level security;
 alter table public.contracts enable row level security;
+alter table public.planned_cashflows enable row level security;
 alter table public.goals enable row level security;
 alter table public.llm_settings enable row level security;
 alter table public.simulation_runs enable row level security;
@@ -1079,6 +1126,11 @@ create policy "own budgets" on public.budgets
 
 drop policy if exists "own contracts" on public.contracts;
 create policy "own contracts" on public.contracts
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
+
+drop policy if exists "own planned cashflows" on public.planned_cashflows;
+create policy "own planned cashflows" on public.planned_cashflows
   for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
   with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
@@ -1308,6 +1360,9 @@ insert into public.feature_flags (flag, enabled, description) values
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('contracts', false, 'Recurring-charge detection and a contract/subscription register')
+on conflict (flag) do nothing;
+insert into public.feature_flags (flag, enabled, description) values
+  ('plannedCashflow', false, 'Planned income & expenses (salary, bonus, one-off costs) with due-booking review and a months-ahead cash-flow forecast')
 on conflict (flag) do nothing;
 insert into public.feature_flags (flag, enabled, description) values
   ('goals', false, 'Named savings goals with progress tracking, linked to an account or entered manually')

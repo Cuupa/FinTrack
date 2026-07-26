@@ -34,6 +34,8 @@ import { llmErrorMessageKey } from "@/lib/llm/error-messages";
 import { buildPortfolioContext, buildSystemPrompt } from "@/lib/llm/context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import { accountValueOn } from "@/lib/finance/accounts";
+import { nextPlannedOccurrence, plannedMonthlyTotals } from "@/lib/finance/planned";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { byAssetClass, byCountry, byCurrency } from "@/lib/finance/allocation";
 import { estimatePortfolioStats, portfolioRiskStats, type StatHolding } from "@/lib/finance/stats";
 import { betaAlpha, compositeLevelSeries } from "@/lib/finance/returns";
@@ -97,6 +99,7 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
   const { version } = useCatalog();
   const { locale } = useI18n();
   const { config } = useLlmConfig();
+  const plannedEnabled = useFeatureFlag("plannedCashflow");
   const base = data.profile.currency;
 
   const histItems = useMemo(
@@ -165,6 +168,26 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
         ? betaAlpha(compositeLevels, benchLevels)
         : null;
 
+    // Planned income/expenses: the recurring figures per month plus the next
+    // expected payment per plan, converted to the base currency. Ids never
+    // leave the client (same rule as the rest of this snapshot).
+    const planned =
+      plannedEnabled && data.plannedCashflows.length > 0
+        ? {
+            monthly: plannedMonthlyTotals(data.plannedCashflows, data.accounts, base, fxSpot),
+            upcoming: data.plannedCashflows
+              .map((p) => {
+                const date = nextPlannedOccurrence(p, today());
+                if (!date) return null;
+                const cur = data.accounts.find((a) => a.id === p.accountId)?.currency || base;
+                const rate = cur === base ? 1 : (fxSpot[cur] ?? 1);
+                return { name: p.name, date, amount: p.amount * rate };
+              })
+              .filter((p): p is { name: string; date: string; amount: number } => p !== null)
+              .sort((a, b) => a.date.localeCompare(b.date)),
+          }
+        : null;
+
     const contextJson = buildPortfolioContext({
       baseCurrency: base,
       today: today(),
@@ -192,6 +215,10 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
             balance: accountValueOn(a, data.accountBalances, today(), { base, fx: fxSpot }),
           }))
         : undefined,
+      // Planned income/expenses (flag `plannedCashflow`) — id-free, base
+      // currency, so the assistant knows a salary is coming instead of reading
+      // the ledger as the user's entire income. Only when the flag is on.
+      planned,
     });
 
     const prompt = buildSystemPrompt(contextJson, locale);
@@ -205,6 +232,8 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     data.savingsPlans,
     data.accounts,
     data.accountBalances,
+    data.plannedCashflows,
+    plannedEnabled,
     base,
     valuation,
     locale,

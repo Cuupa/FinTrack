@@ -25,6 +25,8 @@ import { CategoryManager } from "./category-manager";
 import { ImportSpending } from "./import-spending";
 import { SpendingSankeyCard } from "./spending-sankey-card";
 import { BudgetsCard } from "./budgets-card";
+import { ForecastCard } from "./forecast-card";
+import { PlannedCard } from "./planned-card";
 import type { SpendingTransaction } from "@/lib/types";
 
 const inputCls =
@@ -204,6 +206,10 @@ export function SpendingView() {
       </Card>
 
       <SpendingSankeyCard />
+
+      <ForecastCard />
+
+      <PlannedCard />
 
       <BudgetsCard />
 

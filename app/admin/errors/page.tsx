@@ -243,6 +243,24 @@ export default function AdminErrorsPage() {
             </dt>{" "}
             <dd className="inline">{t("admin.errors.kindUnhandledrejectionHelp")}</dd>
           </div>
+          <div>
+            <dt className="inline font-medium text-zinc-600 dark:text-zinc-400">
+              {t("admin.errors.kindFetch")}:
+            </dt>{" "}
+            <dd className="inline">{t("admin.errors.kindFetchHelp")}</dd>
+          </div>
+          <div>
+            <dt className="inline font-medium text-zinc-600 dark:text-zinc-400">
+              {t("admin.errors.kindConsole")}:
+            </dt>{" "}
+            <dd className="inline">{t("admin.errors.kindConsoleHelp")}</dd>
+          </div>
+          <div>
+            <dt className="inline font-medium text-zinc-600 dark:text-zinc-400">
+              {t("admin.errors.kindServer")}:
+            </dt>{" "}
+            <dd className="inline">{t("admin.errors.kindServerHelp")}</dd>
+          </div>
         </dl>
 
         <p className="mt-3 text-xs text-zinc-500">
