@@ -42,7 +42,6 @@ function SortTh({
   align?: "left" | "right";
 }) {
   const active = sort.key === k;
-  const pager = usePagination(sortedHoldings);
 
   return (
     <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
