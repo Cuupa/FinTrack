@@ -157,10 +157,21 @@ export interface Account {
   openingBalance: number;
   /** YYYY-MM-DD the account was opened; before this it contributes 0. */
   openedOn: string;
-  /** Annual interest rate as a percent (e.g. 4.5 = 4.5%), ROADMAP item #9
-   *  (flag `debtPayoff`). Optional/nullable -- only entered once the user
-   *  wants an amortisation schedule for a liability account. */
+  /**
+   * Annual interest rate as a percent (e.g. 4.5 = 4.5%). Optional/nullable --
+   * an account only carries one once the user enters it.
+   *
+   * On a LIABILITY it is the debt's rate (ROADMAP item #9, flag `debtPayoff`):
+   * what the amortisation schedule charges, and what the ledger-driven balance
+   * accrues between readings.
+   * On an ASSET account (Tagesgeld, Sparkonto) it is the credit interest the
+   * bank PAYS, which grows the balance the same way. Entering it IS the opt-in
+   * there, since an asset account never carried a rate for anything else.
+   */
   interestRate?: number | null;
+  /** How often `interestRate` is credited and compounded onto the balance.
+   *  Null/undefined = monthly, which is what liabilities always did. */
+  interestFrequency?: InterestFrequency | null;
   /** Minimum monthly payment, native currency, ROADMAP item #9. Optional/
    *  nullable like `interestRate`. */
   minPayment?: number | null;
@@ -488,8 +499,14 @@ export interface Goal {
    *  `linkedAccountId`. */
   tracksInvestments: boolean;
   /** Which broker's depot is tracked; null = every portfolio combined. Only
-   *  meaningful when `tracksInvestments`. */
+   *  meaningful when `tracksInvestments`, and ignored when `linkedAssetId`
+   *  narrows the goal to a single position. */
   linkedPortfolioId: string | null;
+  /** Which single holding is tracked ("the ETF should be worth 10k", "Meta
+   *  should be worth 2k"); null = the whole depot or one broker's. Only
+   *  meaningful when `tracksInvestments`. Set null when the asset goes away
+   *  (mirrors `linkedAccountId`/`linkedPortfolioId`'s on delete set null). */
+  linkedAssetId: string | null;
   /** The goal this one is a sub-goal of; null = a top-level goal. Nesting is
    *  deliberately one level deep: a sub-goal is a line item ("flight"), not
    *  another project. Deleting a parent cascades to its sub-goals -- a

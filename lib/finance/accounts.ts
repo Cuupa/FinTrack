@@ -23,8 +23,8 @@
 // (like `summarizeHolding` — the base is per-user and dated FX drift is not
 // modelled for a balance the user simply typed in).
 
-import type { Account, AccountBalance } from "../types";
-import { addMonthsToDate } from "./dates";
+import type { Account, AccountBalance, InterestFrequency } from "../types";
+import { addMonthsToDate, today } from "./dates";
 import { accountRateSteps, rateOnDate } from "./debt";
 import { isLedgerDriven, type AccountMovements } from "./account-ledger";
 
@@ -44,22 +44,36 @@ interface Point {
  *  `MAX_MONTHS` in debt.ts: a pathological `through` date must not spin. */
 const MAX_ACCRUAL_MONTHS = 600;
 
+/** How many months one interest period spans. */
+const PERIOD_MONTHS: Record<InterestFrequency, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  ANNUAL: 12,
+};
+
+/** Months between two interest postings; monthly when unset, which is what
+ *  liability accrual always did. */
+function interestPeriodMonths(account: Account): number {
+  return PERIOD_MONTHS[account.interestFrequency ?? "MONTHLY"] ?? 1;
+}
+
 /**
  * Whether this account's balance accrues interest between anchors.
  *
- * Deliberately narrow: only a LIABILITY, only with a rate, and only once the
- * ledger actually moves it. An account the user maintains purely by typing
- * balances keeps the old pure step-series behaviour, so nobody's net worth
- * shifts because they once entered a rate for the payoff planner.
+ * A LIABILITY stays deliberately narrow: only once the ledger actually moves
+ * it, because a debt may carry a rate purely for the payoff planner and
+ * nobody's net worth should shift because of that.
+ *
+ * An ASSET account (Tagesgeld, Sparkonto) accrues as soon as it has a rate --
+ * there, the rate has no other purpose, so entering it IS the opt-in, and a
+ * savings account that only ever gets its balance typed in is exactly the case
+ * that has to work: waiting for a ledger movement would mean the rate silently
+ * did nothing.
  */
 function accruesInterest(account: Account, movements?: AccountMovements): boolean {
-  return (
-    account.isLiability &&
-    typeof account.interestRate === "number" &&
-    Number.isFinite(account.interestRate) &&
-    account.interestRate > 0 &&
-    isLedgerDriven(account.id, movements)
-  );
+  const rate = account.interestRate;
+  if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) return false;
+  return account.isLiability ? isLedgerDriven(account.id, movements) : true;
 }
 
 /**
@@ -98,8 +112,11 @@ export function balanceSeries(
     deltas.set(m.date, (deltas.get(m.date) ?? 0) + m.delta);
   }
 
-  if (deltas.size === 0) {
-    // Nothing to carry forward: the historical step series, unchanged.
+  const accrues = accruesInterest(account, movements);
+
+  if (deltas.size === 0 && !accrues) {
+    // Nothing to carry forward and nothing to accrue: the historical step
+    // series, unchanged.
     return [...anchors.entries()]
       .map(([date, balance]) => ({ date, balance }))
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
@@ -108,14 +125,17 @@ export function balanceSeries(
   const lastEvent = [...anchors.keys(), ...deltas.keys()].reduce((a, b) => (a > b ? a : b));
   const horizon = through && through > lastEvent ? through : lastEvent;
 
-  // Interest falls due on monthly anniversaries of the account's start. It is
-  // charged on the balance standing at that moment, which is what makes a loan
-  // instalment retire only its principal share: the payment reduces the
-  // balance by its full amount, the month's interest adds part of it back.
+  // Interest falls due on anniversaries of the account's start, one per
+  // `interestPeriodMonths` (monthly for a loan, monthly/quarterly/annually for
+  // a savings account, as the bank credits it). It is charged on the balance
+  // standing at that moment, which is what makes a loan instalment retire only
+  // its principal share: the payment reduces the balance by its full amount,
+  // the period's interest adds part of it back.
   const interestDates: string[] = [];
-  if (accruesInterest(account, movements)) {
-    for (let k = 1; k <= MAX_ACCRUAL_MONTHS; k++) {
-      const date = addMonthsToDate(account.openedOn, k);
+  if (accrues) {
+    const months = interestPeriodMonths(account);
+    for (let k = 1; k * months <= MAX_ACCRUAL_MONTHS; k++) {
+      const date = addMonthsToDate(account.openedOn, k * months);
       if (date > horizon) break;
       interestDates.push(date);
     }
@@ -136,7 +156,7 @@ export function balanceSeries(
     } else {
       if (interestOn.has(date)) {
         const annual = rateOnDate(account.interestRate ?? 0, rateSteps, date);
-        balance += balance * (annual / 100 / 12);
+        balance += balance * ((annual / 100) * (interestPeriodMonths(account) / 12));
       }
       balance += deltas.get(date) ?? 0;
     }
@@ -171,8 +191,16 @@ export function accountBalanceOn(
 
 /**
  * The account's balance magnitude as it stands now: the latest reading carried
- * forward by every movement booked since. `asOf` (default: the last known
- * event) sets how far interest is accrued.
+ * forward by every movement booked since, plus the interest accrued up to
+ * `asOf` (default: today).
+ *
+ * Today rather than the last known event, because interest is the one thing
+ * that happens without anybody booking anything: a savings account whose
+ * balance was typed in once would otherwise never earn a cent until some
+ * unrelated transaction moved it. The horizon only ever extends ACCRUAL --
+ * for an account with no rate, `balanceSeries` produces exactly the same
+ * points either way, and the value returned is still the last point of the
+ * series (a future-dated reading keeps winning, as before).
  */
 export function currentAccountBalance(
   account: Account,
@@ -180,7 +208,7 @@ export function currentAccountBalance(
   movements?: AccountMovements,
   asOf?: string,
 ): number {
-  const series = balanceSeries(account, balances, movements, asOf);
+  const series = balanceSeries(account, balances, movements, asOf ?? today());
   if (!series.length) return account.openingBalance;
   if (asOf) return balanceAt(series, asOf);
   return series[series.length - 1].balance;
