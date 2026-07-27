@@ -24,8 +24,6 @@ import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finan
 import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
-import { Modal } from "@/components/ui/modal";
-import { PlannedForm } from "./planned-card";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
@@ -64,8 +62,7 @@ interface DueRow {
 }
 
 export function RecurringCard() {
-  const { data, addSpendingTransaction, addPlannedCashflow, updateContract, updatePlannedCashflow } =
-    usePortfolio();
+  const { data, addSpendingTransaction, updateContract, updatePlannedCashflow } = usePortfolio();
   const { t } = useI18n();
   const base = data.profile.currency;
   const todayIso = today();
@@ -73,7 +70,6 @@ export function RecurringCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "next",
     dir: "asc",
@@ -278,16 +274,7 @@ export function RecurringCard() {
 
   return (
     <Card>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
-        {/* Creating a recurring entry belongs where the list is. Everything
-            made here is a `PlannedCashflow` -- it is the shape that covers
-            both directions and every rhythm; a contract's renewal date and
-            cancellation notice are added afterwards on its own page. */}
-        <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
-          {t("recurring.add")}
-        </Button>
-      </div>
+      <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
 
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("recurring.empty")}</p>
@@ -424,22 +411,6 @@ export function RecurringCard() {
 
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-3xl">
-        <Card>
-          <h2 className="text-lg font-semibold">{t("recurring.add")}</h2>
-          <div className="mt-4">
-            <PlannedForm
-              key={adding ? "open" : "closed"}
-              submitLabel={t("recurring.add")}
-              onSubmit={async (input) => {
-                await addPlannedCashflow(input);
-                setAdding(false);
-              }}
-              onCancel={() => setAdding(false)}
-            />
-          </div>
-        </Card>
-      </Modal>
     </Card>
   );
 }

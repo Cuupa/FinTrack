@@ -26,7 +26,7 @@ import { ImportSpending } from "./import-spending";
 // grown to eight containers. It now answers "what did I book, and what
 // recurs"; the analysis of where the money goes lives one page over.
 import { RecurringCard } from "./recurring-card";
-import type { SpendingTransaction } from "@/lib/types";
+import { PLANNED_INTERVALS, type PlannedInterval, type SpendingTransaction } from "@/lib/types";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -38,6 +38,7 @@ export function SpendingView() {
   const {
     data,
     addSpendingTransaction,
+    addPlannedCashflow,
     updateSpendingTransaction,
     deleteSpendingTransaction,
     addContract,
@@ -68,6 +69,12 @@ export function SpendingView() {
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(today());
   const [note, setNote] = useState("");
+  // The one toggle that decides whether this is a single booking or something
+  // that repeats. Owner rule: adding a recurring payment is the SAME act as
+  // adding a booking, so it is one form with a switch, never a second place
+  // to go and never a separate "new" button.
+  const [recurring, setRecurring] = useState(false);
+  const [interval, setInterval] = useState<PlannedInterval>("MONTHLY");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
@@ -154,15 +161,34 @@ export function SpendingView() {
     setBusy(true);
     setError(null);
     try {
-      await addSpendingTransaction({
-        accountId,
-        categoryId: categoryId || null,
-        date,
-        amount: txType === "income" ? magnitude : -magnitude,
-        payee: payee.trim(),
-        note: note.trim() || null,
-        recurringId: null,
-      });
+      const signed = txType === "income" ? magnitude : -magnitude;
+      if (recurring) {
+        // Same inputs, different meaning: the date becomes the first
+        // occurrence and the entry starts producing bookings from there,
+        // which the review list on this page then offers for confirmation.
+        await addPlannedCashflow({
+          name: payee.trim(),
+          accountId,
+          categoryId: categoryId || null,
+          amount: signed,
+          interval,
+          startDate: date,
+          endDate: null,
+          lastBookedDate: null,
+          transferAccountId: null,
+          note: note.trim() || null,
+        });
+      } else {
+        await addSpendingTransaction({
+          accountId,
+          categoryId: categoryId || null,
+          date,
+          amount: signed,
+          payee: payee.trim(),
+          note: note.trim() || null,
+          recurringId: null,
+        });
+      }
       setAmount("");
       setPayee("");
       setCategoryId("");
@@ -285,17 +311,48 @@ export function SpendingView() {
               </div>
               <div>
                 <label className="text-sm font-medium" htmlFor="spending-date">
-                  {t("spending.form.dateLabel")}
+                  {recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
                 </label>
                 <input
                   id="spending-date"
                   type="date"
                   value={date}
-                  max={today()}
+                  // A recurring entry may legitimately start in the future
+                  // (a raise from next month); a booking cannot happen later
+                  // than today.
+                  max={recurring ? undefined : today()}
                   onChange={(e) => setDate(e.target.value)}
                   className={inputCls}
                 />
               </div>
+              {/* The switch that turns this booking into a recurring entry. */}
+              <div className="flex items-end">
+                <label className="flex cursor-pointer items-center gap-3 py-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={recurring}
+                    onChange={(e) => setRecurring(e.target.checked)}
+                    className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                  />
+                  {t("spending.form.recurring")}
+                </label>
+              </div>
+              {recurring && (
+                <div>
+                  <label className="text-sm font-medium">{t("recurring.col.interval")}</label>
+                  <SelectMenu
+                    className="mt-1 w-full"
+                    ariaLabel={t("recurring.col.interval")}
+                    value={interval}
+                    onChange={(v) => setInterval(v as PlannedInterval)}
+                    options={PLANNED_INTERVALS.map((i) => ({
+                      value: i,
+                      label: t(`recurring.interval.${i}` as Parameters<typeof t>[0]),
+                    }))}
+                  />
+                </div>
+              )}
               <div className="sm:col-span-2 lg:col-span-2">
                 <label className="text-sm font-medium" htmlFor="spending-note">
                   {t("spending.form.noteLabel")}
@@ -317,7 +374,7 @@ export function SpendingView() {
                   disabled={busy || !accountId || !payee.trim() || !amount.trim() || !date}
                   onClick={() => void submit()}
                 >
-                  {t("spending.form.add")}
+                  {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}
                 </Button>
               </div>
             </div>
