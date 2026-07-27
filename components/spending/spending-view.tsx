@@ -14,6 +14,7 @@ import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/f
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -142,6 +143,10 @@ export function SpendingView() {
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.spendingTransactions, sort, accountsById, categoriesById]);
+
+  // The ledger is the table that grows without limit, so it pages like every
+  // other one -- 25 rows, controls only once there is a second page.
+  const pager = usePagination(rows);
 
   function toggleSort(key: SortKey) {
     setSort((s) =>
@@ -429,7 +434,7 @@ export function SpendingView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((tx) => {
+                {pager.rows.map((tx) => {
                   const account = accountsById.get(tx.accountId);
                   const currency = account?.currency || base;
                   return (
@@ -477,6 +482,7 @@ export function SpendingView() {
                 })}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
           </div>
         )}
       </Card>
