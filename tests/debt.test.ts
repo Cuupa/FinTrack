@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   accountRateSteps,
   amortizationSchedule,
+  lumpSumsByMonth,
   planPayoff,
   rateOnDate,
   yearlySplit,
@@ -65,6 +66,56 @@ describe("amortizationSchedule", () => {
 function debt(overrides: Partial<DebtInput> = {}): DebtInput {
   return { id: "d1", name: "Card", balance: 1000, annualRatePct: 20, minPayment: 50, ...overrides };
 }
+
+describe("lumpSumsByMonth", () => {
+  it("buckets a lump sum into the month whose payment date it falls on or before", () => {
+    const m = lumpSumsByMonth("2024-01-15", [
+      { date: "2024-02-15", amount: 1000 },
+      { date: "2024-02-10", amount: 500 },
+      { date: "2024-04-16", amount: 200 },
+    ]);
+    expect(m.get(1)).toBe(1500); // both fall in the window ending 2024-02-15
+    expect(m.get(4)).toBe(200); // 2024-04-16 is past month 3's date, so month 4
+  });
+
+  it("drops repayments dated before the run starts (already inside the balance)", () => {
+    const m = lumpSumsByMonth("2024-01-15", [{ date: "2023-12-01", amount: 9000 }]);
+    expect(m.size).toBe(0);
+  });
+
+  it("ignores non-positive and non-finite amounts", () => {
+    const m = lumpSumsByMonth("2024-01-15", [
+      { date: "2024-03-01", amount: 0 },
+      { date: "2024-03-01", amount: -100 },
+      { date: "2024-03-01", amount: Number.NaN },
+    ]);
+    expect(m.size).toBe(0);
+  });
+});
+
+describe("amortizationSchedule with lump sums", () => {
+  it("pays a debt off sooner and cheaper than the instalment alone", () => {
+    const plain = amortizationSchedule(20000, 5, 400, "2024-01-01");
+    const withLump = amortizationSchedule(20000, 5, 400, "2024-01-01", undefined, [
+      { date: "2024-07-01", amount: 5000 },
+    ]);
+    expect(withLump.months!).toBeLessThan(plain.months!);
+    expect(withLump.totalInterest).toBeLessThan(plain.totalInterest);
+    const july = withLump.points.find((p) => p.date === "2024-07-01")!;
+    expect(july.extra).toBeCloseTo(5000, 6);
+    expect(july.principal).toBeCloseTo(400 - july.interest + 5000, 6);
+  });
+
+  it("never overpays past zero", () => {
+    const r = amortizationSchedule(1000, 5, 100, "2024-01-01", undefined, [
+      { date: "2024-02-01", amount: 9999 },
+    ]);
+    // 2024-02-01 is month 1's payment date, so it clears the debt right there.
+    expect(r.months).toBe(1);
+    expect(r.points[0].balance).toBeCloseTo(0, 6);
+    expect(r.points[0].extra).toBeLessThan(9999);
+  });
+});
 
 describe("planPayoff", () => {
   it("returns an empty plan for no debts", () => {
@@ -224,6 +275,61 @@ describe("plan series", () => {
     expect(years.reduce((s, y) => s + y.principal, 0)).toBeCloseTo(12000, 4);
     expect(years.reduce((s, y) => s + y.interest, 0)).toBeCloseTo(r.totalInterest, 4);
     expect(years[years.length - 1].endBalance).toBeCloseTo(0, 6);
+  });
+
+  it("charges a debt's own lump sum to that debt, whatever the strategy prefers", () => {
+    // Avalanche would send every spare euro to the 10% debt; the lump sum is
+    // earmarked for the other one and must land there anyway.
+    const r = planPayoff(
+      [
+        debt({ id: "a", balance: 3000, annualRatePct: 10, minPayment: 100 }),
+        debt({
+          id: "b",
+          balance: 6000,
+          annualRatePct: 5,
+          minPayment: 100,
+          lumpSums: [{ date: "2024-03-01", amount: 2000 }],
+        }),
+      ],
+      "avalanche",
+      0,
+      "2024-01-01",
+    );
+    const without = planPayoff(
+      [
+        debt({ id: "a", balance: 3000, annualRatePct: 10, minPayment: 100 }),
+        debt({ id: "b", balance: 6000, annualRatePct: 5, minPayment: 100 }),
+      ],
+      "avalanche",
+      0,
+      "2024-01-01",
+    );
+    const march = r.series.find((p) => p.date === "2024-03-01")!;
+    const marchWithout = without.series.find((p) => p.date === "2024-03-01")!;
+    expect(marchWithout.byDebt.b - march.byDebt.b).toBeCloseTo(2000, 4);
+    expect(march.byDebt.a).toBeCloseTo(marchWithout.byDebt.a, 6);
+  });
+
+  it("rolls a lump sum bigger than its debt into the shared pool", () => {
+    const r = planPayoff(
+      [
+        debt({
+          id: "small",
+          balance: 500,
+          annualRatePct: 5,
+          minPayment: 50,
+          lumpSums: [{ date: "2024-02-01", amount: 5000 }],
+        }),
+        debt({ id: "big", balance: 8000, annualRatePct: 5, minPayment: 100 }),
+      ],
+      "avalanche",
+      0,
+      "2024-01-01",
+    );
+    const february = r.series.find((p) => p.date === "2024-02-01")!;
+    expect(february.byDebt.small).toBeCloseTo(0, 6);
+    // The ~4.5k the small debt could not absorb went to the other debt.
+    expect(february.byDebt.big).toBeLessThan(4000);
   });
 
   it("narrows to one debt when given its id", () => {

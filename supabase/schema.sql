@@ -492,6 +492,24 @@ create unique index if not exists account_balances_unique_key
 create index if not exists account_balances_account_id_idx on public.account_balances (account_id);
 create index if not exists account_balances_user_id_idx on public.account_balances (user_id);
 
+-- Planned one-off repayments (Sondertilgungen, migration 0105): dated lump
+-- sums the payoff planner charges on top of the monthly instalment. A
+-- planning input, never a booking -- nothing here moves a balance.
+create table if not exists public.account_extra_repayments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  account_id uuid not null references public.accounts (id) on delete cascade,
+  paid_on date not null,
+  amount numeric not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists account_extra_repayments_unique_key
+  on public.account_extra_repayments (account_id, paid_on);
+create index if not exists account_extra_repayments_account_id_idx
+  on public.account_extra_repayments (account_id);
+create index if not exists account_extra_repayments_user_id_idx
+  on public.account_extra_repayments (user_id);
+
 -- Household / collaboration (ROADMAP #13, flag `household`): shared
 -- read/write access to another registered user's financial data. v1 caps
 -- membership at ONE household per user (household_members.user_id has a
@@ -961,6 +979,7 @@ alter table public.asset_tags enable row level security;
 alter table public.asset_valuations enable row level security;
 alter table public.accounts enable row level security;
 alter table public.account_balances enable row level security;
+alter table public.account_extra_repayments enable row level security;
 alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
 alter table public.budgets enable row level security;
@@ -1072,6 +1091,11 @@ create policy "own accounts" on public.accounts
 
 drop policy if exists "own account balances" on public.account_balances;
 create policy "own account balances" on public.account_balances
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
+
+drop policy if exists "own extra repayments" on public.account_extra_repayments;
+create policy "own extra repayments" on public.account_extra_repayments
   for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
   with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 

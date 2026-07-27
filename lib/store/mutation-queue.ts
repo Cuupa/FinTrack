@@ -34,6 +34,7 @@ export type MutationOp =
   | "updateAccount"
   | "deleteAccount"
   | "setAccountBalances"
+  | "setExtraRepayments"
   | "addSpendingCategory"
   | "updateSpendingCategory"
   | "deleteSpendingCategory"

@@ -67,6 +67,46 @@ export function accountRateSteps(account: Account): RateStep[] {
   return [{ from: addDays(account.rateFixedUntil, 1), annualRatePct: account.followUpRate }];
 }
 
+/**
+ * A planned one-off repayment in the plan's own currency -- the projection
+ * shape of a stored `ExtraRepayment` (the caller converts the native amount,
+ * exactly as it does for `minPayment`).
+ */
+export interface LumpSum {
+  /** YYYY-MM-DD the lump sum is paid. */
+  date: string;
+  /** Amount paid on top of that month's regular payment (positive). */
+  amount: number;
+}
+
+/**
+ * Buckets lump sums into 1-based month indices of a run starting at
+ * `startDate`, where month `m` covers everything paid after month `m-1`'s
+ * payment date up to and including month `m`'s.
+ *
+ * Anything dated BEFORE `startDate` is dropped rather than pulled into month 1:
+ * a repayment already made is already inside the balance the run starts from,
+ * so charging it again would pay the same money twice. Anything past
+ * `maxMonths` is dropped for the same reason the schedules stop there.
+ */
+export function lumpSumsByMonth(
+  startDate: string,
+  lumps: readonly LumpSum[] | undefined,
+  maxMonths = MAX_MONTHS,
+): Map<number, number> {
+  const out = new Map<number, number>();
+  if (!lumps || lumps.length === 0) return out;
+  for (const l of lumps) {
+    if (!Number.isFinite(l.amount) || l.amount <= 0) continue;
+    if (l.date < startDate) continue;
+    let month = 1;
+    while (month <= maxMonths && addMonthsToDate(startDate, month) < l.date) month++;
+    if (month > maxMonths) continue;
+    out.set(month, (out.get(month) ?? 0) + l.amount);
+  }
+  return out;
+}
+
 export interface AmortizationPoint {
   /** 1-based month index. */
   month: number;
@@ -75,9 +115,11 @@ export interface AmortizationPoint {
   /** Annual rate in percent charged for this month. */
   annualRatePct: number;
   interest: number;
-  /** Balance retired this month -- negative if the payment fell short of the
-   *  interest and the debt grew instead. */
+  /** Balance retired this month, lump sum included -- negative if the payment
+   *  fell short of the interest and the debt grew instead. */
   principal: number;
+  /** One-off repayment applied this month on top of the regular payment. */
+  extra: number;
   /** Remaining balance after this month's payment. */
   balance: number;
 }
@@ -101,6 +143,10 @@ export interface AmortizationResult {
  * schedule: the balance simply grows (negative amortisation) and the run keeps
  * going, because a later rate step may well make the same payment sufficient.
  * Only still owing at `MAX_MONTHS` reports `months: null`.
+ *
+ * `lumpSums` are one-off repayments (Sondertilgungen) charged on top of the
+ * regular payment in the month they fall due -- the reason a mortgage can end
+ * years earlier than its instalment alone implies.
  */
 export function amortizationSchedule(
   balance: number,
@@ -108,11 +154,13 @@ export function amortizationSchedule(
   payment: number,
   startDate: string,
   rateSteps?: readonly RateStep[],
+  lumpSums?: readonly LumpSum[],
 ): AmortizationResult {
   if (balance <= EPSILON) {
     return { points: [], totalInterest: 0, months: 0, payoffDate: startDate };
   }
   const points: AmortizationPoint[] = [];
+  const extras = lumpSumsByMonth(startDate, lumpSums);
   let remaining = balance;
   let totalInterest = 0;
   let month = 0;
@@ -126,12 +174,17 @@ export function amortizationSchedule(
     const grown = remaining + interest;
     const paid = Math.min(payment, grown);
     remaining = Math.max(0, grown - paid);
+    // Never more than what is left: a lump sum bigger than the debt clears it,
+    // it does not overpay into a negative balance.
+    const extra = Math.min(extras.get(month) ?? 0, remaining);
+    remaining -= extra;
     points.push({
       month,
       date,
       annualRatePct: rate,
       interest,
-      principal: paid - interest,
+      principal: paid - interest + extra,
+      extra,
       balance: remaining,
     });
   }
@@ -153,6 +206,8 @@ export interface DebtInput {
   minPayment: number;
   /** Dated rate changes (end of a fixed-rate period, ...). */
   rateSteps?: readonly RateStep[];
+  /** Planned one-off repayments on THIS debt (Sondertilgungen). */
+  lumpSums?: readonly LumpSum[];
 }
 
 export interface DebtPlanEntry {
@@ -238,7 +293,12 @@ export function yearlySplit(series: readonly DebtPlanPoint[], debtId?: string): 
  * "avalanche" (highest interest rate first, saves the most interest) or
  * "snowball" (smallest balance first, clears debts sooner for momentum).
  *
- * `startDate` anchors the series' dates and every debt's `rateSteps`.
+ * A debt's own `lumpSums` are charged to it in the month they fall due, on top
+ * of everything above -- earmarked money, so the strategy does not get to
+ * redirect it.
+ *
+ * `startDate` anchors the series' dates, every debt's `rateSteps` and its
+ * `lumpSums`.
  */
 export function planPayoff(
   debts: DebtInput[],
@@ -251,6 +311,9 @@ export function planPayoff(
   }
 
   const minPayment = new Map(debts.map((d) => [d.id, Math.max(0, d.minPayment)]));
+  const lumpsByDebt = new Map(
+    debts.map((d) => [d.id, lumpSumsByMonth(startDate, d.lumpSums)] as const),
+  );
   const remaining = new Map(debts.map((d) => [d.id, Math.max(0, d.balance)]));
   const interestPaid = new Map<string, number>(debts.map((d) => [d.id, 0]));
   const payoffMonth = new Map<string, number | null>(debts.map((d) => [d.id, null]));
@@ -317,9 +380,23 @@ export function planPayoff(
       remaining.set(d.id, Math.max(0, grown - pay));
     }
 
+    // One-off repayments (Sondertilgungen) hit the debt they were planned for,
+    // whatever the strategy says -- the user earmarked that money for that
+    // loan. Anything left over once the debt is cleared is still money, so it
+    // joins the shared pool below instead of evaporating.
+    let lumpLeftover = 0;
+    for (const d of debts) {
+      const planned = lumpsByDebt.get(d.id)?.get(month) ?? 0;
+      if (planned <= 0) continue;
+      const bal = remaining.get(d.id)!;
+      const pay = Math.min(planned, Math.max(0, bal));
+      remaining.set(d.id, bal - pay);
+      lumpLeftover += planned - pay;
+    }
+
     // Throw the extra budget (plus the minimums freed up by debts already paid
     // off) at the priority debt(s) for this strategy.
-    let pool = extraMonthly + freedMinPayments + unusedMinimums;
+    let pool = extraMonthly + freedMinPayments + unusedMinimums + lumpLeftover;
     for (const id of priorityOrder(date)) {
       if (pool <= EPSILON) break;
       const bal = remaining.get(id)!;

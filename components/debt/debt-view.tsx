@@ -34,7 +34,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { DebtDetailsDialog } from "./debt-details-dialog";
 import { DebtBalanceChart, DebtSplitChart, debtColor } from "./debt-chart";
 
-type SortKey = "name" | "balance" | "rate" | "term" | "payoffDate";
+type SortKey = "name" | "balance" | "rate" | "lumpSums" | "term" | "payoffDate";
 
 /** The scope selector's "everything at once" value; any other value is an
  *  account id. Not a valid uuid, so it can never collide with one. */
@@ -60,6 +60,12 @@ export function DebtView() {
       const balance = currentAccountBalance(account, data.accountBalances, movements) * rate;
       const hasSchedule = account.interestRate != null && account.minPayment != null;
       const steps = accountRateSteps(account);
+      // Planned lump sums, converted to the base currency like the instalment.
+      // Ones dated in the past are already inside the balance above, so the
+      // schedule drops them (lumpSumsByMonth) rather than paying them twice.
+      const lumpSums = data.extraRepayments
+        .filter((r) => r.accountId === account.id)
+        .map((r) => ({ date: r.date, amount: r.amount * rate }));
       const schedule = hasSchedule
         ? amortizationSchedule(
             balance,
@@ -67,11 +73,29 @@ export function DebtView() {
             account.minPayment! * rate,
             todayIso,
             steps,
+            lumpSums,
           )
         : null;
-      return { account, balance, payment: (account.minPayment ?? 0) * rate, steps, schedule };
+      return {
+        account,
+        balance,
+        payment: (account.minPayment ?? 0) * rate,
+        steps,
+        lumpSums,
+        plannedLumpSums: lumpSums
+          .filter((l) => l.date >= todayIso)
+          .reduce((s, l) => s + l.amount, 0),
+        schedule,
+      };
     });
-  }, [liabilityAccounts, data.accountBalances, valuation, todayIso, movements]);
+  }, [
+    liabilityAccounts,
+    data.accountBalances,
+    data.extraRepayments,
+    valuation,
+    todayIso,
+    movements,
+  ]);
 
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "balance",
@@ -90,6 +114,7 @@ export function DebtView() {
       else if (sort.key === "balance") cmp = x.balance - y.balance;
       else if (sort.key === "rate")
         cmp = (x.account.interestRate ?? -1) - (y.account.interestRate ?? -1);
+      else if (sort.key === "lumpSums") cmp = x.plannedLumpSums - y.plannedLumpSums;
       else cmp = (x.schedule?.months ?? Infinity) - (y.schedule?.months ?? Infinity);
       return sort.dir === "asc" ? cmp : -cmp;
     });
@@ -116,6 +141,7 @@ export function DebtView() {
           annualRatePct: r.account.interestRate!,
           minPayment: r.payment,
           rateSteps: r.steps,
+          lumpSums: r.lumpSums,
         })),
     [rows],
   );
@@ -125,10 +151,14 @@ export function DebtView() {
     () => planPayoff(planDebts, strategy, Number.isFinite(extraVal) ? extraVal : 0, todayIso),
     [planDebts, strategy, extraVal, todayIso],
   );
+  // "What if I only ever paid the minimums": no monthly extra AND no lump
+  // sums, so the savings line below covers everything the user plans to pay on
+  // top, not just the monthly figure.
   const baseline = useMemo(
-    () => planPayoff(planDebts, strategy, 0, todayIso),
+    () => planPayoff(planDebts.map(({ lumpSums: _drop, ...d }) => d), strategy, 0, todayIso),
     [planDebts, strategy, todayIso],
   );
+  const totalLumpSums = rows.reduce((s, r) => s + r.plannedLumpSums, 0);
 
   // The chart's scope: every debt stacked, or one debt on its own. A selected
   // debt that disappears (deleted account) falls back to "all" rather than
@@ -228,6 +258,10 @@ export function DebtView() {
                   </th>
                   <th className={thCls}>{t("debt.list.fixedUntil")}</th>
                   <th className={`${thCls} text-right`}>{t("debt.list.payment")}</th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("lumpSums")}>
+                    {t("debt.list.lumpSums")}
+                    {arrow("lumpSums")}
+                  </th>
                   <th className={`${thCls} text-right`} onClick={() => toggleSort("term")}>
                     {t("debt.list.term")}
                     {arrow("term")}
@@ -240,7 +274,7 @@ export function DebtView() {
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map(({ account, balance, payment, schedule }) => (
+                {sortedRows.map(({ account, balance, payment, plannedLumpSums, schedule }) => (
                   <tr
                     key={account.id}
                     className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -277,6 +311,9 @@ export function DebtView() {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums" data-private>
                       {payment > 0 ? formatCurrency(payment, base) : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums" data-private>
+                      {plannedLumpSums > 0 ? formatCurrency(plannedLumpSums, base) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {schedule?.months != null ? formatMonthsShort(schedule.months, t) : "—"}
@@ -391,17 +428,19 @@ export function DebtView() {
             />
           </div>
 
-          {extraVal > 0 && baseline.totalMonths != null && plan.totalMonths != null && (
-            <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
-              {t("debt.plan.savings", {
-                months: baseline.totalMonths - plan.totalMonths,
-                amount: formatCurrency(
-                  Math.max(0, baseline.totalInterest - plan.totalInterest),
-                  base,
-                ),
-              })}
-            </p>
-          )}
+          {(extraVal > 0 || totalLumpSums > 0) &&
+            baseline.totalMonths != null &&
+            plan.totalMonths != null && (
+              <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+                {t("debt.plan.savings", {
+                  months: baseline.totalMonths - plan.totalMonths,
+                  amount: formatCurrency(
+                    Math.max(0, baseline.totalInterest - plan.totalInterest),
+                    base,
+                  ),
+                })}
+              </p>
+            )}
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">

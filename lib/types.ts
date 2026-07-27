@@ -190,6 +190,25 @@ export interface AccountBalance {
 }
 
 /**
+ * A planned one-off repayment on a liability account (Sondertilgung): the
+ * bonus that goes into the mortgage next June, the inheritance that clears the
+ * car loan. Shaped exactly like {@link AccountBalance} -- an account id plus a
+ * dated native-currency magnitude -- and edited the same replace-set way.
+ *
+ * It is a PLANNING input, not a booking: `lib/finance/debt.ts` applies it in
+ * the month it falls due on top of the regular payment. A repayment dated
+ * before the plan starts is ignored, because a payment already made is already
+ * in the balance the plan starts from.
+ */
+export interface ExtraRepayment {
+  accountId: string;
+  /** YYYY-MM-DD the lump sum is paid. */
+  date: string;
+  /** Native-currency amount paid on top of the regular payment (positive). */
+  amount: number;
+}
+
+/**
  * A user-defined spending category (ROADMAP item #2, flag `spending`): a flat
  * two-level taxonomy (`groupName` + `name`, e.g. "Housing" / "Rent"). Unlike
  * `TagGroup`/asset tags, a transaction carries exactly one category, so there
@@ -667,6 +686,8 @@ export interface PortfolioData {
   accounts: Account[];
   /** Dated balance readings per account (see `AccountBalance`). */
   accountBalances: AccountBalance[];
+  /** Planned one-off repayments per liability (see `ExtraRepayment`). */
+  extraRepayments: ExtraRepayment[];
   /** User-defined spending taxonomy (ROADMAP #2, flag `spending`). */
   spendingCategories: SpendingCategory[];
   /** Expense/income transactions against accounts (ROADMAP #2, flag `spending`). */
@@ -711,6 +732,7 @@ export function emptyPortfolio(): PortfolioData {
     valuationPoints: [],
     accounts: [],
     accountBalances: [],
+    extraRepayments: [],
     spendingCategories: [],
     spendingTransactions: [],
     budgets: [],

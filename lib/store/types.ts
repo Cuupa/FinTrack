@@ -105,6 +105,12 @@ export interface DataStore {
    * the account's readings; an empty array clears them.
    */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
+  /**
+   * Replace-set the planned one-off repayments (Sondertilgungen) of one
+   * liability account, same idempotent/replay-safe contract as
+   * `setAccountBalances`. Amounts are native-currency magnitudes.
+   */
+  setExtraRepayments(accountId: string, points: { date: string; amount: number }[]): Promise<void>;
   /** Creates a spending category. `id` — see `addAsset`'s doc above. */
   addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory>;
   updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void>;

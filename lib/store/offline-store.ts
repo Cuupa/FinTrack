@@ -359,6 +359,20 @@ export class OfflineStore implements DataStore {
     }
   }
 
+  async setExtraRepayments(
+    accountId: string,
+    points: { date: string; amount: number }[],
+  ): Promise<void> {
+    await this.mirror.setExtraRepayments(accountId, points);
+    // Keyed by accountId like setAccountBalances; replace-set makes the replay
+    // idempotent.
+    try {
+      await this.inner.setExtraRepayments(accountId, points);
+    } catch (err) {
+      await this.handleFailure(err, "setExtraRepayments", accountId, { accountId, points });
+    }
+  }
+
   async addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory> {
     const categoryId = id ?? newId();
     const category = await this.mirror.addSpendingCategory(input, categoryId);

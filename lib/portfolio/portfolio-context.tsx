@@ -97,6 +97,7 @@ interface PortfolioContextValue {
   deleteAccount(id: string): Promise<void>;
   /** Replace-set an account's dated balance readings. */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
+  setExtraRepayments(accountId: string, points: { date: string; amount: number }[]): Promise<void>;
   addSpendingCategory(input: SpendingCategoryInput): Promise<SpendingCategory>;
   updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void>;
   deleteSpendingCategory(id: string): Promise<void>;
@@ -445,6 +446,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ...d,
         accounts: d.accounts.filter((a) => a.id !== id),
         accountBalances: d.accountBalances.filter((b) => b.accountId !== id),
+        extraRepayments: d.extraRepayments.filter((r) => r.accountId !== id),
         spendingTransactions: d.spendingTransactions.filter((t) => t.accountId !== id),
         // A goal keeps existing with no linked account (mirrors the DB's on delete set null).
         goals: d.goals.map((g) => (g.linkedAccountId === id ? { ...g, linkedAccountId: null } : g)),
@@ -474,6 +476,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           accountBalances: [
             ...others,
             ...points.map((p) => ({ accountId, date: p.date, balance: p.balance })),
+          ],
+        };
+      });
+    },
+    [store],
+  );
+
+  const setExtraRepayments = useCallback(
+    async (accountId: string, points: { date: string; amount: number }[]) => {
+      await store.setExtraRepayments(accountId, points);
+      setData((d) => {
+        const others = d.extraRepayments.filter((r) => r.accountId !== accountId);
+        return {
+          ...d,
+          extraRepayments: [
+            ...others,
+            ...points.map((p) => ({ accountId, date: p.date, amount: p.amount })),
           ],
         };
       });
@@ -818,6 +837,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     updateAccount,
     deleteAccount,
     setAccountBalances,
+    setExtraRepayments,
     addSpendingCategory,
     updateSpendingCategory,
     deleteSpendingCategory,
