@@ -10,13 +10,16 @@
 // button, so a column can be sorted from the keyboard — the hand-rolled
 // `<th onClick>` headers could not be). Cell content stays at the call site.
 
-import type {
-  HTMLAttributes,
-  ReactNode,
-  TdHTMLAttributes,
-  ThHTMLAttributes,
+import {
+  useState,
+  type HTMLAttributes,
+  type ReactNode,
+  type TdHTMLAttributes,
+  type ThHTMLAttributes,
 } from "react";
 import { ariaSortFor, type SortState } from "@/lib/tables/sort";
+import { DEFAULT_PAGE_SIZE, pageSlice, type PageSlice } from "@/lib/tables/pagination";
+import { useI18n } from "@/lib/i18n/i18n-context";
 
 type Align = "left" | "right" | "center";
 
@@ -143,6 +146,73 @@ export function Th<K extends string>({
         </span>
       </button>
     </th>
+  );
+}
+
+/** What {@link usePagination} hands back: the slice plus its own page setter. */
+export interface Pager<T> extends PageSlice<T> {
+  setPage: (page: number) => void;
+}
+
+/**
+ * Pages an already-sorted, already-filtered row list. Call sites map over
+ * `pager.rows` instead of the full list and render {@link TablePagination}
+ * under the table -- that is the whole integration, so every table pages the
+ * same way and at the same size.
+ *
+ * The current page is CLAMPED on read rather than corrected in an effect
+ * (Next 16's `react-hooks/set-state-in-effect` fails the build on the latter,
+ * and deleting the last row of page 4 must not leave an empty table behind).
+ */
+export function usePagination<T>(
+  rows: readonly T[],
+  pageSize: number = DEFAULT_PAGE_SIZE,
+): Pager<T> {
+  const [page, setPage] = useState(1);
+  return { ...pageSlice(rows, page, pageSize), setPage };
+}
+
+/**
+ * The paging footer: which rows are on screen, and the way to the next ones.
+ * Renders nothing while everything fits on one page, so a three-row table
+ * looks exactly as it did before.
+ */
+export function TablePagination<T>({ pager }: { pager: Pager<T> }) {
+  const { t } = useI18n();
+  if (!pager.hasPages) return null;
+  const btn =
+    "rounded-md border border-zinc-300 px-2.5 py-1 text-sm font-medium transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-zinc-700 dark:hover:bg-zinc-800";
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-500">
+      <span>
+        {t("table.page.range", {
+          from: String(pager.from),
+          to: String(pager.to),
+          total: String(pager.total),
+        })}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className={btn}
+          disabled={pager.page <= 1}
+          onClick={() => pager.setPage(pager.page - 1)}
+        >
+          {t("table.page.prev")}
+        </button>
+        <span aria-live="polite">
+          {t("table.page.of", { page: String(pager.page), pages: String(pager.pageCount) })}
+        </span>
+        <button
+          type="button"
+          className={btn}
+          disabled={pager.page >= pager.pageCount}
+          onClick={() => pager.setPage(pager.page + 1)}
+        >
+          {t("table.page.next")}
+        </button>
+      </div>
+    </div>
   );
 }
 
