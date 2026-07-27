@@ -72,6 +72,17 @@ export const NAV_ROUTES: NavRoute[] = [
     group: "everyday",
   },
   {
+    href: "/cashflow",
+    key: "nav.cashflow",
+    // Trend glyph: rising line over an axis.
+    icon: <path d="M4 19V5m0 14h16M7 15l4-5 3 3 5-6" />,
+    // Same flag as /spending: the cards and the data are the same, and a flag
+    // of its own would let the nav offer a page whose every card is a teaser.
+    flag: "spending",
+    primary: true,
+    group: "everyday",
+  },
+  {
     href: "/contracts",
     key: "nav.contracts",
     // Document glyph: bordered page + folded corner + signature line.

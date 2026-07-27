@@ -4,7 +4,13 @@
 // native currency (like `summarizeHolding`'s spot-rate convention) since a
 // spending ledger is per-account, not a cross-currency net-worth rollup.
 
-import type { Account, Budget, SpendingCategory, SpendingTransaction } from "../types";
+import type {
+  Account,
+  AccountKind,
+  Budget,
+  SpendingCategory,
+  SpendingTransaction,
+} from "../types";
 
 /**
  * A booking that moved money between the user's own accounts — a loan
@@ -15,6 +21,50 @@ import type { Account, Budget, SpendingCategory, SpendingTransaction } from "../
  */
 export function isTransfer(t: SpendingTransaction): boolean {
   return t.transferAccountId != null;
+}
+
+/**
+ * Account kinds that hold spendable cash. Shared with `lib/finance/health.ts`'s
+ * emergency-fund gauge, which drew the same line first: `other_asset` (a car,
+ * a flat) is real net worth but nothing you can pay a bill from.
+ */
+export const LIQUID_ACCOUNT_KINDS: AccountKind[] = ["checking", "savings"];
+
+export function isLiquidAccount(account: Account | undefined): boolean {
+  return Boolean(account && !account.isLiability && LIQUID_ACCOUNT_KINDS.includes(account.kind));
+}
+
+/**
+ * How much cash this booking takes out of (negative) or puts into (positive)
+ * the user's LIQUID pool. This is the cash-flow question, and it is a genuinely
+ * different one from income-vs-expense.
+ *
+ * A transfer is not income and not expense — net worth is unchanged — but the
+ * money still left the current account. Dropping transfers from a cash-flow
+ * view (what `plannedForecast` used to do via `withoutTransfers`) makes it
+ * blind exactly when it matters most: someone whose ledger is mostly loan
+ * instalments from a joint account saw an empty forecast, because every single
+ * row was a transfer.
+ *
+ * A transfer between two liquid accounts (current -> savings) nets to zero:
+ * the cash never left the pool.
+ */
+export function liquidCashEffect(
+  t: SpendingTransaction,
+  accountsById: Map<string, Account>,
+): number {
+  const from = accountsById.get(t.accountId);
+  const fromLiquid = isLiquidAccount(from);
+  if (!isTransfer(t)) return fromLiquid ? t.amount : 0;
+
+  const to = accountsById.get(t.transferAccountId!);
+  const toLiquid = isLiquidAccount(to);
+  // Liquid -> liquid: moved, not spent. Liquid -> anywhere else (a loan being
+  // repaid, an investment account): the cash is gone from the pool.
+  if (fromLiquid && toLiquid) return 0;
+  if (fromLiquid) return t.amount;
+  if (toLiquid) return -t.amount;
+  return 0;
 }
 
 /** The subset that is genuinely income or expense. */

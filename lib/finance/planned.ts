@@ -22,7 +22,7 @@ import type {
 } from "../types";
 import { addDays, addMonthsToDate, shiftMonth } from "./dates";
 import { booksSpending, bookingOccurrenceAt } from "./contract-bookings";
-import { toBaseCurrency, withoutTransfers } from "./spending";
+import { isLiquidAccount, liquidCashEffect, toBaseCurrency } from "./spending";
 
 /** Guard against a plan whose start date sits years in the past dumping
     hundreds of bookings into the review dialog at once (same rule and number
@@ -231,14 +231,21 @@ export function plannedForecast(input: PlannedForecastInput): ForecastMonth[] {
     });
   }
 
-  for (const t of withoutTransfers(toBaseCurrency(transactions, accounts, base, fx))) {
+  const accountsById = new Map(accounts.map((a) => [a.id, a]));
+
+  // Cash flow, not income vs expense: what counts is money entering or leaving
+  // the LIQUID pool. A loan instalment is not an expense (net worth is
+  // unchanged) but the cash does leave the current account, and dropping every
+  // transfer here left a ledger made mostly of instalments forecasting nothing
+  // at all.
+  for (const t of toBaseCurrency(transactions, accounts, base, fx)) {
     const row = byMonth.get(monthOf(t.date));
     if (!row) continue;
-    if (t.amount >= 0) row.actualIncome += t.amount;
-    else row.actualExpense += -t.amount;
+    const effect = liquidCashEffect(t, accountsById);
+    if (effect === 0) continue;
+    if (effect > 0) row.actualIncome += effect;
+    else row.actualExpense += -effect;
   }
-
-  const accountsById = new Map(accounts.map((a) => [a.id, a]));
   const rateFor = (accountId: string) => {
     const currency = accountsById.get(accountId)?.currency || base;
     return currency === base ? 1 : (fx?.[currency] ?? 1);
@@ -248,7 +255,13 @@ export function plannedForecast(input: PlannedForecastInput): ForecastMonth[] {
   // due-but-unbooked occurrence earlier this month is still expected money.
   const from = `${firstMonth}-01`;
   for (const plan of plans) {
-    if (plan.transferAccountId) continue;
+    // Same liquid rule as the booked rows above, applied to what is still to
+    // come: a planned transfer out of a current account is expected cash out.
+    const fromLiquid = isLiquidAccount(accountsById.get(plan.accountId));
+    if (!fromLiquid) continue;
+    if (plan.transferAccountId && isLiquidAccount(accountsById.get(plan.transferAccountId))) {
+      continue; // liquid -> liquid nets to zero
+    }
     const amount = plan.amount * rateFor(plan.accountId);
     for (const date of plannedOccurrences(plan, from, windowEnd)) {
       if (plan.lastBookedDate && date <= plan.lastBookedDate) continue;
@@ -262,8 +275,17 @@ export function plannedForecast(input: PlannedForecastInput): ForecastMonth[] {
   for (const contract of contracts) {
     // Only a contract that actually books charges belongs here: a register-only
     // entry never posts anything, so forecasting it would invent an expense.
-    // A contract paying into another own account is a transfer, like above.
-    if (!booksSpending(contract) || contract.targetAccountId) continue;
+    // A contract paying into another own account still costs cash from the
+    // charging account, so it is forecast like any other charge -- only a
+    // liquid-to-liquid move nets out.
+    if (!booksSpending(contract)) continue;
+    if (!isLiquidAccount(accountsById.get(contract.accountId!))) continue;
+    if (
+      contract.targetAccountId &&
+      isLiquidAccount(accountsById.get(contract.targetAccountId))
+    ) {
+      continue;
+    }
     for (let k = 0; k < 600; k++) {
       const date = bookingOccurrenceAt(contract.bookingStartDate!, contract.interval, k);
       if (date > windowEnd) break;

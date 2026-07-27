@@ -9,12 +9,10 @@
 
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today } from "@/lib/finance/dates";
-import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat } from "@/components/ui/primitives";
+import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -24,10 +22,10 @@ import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
 import { TransactionEditDialog } from "./transaction-edit-dialog";
 import { ImportSpending } from "./import-spending";
-import { SpendingSankeyCard } from "./spending-sankey-card";
-import { BudgetsCard } from "./budgets-card";
-import { ForecastCard } from "./forecast-card";
-import { PlannedCard } from "./planned-card";
+// Sankey, forecast and budgets moved to /cashflow (owner call): this page had
+// grown to eight containers. It now answers "what did I book, and what
+// recurs"; the analysis of where the money goes lives one page over.
+import { RecurringCard } from "./recurring-card";
 import type { SpendingTransaction } from "@/lib/types";
 
 const inputCls =
@@ -44,7 +42,6 @@ export function SpendingView() {
     deleteSpendingTransaction,
     addContract,
   } = usePortfolio();
-  const { valuation } = useLivePrices();
   const { t } = useI18n();
   const contractsEnabled = useFeatureFlag("contracts");
   const base = data.profile.currency;
@@ -57,11 +54,6 @@ export function SpendingView() {
     () => new Map(data.spendingCategories.map((c) => [c.id, c])),
     [data.spendingCategories],
   );
-
-  const totals = useMemo(() => {
-    const converted = toBaseCurrency(data.spendingTransactions, data.accounts, base, valuation.fx);
-    return incomeExpenseSplit(converted);
-  }, [data.spendingTransactions, data.accounts, base, valuation.fx]);
 
   const categoryRules = useMemo(
     () => buildCategoryRules(data.spendingTransactions),
@@ -196,27 +188,6 @@ export function SpendingView() {
 
   return (
     <div className="space-y-6">
-      <Card data-tour="spending-totals">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Stat label={t("spending.totals.income")} value={formatCurrency(totals.income, base)} isPrivate />
-          <Stat label={t("spending.totals.expense")} value={formatCurrency(totals.expense, base)} isPrivate />
-          <Stat
-            label={t("spending.totals.net")}
-            value={formatCurrency(totals.net, base)}
-            valueClassName={totals.net < 0 ? "text-red-600 dark:text-red-400" : ""}
-            isPrivate
-          />
-        </div>
-      </Card>
-
-      <SpendingSankeyCard />
-
-      <ForecastCard />
-
-      <PlannedCard />
-
-      <BudgetsCard />
-
       <Card data-tour="spending-form">
         <h2 className="text-lg font-semibold">{t("spending.form.title")}</h2>
         {data.accounts.length === 0 ? (
@@ -354,6 +325,11 @@ export function SpendingView() {
           </>
         )}
       </Card>
+
+      {/* Everything that repeats, contracts and planned entries in ONE list:
+          whether they live in different tables is the data model's business,
+          not something the user should have to know. */}
+      <RecurringCard />
 
       <Card data-tour="spending-table">
         <div className="flex items-center justify-between">

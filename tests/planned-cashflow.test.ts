@@ -257,24 +257,58 @@ describe("plannedForecast", () => {
     expect(months[1].plannedExpense).toBe(900);
   });
 
-  it("ignores register-only contracts and transfers on both sides", () => {
+  it("ignores register-only contracts", () => {
+    // No account and no start date: it never posts anything, so forecasting it
+    // would invent an expense out of a note.
     const months = plannedForecast({
-      plans: [plan({ transferAccountId: "a2", startDate: "2026-04-01" })],
-      contracts: [
-        contract({ id: "c2", accountId: null, bookingStartDate: null }),
-        contract({ id: "c3", targetAccountId: "a2" }),
-      ],
-      transactions: [tx({ date: "2026-03-20", amount: -500, transferAccountId: "a2" })],
+      plans: [],
+      contracts: [contract({ id: "c2", accountId: null, bookingStartDate: null })],
+      transactions: [],
       accounts,
       base: "EUR",
       today: "2026-03-10",
       months: 2,
     });
     for (const m of months) {
-      expect(m.plannedIncome).toBe(0);
       expect(m.plannedExpense).toBe(0);
       expect(m.actualExpense).toBe(0);
     }
+  });
+
+  it("counts a transfer OUT of the liquid pool as cash flowing out", () => {
+    // A loan instalment is not an expense (net worth is unchanged), but the
+    // cash does leave the current account. Dropping it made a ledger built
+    // mostly of instalments forecast nothing at all -- `a2` here is a loan,
+    // i.e. not part of the liquid pool.
+    const loan = account({ id: "a2", kind: "loan", isLiability: true });
+    const months = plannedForecast({
+      plans: [plan({ transferAccountId: "a2", startDate: "2026-04-01", amount: -300 })],
+      contracts: [contract({ id: "c3", targetAccountId: "a2" })],
+      transactions: [tx({ date: "2026-03-20", amount: -500, transferAccountId: "a2" })],
+      accounts: [...accounts, loan],
+      base: "EUR",
+      today: "2026-03-10",
+      months: 2,
+    });
+    expect(months[0].actualExpense).toBe(500);
+    expect(months[1].plannedExpense).toBeGreaterThan(0);
+  });
+
+  it("nets a liquid-to-liquid transfer to zero", () => {
+    // Current account -> savings: moved, not spent, and the cash never left
+    // the pool, so counting it either way would be wrong.
+    const savings = account({ id: "a2", kind: "savings" });
+    const months = plannedForecast({
+      plans: [],
+      contracts: [],
+      transactions: [tx({ date: "2026-03-20", amount: -500, transferAccountId: "a2" })],
+      accounts: [...accounts, savings],
+      base: "EUR",
+      today: "2026-03-10",
+      months: 2,
+    });
+    expect(months[0].actualExpense).toBe(0);
+    expect(months[0].actualIncome).toBe(0);
   });
 
   it("converts a foreign-currency account's plan at spot", () => {
