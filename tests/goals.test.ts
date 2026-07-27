@@ -21,6 +21,7 @@ function goal(overrides: Partial<Goal> = {}): Goal {
     manualCurrentAmount: null,
     tracksInvestments: false,
     linkedPortfolioId: null,
+    linkedAssetId: null,
     parentGoalId: null,
     ...overrides,
   };
@@ -109,7 +110,11 @@ describe("goalProgress", () => {
 });
 
 describe("goalProgress with depot tracking", () => {
-  const depot = { total: 25000, byPortfolio: { p1: 15000, p2: 10000 } };
+  const depot = {
+    total: 25000,
+    byPortfolio: { p1: 15000, p2: 10000 },
+    byAsset: { etf: 18000, meta: 1500 },
+  };
 
   it("uses the combined depot value when no broker is linked", () => {
     const g = goal({ tracksInvestments: true, targetAmount: 100000 });
@@ -134,6 +139,26 @@ describe("goalProgress with depot tracking", () => {
   it("wins over a leftover linked account", () => {
     const g = goal({ tracksInvestments: true, linkedAccountId: "a1" });
     expect(goalProgress(g, [account({ openingBalance: 4000 })], [], undefined, depot)).toBe(25000);
+  });
+
+  // "The ETF should be worth 10k", "Meta should be worth 2k": one position,
+  // the narrowest of the three depot scopes.
+  it("uses one position's market value when an asset is linked", () => {
+    const g = goal({ tracksInvestments: true, linkedAssetId: "meta", targetAmount: 2000 });
+    expect(goalProgress(g, [], [], undefined, depot)).toBe(1500);
+  });
+
+  it("lets the linked position win over a linked broker", () => {
+    const g = goal({ tracksInvestments: true, linkedAssetId: "etf", linkedPortfolioId: "p2" });
+    expect(goalProgress(g, [], [], undefined, depot)).toBe(18000);
+  });
+
+  // A goal to BUILD a position starts at 0 rather than reading as broken, and
+  // the same holds once the asset is deleted (linkedAssetId set null then, but
+  // a stale id must not silently fall back to the whole depot either).
+  it("reads 0 for a position that is not held", () => {
+    const g = goal({ tracksInvestments: true, linkedAssetId: "unheld" });
+    expect(goalProgress(g, [], [], undefined, depot)).toBe(0);
   });
 });
 

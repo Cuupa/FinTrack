@@ -11,7 +11,14 @@
 import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
-import { ACCOUNT_KINDS, LIABILITY_KINDS, type Account, type AccountKind } from "@/lib/types";
+import {
+  ACCOUNT_KINDS,
+  INTEREST_FREQUENCIES,
+  LIABILITY_KINDS,
+  type Account,
+  type AccountKind,
+  type InterestFrequency,
+} from "@/lib/types";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
@@ -40,6 +47,14 @@ export function AccountEditDialog({
   const [currency, setCurrency] = useState(account.currency || base);
   const [opening, setOpening] = useState(String(account.openingBalance));
   const [openedOn, setOpenedOn] = useState(account.openedOn);
+  // Credit interest, asset accounts only -- a liability's rate belongs to the
+  // payoff planner (DebtDetailsDialog) and stays editable only there.
+  const [interestRate, setInterestRate] = useState(
+    account.interestRate != null ? String(account.interestRate) : "",
+  );
+  const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>(
+    account.interestFrequency ?? "MONTHLY",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,14 +77,25 @@ export function AccountEditDialog({
     setError(null);
     try {
       const cur = currency.trim().toUpperCase();
+      const isLiability = LIABILITY_KINDS.includes(kind);
+      const rate = !isLiability && interestRate.trim() ? parseDecimal(interestRate) : null;
+      if (rate !== null && !Number.isFinite(rate)) {
+        setError(t("common.invalidAmount"));
+        setBusy(false);
+        return;
+      }
       await updateAccount(account.id, {
         name: trimmed,
         kind,
         currency: !cur || cur === base ? null : cur,
         // Kind and liability-ness are one decision, exactly as in the add form.
-        isLiability: LIABILITY_KINDS.includes(kind),
+        isLiability,
         openingBalance: openingVal,
         openedOn,
+        // Turning an asset account into a liability hands the rate to the
+        // payoff planner instead, so this only ever writes the credit rate it
+        // showed -- it never clears a debt rate it never displayed.
+        ...(isLiability ? {} : { interestRate: rate, interestFrequency: rate ? interestFrequency : null }),
       });
       onClose();
     } catch (err) {
@@ -152,7 +178,45 @@ export function AccountEditDialog({
               className={inputCls}
             />
           </div>
+          {!LIABILITY_KINDS.includes(kind) && (
+            <>
+              <div>
+                <label className="text-sm font-medium" htmlFor="account-edit-interest">
+                  {t("accounts.form.interestLabel")}
+                </label>
+                <input
+                  id="account-edit-interest"
+                  inputMode="decimal"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(stripLeadingZero(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void save();
+                  }}
+                  placeholder="0"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">
+                  {t("accounts.form.interestFrequencyLabel")}
+                </label>
+                <SelectMenu
+                  className="mt-1 w-full"
+                  ariaLabel={t("accounts.form.interestFrequencyLabel")}
+                  value={interestFrequency}
+                  onChange={(v) => setInterestFrequency(v as InterestFrequency)}
+                  options={INTEREST_FREQUENCIES.map((f) => ({
+                    value: f,
+                    label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
+                  }))}
+                />
+              </div>
+            </>
+          )}
         </div>
+        {!LIABILITY_KINDS.includes(kind) && interestRate.trim() !== "" && (
+          <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.interestHint")}</p>
+        )}
 
         {LIABILITY_KINDS.includes(kind) && (
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>

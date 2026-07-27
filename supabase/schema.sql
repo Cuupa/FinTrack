@@ -459,6 +459,18 @@ alter table public.accounts
   add column if not exists rate_fixed_until date;
 alter table public.accounts
   add column if not exists follow_up_rate numeric;
+-- Credit interest (migration 0104): on an ASSET account `interest_rate` is
+-- what the bank pays, and this says how often it is credited and compounded.
+-- Null = monthly, which is what liability accrual always did.
+alter table public.accounts
+  add column if not exists interest_frequency text;
+alter table public.accounts
+  drop constraint if exists accounts_interest_frequency_check;
+alter table public.accounts
+  add constraint accounts_interest_frequency_check check (
+    interest_frequency is null
+    or interest_frequency in ('MONTHLY', 'QUARTERLY', 'ANNUAL')
+  );
 alter table public.accounts
   drop constraint if exists accounts_kind_check;
 alter table public.accounts
@@ -745,6 +757,11 @@ create table if not exists public.goals (
   -- broker combined.
   tracks_investments boolean not null default false,
   linked_portfolio_id uuid references public.portfolios (id) on delete set null,
+  -- Single-position goals (migration 0104): "the ETF should be worth 10k".
+  -- Narrower than linked_portfolio_id and wins over it; null = the whole
+  -- depot or one broker's. Set null (not cascade) with the asset, so the goal
+  -- survives and falls back to the depot.
+  linked_asset_id uuid references public.assets (id) on delete set null,
   -- Sub-goals (migration 0098): a composite goal ("trip to the USA") is the
   -- sum of its parts (flight, hotel, taxi), expressed by the children
   -- pointing here. Cascade, unlike linked_account_id's set null: a sub-goal
@@ -755,6 +772,7 @@ create table if not exists public.goals (
 create index if not exists goals_user_id_idx on public.goals (user_id);
 create index if not exists goals_linked_account_id_idx on public.goals (linked_account_id);
 create index if not exists goals_linked_portfolio_id_idx on public.goals (linked_portfolio_id);
+create index if not exists goals_linked_asset_id_idx on public.goals (linked_asset_id);
 create index if not exists goals_parent_goal_id_idx on public.goals (parent_goal_id);
 
 -- LLM assistant config (provider, model, API key) — one row per user; rides

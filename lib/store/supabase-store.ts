@@ -155,6 +155,8 @@ interface AccountRow {
   min_payment: number | string | null;
   rate_fixed_until?: string | null;
   follow_up_rate?: number | string | null;
+  // Optional: a DB that predates migration 0104 doesn't return this.
+  interest_frequency?: Account["interestFrequency"] | null;
 }
 
 function accountFromRow(r: AccountRow): Account {
@@ -167,6 +169,9 @@ function accountFromRow(r: AccountRow): Account {
     openingBalance: r.opening_balance != null ? Number(r.opening_balance) : 0,
     openedOn: r.opened_on,
     interestRate: r.interest_rate != null ? Number(r.interest_rate) : null,
+    // Defaulted to null, which `lib/finance/accounts.ts` reads as monthly --
+    // exactly what a DB predating migration 0104 always did.
+    interestFrequency: r.interest_frequency ?? null,
     minPayment: r.min_payment != null ? Number(r.min_payment) : null,
     rateFixedUntil: r.rate_fixed_until ?? null,
     followUpRate: r.follow_up_rate != null ? Number(r.follow_up_rate) : null,
@@ -307,6 +312,8 @@ interface GoalRow {
   linked_portfolio_id?: string | null;
   // Optional: a DB that predates migration 0098 doesn't return this.
   parent_goal_id?: string | null;
+  // Optional: a DB that predates migration 0104 doesn't return this.
+  linked_asset_id?: string | null;
 }
 
 function goalFromRow(r: GoalRow): Goal {
@@ -321,6 +328,9 @@ function goalFromRow(r: GoalRow): Goal {
     // manual" exactly like before.
     tracksInvestments: r.tracks_investments ?? false,
     linkedPortfolioId: r.linked_portfolio_id ?? null,
+    // Defaulted, so a DB that predates migration 0104 reads every depot goal
+    // as covering the whole depot exactly like before.
+    linkedAssetId: r.linked_asset_id ?? null,
     // Defaulted, so a DB that predates migration 0098 reads every goal as
     // top-level exactly like before.
     parentGoalId: r.parent_goal_id ?? null,
@@ -409,7 +419,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("accounts")
         .select(
-          "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, min_payment, rate_fixed_until, follow_up_rate",
+          "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, interest_frequency, min_payment, rate_fixed_until, follow_up_rate",
         )
         .order("created_at", { ascending: true }),
       this.supabase
@@ -451,7 +461,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("goals")
         .select(
-          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id, parent_goal_id",
+          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id, linked_asset_id, parent_goal_id",
         )
         .order("created_at", { ascending: true }),
       // Personal, never household-shared (see migration 0093's comment).
@@ -1036,6 +1046,7 @@ export class SupabaseStore implements DataStore {
         opening_balance: input.openingBalance,
         opened_on: input.openedOn,
         interest_rate: input.interestRate ?? null,
+        interest_frequency: input.interestFrequency ?? null,
         min_payment: input.minPayment ?? null,
         rate_fixed_until: input.rateFixedUntil ?? null,
         follow_up_rate: input.followUpRate ?? null,
@@ -1055,6 +1066,7 @@ export class SupabaseStore implements DataStore {
     if (patch.openingBalance !== undefined) upd.opening_balance = patch.openingBalance;
     if (patch.openedOn !== undefined) upd.opened_on = patch.openedOn;
     if (patch.interestRate !== undefined) upd.interest_rate = patch.interestRate;
+    if (patch.interestFrequency !== undefined) upd.interest_frequency = patch.interestFrequency;
     if (patch.minPayment !== undefined) upd.min_payment = patch.minPayment;
     if (patch.rateFixedUntil !== undefined) upd.rate_fixed_until = patch.rateFixedUntil;
     if (patch.followUpRate !== undefined) upd.follow_up_rate = patch.followUpRate;
@@ -1379,6 +1391,7 @@ export class SupabaseStore implements DataStore {
         manual_current_amount: input.manualCurrentAmount,
         tracks_investments: input.tracksInvestments,
         linked_portfolio_id: input.linkedPortfolioId,
+        linked_asset_id: input.linkedAssetId,
         parent_goal_id: input.parentGoalId,
       })
       .select("id")
@@ -1397,6 +1410,7 @@ export class SupabaseStore implements DataStore {
     if (patch.linkedPortfolioId !== undefined) {
       upd.linked_portfolio_id = patch.linkedPortfolioId;
     }
+    if (patch.linkedAssetId !== undefined) upd.linked_asset_id = patch.linkedAssetId;
     if (patch.manualCurrentAmount !== undefined) {
       upd.manual_current_amount = patch.manualCurrentAmount;
     }

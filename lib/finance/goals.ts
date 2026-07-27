@@ -21,15 +21,22 @@ export interface GoalInvestments {
   total: number;
   /** Market value per portfolio (= per broker) id. */
   byPortfolio: Record<string, number>;
+  /** Market value per asset id -- one position ("the ETF should be worth
+   *  10k", "Meta should be worth 2k"). */
+  byAsset: Record<string, number>;
 }
 
 /**
- * Current depot value overall and per broker. A holding belongs to a broker
- * through its TRANSACTIONS (an `Asset` carries no portfolio id), so the
- * per-broker figure is a full re-summary over that broker's transactions,
- * not a regrouping of the combined one. Portfolio counts are single digits,
- * so the repeated pass is cheaper than threading portfolio ids through the
- * holding summaries.
+ * Current depot value overall, per broker and per single position. A holding
+ * belongs to a broker through its TRANSACTIONS (an `Asset` carries no
+ * portfolio id), so the per-broker figure is a full re-summary over that
+ * broker's transactions, not a regrouping of the combined one. Portfolio
+ * counts are single digits, so the repeated pass is cheaper than threading
+ * portfolio ids through the holding summaries.
+ *
+ * The per-position figure deliberately spans every broker: the same ETF held
+ * at two of them is one position to the user, so a goal for it means the whole
+ * stake.
  */
 export function goalInvestments(
   assets: Asset[],
@@ -37,13 +44,20 @@ export function goalInvestments(
   portfolios: readonly { id: string }[],
   v?: ValuationContext,
 ): GoalInvestments {
+  const holdings = summarizeAll(assets, transactions, v);
   const sum = (txs: Transaction[]) =>
     summarizeAll(assets, txs, v).reduce((acc, h) => acc + h.marketValue, 0);
   const byPortfolio: Record<string, number> = {};
   for (const p of portfolios) {
     byPortfolio[p.id] = sum(transactions.filter((t) => t.portfolioId === p.id));
   }
-  return { total: sum(transactions), byPortfolio };
+  const byAsset: Record<string, number> = {};
+  for (const h of holdings) byAsset[h.asset.id] = h.marketValue;
+  return {
+    total: holdings.reduce((acc, h) => acc + h.marketValue, 0),
+    byPortfolio,
+    byAsset,
+  };
 }
 
 /** Spot FX + base currency for converting a linked account's native balance. */
@@ -99,6 +113,9 @@ export function goalProgress(
   // silently taking over.
   if (goal.tracksInvestments) {
     if (!investments) return 0;
+    // A single position is the narrowest of the three depot scopes and wins:
+    // a goal is one position, one broker's depot, or all of it.
+    if (goal.linkedAssetId) return investments.byAsset[goal.linkedAssetId] ?? 0;
     return goal.linkedPortfolioId
       ? (investments.byPortfolio[goal.linkedPortfolioId] ?? 0)
       : investments.total;
@@ -267,6 +284,7 @@ export function liabilityPayoffGoals(
       manualCurrentAmount: null,
       tracksInvestments: false,
       linkedPortfolioId: null,
+      linkedAssetId: null,
       parentGoalId: null,
     });
   }

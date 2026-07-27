@@ -28,7 +28,7 @@ import {
   topLevelGoals,
 } from "@/lib/finance/goals";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
-import type { Account, Goal, Portfolio } from "@/lib/types";
+import type { Account, Asset, Goal, Portfolio } from "@/lib/types";
 import type { GoalInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
@@ -42,17 +42,24 @@ import { isStorageFullError } from "@/lib/store/errors";
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
-// The tracking picker is one control over three sources, so its value is a
+// The tracking picker is one control over four sources, so its value is a
 // tagged string: "" = manual, "depot:" = every broker, "depot:<portfolioId>"
-// = one broker, anything else = that account's id.
+// = one broker, "asset:<assetId>" = a single position, anything else = that
+// account's id.
 const MANUAL_TRACKING = "";
 const DEPOT_PREFIX = "depot:";
 const DEPOT_ALL = DEPOT_PREFIX;
-const isDepotTracking = (v: string) => v.startsWith(DEPOT_PREFIX);
+const ASSET_PREFIX = "asset:";
+const isDepotTracking = (v: string) => v.startsWith(DEPOT_PREFIX) || v.startsWith(ASSET_PREFIX);
+const isAssetTracking = (v: string) => v.startsWith(ASSET_PREFIX);
 
 /** A stored goal, back as the tagged value of the tracking picker. */
 function trackingOf(goal: Goal): string {
-  if (goal.tracksInvestments) return `${DEPOT_PREFIX}${goal.linkedPortfolioId ?? ""}`;
+  if (goal.tracksInvestments) {
+    // The narrower scope wins, exactly as `goalProgress` reads it.
+    if (goal.linkedAssetId) return `${ASSET_PREFIX}${goal.linkedAssetId}`;
+    return `${DEPOT_PREFIX}${goal.linkedPortfolioId ?? ""}`;
+  }
   return goal.linkedAccountId ?? MANUAL_TRACKING;
 }
 
@@ -84,6 +91,7 @@ function GoalForm({
   base,
   accounts,
   portfolios,
+  assets,
   parentCandidates,
   initial,
   submitLabel,
@@ -98,6 +106,8 @@ function GoalForm({
   base: string;
   accounts: Account[];
   portfolios: Portfolio[];
+  /** Held positions, offered as single-position goal targets. */
+  assets: Asset[];
   parentCandidates: Goal[];
   initial?: Goal;
   submitLabel: string;
@@ -148,6 +158,7 @@ function GoalForm({
         linkedAccountId: initial.linkedAccountId,
         tracksInvestments: initial.tracksInvestments,
         linkedPortfolioId: initial.linkedPortfolioId,
+        linkedAssetId: initial.linkedAssetId,
         manualCurrentAmount: initial.manualCurrentAmount,
         parentGoalId: initial.parentGoalId,
       };
@@ -156,13 +167,18 @@ function GoalForm({
     if (!Number.isFinite(value) || value <= 0) return null;
     const manual = manualCurrentAmount.trim() ? parseDecimal(manualCurrentAmount) : null;
     const depot = isDepotTracking(tracking);
+    const position = isAssetTracking(tracking);
     return {
       name: trimmedName,
       targetAmount: value,
       targetDate: targetDate || null,
       linkedAccountId: depot ? null : tracking || null,
       tracksInvestments: depot,
-      linkedPortfolioId: depot ? tracking.slice(DEPOT_PREFIX.length) || null : null,
+      // A single position spans every broker, so the two scopes are exclusive:
+      // whichever one the picker names, the other stays null.
+      linkedPortfolioId:
+        depot && !position ? tracking.slice(DEPOT_PREFIX.length) || null : null,
+      linkedAssetId: position ? tracking.slice(ASSET_PREFIX.length) : null,
       manualCurrentAmount: tracking || manual === null || !Number.isFinite(manual) ? null : manual,
       // Re-checked against the live list: the picked parent may have been
       // deleted (or turned into a sub-goal) since it was selected.
@@ -254,6 +270,8 @@ function GoalForm({
             <SelectMenu
               className="mt-1 w-full"
               ariaLabel={t("goals.form.linkedAccountLabel")}
+              // Accounts plus every position adds up to a long list.
+              searchable
               value={tracking}
               onChange={setTracking}
               options={[
@@ -264,6 +282,12 @@ function GoalForm({
                 ...portfolios.map((p) => ({
                   value: `${DEPOT_PREFIX}${p.id}`,
                   label: t("goals.form.brokerDepot", { name: p.name }),
+                })),
+                // One position ("the ETF should be worth 10k"): the narrowest
+                // depot scope, spanning every broker the asset is held at.
+                ...assets.map((a) => ({
+                  value: `${ASSET_PREFIX}${a.id}`,
+                  label: t("goals.form.position", { name: a.name }),
                 })),
                 // Liabilities are marked, because linking one flips what the
                 // goal means: progress becomes what has been repaid, not the
@@ -363,6 +387,14 @@ export function GoalsView() {
   const investments = useMemo(
     () => goalInvestments(data.assets, data.transactions, data.portfolios, valuation),
     [data.assets, data.transactions, data.portfolios, valuation],
+  );
+
+  // Every asset is offerable as a single-position goal, including one not held
+  // yet: "Meta should be worth 2k" is a goal to BUILD the position, so its
+  // progress simply starts at 0.
+  const goalAssets = useMemo(
+    () => [...data.assets].sort((a, b) => a.name.localeCompare(b.name)),
+    [data.assets],
   );
 
   // Every liability is a payoff goal already; the user only has to say so for
@@ -470,6 +502,10 @@ export function GoalsView() {
     const color = colorForLabel(goal.name);
     const derived = isPayoffGoal(goal);
     const linkedAccount = goal.linkedAccountId ? accountsById.get(goal.linkedAccountId) : null;
+    const linkedAsset =
+      goal.tracksInvestments && goal.linkedAssetId
+        ? data.assets.find((a) => a.id === goal.linkedAssetId)
+        : null;
     const depotBroker =
       goal.tracksInvestments && goal.linkedPortfolioId
         ? data.portfolios.find((p) => p.id === goal.linkedPortfolioId)
@@ -488,9 +524,11 @@ export function GoalsView() {
               : derived
                 ? t("goals.list.autoPayoff")
                 : goal.tracksInvestments
-                  ? depotBroker
-                    ? t("goals.form.brokerDepot", { name: depotBroker.name })
-                    : t("goals.form.wholeDepot")
+                  ? linkedAsset
+                    ? t("goals.form.position", { name: linkedAsset.name })
+                    : depotBroker
+                      ? t("goals.form.brokerDepot", { name: depotBroker.name })
+                      : t("goals.form.wholeDepot")
                   : linkedAccount
                     ? t("goals.list.linkedTo", { name: linkedAccount.name })
                     : t("goals.list.manualTracking")}
@@ -557,6 +595,7 @@ export function GoalsView() {
           base={base}
           accounts={data.accounts}
           portfolios={data.portfolios}
+          assets={goalAssets}
           parentCandidates={parentCandidates}
           submitLabel={t("goals.form.add")}
           onSubmit={addGoal}
@@ -612,6 +651,7 @@ export function GoalsView() {
               base={base}
               accounts={data.accounts}
               portfolios={data.portfolios}
+              assets={goalAssets}
               parentCandidates={editParentCandidates}
               initial={editing}
               childCount={subGoals(data.goals, editing.id).length}

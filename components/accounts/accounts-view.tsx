@@ -13,9 +13,11 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today } from "@/lib/finance/dates";
 import {
   ACCOUNT_KINDS,
+  INTEREST_FREQUENCIES,
   LIABILITY_KINDS,
   type Account,
   type AccountKind,
+  type InterestFrequency,
 } from "@/lib/types";
 import { accountsTotals, currentAccountBalance } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
@@ -52,6 +54,11 @@ export function AccountsView() {
   const [currency, setCurrency] = useState(base);
   const [opening, setOpening] = useState("");
   const [openedOn, setOpenedOn] = useState(today());
+  // Credit interest, asset accounts only: a liability's rate belongs to the
+  // payoff planner and is edited there (/debt), so there is exactly one place
+  // writing each direction's rate.
+  const [interestRate, setInterestRate] = useState("");
+  const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>("MONTHLY");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,19 +109,32 @@ export function AccountsView() {
     setError(null);
     try {
       const cur = currency.trim().toUpperCase();
+      const isLiability = LIABILITY_KINDS.includes(kind);
+      // A rate typed before switching to a liability kind is dropped, not
+      // saved into the payoff planner's field behind the user's back.
+      const rate = !isLiability && interestRate.trim() ? parseDecimal(interestRate) : null;
+      if (rate !== null && !Number.isFinite(rate)) {
+        setError(t("common.invalidAmount"));
+        setBusy(false);
+        return;
+      }
       await addAccount({
         name: trimmed,
         kind,
         currency: !cur || cur === base ? null : cur,
-        isLiability: LIABILITY_KINDS.includes(kind),
+        isLiability,
         openingBalance: openingVal,
         openedOn,
+        interestRate: rate,
+        interestFrequency: rate ? interestFrequency : null,
       });
       setName("");
       setOpening("");
       setKind("checking");
       setCurrency(base);
       setOpenedOn(today());
+      setInterestRate("");
+      setInterestFrequency("MONTHLY");
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("accounts.form.error"));
     } finally {
@@ -228,6 +248,43 @@ export function AccountsView() {
               className={inputCls}
             />
           </div>
+          {/* Credit interest: only for accounts that EARN it. A liability's
+              rate drives the payoff schedule and is edited on /debt. */}
+          {!LIABILITY_KINDS.includes(kind) && (
+            <>
+              <div>
+                <label className="text-sm font-medium" htmlFor="account-interest">
+                  {t("accounts.form.interestLabel")}
+                </label>
+                <input
+                  id="account-interest"
+                  inputMode="decimal"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(stripLeadingZero(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void submit();
+                  }}
+                  placeholder="0"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">
+                  {t("accounts.form.interestFrequencyLabel")}
+                </label>
+                <SelectMenu
+                  className="mt-1 w-full"
+                  ariaLabel={t("accounts.form.interestFrequencyLabel")}
+                  value={interestFrequency}
+                  onChange={(v) => setInterestFrequency(v as InterestFrequency)}
+                  options={INTEREST_FREQUENCIES.map((f) => ({
+                    value: f,
+                    label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
+                  }))}
+                />
+              </div>
+            </>
+          )}
           <div className="flex items-end">
             <Button
               variant="primary"
@@ -238,6 +295,9 @@ export function AccountsView() {
             </Button>
           </div>
         </div>
+        {!LIABILITY_KINDS.includes(kind) && interestRate.trim() !== "" && (
+          <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.interestHint")}</p>
+        )}
         {LIABILITY_KINDS.includes(kind) && (
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
         )}
@@ -278,6 +338,20 @@ export function AccountsView() {
                     >
                       <td className="px-3 py-2 font-medium" data-private>
                         {account.name}
+                        {/* Interest changes the balance without anybody
+                            booking anything, so the row says it does. */}
+                        {!account.isLiability && (account.interestRate ?? 0) > 0 && (
+                          <div className="text-xs font-normal text-zinc-500">
+                            {t("accounts.list.interest", {
+                              rate: String(account.interestRate),
+                              frequency: t(
+                                `cashInterest.freq.${account.interestFrequency ?? "MONTHLY"}` as Parameters<
+                                  typeof t
+                                >[0],
+                              ),
+                            })}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-zinc-500">{kindLabel(account.kind)}</td>
                       <td

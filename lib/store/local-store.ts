@@ -139,6 +139,7 @@ export class LocalStore implements DataStore {
           ...g,
           tracksInvestments: g.tracksInvestments ?? false,
           linkedPortfolioId: g.linkedPortfolioId ?? null,
+          linkedAssetId: g.linkedAssetId ?? null,
           parentGoalId: g.parentGoalId ?? null,
         })),
         // Backfill portfolios saved before the LLM config moved onto the
@@ -218,6 +219,9 @@ export class LocalStore implements DataStore {
     }
     // Cascade: valuation points belong to their asset.
     data.valuationPoints = data.valuationPoints.filter((p) => p.assetId !== id);
+    // A goal for this position keeps existing, tracking the whole depot again
+    // (mirrors the DB's on delete set null, like linked_account_id).
+    data.goals = data.goals.map((g) => (g.linkedAssetId === id ? { ...g, linkedAssetId: null } : g));
     this.write(data);
     this.pruneImportedFingerprints(removedIds);
   }
