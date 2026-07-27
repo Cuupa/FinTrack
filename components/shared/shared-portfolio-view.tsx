@@ -10,6 +10,7 @@ import Link from "next/link";
 import type { SharePayload, SharePt } from "@/lib/share/share";
 import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -41,6 +42,8 @@ function SortTh({
   align?: "left" | "right";
 }) {
   const active = sort.key === k;
+  const pager = usePagination(sortedHoldings);
+
   return (
     <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
       <button
@@ -293,7 +296,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
               </tr>
             </thead>
             <tbody>
-              {sortedHoldings.map((h, i) => (
+              {pager.rows.map((h, i) => (
                 <tr
                   key={`${h.name}-${i}`}
                   className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -315,6 +318,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
               ))}
             </tbody>
           </table>
+          <TablePagination pager={pager} />
         </div>
       </Card>
 

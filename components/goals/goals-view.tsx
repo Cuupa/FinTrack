@@ -37,6 +37,7 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
@@ -583,6 +584,8 @@ export function GoalsView() {
     );
   }
 
+  const pager = usePagination(rows);
+
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
@@ -631,12 +634,13 @@ export function GoalsView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.flatMap((row) => [
+                {pager.rows.flatMap((row) => [
                   renderRow(row, row.children.length),
                   ...row.children.map((child) => renderRow(child, 0, true)),
                 ])}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
           </div>
         )}
       </Card>

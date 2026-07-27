@@ -21,6 +21,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatInstant } from "@/lib/format";
@@ -136,6 +137,9 @@ export default function AdminErrorsPage() {
     return [...list].sort((a, b) => compare(a, b, sort.key) * dir);
   }, [rows, levelFilter, query, dateFrom, sort]);
 
+
+  // Same 25-row paging as every other table in the app.
+  const pager = usePagination(filtered);
   const purge = async (target: PurgeTarget) => {
     if (!target) return;
     setError(null);
@@ -279,6 +283,7 @@ export default function AdminErrorsPage() {
               {rows.length === 0 ? t("admin.errors.empty") : t("admin.errors.noMatch")}
             </p>
           ) : (
+            <>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
@@ -297,7 +302,7 @@ export default function AdminErrorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => {
+                {pager.rows.map((r) => {
                   const isExpanded = expanded === r.id;
                   const shortMessage = (r.message ?? "").slice(0, 80);
                   const hasMore = (r.message ?? "").length > 80 || !!r.stack;
@@ -352,6 +357,8 @@ export default function AdminErrorsPage() {
                 })}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
+            </>
           )}
         </div>
       </Card>

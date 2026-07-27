@@ -16,6 +16,7 @@ import type { Asset } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
@@ -95,6 +96,8 @@ export function ValuationSection({ asset }: { asset: Asset }) {
   const thCls =
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
+  const pager = usePagination(sortedRows);
+
   return (
     <Card>
       <h2 className="text-lg font-semibold">{t("valuation.title")}</h2>
@@ -170,7 +173,7 @@ export function ValuationSection({ asset }: { asset: Asset }) {
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((p) => (
+              {pager.rows.map((p) => (
                 <tr
                   key={p.date}
                   className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -194,6 +197,7 @@ export function ValuationSection({ asset }: { asset: Asset }) {
               ))}
             </tbody>
           </table>
+          <TablePagination pager={pager} />
         </div>
       )}
     </Card>

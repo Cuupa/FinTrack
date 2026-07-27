@@ -27,6 +27,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatCurrency, formatInstant } from "@/lib/format";
 import { intlLocale } from "@/lib/i18n/locale";
@@ -132,6 +133,9 @@ export default function AdminPricesPage() {
     return [...list].sort((a, b) => compare(a, b, sort.key, base, fx) * dir);
   }, [rows, query, staleOnly, sort, base, fx]);
 
+
+  // Same 25-row paging as every other table in the app.
+  const pager = usePagination(filtered);
   function toggleSort(key: SortKey) {
     setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
   }
@@ -222,6 +226,7 @@ export default function AdminPricesPage() {
               {rows.length === 0 ? t("admin.prices.empty") : t("admin.prices.noMatch")}
             </p>
           ) : (
+            <>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
@@ -259,7 +264,7 @@ export default function AdminPricesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => {
+                {pager.rows.map((r) => {
                   const lastPrice = numOrNull(r.last_price);
                   const status = priceStaleness(r.price_synced_at);
                   const isRevalidating = revalidating.has(r.id);
@@ -320,6 +325,8 @@ export default function AdminPricesPage() {
                 })}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
+            </>
           )}
         </div>
       </Card>

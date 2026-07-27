@@ -14,6 +14,7 @@ import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/li
 import { Button, Card } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
@@ -113,6 +114,8 @@ export function AccountBalancesDialog({
   const thCls =
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
+  const pager = usePagination(sortedRows);
+
   return (
     <Modal open={open} onClose={onClose}>
       <Card>
@@ -185,7 +188,7 @@ export function AccountBalancesDialog({
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map((p) => (
+                {pager.rows.map((p) => (
                   <tr
                     key={p.date}
                     className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -209,6 +212,7 @@ export function AccountBalancesDialog({
                 ))}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
           </div>
         )}
       </Card>

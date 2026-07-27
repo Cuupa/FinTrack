@@ -28,6 +28,7 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
 
@@ -379,6 +380,8 @@ function SavingsPlansCardInner() {
     });
   }
 
+  const pager = usePagination(planRows);
+
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -449,7 +452,7 @@ function SavingsPlansCardInner() {
               </tr>
             </thead>
             <tbody>
-              {planRows.map(({ plan, asset }) => {
+              {pager.rows.map(({ plan, asset }) => {
                 const cur = asset.currency || base;
                 const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
                 return (
@@ -510,6 +513,7 @@ function SavingsPlansCardInner() {
               })}
             </tbody>
           </table>
+          <TablePagination pager={pager} />
         </div>
       )}
 

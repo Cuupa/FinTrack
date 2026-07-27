@@ -26,6 +26,7 @@ import { Button, Card, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 import { AccountBalancesDialog } from "./account-balances-dialog";
 import { AccountEditDialog } from "./account-edit-dialog";
@@ -141,6 +142,8 @@ export function AccountsView() {
       setBusy(false);
     }
   }
+
+  const pager = usePagination(rows);
 
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
@@ -329,7 +332,7 @@ export function AccountsView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ account, signed }) => {
+                {pager.rows.map(({ account, signed }) => {
                   const cur = account.currency || base;
                   return (
                     <tr
@@ -380,6 +383,7 @@ export function AccountsView() {
                 })}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
           </div>
         )}
       </Card>

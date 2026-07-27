@@ -17,6 +17,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatInstant } from "@/lib/format";
 import { formatCompactJson, formatFullJson } from "@/lib/admin/audit-format";
@@ -106,6 +107,9 @@ export default function AdminAuditPage() {
     });
   }, [rows, actionFilter, query]);
 
+
+  // Same 25-row paging as every other table in the app.
+  const pager = usePagination(filtered);
   return (
     <div className="space-y-6">
       <div>
@@ -155,6 +159,7 @@ export default function AdminAuditPage() {
               {rows.length === 0 ? t("admin.audit.empty") : t("admin.audit.noMatch")}
             </p>
           ) : (
+            <>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
@@ -167,7 +172,7 @@ export default function AdminAuditPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => {
+                {pager.rows.map((r) => {
                   const isExpanded = expanded === r.id;
                   const oldCompact = formatCompactJson(r.old_value);
                   const newCompact = formatCompactJson(r.new_value);
@@ -230,6 +235,8 @@ export default function AdminAuditPage() {
                 })}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
+            </>
           )}
         </div>
 
