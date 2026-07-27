@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
-import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -385,7 +385,7 @@ export function SpendingView() {
                       key={tx.id}
                       className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                     >
-                      <td className="px-3 py-2 text-zinc-500">{tx.date}</td>
+                      <td className="px-3 py-2 text-zinc-500">{formatDate(tx.date)}</td>
                       <td className="px-3 py-2 font-medium" data-private>
                         {tx.payee}
                       </td>

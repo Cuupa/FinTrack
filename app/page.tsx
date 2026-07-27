@@ -1,80 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { useAuth } from "@/lib/auth/auth-context";
 import type { Timeframe } from "@/lib/finance/dates";
 import { NetWorthHero } from "@/components/dashboard/net-worth-hero";
-import { AssetTable } from "@/components/assets/asset-table";
-import { AddAssetPanel } from "@/components/assets/add-asset-panel";
-import { ExportMenu } from "@/components/dashboard/export-menu";
-import { ShareMenu } from "@/components/dashboard/share-menu";
 import { LiveShareSync } from "@/components/dashboard/live-share-sync";
-import { WatchlistCard } from "@/components/dashboard/watchlist-card";
 import { GuidedTour } from "@/components/onboarding/guided-tour";
 import { TourReplayButton } from "@/components/onboarding/page-tours";
-import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
-import {
-  Button,
-  PAGE_STACK,
-  PageHeader,
-  SECTION_STACK,
-  SectionTitle,
-} from "@/components/ui/primitives";
+import { PAGE_STACK, PageHeader } from "@/components/ui/primitives";
 import { AreaCards } from "@/components/dashboard/area-cards";
-import { Modal } from "@/components/ui/modal";
+import { WealthSplitCard } from "@/components/dashboard/wealth-split-card";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { isStorageFullError } from "@/lib/store/errors";
 
 export default function DashboardPage() {
   const { loading, loadError, reload } = usePortfolio();
-  const { mode } = useAuth();
   const { t } = useI18n();
-  const [adding, setAdding] = useState(false);
   // Shared so the holdings table's profit column tracks the hero chart timeframe.
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   // Bumped by the "?" TourReplayButton to force a fresh, open GuidedTour mount.
   const [tourRestart, setTourRestart] = useState(0);
-
-  // A CSV import handed off via `onRun` keeps running after the add-asset
-  // modal has already closed — this tracks it for the floating status pill
-  // below (running spinner → brief success pill, or a sticky error pill).
-  const [importStatus, setImportStatus] = useState<
-    { kind: "running" } | { kind: "success" } | { kind: "error"; message: string } | null
-  >(null);
-  const importHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (importHideTimer.current) clearTimeout(importHideTimer.current);
-    };
-  }, []);
-
-  function handleImportRun(job: Promise<void>) {
-    if (importHideTimer.current) {
-      clearTimeout(importHideTimer.current);
-      importHideTimer.current = null;
-    }
-    setImportStatus({ kind: "running" });
-    job.then(
-      () => {
-        setImportStatus({ kind: "success" });
-        importHideTimer.current = setTimeout(() => setImportStatus(null), 4000);
-      },
-      (e: unknown) => {
-        setImportStatus({
-          kind: "error",
-          message: isStorageFullError(e)
-            ? t("common.storageFull")
-            : e instanceof Error
-              ? e.message
-              : t("import.applyError"),
-        });
-      },
-    );
-  }
 
   return (
     <div className={PAGE_STACK}>
@@ -85,25 +31,6 @@ export default function DashboardPage() {
           !loading && !loadError ? (
             <TourReplayButton onClick={() => setTourRestart((n) => n + 1)} />
           ) : undefined
-        }
-        actions={
-          <>
-            <ShareMenu />
-            {/* Registered users export from the profile menu; guests (no profile
-                menu) keep the standalone export button here. */}
-            {mode !== "registered" && <ExportMenu />}
-            {!adding && (
-              <Button
-                variant="primary"
-                size="sm"
-                className="shrink-0 whitespace-nowrap"
-                data-tour="add-asset"
-                onClick={() => setAdding(true)}
-              >
-                {t("dashboard.addAsset")}
-              </Button>
-            )}
-          </>
         }
       />
 
@@ -116,6 +43,11 @@ export default function DashboardPage() {
           <LiveShareSync />
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
 
+          {/* What the number above is MADE of, and how the current month is
+              running. Net worth alone says how rich you are; these two say
+              where it sits and whether this month is going the right way. */}
+          <WealthSplitCard />
+
           {/* Everyday money before investments. The order is the argument: the
               home screen used to be the holdings table with a net-worth chart
               on top, so accounts and spending were only ever a sidebar click
@@ -124,57 +56,10 @@ export default function DashboardPage() {
             <AreaCards />
           </div>
 
-          {/* Investments are one section of the home screen now, not the whole
-              of it — hence the heading, which the page never had. */}
-          <div className={SECTION_STACK}>
-            <SectionTitle>{t("nav.group.invest")}</SectionTitle>
-            <AssetTable timeframe={timeframe} />
-            <SavingsPlansCard />
-            <WatchlistCard />
-          </div>
-
           <GuidedTour restartToken={tourRestart} />
         </>
       )}
 
-      {/* Add-asset opens in a modal so it appears right where you clicked,
-          not buried at the bottom of the page. Window-wide (capped at the
-          site's 1600px content width) so the CSV merge view has room. */}
-      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-[1600px]">
-        <AddAssetPanel onDone={() => setAdding(false)} onRun={handleImportRun} />
-      </Modal>
-
-      {/* Floating status pill for a CSV import handed off via `onRun`: the
-          modal above already closed by the time this shows. Sits above the
-          mobile nav (z-20) but below the modal (z-50). */}
-      {importStatus && (
-        <div className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm shadow-lg md:bottom-6 dark:border-zinc-800 dark:bg-zinc-900">
-          {importStatus.kind === "running" && (
-            <>
-              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent dark:border-zinc-600" />
-              <span>{t("import.importing")}</span>
-            </>
-          )}
-          {importStatus.kind === "success" && (
-            <span className="text-emerald-600 dark:text-emerald-400">
-              {t("import.finished")}
-            </span>
-          )}
-          {importStatus.kind === "error" && (
-            <>
-              <span className="text-red-600 dark:text-red-400">{importStatus.message}</span>
-              <button
-                type="button"
-                onClick={() => setImportStatus(null)}
-                aria-label={t("common.close")}
-                className="shrink-0 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-              >
-                ✕
-              </button>
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }

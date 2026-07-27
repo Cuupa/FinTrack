@@ -47,9 +47,17 @@ import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 export function NetWorthHero({
   timeframe,
   onTimeframe,
+  investmentsOnly = false,
 }: {
   timeframe: Timeframe;
   onTimeframe: (tf: Timeframe) => void;
+  /**
+   * Chart the DEPOT alone instead of total net worth. Set on /portfolio, where
+   * the question is "how are my investments doing" -- folding the current
+   * account and the mortgage into that line would answer a different one. The
+   * dashboard leaves it off and charts everything.
+   */
+  investmentsOnly?: boolean;
 }) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
@@ -65,7 +73,7 @@ export function NetWorthHero({
   const currency = data.profile.currency;
   // Balance accounts & liabilities (ROADMAP #1) fold into net worth only when
   // the flag is on; off, the arrays are undefined and net worth is unchanged.
-  const accountsEnabled = useFeatureFlag("accounts");
+  const accountsEnabled = useFeatureFlag("accounts") && !investmentsOnly;
   const accounts = accountsEnabled ? data.accounts : undefined;
   const accountBalances = accountsEnabled ? data.accountBalances : undefined;
   const comparing = benchmarks.length > 0;

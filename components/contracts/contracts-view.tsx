@@ -403,7 +403,7 @@ export function ContractsView() {
                     <td className="px-3 py-2">
                       {contract.renewalDate ? (
                         <span className={noticeOpen ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
-                          {contract.renewalDate}
+                          {formatDate(contract.renewalDate)}
                           {noticeOpen && ` · ${t("contracts.list.noticeOpen")}`}
                         </span>
                       ) : (

@@ -108,7 +108,18 @@ export const NAV_ROUTES: NavRoute[] = [
   },
 
   // Investments: everything that reads the transaction log rather than a
-  // balance you typed in.
+  // balance you typed in. `/portfolio` leads the group because it holds what
+  // used to sit on the dashboard -- positions, savings plans, watchlist and
+  // the depot chart -- which made the home screen read as a portfolio tracker
+  // with everyday money bolted on.
+  {
+    href: "/portfolio",
+    key: "nav.portfolio",
+    // Stacked-holdings glyph: three bars of differing height in a frame.
+    icon: <path d="M4 5h16v14H4zM8 15v-4M12 15V8M16 15v-6" />,
+    primary: true,
+    group: "invest",
+  },
   {
     href: "/analysis",
     key: "nav.analysis",

@@ -159,10 +159,16 @@ export function formatNumber(value: number, digits = 2): string {
 
 export function formatDate(iso: string): string {
   const day = iso.slice(0, 10);
+  // The locale's own all-numeric form: 27.07.2026 (de), 07/27/2026 (en),
+  // 27/07/2026 (es). Deliberately NOT `month: "short"` ("27. Juli 2026"),
+  // which was a second date format competing with the raw ISO strings a few
+  // tables still printed -- three shapes for one kind of value. Two-digit day
+  // and month keep the column width stable, which a table needs and the bare
+  // locale default ("27.7.2026") does not give.
   return new Intl.DateTimeFormat(intlLocale(), {
     year: "numeric",
-    month: "short",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(new Date(day + "T00:00:00"));
 }
 

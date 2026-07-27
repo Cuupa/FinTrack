@@ -7,7 +7,7 @@ import {
   nextBooking,
   pendingBookings,
 } from "@/lib/finance/contract-bookings";
-import type { Contract } from "@/lib/types";
+import type { Account, Contract } from "@/lib/types";
 
 function contract(overrides: Partial<Contract> = {}): Contract {
   return {
@@ -101,9 +101,55 @@ describe("pendingBookings", () => {
         categoryId: null,
         date: "2024-01-15",
         amount: -12.99,
+        interestAmount: 0,
         transferAccountId: null,
       },
     ]);
+  });
+
+  it("splits a loan instalment into interest and principal", () => {
+    // 100,000 outstanding at 12 % p.a. = 1 % a month = 1,000 interest, so a
+    // 1,500 instalment repays 500. Booking the whole 1,500 as a transfer would
+    // hide the 1,000 from every expense figure.
+    const loan: Account = {
+      id: "acc-loan",
+      name: "Loan",
+      kind: "loan",
+      currency: null,
+      isLiability: true,
+      openingBalance: 100_000,
+      openedOn: "2023-01-01",
+      interestRate: 12,
+    };
+    const rows = pendingBookings(
+      [contract({ name: "Instalment", amount: 1500, targetAccountId: "acc-loan" })],
+      "2024-01-20",
+      [loan],
+      [],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].amount).toBe(-1500);
+    expect(rows[0].interestAmount).toBeCloseTo(1000, 6);
+    expect(rows[0].transferAccountId).toBe("acc-loan");
+  });
+
+  it("does not split when the target is not an interest-bearing liability", () => {
+    const policy: Account = {
+      id: "acc-policy",
+      name: "Policy",
+      kind: "other_asset",
+      currency: null,
+      isLiability: false,
+      openingBalance: 0,
+      openedOn: "2023-01-01",
+    };
+    const rows = pendingBookings(
+      [contract({ name: "Riester", amount: 250, targetAccountId: "acc-policy" })],
+      "2024-01-20",
+      [policy],
+      [],
+    );
+    expect(rows[0].interestAmount).toBe(0);
   });
 
   it("carries the target account so the booking counts as a transfer", () => {

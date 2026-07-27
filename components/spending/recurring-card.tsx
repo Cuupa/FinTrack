@@ -16,6 +16,7 @@
 // answers in two places, neither of them complete.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
@@ -26,6 +27,7 @@ import { Button, Card } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 
 type SortKey = "name" | "amount" | "interval" | "next";
 
@@ -54,6 +56,9 @@ interface DueRow {
   accountId: string;
   categoryId: string | null;
   transferAccountId: string | null;
+  /** Positive magnitude of the interest share, 0 when the charge does not
+   *  split. See `interestShare` in lib/finance/contract-bookings.ts. */
+  interestAmount: number;
 }
 
 export function RecurringCard() {
@@ -74,6 +79,9 @@ export function RecurringCard() {
     () => new Map(data.accounts.map((a) => [a.id, a])),
     [data.accounts],
   );
+  // Needed for the interest split: the debt outstanding on a booking date is
+  // the carried-forward balance, not just the readings the user typed.
+  const movements = useAccountMovements();
 
   const intervalLabel = (i: string) => t(`recurring.interval.${i}` as Parameters<typeof t>[0]);
 
@@ -126,7 +134,15 @@ export function RecurringCard() {
 
   const due = useMemo<DueRow[]>(() => {
     const out: DueRow[] = [];
-    for (const b of pendingBookings(data.contracts, todayIso)) {
+    // Accounts + balances + movements are passed so a loan instalment can be
+    // split into its interest and principal shares.
+    for (const b of pendingBookings(
+      data.contracts,
+      todayIso,
+      data.accounts,
+      data.accountBalances,
+      movements,
+    )) {
       out.push({
         key: `c|${b.contractId}|${b.date}`,
         sourceId: b.contractId,
@@ -137,6 +153,7 @@ export function RecurringCard() {
         accountId: b.accountId,
         categoryId: b.categoryId,
         transferAccountId: b.transferAccountId,
+        interestAmount: b.interestAmount,
       });
     }
     for (const b of duePlannedBookings(data.plannedCashflows, todayIso)) {
@@ -150,10 +167,12 @@ export function RecurringCard() {
         accountId: b.accountId,
         categoryId: b.categoryId,
         transferAccountId: b.transferAccountId,
+        // A plan carries no rate schedule of its own, so it never splits.
+        interestAmount: 0,
       });
     }
     return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  }, [data.contracts, data.plannedCashflows, todayIso]);
+  }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, movements, todayIso]);
 
   const selected = due.filter((d) => !excluded.has(d.key));
 
@@ -180,6 +199,40 @@ export function RecurringCard() {
       const newestContract = new Map<string, string>();
       const newestPlanned = new Map<string, string>();
       for (const d of selected) {
+        const recurringId = d.kind === "contract" ? d.sourceId : null;
+        const plannedId = d.kind === "planned" ? d.sourceId : null;
+        // A loan instalment posts as TWO rows: the interest is consumed and
+        // must reach the expense figures, the principal is a transfer that
+        // shrinks the debt. One row could only ever be one of the two.
+        if (d.interestAmount > 0) {
+          await addSpendingTransaction({
+            accountId: d.accountId,
+            categoryId: d.categoryId,
+            date: d.date,
+            amount: -d.interestAmount,
+            payee: `${d.name} (${t("recurring.split.interest")})`,
+            note: null,
+            recurringId,
+            plannedId,
+            // No transfer: this money is gone, it does not land anywhere.
+            transferAccountId: null,
+          });
+          await addSpendingTransaction({
+            accountId: d.accountId,
+            categoryId: d.categoryId,
+            date: d.date,
+            amount: d.amount + d.interestAmount, // both negative: the remainder
+            payee: `${d.name} (${t("recurring.split.principal")})`,
+            note: null,
+            recurringId,
+            plannedId,
+            transferAccountId: d.transferAccountId,
+          });
+          const bucketSplit = d.kind === "contract" ? newestContract : newestPlanned;
+          const prevSplit = bucketSplit.get(d.sourceId);
+          if (!prevSplit || d.date > prevSplit) bucketSplit.set(d.sourceId, d.date);
+          continue;
+        }
         await addSpendingTransaction({
           accountId: d.accountId,
           categoryId: d.categoryId,
@@ -187,8 +240,8 @@ export function RecurringCard() {
           amount: d.amount,
           payee: d.name,
           note: null,
-          recurringId: d.kind === "contract" ? d.sourceId : null,
-          plannedId: d.kind === "planned" ? d.sourceId : null,
+          recurringId,
+          plannedId,
           transferAccountId: d.transferAccountId,
         });
         const bucket = d.kind === "contract" ? newestContract : newestPlanned;
@@ -255,7 +308,11 @@ export function RecurringCard() {
                   className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                 >
                   <td className="px-3 py-2 font-medium" data-private>
-                    {r.name}
+                    {/* Click through to the entry's own page: what it is plus
+                        every booking it has produced. */}
+                    <Link href={`/recurring/${r.kind}/${r.id}`} className="hover:underline">
+                      {r.name}
+                    </Link>
                     {r.accountName && (
                       <div className="text-xs font-normal text-zinc-500">{r.accountName}</div>
                     )}
@@ -310,6 +367,19 @@ export function RecurringCard() {
                     />
                     <span className={checked ? "" : "text-zinc-400 line-through"} data-private>
                       {d.name} <span className="text-zinc-500">{formatDate(d.date)}</span>
+                      {/* Say up front that this posts two rows, so the ledger
+                          does not surprise anyone afterwards. */}
+                      {d.interestAmount > 0 && (
+                        <span className="block text-xs text-zinc-500">
+                          {t("recurring.split.hint", {
+                            interest: formatCurrency(d.interestAmount, currency),
+                            principal: formatCurrency(
+                              Math.abs(d.amount) - d.interestAmount,
+                              currency,
+                            ),
+                          })}
+                        </span>
+                      )}
                     </span>
                   </label>
                   <span
