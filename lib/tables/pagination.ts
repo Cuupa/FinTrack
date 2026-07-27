@@ -1,10 +1,6 @@
-// Paging for the shared table shell -- pure, no React (the hook lives next to
-// the component in components/ui/table.tsx, the arithmetic lives here so it is
-// unit-testable, same split as lib/tables/sort.ts).
-//
-// One page size for the whole app: the tables are supposed to look and behave
-// identically everywhere, and a per-table size is a per-table decision nobody
-// can keep consistent. Short tables simply never show the controls.
+// Paging arithmetic for the shared table shell -- pure, no React (the hook
+// lives with the component in components/ui/table.tsx), same split as
+// lib/tables/sort.ts. One page size app-wide, so every table behaves alike.
 
 /** Rows per page, everywhere. */
 export const DEFAULT_PAGE_SIZE = 25;
@@ -12,8 +8,8 @@ export const DEFAULT_PAGE_SIZE = 25;
 export interface PageSlice<T> {
   /** The rows to render for the current page. */
   rows: T[];
-  /** 1-based, clamped into [1, pageCount] -- a page that no longer exists
-   *  (the list shrank under the user) shows the last one instead of nothing. */
+  /** 1-based, clamped into [1, pageCount] so a shrinking list never leaves an
+   *  empty table behind. */
   page: number;
   pageCount: number;
   /** 1-based index of the first row shown; 0 when there are no rows at all. */
@@ -21,8 +17,7 @@ export interface PageSlice<T> {
   /** 1-based index of the last row shown; 0 when there are no rows at all. */
   to: number;
   total: number;
-  /** False while everything fits on one page: the controls stay hidden rather
-   *  than rendering a dead "1 of 1". */
+  /** False while everything fits on one page (controls stay hidden). */
   hasPages: boolean;
 }
 

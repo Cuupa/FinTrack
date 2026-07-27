@@ -57,7 +57,6 @@ const isAssetTracking = (v: string) => v.startsWith(ASSET_PREFIX);
 /** A stored goal, back as the tagged value of the tracking picker. */
 function trackingOf(goal: Goal): string {
   if (goal.tracksInvestments) {
-    // The narrower scope wins, exactly as `goalProgress` reads it.
     if (goal.linkedAssetId) return `${ASSET_PREFIX}${goal.linkedAssetId}`;
     return `${DEPOT_PREFIX}${goal.linkedPortfolioId ?? ""}`;
   }
@@ -175,8 +174,6 @@ function GoalForm({
       targetDate: targetDate || null,
       linkedAccountId: depot ? null : tracking || null,
       tracksInvestments: depot,
-      // A single position spans every broker, so the two scopes are exclusive:
-      // whichever one the picker names, the other stays null.
       linkedPortfolioId:
         depot && !position ? tracking.slice(DEPOT_PREFIX.length) || null : null,
       linkedAssetId: position ? tracking.slice(ASSET_PREFIX.length) : null,
@@ -271,7 +268,6 @@ function GoalForm({
             <SelectMenu
               className="mt-1 w-full"
               ariaLabel={t("goals.form.linkedAccountLabel")}
-              // Accounts plus every position adds up to a long list.
               searchable
               value={tracking}
               onChange={setTracking}
@@ -284,8 +280,6 @@ function GoalForm({
                   value: `${DEPOT_PREFIX}${p.id}`,
                   label: t("goals.form.brokerDepot", { name: p.name }),
                 })),
-                // One position ("the ETF should be worth 10k"): the narrowest
-                // depot scope, spanning every broker the asset is held at.
                 ...assets.map((a) => ({
                   value: `${ASSET_PREFIX}${a.id}`,
                   label: t("goals.form.position", { name: a.name }),
@@ -390,9 +384,7 @@ export function GoalsView() {
     [data.assets, data.transactions, data.portfolios, valuation],
   );
 
-  // Every asset is offerable as a single-position goal, including one not held
-  // yet: "Meta should be worth 2k" is a goal to BUILD the position, so its
-  // progress simply starts at 0.
+  // Assets not held yet are offered too: the goal is to build the position.
   const goalAssets = useMemo(
     () => [...data.assets].sort((a, b) => a.name.localeCompare(b.name)),
     [data.assets],

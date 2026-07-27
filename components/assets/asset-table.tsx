@@ -112,7 +112,6 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     return list.sort((a, b) => compare(a, b, sort.key) * sort.dir);
   }, [holdings, query, typeFilter, sort, total, data.transactions, timeframe, valuation]);
 
-  // Paging sits before the early return: hooks may not run conditionally.
   const pager = usePagination(rows);
   const pastPager = usePagination(pastHoldings);
 
@@ -285,8 +284,6 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
             </tbody>
           </table>
         </div>
-        {/* One pager for both renderings above: the mobile card list and the
-            table are the same rows, so they must page together. */}
         <div className="px-4 pb-4">
           <TablePagination pager={pager} />
         </div>

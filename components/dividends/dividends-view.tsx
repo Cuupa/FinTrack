@@ -269,7 +269,6 @@ export function DividendsView() {
     });
   }, [upcoming, upSort]);
 
-  // Before the early return: hooks may not run conditionally.
   const upcomingPager = usePagination(sortedUpcoming);
   const holdingsPager = usePagination(rows);
 

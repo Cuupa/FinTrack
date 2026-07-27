@@ -55,9 +55,7 @@ export function AccountsView() {
   const [currency, setCurrency] = useState(base);
   const [opening, setOpening] = useState("");
   const [openedOn, setOpenedOn] = useState(today());
-  // Credit interest, asset accounts only: a liability's rate belongs to the
-  // payoff planner and is edited there (/debt), so there is exactly one place
-  // writing each direction's rate.
+  // Credit interest, asset accounts only: a liability's rate is edited on /debt.
   const [interestRate, setInterestRate] = useState("");
   const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>("MONTHLY");
   const [busy, setBusy] = useState(false);
@@ -111,8 +109,6 @@ export function AccountsView() {
     try {
       const cur = currency.trim().toUpperCase();
       const isLiability = LIABILITY_KINDS.includes(kind);
-      // A rate typed before switching to a liability kind is dropped, not
-      // saved into the payoff planner's field behind the user's back.
       const rate = !isLiability && interestRate.trim() ? parseDecimal(interestRate) : null;
       if (rate !== null && !Number.isFinite(rate)) {
         setError(t("common.invalidAmount"));
@@ -251,8 +247,6 @@ export function AccountsView() {
               className={inputCls}
             />
           </div>
-          {/* Credit interest: only for accounts that EARN it. A liability's
-              rate drives the payoff schedule and is edited on /debt. */}
           {!LIABILITY_KINDS.includes(kind) && (
             <>
               <div>
@@ -341,8 +335,6 @@ export function AccountsView() {
                     >
                       <td className="px-3 py-2 font-medium" data-private>
                         {account.name}
-                        {/* Interest changes the balance without anybody
-                            booking anything, so the row says it does. */}
                         {!account.isLiability && (account.interestRate ?? 0) > 0 && (
                           <div className="text-xs font-normal text-zinc-500">
                             {t("accounts.list.interest", {

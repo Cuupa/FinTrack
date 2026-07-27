@@ -155,14 +155,9 @@ export interface Pager<T> extends PageSlice<T> {
 }
 
 /**
- * Pages an already-sorted, already-filtered row list. Call sites map over
- * `pager.rows` instead of the full list and render {@link TablePagination}
- * under the table -- that is the whole integration, so every table pages the
- * same way and at the same size.
- *
- * The current page is CLAMPED on read rather than corrected in an effect
- * (Next 16's `react-hooks/set-state-in-effect` fails the build on the latter,
- * and deleting the last row of page 4 must not leave an empty table behind).
+ * Pages an already-sorted row list: map over `pager.rows` and render
+ * {@link TablePagination} under the table. The page is clamped on read, not
+ * corrected in an effect (Next 16 fails the build on the latter).
  */
 export function usePagination<T>(
   rows: readonly T[],
@@ -172,11 +167,7 @@ export function usePagination<T>(
   return { ...pageSlice(rows, page, pageSize), setPage };
 }
 
-/**
- * The paging footer: which rows are on screen, and the way to the next ones.
- * Renders nothing while everything fits on one page, so a three-row table
- * looks exactly as it did before.
- */
+/** Paging footer; renders nothing while everything fits on one page. */
 export function TablePagination<T>({ pager }: { pager: Pager<T> }) {
   const { t } = useI18n();
   if (!pager.hasPages) return null;

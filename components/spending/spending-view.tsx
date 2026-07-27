@@ -144,8 +144,6 @@ export function SpendingView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.spendingTransactions, sort, accountsById, categoriesById]);
 
-  // The ledger is the table that grows without limit, so it pages like every
-  // other one -- 25 rows, controls only once there is a second page.
   const pager = usePagination(rows);
 
   function toggleSort(key: SortKey) {
@@ -225,12 +223,8 @@ export function SpendingView() {
           <p className="mt-2 text-sm text-zinc-500">{t("spending.form.noAccounts")}</p>
         ) : (
           <>
-            {/* The form reads top to bottom as one decision chain: WHAT kind
-                of entry this is (expense or income, one-off or repeating),
-                then how much and from where, then what it was for. The two
-                controls that change the meaning of every field below them
-                therefore sit in their own header row, instead of being two of
-                nine equal boxes in one grid. */}
+            {/* The two controls that change what every field below means sit
+                in their own header row. */}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800">
               <SegmentedControl
                 value={txType}
@@ -291,8 +285,6 @@ export function SpendingView() {
                   className={inputCls}
                 />
               </div>
-              {/* Only meaningful for a repeating entry, and right next to the
-                  date it repeats from. */}
               {recurring && (
                 <div>
                   <label className="text-sm font-medium">{t("recurring.col.interval")}</label>
@@ -367,8 +359,6 @@ export function SpendingView() {
                 />
               </div>
             </div>
-            {/* One action, at the end of the chain -- not a tenth grid cell
-                that lands wherever the column count leaves a gap. */}
             <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
               {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
               <Button

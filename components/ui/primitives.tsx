@@ -214,13 +214,9 @@ export function EmptyState({
 }
 
 /**
- * On/off switch, rendered as a sliding track rather than a checkbox (owner
- * rule): a checkbox reads as "tick this to include it in a list", a switch
- * reads as "this mode is on", and a mode is what these controls actually set.
- *
- * A real `<button role="switch">`, so it stays keyboard- and screen-reader
- * operable; keep checkboxes for genuine multi-select lists (picking which due
- * bookings to post), never for a mode.
+ * On/off switch as a sliding track, not a checkbox (owner rule): a checkbox
+ * means "include this row", a switch means "this mode is on". Keep checkboxes
+ * for multi-select lists.
  */
 export function Toggle({
   checked,

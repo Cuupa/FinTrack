@@ -21,8 +21,7 @@ export interface GoalInvestments {
   total: number;
   /** Market value per portfolio (= per broker) id. */
   byPortfolio: Record<string, number>;
-  /** Market value per asset id -- one position ("the ETF should be worth
-   *  10k", "Meta should be worth 2k"). */
+  /** Market value per asset id -- one position, across every broker. */
   byAsset: Record<string, number>;
 }
 
@@ -30,13 +29,7 @@ export interface GoalInvestments {
  * Current depot value overall, per broker and per single position. A holding
  * belongs to a broker through its TRANSACTIONS (an `Asset` carries no
  * portfolio id), so the per-broker figure is a full re-summary over that
- * broker's transactions, not a regrouping of the combined one. Portfolio
- * counts are single digits, so the repeated pass is cheaper than threading
- * portfolio ids through the holding summaries.
- *
- * The per-position figure deliberately spans every broker: the same ETF held
- * at two of them is one position to the user, so a goal for it means the whole
- * stake.
+ * broker's transactions, not a regrouping of the combined one.
  */
 export function goalInvestments(
   assets: Asset[],
@@ -113,8 +106,6 @@ export function goalProgress(
   // silently taking over.
   if (goal.tracksInvestments) {
     if (!investments) return 0;
-    // A single position is the narrowest of the three depot scopes and wins:
-    // a goal is one position, one broker's depot, or all of it.
     if (goal.linkedAssetId) return investments.byAsset[goal.linkedAssetId] ?? 0;
     return goal.linkedPortfolioId
       ? (investments.byPortfolio[goal.linkedPortfolioId] ?? 0)

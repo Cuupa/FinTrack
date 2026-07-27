@@ -47,8 +47,7 @@ export function AccountEditDialog({
   const [currency, setCurrency] = useState(account.currency || base);
   const [opening, setOpening] = useState(String(account.openingBalance));
   const [openedOn, setOpenedOn] = useState(account.openedOn);
-  // Credit interest, asset accounts only -- a liability's rate belongs to the
-  // payoff planner (DebtDetailsDialog) and stays editable only there.
+  // Credit interest, asset accounts only (a liability's rate lives on /debt).
   const [interestRate, setInterestRate] = useState(
     account.interestRate != null ? String(account.interestRate) : "",
   );
@@ -92,9 +91,7 @@ export function AccountEditDialog({
         isLiability,
         openingBalance: openingVal,
         openedOn,
-        // Turning an asset account into a liability hands the rate to the
-        // payoff planner instead, so this only ever writes the credit rate it
-        // showed -- it never clears a debt rate it never displayed.
+        // Never clear a debt rate this dialog never showed.
         ...(isLiability ? {} : { interestRate: rate, interestFrequency: rate ? interestFrequency : null }),
       });
       onClose();
