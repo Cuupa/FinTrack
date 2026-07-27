@@ -19,6 +19,7 @@ import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from
 import { assetIdentifier, type AssetType } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
 type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
@@ -111,6 +112,10 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     return list.sort((a, b) => compare(a, b, sort.key) * sort.dir);
   }, [holdings, query, typeFilter, sort, total, data.transactions, timeframe, valuation]);
 
+  // Paging sits before the early return: hooks may not run conditionally.
+  const pager = usePagination(rows);
+  const pastPager = usePagination(pastHoldings);
+
   if (data.assets.length === 0) return null;
 
   function toggleSort(key: SortKey) {
@@ -153,7 +158,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         <>
         {/* Mobile: stacked cards (the wide table is hidden below md). */}
         <ul className="divide-y divide-zinc-100 md:hidden dark:divide-zinc-800/60">
-          {rows.map(({ h, allocation, entry, profit }) => {
+          {pager.rows.map(({ h, allocation, entry, profit }) => {
             const nativeCur = h.currency || currency;
             const isCash = h.asset.type === "CASH";
             const gain = h.price - entry;
@@ -215,7 +220,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ h, allocation, entry, profit }) => {
+              {pager.rows.map(({ h, allocation, entry, profit }) => {
                 const nativeCur = h.currency || currency;
                 const isCash = h.asset.type === "CASH";
                 const gain = h.price - entry;
@@ -280,6 +285,11 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
             </tbody>
           </table>
         </div>
+        {/* One pager for both renderings above: the mobile card list and the
+            table are the same rows, so they must page together. */}
+        <div className="px-4 pb-4">
+          <TablePagination pager={pager} />
+        </div>
         </>
       )}
     </div>
@@ -303,7 +313,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
               </tr>
             </thead>
             <tbody>
-              {pastHoldings.map((h) => (
+              {pastPager.rows.map((h) => (
                 <tr
                   key={h.asset.id}
                   className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -327,6 +337,9 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
               ))}
             </tbody>
           </table>
+          <div className="px-4 pb-4">
+            <TablePagination pager={pastPager} />
+          </div>
         </div>
       </details>
     )}

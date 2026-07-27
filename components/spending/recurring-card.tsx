@@ -25,6 +25,7 @@ import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
@@ -268,6 +269,8 @@ export function RecurringCard() {
     );
   }
 
+  const pager = usePagination(rows);
+
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
@@ -302,7 +305,7 @@ export function RecurringCard() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {pager.rows.map((r) => (
                 <tr
                   key={`${r.kind}:${r.id}`}
                   className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -333,6 +336,7 @@ export function RecurringCard() {
               ))}
             </tbody>
           </table>
+          <TablePagination pager={pager} />
         </div>
       )}
 

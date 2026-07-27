@@ -18,6 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { ContractForm } from "@/components/contracts/contract-form";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { useFeature } from "@/lib/flags/flags-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
@@ -234,6 +235,8 @@ export function ContractsView() {
     setDismissed((d) => new Set(d).add(`${c.payee}|${c.amount}`));
   }
 
+  const pager = usePagination(rows);
+
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
@@ -375,7 +378,7 @@ export function ContractsView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ contract, noticeOpen }) => (
+                {pager.rows.map(({ contract, noticeOpen }) => (
                   <tr
                     key={contract.id}
                     className={`border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40 ${
@@ -424,6 +427,7 @@ export function ContractsView() {
                 ))}
               </tbody>
             </table>
+            <TablePagination pager={pager} />
           </div>
         )}
       </Card>

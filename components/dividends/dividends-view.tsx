@@ -42,6 +42,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardSkeleton, ListRowSkeleton } from "@/components/dividends/dividends-skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import { yAxisWidth } from "@/components/charts/axis";
 
 const EMERALD = "#10b981";
@@ -268,6 +269,10 @@ export function DividendsView() {
     });
   }, [upcoming, upSort]);
 
+  // Before the early return: hooks may not run conditionally.
+  const upcomingPager = usePagination(sortedUpcoming);
+  const holdingsPager = usePagination(rows);
+
   if (data.assets.length === 0) {
     return (
       <Card>
@@ -437,7 +442,7 @@ export function DividendsView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedUpcoming.map((f, i) => (
+                  {upcomingPager.rows.map((f, i) => (
                     <tr
                       key={`${f.asset.id}:${f.date}:${i}`}
                       className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -471,6 +476,7 @@ export function DividendsView() {
                   ))}
                 </tbody>
               </table>
+              <TablePagination pager={upcomingPager} />
             </div>
             <p className="mt-3 text-xs text-zinc-400">{t("div.forecastDisclaimer")}</p>
           </>
@@ -503,7 +509,7 @@ export function DividendsView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {holdingsPager.rows.map((r) => (
                   <tr
                     key={r.asset.id}
                     className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
@@ -532,6 +538,7 @@ export function DividendsView() {
                 ))}
               </tbody>
             </table>
+            <TablePagination pager={holdingsPager} />
           </div>
         )}
       </Card>
