@@ -44,6 +44,29 @@ export const TOUR_STEPS: TourStep[] = [
     bodyKey: "tour.areas.body",
   },
   { key: "nav", target: "nav", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+  // One step per navigation group (targets set in components/sidebar.tsx). The
+  // groups carry the product's mental model, so the tour has to say what each
+  // one holds -- "more to explore" alone left the user to guess. Dropped
+  // automatically by filterVisibleSteps wherever the sidebar is hidden (narrow
+  // viewport) or a group's routes are all flagged off.
+  {
+    key: "navEveryday",
+    target: "nav-group-everyday",
+    titleKey: "tour.nav.everyday.title",
+    bodyKey: "tour.nav.everyday.body",
+  },
+  {
+    key: "navInvest",
+    target: "nav-group-invest",
+    titleKey: "tour.nav.invest.title",
+    bodyKey: "tour.nav.invest.body",
+  },
+  {
+    key: "navPlan",
+    target: "nav-group-plan",
+    titleKey: "tour.nav.plan.title",
+    bodyKey: "tour.nav.plan.body",
+  },
   {
     key: "themeToggle",
     target: "theme-toggle",

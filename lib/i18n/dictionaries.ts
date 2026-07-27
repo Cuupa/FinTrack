@@ -264,7 +264,14 @@ export const en = {
   "tour.contracts.suggestions.body":
     "A payment that repeats at a regular cadence shows up here so you can take it into the register. Loan instalments are left out: paying a debt down is a transfer, not a running cost.",
   "tour.nav.title": "More to explore",
-  "tour.nav.body": "Analysis, dividends, and simulation all live in this menu.",
+  "tour.nav.body": "Everything else lives here, sorted into three areas.",
+  "tour.nav.everyday.title": "Everyday",
+  "tour.nav.everyday.body":
+    "Your accounts, what you spend, what you owe, and what you share with your household.",
+  "tour.nav.invest.title": "Investments",
+  "tour.nav.invest.body": "Your depot: positions, analysis, dividends, look-through, rebalancing.",
+  "tour.nav.plan.title": "Planning",
+  "tour.nav.plan.body": "Where it is all headed: goals, retirement, financial health, simulations.",
   "tour.themeToggle.title": "Dark mode",
   "tour.themeToggle.body":
     "Switch between light and dark anytime. Language and currency are in settings.",
@@ -2312,7 +2319,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.contracts.suggestions.body":
     "Zahlungen, die sich regelmäßig wiederholen, tauchen hier auf und lassen sich ins Register übernehmen. Kreditraten bleiben außen vor: Schulden tilgen ist eine Umbuchung, keine laufende Ausgabe.",
   "tour.nav.title": "Mehr entdecken",
-  "tour.nav.body": "Analyse, Dividenden und Simulation findest du in diesem Menü.",
+  "tour.nav.body": "Alles Weitere steckt hier, aufgeteilt in drei Bereiche.",
+  "tour.nav.everyday.title": "Alltag",
+  "tour.nav.everyday.body":
+    "Deine Konten, was du ausgibst, was du schuldest und was du im Haushalt teilst.",
+  "tour.nav.invest.title": "Anlagen",
+  "tour.nav.invest.body": "Dein Depot: Positionen, Analyse, Dividenden, Durchschau, Rebalancing.",
+  "tour.nav.plan.title": "Planung",
+  "tour.nav.plan.body": "Wohin das alles führt: Ziele, Rente, Finanzgesundheit, Simulationen.",
   "tour.themeToggle.title": "Dunkler Modus",
   "tour.themeToggle.body":
     "Wechsle jederzeit zwischen hell und dunkel. Sprache und Währung findest du in den Einstellungen.",
@@ -4361,7 +4375,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.contracts.suggestions.body":
     "Los pagos que se repiten con una cadencia regular aparecen aquí para que los pases al registro. Las cuotas de préstamo quedan fuera: amortizar deuda es una transferencia, no un gasto corriente.",
   "tour.nav.title": "Más por explorar",
-  "tour.nav.body": "Análisis, dividendos y simulación están en este menú.",
+  "tour.nav.body": "Todo lo demás está aquí, repartido en tres áreas.",
+  "tour.nav.everyday.title": "Día a día",
+  "tour.nav.everyday.body":
+    "Tus cuentas, lo que gastas, lo que debes y lo que compartes con tu hogar.",
+  "tour.nav.invest.title": "Inversiones",
+  "tour.nav.invest.body": "Tu cartera: posiciones, análisis, dividendos, radiografía, rebalanceo.",
+  "tour.nav.plan.title": "Planificación",
+  "tour.nav.plan.body": "Hacia dónde va todo: objetivos, jubilación, salud financiera, simulaciones.",
   "tour.themeToggle.title": "Modo oscuro",
   "tour.themeToggle.body":
     "Cambia entre claro y oscuro cuando quieras. El idioma y la moneda están en ajustes.",

@@ -109,7 +109,12 @@ export function Sidebar() {
         </div>
 
         {sections.map((section) => (
-          <div key={section.id} className="mt-5 flex flex-col gap-1 first:mt-0">
+          <div
+            key={section.id}
+            // Spotlight target for the dashboard tour's per-group steps.
+            data-tour={`nav-group-${section.id}`}
+            className="mt-5 flex flex-col gap-1 first:mt-0"
+          >
             {collapsed ? (
               // No room for a heading at 64px wide: a rule carries the same
               // "these belong together" signal without truncating a label.
