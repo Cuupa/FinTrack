@@ -24,6 +24,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card, PAGE_STACK, PageHeader, Stat } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { ContractForm } from "@/components/contracts/contract-form";
+import { PlannedForm } from "@/components/spending/planned-card";
 import { TransactionEditDialog } from "@/components/spending/transaction-edit-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LoadError } from "@/components/ui/load-error";
@@ -47,6 +48,7 @@ export default function RecurringDetailPage({
     loadError,
     reload,
     updateContract,
+    updatePlannedCashflow,
     updateSpendingTransaction,
     deleteSpendingTransaction,
   } = usePortfolio();
@@ -158,11 +160,9 @@ export default function RecurringDetailPage({
         title={name}
         subtitle={t("recurring.detail.subtitle")}
         actions={
-          contract ? (
-            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-              {t("contracts.list.edit")}
-            </Button>
-          ) : undefined
+          <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+            {t("contracts.list.edit")}
+          </Button>
         }
       />
 
@@ -289,6 +289,32 @@ export default function RecurringDetailPage({
               }}
               onCancel={() => setEditing(false)}
             />
+            {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          </Card>
+        </Modal>
+      )}
+
+      {plan && (
+        <Modal open={editing} onClose={() => setEditing(false)} maxWidthClass="max-w-3xl">
+          <Card>
+            <h2 className="text-lg font-semibold">{t("spending.planned.editTitle")}</h2>
+            <div className="mt-4">
+              <PlannedForm
+                key={plan.id}
+                initial={plan}
+                submitLabel={t("spending.planned.save")}
+                onSubmit={async (input) => {
+                  setError(null);
+                  try {
+                    await updatePlannedCashflow(plan.id, input);
+                    setEditing(false);
+                  } catch (err) {
+                    setError(saveFailed(err, t("spending.form.error")));
+                  }
+                }}
+                onCancel={() => setEditing(false)}
+              />
+            </div>
             {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
           </Card>
         </Modal>

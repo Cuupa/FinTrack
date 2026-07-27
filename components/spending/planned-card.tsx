@@ -419,7 +419,15 @@ function PlannedCardInner() {
  * `GoalForm`), so correcting a planned entry means editing it, never
  * recreating it.
  */
-function PlannedForm({
+/**
+ * Add/edit form for a planned cashflow.
+ *
+ * Exported because the merged "Recurring" list and the per-entry detail page
+ * both need it: when this card stopped being rendered on /spending, it took
+ * the only way to create or edit a planned entry with it, so a salary could be
+ * looked at but never changed.
+ */
+export function PlannedForm({
   initial,
   submitLabel,
   onSubmit,
