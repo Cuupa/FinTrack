@@ -83,14 +83,6 @@ export const NAV_ROUTES: NavRoute[] = [
     group: "everyday",
   },
   {
-    href: "/contracts",
-    key: "nav.contracts",
-    // Document glyph: bordered page + folded corner + signature line.
-    icon: <path d="M6 3h9l3 3v15H6V3zm9 0v3h3M8 12h8M8 16h5" />,
-    flag: "contracts",
-    group: "everyday",
-  },
-  {
     href: "/debt",
     key: "nav.debt",
     // Downward trending bar chart glyph: paying a balance down over time.

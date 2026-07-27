@@ -142,6 +142,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
   }, [holdings, sort]);
   const toggleSort = (key: HoldingSortKey) =>
     setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: -1 }));
+  const pager = usePagination(sortedHoldings);
 
   return (
     <div className="space-y-6">

@@ -25,6 +25,7 @@ import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
@@ -65,6 +66,7 @@ interface DueRow {
 export function RecurringCard() {
   const { data, addSpendingTransaction, updateContract, updatePlannedCashflow } = usePortfolio();
   const { t } = useI18n();
+  const contractsEnabled = useFeatureFlag("contracts");
   const base = data.profile.currency;
   const todayIso = today();
 
@@ -277,7 +279,21 @@ export function RecurringCard() {
 
   return (
     <Card>
-      <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
+        {/* The contract register lost its nav entry (it answered the same
+            question this card does, only half of it), so this is now the way
+            in to what only it can do: the suggestions, and a contract's
+            renewal date, notice period and insurance fields. */}
+        {contractsEnabled && (
+          <Link
+            href="/contracts"
+            className="text-sm font-medium text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400"
+          >
+            {t("recurring.manageContracts")}
+          </Link>
+        )}
+      </div>
 
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("recurring.empty")}</p>
