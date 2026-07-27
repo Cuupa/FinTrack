@@ -166,6 +166,13 @@ export function NetWorthHero({
   );
   const netWorth = totals.marketValue + accountsNet;
 
+  // On /portfolio the same figure is the DEPOT's value, not net worth: no
+  // account and no liability is in it (`investmentsOnly` keeps them out of the
+  // series above), so calling it net worth would name it after a number it
+  // deliberately does not include.
+  const headlineLabel = investmentsOnly ? t("stat.depotValue") : t("stat.netWorth");
+  const headlineInfo = investmentsOnly ? t("tip.depotValue") : t("tip.netWorth");
+
   // Split of that same number, so the headline can show what it is made of
   // rather than presenting a portfolio figure with accounts silently folded in.
   const acctSplit = useMemo(
@@ -216,9 +223,9 @@ export function NetWorthHero({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
           <Stat
-            label={t("stat.netWorth")}
+            label={headlineLabel}
             value={formatCurrency(netWorth, currency)}
-            info={t("tip.netWorth")}
+            info={headlineInfo}
             isPrivate
             size="sm"
           />
@@ -266,12 +273,18 @@ export function NetWorthHero({
         </div>
       </div>
 
-      <NetWorthComposition
-        investments={totals.marketValue}
-        accountAssets={acctSplit.assets}
-        liabilities={acctSplit.liabilities}
-        currency={currency}
-      />
+      {/* The composition bar splits net worth into investments, account cash
+          and debt. On /portfolio there is nothing to split -- the other two
+          bands are zero by construction -- so a bar reading "100 % investments"
+          would be noise dressed as information. */}
+      {!investmentsOnly && (
+        <NetWorthComposition
+          investments={totals.marketValue}
+          accountAssets={acctSplit.assets}
+          liabilities={acctSplit.liabilities}
+          currency={currency}
+        />
+      )}
 
 
       <div className="mt-3 md:mt-4">
@@ -316,7 +329,7 @@ export function NetWorthHero({
             mode={chartMode}
             currency={currency}
             compare={compare}
-            mainLabel={t("stat.netWorth")}
+            mainLabel={headlineLabel}
             returnSeries={returnSeries}
             ariaLabel={t("chart.netWorth.ariaLabel", {
               timeframe,

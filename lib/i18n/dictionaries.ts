@@ -580,6 +580,7 @@ export const en = {
   "privacy.hideFigures": "Hide figures",
 
   "stat.netWorth": "Net worth",
+  "stat.depotValue": "Portfolio value",
   "dash.madeUpOf": "Made up of",
   "dash.thisMonth": "This month",
   "dash.goalsReached": "{n} of {m} reached",
@@ -634,6 +635,7 @@ export const en = {
   "stat.downsideVol": "Downside vol",
 
   "tip.netWorth": "Total current value of all your holdings, converted to your base currency.",
+  "tip.depotValue": "Current market value of your positions. Accounts and liabilities are not included here.",
   "tip.change": "Absolute change in net worth over the timeframe; the percentage is the time-weighted (contribution-adjusted) return.",
   "tip.unrealized": "Paper gain/loss on shares you still hold.",
   "tip.realized": "Locked-in gain/loss from shares you have sold.",
@@ -2609,6 +2611,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "privacy.hideFigures": "Beträge ausblenden",
 
   "stat.netWorth": "Nettovermögen",
+  "stat.depotValue": "Depotwert",
   "dash.madeUpOf": "Setzt sich zusammen aus",
   "dash.thisMonth": "Diesen Monat",
   "dash.goalsReached": "{n} von {m} erreicht",
@@ -2663,6 +2666,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "stat.downsideVol": "Abwärtsvolatilität",
 
   "tip.netWorth": "Aktueller Gesamtwert all deiner Positionen, umgerechnet in deine Basiswährung.",
+  "tip.depotValue": "Aktueller Marktwert deiner Positionen. Konten und Verbindlichkeiten sind hier nicht enthalten.",
   "tip.change": "Absolute Veränderung des Nettovermögens im Zeitraum; der Prozentwert ist die zeitgewichtete (einzahlungsbereinigte) Rendite.",
   "tip.unrealized": "Buchgewinn/-verlust auf noch gehaltene Anteile.",
   "tip.realized": "Realisierter Gewinn/Verlust aus verkauften Anteilen.",
@@ -4643,6 +4647,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "privacy.hideFigures": "Ocultar importes",
 
   "stat.netWorth": "Patrimonio neto",
+  "stat.depotValue": "Valor de la cartera",
   "dash.madeUpOf": "Se compone de",
   "dash.thisMonth": "Este mes",
   "dash.goalsReached": "{n} de {m} alcanzados",
@@ -4697,6 +4702,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "stat.downsideVol": "Volatilidad bajista",
 
   "tip.netWorth": "Valor actual total de todas tus posiciones, convertido a tu moneda base.",
+  "tip.depotValue": "Valor de mercado actual de tus posiciones. Las cuentas y los pasivos no se incluyen aquí.",
   "tip.change": "Variación absoluta del patrimonio neto en el periodo; el porcentaje es la rentabilidad ponderada en el tiempo (ajustada por aportaciones).",
   "tip.unrealized": "Ganancia/pérdida latente en las participaciones que aún tienes.",
   "tip.realized": "Ganancia/pérdida consolidada de las participaciones que has vendido.",

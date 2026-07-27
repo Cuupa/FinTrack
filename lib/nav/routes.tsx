@@ -223,6 +223,7 @@ export function hidesNavigation(pathname: string): boolean {
 
 /** Routes whose content is actually filtered by the selected portfolio. */
 const PORTFOLIO_SCOPED = [
+  "/portfolio",
   "/analysis",
   "/dividends",
   "/xray",
@@ -242,9 +243,11 @@ const PORTFOLIO_SCOPED = [
  * large part of why the product still read as a portfolio tool with other
  * features attached.
  *
- * The dashboard keeps it: it still carries the holdings section.
+ * The dashboard no longer carries it. It used to, because the home screen WAS
+ * the holdings table; now that positions live on /portfolio, a broker picker
+ * in the header of a whole-net-worth overview would claim to scope figures
+ * (accounts, spending, liabilities) that no portfolio has ever scoped.
  */
 export function scopesToPortfolio(pathname: string): boolean {
-  if (pathname === "/") return true;
   return PORTFOLIO_SCOPED.some((prefix) => pathname.startsWith(prefix));
 }
