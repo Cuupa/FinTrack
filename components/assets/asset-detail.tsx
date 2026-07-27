@@ -76,6 +76,7 @@ import { AssetTags } from "./asset-tags";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { TablePagination, usePagination } from "@/components/ui/table";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
 // Read-only savings-plan list on the asset page is scoped to a single asset,
@@ -1203,6 +1204,7 @@ function TransactionsTable({
   }
 
   const multiPortfolio = portfolios.length > 1;
+  const pager = usePagination(rows);
 
   return (
     <div className="overflow-x-auto">
@@ -1225,7 +1227,7 @@ function TransactionsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((t) =>
+          {pager.rows.map((t) =>
             editingId === t.id ? (
               <TransactionEditRow
                 key={t.id}
@@ -1332,6 +1334,7 @@ function TransactionsTable({
           )}
         </tbody>
       </table>
+      <TablePagination pager={pager} />
     </div>
   );
 }
