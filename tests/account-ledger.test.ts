@@ -169,8 +169,20 @@ describe("interest accrual on a ledger-driven liability", () => {
     expect(balanceSeries(l, [])).toEqual([{ date: "2024-01-01", balance: 10_000 }]);
   });
 
-  it("never accrues interest on an asset account", () => {
+  // An asset account's rate is credit interest the bank PAYS (migration
+  // 0104), so it grows the balance where a liability's rate grows the debt.
+  it("credits interest on an asset account, on top of its bookings", () => {
     const a = account({ interestRate: 12 });
+    const moves = accountMovements([tx({ amount: -50, date: "2024-02-01" })], [a]);
+    const series = balanceSeries(a, [], moves, "2024-02-01");
+    const feb = series.find((p) => p.date === "2024-02-01");
+    // 1,000 + 1 % interest = 1,010, minus the 50 spent = 960 (the old
+    // behaviour read a flat 950, ignoring the rate entirely).
+    expect(feb?.balance).toBeCloseTo(960, 6);
+  });
+
+  it("leaves an asset account with no rate on the plain carry-forward", () => {
+    const a = account();
     const moves = accountMovements([tx({ amount: -50, date: "2024-02-01" })], [a]);
     expect(currentAccountBalance(a, [], moves)).toBe(950);
   });

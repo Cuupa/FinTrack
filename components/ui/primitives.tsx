@@ -213,6 +213,62 @@ export function EmptyState({
   );
 }
 
+/**
+ * On/off switch, rendered as a sliding track rather than a checkbox (owner
+ * rule): a checkbox reads as "tick this to include it in a list", a switch
+ * reads as "this mode is on", and a mode is what these controls actually set.
+ *
+ * A real `<button role="switch">`, so it stays keyboard- and screen-reader
+ * operable; keep checkboxes for genuine multi-select lists (picking which due
+ * bookings to post), never for a mode.
+ */
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  hint,
+  disabled = false,
+  id,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  hint?: string;
+  disabled?: boolean;
+  id?: string;
+}) {
+  return (
+    <button
+      type="button"
+      id={id}
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className="group flex items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <span
+        aria-hidden
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          checked
+            ? "bg-emerald-600 dark:bg-emerald-500"
+            : "bg-zinc-300 group-hover:bg-zinc-400 dark:bg-zinc-700 dark:group-hover:bg-zinc-600"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? "translate-x-[1.375rem]" : "translate-x-0.5"
+          }`}
+        />
+      </span>
+      <span>
+        <span className="text-sm font-medium">{label}</span>
+        {hint && <span className="block text-xs text-zinc-500">{hint}</span>}
+      </span>
+    </button>
+  );
+}
+
 /** Segmented control for toggles (timeframe, scale, display mode). */
 export function SegmentedControl<T extends string>({
   options,

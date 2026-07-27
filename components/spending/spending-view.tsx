@@ -12,7 +12,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -220,6 +220,29 @@ export function SpendingView() {
           <p className="mt-2 text-sm text-zinc-500">{t("spending.form.noAccounts")}</p>
         ) : (
           <>
+            {/* The form reads top to bottom as one decision chain: WHAT kind
+                of entry this is (expense or income, one-off or repeating),
+                then how much and from where, then what it was for. The two
+                controls that change the meaning of every field below them
+                therefore sit in their own header row, instead of being two of
+                nine equal boxes in one grid. */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+              <SegmentedControl
+                value={txType}
+                onChange={(v) => setTxType(v)}
+                options={[
+                  { value: "expense", label: t("spending.form.type.expense") },
+                  { value: "income", label: t("spending.form.type.income") },
+                ]}
+              />
+              <Toggle
+                id="spending-recurring"
+                checked={recurring}
+                onChange={setRecurring}
+                label={t("spending.form.recurring")}
+                hint={t("spending.form.recurringHint")}
+              />
+            </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label className="text-sm font-medium">{t("spending.form.accountLabel")}</label>
@@ -230,25 +253,6 @@ export function SpendingView() {
                   onChange={setAccountId}
                   options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
                 />
-              </div>
-              <div>
-                <label className="text-sm font-medium">{t("spending.form.typeLabel")}</label>
-                <div className="mt-1 flex gap-2">
-                  <Button
-                    type="button"
-                    variant={txType === "expense" ? "primary" : "secondary"}
-                    onClick={() => setTxType("expense")}
-                  >
-                    {t("spending.form.type.expense")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={txType === "income" ? "primary" : "secondary"}
-                    onClick={() => setTxType("income")}
-                  >
-                    {t("spending.form.type.income")}
-                  </Button>
-                </div>
               </div>
               <div>
                 <label className="text-sm font-medium" htmlFor="spending-amount">
@@ -266,6 +270,39 @@ export function SpendingView() {
                   data-private
                 />
               </div>
+              <div>
+                <label className="text-sm font-medium" htmlFor="spending-date">
+                  {recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
+                </label>
+                <input
+                  id="spending-date"
+                  type="date"
+                  value={date}
+                  // A recurring entry may legitimately start in the future
+                  // (a raise from next month); a booking cannot happen later
+                  // than today.
+                  max={recurring ? undefined : today()}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              {/* Only meaningful for a repeating entry, and right next to the
+                  date it repeats from. */}
+              {recurring && (
+                <div>
+                  <label className="text-sm font-medium">{t("recurring.col.interval")}</label>
+                  <SelectMenu
+                    className="mt-1 w-full"
+                    ariaLabel={t("recurring.col.interval")}
+                    value={interval}
+                    onChange={(v) => setInterval(v as PlannedInterval)}
+                    options={PLANNED_INTERVALS.map((i) => ({
+                      value: i,
+                      label: t(`recurring.interval.${i}` as Parameters<typeof t>[0]),
+                    }))}
+                  />
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium" htmlFor="spending-payee">
                   {t("spending.form.payeeLabel")}
@@ -309,51 +346,7 @@ export function SpendingView() {
                   )}
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="spending-date">
-                  {recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
-                </label>
-                <input
-                  id="spending-date"
-                  type="date"
-                  value={date}
-                  // A recurring entry may legitimately start in the future
-                  // (a raise from next month); a booking cannot happen later
-                  // than today.
-                  max={recurring ? undefined : today()}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-              {/* The switch that turns this booking into a recurring entry. */}
-              <div className="flex items-end">
-                <label className="flex cursor-pointer items-center gap-3 py-2 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    checked={recurring}
-                    onChange={(e) => setRecurring(e.target.checked)}
-                    className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
-                  />
-                  {t("spending.form.recurring")}
-                </label>
-              </div>
-              {recurring && (
-                <div>
-                  <label className="text-sm font-medium">{t("recurring.col.interval")}</label>
-                  <SelectMenu
-                    className="mt-1 w-full"
-                    ariaLabel={t("recurring.col.interval")}
-                    value={interval}
-                    onChange={(v) => setInterval(v as PlannedInterval)}
-                    options={PLANNED_INTERVALS.map((i) => ({
-                      value: i,
-                      label: t(`recurring.interval.${i}` as Parameters<typeof t>[0]),
-                    }))}
-                  />
-                </div>
-              )}
-              <div className="sm:col-span-2 lg:col-span-2">
+              <div className="sm:col-span-2 lg:col-span-3">
                 <label className="text-sm font-medium" htmlFor="spending-note">
                   {t("spending.form.noteLabel")}
                 </label>
@@ -368,17 +361,19 @@ export function SpendingView() {
                   className={inputCls}
                 />
               </div>
-              <div className="flex items-end">
-                <Button
-                  variant="primary"
-                  disabled={busy || !accountId || !payee.trim() || !amount.trim() || !date}
-                  onClick={() => void submit()}
-                >
-                  {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}
-                </Button>
-              </div>
             </div>
-            {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+            {/* One action, at the end of the chain -- not a tenth grid cell
+                that lands wherever the column count leaves a gap. */}
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+              <Button
+                variant="primary"
+                disabled={busy || !accountId || !payee.trim() || !amount.trim() || !date}
+                onClick={() => void submit()}
+              >
+                {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}
+              </Button>
+            </div>
           </>
         )}
       </Card>
