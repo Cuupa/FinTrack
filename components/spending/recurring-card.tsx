@@ -285,14 +285,6 @@ export function RecurringCard() {
             question this card does, only half of it), so this is now the way
             in to what only it can do: the suggestions, and a contract's
             renewal date, notice period and insurance fields. */}
-        {contractsEnabled && (
-          <Link
-            href="/contracts"
-            className="text-sm font-medium text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400"
-          >
-            {t("recurring.manageContracts")}
-          </Link>
-        )}
       </div>
 
       {rows.length === 0 ? (
