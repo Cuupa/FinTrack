@@ -15,6 +15,7 @@
 
 import { use, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
@@ -32,6 +33,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import type { SpendingTransaction } from "@/lib/types";
+import type { ContractInput } from "@/lib/store/types";
 
 type SortKey = "date" | "amount";
 
@@ -57,7 +59,12 @@ export default function RecurringDetailPage({
   const base = data.profile.currency;
   const todayIso = today();
 
-  const [editing, setEditing] = useState(false);
+  // ?edit=1 lets the list's inline edit button land straight in the editor.
+  const searchParams = useSearchParams();
+  const [editing, setEditing] = useState(searchParams.get("edit") === "1");
+  // Set while the user decides whether a changed contract also rewrites the
+  // payments it has already booked; carries the pending form input.
+  const [scopeInput, setScopeInput] = useState<ContractInput | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingTx, setEditingTx] = useState<SpendingTransaction | null>(null);
@@ -104,6 +111,38 @@ export default function RecurringDetailPage({
     return reason ? `${fallback} ${reason}` : fallback;
   }
 
+  /**
+   * Saves the edited contract and, when asked for, carries the change into the
+   * payments it has already booked. A loan instalment splits into interest and
+   * principal per month, so its booked AMOUNTS are never rewritten from the new
+   * instalment (that would post a made-up split) -- name and category still are.
+   */
+  async function saveContract(input: ContractInput, alsoBooked: boolean) {
+    if (!contract) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateContract(contract.id, input);
+      if (alsoBooked) {
+        const renamed = input.name !== contract.name;
+        const splits = contract.targetAccountId != null;
+        for (const tx of bookings) {
+          await updateSpendingTransaction(tx.id, {
+            categoryId: input.categoryId,
+            ...(renamed && tx.payee === contract.name ? { payee: input.name } : {}),
+            ...(splits ? {} : { amount: -Math.abs(input.amount) }),
+          });
+        }
+      }
+      setScopeInput(null);
+      setEditing(false);
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function toggleSort(key: SortKey) {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
@@ -146,7 +185,10 @@ export default function RecurringDetailPage({
   const next = contract
     ? nextContractBooking(contract, todayIso)
     : nextPlannedOccurrence(plan!, todayIso);
-  const accountId = contract?.accountId ?? plan!.accountId;
+  // `??` here read a contract without a booking account (accountId null) as
+  // "no contract" and dereferenced the missing plan — the page crashed for
+  // every entry that only tracks a cost and books nothing.
+  const accountId = contract ? contract.accountId : plan!.accountId;
 
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
@@ -156,6 +198,12 @@ export default function RecurringDetailPage({
 
   return (
     <div className={PAGE_STACK}>
+      <Link
+        href="/spending"
+        className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        ← {t("recurring.detail.back")}
+      </Link>
       <PageHeader
         title={name}
         subtitle={t("recurring.detail.subtitle")}
@@ -276,16 +324,18 @@ export default function RecurringDetailPage({
               submitLabel={t("contracts.edit.save")}
               busy={busy}
               onSubmit={async (input) => {
-                setBusy(true);
-                setError(null);
-                try {
-                  await updateContract(contract.id, input);
-                  setEditing(false);
-                } catch (err) {
-                  setError(saveFailed(err, t("contracts.form.error")));
-                } finally {
-                  setBusy(false);
+                // Only ask when there is something to rewrite and the change
+                // would show up in it. A renewal date or a notice period never
+                // touches a booked payment, so it saves without a question.
+                const touchesBookings =
+                  input.amount !== contract.amount ||
+                  input.categoryId !== contract.categoryId ||
+                  input.name !== contract.name;
+                if (bookings.length > 0 && touchesBookings) {
+                  setScopeInput(input);
+                  return;
                 }
+                await saveContract(input, false);
               }}
               onCancel={() => setEditing(false)}
             />
@@ -316,6 +366,41 @@ export default function RecurringDetailPage({
               />
             </div>
             {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          </Card>
+        </Modal>
+      )}
+
+      {/* Which payments the change applies to. Deliberately not a
+          ConfirmDialog: this is a choice between two outcomes, not a yes/no. */}
+      {contract && (
+        <Modal open={scopeInput !== null} onClose={() => setScopeInput(null)}>
+          <Card>
+            <h2 className="text-lg font-semibold">{t("recurring.scope.title")}</h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              {t("recurring.scope.message", { n: bookings.length })}
+            </p>
+            {contract.targetAccountId != null && (
+              <p className="mt-2 text-sm text-zinc-500">{t("recurring.scope.splitHint")}</p>
+            )}
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" disabled={busy} onClick={() => setScopeInput(null)}>
+                {t("tx.cancel")}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => scopeInput && void saveContract(scopeInput, true)}
+              >
+                {t("recurring.scope.all", { n: bookings.length })}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={() => scopeInput && void saveContract(scopeInput, false)}
+              >
+                {t("recurring.scope.future")}
+              </Button>
+            </div>
           </Card>
         </Modal>
       )}

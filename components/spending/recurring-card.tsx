@@ -477,10 +477,16 @@ export function RecurringCard() {
                   <td className="px-3 py-2 text-zinc-500">
                     {r.next ? formatDate(r.next) : t("recurring.noNext")}
                   </td>
-                  {/* Editing lives on the row's own page; deleting stays here,
-                      where the register used to offer it. */}
+                  {/* Edit opens the row's own page straight in its editor, so
+                      the change-scope question sits next to the bookings it
+                      would rewrite instead of being asked twice in two places. */}
                   <td className="px-3 py-2">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      <Link href={`/recurring/${r.kind}/${r.id}?edit=1`}>
+                        <Button size="sm" variant="secondary">
+                          {t("contracts.list.edit")}
+                        </Button>
+                      </Link>
                       <Button size="sm" variant="danger" onClick={() => setConfirmDelete(r)}>
                         {t("contracts.list.delete")}
                       </Button>

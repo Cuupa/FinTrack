@@ -1128,6 +1128,13 @@ export const en = {
   "recurring.detail.notFoundTitle": "Not found",
   "recurring.detail.notFound": "This recurring entry no longer exists.",
   "recurring.detail.back": "Back to income & spending",
+  "recurring.scope.title": "Which payments does the change apply to?",
+  "recurring.scope.message":
+    "This entry has already booked {n} payments. Future ones always use the new figures; the booked ones only change if you say so.",
+  "recurring.scope.splitHint":
+    "This is a loan instalment: its booked amounts split into interest and principal per month and stay as they were booked. Name and category are updated.",
+  "recurring.scope.future": "Only future payments",
+  "recurring.scope.all": "Also the {n} booked ones",
   "recurring.split.interest": "interest",
   "recurring.split.principal": "repayment",
   "recurring.split.hint": "Posts as two entries: {interest} interest (an expense) and {principal} repayment (reduces the debt).",
@@ -3235,6 +3242,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "recurring.detail.notFoundTitle": "Nicht gefunden",
   "recurring.detail.notFound": "Diesen wiederkehrenden Eintrag gibt es nicht mehr.",
   "recurring.detail.back": "Zurück zu Ein- & Ausgaben",
+  "recurring.scope.title": "Für welche Zahlungen gilt die Änderung?",
+  "recurring.scope.message":
+    "Dieser Eintrag hat schon {n} Zahlungen gebucht. Künftige nutzen immer die neuen Werte, die gebuchten nur, wenn du es willst.",
+  "recurring.scope.splitHint":
+    "Das ist eine Kreditrate: ihre gebuchten Beträge teilen sich pro Monat in Zinsen und Tilgung und bleiben so, wie sie gebucht wurden. Name und Kategorie werden aktualisiert.",
+  "recurring.scope.future": "Nur zukünftige Zahlungen",
+  "recurring.scope.all": "Auch die {n} gebuchten",
   "recurring.split.interest": "Zinsen",
   "recurring.split.principal": "Tilgung",
   "recurring.split.hint": "Wird als zwei Buchungen gebucht: {interest} Zinsen (Ausgabe) und {principal} Tilgung (senkt die Schuld).",
@@ -5338,6 +5352,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "recurring.detail.notFoundTitle": "No encontrado",
   "recurring.detail.notFound": "Esta entrada recurrente ya no existe.",
   "recurring.detail.back": "Volver a ingresos y gastos",
+  "recurring.scope.title": "¿A qué pagos se aplica el cambio?",
+  "recurring.scope.message":
+    "Esta entrada ya ha registrado {n} pagos. Los futuros usan siempre los valores nuevos; los registrados solo cambian si tú lo dices.",
+  "recurring.scope.splitHint":
+    "Es una cuota de préstamo: sus importes registrados se reparten cada mes entre intereses y amortización y se quedan como se registraron. El nombre y la categoría sí se actualizan.",
+  "recurring.scope.future": "Solo pagos futuros",
+  "recurring.scope.all": "También los {n} registrados",
   "recurring.split.interest": "intereses",
   "recurring.split.principal": "amortización",
   "recurring.split.hint": "Se registra en dos entradas: {interest} de intereses (gasto) y {principal} de amortización (reduce la deuda).",
