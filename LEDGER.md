@@ -10,7 +10,7 @@ subworker; commit only the paths you claimed.
 | Tour: navigation groups | HIGH | done (211aa11) | — |
 | Verbindlichkeiten: Sondertilgungen | HIGH | done (abe1457) | — |
 | Rente: Rentenpunkte, Rentenniveau, Rentenversicherungen | MEDIUM | done | lib/finance/pension.ts, lib/pension/, components/pension/, app/pension/, migration 0106, tests/pension.test.ts, e2e/pension.spec.ts |
-| CLAUDE.md aufräumen | HIGHEST | todo | CLAUDE.md |
+| CLAUDE.md aufräumen | HIGHEST | done | CLAUDE.md 1025->682, MONETIZATION.md recreated, DOCUMENTATION.md +300 |
 | Asset-Preise: A2PKXG falsch in UI | HIGH | fix shipped (pinned listings); awaiting user's asset-row currency | lib/server/quote-policy.ts, app/api/cron/sync/prices, migration 0107 |
 | Verträge entfernen (in wiederkehrende Zahlungen aufgegangen) | HIGH | todo | components/contracts/*, app/contracts/* |
 | Cookie-Banner prüfen | HIGH | todo | components/legal/* |

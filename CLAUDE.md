@@ -12,8 +12,25 @@ npm run build     # production build
 npm run start     # serve production build
 npm run lint      # ESLint
 npm run test      # vitest unit suite (pure finance/i18n core)
-npm run test:e2e  # Playwright browser tests (Guest Mode wiring); see E2E.md
+npm run test:e2e  # Playwright browser tests (Guest Mode wiring)
 ```
+
+Port 3000 is often taken by another project locally — run dev and E2E with
+`PORT=3011` or you verify the wrong app.
+
+## Companion docs
+
+This file holds the **invariants**: the rules that bind any change you make.
+The long-form design notes live next to it, and every reference below resolves
+(three previously-cited docs had been deleted).
+
+- **MONETIZATION.md** — plan gating, `<ProTeaser>`/`<ProGate>`, plan limits,
+  Stripe billing, the pricing page. All dark-launched.
+- **DOCUMENTATION.md** — per-feature design notes: the everyday-money
+  entities (accounts, spending, budgets, planned cashflow, pension), the LLM
+  assistant, and route-specific rules.
+- **OPERATIONS.md** — running the deployed app.
+- **LEDGER.md** — claim a task here before delegating to a subworker.
 
 
 ## Your roles
@@ -101,189 +118,34 @@ Both are toggled by the owner via SQL/dashboard only. `FeatureFlagsProvider`
 by seeding a row (migration + schema.sql) — never with env vars or the Vercel
 Flags SDK (explicitly rejected).
 
-**Plan gating (MONETIZATION.md Phase 2, dark-launched)**: `feature_flags`
-also carries `required_plan` ('free'|'pro', default 'free' — every flag is
-seeded free; the owner re-tiers rows on /admin/flags at runtime). Resolution
-(`lib/flags/resolve.ts`, pure/unit-tested) has **two independent axes**
-(owner rule, 2026-07-26): the flag decides VISIBILITY — per-user override,
-else the global `enabled` (missing row = off) — and the plan decides
-UNLOCKED: visible + pro-required + free plan = `{enabled, locked}`. A
-per-user override is therefore **never a Pro grant**; it is the general
-on/off + testing switch, and it can also switch a feature OFF for one user.
-Granting Pro to a single person is `plan_grants` (/admin/billing "Premium
-grants"), which lifts the plan itself. Missing column/row or no Supabase =
-free/on, so a DB lagging migration 0065 behaves exactly as before.
-`useFeature(flag)` returns `{enabled, locked}`; `useFeatureFlag` stays boolean
-(`enabled && !locked`), which HIDES a locked feature — correct **only** for
-infrastructural flags with nothing to sell (`offline`, `historyCache`,
-`errorLogging`, `billing`, `estimated-badge`). Every user-facing surface must
-read `useFeature` and render a teaser when locked. The shared
-`<ProTeaser feature="...">`
-(`components/billing/pro-teaser.tsx`, MONETIZATION.md Phase 3) is adopted on
-**every** surface that gates on a Pro flag (round 24, owner rule: a paywalled
-feature stays visible, never hidden) — the /analysis risk and tax tabs (tab
-stays visible), /dividends, /simulation, /xray, /rebalancing, the flag-gated
-pages /accounts, /spending, /goals, /health, /fire, /debt, /contracts,
-the dashboard `AreaCards` (a locked area keeps its grid slot) and
-the self-gated cards (watchlist, savings plans, budgets — each split into a
-gate wrapper plus a `*Inner` holding the hooks). The navigation matches:
-`Sidebar`/`MobileNav` filter on `getFeature(flag).enabled`, so a **locked**
-route stays in the list (with a `LockIcon`, exported from pro-teaser.tsx) and
-only a flag that is off outright disappears. The preview is clipped to
-`max-h-[70vh]` so the paywall message never sits below the fold on a tall
-page. It renders
-the real feature UI passed as `children` **blurred + `inert`** underneath a
-centered paywall message (lock icon + "Pro feature" copy + upgrade CTA) so the
-user sees a preview of what Pro unlocks rather than a blank card; each call
-site passes the same view it renders when unlocked (e.g.
-`locked ? <ProTeaser feature="dividends"><DividendsView/></ProTeaser> :
-<DividendsView/>`), with the loading/error gates kept **before** the lock so a
-still-loading page shows its skeleton, not a blurred empty state. Called
-without `children` it falls back to the old standalone empty-state card. Its
-upgrade button only shows when the `billing` flag is on.
-Two smaller wrappers live next to it (round 25) so a **sub-surface** of a page
-gates without repeating the ternary: `<ProGate locked feature>` renders its
-children plainly or blurred behind the teaser (used by the simulation's
-parameter panel + withdrawal phase, the settings AI tab, the notifications
-card, the tax-pack sections, the insurance coverage-gaps card, the add-asset
-CSV-import tab, the asset-detail cash-interest / manual-valuation
-sections, and /household's create + invite cards), and `<ProMenuItem label>`
-keeps a locked **dropdown row** listed
-with a padlock linking to /pricing (export CSV/JSON in the dashboard and
-profile menus) — a blurred preview makes no sense for a single menu row.
-Cell-level enrichments that cannot carry a teaser (a value inside a `dl`, one
-column of a table, a row action, an option in a select: `vorabEstimate`,
-`dividendCalendar`, `splitDetection`, `contracts`' recurring-row button,
-`manualValuation`'s asset-type option, `taxPack`'s category field) still hide
-while locked — do not tier those to Pro on their own, tier the surface that
-owns them.
-Still dark in prod: every flag is seeded `required_plan='free'`, so nothing
-locks (and no teaser renders) until the owner re-tiers a flag on
-/admin/flags.
-`usePlan()` (`lib/billing/use-plan.ts`) is the billing seam — a thin read of
-`BillingProvider` (`lib/billing/billing-context.tsx`, mounted under
-`AuthProvider` and above `FeatureFlagsProvider` in `components/providers.tsx`
-since flag resolution consumes it), which loads the signed-in user's own
-`subscriptions` row and feeds it through `resolvePlan` (`lib/billing/plan.ts`,
-active/trialing/past_due+7d grace, pure). Guests / no Supabase / not yet
-loaded all resolve `"free"`.
-`plan_limits` (free/pro caps per `limit_key` — `watchlistItems`,
-`savingsPlans`, `portfolios`, `householdMembers` — null = unlimited, seeded
-unlimited) is
-enforced (Phase 4) at its add-surfaces: watchlist add
-(`components/dashboard/watchlist-card.tsx`), savings-plan create
-(`components/savings/plan-form.tsx`, shared by the dashboard card and the
-asset-detail page's "new plan" entry point), and portfolio create
-(`components/portfolio-picker.tsx`, the header picker, **plus every inline
-"+ New portfolio" `SelectMenu` footer that calls the same `createPortfolio`
-mutation** — `add-asset-form.tsx`, `transaction-form.tsx`,
-`import-transactions.tsx` — capped identically so none of them bypass the
-picker's limit). Pure resolution + the grandfathering
-rule live in `lib/billing/limits.ts` (`resolveLimit`/`atLimit`, unit-tested):
-`atLimit` only ever blocks ADDING past the cap, never hides or disables a
-row already over it after a downgrade. `plan_limits` is loaded once in
-`FeatureFlagsProvider` (`lib/flags/flags-context.tsx`) — it already loads
-the sibling world-readable `feature_flags` table with the same shape and
-already consumes `usePlan()` — and surfaced via `usePlanLimit(key)`; a
-capped add-surface always shows an inline localized hint (e.g. "Free plan
-includes up to {n} watchlist items", linking to /pricing when the `billing`
-flag is on) instead of a silently disabled control. Seeded unlimited in
-prod, so nothing changes until the owner sets a cap on /admin/site's "Plan
-limits" card (`POST /api/admin/site` `{ kind: "limits" }`, validated by
-`lib/server/plan-limits-admin.ts`).
-`plan_grants` (migration 0068, "gratitude premium") independently grants a
-user Pro until `expires_at` or forever (`null`), regardless of any Stripe
-subscription; `BillingProvider` loads the user's own grants (select-own RLS)
-alongside their subscription and `resolvePlan` honors an active grant as a
-standalone path to `"pro"`. Grants are issued/revoked on `/admin/billing`'s
-"Premium grants" card (service-role writes only, every grant/revoke
-audited).
+**Plan gating, paywalls, plan limits and billing live in MONETIZATION.md.**
+All of it is dark-launched (every flag seeded `required_plan='free'`, every
+limit unlimited, the `billing` flag off), so nothing locks until the owner
+re-tiers a row at runtime. The rules that bind every feature you write:
 
-**Household = a paid family plan (migration 0101)**: household sharing is
-enforced by RLS (`household_peer_ids()`), and RLS knew nothing about plans, so
-tiering the `household` flag to Pro only hid the /household page while every
-shared row stayed visible on the dashboard, /spending and /goals after a
-downgrade. The gate now lives where the sharing happens: `user_has_pro()`
-mirrors `resolvePlan` in SQL (keep the two in step — same rule, twice),
-`household_sharing_enabled()` = "flag not tiered to pro OR **some** member has
-Pro", and `household_peer_ids()` returns an empty set when it is false, which
-collapses every shared policy back to plain self-ownership without deleting or
-reassigning anything. So the unit of payment is the **household**, never the
-member: one subscription covers everyone, and either side may carry it (the
-`join household` policy accepts the creator's Pro or a joining invitee's).
-`user_has_pro`/`household_has_pro` are deliberately **not** client-callable
-(revoked from PUBLIC) — they would let anyone probe who pays; the client only
-gets the own-household aggregate `household_sharing_active()`, surfaced as
-`useHousehold().sharingActive` and rendered as a "sharing is paused" notice
-(never leave a collapsed state looking normal). Consequently /household gates
-per **sub-surface**: create + invite sit behind `<ProGate>`, while the
-invitations card, the members list and "leave household" stay free — a free
-partner who cannot accept makes a family plan pointless, and a member locked
-out of leaving would be trapped. `plan_limits.householdMembers` caps head
-count (pending invitations reserve a seat). Everything is seeded
-`required_plan='free'` / unlimited, so nothing changes until the owner
-re-tiers the flag.
+- **Two independent axes** (`lib/flags/resolve.ts`, pure): the flag decides
+  VISIBILITY, the plan decides UNLOCKED. A per-user override is therefore
+  **never a Pro grant** — that is `plan_grants`.
+- `useFeature(flag)` returns `{enabled, locked}`. `useFeatureFlag` is
+  `enabled && !locked`, which **hides** a locked feature — correct only for
+  infrastructural flags with nothing to sell (`offline`, `historyCache`,
+  `errorLogging`, `billing`, `estimated-badge`).
+- **A paywalled feature stays visible, never hidden** (owner rule). Every
+  user-facing surface reads `useFeature` and wraps the same view it renders
+  when unlocked in `<ProTeaser>` (whole page/card) or `<ProGate>`
+  (sub-surface); `<ProMenuItem>` covers a locked dropdown row. Loading/error
+  gates go **before** the lock, so a pending page shows its skeleton and not a
+  blurred empty state. A locked route stays in the nav with a `LockIcon`; only
+  a flag that is off outright disappears.
+- Cell-level enrichments that cannot carry a teaser (a value in a `dl`, one
+  table column, a row action, a select option) still hide while locked — **do
+  not tier those to Pro on their own**, tier the surface that owns them.
+- `plan_limits` caps are enforced at every add-surface, and `atLimit`
+  (`lib/billing/limits.ts`, pure) only ever blocks ADDING past the cap — never
+  hides or disables a row already over it after a downgrade.
+- Sharing is gated in **RLS**, not just in the UI: `user_has_pro()` mirrors
+  `resolvePlan` in SQL — **keep the two in step, same rule twice.**
 
-**Billing (MONETIZATION.md Phase 1, dark-launched behind the `billing` flag,
-seeded disabled)**: Stripe Checkout + Billing portal, redirect-based only —
-no Stripe.js on the page, so CSP `connect-src` stays untouched. Price ids +
-the selling toggle live in `billing_config` (config-in-DB, world-readable,
-owner-written), editable at runtime on `/admin/billing`. `billing_config`
-also carries owner-typed **display price strings**
-(`price_monthly_display`/`price_yearly_display`, migration 0070, e.g. "4,99
-EUR") shown on `/pricing` — free text, never formatted or computed with,
-distinct from the Stripe price ids; nullable, so `/pricing` shows the plan
-comparison without an amount rather than inventing one while empty. The
-Stripe secret
-key and webhook secret are DB-first with an env fallback (round 2026-07-19b):
-`app_settings.stripe_secret_key`/`stripe_webhook_secret` (RLS enabled, zero
-policies — service-role only) win over `STRIPE_SECRET_KEY`/
-`STRIPE_WEBHOOK_SECRET` when set, resolved once per request by
-`getStripeKeys()` (`lib/server/billing-keys.ts`); every caller that touches a
-key goes through it instead of reading `process.env` directly. Also editable
-on `/admin/billing`: `GET /api/admin/billing` never echoes a stored secret
-(presence booleans only), `POST` sets/clears a key (empty or `null` clears)
-or upserts the config, and every write is audited — key writes record only
-"set"/"cleared" per field, never the value (`lib/server/billing-admin.ts`,
-`app/api/admin/billing/route.ts`). `/api/billing/checkout` and
-`/api/billing/portal` (POST, session bearer token) return `{ url }` to
-redirect to; `/api/billing/webhook` is the sole writer of `subscriptions`
-(service role, select-own RLS for the client).
-Settings gets a "Subscription" card (`components/settings/subscription-card.tsx`,
-flag-gated, registered-users-only — guests can't subscribe and the
-create-an-account teaser funnel is Phase 3) reading `useBilling()` for
-`{plan, subscription, loading}` and hitting the checkout/portal routes
-directly with the session token, same pattern as account deletion in
-`components/settings/settings-view.tsx`. `BillingProvider` re-fetches once,
-after a short delay, when the page was entered with `?billing=success`
-(Checkout return) since the webhook can lag the redirect. The
-checkout/portal redirect call (`lib/billing/checkout-client.ts`) is a shared
-helper so the settings card and `/pricing` don't each reimplement it.
-
-**Pricing page + legal (MONETIZATION.md Phase 3, ships with `billing` flag
-still off in prod)**: `/pricing` (`app/pricing/page.tsx`) is a Free-vs-Pro
-marketing comparison, gated behind the `billing` flag the same way any other
-flag-gated route degrades to `FeatureUnavailable`. It reads the display
-prices via `useBillingConfig()` (`lib/billing/use-billing-config.ts`, a
-direct world-readable-row read through the browser Supabase client, same
-shape as `BillingProvider`'s own subscription fetch) with skeleton
-placeholders while loading. The CTA reuses `redirectToBilling`: registered
-users check out directly, guests get a link to `/login`, an already-Pro user
-gets a link to manage instead of a second checkout, and the buy buttons
-disappear (comparison-only) when `billing_config.enabled` (the owner's
-selling toggle, independent of the `billing` flag) is off.
-`<ProTeaser>`'s upgrade link now points to `/pricing` instead of
-`/settings#subscription` (MONETIZATION.md: "Locked teasers deep-link here").
-`/datenschutz` and `/terms` (EN+DE) carry the Phase-3 legal sections
-required before a real checkout is reachable: a Stripe payment-processing
-section (`/datenschutz` — email + payment metadata shared with Stripe,
-FinTrack itself never stores card data, linked to Stripe's privacy policy)
-and a subscription-terms section (`/terms` — billing interval, auto-renewal,
-portal cancellation effective at period end, prices as shown at checkout,
-the EU 14-day withdrawal right and its early-expiry consent at checkout).
-Both are phrased conditionally ("Wenn du ein Abo abschließt, ...") so they
-stay accurate while billing is dark-launched and no checkout has happened
-yet.
 
 ### CSV import & fingerprints
 
@@ -407,68 +269,30 @@ refreshes equities via `/api/price` when the cached price is older than 1h
 
 ### LLM assistant (BYO key)
 
-An opt-in chat bubble (flag `llmChat`, seeded **disabled**) lets the user ask
-natural-language questions about their own portfolio using an API key they
-bring themselves — no FinTrack-hosted key, no autonomous mutations. The
-provider seam is `LlmProvider` (`lib/llm/types.ts`), mirroring `DataStore`/
-`PriceProvider`: `{ id, label, models, buildRequest, buildPingRequest,
-extractDelta, extractPingText, chat }`. `lib/llm/index.ts` is the registry
-(`providers`/`providerList`/`getProvider`) — adding a vendor means one file
-under `providers/` plus one registry entry; **UI, context, and route code
-never branch on the provider id.**
+An opt-in chat bubble (flag `llmChat`, seeded **disabled**) answers questions
+about the user's own portfolio with an API key they bring themselves — no
+FinTrack-hosted key, no autonomous mutations. Full design in DOCUMENTATION.md;
+the binding rules:
 
-All vendor traffic goes through the server proxy `/api/llm`
-(`app/api/llm/route.ts`) — the browser never contacts a vendor origin
-directly, so CSP `connect-src` stays untouched (`'self'` + `*.supabase.co`,
-same "market-data calls are server-side by design" rule as Yahoo/Frankfurter).
-The route reads the key from the request body, uses it once per request, and
-never logs, persists, or echoes it; vendor error bodies are drained and
-discarded, and responses carry only a machine-readable `LlmErrorCode`
-(`invalidKey`/`rateLimited`/`providerDown`/`badRequest`/`network`), localized
-client-side (`lib/llm/error-messages.ts`). The route normalizes every
-vendor's SSE into one uniform delta stream (`data: {"delta":...}` frames, an
-error frame, a `[DONE]` sentinel via `lib/llm/sse.ts`) so the client adapter
-never parses vendor-specific SSE. Rate-limited and payload-capped (256 KB)
-like `/api/share`; a client disconnect aborts `req.signal`, which cancels the
-upstream fetch.
+- The provider seam is `LlmProvider` (`lib/llm/types.ts`) + the registry
+  `lib/llm/index.ts`. Adding a vendor is one file under `providers/` plus one
+  registry entry — **UI, context and route code never branch on the provider
+  id.**
+- **All vendor traffic goes through the server proxy `/api/llm`.** The browser
+  never contacts a vendor origin, so CSP `connect-src` stays untouched. The
+  route uses the key once per request and never logs, persists or echoes it;
+  vendor error bodies are drained and replaced by a machine-readable
+  `LlmErrorCode`, localized client-side. It normalizes every vendor's SSE into
+  one uniform delta stream (`lib/llm/sse.ts`) so no client parses vendor SSE.
+- `llmConfig` rides the **full store seam** (`llm_settings` for registered
+  users, the guest blob otherwise). Registered users additionally pick a
+  **scope**: the account row, or browser-only via `fintrack-llm`, whose mere
+  presence wins (`lib/llm/config-precedence.ts`, pure). A browser-scoped key
+  is cleared on sign-out; the account-scoped one survives.
+- Chat context is built client-side and pure (`lib/llm/context.ts`). It
+  **never includes internal ids** (display data only) and **never includes the
+  tax report**. Keep `/datenschutz` accurate when these data flows change.
 
-`llmConfig` (provider/model/key) rides the **full store seam** like tags and
-watchlist (owner override of `LLM_INTEGRATION.md`'s original "localStorage
-only" decision, same precedent as round-22 tags): `PortfolioData` carries
-`llmConfig`, table `llm_settings` persists it for registered users (one row
-per user, RLS, upsert-on-save / delete-on-removal — always replace-set and
-replay-idempotent), Guest Mode keeps it in the `LocalStore` blob, and
-`OfflineStore` mirrors + queues it through `lib/offline/sync.ts` like any
-other mutation. Registered users additionally choose the storage **scope**
-(owner requirement, 2026-07-17): the account row above, or browser-only via
-the `fintrack-llm` localStorage key (`lib/llm/browser-config.ts`) — its mere
-presence wins over the account row (`lib/llm/config-precedence.ts`,
-`resolveActiveLlmConfig`, pure/unit-tested). `LlmConfigProvider`
-(`lib/llm/llm-context.tsx`) exposes `{config, scope, setConfig, clearConfig}`
-and is mounted inside `PortfolioProvider`; `setConfig(config, scope)` moves
-the key between the two locations, clearing the other. A browser-scoped key
-is cleared on sign-out (`lib/auth/auth-context.tsx`, next to the history
-cache) since it's scoped to that browser session by the user's own choice;
-the account-scoped key survives sign-out like the rest of `PortfolioData`.
-Guest Mode has no scope choice (the guest blob IS the browser) and never
-renders the control.
-
-Chat context is built client-side, pure, no React (`lib/llm/context.ts`,
-`buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot of
-holdings, savings plans, risk/allocation stats, sent as the system-prompt
-preamble. Risk stats feed from real 5y histories plus portfolio beta/alpha
-vs MSCI World (`risk.vsBenchmark`) — the same composite-levels math as the
-risk page KPI tiles; `usePortfolioChat(active)` arms those history/benchmark
-fetches only once the panel is first opened, and the per-conversation system
-prompt isn't cached until they've landed (rebuilt per send meanwhile). It deliberately **never includes internal ids** (asset/portfolio/
-transaction id — display data only: name, ISIN, type, ...) and **never
-includes the tax report** (Freistellungsauftrag amounts stay out, per the
-plan's open question). `/datenschutz` documents the BYO-key opt-in, where the
-key can be stored (always browser-local for guests; account DB or
-browser-local, by choice, for registered users), and that portfolio
-data is transmitted to the chosen provider only when the chat is used — keep
-that section accurate if these data flows change, same rule as the rest of
-the privacy policy.
 
 ### Asset identity
 
@@ -539,23 +363,23 @@ FX-convert) always beats a wrong instrument in the right currency.
 ### Finance core (`lib/finance/`) — pure, no React
 
 - `portfolio.ts` — holdings are **derived, never stored**: positions, cost
-  basis (average-cost), realised/unrealised P&L, and the net-worth time series
-  are all computed by replaying the transaction log. Holding reconstruction
+  basis (average-cost), realised/unrealised P&L and the net-worth series are
+  all computed by replaying the transaction log. Holding reconstruction
   compares transactions by **day** (`dateKey`) since they carry a time.
   Transactions carry `fee` **and `tax`** — tax mirrors fee in all cash math
   (buy tax raises basis, sell tax reduces proceeds); `trades.ts` also builds
   the per-calendar-year tax report on /analysis (flag `taxReport`).
   `holdingPeriodProfit` divides by the capital exposed over the window
-  (start-of-window value plus in-window BUY inflows), never by the
-  start value alone: at tf=max the window starts at the first transaction,
-  and a tiny day-one buy as sole denominator once produced +953%.
+  (start-of-window value plus in-window BUY inflows), never by the start value
+  alone: at tf=max the window starts at the first transaction, and a tiny
+  day-one buy as sole denominator once produced +953%.
 - `prices.ts` — **deterministic synthetic price provider** (seeded random walk
   keyed by the price key + a curated registry searchable by WKN/ISIN/symbol).
   Stands in for a real market-data API; the `PriceProvider` interface is the
   swap point for a real feed.
-- `stats.ts` — estimates expected return + volatility from **historical data**
-  (value-weighted daily returns of the user's holdings, annualised; benchmark
-  fallback). This feeds the Monte Carlo defaults — μ/σ are measured, not assumed.
+- `stats.ts` — expected return + volatility from **historical data**
+  (value-weighted daily returns, annualised; benchmark fallback). Feeds the
+  Monte Carlo defaults — μ/σ are measured, not assumed.
 - `irr.ts` — money-weighted XIRR (Newton + bisection fallback).
 - `returns.ts` `windowChange` — the hero's "Change (tf)" KPI: abs = raw
   net-worth delta, pct = contribution-adjusted return. Flows on/before the
@@ -565,183 +389,46 @@ FX-convert) always beats a wrong instrument in the right currency.
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
 - `dividends.ts` — dividends from **real events** (`/api/dividends`, Yahoo)
   scaled by shares held on each pay date; accumulating funds show none. The
-  hinted listing (the quote symbol the app prices the asset with) is
-  **authoritative in `dividendsByQuery`**: if it resolves, its event list is
-  returned even when empty — never fall back to search candidates past a
-  resolved hint, and never gate dividends by asset type or a flag (both were
-  explicitly rejected). Scanning past an empty hint once imported an unrelated
-  payer's events via the name-fallback search (the phantom gold-dividends
-  case). Client-side, `useDividends` returns `{ dividends, loading }` (loading
-  derived from the settled fetch signature, stale map kept meanwhile); the
-  /dividends page shows skeletons while events are in flight. The 12-month
-  forecast (`projectDividends`, pure) projects trailing per-share events at
-  the CURRENT share count, deliberately independent of received-payment
-  history — a payer bought today still forecasts; only received figures scale
-  by shares held on each pay date. **Announced dividend calendar**
-  (COMPETITION.md F4, flag `dividendCalendar`): confirmed upcoming ex/pay
-  dates come from Yahoo `quoteSummary.calendarEvents` (`announcedByQuery` /
-  `/api/dividends/calendar` / `useAnnouncedDividends`, hint-authoritative like
-  dividends). Unlike the keyless v8 chart, quoteSummary needs a cookie+crumb
-  (`getCrumb`/`quoteSummaryJSON` in yahoo.ts) — it **fails soft to null**, so
-  the forecast keeps its trailing projection. The pure `applyAnnouncedDate`
-  re-dates the next projected payment to the confirmed date and flags it
-  `confirmed`; the projection stays the fallback. The /dividends page surfaces
-  this as a **single "Upcoming dividends" card** — a sortable Asset / Ex-date /
-  Pay-date / Amount table over the projected next-12-months payouts (the old
-  standalone announced-only calendar card and the separate forecast list were
-  merged: a confirmed-dates-only card sat empty next to a filled forecast,
-  which read as broken). Projected rows show the amount with a `≈` and no
-  ex-date; where the announced calendar (gated on `dividendCalendar`) has a
-  confirmed ex/pay date it fills the ex-date column and marks the pay date
-  `confirmed`. The `≈` stays on **every** amount — only the date is ever
-  confirmed, never the projected amount.
-- **Vorabpauschale estimator** (`tax.ts` `estimateVorabpauschaleByYear` /
-  `fundVorabpauschale`, COMPETITION.md F6, flag `vorabEstimate`): per fund per
-  completed year, `startValue x Basiszins x 0.7 − distributions`, capped at the
-  value gain. Basiszins is DB-seeded reference data (`basiszins` table,
-  world-readable, `useBasiszins`) — never hardcoded. RAW (pre-Teilfreistellung,
-  applied downstream); fills the manual `taxVorabpauschale` slot per year, the
-  manual entry always overrides.
-- **Accounts & liabilities** (`accounts.ts`, ROADMAP #1, flag `accounts`,
-  seeded disabled): the keystone that lets net worth go **negative**. An
-  `Account` (kind checking/savings/credit/loan/mortgage/other) is a balance the
-  user sets, NOT a holding priced from a market — distinct from `OTHER` assets
-  (which are positive manual-valuation holdings). `openingBalance` at `openedOn`
-  plus dated `AccountBalance` readings form a carry-forward step series (like
-  `ValuationPoint`); contribution to net worth is signed `(isLiability ? -1 :
-  1) * balance`, FX-converted at spot. Rides the **full store seam** (`accounts`
-  + `account_balances` tables migration 0080, RLS, FK cascade; LocalStore
-  backfill; OfflineStore mirror+queue; `setAccountBalances` replace-set like
-  `setAssetValuations`). Folded into `netWorthSeries` via optional
-  `accounts`/`accountBalances` params (empty ⇒ 0, so the finance core never
-  gates on the flag; MAX/YTD anchors also on earliest `openedOn`). The dashboard
-  hero and AI context (`lib/llm/context.ts`, id-free) include accounts only when
-  the flag is on. Surface is `/accounts`.
-- **Spending transactions & categories** (`spending.ts` + `categorize.ts`,
-  ROADMAP #2, flag `spending`, seeded disabled): expense/income against an
-  `accounts` row, categorised. `SpendingCategory` is a flat taxonomy
-  (`groupName` + `name`, stable id) — lighter than `tag_groups`/`asset_tags`
-  since a transaction carries exactly one category, so `category_id` is a
-  plain FK on the transaction row, not a junction table.
-  `SpendingTransaction.amount` is signed (income positive, expense negative)
-  in the account's native currency. Rides the **full store seam**
-  (`spending_categories` + `spending_transactions` tables migration 0081, RLS,
-  FK cascade — deleting an account cascades its spend, deleting a category
-  sets `categoryId` null on referencing transactions; LocalStore backfill;
-  OfflineStore mirror+queue). `categorize.ts`'s `buildCategoryRules` learns a
-  deterministic payee→category rule from the user's own past categorisation
-  (most recent wins on a conflict) — `applyCategoryRules` batch-suggests
-  categories for every still-uncategorised transaction; the quick-add form
-  also suggests on payee blur. `lib/finance/spending.ts` stays pure
-  (`byCategoryAndMonth`, `incomeExpenseSplit`, `safeToSpend`) and deliberately
-  does **not** fold into `netWorthSeries` — spending is a flow, not a balance
-  (that's ROADMAP #4, budgets/cash-flow). The category manager modal mirrors
-  `TagGroupsManager`'s CRUD-list shape (that component itself is hardwired to
-  `useTags()`, not literally reusable). Surface is `/spending`.
-- **Bank-statement import** (ROADMAP #3, same `spending` flag): a parallel
-  import pipeline for bank CSVs, not a branch inside the broker one — a
-  statement row (date/amount/payee/note) shares nothing with a broker row
-  (isin/type/quantity/price). `lib/import/spending-csv.ts` is a generic
-  header-driven parser (DE/EN column aliases, DE/EN decimal + date formats,
-  reusing `csv.ts`'s quote-aware line splitting and lenient number/date
-  helpers instead of duplicating them) plus `spendingFingerprint`, keyed
-  `accountId|date|amount|payee` since a spending row carries no cross-account
-  identifier the way ISIN/WKN does — the same statement re-imported against a
-  different account is legitimately a different set of rows, not a
-  duplicate. `lib/import/spending-reconcile.ts`'s `reconcileSpending` mirrors
-  `reconcile.ts`'s new/conflict/imported shape, scoped to the target
-  account's own transactions (same day + amount = conflict). Already-imported
-  rows are tracked in their own `imported_spending_rows` table (migration
-  0082) rather than reusing `imported_rows`, since the two fingerprint tables
-  FK to different entities (`spending_transactions` vs `transactions`) that
-  can't share one nullable column; `DataStore.addImportedSpendingFingerprints`
-  is best-effort on `OfflineStore` (not queued), matching
-  `addImportedFingerprints`'s existing precedent. The import modal
-  (`components/spending/import-spending.tsx`, opened from `/spending`) skips
-  the investment flow's field-level three-pane merge for conflicts — a
-  same-day/amount match differs in payee/note wording at most, not the
-  money — offering a plain skip/import-anyway toggle instead, and
-  auto-suggests each new row's category via the existing
-  `categorize.ts` rules.
-- **Budgets** (`budgets` table, ROADMAP #4, flag `budgets`): a monthly
-  spending cap per category — the "category caps + flow" philosophy picked
-  over YNAB-style envelopes. At most one budget per category (unique
-  `user_id, category_id`); deleting the category deletes its budget (unlike
-  `spending_transactions.category_id`, which sets null so the transaction
-  survives — a budget with no category means nothing). `amount` is stored in
-  the profile's base currency since `lib/finance/spending.ts` already
-  converts category totals to base before aggregating (`toBaseCurrency`), so
-  a cap needs no currency of its own. Rides the full store seam like every
-  other spending entity (`addBudget`/`updateBudget`/`deleteBudget`,
-  LocalStore/SupabaseStore/OfflineStore + `lib/offline/sync.ts` replay).
-  `budgetProgress` (`lib/finance/spending.ts`, pure) sums only EXPENSE
-  magnitudes per category for a given `YYYY-MM` against the cap — income
-  never offsets it. The `BudgetsCard` (`components/spending/budgets-card.tsx`,
-  self-gated on the flag, rendered on `/spending`) shows a month
-  stepper (`shiftMonth` in `lib/finance/dates.ts`) and a progress bar per
-  budgeted category, turning red past 100%; adding a budget offers only
-  categories that don't already have one (one cap per category, not a list).
-- **Retirement provision** (`pension_points` + `pension_contracts` +
-  `pension_reference` tables, `profiles.pension_settings`, migration 0106, flag
-  `pension`, seeded disabled): the largest retirement asset most German users
-  have is not in the portfolio, and it is denominated in **Entgeltpunkte, not
-  euro**. `lib/finance/pension.ts` is pure (`projectPension`, `accessFactor`,
-  `standardRetirementAge`, `pensionValueOn`); the aktueller Rentenwert and the
-  Rentenniveau that turn points into euro are **DB-seeded reference data**
-  (`pension_reference`, world-readable, `usePensionReference`) — never
-  hardcoded, exactly like `basiszins` for the Vorabpauschale. With no reference
-  row the projection returns `monthlyStatutory: null` and the UI shows points
-  only, rather than inventing a figure from a constant. Everything is in
-  **today's money** on purpose (no inflation, no wage growth, no assumed
-  return) and the page says so: a projection that quietly grew the Rentenwert
-  2 %/yr would look precise and be fiction. `PensionPoint` is keyed by **year**
-  (replace-set, like `AccountBalance` is keyed by date) so a year can never be
-  recorded twice and an offline replay is idempotent; the DB mirrors that with
-  a unique `(user_id, year)` index. `PensionContract` is a **sibling of
-  `Contract`, not one of its insurance types**: a contract is money going out
-  every month, a pension policy is defined by the income it will PAY from a
-  date decades away, which is the only figure the projection needs and the one
-  thing a `Contract` cannot express. Both rows are self-only in RLS,
-  deliberately **without** `household_peer_ids()` — a Renteninformation is
-  personal. `pension_settings` is a jsonb blob on the profile for the same
-  reason `rebalance_targets` is one (four scalars, one row per user). Surface
-  is `/pension`, in the Planning nav group.
-- **Planned income & expenses** (`planned_cashflows` table migration 0100, flag
-  `plannedCashflow`, seeded disabled): the salary, a bonus, a tax refund, a
-  one-off cost. A **sibling of `Contract`, deliberately not an extension** of
-  it: a contract is a running commitment with a renewal date and a cancellation
-  notice, it is always money going OUT, and `detectRecurringCandidates` is
-  expenses-only. `PlannedInterval` therefore adds `ONCE` (a single dated entry a
-  contract cannot express) and `WEEKLY`, plus an optional `endDate` (parental
-  allowance runs twelve months). `amount` follows `SpendingTransaction`, NOT
-  `Contract`/`Budget`: **signed** (income positive) and in the **account's
-  native currency**, and `accountId` is required — booking a due occurrence is
-  then a straight copy and `incomeExpenseSplit`/`isTransfer` apply unchanged.
-  Losing the account cascades the plan away (unlike a contract, which survives
-  as a register entry); losing the category only nulls `categoryId`.
-  `lib/finance/planned.ts` (pure, sibling of `contract-bookings.ts` for the same
-  reason that one is a sibling of `savings-plans.ts`) derives the occurrence
-  series, `duePlannedBookings`, `monthlyEquivalent` (null for `ONCE`) and
-  `plannedForecast`/`plannedMonthlyTotals`. Nothing is ever posted silently: due
-  occurrences collect until the user opens the review dialog on the
-  `PlannedCard`, where **each amount stays editable** (a salary is rarely the
-  planned figure) but the plan's sign decides the direction; booking writes the
-  transactions first and advances `lastBookedDate` second, same order and reason
-  as `ContractsView.bookDue`. A booking carries
-  `SpendingTransaction.plannedId` — its own column, since `recurringId` is a
-  foreign key to `contracts` and one nullable column cannot reference two
-  tables — and `detectRecurringCandidates` skips those rows too.
-  `plannedForecast` (`ForecastCard`, 6 months, stacked Recharts bars plus a
-  cumulative line) counts a month's ledger figures plus **every occurrence not
-  yet booked**, including one already due and still waiting in the review dialog
-  (money the ledger does not know about yet); registered contracts feed their
-  still-due charges in so fixed costs are not understated, and transfers drop
-  out on both sides. The AI context carries the monthly totals plus the next
-  payment per plan, id-free like the accounts block. Health/FIRE/dashboard
-  deliberately keep computing from actuals only — a booked salary reaches them
-  by itself.
+  hinted listing is **authoritative in `dividendsByQuery`**: if it resolves,
+  its event list is returned even when empty — never fall back to search
+  candidates past a resolved hint, and **never gate dividends by asset type or
+  a flag** (both explicitly rejected). Scanning past an empty hint once
+  imported an unrelated payer's events (the phantom gold-dividends case). The
+  12-month forecast (`projectDividends`, pure) projects trailing per-share
+  events at the CURRENT share count, deliberately independent of received
+  history — a payer bought today still forecasts. The announced calendar
+  (flag `dividendCalendar`, Yahoo `quoteSummary`, cookie+crumb, **fails soft
+  to null**) only ever re-dates a projected payment; the `≈` stays on **every**
+  amount, since only the date is ever confirmed. Details in DOCUMENTATION.md.
+- **Vorabpauschale estimator** (`tax.ts`, flag `vorabEstimate`): per fund per
+  completed year, `startValue x Basiszins x 0.7 − distributions`, capped at
+  the value gain. Basiszins is DB-seeded reference data (`basiszins`,
+  world-readable, `useBasiszins`) — **never hardcoded**. RAW
+  (pre-Teilfreistellung, applied downstream); fills the manual
+  `taxVorabpauschale` slot per year, and the manual entry always overrides.
 
-### Web push notifications (COMPETITION.md F5, flag `pushNotifications`)
+**Everyday-money entities — accounts & liabilities, spending + categories,
+bank-statement import, budgets, planned income & expenses, and the retirement
+provision — are documented in DOCUMENTATION.md** ("Everyday-money features").
+They are not priced from a market, and the rules that bind all of them are:
+
+- Each rides the **full store seam** and is gated by its own flag; the finance
+  core never gates on a flag itself (empty inputs ⇒ 0, so `netWorthSeries`
+  folds accounts in via optional params rather than branching).
+- An `Account` balance is a figure the user **sets**, not a holding priced
+  from a market — distinct from `OTHER` manual-valuation assets. It is what
+  lets net worth go **negative**.
+- Spending is a **flow, not a balance**: it deliberately does not fold into
+  `netWorthSeries`.
+- Nothing is ever posted silently. Due savings-plan, contract and planned
+  occurrences collect until the user opens a review dialog; booking writes the
+  transactions first and advances the `last*Date` marker second.
+- Reference data (Basiszins, Rentenwert/Rentenniveau) is **DB-seeded and
+  world-readable, never a constant in the finance layer**. With no reference
+  row, report the raw unit (points) rather than inventing a currency figure.
+
+
+### Web push notifications (flag `pushNotifications`)
 
 Opt-in per event (dividend pay-day, savings-plan due) in settings, **registered
 only**, seeded **disabled**. Strictly reminders, never marketing. VAPID keys
@@ -758,88 +445,58 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
 
 ### Routes
 
-- `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable
-  table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
-  (flag `watchlist`)
-- `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1):
-  add-account form + sortable list + per-account dated-balance editor
-- `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
-  #2): quick-add form + sortable transaction table + category manager modal,
-  plus the cash-flow forecast and planned-income/expense cards (flag
-  `plannedCashflow`)
-- `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
-  optional** (open-ended goals are first class; a date only buys the
-  monthly-needed figure). A goal is either atomic ("emergency fund") or
-  **composite** ("trip to the USA" = flight + hotel + taxi): sub-goals point
-  at their parent through `Goal.parentGoalId` (migration 0098, self-FK, `on
-  delete cascade` — a sub-goal without its parent means nothing, so the DB,
-  `LocalStore.deleteGoal` and `PortfolioProvider` all drop them together and
-  the ConfirmDialog says how many). Nesting is **one level deep**: the parent
-  picker only ever offers top-level goals. A parent's target and progress are
-  DERIVED as the sum over its parts (`goalTotals`, pure) — its own
-  `targetAmount` and tracking fields stop being used the moment it has one,
-  so nothing is counted twice. The dashboard `GoalsCard` counts
-  `topLevelGoals` only, for the same reason. Every liability account is listed as a **derived**
-  payoff goal (`liabilityPayoffGoals`, sentinel id `debt:<accountId>`, never
-  stored): target = the highest balance ever owed, progress = what has been
-  repaid, target date = the amortisation payoff date only when the account
-  carries a rate + minimum payment. A user-made **top-level** goal linked to
-  that account replaces the derived one; a *sub*-goal linked to it does not,
-  since its progress is summed into its parent and it renders indented under
-  it, so suppressing the derived goal would leave the debt with no row of its
-  own. Owner rule: never make the user restate a liability as a goal by hand.
-  Progress on **any** goal linked to a liability (derived or user-made) is
-  what has been repaid measured from the **highest balance ever owed**
-  (`peakBalance`), never `targetAmount - balance`: the old formula silently
-  required the user to have typed the original debt as their target, so a goal
-  to repay part of a mortgage read 0 % forever. The target only says how much
-  of the debt they mean to repay.
-  Every stored goal is **editable after the fact** (row "Edit" -> dialog): one
-  `GoalForm` (`components/goals/goals-view.tsx`) serves both the add card and
-  the edit dialog through the existing `updateGoal` store method, so putting
-  more money aside means changing the goal's current amount, never recreating
-  it. A **composite** goal's dialog shows only name + date plus a line saying
-  the figures come from its parts, and carries the stored amount/tracking
-  fields over untouched — those fields are dead for a goal with parts
-  (`goalTotals`), and showing them contradicted every number in its row.
-  Derived payoff rows have no edit/delete (the account owns them), a goal can
-  never become its own part, and one that already has parts is not offered a
-  parent (nesting stays one level deep). Counted copy on this page is phrased
-  "... ({n})" rather than "{n} parts": `t()` has no plural forms, so "Summe aus
-  1 Teilzielen" was simply wrong German.
-- `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
-- `/instruments/[key]` — same detail view for non-held instruments (watchlist
-  click-through / catalog), reduced to master data + chart + look-through,
-  with an embedded "Add to portfolio" form
-- `/dividends` — dividend dashboard: income by month/year, personal yield +
-  yield-on-cost, per-holding breakdown, 12-month forecast from trailing
-  payouts (flag `dividends`)
-- `/pension` — statutory pension points + private/company policies projected
-  to a monthly retirement income (flag `pension`): summary tiles, the
-  assumptions form, the per-year Entgeltpunkte record and the policy register
-- `/simulation` — Monte Carlo simulation. The model choice ("My portfolio" /
-  "Custom") is a **tab strip at the top of the Parameters card**, not a
-  control inside the form (owner rule, round 25): the mode is what the whole
-  panel configures. A mode whose flag is Pro-locked keeps its tab (with a
-  `LockIcon`) and gates the panel **as a whole** behind `<ProGate>` — blurring
-  only the model fragment mid-form read as a rendering glitch. A mode whose
-  flag is off outright loses its tab; with a single visible mode the strip
-  disappears entirely.
-- `/login` — Supabase email/password + Google/GitHub OAuth
-- `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
-  linked via `LegalFooter` in the root layout). The privacy policy makes
-  verifiable claims about the code (server-side market-data calls, no
-  analytics, essential-only storage, local history caching) — **keep it
-  accurate when data flows change**. The legal contact email renders via
-  `EmailImage` (`components/legal/legal-page.tsx`): drawn onto a canvas so the
-  address never appears in the DOM (anti-scraping, user request) — never
-  reintroduce it as text, a `mailto:` link, or an ARIA attribute. Operator
-  identity (`site_config`) is served through a localStorage
-  stale-while-revalidate mirror (`lib/site-config-cache.ts`,
-  `useSyncExternalStore`, stable snapshot refs): cached values paint on the
-  first client render, and the amber `Placeholder` chips appear only once
-  loading has settled with the value still missing (`loaded` flag from
-  `useSiteConfig`), so registered visitors never see a placeholder flash.
+Every flag-gated route degrades to `FeatureUnavailable` when its flag is off
+and to `<ProTeaser>` when the plan locks it. Nav metadata is declared once in
+`lib/nav/routes.tsx` (grouped everyday / invest / plan) and rendered by both
+`Sidebar` and `MobileNav` — never add a route to one of them by hand.
+
+| Route | Flag | What it is |
+| --- | --- | --- |
+| `/` | — | dashboard: net-worth hero + area cards summarising all three groups |
+| `/portfolio` | — | holdings table, savings plans (`savingsPlans`), watchlist (`watchlist`), depot chart |
+| `/assets/[id]` | — | detail: price chart w/ buy/sell markers, IRR, dividends, P&L |
+| `/instruments/[key]` | — | same detail view for non-held instruments, plus "Add to portfolio" |
+| `/accounts` | `accounts` | balance accounts & liabilities + dated-balance editor |
+| `/spending` | `spending` | categorised expense/income ledger + category manager |
+| `/cashflow` | `spending` | forecast + planned income/expenses (`plannedCashflow`) |
+| `/debt` | `debtPayoff` | amortisation schedules + avalanche/snowball planner |
+| `/household` | `household` | shared households, invite/accept |
+| `/analysis` | — | allocation, risk (`risk`), tax report (`taxReport`) |
+| `/dividends` | `dividends` | income by month/year, yields, 12-month forecast |
+| `/xray` | `xray` | ETF look-through to constituent stocks |
+| `/rebalancing` | `rebalance` | target weights + trade suggestions |
+| `/goals` | `goals` | named goals, composite goals, derived liability payoff goals |
+| `/fire` | `firePlanner` | FIRE numbers, years-to-FI, withdrawal Monte Carlo |
+| `/health` | `finHealth` | financial-health gauges |
+| `/pension` | `pension` | pension points + policies -> monthly retirement income |
+| `/simulation` | `simulation` | Monte Carlo |
+| `/pricing` | `billing` | Free-vs-Pro comparison (MONETIZATION.md) |
+| `/login` | — | Supabase email/password + Google/GitHub OAuth |
+| `/impressum`, `/datenschutz`, `/terms` | — | legal pages (EN+DE) |
+
+Route-specific design notes (goals' composite/derived-payoff rules, the
+simulation's mode tab strip) live in DOCUMENTATION.md. The rules that bind
+you here:
+
+- **/goals**: never make the user restate a liability as a goal by hand —
+  every liability account is listed as a *derived* payoff goal. Progress on
+  any goal linked to a liability is measured from the **highest balance ever
+  owed** (`peakBalance`), never `targetAmount - balance`. Nesting is one level
+  deep and a parent's figures are DERIVED from its parts, so nothing is
+  counted twice.
+- **/simulation**: the model choice is a **tab strip at the top of the
+  Parameters card**, not a control inside the form — the mode is what the
+  whole panel configures. A Pro-locked mode keeps its tab and gates the panel
+  **as a whole**; blurring one fragment mid-form reads as a rendering glitch.
+- **Legal pages**: the privacy policy makes verifiable claims about the code
+  (server-side market-data calls, no analytics, essential-only storage, local
+  history caching) — **keep it accurate when data flows change**. The contact
+  email renders via `EmailImage`, drawn onto a canvas so the address never
+  appears in the DOM (anti-scraping, user request): never reintroduce it as
+  text, a `mailto:` link, or an ARIA attribute. Operator identity
+  (`site_config`) paints from a localStorage stale-while-revalidate mirror, so
+  the amber `Placeholder` chips only appear once loading has settled with the
+  value still missing — registered visitors never see a placeholder flash.
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
 client pages (see `app/assets/[id]/page.tsx`).

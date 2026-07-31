@@ -1017,3 +1017,311 @@ miss wiring bugs; that lesson is recorded in the project memory.
 | `PROD_READY.md` | The production-readiness punch list (largely worked off; kept as a record). |
 | `TODO.md` | The owner's working notes; feeds each development round. |
 | `supabase/schema.sql` / `supabase/migrations/` | The canonical database definition and its evolution. |
+
+## Everyday-money features (design notes)
+
+Moved out of CLAUDE.md, which now keeps only the invariants and points here.
+These are the entities that are NOT priced from a market: balances the user
+sets, money that flows, plans and entitlements. Each rides the full store seam
+(`LocalStore` backfill, `SupabaseStore`, `OfflineStore` mirror + queue,
+`lib/offline/sync.ts` replay) and is gated by its own feature flag.
+
+- **Accounts & liabilities** (`accounts.ts`, ROADMAP #1, flag `accounts`,
+  seeded disabled): the keystone that lets net worth go **negative**. An
+  `Account` (kind checking/savings/credit/loan/mortgage/other) is a balance the
+  user sets, NOT a holding priced from a market — distinct from `OTHER` assets
+  (which are positive manual-valuation holdings). `openingBalance` at `openedOn`
+  plus dated `AccountBalance` readings form a carry-forward step series (like
+  `ValuationPoint`); contribution to net worth is signed `(isLiability ? -1 :
+  1) * balance`, FX-converted at spot. Rides the **full store seam** (`accounts`
+  + `account_balances` tables migration 0080, RLS, FK cascade; LocalStore
+  backfill; OfflineStore mirror+queue; `setAccountBalances` replace-set like
+  `setAssetValuations`). Folded into `netWorthSeries` via optional
+  `accounts`/`accountBalances` params (empty ⇒ 0, so the finance core never
+  gates on the flag; MAX/YTD anchors also on earliest `openedOn`). The dashboard
+  hero and AI context (`lib/llm/context.ts`, id-free) include accounts only when
+  the flag is on. Surface is `/accounts`.
+- **Spending transactions & categories** (`spending.ts` + `categorize.ts`,
+  ROADMAP #2, flag `spending`, seeded disabled): expense/income against an
+  `accounts` row, categorised. `SpendingCategory` is a flat taxonomy
+  (`groupName` + `name`, stable id) — lighter than `tag_groups`/`asset_tags`
+  since a transaction carries exactly one category, so `category_id` is a
+  plain FK on the transaction row, not a junction table.
+  `SpendingTransaction.amount` is signed (income positive, expense negative)
+  in the account's native currency. Rides the **full store seam**
+  (`spending_categories` + `spending_transactions` tables migration 0081, RLS,
+  FK cascade — deleting an account cascades its spend, deleting a category
+  sets `categoryId` null on referencing transactions; LocalStore backfill;
+  OfflineStore mirror+queue). `categorize.ts`'s `buildCategoryRules` learns a
+  deterministic payee→category rule from the user's own past categorisation
+  (most recent wins on a conflict) — `applyCategoryRules` batch-suggests
+  categories for every still-uncategorised transaction; the quick-add form
+  also suggests on payee blur. `lib/finance/spending.ts` stays pure
+  (`byCategoryAndMonth`, `incomeExpenseSplit`, `safeToSpend`) and deliberately
+  does **not** fold into `netWorthSeries` — spending is a flow, not a balance
+  (that's ROADMAP #4, budgets/cash-flow). The category manager modal mirrors
+  `TagGroupsManager`'s CRUD-list shape (that component itself is hardwired to
+  `useTags()`, not literally reusable). Surface is `/spending`.
+- **Bank-statement import** (ROADMAP #3, same `spending` flag): a parallel
+  import pipeline for bank CSVs, not a branch inside the broker one — a
+  statement row (date/amount/payee/note) shares nothing with a broker row
+  (isin/type/quantity/price). `lib/import/spending-csv.ts` is a generic
+  header-driven parser (DE/EN column aliases, DE/EN decimal + date formats,
+  reusing `csv.ts`'s quote-aware line splitting and lenient number/date
+  helpers instead of duplicating them) plus `spendingFingerprint`, keyed
+  `accountId|date|amount|payee` since a spending row carries no cross-account
+  identifier the way ISIN/WKN does — the same statement re-imported against a
+  different account is legitimately a different set of rows, not a
+  duplicate. `lib/import/spending-reconcile.ts`'s `reconcileSpending` mirrors
+  `reconcile.ts`'s new/conflict/imported shape, scoped to the target
+  account's own transactions (same day + amount = conflict). Already-imported
+  rows are tracked in their own `imported_spending_rows` table (migration
+  0082) rather than reusing `imported_rows`, since the two fingerprint tables
+  FK to different entities (`spending_transactions` vs `transactions`) that
+  can't share one nullable column; `DataStore.addImportedSpendingFingerprints`
+  is best-effort on `OfflineStore` (not queued), matching
+  `addImportedFingerprints`'s existing precedent. The import modal
+  (`components/spending/import-spending.tsx`, opened from `/spending`) skips
+  the investment flow's field-level three-pane merge for conflicts — a
+  same-day/amount match differs in payee/note wording at most, not the
+  money — offering a plain skip/import-anyway toggle instead, and
+  auto-suggests each new row's category via the existing
+  `categorize.ts` rules.
+- **Budgets** (`budgets` table, ROADMAP #4, flag `budgets`): a monthly
+  spending cap per category — the "category caps + flow" philosophy picked
+  over YNAB-style envelopes. At most one budget per category (unique
+  `user_id, category_id`); deleting the category deletes its budget (unlike
+  `spending_transactions.category_id`, which sets null so the transaction
+  survives — a budget with no category means nothing). `amount` is stored in
+  the profile's base currency since `lib/finance/spending.ts` already
+  converts category totals to base before aggregating (`toBaseCurrency`), so
+  a cap needs no currency of its own. Rides the full store seam like every
+  other spending entity (`addBudget`/`updateBudget`/`deleteBudget`,
+  LocalStore/SupabaseStore/OfflineStore + `lib/offline/sync.ts` replay).
+  `budgetProgress` (`lib/finance/spending.ts`, pure) sums only EXPENSE
+  magnitudes per category for a given `YYYY-MM` against the cap — income
+  never offsets it. The `BudgetsCard` (`components/spending/budgets-card.tsx`,
+  self-gated on the flag, rendered on `/spending`) shows a month
+  stepper (`shiftMonth` in `lib/finance/dates.ts`) and a progress bar per
+  budgeted category, turning red past 100%; adding a budget offers only
+  categories that don't already have one (one cap per category, not a list).
+- **Retirement provision** (`pension_points` + `pension_contracts` +
+  `pension_reference` tables, `profiles.pension_settings`, migration 0106, flag
+  `pension`, seeded disabled): the largest retirement asset most German users
+  have is not in the portfolio, and it is denominated in **Entgeltpunkte, not
+  euro**. `lib/finance/pension.ts` is pure (`projectPension`, `accessFactor`,
+  `standardRetirementAge`, `pensionValueOn`); the aktueller Rentenwert and the
+  Rentenniveau that turn points into euro are **DB-seeded reference data**
+  (`pension_reference`, world-readable, `usePensionReference`) — never
+  hardcoded, exactly like `basiszins` for the Vorabpauschale. With no reference
+  row the projection returns `monthlyStatutory: null` and the UI shows points
+  only, rather than inventing a figure from a constant. Everything is in
+  **today's money** on purpose (no inflation, no wage growth, no assumed
+  return) and the page says so: a projection that quietly grew the Rentenwert
+  2 %/yr would look precise and be fiction. `PensionPoint` is keyed by **year**
+  (replace-set, like `AccountBalance` is keyed by date) so a year can never be
+  recorded twice and an offline replay is idempotent; the DB mirrors that with
+  a unique `(user_id, year)` index. `PensionContract` is a **sibling of
+  `Contract`, not one of its insurance types**: a contract is money going out
+  every month, a pension policy is defined by the income it will PAY from a
+  date decades away, which is the only figure the projection needs and the one
+  thing a `Contract` cannot express. Both rows are self-only in RLS,
+  deliberately **without** `household_peer_ids()` — a Renteninformation is
+  personal. `pension_settings` is a jsonb blob on the profile for the same
+  reason `rebalance_targets` is one (four scalars, one row per user). Surface
+  is `/pension`, in the Planning nav group.
+- **Planned income & expenses** (`planned_cashflows` table migration 0100, flag
+  `plannedCashflow`, seeded disabled): the salary, a bonus, a tax refund, a
+  one-off cost. A **sibling of `Contract`, deliberately not an extension** of
+  it: a contract is a running commitment with a renewal date and a cancellation
+  notice, it is always money going OUT, and `detectRecurringCandidates` is
+  expenses-only. `PlannedInterval` therefore adds `ONCE` (a single dated entry a
+  contract cannot express) and `WEEKLY`, plus an optional `endDate` (parental
+  allowance runs twelve months). `amount` follows `SpendingTransaction`, NOT
+  `Contract`/`Budget`: **signed** (income positive) and in the **account's
+  native currency**, and `accountId` is required — booking a due occurrence is
+  then a straight copy and `incomeExpenseSplit`/`isTransfer` apply unchanged.
+  Losing the account cascades the plan away (unlike a contract, which survives
+  as a register entry); losing the category only nulls `categoryId`.
+  `lib/finance/planned.ts` (pure, sibling of `contract-bookings.ts` for the same
+  reason that one is a sibling of `savings-plans.ts`) derives the occurrence
+  series, `duePlannedBookings`, `monthlyEquivalent` (null for `ONCE`) and
+  `plannedForecast`/`plannedMonthlyTotals`. Nothing is ever posted silently: due
+  occurrences collect until the user opens the review dialog on the
+  `PlannedCard`, where **each amount stays editable** (a salary is rarely the
+  planned figure) but the plan's sign decides the direction; booking writes the
+  transactions first and advances `lastBookedDate` second, same order and reason
+  as `ContractsView.bookDue`. A booking carries
+  `SpendingTransaction.plannedId` — its own column, since `recurringId` is a
+  foreign key to `contracts` and one nullable column cannot reference two
+  tables — and `detectRecurringCandidates` skips those rows too.
+  `plannedForecast` (`ForecastCard`, 6 months, stacked Recharts bars plus a
+  cumulative line) counts a month's ledger figures plus **every occurrence not
+  yet booked**, including one already due and still waiting in the review dialog
+  (money the ledger does not know about yet); registered contracts feed their
+  still-due charges in so fixed costs are not understated, and transfers drop
+  out on both sides. The AI context carries the monthly totals plus the next
+  payment per plan, id-free like the accounts block. Health/FIRE/dashboard
+  deliberately keep computing from actuals only — a booked salary reaches them
+  by itself.
+
+## LLM assistant (design notes)
+
+Moved out of CLAUDE.md, which keeps the invariants.
+
+### LLM assistant (BYO key)
+
+An opt-in chat bubble (flag `llmChat`, seeded **disabled**) lets the user ask
+natural-language questions about their own portfolio using an API key they
+bring themselves — no FinTrack-hosted key, no autonomous mutations. The
+provider seam is `LlmProvider` (`lib/llm/types.ts`), mirroring `DataStore`/
+`PriceProvider`: `{ id, label, models, buildRequest, buildPingRequest,
+extractDelta, extractPingText, chat }`. `lib/llm/index.ts` is the registry
+(`providers`/`providerList`/`getProvider`) — adding a vendor means one file
+under `providers/` plus one registry entry; **UI, context, and route code
+never branch on the provider id.**
+
+All vendor traffic goes through the server proxy `/api/llm`
+(`app/api/llm/route.ts`) — the browser never contacts a vendor origin
+directly, so CSP `connect-src` stays untouched (`'self'` + `*.supabase.co`,
+same "market-data calls are server-side by design" rule as Yahoo/Frankfurter).
+The route reads the key from the request body, uses it once per request, and
+never logs, persists, or echoes it; vendor error bodies are drained and
+discarded, and responses carry only a machine-readable `LlmErrorCode`
+(`invalidKey`/`rateLimited`/`providerDown`/`badRequest`/`network`), localized
+client-side (`lib/llm/error-messages.ts`). The route normalizes every
+vendor's SSE into one uniform delta stream (`data: {"delta":...}` frames, an
+error frame, a `[DONE]` sentinel via `lib/llm/sse.ts`) so the client adapter
+never parses vendor-specific SSE. Rate-limited and payload-capped (256 KB)
+like `/api/share`; a client disconnect aborts `req.signal`, which cancels the
+upstream fetch.
+
+`llmConfig` (provider/model/key) rides the **full store seam** like tags and
+watchlist (owner override of `LLM_INTEGRATION.md`'s original "localStorage
+only" decision, same precedent as round-22 tags): `PortfolioData` carries
+`llmConfig`, table `llm_settings` persists it for registered users (one row
+per user, RLS, upsert-on-save / delete-on-removal — always replace-set and
+replay-idempotent), Guest Mode keeps it in the `LocalStore` blob, and
+`OfflineStore` mirrors + queues it through `lib/offline/sync.ts` like any
+other mutation. Registered users additionally choose the storage **scope**
+(owner requirement, 2026-07-17): the account row above, or browser-only via
+the `fintrack-llm` localStorage key (`lib/llm/browser-config.ts`) — its mere
+presence wins over the account row (`lib/llm/config-precedence.ts`,
+`resolveActiveLlmConfig`, pure/unit-tested). `LlmConfigProvider`
+(`lib/llm/llm-context.tsx`) exposes `{config, scope, setConfig, clearConfig}`
+and is mounted inside `PortfolioProvider`; `setConfig(config, scope)` moves
+the key between the two locations, clearing the other. A browser-scoped key
+is cleared on sign-out (`lib/auth/auth-context.tsx`, next to the history
+cache) since it's scoped to that browser session by the user's own choice;
+the account-scoped key survives sign-out like the rest of `PortfolioData`.
+Guest Mode has no scope choice (the guest blob IS the browser) and never
+renders the control.
+
+Chat context is built client-side, pure, no React (`lib/llm/context.ts`,
+`buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot of
+holdings, savings plans, risk/allocation stats, sent as the system-prompt
+preamble. Risk stats feed from real 5y histories plus portfolio beta/alpha
+vs MSCI World (`risk.vsBenchmark`) — the same composite-levels math as the
+risk page KPI tiles; `usePortfolioChat(active)` arms those history/benchmark
+fetches only once the panel is first opened, and the per-conversation system
+prompt isn't cached until they've landed (rebuilt per send meanwhile). It deliberately **never includes internal ids** (asset/portfolio/
+transaction id — display data only: name, ISIN, type, ...) and **never
+includes the tax report** (Freistellungsauftrag amounts stay out, per the
+plan's open question). `/datenschutz` documents the BYO-key opt-in, where the
+key can be stored (always browser-local for guests; account DB or
+browser-local, by choice, for registered users), and that portfolio
+data is transmitted to the chosen provider only when the chat is used — keep
+that section accurate if these data flows change, same rule as the rest of
+the privacy policy.
+
+## Route design notes
+
+Moved out of CLAUDE.md, which keeps the route table and the binding rules.
+
+### Routes
+
+- `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable
+  table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
+  (flag `watchlist`)
+- `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1):
+  add-account form + sortable list + per-account dated-balance editor
+- `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
+  #2): quick-add form + sortable transaction table + category manager modal,
+  plus the cash-flow forecast and planned-income/expense cards (flag
+  `plannedCashflow`)
+- `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
+  optional** (open-ended goals are first class; a date only buys the
+  monthly-needed figure). A goal is either atomic ("emergency fund") or
+  **composite** ("trip to the USA" = flight + hotel + taxi): sub-goals point
+  at their parent through `Goal.parentGoalId` (migration 0098, self-FK, `on
+  delete cascade` — a sub-goal without its parent means nothing, so the DB,
+  `LocalStore.deleteGoal` and `PortfolioProvider` all drop them together and
+  the ConfirmDialog says how many). Nesting is **one level deep**: the parent
+  picker only ever offers top-level goals. A parent's target and progress are
+  DERIVED as the sum over its parts (`goalTotals`, pure) — its own
+  `targetAmount` and tracking fields stop being used the moment it has one,
+  so nothing is counted twice. The dashboard `GoalsCard` counts
+  `topLevelGoals` only, for the same reason. Every liability account is listed as a **derived**
+  payoff goal (`liabilityPayoffGoals`, sentinel id `debt:<accountId>`, never
+  stored): target = the highest balance ever owed, progress = what has been
+  repaid, target date = the amortisation payoff date only when the account
+  carries a rate + minimum payment. A user-made **top-level** goal linked to
+  that account replaces the derived one; a *sub*-goal linked to it does not,
+  since its progress is summed into its parent and it renders indented under
+  it, so suppressing the derived goal would leave the debt with no row of its
+  own. Owner rule: never make the user restate a liability as a goal by hand.
+  Progress on **any** goal linked to a liability (derived or user-made) is
+  what has been repaid measured from the **highest balance ever owed**
+  (`peakBalance`), never `targetAmount - balance`: the old formula silently
+  required the user to have typed the original debt as their target, so a goal
+  to repay part of a mortgage read 0 % forever. The target only says how much
+  of the debt they mean to repay.
+  Every stored goal is **editable after the fact** (row "Edit" -> dialog): one
+  `GoalForm` (`components/goals/goals-view.tsx`) serves both the add card and
+  the edit dialog through the existing `updateGoal` store method, so putting
+  more money aside means changing the goal's current amount, never recreating
+  it. A **composite** goal's dialog shows only name + date plus a line saying
+  the figures come from its parts, and carries the stored amount/tracking
+  fields over untouched — those fields are dead for a goal with parts
+  (`goalTotals`), and showing them contradicted every number in its row.
+  Derived payoff rows have no edit/delete (the account owns them), a goal can
+  never become its own part, and one that already has parts is not offered a
+  parent (nesting stays one level deep). Counted copy on this page is phrased
+  "... ({n})" rather than "{n} parts": `t()` has no plural forms, so "Summe aus
+  1 Teilzielen" was simply wrong German.
+- `/assets/[id]` — detail: price chart w/ buy/sell markers, IRR, dividends, P&L
+- `/instruments/[key]` — same detail view for non-held instruments (watchlist
+  click-through / catalog), reduced to master data + chart + look-through,
+  with an embedded "Add to portfolio" form
+- `/dividends` — dividend dashboard: income by month/year, personal yield +
+  yield-on-cost, per-holding breakdown, 12-month forecast from trailing
+  payouts (flag `dividends`)
+- `/pension` — statutory pension points + private/company policies projected
+  to a monthly retirement income (flag `pension`): summary tiles, the
+  assumptions form, the per-year Entgeltpunkte record and the policy register
+- `/simulation` — Monte Carlo simulation. The model choice ("My portfolio" /
+  "Custom") is a **tab strip at the top of the Parameters card**, not a
+  control inside the form (owner rule, round 25): the mode is what the whole
+  panel configures. A mode whose flag is Pro-locked keeps its tab (with a
+  `LockIcon`) and gates the panel **as a whole** behind `<ProGate>` — blurring
+  only the model fragment mid-form read as a rendering glitch. A mode whose
+  flag is off outright loses its tab; with a single visible mode the strip
+  disappears entirely.
+- `/login` — Supabase email/password + Google/GitHub OAuth
+- `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
+  linked via `LegalFooter` in the root layout). The privacy policy makes
+  verifiable claims about the code (server-side market-data calls, no
+  analytics, essential-only storage, local history caching) — **keep it
+  accurate when data flows change**. The legal contact email renders via
+  `EmailImage` (`components/legal/legal-page.tsx`): drawn onto a canvas so the
+  address never appears in the DOM (anti-scraping, user request) — never
+  reintroduce it as text, a `mailto:` link, or an ARIA attribute. Operator
+  identity (`site_config`) is served through a localStorage
+  stale-while-revalidate mirror (`lib/site-config-cache.ts`,
+  `useSyncExternalStore`, stable snapshot refs): cached values paint on the
+  first client render, and the amber `Placeholder` chips appear only once
+  loading has settled with the value still missing (`loaded` flag from
+  `useSiteConfig`), so registered visitors never see a placeholder flash.
+
+Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
+client pages (see `app/assets/[id]/page.tsx`).
