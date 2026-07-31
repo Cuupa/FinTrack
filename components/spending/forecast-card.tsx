@@ -30,6 +30,7 @@ import { formatCurrency } from "@/lib/format";
 import { axisCurrencyFormatter, yAxisWidth } from "@/components/charts/axis";
 import { Card, Stat } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { intlLocale } from "@/lib/i18n/locale";
 
 const MONTHS = 6;
 const EMERALD = "#10b981";
@@ -41,7 +42,7 @@ const ZINC = "#71717a";
 /** "2026-01" → "Jan '26" in the active locale. */
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
-  const mon = new Intl.DateTimeFormat(undefined, { month: "short" }).format(new Date(y, m - 1, 1));
+  const mon = new Intl.DateTimeFormat(intlLocale(), { month: "short" }).format(new Date(y, m - 1, 1));
   return `${mon} '${String(y).slice(2)}`;
 }
 

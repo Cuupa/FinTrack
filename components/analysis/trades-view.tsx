@@ -41,6 +41,7 @@ import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { yAxisWidth } from "@/components/charts/axis";
+import { intlLocale } from "@/lib/i18n/locale";
 
 const EMERALD = "#10b981";
 const RED = "#ef4444";
@@ -81,7 +82,7 @@ function windowedMovers(
 /** "2025-01" → "Jan '25". */
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
-  const mon = new Intl.DateTimeFormat(undefined, { month: "short" }).format(new Date(y, m - 1, 1));
+  const mon = new Intl.DateTimeFormat(intlLocale(), { month: "short" }).format(new Date(y, m - 1, 1));
   return `${mon} '${String(y).slice(2)}`;
 }
 

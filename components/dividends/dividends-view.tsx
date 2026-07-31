@@ -44,6 +44,7 @@ import { StatCardSkeleton, ListRowSkeleton } from "@/components/dividends/divide
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { TablePagination, usePagination } from "@/components/ui/table";
 import { yAxisWidth } from "@/components/charts/axis";
+import { intlLocale } from "@/lib/i18n/locale";
 
 const EMERALD = "#10b981";
 
@@ -58,7 +59,7 @@ interface AssetDividends {
 /** "2025-01" → "Jan '25" in the active locale. */
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
-  const mon = new Intl.DateTimeFormat(undefined, { month: "short" }).format(new Date(y, m - 1, 1));
+  const mon = new Intl.DateTimeFormat(intlLocale(), { month: "short" }).format(new Date(y, m - 1, 1));
   return `${mon} '${String(y).slice(2)}`;
 }
 

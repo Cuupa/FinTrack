@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import type { SeriesPoint } from "@/lib/finance/portfolio";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { intlLocale } from "@/lib/i18n/locale";
 import { niceTicks } from "@/lib/ticks";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -116,7 +117,9 @@ interface Props {
 }
 
 function shortDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+  // The app's locale, never the browser's: an English page was drawing German
+  // axis ticks on a German machine.
+  return new Intl.DateTimeFormat(intlLocale(), {
     month: "short",
     day: "numeric",
     year: "2-digit",
