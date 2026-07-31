@@ -34,6 +34,46 @@ async function seedMortgage(page: Page): Promise<void> {
   await expect(page.locator('[data-tour="debt-plan"]')).toBeVisible();
 }
 
+test("a balance is read as repayment against the original loan sum", async ({ page }) => {
+  await page.goto("/accounts");
+  await dismissTour(page);
+  await page.locator("#account-name").fill("Old mortgage");
+  await page.getByRole("button", { name: "Type" }).click();
+  await page.getByRole("option", { name: "Mortgage" }).click();
+  await page.locator("#account-opening").fill("300000");
+  await page.locator("#account-opened").fill("2019-04-01");
+  await page.getByRole("button", { name: "Add account", exact: true }).click();
+
+  const row = page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Old mortgage" });
+  await row.getByRole("button", { name: "Balances" }).click();
+  await page.locator("#balance-value").fill("218000");
+  await page.getByRole("button", { name: "Add balance", exact: true }).click();
+  await page.keyboard.press("Escape");
+
+  await page.goto("/debt");
+  await dismissTour(page);
+  const totals = page.locator('[data-tour="debt-totals"]');
+  await expect(totals).toContainText("300,000");
+  // 300,000 borrowed, 218,000 left: the gap is what has been repaid.
+  await expect(totals).toContainText("82,000");
+
+  // The chart only exists once the debt has a schedule to draw.
+  await page
+    .locator('[data-tour="debt-list"] tbody tr')
+    .filter({ hasText: "Old mortgage" })
+    .getByRole("button", { name: /Rate & payment/i })
+    .click();
+  await page.locator("#debt-rate").fill("3.5");
+  await page.locator("#debt-min-payment").fill("1400");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+
+  // And the chart reaches back to when the debt started, on the depot's own
+  // timeframe strip, instead of starting at today.
+  const chart = page.locator('[data-tour="debt-chart"]');
+  await chart.getByRole("button", { name: "MAX", exact: true }).click();
+  await expect(chart.getByText("2019")).toBeVisible();
+});
+
 test("a planned one-off repayment shortens the payoff plan", async ({ page }) => {
   await seedMortgage(page);
 

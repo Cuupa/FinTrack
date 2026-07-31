@@ -18,8 +18,14 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
-import { today, addMonthsToDate } from "@/lib/finance/dates";
-import { currentAccountBalance, accountFxRate } from "@/lib/finance/accounts";
+import {
+  today,
+  addMonthsToDate,
+  timeframeStart,
+  TIMEFRAMES,
+  type Timeframe,
+} from "@/lib/finance/dates";
+import { balanceSeries, currentAccountBalance, accountFxRate } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import {
   accountRateSteps,
@@ -30,9 +36,15 @@ import {
   type DebtStrategy,
 } from "@/lib/finance/debt";
 import type { Account } from "@/lib/types";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  parseDecimal,
+  stripLeadingZero,
+} from "@/lib/format";
 import { formatMonths, formatMonthsShort } from "@/lib/i18n/duration";
-import { Button, Card, Stat } from "@/components/ui/primitives";
+import { Button, Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DebtDetailsDialog } from "./debt-details-dialog";
@@ -81,9 +93,20 @@ export function DebtView() {
             lumpSums,
           )
         : null;
+      // What was owed on each past date: the loan sum at `openedOn`, every
+      // balance the user has entered since, carried forward. The gap between
+      // the two IS what has been repaid, which is the only way a liability
+      // chart can start where the debt started instead of at today.
+      const history = balanceSeries(account, data.accountBalances, movements)
+        .filter((p) => p.date <= todayIso)
+        .map((p) => ({ date: p.date, balance: p.balance * rate }));
+      const original = account.openingBalance * rate;
       return {
         account,
         balance,
+        history,
+        original,
+        repaid: Math.max(0, original - balance),
         payment: (account.minPayment ?? 0) * rate,
         steps,
         lumpSums,
@@ -107,6 +130,10 @@ export function DebtView() {
     dir: "desc",
   });
   const [detailsFor, setDetailsFor] = useState<Account | null>(null);
+  // How far back the chart reaches. The same strip the depot chart uses, for
+  // the same reason: "from today" answers nothing about a debt you have been
+  // paying for eight years.
+  const [tf, setTf] = useState<Timeframe>("1Y");
   const [strategy, setStrategy] = useState<DebtStrategy>("avalanche");
   const [extra, setExtra] = useState("");
   const [scope, setScope] = useState<string>(ALL);
@@ -134,6 +161,8 @@ export function DebtView() {
 
   const totalDebt = rows.reduce((s, r) => s + r.balance, 0);
   const totalMinPayment = rows.reduce((s, r) => s + r.payment, 0);
+  const totalOriginal = rows.reduce((s, r) => s + r.original, 0);
+  const totalRepaid = rows.reduce((s, r) => s + r.repaid, 0);
 
   const planDebts: DebtInput[] = useMemo(
     () =>
@@ -195,14 +224,56 @@ export function DebtView() {
     () => yearlySplit(plan.series, scopeId === ALL ? undefined : scopeId),
     [plan.series, scopeId],
   );
+
+  // The past, as chart rows: one row per date any in-scope debt has a reading
+  // on, every debt carried forward to that date. Trimmed by the timeframe, so
+  // the strip scopes how far back the chart looks; the forecast beyond today
+  // always runs to payoff.
+  const historyRows = useMemo(() => {
+    const scoped = rows.filter(
+      (r) => r.schedule !== null && (scopeId === ALL || r.account.id === scopeId),
+    );
+    if (scoped.length === 0) return [];
+    const earliest = scoped.reduce(
+      (min, r) => (r.account.openedOn < min ? r.account.openedOn : min),
+      scoped[0].account.openedOn,
+    );
+    const from = timeframeStart(tf, todayIso, earliest);
+    // Monthly, like the forecast: the chart's x-axis is categorical, so a
+    // sparse past would compress seven years into the width of one plan month
+    // and the whole repayment would read as a cliff at the left edge.
+    const dates: string[] = [];
+    for (let d = from; d < todayIso; d = addMonthsToDate(d, 1)) dates.push(d);
+    for (const r of scoped) {
+      for (const p of r.history) if (p.date >= from && p.date < todayIso) dates.push(p.date);
+    }
+    dates.sort();
+    const at = (r: (typeof scoped)[number], date: string) => {
+      let value = 0;
+      for (const p of r.history) {
+        if (p.date > date) break;
+        value = p.balance;
+      }
+      // Before the account existed it owed nothing, not its opening balance.
+      return date < r.account.openedOn ? 0 : value;
+    };
+    // Today closes the measured part and is where the forecast takes over, so
+    // it is always a point -- the "today" marker needs one to draw on.
+    return [...new Set([...dates, todayIso])].map((date) => ({
+      date,
+      byDebt: Object.fromEntries(scoped.map((r) => [r.account.id, at(r, date)])),
+    }));
+  }, [rows, scopeId, tf, todayIso]);
   // A ReferenceLine on a categorical axis only draws when its x matches a
   // data point exactly, and the series lands on today's day-of-month -- so the
   // fixed-rate end date is snapped to the first plan month at or after it
   // instead of silently drawing nothing.
   const markers = useMemo(() => {
     const dates = plan.series.map((p) => p.date);
+    const todayMarker =
+      historyRows.length > 0 ? [{ date: todayIso, label: t("debt.chart.today") }] : [];
     const snap = (iso: string) => dates.find((d) => d >= iso) ?? dates[dates.length - 1];
-    return (
+    return todayMarker.concat(
       rows
         .filter(
           (r) =>
@@ -217,9 +288,9 @@ export function DebtView() {
             scopeId === ALL && rows.length > 1
               ? `${r.account.name}: ${t("debt.chart.fixedRateEnd")}`
               : t("debt.chart.fixedRateEnd"),
-        }))
+        })),
     );
-  }, [rows, scopeId, todayIso, t, plan.series]);
+  }, [rows, scopeId, todayIso, t, plan.series, historyRows]);
 
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const thCls =
@@ -232,8 +303,24 @@ export function DebtView() {
   return (
     <div className="space-y-6">
       <Card data-tour="debt-totals">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Stat label={t("debt.totals.debt")} value={formatCurrency(totalDebt, base)} isPrivate />
+          <Stat
+            label={t("debt.totals.original")}
+            value={formatCurrency(totalOriginal, base)}
+            isPrivate
+          />
+          <Stat
+            label={t("debt.totals.repaid")}
+            value={formatCurrency(totalRepaid, base)}
+            sub={
+              totalOriginal > 0
+                ? `${formatNumber((totalRepaid / totalOriginal) * 100, 1)}%`
+                : undefined
+            }
+            valueClassName={totalRepaid > 0 ? "text-emerald-600 dark:text-emerald-400" : ""}
+            isPrivate
+          />
           <Stat
             label={t("debt.totals.minPayment")}
             value={formatCurrency(totalMinPayment, base)}
@@ -368,7 +455,14 @@ export function DebtView() {
               <h2 className="text-lg font-semibold">{t("debt.chart.title")}</h2>
               <p className="mt-1 max-w-2xl text-sm text-zinc-500">{t("debt.chart.intro")}</p>
             </div>
-            {planDebts.length > 1 && (
+            <div className="flex flex-wrap items-end gap-4">
+              <SegmentedControl
+                size="sm"
+                value={tf}
+                onChange={setTf}
+                options={TIMEFRAMES.map((x) => ({ label: x, value: x }))}
+              />
+              {planDebts.length > 1 && (
               <div className="w-full sm:w-64">
                 <label className="text-sm font-medium">{t("debt.chart.scopeLabel")}</label>
                 <SelectMenu
@@ -382,11 +476,13 @@ export function DebtView() {
                   ]}
                 />
               </div>
-            )}
+              )}
+            </div>
           </div>
 
           <DebtBalanceChart
             series={plan.series}
+            history={historyRows}
             baseline={extraVal > 0 ? baseline.series : undefined}
             debts={chartDebts}
             base={base}

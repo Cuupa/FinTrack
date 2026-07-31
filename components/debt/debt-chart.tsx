@@ -76,18 +76,31 @@ function yearOf(iso: string): string {
  */
 export function DebtBalanceChart({
   series,
+  history = [],
   baseline,
   debts,
   base,
   markers = [],
 }: {
   series: DebtPlanPoint[];
+  /** What was actually owed, up to and including today. Drawn before the
+   *  forecast so the chart starts where the debt started. */
+  history?: { date: string; byDebt: Record<string, number> }[];
   baseline?: DebtPlanPoint[];
   debts: DebtSeriesLegend[];
   base: string;
   markers?: DebtMarker[];
 }) {
   const { t } = useI18n();
+
+  const past = useMemo<Record<string, string | number>[]>(
+    () =>
+      history.map((p) => ({
+        date: p.date,
+        ...Object.fromEntries(debts.map((d) => [d.id, p.byDebt[d.id] ?? 0])),
+      })),
+    [history, debts],
+  );
 
   const data = useMemo(() => {
     const baselineByMonth = new Map((baseline ?? []).map((p) => [p.month, p.balance]));
@@ -108,13 +121,18 @@ export function DebtBalanceChart({
       if (baseline?.length) row.baseline = baselineByMonth.get(m) ?? 0;
       rows.push(row);
     }
-    return rows;
-  }, [series, baseline, debts]);
+    return past.concat(rows);
+  }, [series, baseline, debts, past]);
 
   const tickValues = useMemo(() => {
     const totals = series.map((p) => p.balance);
-    return baseline?.length ? [...totals, ...baseline.map((p) => p.balance)] : totals;
-  }, [series, baseline]);
+    const pastTotals = history.map((p) =>
+      debts.reduce((s, d) => s + (p.byDebt[d.id] ?? 0), 0),
+    );
+    return baseline?.length
+      ? [...totals, ...pastTotals, ...baseline.map((p) => p.balance)]
+      : [...totals, ...pastTotals];
+  }, [series, baseline, history, debts]);
   const tickFormatter = axisCurrencyFormatter(tickValues, base);
   const axisWidth = yAxisWidth(tickValues.map((v) => tickFormatter(v)));
   // ~10 year labels regardless of term length: a 40-year plan has 490 points.
