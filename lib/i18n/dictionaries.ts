@@ -733,6 +733,11 @@ export const en = {
   "asset.delete": "Delete",
   "asset.details": "Details",
   "asset.topHoldings": "Top 10 holdings",
+  "asset.risk.title": "Risk profile",
+  "asset.risk.intro":
+    "Measured from this instrument's own price history in your base currency, the same way the risk tab measures your portfolio.",
+  "asset.risk.synthetic":
+    "No real market history for this instrument yet, so these figures come from the estimated price series.",
   "asset.transactions": "Transactions",
   "asset.addTransaction": "Add transaction",
   "asset.noTransactions": "No transactions yet.",
@@ -2830,6 +2835,11 @@ export const de: Partial<Record<MessageKey, string>> = {
   "asset.delete": "Löschen",
   "asset.details": "Details",
   "asset.topHoldings": "Top-10-Positionen",
+  "asset.risk.title": "Risikoprofil",
+  "asset.risk.intro":
+    "Gemessen an der eigenen Kurshistorie dieses Papiers in deiner Basiswährung, genau wie der Risiko-Tab dein Portfolio misst.",
+  "asset.risk.synthetic":
+    "Für dieses Papier gibt es noch keine echte Kurshistorie, die Werte stammen daher aus der geschätzten Kursreihe.",
   "asset.transactions": "Transaktionen",
   "asset.addTransaction": "Transaktion hinzufügen",
   "asset.noTransactions": "Noch keine Transaktionen.",
@@ -4932,6 +4942,11 @@ export const es: Partial<Record<MessageKey, string>> = {
   "asset.delete": "Eliminar",
   "asset.details": "Detalles",
   "asset.topHoldings": "10 principales posiciones",
+  "asset.risk.title": "Perfil de riesgo",
+  "asset.risk.intro":
+    "Medido sobre el propio historial de precios de este instrumento en tu moneda base, igual que la pestaña de riesgo mide tu cartera.",
+  "asset.risk.synthetic":
+    "Todavía no hay historial de mercado real para este instrumento, así que estas cifras vienen de la serie de precios estimada.",
   "asset.transactions": "Transacciones",
   "asset.addTransaction": "Añadir transacción",
   "asset.noTransactions": "Todavía no hay transacciones.",

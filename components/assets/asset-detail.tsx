@@ -59,6 +59,7 @@ import { useFeature, useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-cont
 import { ProGate } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
+import { AssetRiskCard } from "@/components/assets/asset-risk-card";
 import { CashInterestSection } from "@/components/assets/cash-interest-section";
 import { ValuationSection } from "@/components/assets/valuation-section";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
@@ -145,6 +146,7 @@ export function AssetDetail({
   // blurred behind the paywall instead of vanishing.
   const cashInterest = useFeature("cashInterest");
   const manualValuation = useFeature("manualValuation");
+  const riskFeature = useFeature("risk");
   const billingEnabled = useFeatureFlag("billing");
   const { limit: savingsPlansLimit } = usePlanLimit("savingsPlans");
   // Subscribe to the locale so figures re-format when the language changes
@@ -875,6 +877,14 @@ export function AssetDetail({
           </Card>
         )}
       </div>
+
+      {/* This instrument's own risk profile, measured from its price history —
+          the same metrics the risk tab reports for the whole portfolio. */}
+      {riskFeature.enabled && (
+        <ProGate locked={riskFeature.locked} feature="risk">
+          <AssetRiskCard asset={asset} histories={histories} />
+        </ProGate>
+      )}
 
       {/* Transactions — full width, add form above the table. Booking the
           first transaction on a not-(yet-)held instrument is what turns it
