@@ -10,7 +10,7 @@ import { TourReplayButton } from "@/components/onboarding/page-tours";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { PAGE_STACK, PageHeader } from "@/components/ui/primitives";
 import { AreaCards } from "@/components/dashboard/area-cards";
-import { WealthSplitCard } from "@/components/dashboard/wealth-split-card";
+import { MonthFlowCard } from "@/components/dashboard/month-flow-card";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
@@ -43,10 +43,9 @@ export default function DashboardPage() {
           <LiveShareSync />
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
 
-          {/* What the number above is MADE of, and how the current month is
-              running. Net worth alone says how rich you are; these two say
-              where it sits and whether this month is going the right way. */}
-          <WealthSplitCard />
+          {/* How the current month is running. What net worth is made of is
+              said once, by the composition line inside the hero. */}
+          <MonthFlowCard />
 
           {/* Everyday money before investments. The order is the argument: the
               home screen used to be the holdings table with a net-worth chart
