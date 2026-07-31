@@ -21,6 +21,10 @@ subworker; commit only the paths you claimed.
 | Wiederkehrende Zahlungen: Änderungsumfang abfragen | MEDIUM | done (33e246f) | app/recurring/[kind]/[id], recurring-card (Inline-Edit + Zurück), e2e/recurring.spec.ts; nebenbei Crash bei Eintrag ohne Buchungskonto gefixt |
 | Verbindlichkeiten: Verlauf ab Kreditbeginn + Zeitfilter | HIGH | done (668ac5d) | debt-view, debt-chart, e2e/debt.spec.ts; "Ursprüngliche Summe" + "Bisher getilgt" |
 | Analysen: Admin feature usage | MEDIUM | done (0bd639f), Migration 0108 muss noch laufen | app/admin/usage, app/api/admin/usage, migration 0108, /datenschutz |
+| Vereinheitlichung: Zeilen-Aktionen | HIGH | done (4506d27) | components/ui/row-actions.tsx + 8 Tabellen; E2E-Suite repariert (add-asset auf /portfolio, planned.spec) |
+| /admin/usage 500 (transactions.user_id) | HIGH | done (69edff6) | Migration 0109 muss laufen |
+| Kurse fehlen (IE00BMVB5N38) | HIGH | Ursache gefunden + Fix (0e5fae2) | Cron verschluckte Yahoo-Fehler und übersprang onvista; jetzt geloggt. Nach Deploy: /admin/prices -> Revalidieren |
+| Ziele-Karte zählte 4, zeigte 3 | MEDIUM | done (0e5fae2) | area-cards: "+N weitere" |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
