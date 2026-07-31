@@ -19,7 +19,8 @@ subworker; commit only the paths you claimed.
 | KPIs: Asset-Risikometriken | MEDIUM | done | components/assets/asset-risk-card.tsx, components/analysis/metric-card.tsx (geteilt), Dashboard-Dublette "Woraus es besteht" entfernt |
 | Chart-Datumslabels folgten der Browser-Locale | — | done (f0af0e0) | performance-chart, trades/dividends/forecast |
 | Wiederkehrende Zahlungen: Änderungsumfang abfragen | MEDIUM | done (33e246f) | app/recurring/[kind]/[id], recurring-card (Inline-Edit + Zurück), e2e/recurring.spec.ts; nebenbei Crash bei Eintrag ohne Buchungskonto gefixt |
-| Analysen: Admin feature usage | MEDIUM | todo | — |
+| Verbindlichkeiten: Verlauf ab Kreditbeginn + Zeitfilter | HIGH | done (668ac5d) | debt-view, debt-chart, e2e/debt.spec.ts; "Ursprüngliche Summe" + "Bisher getilgt" |
+| Analysen: Admin feature usage | MEDIUM | done (0bd639f), Migration 0108 muss noch laufen | app/admin/usage, app/api/admin/usage, migration 0108, /datenschutz |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
