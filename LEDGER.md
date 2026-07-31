@@ -32,9 +32,27 @@ subworker; commit only the paths you claimed.
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
 | Monte Carlo: dynamische Entnahme + Vereinheitlichung | LOW | todo | — |
-| Tooltips überarbeiten | — | todo | — |
+| Tooltips überarbeiten | MEDIUM | done | 17 Keys x 3 Sprachen entlokalisiert, shared-portfolio-view übersetzt |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Tooltips zeigen nicht mehr auf andere Elemente (2026-07-31)
+
+17 Keys sagten dem Nutzer, wo er hinschauen soll: "Add one above", "Set target
+weights below.", "Adjust the parameters on the left", "Full breakdown listed
+below." Ortsangaben sind auf dem Handy schlicht falsch (links wird oben), und
+sie beschreiben, was der Nutzer ohnehin sieht. Alle drei Sprachen entlokalisiert
+und dabei gekuerzt.
+
+Nicht angefasst: "above 1 amplifies its swings", "ended above this value",
+"Pairs above 0.8" - das ist Mathematik, keine Wegbeschreibung.
+
+`shared-portfolio-view.tsx` hatte zwei fest verdrahtete englische InfoTips,
+obwohl die Datei `useI18n` schon nutzt - einer davon ("Click a column to sort.")
+genau das gemeldete Muster, und dazu ueberfluessig, weil jede Tabelle sortierbar
+ist. Jetzt `shared.allocationTip` / `shared.holdingsTip` in en/de/es.
+
+1082 Unit-Tests (inkl. es-Key-Paritaet), 46 E2E gruen.
 
 ## Erledigt: Sondertilgung ist live, /debt entschlackt (2026-07-31)
 

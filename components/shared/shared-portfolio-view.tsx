@@ -271,7 +271,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
         <Card>
           <h2 className="mb-4 flex items-center gap-1.5 text-sm font-semibold">
             Allocation
-            <InfoTip text="Share of the portfolio by holding (by current value)." />
+            <InfoTip text={t("shared.allocationTip")} />
           </h2>
           <AllocationPie slices={slices} currency={currency} showTotal={!incognito} title="Allocation" />
         </Card>
@@ -280,7 +280,7 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
       <Card>
         <h2 className="flex items-center gap-1.5 text-lg font-semibold">
           Holdings
-          <InfoTip text="Each position's weight, return (vs. cost basis), and value. Click a column to sort." />
+          <InfoTip text={t("shared.holdingsTip")} />
         </h2>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm">

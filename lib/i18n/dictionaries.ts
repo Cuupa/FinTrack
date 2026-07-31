@@ -227,8 +227,7 @@ export const en = {
   "settings.ai.scope.account": "In your account (on every device)",
   "settings.ai.scope.browser": "Only in this browser",
   "settings.ai.scope.browserHint": "Cleared when you sign out.",
-  "settings.ai.privacyNote":
-    "Choose below where your key is stored: in your account (database, protected by per-user access controls, available on every device, kept until you remove it) or only in this browser (cleared when you sign out). When you use the chat, your portfolio data is sent to the provider you choose; we never store or log the conversation on our server.",
+  "settings.ai.privacyNote": "Account: on every device, kept until you remove it. This browser only: cleared when you sign out. Chatting sends your portfolio data to your provider; we never store or log the conversation.",
   "settings.ai.privacyNoteGuest":
     "In Guest Mode your key stays only in this browser. When you use the chat, your portfolio data is sent to the provider you choose; we never store or log the conversation on our server.",
   "settings.ai.privacyLink": "Privacy policy",
@@ -286,8 +285,7 @@ export const en = {
   // Page tours (onboarding/page-tours.tsx): risk, rebalancing, simulation,
   // asset tags. Reuse tour.start/next/back/skip/finish/progressAria above.
   "tour.risk.scope.title": "Scope to a selection",
-  "tour.risk.scope.body":
-    "Pick specific holdings to focus every metric below on just them, or leave it on Portfolio wide to see everything together.",
+  "tour.risk.scope.body": "Pick specific holdings to focus every metric on just them, or leave it on Portfolio wide.",
   "tour.risk.score.title": "Risk at a glance",
   "tour.risk.score.body":
     "These cards summarize your portfolio's risk profile: Sharpe and Sortino measure risk-adjusted return, Beta and Alpha compare you to the market.",
@@ -364,8 +362,7 @@ export const en = {
   "tour.health.sources.body":
     "They are computed from your accounts and your spending. The more complete those are, the more the figures are worth.",
   "tour.fire.inputs.title": "Your assumptions",
-  "tour.fire.inputs.body":
-    "Withdrawal rate, annual expenses, what you add each month and the return you expect. Everything below reacts to these.",
+  "tour.fire.inputs.body": "Withdrawal rate, annual expenses, monthly savings and expected return. Every figure reacts to these.",
   "tour.fire.targets.title": "Lean, regular, fat",
   "tour.fire.targets.body":
     "Three target sums for three lifestyles, each with the year you would reach it at your current pace.",
@@ -669,8 +666,7 @@ export const en = {
     "{name} price chart, {timeframe}: from {start} to {end}, {startValue} to {endValue}.",
   "chart.sharedPortfolio.ariaLabel":
     "Portfolio chart, {timeframe}: from {start} to {end}, {startValue} to {endValue}.",
-  "chart.allocation.ariaLabel":
-    "{title} allocation donut chart, total {total}. Largest share: {label} at {pct}. Full breakdown listed below.",
+  "chart.allocation.ariaLabel": "{title} allocation donut chart, total {total}. Largest share: {label} at {pct}.",
   "chart.returnsByPeriod.ariaLabel":
     "Bar chart of returns by {period}, {start} to {end}, ranging from {min} to {max}.",
   "chart.performanceMap.ariaLabel":
@@ -722,6 +718,8 @@ export const en = {
   "share.expiryAt": "On date…",
   "share.expiresAt": "Expires {date}",
   "shared.viewing": "You're viewing a shared portfolio",
+  "shared.allocationTip": "Share of the portfolio by holding, at current value.",
+  "shared.holdingsTip": "Weight, return against cost basis, and value per position.",
   "shared.open": "Open FinTrack",
   "shared.notFound": "This share link doesn't exist or has expired.",
   "shared.goTo": "Go to FinTrack",
@@ -889,7 +887,7 @@ export const en = {
   "accounts.form.liabilityHint": "This type is a liability: its balance subtracts from your net worth.",
   "accounts.form.error": "Could not save the account. Please try again.",
   "accounts.list.title": "Your accounts",
-  "accounts.list.empty": "No accounts yet. Add one above to include it in your net worth.",
+  "accounts.list.empty": "No accounts yet. Add one to include it in your net worth.",
   "accounts.list.name": "Name",
   "accounts.list.kind": "Type",
   "accounts.list.balance": "Balance",
@@ -945,7 +943,7 @@ export const en = {
   "spending.form.error": "Could not save the transaction. Please try again.",
   "spending.list.title": "Transactions",
   "spending.list.autoCategorize": "Auto-categorise",
-  "spending.list.empty": "No transactions yet. Add one above.",
+  "spending.list.empty": "No transactions yet.",
   "spending.list.date": "Date",
   "spending.list.payee": "Payee",
   "spending.list.category": "Category",
@@ -965,7 +963,7 @@ export const en = {
   "spending.delete.message": "Delete the transaction with \"{payee}\"? This cannot be undone.",
   "spending.categories.manage": "Manage categories",
   "spending.categories.title": "Spending categories",
-  "spending.categories.empty": "No categories yet. Add a group below to get started.",
+  "spending.categories.empty": "No categories yet. Add a group to get started.",
   "spending.categories.actionError": "Could not save the category. Please try again.",
   "spending.categories.namePlaceholder": "Category name",
   "spending.categories.groupNamePlaceholder": "Group name",
@@ -991,7 +989,7 @@ export const en = {
   "spending.import.importAnyway": "Import anyway",
   "spending.budgets.title": "Budgets",
   "spending.budgets.noCategories": "You need a spending category before you can set a budget. Add one from the transaction form first.",
-  "spending.budgets.empty": "No budgets yet. Set a monthly cap for a category below.",
+  "spending.budgets.empty": "No budgets yet. Set a monthly cap for a category.",
   "spending.budgets.categoryLabel": "Category",
   "spending.budgets.amountLabel": "Monthly cap ({currency})",
   "spending.budgets.add": "Add budget",
@@ -1004,7 +1002,7 @@ export const en = {
   "spending.planned.intro":
     "Money you already know about: your salary, a bonus, or a one-off cost. Due entries are booked into the ledger after you check them.",
   "spending.planned.noAccounts": "You need an account first. Add one under Accounts.",
-  "spending.planned.empty": "Nothing planned yet. Add your salary or an upcoming cost below.",
+  "spending.planned.empty": "Nothing planned yet. Add your salary or an upcoming cost.",
   "spending.planned.nameLabel": "Description",
   "spending.planned.namePlaceholder": "Salary",
   "spending.planned.accountLabel": "Account",
@@ -1093,7 +1091,7 @@ export const en = {
   "cashflow.subtitle": "Where the money goes, and whether it adds up.",
   "recurring.title": "Recurring",
   "recurring.add": "Add recurring payment",
-  "recurring.empty": "Nothing recurring yet. Switch \u201crecurring\u201d on when you add an entry above.",
+  "recurring.empty": "Nothing recurring yet. Switch \u201crecurring\u201d on when you add an entry.",
   "recurring.noNext": "not booked",
   "recurring.col.name": "Name",
   "recurring.col.amount": "Amount",
@@ -1145,7 +1143,7 @@ export const en = {
   "contracts.form.kindInsurance": "Insurance",
   "contracts.form.accountLabel": "Booking account",
   "contracts.form.accountNone": "Do not book",
-  "contracts.form.accountHintOn": "The charge is booked into your spending from the start date below.",
+  "contracts.form.accountHintOn": "The charge is booked into your spending from the start date.",
   "contracts.form.accountHintOff": "Kept as an entry only, with no bookings.",
   "spending.list.makeContract": "Add as recurring",
   "spending.list.makeContractTitle": "Add this booking as a recurring payment?",
@@ -1195,7 +1193,7 @@ export const en = {
   "goals.form.add": "Add goal",
   "goals.form.error": "Could not save the goal. Please try again.",
   "goals.list.title": "Your goals",
-  "goals.list.empty": "No goals yet. Add one above.",
+  "goals.list.empty": "No goals yet.",
   "goals.list.name": "Name",
   "goals.list.progress": "Progress",
   "goals.list.target": "Target",
@@ -1236,7 +1234,7 @@ export const en = {
   "fire.withdrawalRate.hint": "The classic \"4% rule\" assumes a portfolio withdrawn at this rate lasts through retirement.",
   "fire.annualExpenses.label": "Annual expenses",
   "fire.annualExpenses.hint": "Defaults to your trailing 12-month spending; edit to try a different budget.",
-  "fire.noExpenseData": "No spending history yet, enter your expenses manually below.",
+  "fire.noExpenseData": "No spending history yet, enter your expenses manually.",
   "fire.monthlyContribution.label": "Monthly contribution",
   "fire.annualReturn.label": "Expected annual return",
   "fire.annualReturn.hint": "Measured from your holdings' real history where available, a benchmark otherwise.",
@@ -1254,7 +1252,7 @@ export const en = {
   "fire.simulation.medianFinal": "Median final balance",
   "fire.simulation.successProbability": "Probability money lasts",
   "fire.simulation.successHint": "Share of simulated paths where the balance never ran out over the withdrawal period.",
-  "fire.simulation.withdrawalYearsNote": "Assumes a {years}-year retirement, seeded from the FIRE number above.",
+  "fire.simulation.withdrawalYearsNote": "Assumes a {years}-year retirement, seeded from your FIRE number.",
   "fire.simulation.configurePrompt": "Run the simulation to see the odds",
   "fire.unit.years": "years",
 
@@ -1445,8 +1443,7 @@ export const en = {
     "Value at Risk: with 95% confidence, the most you'd expect to lose over one month (normal approximation). Lower is better.",
   "risk.days": "days",
   "risk.byAsset": "Risk by holding",
-  "risk.byAssetTip":
-    "Per-holding volatility, beta & alpha vs. the MSCI World index, Sharpe ratio and weight. Each row measures the asset on its own over the selected window; scope the view to a single holding and the tiles above match its row exactly.",
+  "risk.byAssetTip": "Per-holding volatility, beta & alpha vs. the MSCI World index, Sharpe ratio and weight. Each row measures the asset on its own over the selected window.",
   "risk.asset": "Asset",
   "risk.weight": "Weight",
   "risk.weightTip": "This holding's share of the selected scope's total market value.",
@@ -1649,7 +1646,7 @@ export const en = {
   "rebalance.addHoldings": "Add holdings to plan a rebalance.",
   "rebalance.current": "Current",
   "rebalance.target": "Target",
-  "rebalance.setWeights": "Set target weights below.",
+  "rebalance.setWeights": "Set target weights.",
   "rebalance.targetAllocation": "Target allocation",
   "rebalance.total": "Total",
   "rebalance.normalise": "Normalise to 100%",
@@ -1715,8 +1712,7 @@ export const en = {
   "sim.growth": "Projected growth (median)",
   "sim.multiple": "Multiple",
   "sim.configurePrompt": "Configure your plan and run a simulation",
-  "sim.configureHint":
-    "Adjust the parameters on the left to project how your wealth could grow under thousands of market scenarios.",
+  "sim.configureHint": "Adjust the parameters to project how your wealth could grow under thousands of market scenarios.",
   "sim.edit": "Enable editing",
   "sim.lock": "Lock parameters",
   "sim.capitalLocked": "Initial capital is set from your net worth, click to override",
@@ -2368,8 +2364,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.ai.scope.account": "In deinem Konto (auf allen Geräten)",
   "settings.ai.scope.browser": "Nur in diesem Browser",
   "settings.ai.scope.browserHint": "Wird beim Abmelden gelöscht.",
-  "settings.ai.privacyNote":
-    "Wähle unten, wo dein Schlüssel gespeichert wird: in deinem Konto (Datenbank, geschützt durch nutzerspezifische Zugriffskontrollen, auf all deinen Geräten verfügbar, gespeichert bis du ihn entfernst) oder nur in diesem Browser (wird beim Abmelden gelöscht). Wenn du den Chat nutzt, werden deine Portfoliodaten an den gewählten Anbieter gesendet; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
+  "settings.ai.privacyNote": "Konto: auf allen Geräten, bleibt bis du ihn löschst. Nur dieser Browser: wird beim Abmelden gelöscht. Beim Chatten gehen deine Portfoliodaten an deinen Anbieter; wir speichern und protokollieren das Gespräch nie.",
   "settings.ai.privacyNoteGuest":
     "Im Gastmodus bleibt dein Schlüssel nur in diesem Browser gespeichert. Wenn du den Chat nutzt, werden deine Portfoliodaten an den gewählten Anbieter gesendet; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
   "settings.ai.privacyLink": "Datenschutzerklärung",
@@ -2428,8 +2423,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Seiten-Touren (onboarding/page-tours.tsx): Risiko, Rebalancing,
   // Simulation, Tags. Nutzen tour.start/next/back/skip/finish/progressAria oben.
   "tour.risk.scope.title": "Auf eine Auswahl eingrenzen",
-  "tour.risk.scope.body":
-    "Wähle einzelne Positionen aus, um alle Kennzahlen unten nur auf sie zu beziehen, oder lass es auf Gesamtes Portfolio, um alles zusammen zu sehen.",
+  "tour.risk.scope.body": "Wähle einzelne Positionen aus, um alle Kennzahlen nur auf sie zu beziehen, oder lass es auf Gesamtes Portfolio.",
   "tour.risk.score.title": "Risiko auf einen Blick",
   "tour.risk.score.body":
     "Diese Karten fassen das Risikoprofil deines Portfolios zusammen: Sharpe und Sortino messen die risikoadjustierte Rendite, Beta und Alpha vergleichen dich mit dem Markt.",
@@ -2506,8 +2500,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.health.sources.body":
     "Sie werden aus deinen Konten und deinen Ausgaben berechnet. Je vollständiger die sind, desto aussagekräftiger sind die Werte.",
   "tour.fire.inputs.title": "Deine Annahmen",
-  "tour.fire.inputs.body":
-    "Entnahmerate, Jahresausgaben, monatliche Sparrate und erwartete Rendite. Alles darunter reagiert darauf.",
+  "tour.fire.inputs.body": "Entnahmerate, Jahresausgaben, monatliche Sparrate und erwartete Rendite. Alle Zahlen reagieren darauf.",
   "tour.fire.targets.title": "Lean, normal, fat",
   "tour.fire.targets.body":
     "Drei Zielsummen für drei Lebensstile, jeweils mit dem Jahr, in dem du sie im aktuellen Tempo erreichst.",
@@ -2808,8 +2801,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Kursverlauf {name}, {timeframe}: von {start} bis {end}, {startValue} auf {endValue}.",
   "chart.sharedPortfolio.ariaLabel":
     "Portfolioverlauf, {timeframe}: von {start} bis {end}, {startValue} auf {endValue}.",
-  "chart.allocation.ariaLabel":
-    "Kreisdiagramm Allokation {title}, Gesamt {total}. Größter Anteil: {label} mit {pct}. Vollständige Aufteilung siehe Liste unten.",
+  "chart.allocation.ariaLabel": "Kreisdiagramm Allokation {title}, Gesamt {total}. Größter Anteil: {label} mit {pct}.",
   "chart.returnsByPeriod.ariaLabel":
     "Balkendiagramm der Rendite je {period}, {start} bis {end}, Spanne {min} bis {max}.",
   "chart.performanceMap.ariaLabel":
@@ -2861,6 +2853,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "share.expiryAt": "Am …",
   "share.expiresAt": "Läuft ab am {date}",
   "shared.viewing": "Du siehst ein geteiltes Portfolio",
+  "shared.allocationTip": "Anteil am Portfolio je Position, zum aktuellen Wert.",
+  "shared.holdingsTip": "Gewicht, Rendite zum Einstandswert und Wert je Position.",
   "shared.open": "FinTrack öffnen",
   "shared.notFound": "Dieser Freigabelink existiert nicht mehr oder ist abgelaufen.",
   "shared.goTo": "Zu FinTrack",
@@ -3031,7 +3025,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.form.liabilityHint": "Dieser Typ ist eine Verbindlichkeit: Sein Saldo verringert dein Nettovermögen.",
   "accounts.form.error": "Das Konto konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "accounts.list.title": "Deine Konten",
-  "accounts.list.empty": "Noch keine Konten. Füge oben eines hinzu, um es in dein Nettovermögen einzurechnen.",
+  "accounts.list.empty": "Noch keine Konten. Füge eines hinzu, um es in dein Nettovermögen einzurechnen.",
   "accounts.list.name": "Name",
   "accounts.list.kind": "Typ",
   "accounts.list.balance": "Saldo",
@@ -3087,7 +3081,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.form.error": "Die Buchung konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "spending.list.title": "Buchungen",
   "spending.list.autoCategorize": "Automatisch kategorisieren",
-  "spending.list.empty": "Noch keine Buchungen. Füge oben eine hinzu.",
+  "spending.list.empty": "Noch keine Buchungen.",
   "spending.list.date": "Datum",
   "spending.list.payee": "Empfänger",
   "spending.list.category": "Kategorie",
@@ -3107,7 +3101,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.delete.message": "Die Buchung mit \"{payee}\" löschen? Das kann nicht rückgängig gemacht werden.",
   "spending.categories.manage": "Kategorien verwalten",
   "spending.categories.title": "Ausgabenkategorien",
-  "spending.categories.empty": "Noch keine Kategorien. Füge unten eine Gruppe hinzu, um loszulegen.",
+  "spending.categories.empty": "Noch keine Kategorien. Füge eine Gruppe hinzu, um loszulegen.",
   "spending.categories.actionError": "Die Kategorie konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "spending.categories.namePlaceholder": "Kategoriename",
   "spending.categories.groupNamePlaceholder": "Gruppenname",
@@ -3133,7 +3127,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.import.importAnyway": "Trotzdem importieren",
   "spending.budgets.title": "Budgets",
   "spending.budgets.noCategories": "Du brauchst eine Ausgabenkategorie, bevor du ein Budget festlegen kannst. Füge zuerst eine im Buchungsformular hinzu.",
-  "spending.budgets.empty": "Noch keine Budgets. Lege unten ein monatliches Limit für eine Kategorie fest.",
+  "spending.budgets.empty": "Noch keine Budgets. Lege ein monatliches Limit für eine Kategorie fest.",
   "spending.budgets.categoryLabel": "Kategorie",
   "spending.budgets.amountLabel": "Monatliches Limit ({currency})",
   "spending.budgets.add": "Budget hinzufügen",
@@ -3146,8 +3140,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.planned.intro":
     "Geld, von dem du schon weißt: dein Gehalt, ein Bonus oder eine einmalige Ausgabe. Fällige Posten wandern nach deiner Prüfung ins Buch.",
   "spending.planned.noAccounts": "Du brauchst zuerst ein Konto. Leg eines unter Konten an.",
-  "spending.planned.empty":
-    "Noch nichts geplant. Trag unten dein Gehalt oder eine kommende Ausgabe ein.",
+  "spending.planned.empty": "Noch nichts geplant. Trag dein Gehalt oder eine kommende Ausgabe ein.",
   "spending.planned.nameLabel": "Bezeichnung",
   "spending.planned.namePlaceholder": "Gehalt",
   "spending.planned.accountLabel": "Konto",
@@ -3237,7 +3230,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "cashflow.subtitle": "Wohin das Geld geht und ob es aufgeht.",
   "recurring.title": "Wiederkehrend",
   "recurring.add": "Wiederkehrende Zahlung hinzufügen",
-  "recurring.empty": "Noch nichts Wiederkehrendes. Schalte oben beim Erfassen \u201ewiederkehrend\u201c ein.",
+  "recurring.empty": "Noch nichts Wiederkehrendes. Schalte beim Erfassen \u201ewiederkehrend\u201c ein.",
   "recurring.noNext": "bucht nicht",
   "recurring.col.name": "Name",
   "recurring.col.amount": "Betrag",
@@ -3289,7 +3282,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "contracts.form.kindInsurance": "Versicherung",
   "contracts.form.accountLabel": "Buchungskonto",
   "contracts.form.accountNone": "Nicht buchen",
-  "contracts.form.accountHintOn": "Der Betrag wird ab dem Startdatum unten in deine Ausgaben gebucht.",
+  "contracts.form.accountHintOn": "Der Betrag wird ab dem Startdatum in deine Ausgaben gebucht.",
   "contracts.form.accountHintOff": "Wird nur als Eintrag geführt, ohne Buchungen.",
   "spending.list.makeContract": "Als wiederkehrend anlegen",
   "spending.list.makeContractTitle": "Diese Buchung als wiederkehrende Zahlung anlegen?",
@@ -3339,7 +3332,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.form.add": "Ziel hinzufügen",
   "goals.form.error": "Das Ziel konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "goals.list.title": "Deine Ziele",
-  "goals.list.empty": "Noch keine Ziele. Füge oben eines hinzu.",
+  "goals.list.empty": "Noch keine Ziele.",
   "goals.list.name": "Name",
   "goals.list.progress": "Fortschritt",
   "goals.list.target": "Ziel",
@@ -3380,7 +3373,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.withdrawalRate.hint": "Die klassische \"4%-Regel\" geht davon aus, dass ein Portfolio bei dieser Entnahmerate die ganze Rentenzeit über reicht.",
   "fire.annualExpenses.label": "Jährliche Ausgaben",
   "fire.annualExpenses.hint": "Standardmäßig deine Ausgaben der letzten 12 Monate; du kannst sie anpassen, um ein anderes Budget zu testen.",
-  "fire.noExpenseData": "Noch keine Ausgabenhistorie vorhanden, trag deine Ausgaben unten manuell ein.",
+  "fire.noExpenseData": "Noch keine Ausgabenhistorie, trag deine Ausgaben manuell ein.",
   "fire.monthlyContribution.label": "Monatlicher Sparbetrag",
   "fire.annualReturn.label": "Erwartete jährliche Rendite",
   "fire.annualReturn.hint": "Gemessen an der echten Historie deiner Anlagen, wo verfügbar, sonst an einer Benchmark.",
@@ -3398,7 +3391,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.simulation.medianFinal": "Median-Endsaldo",
   "fire.simulation.successProbability": "Wahrscheinlichkeit, dass das Geld reicht",
   "fire.simulation.successHint": "Anteil der simulierten Verläufe, bei denen das Guthaben über die gesamte Entnahmephase nie auf null fiel.",
-  "fire.simulation.withdrawalYearsNote": "Geht von {years} Jahren Rente aus, ausgehend von der FIRE-Zahl oben.",
+  "fire.simulation.withdrawalYearsNote": "Geht von {years} Jahren Rente aus, ausgehend von deiner FIRE-Zahl.",
   "fire.simulation.configurePrompt": "Starte die Simulation, um die Chancen zu sehen",
   "fire.unit.years": "Jahre",
 
@@ -3589,8 +3582,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Value at Risk: mit 95% Konfidenz der maximal erwartete Verlust über einen Monat (Normalverteilungs-Näherung). Niedriger ist besser.",
   "risk.days": "Tage",
   "risk.byAsset": "Risiko je Position",
-  "risk.byAssetTip":
-    "Volatilität, Beta & Alpha zum MSCI World Index, Sharpe-Ratio und Gewicht je Position. Jede Zeile bewertet den Wert für sich über den gewählten Zeitraum; wird oben ein einzelner Wert als Scope gewählt, stimmen die Kacheln exakt mit seiner Zeile überein.",
+  "risk.byAssetTip": "Volatilität, Beta & Alpha zum MSCI World Index, Sharpe-Ratio und Gewicht je Position. Jede Zeile bewertet den Wert für sich über den gewählten Zeitraum.",
   "risk.asset": "Wert",
   "risk.weight": "Gewicht",
   "risk.weightTip": "Anteil dieser Position am Gesamtwert der gewählten Auswahl.",
@@ -3794,7 +3786,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "rebalance.addHoldings": "Füge Positionen hinzu, um eine Umschichtung zu planen.",
   "rebalance.current": "Aktuell",
   "rebalance.target": "Ziel",
-  "rebalance.setWeights": "Lege unten die Zielgewichtungen fest.",
+  "rebalance.setWeights": "Lege die Zielgewichtungen fest.",
   "rebalance.targetAllocation": "Zielaufteilung",
   "rebalance.total": "Gesamt",
   "rebalance.normalise": "Auf 100 % normieren",
@@ -3860,8 +3852,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.growth": "Projiziertes Wachstum (Median)",
   "sim.multiple": "Vielfaches",
   "sim.configurePrompt": "Konfiguriere deinen Plan und starte eine Simulation",
-  "sim.configureHint":
-    "Passe die Parameter links an, um zu projizieren, wie dein Vermögen unter tausenden Marktszenarien wachsen könnte.",
+  "sim.configureHint": "Passe die Parameter an, um zu projizieren, wie dein Vermögen unter tausenden Marktszenarien wachsen könnte.",
   "sim.edit": "Bearbeiten aktivieren",
   "sim.lock": "Parameter sperren",
   "sim.capitalLocked": "Das Anfangskapital stammt aus deinem Nettovermögen, zum Überschreiben klicken",
@@ -4512,8 +4503,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.ai.scope.account": "En tu cuenta (en todos tus dispositivos)",
   "settings.ai.scope.browser": "Solo en este navegador",
   "settings.ai.scope.browserHint": "Se elimina al cerrar sesión.",
-  "settings.ai.privacyNote":
-    "Elige abajo dónde se guarda tu clave: en tu cuenta (base de datos, protegida por controles de acceso por usuario, disponible en todos tus dispositivos, se conserva hasta que la elimines) o solo en este navegador (se elimina al cerrar sesión). Cuando usas el chat, tus datos de cartera se envían al proveedor que elijas; nunca almacenamos ni registramos la conversación en nuestro servidor.",
+  "settings.ai.privacyNote": "Cuenta: en todos tus dispositivos, hasta que la borres. Solo este navegador: se borra al cerrar sesión. Al chatear tus datos van a tu proveedor; nunca guardamos ni registramos la conversación.",
   "settings.ai.privacyNoteGuest":
     "En modo invitado, tu clave se guarda solo en este navegador. Cuando usas el chat, tus datos de cartera se envían al proveedor que elijas; nunca almacenamos ni registramos la conversación en nuestro servidor.",
   "settings.ai.privacyLink": "Política de privacidad",
@@ -4571,8 +4561,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Tours de página (onboarding/page-tours.tsx): riesgo, rebalanceo,
   // simulación, etiquetas. Reutilizan tour.start/next/back/skip/finish/progressAria de arriba.
   "tour.risk.scope.title": "Limitar a una selección",
-  "tour.risk.scope.body":
-    "Elige posiciones concretas para centrar todas las métricas de abajo solo en ellas, o déjalo en Toda la cartera para verlo todo junto.",
+  "tour.risk.scope.body": "Elige posiciones concretas para centrar todas las métricas solo en ellas, o déjalo en Toda la cartera.",
   "tour.risk.score.title": "Riesgo de un vistazo",
   "tour.risk.score.body":
     "Estas tarjetas resumen el perfil de riesgo de tu cartera: Sharpe y Sortino miden la rentabilidad ajustada al riesgo, Beta y Alfa te comparan con el mercado.",
@@ -4649,8 +4638,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.health.sources.body":
     "Se calculan a partir de tus cuentas y tus gastos. Cuanto más completos estén, más valen los números.",
   "tour.fire.inputs.title": "Tus supuestos",
-  "tour.fire.inputs.body":
-    "Tasa de retiro, gastos anuales, lo que aportas cada mes y el rendimiento que esperas. Todo lo de abajo reacciona a esto.",
+  "tour.fire.inputs.body": "Tasa de retiro, gastos anuales, ahorro mensual y rendimiento esperado. Todas las cifras reaccionan a esto.",
   "tour.fire.targets.title": "Lean, normal, fat",
   "tour.fire.targets.body":
     "Tres importes objetivo para tres estilos de vida, cada uno con el año en que llegarías a tu ritmo actual.",
@@ -4952,8 +4940,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Gráfico de precio de {name}, {timeframe}: de {start} a {end}, de {startValue} a {endValue}.",
   "chart.sharedPortfolio.ariaLabel":
     "Gráfico de cartera, {timeframe}: de {start} a {end}, de {startValue} a {endValue}.",
-  "chart.allocation.ariaLabel":
-    "Gráfico de anillos de distribución de {title}, total {total}. Mayor porción: {label} con {pct}. Desglose completo listado abajo.",
+  "chart.allocation.ariaLabel": "Gráfico de anillos de distribución de {title}, total {total}. Mayor porción: {label} con {pct}.",
   "chart.returnsByPeriod.ariaLabel":
     "Gráfico de barras de rentabilidad por {period}, de {start} a {end}, entre {min} y {max}.",
   "chart.performanceMap.ariaLabel":
@@ -5005,6 +4992,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "share.expiryAt": "En una fecha…",
   "share.expiresAt": "Caduca el {date}",
   "shared.viewing": "Estás viendo una cartera compartida",
+  "shared.allocationTip": "Peso en la cartera por posición, a valor actual.",
+  "shared.holdingsTip": "Peso, rendimiento sobre el coste y valor por posición.",
   "shared.open": "Abrir FinTrack",
   "shared.notFound": "Este enlace compartido no existe o ha caducado.",
   "shared.goTo": "Ir a FinTrack",
@@ -5172,7 +5161,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.form.liabilityHint": "Este tipo es un pasivo: su saldo resta de tu patrimonio neto.",
   "accounts.form.error": "No se pudo guardar la cuenta. Inténtalo de nuevo.",
   "accounts.list.title": "Tus cuentas",
-  "accounts.list.empty": "Aún no hay cuentas. Añade una arriba para incluirla en tu patrimonio neto.",
+  "accounts.list.empty": "Aún no hay cuentas. Añade una para incluirla en tu patrimonio neto.",
   "accounts.list.name": "Nombre",
   "accounts.list.kind": "Tipo",
   "accounts.list.balance": "Saldo",
@@ -5228,7 +5217,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.form.error": "No se pudo guardar el movimiento. Inténtalo de nuevo.",
   "spending.list.title": "Movimientos",
   "spending.list.autoCategorize": "Categorizar automáticamente",
-  "spending.list.empty": "Todavía no hay movimientos. Añade uno arriba.",
+  "spending.list.empty": "Todavía no hay movimientos.",
   "spending.list.date": "Fecha",
   "spending.list.payee": "Beneficiario",
   "spending.list.category": "Categoría",
@@ -5248,7 +5237,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.delete.message": "¿Eliminar el movimiento con \"{payee}\"? Esto no se puede deshacer.",
   "spending.categories.manage": "Gestionar categorías",
   "spending.categories.title": "Categorías de gasto",
-  "spending.categories.empty": "Todavía no hay categorías. Añade un grupo abajo para empezar.",
+  "spending.categories.empty": "Todavía no hay categorías. Añade un grupo para empezar.",
   "spending.categories.actionError": "No se pudo guardar la categoría. Inténtalo de nuevo.",
   "spending.categories.namePlaceholder": "Nombre de la categoría",
   "spending.categories.groupNamePlaceholder": "Nombre del grupo",
@@ -5274,7 +5263,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.import.importAnyway": "Importar de todos modos",
   "spending.budgets.title": "Presupuestos",
   "spending.budgets.noCategories": "Necesitas una categoría de gasto antes de poder fijar un presupuesto. Añade una desde el formulario de movimientos.",
-  "spending.budgets.empty": "Todavía no hay presupuestos. Fija un límite mensual para una categoría abajo.",
+  "spending.budgets.empty": "Todavía no hay presupuestos. Fija un límite mensual para una categoría.",
   "spending.budgets.categoryLabel": "Categoría",
   "spending.budgets.amountLabel": "Límite mensual ({currency})",
   "spending.budgets.add": "Añadir presupuesto",
@@ -5287,8 +5276,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.planned.intro":
     "Dinero que ya conoces: tu sueldo, una paga extra o un gasto puntual. Los vencidos se registran en el libro después de que los revises.",
   "spending.planned.noAccounts": "Primero necesitas una cuenta. Añade una en Cuentas.",
-  "spending.planned.empty":
-    "Todavía no hay nada previsto. Añade abajo tu sueldo o un gasto que se acerca.",
+  "spending.planned.empty": "Todavía no hay nada previsto. Añade tu sueldo o un gasto que se acerca.",
   "spending.planned.nameLabel": "Descripción",
   "spending.planned.namePlaceholder": "Sueldo",
   "spending.planned.accountLabel": "Cuenta",
@@ -5377,7 +5365,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "cashflow.subtitle": "Adónde va el dinero y si cuadra.",
   "recurring.title": "Recurrente",
   "recurring.add": "Añadir pago recurrente",
-  "recurring.empty": "Todav\u00eda nada recurrente. Activa \u201crecurrente\u201d al a\u00f1adir una entrada arriba.",
+  "recurring.empty": "Todav\u00eda nada recurrente. Activa \u201crecurrente\u201d al a\u00f1adir una entrada.",
   "recurring.noNext": "no se registra",
   "recurring.col.name": "Nombre",
   "recurring.col.amount": "Importe",
@@ -5429,7 +5417,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "contracts.form.kindInsurance": "Seguro",
   "contracts.form.accountLabel": "Cuenta de cargo",
   "contracts.form.accountNone": "No registrar",
-  "contracts.form.accountHintOn": "El cargo se registra en tus gastos a partir de la fecha de inicio indicada abajo.",
+  "contracts.form.accountHintOn": "El cargo se registra en tus gastos a partir de la fecha de inicio.",
   "contracts.form.accountHintOff": "Se guarda solo como entrada, sin registros.",
   "spending.list.makeContract": "Añadir como recurrente",
   "spending.list.makeContractTitle": "¿Añadir este movimiento como pago recurrente?",
@@ -5479,7 +5467,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.form.add": "Añadir meta",
   "goals.form.error": "No se pudo guardar la meta. Inténtalo de nuevo.",
   "goals.list.title": "Tus metas",
-  "goals.list.empty": "Todavía no hay metas. Añade una arriba.",
+  "goals.list.empty": "Todavía no hay metas.",
   "goals.list.name": "Nombre",
   "goals.list.progress": "Progreso",
   "goals.list.target": "Objetivo",
@@ -5520,7 +5508,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.withdrawalRate.hint": "La clásica \"regla del 4%\" asume que un patrimonio retirado a esta tasa dura toda la jubilación.",
   "fire.annualExpenses.label": "Gastos anuales",
   "fire.annualExpenses.hint": "Por defecto usa tu gasto de los últimos 12 meses; edítalo para probar otro presupuesto.",
-  "fire.noExpenseData": "Todavía no hay historial de gastos, introduce tus gastos manualmente abajo.",
+  "fire.noExpenseData": "Todavía no hay historial de gastos, introduce tus gastos manualmente.",
   "fire.monthlyContribution.label": "Aportación mensual",
   "fire.annualReturn.label": "Rentabilidad anual esperada",
   "fire.annualReturn.hint": "Medida a partir del historial real de tus inversiones cuando está disponible, si no de un índice de referencia.",
@@ -5538,7 +5526,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.simulation.medianFinal": "Saldo final mediano",
   "fire.simulation.successProbability": "Probabilidad de que el dinero dure",
   "fire.simulation.successHint": "Proporción de trayectorias simuladas donde el saldo nunca llegó a cero durante el periodo de retiro.",
-  "fire.simulation.withdrawalYearsNote": "Asume {years} años de jubilación, a partir del número FIRE de arriba.",
+  "fire.simulation.withdrawalYearsNote": "Asume {years} años de jubilación, a partir de tu número FIRE.",
   "fire.simulation.configurePrompt": "Ejecuta la simulación para ver las probabilidades",
   "fire.unit.years": "años",
 
@@ -5729,8 +5717,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Valor en riesgo: con un 95% de confianza, la pérdida máxima esperada en un mes (aproximación normal). Cuanto menor, mejor.",
   "risk.days": "días",
   "risk.byAsset": "Riesgo por posición",
-  "risk.byAssetTip":
-    "Volatilidad, beta y alfa frente al índice MSCI World, ratio de Sharpe y peso por posición. Cada fila evalúa el activo por sí solo en el periodo seleccionado; si limitas el ámbito a una sola posición, las tarjetas de arriba coinciden exactamente con su fila.",
+  "risk.byAssetTip": "Volatilidad, beta y alfa frente al índice MSCI World, ratio de Sharpe y peso por posición. Cada fila evalúa el activo por sí solo en el periodo seleccionado.",
   "risk.asset": "Activo",
   "risk.weight": "Peso",
   "risk.weightTip": "Peso de esta posición sobre el valor de mercado total del ámbito seleccionado.",
@@ -5933,7 +5920,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "rebalance.addHoldings": "Añade posiciones para planificar un reequilibrio.",
   "rebalance.current": "Actual",
   "rebalance.target": "Objetivo",
-  "rebalance.setWeights": "Define abajo los pesos objetivo.",
+  "rebalance.setWeights": "Define los pesos objetivo.",
   "rebalance.targetAllocation": "Distribución objetivo",
   "rebalance.total": "Total",
   "rebalance.normalise": "Normalizar al 100%",
@@ -5999,8 +5986,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.growth": "Crecimiento proyectado (mediana)",
   "sim.multiple": "Múltiplo",
   "sim.configurePrompt": "Configura tu plan y ejecuta una simulación",
-  "sim.configureHint":
-    "Ajusta los parámetros de la izquierda para proyectar cómo podría crecer tu patrimonio bajo miles de escenarios de mercado.",
+  "sim.configureHint": "Ajusta los parámetros para proyectar cómo podría crecer tu patrimonio bajo miles de escenarios de mercado.",
   "sim.edit": "Activar edición",
   "sim.lock": "Bloquear parámetros",
   "sim.capitalLocked": "El capital inicial procede de tu patrimonio neto, haz clic para sobrescribirlo",
