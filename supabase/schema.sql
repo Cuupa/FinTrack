@@ -2166,7 +2166,10 @@ begin
 
   return query
     select 'assets'::text, count(distinct a.user_id), count(*)::bigint from public.assets a
-    union all select 'transactions', count(distinct t.user_id), count(*)::bigint from public.transactions t
+    -- `transactions` hangs off the user through its asset, it has no user_id
+    -- of its own.
+    union all select 'transactions', count(distinct a2.user_id), count(*)::bigint
+      from public.transactions t join public.assets a2 on a2.id = t.asset_id
     union all select 'watchlist', count(distinct w.user_id), count(*)::bigint from public.watchlist_items w
     union all select 'savingsPlans', count(distinct s.user_id), count(*)::bigint from public.savings_plans s
     union all select 'tags', count(distinct g.user_id), count(*)::bigint from public.tag_groups g
