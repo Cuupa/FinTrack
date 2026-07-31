@@ -8,6 +8,10 @@
 // (lib/finance/debt.ts). Everything rides the store seam via usePortfolio();
 // no mode branching.
 //
+// Planned one-off repayments sit in the plan card next to the extra monthly
+// payment (`DebtRepaymentsPlanner`), because they are a what-if input of this
+// simulation -- a repayment actually made is a transfer on the accounts page.
+//
 // Durations are always shown as years + months (owner rule, round 26): nobody
 // converts "490 months" in their head.
 
@@ -32,6 +36,7 @@ import { Button, Card, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DebtDetailsDialog } from "./debt-details-dialog";
+import { DebtRepaymentsPlanner } from "./debt-repayments";
 import { DebtBalanceChart, DebtSplitChart, debtColor } from "./debt-chart";
 
 type SortKey = "name" | "balance" | "rate" | "lumpSums" | "term" | "payoffDate";
@@ -144,6 +149,20 @@ export function DebtView() {
           lumpSums: r.lumpSums,
         })),
     [rows],
+  );
+
+  // The lump-sum editor stores native amounts, so it gets each account's own
+  // currency -- unlike the plan figures, which are all in the base currency.
+  const repaymentDebts = useMemo(
+    () =>
+      rows
+        .filter((r) => r.schedule !== null)
+        .map((r) => ({
+          id: r.account.id,
+          name: r.account.name,
+          currency: r.account.currency || base,
+        })),
+    [rows, base],
   );
 
   const extraVal = extra.trim() ? parseDecimal(extra) : 0;
@@ -414,6 +433,10 @@ export function DebtView() {
                 data-private
               />
             </div>
+          </div>
+
+          <div className="mt-6">
+            <DebtRepaymentsPlanner debts={repaymentDebts} />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
