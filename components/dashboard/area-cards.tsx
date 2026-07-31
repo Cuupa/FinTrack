@@ -317,6 +317,18 @@ function GoalsCard() {
               </div>
             </li>
           ))}
+          {/* The head counts every goal, the list shows the three closest to
+              done -- so the ones left out say so instead of just missing. */}
+          {goals.length > rows.length && (
+            <li>
+              <Link
+                href="/goals"
+                className="text-sm text-zinc-500 underline-offset-2 hover:underline"
+              >
+                {t("dash.goalsMore", { n: goals.length - rows.length })}
+              </Link>
+            </li>
+          )}
         </ul>
       )}
     </Card>

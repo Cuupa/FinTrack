@@ -30,7 +30,7 @@ import {
   resolveOnvistaInstrument,
 } from "@/lib/server/onvista";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
-import { serverFail } from "@/lib/server/error-log";
+import { logServerError, serverFail } from "@/lib/server/error-log";
 
 export const dynamic = "force-dynamic";
 // Without this, the bulk sync's self-call (its own short-lived function
@@ -123,8 +123,12 @@ async function syncEquities(
             .update({ last_price: p, price_synced_at: syncedAt })
             .eq("id", r.id);
           if (!error) updated += 1;
-        } catch {
-          /* skip */
+        } catch (err) {
+          await logServerError({
+            route: "/api/cron/sync/prices",
+            level: "warn",
+            message: `onvista refresh failed for ${r.isin ?? r.wkn ?? r.symbol ?? r.id}: ${err instanceof Error ? err.message : String(err)}`,
+          });
         }
         return;
       }
@@ -158,19 +162,34 @@ async function syncEquities(
       // accept the hint regardless of currency; the FX conversion + scale
       // below already handle the difference.
       const want = authoritativeHint && hint ? "" : r.currency || "";
+      // Name fallback (as /api/quotes and /api/price already do): some real
+      // ISINs (LU-domiciled mutual fund share classes, JE-domiciled ETCs)
+      // aren't in Yahoo's search index by identifier alone, so the cron must
+      // also try the instrument's name or it can never learn/refresh a
+      // listing for them. Skipped for COMMODITY (search-based resolution is
+      // never trusted for those, see the guard above).
+      //
+      // Its own try: when Yahoo THROWS (cooldown breaker after a sweep of
+      // searches, a 429, a network blip) the row must still reach the onvista
+      // fallback below. It used to land in the outer catch instead, which
+      // skipped the row silently -- an ETF then sat at "unknown" forever
+      // while /api/price, hitting an untripped breaker, priced it fine.
+      let resolved: Awaited<ReturnType<typeof resolveQuote>> = null;
       try {
-        // Name fallback (as /api/quotes and /api/price already do): some real
-        // ISINs (LU-domiciled mutual fund share classes, JE-domiciled ETCs)
-        // aren't in Yahoo's search index by identifier alone, so the cron
-        // must also try the instrument's name or it can never learn/refresh
-        // a listing for them. Skipped for COMMODITY (search-based resolution
-        // is never trusted for those, see the guard above).
-        const resolved = await resolveQuote(
+        resolved = await resolveQuote(
           query,
           want,
           hint,
           authoritativeHint ? undefined : r.name || undefined,
         );
+      } catch (err) {
+        await logServerError({
+          route: "/api/cron/sync/prices",
+          level: "warn",
+          message: `yahoo lookup failed for ${query}: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+      try {
         if (authoritativeHint && hasHint && (!resolved || resolved.symbol !== hint)) {
           // The hinted listing failed (no data / currency mismatch) or
           // resolveQuote fell through to search and picked a different one -
@@ -247,8 +266,16 @@ async function syncEquities(
           .update(patch)
           .eq("id", r.id);
         if (!error) updated += 1;
-      } catch {
-        /* skip */
+      } catch (err) {
+        // Never silent: a row that stays unpriced is exactly what the admin
+        // sees as "unknown", and the reason belonged in the log rather than
+        // in a swallowed exception (owner rule: an error only in the console
+        // does not exist).
+        await logServerError({
+          route: "/api/cron/sync/prices",
+          level: "warn",
+          message: `price sync failed for ${query}: ${err instanceof Error ? err.message : String(err)}`,
+        });
       }
     }),
   );

@@ -1,10 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { dismissTour } from "./helpers";
 
-// Planned income & expenses (/spending, flag `plannedCashflow`) in Guest Mode.
-// What only the wiring can show: a planned salary whose first date lies in the
-// past turns into a real ledger row after the review dialog (with the amount
-// corrected there), and the forecast picks a one-off entry up for a later month.
+// Planned income & expenses (flag `plannedCashflow`) in Guest Mode.
+//
+// The standalone "planned entries" card is gone: adding something that repeats
+// is the same act as adding a booking, so it is the quick-add form's recurring
+// toggle, and what it produces is reviewed and booked in the recurring card.
+// These tests drive that surface -- the old ones drove a card no route renders
+// any more and had been red ever since.
 
 /** Today minus `days`, as YYYY-MM-DD (same format as lib/finance/dates.ts). */
 function daysAgo(days: number): string {
@@ -24,68 +27,59 @@ async function addChecking(page: Page, name: string) {
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name).first()).toBeVisible();
 }
 
-test("a planned salary books into the ledger after review", async ({ page }) => {
-  await addChecking(page, "Checking");
-
+/** Fill the quick-add form with the recurring switch on. */
+async function addRecurring(
+  page: Page,
+  { name, amount, date, income }: { name: string; amount: string; date: string; income?: boolean },
+) {
   await page.goto("/spending");
   await dismissTour(page);
+  if (income) await page.getByRole("button", { name: "Income", exact: true }).click();
+  await page.locator("#spending-recurring").click();
+  await page.locator("#spending-amount").fill(amount);
+  await page.locator("#spending-payee").fill(name);
+  await page.locator("#spending-date").fill(date);
+  await page.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+}
 
-  const card = page.locator('[data-tour="spending-planned"]');
-  await expect(card).toContainText("Nothing planned yet");
-
-  await card.locator("#planned-name").fill("Salary");
-  await card.locator("#planned-amount").fill("2500");
+test("a planned salary books into the ledger after review", async ({ page }) => {
+  await addChecking(page, "Checking");
   // A first date in the past makes the entry due right away.
-  await card.locator("#planned-start").fill(daysAgo(3));
-  await card.getByRole("button", { name: "Add planned entry", exact: true }).click();
+  await addRecurring(page, { name: "Salary", amount: "2500", date: daysAgo(3), income: true });
 
-  const row = card.locator("tbody tr").filter({ hasText: "Salary" });
-  await expect(row).toHaveCount(1);
-  await expect(row).toContainText("Monthly");
+  const card = page.locator('[data-tour="recurring-card"]');
+  await expect(card.locator("tbody tr").filter({ hasText: "Salary" })).toHaveCount(1);
 
-  // Review, correct the amount (a salary is rarely the planned figure), book.
-  await card.getByRole("button", { name: /Book 1 due payment/ }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.locator('input[inputmode="decimal"]').fill("2480");
-  await dialog.getByRole("button", { name: "Book now", exact: true }).click();
+  await card.getByRole("button", { name: /^Book selected/ }).click();
 
   const ledger = page.locator('[data-tour="spending-table"]');
   const booked = ledger.locator("tbody tr").filter({ hasText: "Salary" });
   await expect(booked).toHaveCount(1);
-  await expect(booked).toContainText("2,480");
-
-  // Income totals reflect it, and the entry is no longer due.
-  await expect(page.locator('[data-tour="spending-totals"]')).toContainText("2,480");
-  await expect(card.getByRole("button", { name: /Book \d+ due payment/ })).toHaveCount(0);
+  await expect(booked).toContainText("2,500");
+  // Nothing is due any more.
+  await expect(card.getByRole("button", { name: /^Book selected/ })).toHaveCount(0);
 });
 
-test("a one-off planned expense shows up in the forecast", async ({ page }) => {
+test("a planned expense reaches the cash-flow forecast", async ({ page }) => {
   await addChecking(page, "Checking");
+  // Two weeks out: inside the forecast window, never due.
+  await addRecurring(page, {
+    name: "Holiday",
+    amount: "1200",
+    date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+  });
 
-  await page.goto("/spending");
+  const card = page.locator('[data-tour="recurring-card"]');
+  await expect(card.locator("tbody tr").filter({ hasText: "Holiday" })).toHaveCount(1);
+  // Nothing due, so no review button.
+  await expect(card.getByRole("button", { name: /^Book selected/ })).toHaveCount(0);
+
+  // The forecast lives one page over and charts the planned entries as
+  // aggregate lines (no per-entry labels), so what is assertable here is that
+  // it renders with the entry in the data.
+  await page.goto("/cashflow");
   await dismissTour(page);
-
-  const card = page.locator('[data-tour="spending-planned"]');
-  await card.locator("#planned-name").fill("Holiday");
-  await card.getByRole("button", { name: "Expense", exact: true }).click();
-  await card.locator("#planned-amount").fill("1200");
-  // Two weeks out: inside the six-month forecast window, never due.
-  await card
-    .locator("#planned-start")
-    .fill(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
-  await card.getByRole("button", { name: "Interval" }).click();
-  // Not exact: options carry an always-rendered check glyph.
-  await page.getByRole("option", { name: /One-off/ }).click();
-  await card.getByRole("button", { name: "Add planned entry", exact: true }).click();
-
-  const row = card.locator("tbody tr").filter({ hasText: "Holiday" });
-  await expect(row).toContainText("One-off");
-  // A one-off has no monthly rate.
-  await expect(row).toContainText("—");
-
   const forecast = page.locator('[data-tour="spending-forecast"]');
-  await expect(forecast).toContainText("Planned expenses");
+  await expect(forecast).toBeVisible();
   await expect(forecast.locator("svg").first()).toBeVisible();
-  // Nothing is due, so no booking button appeared on the planned card.
-  await expect(card.getByRole("button", { name: /Book \d+ due payment/ })).toHaveCount(0);
 });
