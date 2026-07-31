@@ -748,6 +748,19 @@ export interface LlmConfig {
 }
 
 /** The complete persisted state for one user (or guest session). */
+/**
+ * A feature whose data could not be loaded, named so its own surface can say
+ * so. The app deliberately keeps running: a missing `accounts` table has no
+ * bearing on the depot, and taking the whole page down over it (the round-27
+ * PGRST205 report) is worse than showing one broken area.
+ */
+export interface DegradedResource {
+  /** Field of `PortfolioData` that is empty because its query failed. */
+  resource: string;
+  /** The database's own words, so the fix is visible rather than guessed. */
+  reason: string;
+}
+
 export interface PortfolioData {
   profile: Profile;
   portfolios: Portfolio[];
@@ -763,6 +776,8 @@ export interface PortfolioData {
   accounts: Account[];
   /** Dated balance readings per account (see `AccountBalance`). */
   accountBalances: AccountBalance[];
+  /** Features that failed to load; empty when everything loaded. */
+  degraded?: DegradedResource[];
   /** Statutory pension record, one entry per year (flag `pension`). */
   pensionPoints: PensionPoint[];
   /** Private/company retirement policies (flag `pension`). */

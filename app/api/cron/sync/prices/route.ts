@@ -95,6 +95,9 @@ async function syncEquities(
   rows: InstrumentRow[],
   syncedAt: string,
   revalidate: boolean,
+  /** Identifiers that finished the sweep without a price, echoed in the
+   *  response so a caller sees the gap without reading the error log. */
+  unpriced: string[],
 ): Promise<number> {
   let updated = 0;
   await Promise.all(
@@ -195,7 +198,14 @@ async function syncEquities(
           // resolveQuote fell through to search and picked a different one -
           // either way, never trust that for an authoritative row. Skip until
           // the seeded row is fixed manually, rather than silently learning a
-          // listing in the wrong currency.
+          // listing in the wrong currency. Said out loud, because "the seed is
+          // wrong" is a fix only the owner can make.
+          unpriced.push(query);
+          await logServerError({
+            route: "/api/cron/sync/prices",
+            level: "warn",
+            message: `unpriced ${query} (${r.name ?? "?"}): pinned listing ${hint} did not resolve${resolved ? `, search offered ${resolved.symbol} instead` : ""}`,
+          });
           return;
         }
         const symbol = resolved?.symbol;
@@ -209,10 +219,31 @@ async function syncEquities(
           // seeded/authoritative (the guard above) and must never fall
           // through to any search-based resolution, onvista included.
           if (!authoritativeHint && (r.type === "STOCK" || r.type === "ETF")) {
+            // Both dead ends below used to `return` silently, which is why a
+            // row could sit at "unknown" for weeks with nothing anywhere to
+            // say why: onvista never throws (it returns null on a block, a
+            // timeout or a miss alike), so an unreachable onvista looked
+            // exactly like a successful "not found". Name them.
             const ref = await resolveOnvistaInstrument(query);
-            if (!ref) return;
+            if (!ref) {
+              unpriced.push(query);
+              await logServerError({
+                route: "/api/cron/sync/prices",
+                level: "warn",
+                message: `unpriced ${query} (${r.name ?? "?"}): yahoo had no price and onvista found no exact isin/wkn match`,
+              });
+              return;
+            }
             const oq = await onvistaQuote(ref.entityType, ref.entityValue);
-            if (!oq) return;
+            if (!oq) {
+              unpriced.push(query);
+              await logServerError({
+                route: "/api/cron/sync/prices",
+                level: "warn",
+                message: `unpriced ${query} (${r.name ?? "?"}): onvista resolved ${ref.entityType}/${ref.entityValue} but its snapshot carried no usable price`,
+              });
+              return;
+            }
             let op = oq.price;
             if (r.currency && oq.currency && oq.currency !== r.currency) {
               op = op * (await fxRate(oq.currency, r.currency));
@@ -232,6 +263,13 @@ async function syncEquities(
               })
               .eq("id", r.id);
             if (!error) updated += 1;
+          } else {
+            unpriced.push(query);
+            await logServerError({
+              route: "/api/cron/sync/prices",
+              level: "warn",
+              message: `unpriced ${query} (${r.name ?? "?"}): yahoo had no price and type ${r.type} is not eligible for the onvista fallback`,
+            });
           }
           return;
         }
@@ -367,6 +405,7 @@ async function handle(req: Request): Promise<Response> {
     new URL(req.url).searchParams.get("revalidate") === "1" ||
     new Date(syncedAt).getUTCHours() === 3;
 
+  const unpriced: string[] = [];
   const [equities, crypto, fx] = await Promise.all([
     syncEquities(
       supabase,
@@ -377,6 +416,7 @@ async function handle(req: Request): Promise<Response> {
       ),
       syncedAt,
       revalidate,
+      unpriced,
     ),
     syncCrypto(
       supabase,
@@ -386,7 +426,7 @@ async function handle(req: Request): Promise<Response> {
     syncFx(supabase, syncedAt),
   ]);
 
-  return Response.json({ ok: true, syncedAt, equities, crypto, fxRates: fx });
+  return Response.json({ ok: true, syncedAt, equities, crypto, fxRates: fx, unpriced });
 }
 
 // POST only: this mutates the catalog (prices/FX), so it must not be a safe

@@ -8,6 +8,7 @@ import { MobileNav } from "@/components/mobile-nav";
 import { GuestBanner } from "@/components/guest-banner";
 import { LegalFooter } from "@/components/legal-footer";
 import { OfflineBanner } from "@/components/offline/offline-banner";
+import { DegradedBanner } from "@/components/portfolio/degraded-banner";
 import { SyncPill } from "@/components/offline/sync-pill";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { ChatBubble } from "@/components/llm/chat-bubble";
@@ -76,6 +77,7 @@ export default function RootLayout({
           {/* Needs FeatureFlagsProvider/LivePricesProvider, so it lives inside
               Providers — SW registration below stays unconditional. */}
           <OfflineBanner />
+          <DegradedBanner />
           <SiteNav />
           <div className="flex w-full">
             <Sidebar />

@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  type DegradedResource,
   DEFAULT_PENSION_SETTINGS,
   DEFAULT_PROFILE,
   EMPTY_REBALANCE_PLAN,
@@ -69,6 +70,7 @@ function normalizePensionSettings(raw: unknown): PensionSettings {
 }
 
 import type { LlmProviderId } from "../llm/types";
+import { reportError } from "../errors/report";
 import { RowNotFoundError } from "./types";
 import type {
   AccountInput,
@@ -506,30 +508,55 @@ export class SupabaseStore implements DataStore {
         .maybeSingle(),
     ]);
 
-    // Profile errors were previously swallowed, silently resetting the whole
-    // profile (currency, tax settings, theme, tour state) to defaults whenever
-    // the SELECT failed — e.g. a profile column that lags its migration. Fail
-    // loud like every sibling resource so the load surfaces a retryable error
-    // instead of quietly discarding the user's settings.
+    // Two tiers, deliberately (owner rule, round 27). A schema that lags its
+    // migration used to take the WHOLE app down: one missing table threw out
+    // of the Promise.all above, the provider set loadError, and every page —
+    // the depot included, which does not read that table at all — rendered
+    // "could not load your data". PGRST205 on `account_extra_repayments` did
+    // exactly that.
+    //
+    // The CORE is what the app is: without a profile, assets or transactions
+    // there is genuinely nothing to render, so those still throw and the user
+    // gets the retry screen. Everything else is a FEATURE — accounts,
+    // spending, goals, pension, tags. A feature that cannot load degrades to
+    // empty and is NAMED in `degraded`, so its own page can say what broke
+    // while the rest of the app keeps working.
     if (profileRes.error) throw profileRes.error;
     if (assetsRes.error) throw assetsRes.error;
     if (txRes.error) throw txRes.error;
-    if (watchRes.error) throw watchRes.error;
-    if (plansRes.error) throw plansRes.error;
-    if (tagGroupsRes.error) throw tagGroupsRes.error;
-    if (assetTagsRes.error) throw assetTagsRes.error;
-    if (valuationsRes.error) throw valuationsRes.error;
-    if (accountsRes.error) throw accountsRes.error;
-    if (accountBalancesRes.error) throw accountBalancesRes.error;
-    if (pensionPointsRes.error) throw pensionPointsRes.error;
-    if (pensionContractsRes.error) throw pensionContractsRes.error;
-    if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
-    if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
-    if (budgetsRes.error) throw budgetsRes.error;
-    if (contractsRes.error) throw contractsRes.error;
-    if (plannedRes.error) throw plannedRes.error;
-    if (goalsRes.error) throw goalsRes.error;
-    if (llmSettingsRes.error) throw llmSettingsRes.error;
+
+    const degraded: DegradedResource[] = [];
+    const optional = (
+      res: { error: { message?: string; code?: string } | null },
+      resource: string,
+    ) => {
+      if (!res.error) return;
+      degraded.push({ resource, reason: res.error.message ?? res.error.code ?? "unknown" });
+      // Never a silent catch: the owner rule is that an error the browser
+      // console alone sees does not exist.
+      reportError({
+        kind: "fetch",
+        level: "error",
+        message: `portfolio load degraded: ${resource}: ${res.error.message ?? res.error.code}`,
+      });
+    };
+
+    optional(watchRes, "watchlist");
+    optional(plansRes, "savingsPlans");
+    optional(tagGroupsRes, "tagGroups");
+    optional(assetTagsRes, "assetTags");
+    optional(valuationsRes, "valuationPoints");
+    optional(accountsRes, "accounts");
+    optional(accountBalancesRes, "accountBalances");
+    optional(pensionPointsRes, "pensionPoints");
+    optional(pensionContractsRes, "pensionContracts");
+    optional(spendingCategoriesRes, "spendingCategories");
+    optional(spendingTransactionsRes, "spendingTransactions");
+    optional(budgetsRes, "budgets");
+    optional(contractsRes, "contracts");
+    optional(plannedRes, "plannedCashflows");
+    optional(goalsRes, "goals");
+    optional(llmSettingsRes, "llmSettings");
 
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.
@@ -718,6 +745,7 @@ export class SupabaseStore implements DataStore {
       tagAssignments,
       valuationPoints,
       accounts,
+      degraded,
       accountBalances,
       pensionPoints,
       pensionContracts,
