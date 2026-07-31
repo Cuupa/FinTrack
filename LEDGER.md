@@ -27,11 +27,33 @@ subworker; commit only the paths you claimed.
 | Ziele-Karte zählte 4, zeigte 3 | MEDIUM | done (0e5fae2) | area-cards: "+N weitere" |
 | Konto-Buchungen (5 Punkte) | HIGH | done | spending-view (Umbuchung + Zukunftsdatum), recurring-card (Add-Button weg), planned-form.tsx (aus planned-card extrahiert), select-menu a11y, e2e/recurring.spec.ts neu |
 | PlannedCard toter Code | — | done | Flag `plannedCashflow` ist NICHT stale: forecast-card + LLM-Kontext gaten weiter darauf |
+| KPIs: Übersicht war "nur Depot" | MEDIUM | done | net-worth-hero (Sparquote + Abgedeckte Monate statt G/V-Paar, nur auf /), e2e/dashboard-kpis.spec.ts |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
 | Monte Carlo: dynamische Entnahme + Vereinheitlichung | LOW | todo | — |
 | Tooltips überarbeiten | — | todo | — |
+
+## Erledigt: KPIs der Übersicht (2026-07-31)
+
+Vier der sechs Hero-Kennzahlen waren reine Depot-Zahlen (nicht realisiert,
+realisiert, Dividenden, IZF) - auf einer Seite, die auch für Konten, Schulden
+und Ausgaben geradesteht. Auf `/` weichen jetzt das G/V-Paar der
+Alltagsgeld-Paarung **Sparquote** + **Abgedeckte Monate**; `/portfolio`
+(`investmentsOnly`) behält den Depot-Satz unverändert, dort SIND die Zahlen
+das Thema.
+
+Kein neuer Rechenweg und kein einziger neuer Dictionary-Key: `/health` hatte
+`computeFinancialHealth` schon als reine, getestete Funktion, und deren
+Doc-Kommentar zeigt sogar auf genau die Nettovermögens-Zahl des Heroes. Labels
+und Hints kommen aus `health.gauge.*`, also dieselben Worte wie auf /health.
+Gegatet über `useFeatureFlag("finHealth")` plus Null-Prüfung (ohne Daten steht
+dort "Noch nicht genug Daten", keine erfundene Null).
+
+Verifiziert DE im Browser (Sparquote +60,00 % aus 3.000 ein / 1.200 aus,
+Abgedeckte Monate 2,3 aus 2.750 liquide / 1.200) und EN über
+`e2e/dashboard-kpis.spec.ts`, das beide Seiten gegeneinander pinnt.
+1082 Unit-Tests, 45 E2E gruen.
 
 ## Erledigt: Konto-Buchungen (2026-07-31)
 

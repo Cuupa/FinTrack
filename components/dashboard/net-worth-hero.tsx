@@ -19,6 +19,7 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { accountsTotals, accountsValueOn } from "@/lib/finance/accounts";
+import { computeFinancialHealth } from "@/lib/finance/health";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { NetWorthComposition } from "./net-worth-composition";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
@@ -29,7 +30,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { portfolioIRR } from "@/lib/finance/irr";
 import { assetPriceKey } from "@/lib/types";
-import { formatCurrency, formatDate, formatPercent, plColor } from "@/lib/format";
+import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePrivacy } from "@/lib/privacy/privacy-context";
@@ -183,6 +184,37 @@ export function NetWorthHero({
     [accounts, accountBalances, valuation, movements],
   );
 
+  // The overview is not a depot report: four of its six figures used to be
+  // securities-only (unrealised, realised, dividends, IRR) on a page that also
+  // answers for accounts, debt and spending. Two of them give way here to the
+  // everyday-money pair, reusing /health's own gauges rather than deriving a
+  // second savings rate — same numbers, same words, computed once.
+  // `/portfolio` keeps the depot set: there the figures ARE the subject.
+  const healthEnabled = useFeatureFlag("finHealth");
+  const health = useMemo(
+    () =>
+      investmentsOnly || !healthEnabled
+        ? null
+        : computeFinancialHealth(
+            accounts ?? [],
+            accountBalances ?? [],
+            data.spendingTransactions,
+            netWorth,
+            today(),
+            { base: currency, fx: valuation.fx },
+          ),
+    [
+      investmentsOnly,
+      healthEnabled,
+      accounts,
+      accountBalances,
+      data.spendingTransactions,
+      netWorth,
+      currency,
+      valuation.fx,
+    ],
+  );
+
   // Money-weighted return (IRR / interner Zinsfuß) across all cash flows.
   const irr = useMemo(() => {
     const flows = netFlows(data.assets, data.transactions, valuation).map((f) => ({
@@ -238,23 +270,52 @@ export function NetWorthHero({
             isPrivate
             size="sm"
           />
-          <Stat
-            label={t("stat.unrealized")}
-            value={formatCurrency(totals.unrealizedPL, currency)}
-            sub={formatPercent(totals.totalPLPercent)}
-            valueClassName={plColor(totals.unrealizedPL)}
-            info={t("tip.unrealized")}
-            isPrivate
-            size="sm"
-          />
-          <Stat
-            label={t("stat.realized")}
-            value={formatCurrency(totals.realizedPL, currency)}
-            valueClassName={plColor(totals.realizedPL)}
-            info={t("tip.realized")}
-            isPrivate
-            size="sm"
-          />
+          {investmentsOnly ? (
+            <>
+              <Stat
+                label={t("stat.unrealized")}
+                value={formatCurrency(totals.unrealizedPL, currency)}
+                sub={formatPercent(totals.totalPLPercent)}
+                valueClassName={plColor(totals.unrealizedPL)}
+                info={t("tip.unrealized")}
+                isPrivate
+                size="sm"
+              />
+              <Stat
+                label={t("stat.realized")}
+                value={formatCurrency(totals.realizedPL, currency)}
+                valueClassName={plColor(totals.realizedPL)}
+                info={t("tip.realized")}
+                isPrivate
+                size="sm"
+              />
+            </>
+          ) : (
+            <>
+              {/* Not a currency figure, so no `isPrivate`: a rate and a count of
+                  months say nothing about how much money there is. */}
+              <Stat
+                label={t("health.gauge.savingsRate.label")}
+                value={
+                  health?.savingsRate != null ? formatPercent(health.savingsRate) : t("health.noData")
+                }
+                valueClassName={health?.savingsRate != null ? plColor(health.savingsRate) : "text-zinc-400"}
+                info={t("health.gauge.savingsRate.hint")}
+                size="sm"
+              />
+              <Stat
+                label={t("health.gauge.monthsOfExpenses.label")}
+                value={
+                  health?.monthsOfExpensesCovered != null
+                    ? `${formatNumber(health.monthsOfExpensesCovered, 1)} ${t("health.unit.months")}`
+                    : t("health.noData")
+                }
+                valueClassName={health?.monthsOfExpensesCovered == null ? "text-zinc-400" : ""}
+                info={t("health.gauge.monthsOfExpenses.hint")}
+                size="sm"
+              />
+            </>
+          )}
           <Stat
             label={t("stat.dividends")}
             value={formatCurrency(dividendsReceived, currency)}
