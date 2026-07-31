@@ -151,7 +151,11 @@ function DatenschutzDE({
         <p>
           Wir binden keine Analyse- oder Tracking-Dienste Dritter ein. Schriftarten werden
           selbst gehostet (kein Nachladen von Google Fonts oder anderen externen
-          Font-Diensten) und laden keine externen Ressourcen nach.
+          Font-Diensten) und laden keine externen Ressourcen nach. Auch selbst zählen wir
+          keine Klicks oder Seitenaufrufe: für den Betrieb sieht der Betreiber
+          ausschließlich Summen (etwa wie viele Konten insgesamt angelegt wurden),
+          berechnet im Moment des Aufrufs aus den ohnehin gespeicherten Daten. Es entsteht
+          kein Nutzungsprofil.
         </p>
       </LegalSection>
 
@@ -400,7 +404,10 @@ function DatenschutzEN({
         <p>
           We do not embed any third-party analytics or tracking services. Fonts are
           self-hosted (no Google Fonts or other external font services are loaded), and no
-          other external resources are fetched.
+          other external resources are fetched. We do not count clicks or page views
+          ourselves either: to operate the service the operator only ever sees totals (such
+          as how many accounts exist in all), computed at the moment the page is opened from
+          data that is stored anyway. No usage profile is created.
         </p>
       </LegalSection>
 
