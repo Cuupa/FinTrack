@@ -16,7 +16,8 @@ subworker; commit only the paths you claimed.
 | Sondertilgung nicht auffindbar | HIGH | done (2124eda) | Feature war da, Button hieß nur "Zinssatz & Zahlung" |
 | Einmalzahlungen in die PLAN-Simulation | HIGH | done | components/debt/debt-repayments.tsx (neu), debt-view, debt-details-dialog, dictionaries, e2e/debt.spec.ts |
 | Cookie-Banner prüfen | HIGH | done (2c856b1) | keins nötig, alles technisch notwendig |
-| KPIs: Asset-Risikometriken | MEDIUM | todo | — |
+| KPIs: Asset-Risikometriken | MEDIUM | done | components/assets/asset-risk-card.tsx, components/analysis/metric-card.tsx (geteilt), Dashboard-Dublette "Woraus es besteht" entfernt |
+| Chart-Datumslabels folgten der Browser-Locale | — | done (f0af0e0) | performance-chart, trades/dividends/forecast |
 | Wiederkehrende Zahlungen: Änderungsumfang abfragen | MEDIUM | todo | — |
 | Analysen: Admin feature usage | MEDIUM | todo | — |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
