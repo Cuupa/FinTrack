@@ -1350,7 +1350,7 @@ export const en = {
   "debt.details.save": "Save",
   "debt.repayments.title": "One-off repayments",
   "debt.repayments.intro":
-    "What if you also paid a lump sum, e.g. your bonus every June? The plan charges each one in the month it falls due. Nothing is booked: a repayment you really made is a transfer between your accounts.",
+    "What if you also paid a lump sum, e.g. your bonus every June? ",
   "debt.repayments.accountLabel": "Liability",
   "debt.repayments.dateLabel": "Date",
   "debt.repayments.amountLabel": "Amount ({currency})",
@@ -3507,7 +3507,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.details.save": "Speichern",
   "debt.repayments.title": "Sondertilgungen",
   "debt.repayments.intro":
-    "Was wäre, wenn du zusätzlich einen Betrag tilgst, zum Beispiel jeden Juni deinen Bonus? Der Plan rechnet jede Sondertilgung in dem Monat ein, in dem sie fällig ist. Gebucht wird nichts: eine wirklich gezahlte Sondertilgung ist eine Umbuchung zwischen deinen Konten.",
+    "Simuliert einmalige Sondertilgungen",
   "debt.repayments.accountLabel": "Verbindlichkeit",
   "debt.repayments.dateLabel": "Datum",
   "debt.repayments.amountLabel": "Betrag ({currency})",
@@ -5660,7 +5660,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.details.save": "Guardar",
   "debt.repayments.title": "Amortizaciones anticipadas",
   "debt.repayments.intro":
-    "¿Y si además pagas un importe extra, por ejemplo tu bonus cada junio? El plan lo aplica en el mes en que vence. No se registra nada: una amortización que hiciste de verdad es una transferencia entre tus cuentas.",
+    "¿Y si además pagas un importe extra.",
   "debt.repayments.accountLabel": "Pasivo",
   "debt.repayments.dateLabel": "Fecha",
   "debt.repayments.amountLabel": "Importe ({currency})",
