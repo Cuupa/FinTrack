@@ -12,7 +12,8 @@ subworker; commit only the paths you claimed.
 | Rente: Rentenpunkte, Rentenniveau, Rentenversicherungen | MEDIUM | done | lib/finance/pension.ts, lib/pension/, components/pension/, app/pension/, migration 0106, tests/pension.test.ts, e2e/pension.spec.ts |
 | CLAUDE.md aufräumen | HIGHEST | done | CLAUDE.md 1025->682, MONETIZATION.md recreated, DOCUMENTATION.md +300 |
 | Asset-Preise: A2PKXG falsch in UI | HIGH | fix shipped (pinned listings); awaiting user's asset-row currency | lib/server/quote-policy.ts, app/api/cron/sync/prices, migration 0107 |
-| Verträge entfernen (in wiederkehrende Zahlungen aufgegangen) | HIGH | todo | components/contracts/*, app/contracts/* |
+| Verträge entfernen (in wiederkehrende Zahlungen aufgegangen) | HIGH | done (2a17c49) | /contracts weg, add+suggestions+delete in recurring-card, e2e/recurring.spec.ts |
+| Sondertilgung nicht auffindbar | HIGH | done (2124eda) | Feature war da, Button hieß nur "Zinssatz & Zahlung" |
 | Cookie-Banner prüfen | HIGH | todo | components/legal/* |
 | KPIs: Asset-Risikometriken | MEDIUM | todo | — |
 | Wiederkehrende Zahlungen: Änderungsumfang abfragen | MEDIUM | todo | — |
