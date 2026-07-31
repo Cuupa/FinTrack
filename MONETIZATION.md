@@ -74,7 +74,7 @@ to `/pricing`.
 Adopted on **every** surface that gates on a Pro flag: the /analysis risk and
 tax tabs (the tab itself stays visible), /dividends, /simulation, /xray,
 /rebalancing, the flag-gated pages /accounts, /spending, /goals, /health,
-/fire, /debt, /contracts, /pension, the dashboard `AreaCards` (a locked area
+/fire, /debt, /pension, the dashboard `AreaCards` (a locked area
 keeps its grid slot) and the self-gated cards (watchlist, savings plans,
 budgets — each split into a gate wrapper plus a `*Inner` holding the hooks).
 
@@ -98,7 +98,7 @@ Two smaller wrappers gate a **sub-surface** without repeating the ternary:
 **Cell-level enrichments still hide while locked**, because they cannot carry
 a teaser: a value inside a `dl`, one column of a table, a row action, an
 option in a select (`vorabEstimate`, `dividendCalendar`, `splitDetection`,
-`contracts`' recurring-row button, `manualValuation`'s asset-type option,
+`manualValuation`'s asset-type option,
 `taxPack`'s category field). **Do not tier those to Pro on their own** — tier
 the surface that owns them.
 

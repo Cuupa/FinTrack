@@ -27,7 +27,6 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { PageHeader } from "@/components/ui/primitives";
 import {
   ASSET_TAGS_TOUR_STEPS,
-  CONTRACTS_TOUR_STEPS,
   REBALANCING_TOUR_STEPS,
   RISK_TOUR_STEPS,
   SIMULATION_TOUR_STEPS,
@@ -74,10 +73,6 @@ export function RebalancingTour({ restartToken = 0 }: PageTourProps) {
   return (
     <PageTour tourId="rebalancing" steps={REBALANCING_TOUR_STEPS} restartToken={restartToken} />
   );
-}
-
-export function ContractsTour({ restartToken = 0 }: PageTourProps) {
-  return <PageTour tourId="contracts" steps={CONTRACTS_TOUR_STEPS} restartToken={restartToken} />;
 }
 
 export function SimulationTour({ restartToken = 0 }: PageTourProps) {

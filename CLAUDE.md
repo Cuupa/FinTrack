@@ -535,7 +535,7 @@ client pages (see `app/assets/[id]/page.tsx`).
   `toursDone[tourId]`) is the one wrapper the named tours alias, and
   `PageHeaderWithTour` pairs a `PageHeader` with its "?" so **every primary
   page** carries the affordance next to its heading (/accounts, /spending,
-  /goals, /health, /fire, /debt, /contracts, /household, /dividends, /xray,
+  /goals, /health, /fire, /debt, /household, /dividends, /xray,
   /analysis; the dashboard, risk, rebalancing, simulation and asset-tags
   tours keep their existing card-level buttons). Its `ready` prop is the
   page's "content is on screen" condition (loaded, not errored, not locked)

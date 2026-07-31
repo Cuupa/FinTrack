@@ -13,7 +13,9 @@
 //
 // The split that used to be on screen (a contracts page plus a separate
 // planned-entries card) meant the same question — what recurs? — had two
-// answers in two places, neither of them complete.
+// answers in two places, neither of them complete. The contract register is
+// gone entirely now (owner call): everything only it could do — adding an
+// entry, the detected-charge suggestions, deleting one — happens here.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -22,14 +24,20 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finance/contract-bookings";
 import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned";
+import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { RecurringForm } from "./recurring-form";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { useFeature } from "@/lib/flags/flags-context";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
+import type { ContractInput } from "@/lib/store/types";
 
 type SortKey = "name" | "amount" | "interval" | "next";
 
@@ -64,15 +72,35 @@ interface DueRow {
 }
 
 export function RecurringCard() {
-  const { data, addSpendingTransaction, updateContract, updatePlannedCashflow } = usePortfolio();
+  const {
+    data,
+    addSpendingTransaction,
+    updateSpendingTransaction,
+    addContract,
+    updateContract,
+    deleteContract,
+    updatePlannedCashflow,
+    deletePlannedCashflow,
+  } = usePortfolio();
   const { t } = useI18n();
-  const contractsEnabled = useFeatureFlag("contracts");
+  // The flag decides visibility, the plan decides unlocked: a locked entry
+  // surface stays on screen behind a teaser rather than vanishing.
+  const contracts = useFeature("contracts");
+  // The insurance FIELDS stay hidden while that feature is locked: letting the
+  // user type data a locked feature cannot act on is worse than not asking.
+  const insurance = useFeature("insurance");
+  const insuranceEnabled = insurance.enabled && !insurance.locked;
   const base = data.profile.currency;
   const todayIso = today();
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [adding, setAdding] = useState(false);
+  // Remounts the form so a saved entry does not leave its values behind.
+  const [formKey, setFormKey] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState<RecurringRow | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "next",
     dir: "asc",
@@ -189,6 +217,71 @@ export function RecurringCard() {
     return fallback;
   }
 
+  // Accounts are passed so a loan instalment is not offered as a recurring
+  // expense: it is a transfer against a liability, not money consumed.
+  const candidates = useMemo(
+    () => detectRecurringCandidates(data.spendingTransactions, data.accounts),
+    [data.spendingTransactions, data.accounts],
+  );
+  const candidateKey = (c: RecurringCandidate) => `${c.payee}|${c.amount}`;
+  const visibleCandidates = candidates.filter((c) => !dismissed.has(candidateKey(c)));
+
+  async function submitNew(input: ContractInput) {
+    setBusy(true);
+    setError(null);
+    try {
+      await addContract(input);
+      setFormKey((k) => k + 1);
+      setAdding(false);
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function acceptCandidate(c: RecurringCandidate) {
+    setError(null);
+    try {
+      const contract = await addContract({
+        name: c.payee,
+        amount: c.amount,
+        interval: c.interval,
+        renewalDate: null,
+        cancellationNoticeDays: null,
+        categoryId: c.categoryId,
+        // A detected candidate already knows where it was charged and when it
+        // last ran, so the accepted entry books from the NEXT occurrence
+        // instead of landing inert. Anchoring the start on the cluster's first
+        // date keeps the schedule on the real charging day, and
+        // `lastBookedDate` on its last one means the charges it was detected
+        // from are never offered a second time.
+        accountId: c.accountId,
+        targetAccountId: null,
+        bookingStartDate: c.dates[0] ?? todayIso,
+        lastBookedDate: c.dates[c.dates.length - 1] ?? null,
+        insuranceType: null,
+        sumInsured: null,
+      });
+      await Promise.all(
+        c.transactionIds.map((id) => updateSpendingTransaction(id, { recurringId: contract.id })),
+      );
+      setDismissed((d) => new Set(d).add(candidateKey(c)));
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    }
+  }
+
+  async function removeRow(row: RecurringRow) {
+    setError(null);
+    try {
+      if (row.kind === "contract") await deleteContract(row.id);
+      else await deletePlannedCashflow(row.id);
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    }
+  }
+
   /**
    * Posts the selected occurrences, then advances each source's
    * `lastBookedDate`. Transactions first, source second: replaying a booking
@@ -278,14 +371,57 @@ export function RecurringCard() {
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   return (
-    <Card>
+    <Card data-tour="recurring-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
-        {/* The contract register lost its nav entry (it answered the same
-            question this card does, only half of it), so this is now the way
-            in to what only it can do: the suggestions, and a contract's
-            renewal date, notice period and insurance fields. */}
+        {/* The register this replaced answered the same question, only half of
+            it. Adding an entry — with its renewal date, notice period and
+            insurance fields — happens here now. */}
+        {contracts.enabled && (
+          <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
+            {t("recurring.add")}
+          </Button>
+        )}
       </div>
+
+      {/* Charges that look recurring but are not tracked as such yet. Accepting
+          one turns it into an entry and back-links the transactions it was
+          detected from. */}
+      {contracts.enabled && visibleCandidates.length > 0 && (
+        <ProGate locked={contracts.locked} feature="contracts" className="mt-4">
+          <div data-tour="recurring-suggestions" className="mt-4">
+            <h3 className="text-sm font-semibold">{t("contracts.suggestions.title")}</h3>
+            <p className="mt-1 text-sm text-zinc-500">{t("contracts.suggestions.intro")}</p>
+            <ul className="mt-3 space-y-2">
+              {visibleCandidates.map((c) => (
+                <li
+                  key={candidateKey(c)}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                >
+                  <span data-private>
+                    <span className="font-medium">{c.payee}</span>{" "}
+                    <span className="text-zinc-500">
+                      · {formatCurrency(c.amount, base)} · {intervalLabel(c.interval)}
+                    </span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="primary" onClick={() => void acceptCandidate(c)}>
+                      {t("contracts.suggestions.accept")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setDismissed((d) => new Set(d).add(candidateKey(c)))}
+                    >
+                      {t("contracts.suggestions.dismiss")}
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </ProGate>
+      )}
 
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("recurring.empty")}</p>
@@ -310,6 +446,7 @@ export function RecurringCard() {
                   {t("recurring.col.next")}
                   {arrow("next")}
                 </th>
+                <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
@@ -339,6 +476,15 @@ export function RecurringCard() {
                   <td className="px-3 py-2 text-zinc-500">{r.intervalLabel}</td>
                   <td className="px-3 py-2 text-zinc-500">
                     {r.next ? formatDate(r.next) : t("recurring.noNext")}
+                  </td>
+                  {/* Editing lives on the row's own page; deleting stays here,
+                      where the register used to offer it. */}
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end">
+                      <Button size="sm" variant="danger" onClick={() => setConfirmDelete(r)}>
+                        {t("contracts.list.delete")}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -423,6 +569,45 @@ export function RecurringCard() {
 
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
+      {/* Wide enough for the form's three-column grid: at the default width the
+          fields stack into one narrow column and the category dropdown, whose
+          options carry a "group · name" label, overflows its own popover. */}
+      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-5xl">
+        <Card>
+          <h2 className="text-lg font-semibold">{t("recurring.add")}</h2>
+          {/* A locked feature is teased, never hidden: the form the user would
+              get stays on screen behind the paywall. */}
+          <ProGate locked={contracts.locked} feature="contracts">
+            <RecurringForm
+              key={formKey}
+              accounts={data.accounts}
+              categories={data.spendingCategories}
+              base={base}
+              insuranceEnabled={insuranceEnabled}
+              submitLabel={t("contracts.form.add")}
+              busy={busy}
+              onSubmit={submitNew}
+              onCancel={() => setAdding(false)}
+            />
+          </ProGate>
+          {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        </Card>
+      </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title={t("contracts.delete.title")}
+        message={
+          confirmDelete ? t("contracts.delete.message", { name: confirmDelete.name }) : undefined
+        }
+        confirmLabel={t("contracts.list.delete")}
+        onConfirm={() => {
+          const target = confirmDelete;
+          setConfirmDelete(null);
+          if (target) void removeRow(target);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </Card>
   );
 }

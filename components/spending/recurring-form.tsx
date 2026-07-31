@@ -1,15 +1,20 @@
 "use client";
 
-// One contract form, used by both the "add" card and the edit dialog on
-// /contracts — the same split `GoalForm` (components/goals/goals-view.tsx)
-// uses, and for the same reason: a contract that can only ever be created is
-// a dead entry. Everything the contract can express is editable afterwards,
-// including the three fields that decide whether it books at all (account,
-// target account, start date).
+// The form for a recurring payment, used by the add dialog on /spending and
+// the edit dialog on /recurring/[kind]/[id] — the same split `GoalForm`
+// (components/goals/goals-view.tsx) uses, and for the same reason: an entry
+// that can only ever be created is a dead entry. Everything it can express is
+// editable afterwards, including the three fields that decide whether it books
+// at all (account, target account, start date).
+//
+// The entity behind it is still `Contract` in the store, the way /debt keeps
+// `debtPayoff` while the surface reads "Liabilities": what the user has is a
+// recurring payment, and the separate contract register it used to live on is
+// gone.
 //
 // The form owns only its own draft state. Persisting is the caller's job
-// (`addContract` / `updateContract`), so this component stays usable from the
-// card and the dialog without knowing which one it is in.
+// (`addContract` / `updateContract`), so this component stays usable from
+// either dialog without knowing which one it is in.
 
 import { useState } from "react";
 
@@ -31,7 +36,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900";
 
-export interface ContractFormProps {
+export interface RecurringFormProps {
   accounts: Account[];
   categories: SpendingCategory[];
   /** Profile base currency — contract amounts are stored in it. */
@@ -46,7 +51,7 @@ export interface ContractFormProps {
   onCancel?: () => void;
 }
 
-export function ContractForm({
+export function RecurringForm({
   accounts,
   categories,
   base,
@@ -56,7 +61,7 @@ export function ContractForm({
   busy,
   onSubmit,
   onCancel,
-}: ContractFormProps) {
+}: RecurringFormProps) {
   const { t } = useI18n();
 
   const [name, setName] = useState(initial?.name ?? "");

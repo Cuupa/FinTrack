@@ -1130,6 +1130,15 @@ sets, money that flows, plans and entitlements. Each rides the full store seam
   personal. `pension_settings` is a jsonb blob on the profile for the same
   reason `rebalance_targets` is one (four scalars, one row per user). Surface
   is `/pension`, in the Planning nav group.
+- **Recurring payments** (flag `contracts`): one card on `/spending`
+  (`components/spending/recurring-card.tsx`) listing contracts AND planned
+  cashflows together, because "what recurs?" is one question. The separate
+  `/contracts` register is **gone** (owner call): adding an entry, the
+  detected-charge suggestions and deleting one all live in that card, editing
+  lives on the row's own page `/recurring/[kind]/[id]`. The `Contract` entity,
+  the `contracts` table and the `contracts.*` message keys keep their names —
+  the same way `/debt` keeps `debtPayoff` while the surface reads
+  "Liabilities". Do not reintroduce a page for it.
 - **Planned income & expenses** (`planned_cashflows` table migration 0100, flag
   `plannedCashflow`, seeded disabled): the salary, a bonus, a tax refund, a
   one-off cost. A **sibling of `Contract`, deliberately not an extension** of

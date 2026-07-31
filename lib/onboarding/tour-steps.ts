@@ -140,30 +140,6 @@ export const REBALANCING_TOUR_STEPS: TourStep[] = [
   },
 ];
 
-/** Contracts register (components/contracts/contracts-view.tsx). Covers the
- *  three things that surface there and nowhere else: what kind of commitment
- *  a row is, whether it posts bookings, and where detected charges come from. */
-export const CONTRACTS_TOUR_STEPS: TourStep[] = [
-  {
-    key: "contractsKind",
-    target: "contract-kind",
-    titleKey: "tour.contracts.kind.title",
-    bodyKey: "tour.contracts.kind.body",
-  },
-  {
-    key: "contractsBooking",
-    target: "contract-account",
-    titleKey: "tour.contracts.booking.title",
-    bodyKey: "tour.contracts.booking.body",
-  },
-  {
-    key: "contractsSuggestions",
-    target: "contract-suggestions",
-    titleKey: "tour.contracts.suggestions.title",
-    bodyKey: "tour.contracts.suggestions.body",
-  },
-];
-
 /** Monte Carlo simulation (components/simulation/monte-carlo-panel.tsx). */
 export const SIMULATION_TOUR_STEPS: TourStep[] = [
   {
@@ -265,6 +241,15 @@ export const SPENDING_TOUR_STEPS: TourStep[] = [
     target: "spending-table",
     titleKey: "tour.spending.table.title",
     bodyKey: "tour.spending.table.body",
+  },
+  // The detected-charge suggestions moved here with the contract register.
+  // The step is skipped on a page that has none: `TourOverlay` keeps only the
+  // steps whose target is on screen at mount.
+  {
+    key: "spendingRecurring",
+    target: "recurring-suggestions",
+    titleKey: "tour.contracts.suggestions.title",
+    bodyKey: "tour.contracts.suggestions.body",
   },
 ];
 

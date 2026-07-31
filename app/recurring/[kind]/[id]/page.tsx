@@ -23,7 +23,7 @@ import { nextPlannedOccurrence } from "@/lib/finance/planned";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card, PAGE_STACK, PageHeader, Stat } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
-import { ContractForm } from "@/components/contracts/contract-form";
+import { RecurringForm } from "@/components/spending/recurring-form";
 import { PlannedForm } from "@/components/spending/planned-card";
 import { TransactionEditDialog } from "@/components/spending/transaction-edit-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -266,7 +266,7 @@ export default function RecurringDetailPage({
         <Modal open={editing} onClose={() => setEditing(false)} maxWidthClass="max-w-5xl">
           <Card>
             <h2 className="text-lg font-semibold">{t("contracts.edit.title")}</h2>
-            <ContractForm
+            <RecurringForm
               key={contract.id}
               accounts={data.accounts}
               categories={data.spendingCategories}
