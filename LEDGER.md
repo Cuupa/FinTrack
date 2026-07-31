@@ -25,11 +25,43 @@ subworker; commit only the paths you claimed.
 | /admin/usage 500 (transactions.user_id) | HIGH | done (69edff6) | Migration 0109 muss laufen |
 | Kurse fehlen (IE00BMVB5N38) | HIGH | Ursache gefunden + Fix (0e5fae2) | Cron verschluckte Yahoo-Fehler und übersprang onvista; jetzt geloggt. Nach Deploy: /admin/prices -> Revalidieren |
 | Ziele-Karte zählte 4, zeigte 3 | MEDIUM | done (0e5fae2) | area-cards: "+N weitere" |
+| Konto-Buchungen (5 Punkte) | HIGH | done | spending-view (Umbuchung + Zukunftsdatum), recurring-card (Add-Button weg), planned-form.tsx (aus planned-card extrahiert), select-menu a11y, e2e/recurring.spec.ts neu |
+| PlannedCard toter Code | — | done | Flag `plannedCashflow` ist NICHT stale: forecast-card + LLM-Kontext gaten weiter darauf |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
 | Monte Carlo: dynamische Entnahme + Vereinheitlichung | LOW | todo | — |
 | Tooltips überarbeiten | — | todo | — |
+
+## Erledigt: Konto-Buchungen (2026-07-31)
+
+Alle fuenf Punkte aus dem TODO-Block:
+
+1. **Umbuchen direkt in der Maske.** Das Feld gab es nur im Bearbeiten-Dialog,
+   also musste man erst falsch speichern und dann korrigieren. Jetzt steht
+   "Umbuchung auf" mit demselben Wortschatz und derselben Hint-Zeile in der
+   Erfassungsmaske, im Bearbeiten-Dialog und im Detail-Formular.
+2. **Zukunftsdatum.** `max={today()}` ist weg. Der Bearbeiten-Dialog hat das
+   Datum nie begrenzt, die Sperre hiess also nur "erst falsch speichern".
+3. **Umbuchen auf einen Kredit** faellt aus (1): die Liste enthaelt jedes
+   andere Konto, Verbindlichkeiten eingeschlossen. Verifiziert: 250 EUR auf
+   den Autokredit gebucht, Kredit -10.000 -> -9.750, Giro 3.000 -> 2.750.
+4. **Der doppelte Add-Knopf ist weg.** Die Karte hatte einen eigenen
+   "Wiederkehrende Zahlung hinzufuegen"-Button, obwohl ihr eigener Leerzustand
+   schon auf den Schalter oben zeigte. Vertraege entstehen weiterhin ueber
+   "Als wiederkehrend anlegen" an einer Buchung.
+5. **"Empfaenger" bleibt "Empfaenger"** bis ins Detail-Formular (hiess dort
+   "Bezeichnung"). Dabei auch die Ausgabe/Einnahme-Wahl dort auf den
+   gemeinsamen `SegmentedControl` gezogen.
+
+Nebenbei: `PlannedCard` war toter Code und ist raus; `PlannedForm` lebt jetzt
+in `components/spending/planned-form.tsx`. Das Flag `plannedCashflow` ist
+**nicht** stale, `forecast-card.tsx` und der LLM-Kontext gaten weiter darauf.
+Ausserdem trug im `SelectMenu` jede Option das Haekchen im Accessible Name
+(nur transparent geschaltet) - jetzt `aria-hidden`.
+
+Verifiziert in DE (Browser, 1080p) und EN (E2E-Suite): 1082 Unit-Tests,
+44 E2E gruen, `e2e/recurring.spec.ts` auf die neuen Wege umgeschrieben.
 
 ## Erledigt: Einmalzahlungen im Tilgungsplan (Owner-Korrektur 2026-07-31)
 

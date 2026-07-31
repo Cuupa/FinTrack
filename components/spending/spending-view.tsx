@@ -71,6 +71,11 @@ export function SpendingView() {
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(today());
   const [note, setNote] = useState("");
+  // Where the money lands when it is not consumed: another account of the
+  // user's own, a liability included. Booking a rate onto a credit is the
+  // whole point of tracking one, and it was reachable only by saving the
+  // booking first and re-opening it in the edit dialog.
+  const [transferAccountId, setTransferAccountId] = useState("");
   // The one toggle that decides whether this is a single booking or something
   // that repeats. Owner rule: adding a recurring payment is the SAME act as
   // adding a booking, so it is one form with a switch, never a second place
@@ -166,6 +171,9 @@ export function SpendingView() {
     setError(null);
     try {
       const signed = txType === "income" ? magnitude : -magnitude;
+      // A transfer onto the very account being booked is not a transfer.
+      const transfer =
+        transferAccountId && transferAccountId !== accountId ? transferAccountId : null;
       if (recurring) {
         // Same inputs, different meaning: the date becomes the first
         // occurrence and the entry starts producing bookings from there,
@@ -179,7 +187,7 @@ export function SpendingView() {
           startDate: date,
           endDate: null,
           lastBookedDate: null,
-          transferAccountId: null,
+          transferAccountId: transfer,
           note: note.trim() || null,
         });
       } else {
@@ -191,12 +199,14 @@ export function SpendingView() {
           payee: payee.trim(),
           note: note.trim() || null,
           recurringId: null,
+          transferAccountId: transfer,
         });
       }
       setAmount("");
       setPayee("");
       setCategoryId("");
       setNote("");
+      setTransferAccountId("");
       setDate(today());
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("spending.form.error"));
@@ -277,11 +287,11 @@ export function SpendingView() {
                 <input
                   id="spending-date"
                   type="date"
+                  // Future dates are allowed on purpose: a standing order or a
+                  // rate already scheduled is a booking the user knows about
+                  // today. The edit dialog never capped the date either, so
+                  // capping it here only meant "save it wrong, then correct it".
                   value={date}
-                  // A recurring entry may legitimately start in the future
-                  // (a raise from next month); a booking cannot happen later
-                  // than today.
-                  max={recurring ? undefined : today()}
                   onChange={(e) => setDate(e.target.value)}
                   className={inputCls}
                 />
@@ -343,6 +353,30 @@ export function SpendingView() {
                     </button>
                   )}
                 />
+              </div>
+              {/* Same control and same words as the edit dialog: marking a
+                  booking as a transfer keeps it out of the expense figures and
+                  moves the other account instead, which is what makes a rate
+                  actually retire a debt. */}
+              <div>
+                <label className="text-sm font-medium">{t("spending.edit.transferLabel")}</label>
+                <SelectMenu
+                  className="mt-1 w-full"
+                  ariaLabel={t("spending.edit.transferLabel")}
+                  value={transferAccountId}
+                  onChange={setTransferAccountId}
+                  options={[
+                    { value: "", label: t("spending.edit.transferNone") },
+                    ...data.accounts
+                      .filter((a) => a.id !== accountId)
+                      .map((a) => ({ value: a.id, label: a.name })),
+                  ]}
+                />
+                <p className="mt-1 text-sm text-zinc-500">
+                  {transferAccountId
+                    ? t("spending.edit.transferHintOn")
+                    : t("spending.edit.transferHintOff")}
+                </p>
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
                 <label className="text-sm font-medium" htmlFor="spending-note">

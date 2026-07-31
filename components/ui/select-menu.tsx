@@ -123,7 +123,12 @@ export function SelectMenu({
                       }}
                       className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
+                      {/* Decorative: the tick renders for every option and is
+                          merely turned transparent when unselected, so without
+                          this it would read into EVERY option's accessible
+                          name. `aria-selected` above carries the real state. */}
                       <span
+                        aria-hidden="true"
                         className={`flex h-4 w-4 shrink-0 items-center justify-center text-[10px] ${
                           on ? "text-emerald-500" : "text-transparent"
                         }`}

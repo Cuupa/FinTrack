@@ -28,9 +28,7 @@ import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned
 import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
-import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { RecurringForm } from "./recurring-form";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
@@ -38,7 +36,6 @@ import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
-import type { ContractInput } from "@/lib/store/types";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "name" | "amount" | "interval" | "next";
@@ -89,19 +86,12 @@ export function RecurringCard() {
   // The flag decides visibility, the plan decides unlocked: a locked entry
   // surface stays on screen behind a teaser rather than vanishing.
   const contracts = useFeature("contracts");
-  // The insurance FIELDS stay hidden while that feature is locked: letting the
-  // user type data a locked feature cannot act on is worse than not asking.
-  const insurance = useFeature("insurance");
-  const insuranceEnabled = insurance.enabled && !insurance.locked;
   const base = data.profile.currency;
   const todayIso = today();
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
-  // Remounts the form so a saved entry does not leave its values behind.
-  const [formKey, setFormKey] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<RecurringRow | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
@@ -228,20 +218,6 @@ export function RecurringCard() {
   );
   const candidateKey = (c: RecurringCandidate) => `${c.payee}|${c.amount}`;
   const visibleCandidates = candidates.filter((c) => !dismissed.has(candidateKey(c)));
-
-  async function submitNew(input: ContractInput) {
-    setBusy(true);
-    setError(null);
-    try {
-      await addContract(input);
-      setFormKey((k) => k + 1);
-      setAdding(false);
-    } catch (err) {
-      setError(saveFailed(err, t("contracts.form.error")));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function acceptCandidate(c: RecurringCandidate) {
     setError(null);
@@ -377,14 +353,12 @@ export function RecurringCard() {
     <Card data-tour="recurring-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
-        {/* The register this replaced answered the same question, only half of
-            it. Adding an entry — with its renewal date, notice period and
-            insurance fields — happens here now. */}
-        {contracts.enabled && (
-          <Button size="sm" variant="primary" onClick={() => setAdding(true)}>
-            {t("recurring.add")}
-          </Button>
-        )}
+        {/* No "add" button here on purpose (owner rule): booking something and
+            booking something that repeats are the SAME act, so the entry mask
+            above owns it via its "recurring" switch. A button here was a second
+            place to go, and the card's own empty state was already pointing at
+            the switch. A row's renewal date, notice period and insurance fields
+            are edited from the row itself. */}
       </div>
 
       {/* Charges that look recurring but are not tracked as such yet. Accepting
@@ -577,31 +551,6 @@ export function RecurringCard() {
       )}
 
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-      {/* Wide enough for the form's three-column grid: at the default width the
-          fields stack into one narrow column and the category dropdown, whose
-          options carry a "group · name" label, overflows its own popover. */}
-      <Modal open={adding} onClose={() => setAdding(false)} maxWidthClass="max-w-5xl">
-        <Card>
-          <h2 className="text-lg font-semibold">{t("recurring.add")}</h2>
-          {/* A locked feature is teased, never hidden: the form the user would
-              get stays on screen behind the paywall. */}
-          <ProGate locked={contracts.locked} feature="contracts">
-            <RecurringForm
-              key={formKey}
-              accounts={data.accounts}
-              categories={data.spendingCategories}
-              base={base}
-              insuranceEnabled={insuranceEnabled}
-              submitLabel={t("contracts.form.add")}
-              busy={busy}
-              onSubmit={submitNew}
-              onCancel={() => setAdding(false)}
-            />
-          </ProGate>
-          {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-        </Card>
-      </Modal>
 
       <ConfirmDialog
         open={confirmDelete !== null}

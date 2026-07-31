@@ -25,7 +25,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Button, Card, PAGE_STACK, PageHeader, Stat } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { RecurringForm } from "@/components/spending/recurring-form";
-import { PlannedForm } from "@/components/spending/planned-card";
+import { PlannedForm } from "@/components/spending/planned-form";
 import { TransactionEditDialog } from "@/components/spending/transaction-edit-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LoadError } from "@/components/ui/load-error";
