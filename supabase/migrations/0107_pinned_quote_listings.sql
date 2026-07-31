@@ -45,15 +45,21 @@ update public.instruments set quote_pinned = true
   where type = 'COMMODITY' and quote_id is not null;
 
 -- Repair the rows the self-heal already overwrote, back to the seeded listing.
--- Guarded on the ISIN so a row that is already correct is untouched, and the
--- stale price is cleared so the next sync refills it from the right listing
--- instead of leaving the USD-derived figure on screen until then.
+-- Guarded on the ISIN so a row that is already correct is untouched.
+--
+-- last_price is deliberately LEFT ALONE. It is currently the USD line's price
+-- FX-converted back to EUR (164.48 against the true Xetra 164.06 -- the ~0.3%
+-- the wrong listing costs), so it is close enough to keep showing until the
+-- next sync overwrites it from VWCE.DE. Nulling it would drop the row to the
+-- on-demand /api/price path, or to the synthetic price if that also fails, for
+-- no gain: the cron re-syncs every row on every run and never skips a
+-- recently-synced one.
 update public.instruments
-  set quote_source = 'yahoo', quote_id = 'VWCE.DE', last_price = null, price_synced_at = null
+  set quote_source = 'yahoo', quote_id = 'VWCE.DE'
   where isin = 'IE00BK5BQT80' and quote_id is distinct from 'VWCE.DE';
 
 update public.instruments
-  set quote_source = 'yahoo', quote_id = 'IWDA.AS', last_price = null, price_synced_at = null
+  set quote_source = 'yahoo', quote_id = 'IWDA.AS'
   where isin = 'IE00B4L5Y983' and quote_id is distinct from 'IWDA.AS';
 
 insert into public.schema_migrations (version) values ('0107_pinned_quote_listings')
