@@ -18,7 +18,7 @@ subworker; commit only the paths you claimed.
 | Cookie-Banner prüfen | HIGH | done (2c856b1) | keins nötig, alles technisch notwendig |
 | KPIs: Asset-Risikometriken | MEDIUM | done | components/assets/asset-risk-card.tsx, components/analysis/metric-card.tsx (geteilt), Dashboard-Dublette "Woraus es besteht" entfernt |
 | Chart-Datumslabels folgten der Browser-Locale | — | done (f0af0e0) | performance-chart, trades/dividends/forecast |
-| Wiederkehrende Zahlungen: Änderungsumfang abfragen | MEDIUM | todo | — |
+| Wiederkehrende Zahlungen: Änderungsumfang abfragen | MEDIUM | done (33e246f) | app/recurring/[kind]/[id], recurring-card (Inline-Edit + Zurück), e2e/recurring.spec.ts; nebenbei Crash bei Eintrag ohne Buchungskonto gefixt |
 | Analysen: Admin feature usage | MEDIUM | todo | — |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
