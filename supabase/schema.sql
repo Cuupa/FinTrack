@@ -1036,7 +1036,8 @@ insert into public.schema_migrations (version) values
   ('0103_repair_dropped_migrations'),
   ('0104_account_interest_and_position_goals'),
   ('0105_extra_repayments'),
-  ('0106_pension')
+  ('0106_pension'),
+  ('0107_pinned_quote_listings')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1817,6 +1818,15 @@ create policy "member creates invite" on public.household_invites
     and public.household_sharing_enabled(household_id)
   );
 
+-- Owner-curated quote listing (migration 0107): the price cron reuses quote_id
+-- verbatim and never re-resolves or overwrites it. One ISIN has listings in
+-- several currencies, and the daily self-heal (which drops the hint so a stuck
+-- quote_id can recover -- the GME case) re-resolved VWCE's seeded EUR Xetra
+-- line to the USD London one and wrote it over the seed. Currency cannot tell
+-- a good hint from a bad one (GME's wrong listing was in the right currency);
+-- provenance can.
+alter table public.instruments add column if not exists quote_pinned boolean not null default false;
+
 -- Seed the instruments catalog -----------------------------------------------
 insert into public.instruments
   (isin, wkn, symbol, name, type, currency, country, quote_source, quote_id, base_price, drift, vol, dividend_yield)
@@ -1834,6 +1844,13 @@ values
   (null,           null,     'SOL',  'Solana',                   'CRYPTO', 'USD', 'Crypto',        'coingecko', 'solana',  150,   0.40, 1.0, 0)
 on conflict (symbol) where symbol is not null do nothing;
 
+-- Every listing above was picked by hand -- notably VWCE.DE (EUR Xetra) and
+-- IWDA.AS (EUR Amsterdam) rather than their USD London lines -- so none of
+-- them may be replaced by a Yahoo search result. See migration 0107.
+update public.instruments set quote_pinned = true
+  where isin in ('IE00BK5BQT80', 'IE00B4L5Y983')
+     or symbol in ('AAPL', 'MSFT', 'NVDA', 'AMZN', 'TSLA', 'SPY');
+
 -- Gold seed, kept as a separate insert so the shared column list above (which
 -- has no quote_scale) doesn't have to be widened for every existing row.
 -- Quoted per troy ounce (GC=F, COMEX gold futures, USD - Yahoo delisted the
@@ -1845,6 +1862,11 @@ insert into public.instruments
 values
   ('XAU', 'Gold', 'COMMODITY', 'EUR', 'yahoo', 'GC=F', 115, 0.03, 0.16, 0, 0.0321507466)
 on conflict (symbol) where symbol is not null do nothing;
+
+-- COMMODITY listings were already authoritative in the cron's code; the flag
+-- makes that the same rule as the pinned rows above rather than a second one.
+update public.instruments set quote_pinned = true
+  where type = 'COMMODITY' and quote_id is not null;
 
 -- Seed approximate FX rates (units per 1 EUR); the cron refreshes them.
 insert into public.fx_rates (currency, rate) values

@@ -11,7 +11,7 @@ subworker; commit only the paths you claimed.
 | Verbindlichkeiten: Sondertilgungen | HIGH | done (abe1457) | — |
 | Rente: Rentenpunkte, Rentenniveau, Rentenversicherungen | MEDIUM | done | lib/finance/pension.ts, lib/pension/, components/pension/, app/pension/, migration 0106, tests/pension.test.ts, e2e/pension.spec.ts |
 | CLAUDE.md aufräumen | HIGHEST | todo | CLAUDE.md |
-| Asset-Preise: A2PKXG falsch in UI | HIGH | todo | lib/live/*, lib/finance/prices.ts |
+| Asset-Preise: A2PKXG falsch in UI | HIGH | fix shipped (pinned listings); awaiting user's asset-row currency | lib/server/quote-policy.ts, app/api/cron/sync/prices, migration 0107 |
 | Verträge entfernen (in wiederkehrende Zahlungen aufgegangen) | HIGH | todo | components/contracts/*, app/contracts/* |
 | Cookie-Banner prüfen | HIGH | todo | components/legal/* |
 | KPIs: Asset-Risikometriken | MEDIUM | todo | — |

@@ -500,6 +500,25 @@ transaction prices) in the price cron, `/api/history`, and `/api/quotes` via
 already scaled) surfaced by `LivePricesProvider`, not on-demand `/api/price`
 (STOCK/ETF only).
 
+**A seeded listing is pinned and search may never overwrite it**
+(`instruments.quote_pinned`, migration 0107, `lib/server/quote-policy.ts`,
+pure/unit-tested). One ISIN has listings in several currencies, so the seed
+pins the one matching the instrument's own currency — VWCE.DE (EUR Xetra),
+not VWRA.L (USD London). The daily self-heal below drops the hint and
+re-resolves; Yahoo's search for `IE00BK5BQT80` never returns VWCE.DE, so the
+wanted-currency filter had nothing to match, the whole tier survived and the
+USD line won and was written **over the seed**. The cached price stayed
+roughly right (the cron FX-converts), but every surface showing the NATIVE
+price then showed ~188.80 instead of the ~164.06 Xetra quote — a number the
+user has never seen on their statement. Reported twice. Currency cannot
+arbitrate (GME's wrong listing was in the right currency too, so "keep the
+currency-matching hint" would re-break that case); **provenance** can, which
+is why `hasAuthoritativeListing` reads `quote_pinned` and the asset type and
+nothing else. A pinned row reuses `quote_id` verbatim, never re-resolves,
+never learns, and never falls through to the onvista fallback. COMMODITY is
+authoritative unconditionally so the guarantee survives the window between
+deploy and migration.
+
 The prices cron treats a COMMODITY row's stored `quote_id` as **authoritative**
 (never re-resolved via search, row skipped if the hinted listing does not
 resolve to itself) — Yahoo search on a bare metal ticker mis-resolves and once

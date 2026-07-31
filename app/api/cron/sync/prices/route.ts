@@ -18,6 +18,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveQuote } from "@/lib/server/yahoo";
 import {
+  hasAuthoritativeListing,
+  hasYahooHint,
+  learnsListing as learnsNewListing,
+  listingHint,
+} from "@/lib/server/quote-policy";
+import {
   encodeOnvistaQuoteId,
   onvistaQuote,
   parseOnvistaQuoteId,
@@ -44,6 +50,7 @@ interface InstrumentRow {
   quote_id: string | null;
   quote_scale: number | string | null;
   last_price: number | string | null;
+  quote_pinned: boolean | null;
 }
 
 const FX_CURRENCIES = ["USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
@@ -122,8 +129,18 @@ async function syncEquities(
         return;
       }
 
-      const hasHint = r.quote_source === "yahoo" && !!r.quote_id;
-      const isCommodity = r.type === "COMMODITY";
+      const hasHint = hasYahooHint(r);
+      // An owner-curated listing (migration 0107). One ISIN has listings in
+      // several currencies, and the seed pins the one that matches the
+      // instrument's own currency -- VWCE.DE (EUR Xetra), not VWRA.L (USD
+      // London). Yahoo's search for that ISIN never returns VWCE.DE, so the
+      // daily self-heal below re-resolved to the USD line and wrote it over
+      // the seed, and the ETF then priced off a number the user has never
+      // seen on their statement. Currency alone cannot distinguish this from
+      // the GME case (whose wrong listing was in the right currency too);
+      // provenance can, so a pinned row is authoritative exactly like a
+      // COMMODITY one.
+      const authoritativeHint = hasAuthoritativeListing(r);
       // COMMODITY listings are seeded and authoritative (e.g. gold's
       // XAUEUR=X + quote_scale) - a bare metal ticker mis-resolves via Yahoo
       // search (this put gold at 1.42 EUR: the cron learned a ~44 EUR
@@ -131,7 +148,7 @@ async function syncEquities(
       // hint always reuse it and never fall back to search; rows without
       // one (not yet seeded) keep resolving normally. Non-COMMODITY rows
       // are excluded from this and instead self-heal daily below.
-      const hint = hasHint && (isCommodity || !revalidate) ? (r.quote_id as string) : undefined;
+      const hint = listingHint(r, revalidate);
       // A COMMODITY row's authoritative listing can trade in a different
       // currency than the instrument's native one (gold's replacement
       // listing GC=F is USD, the gold row itself is EUR) - resolveQuote's
@@ -140,7 +157,7 @@ async function syncEquities(
       // below anyway. Passing an empty want-currency lets the fast path
       // accept the hint regardless of currency; the FX conversion + scale
       // below already handle the difference.
-      const want = isCommodity && hint ? "" : r.currency || "";
+      const want = authoritativeHint && hint ? "" : r.currency || "";
       try {
         // Name fallback (as /api/quotes and /api/price already do): some real
         // ISINs (LU-domiciled mutual fund share classes, JE-domiciled ETCs)
@@ -148,12 +165,18 @@ async function syncEquities(
         // must also try the instrument's name or it can never learn/refresh
         // a listing for them. Skipped for COMMODITY (search-based resolution
         // is never trusted for those, see the guard above).
-        const resolved = await resolveQuote(query, want, hint, isCommodity ? undefined : r.name || undefined);
-        if (isCommodity && hasHint && (!resolved || resolved.symbol !== hint)) {
+        const resolved = await resolveQuote(
+          query,
+          want,
+          hint,
+          authoritativeHint ? undefined : r.name || undefined,
+        );
+        if (authoritativeHint && hasHint && (!resolved || resolved.symbol !== hint)) {
           // The hinted listing failed (no data / currency mismatch) or
           // resolveQuote fell through to search and picked a different one -
-          // either way, never trust it for a commodity. Skip until the
-          // seeded row is fixed manually.
+          // either way, never trust that for an authoritative row. Skip until
+          // the seeded row is fixed manually, rather than silently learning a
+          // listing in the wrong currency.
           return;
         }
         const symbol = resolved?.symbol;
@@ -166,7 +189,7 @@ async function syncEquities(
           // Try onvista as a fallback, STOCK/ETF only: COMMODITY listings are
           // seeded/authoritative (the guard above) and must never fall
           // through to any search-based resolution, onvista included.
-          if (!isCommodity && (r.type === "STOCK" || r.type === "ETF")) {
+          if (!authoritativeHint && (r.type === "STOCK" || r.type === "ETF")) {
             const ref = await resolveOnvistaInstrument(query);
             if (!ref) return;
             const oq = await onvistaQuote(ref.entityType, ref.entityValue);
@@ -210,8 +233,7 @@ async function syncEquities(
         // it. Also re-persists when the resolved listing differs from the stored
         // one, so a previously mis-resolved quote_id self-corrects. Future syncs
         // short-circuit on the hint, and runtime live quotes reuse the quote_id.
-        const learnsListing =
-          !!symbol && (r.quote_source !== "yahoo" || r.quote_id !== symbol);
+        const learnsListing = learnsNewListing(r, symbol ?? null);
         const patch: Record<string, unknown> = {
           last_price: p,
           price_synced_at: syncedAt,
@@ -301,7 +323,9 @@ async function handle(req: Request): Promise<Response> {
   // CoinGecko id, so only rows that already carry one are synced.
   const { data, error } = await supabase
     .from("instruments")
-    .select("id, isin, wkn, symbol, name, currency, type, quote_source, quote_id, quote_scale, last_price");
+    .select(
+      "id, isin, wkn, symbol, name, currency, type, quote_source, quote_id, quote_scale, last_price, quote_pinned",
+    );
   if (error) return serverFail("/api/cron/sync/prices", error.message);
 
   const rows = (data ?? []) as InstrumentRow[];
