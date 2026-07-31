@@ -49,6 +49,10 @@ export interface Profile {
    *  freely-added custom positions, and the mode. Survives reload so the
    *  /rebalancing grid is no longer forgotten. Empty default = no plan yet. */
   rebalanceTargets: RebalancePlan;
+  /** Assumptions behind the retirement projection (flag `pension`). A json
+   *  blob on the profile for the same reason `rebalanceTargets` is one: four
+   *  scalars, one row per user. */
+  pensionSettings: PensionSettings;
 }
 
 /** A saved rebalancing plan, persisted on the profile and rehydrated by
@@ -207,6 +211,98 @@ export interface ExtraRepayment {
   /** Native-currency amount paid on top of the regular payment (positive). */
   amount: number;
 }
+
+/**
+ * One year of the user's statutory pension record (flag `pension`), copied
+ * from their Renteninformation: `points` are Entgeltpunkte, where 1.0 is a
+ * year at exactly the national average income.
+ *
+ * Keyed by year rather than carrying an id, like {@link AccountBalance} is
+ * keyed by date: the whole set is replace-set on every edit, so a year can
+ * never appear twice and a replayed write is idempotent.
+ */
+export interface PensionPoint {
+  /** Calendar year the points were earned in. */
+  year: number;
+  /** Entgeltpunkte earned that year. */
+  points: number;
+  note: string | null;
+}
+
+/** What kind of retirement policy a {@link PensionContract} is. The German
+ *  state-subsidised forms are told apart because their payout and taxation
+ *  differ, and the user thinks of them by these names. */
+export type PensionContractKind =
+  | "private"
+  | "riester"
+  | "ruerup"
+  | "occupational"
+  | "statutory_other"
+  | "other";
+
+export const PENSION_CONTRACT_KINDS: PensionContractKind[] = [
+  "private",
+  "riester",
+  "ruerup",
+  "occupational",
+  "statutory_other",
+  "other",
+];
+
+/**
+ * A retirement policy that pays a monthly pension (flag `pension`): a private
+ * Rentenversicherung, Riester, Ruerup, a company scheme.
+ *
+ * A sibling of {@link Contract}, deliberately not one of its insurance types.
+ * A contract answers "what does this cost me every month" -- its `amount` is
+ * always money going out, and `sumInsured` is a lump sum paid on an event. A
+ * pension policy is defined by the opposite: the monthly income it will PAY
+ * from a date decades away, which is the only figure the retirement projection
+ * needs and the one thing a `Contract` cannot express. The premium is
+ * recorded here too, so a user who also books it as a contract keeps that
+ * register entry for their cash flow; nothing here books anything.
+ */
+export interface PensionContract {
+  id: string;
+  name: string;
+  kind: PensionContractKind;
+  /** Insurer/provider, free text. */
+  provider: string | null;
+  /** Premium paid per month, profile base currency (like `Contract.amount`). */
+  monthlyContribution: number | null;
+  /** Value/surrender value accrued so far, profile base currency. */
+  currentValue: number | null;
+  /** Expected or guaranteed monthly payout, profile base currency. This is
+   *  what feeds the projection; null means "not known yet", never zero. */
+  expectedMonthlyPension: number | null;
+  /** YYYY-MM-DD the payout starts, or null if not fixed yet. */
+  startsOn: string | null;
+  note: string | null;
+}
+
+/**
+ * The assumptions behind the retirement projection (flag `pension`). Stored on
+ * the profile as a json blob rather than as a table of its own -- it is one
+ * row per user of four scalars, exactly like `rebalanceTargets`, and a table
+ * would mean four store methods for it.
+ */
+export interface PensionSettings {
+  /** Used for the Regelaltersgrenze and the retirement year. */
+  birthYear: number | null;
+  /** Age the user plans to draw at; null = their standard age. */
+  retirementAge: number | null;
+  /** Entgeltpunkte assumed per remaining year; null = their own average. */
+  annualPoints: number | null;
+  /** Desired monthly pension, base currency; null = no target set. */
+  targetMonthly: number | null;
+}
+
+export const DEFAULT_PENSION_SETTINGS: PensionSettings = {
+  birthYear: null,
+  retirementAge: null,
+  annualPoints: null,
+  targetMonthly: null,
+};
 
 /**
  * A user-defined spending category (ROADMAP item #2, flag `spending`): a flat
@@ -688,6 +784,10 @@ export interface PortfolioData {
   accountBalances: AccountBalance[];
   /** Planned one-off repayments per liability (see `ExtraRepayment`). */
   extraRepayments: ExtraRepayment[];
+  /** Statutory pension record, one entry per year (flag `pension`). */
+  pensionPoints: PensionPoint[];
+  /** Private/company retirement policies (flag `pension`). */
+  pensionContracts: PensionContract[];
   /** User-defined spending taxonomy (ROADMAP #2, flag `spending`). */
   spendingCategories: SpendingCategory[];
   /** Expense/income transactions against accounts (ROADMAP #2, flag `spending`). */
@@ -717,6 +817,7 @@ export const DEFAULT_PROFILE: Profile = {
   tourDoneAt: null,
   toursDone: {},
   rebalanceTargets: { mode: "trade", weights: {}, custom: [] },
+  pensionSettings: { ...DEFAULT_PENSION_SETTINGS },
 };
 
 export function emptyPortfolio(): PortfolioData {
@@ -733,6 +834,8 @@ export function emptyPortfolio(): PortfolioData {
     accounts: [],
     accountBalances: [],
     extraRepayments: [],
+    pensionPoints: [],
+    pensionContracts: [],
     spendingCategories: [],
     spendingTransactions: [],
     budgets: [],

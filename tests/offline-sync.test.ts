@@ -340,6 +340,52 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
     async addImportedSpendingFingerprints() {
       calls.push("addImportedSpendingFingerprints");
     },
+    async setExtraRepayments() {
+      calls.push("setExtraRepayments");
+    },
+    async setPensionPoints() {
+      calls.push("setPensionPoints");
+    },
+    async addPensionContract(input, id) {
+      calls.push("addPensionContract");
+      return { ...input, id: id ?? "pc1" };
+    },
+    async updatePensionContract() {
+      calls.push("updatePensionContract");
+    },
+    async deletePensionContract() {
+      calls.push("deletePensionContract");
+    },
+    async addContract(input, id) {
+      calls.push("addContract");
+      return { ...input, id: id ?? "c1" };
+    },
+    async updateContract() {
+      calls.push("updateContract");
+    },
+    async deleteContract() {
+      calls.push("deleteContract");
+    },
+    async addPlannedCashflow(input, id) {
+      calls.push("addPlannedCashflow");
+      return { ...input, id: id ?? "pl1" };
+    },
+    async updatePlannedCashflow() {
+      calls.push("updatePlannedCashflow");
+    },
+    async deletePlannedCashflow() {
+      calls.push("deletePlannedCashflow");
+    },
+    async addGoal(input, id) {
+      calls.push("addGoal");
+      return { ...input, id: id ?? "g1" };
+    },
+    async updateGoal() {
+      calls.push("updateGoal");
+    },
+    async deleteGoal() {
+      calls.push("deleteGoal");
+    },
   };
 
   return { store, calls };

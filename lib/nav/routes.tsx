@@ -160,6 +160,14 @@ export const NAV_ROUTES: NavRoute[] = [
     group: "plan",
   },
   {
+    href: "/pension",
+    key: "nav.pension",
+    // Seated-figure glyph: drawing a pension rather than earning a salary.
+    icon: <path d="M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 21v-4a5 5 0 0 1 5-5h0a5 5 0 0 1 5 5v4M4 21h16" />,
+    flag: "pension",
+    group: "plan",
+  },
+  {
     href: "/health",
     key: "nav.health",
     // Pulse glyph: heartbeat line through a circle.

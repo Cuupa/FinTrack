@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  DEFAULT_PENSION_SETTINGS,
   DEFAULT_PROFILE,
   EMPTY_REBALANCE_PLAN,
   MAX_PORTFOLIOS,
@@ -16,6 +17,10 @@ import {
   type AccountBalance,
   type ExtraRepayment,
   type AccountKind,
+  type PensionContract,
+  type PensionContractKind,
+  type PensionPoint,
+  type PensionSettings,
   type Asset,
   type Budget,
   type Contract,
@@ -48,6 +53,22 @@ function normalizeRebalancePlan(raw: unknown): RebalancePlan {
     custom: Array.isArray(r.custom) ? r.custom : [],
   };
 }
+/** Coerce a jsonb `pension_settings` value (`{}` from the column default, null,
+ *  or partial) into complete PensionSettings. Every field is nullable by
+ *  design -- null means "not stated", which the projection treats differently
+ *  from zero. */
+function normalizePensionSettings(raw: unknown): PensionSettings {
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_PENSION_SETTINGS };
+  const r = raw as Partial<PensionSettings>;
+  return {
+    birthYear: num(r.birthYear),
+    retirementAge: num(r.retirementAge),
+    annualPoints: num(r.annualPoints),
+    targetMonthly: num(r.targetMonthly),
+  };
+}
+
 import type { LlmProviderId } from "../llm/types";
 import { RowNotFoundError } from "./types";
 import type {
@@ -57,6 +78,7 @@ import type {
   ContractInput,
   PlannedCashflowInput,
   DataStore,
+  PensionContractInput,
   GoalInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -365,6 +387,8 @@ export class SupabaseStore implements DataStore {
       accountsRes,
       accountBalancesRes,
       extraRepaymentsRes,
+      pensionPointsRes,
+      pensionContractsRes,
       spendingCategoriesRes,
       spendingTransactionsRes,
       budgetsRes,
@@ -376,7 +400,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("profiles")
         .select(
-          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at, tours_done, rebalance_targets",
+          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at, tours_done, rebalance_targets, pension_settings",
         )
         .eq("id", this.userId)
         .maybeSingle(),
@@ -432,6 +456,16 @@ export class SupabaseStore implements DataStore {
         .from("account_extra_repayments")
         .select("account_id, paid_on, amount")
         .order("paid_on", { ascending: true }),
+      this.supabase
+        .from("pension_points")
+        .select("year, points, note")
+        .order("year", { ascending: true }),
+      this.supabase
+        .from("pension_contracts")
+        .select(
+          "id, name, kind, provider, monthly_contribution, current_value, expected_monthly_pension, starts_on, note",
+        )
+        .order("created_at", { ascending: true }),
       this.supabase
         .from("spending_categories")
         .select("id, group_name, name, tax_deductible")
@@ -494,6 +528,8 @@ export class SupabaseStore implements DataStore {
     if (accountsRes.error) throw accountsRes.error;
     if (accountBalancesRes.error) throw accountBalancesRes.error;
     if (extraRepaymentsRes.error) throw extraRepaymentsRes.error;
+    if (pensionPointsRes.error) throw pensionPointsRes.error;
+    if (pensionContractsRes.error) throw pensionContractsRes.error;
     if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
     if (spendingTransactionsRes.error) throw spendingTransactionsRes.error;
     if (budgetsRes.error) throw budgetsRes.error;
@@ -538,6 +574,7 @@ export class SupabaseStore implements DataStore {
             typeof profileRes.data.tour_done_at === "string" ? profileRes.data.tour_done_at : null,
           toursDone: profileRes.data.tours_done ?? DEFAULT_PROFILE.toursDone,
           rebalanceTargets: normalizeRebalancePlan(profileRes.data.rebalance_targets),
+          pensionSettings: normalizePensionSettings(profileRes.data.pension_settings),
         }
       : { ...DEFAULT_PROFILE };
 
@@ -627,6 +664,35 @@ export class SupabaseStore implements DataStore {
       }[]
     ).map((r) => ({ accountId: r.account_id, date: r.paid_on, amount: Number(r.amount) }));
 
+    const pensionPoints: PensionPoint[] = (
+      (pensionPointsRes.data ?? []) as { year: number; points: number | string; note: string | null }[]
+    ).map((r) => ({ year: r.year, points: Number(r.points), note: r.note ?? null }));
+
+    const pensionContracts: PensionContract[] = (
+      (pensionContractsRes.data ?? []) as {
+        id: string;
+        name: string;
+        kind: string;
+        provider: string | null;
+        monthly_contribution: number | string | null;
+        current_value: number | string | null;
+        expected_monthly_pension: number | string | null;
+        starts_on: string | null;
+        note: string | null;
+      }[]
+    ).map((r) => ({
+      id: r.id,
+      name: r.name,
+      kind: r.kind as PensionContractKind,
+      provider: r.provider ?? null,
+      monthlyContribution: r.monthly_contribution == null ? null : Number(r.monthly_contribution),
+      currentValue: r.current_value == null ? null : Number(r.current_value),
+      expectedMonthlyPension:
+        r.expected_monthly_pension == null ? null : Number(r.expected_monthly_pension),
+      startsOn: r.starts_on ?? null,
+      note: r.note ?? null,
+    }));
+
     const spendingCategories: SpendingCategory[] = (
       (spendingCategoriesRes.data ?? []) as SpendingCategoryRow[]
     ).map(spendingCategoryFromRow);
@@ -669,6 +735,8 @@ export class SupabaseStore implements DataStore {
       accounts,
       accountBalances,
       extraRepayments,
+      pensionPoints,
+      pensionContracts,
       spendingCategories,
       spendingTransactions,
       budgets,
@@ -694,6 +762,7 @@ export class SupabaseStore implements DataStore {
       tour_done_at: profile.tourDoneAt,
       tours_done: profile.toursDone,
       rebalance_targets: profile.rebalanceTargets,
+      pension_settings: profile.pensionSettings,
     });
     if (error) throw error;
   }
@@ -1173,6 +1242,70 @@ export class SupabaseStore implements DataStore {
       })),
     );
     if (insErr) throw insErr;
+  }
+
+  async setPensionPoints(entries: PensionPoint[]): Promise<void> {
+    // Replace-set like setAccountBalances: delete the user's whole record and
+    // reinsert, so a replayed offline write lands identically and the unique
+    // (user_id, year) index can never be tripped by a partial update.
+    const { error: delErr } = await this.supabase
+      .from("pension_points")
+      .delete()
+      .eq("user_id", this.userId);
+    if (delErr) throw delErr;
+    if (entries.length === 0) return;
+    const { error: insErr } = await this.supabase.from("pension_points").insert(
+      entries.map((e) => ({
+        user_id: this.userId,
+        year: e.year,
+        points: e.points,
+        note: e.note ?? null,
+      })),
+    );
+    if (insErr) throw insErr;
+  }
+
+  async addPensionContract(input: PensionContractInput, id?: string): Promise<PensionContract> {
+    const { data, error } = await this.supabase
+      .from("pension_contracts")
+      .insert({
+        id, // see addAsset — undefined lets the DB default generate one
+        user_id: this.userId,
+        name: input.name,
+        kind: input.kind,
+        provider: input.provider ?? null,
+        monthly_contribution: input.monthlyContribution ?? null,
+        current_value: input.currentValue ?? null,
+        expected_monthly_pension: input.expectedMonthlyPension ?? null,
+        starts_on: input.startsOn ?? null,
+        note: input.note ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { ...input, id: (data as { id: string }).id };
+  }
+
+  async updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void> {
+    const upd: Record<string, unknown> = {};
+    if (patch.name !== undefined) upd.name = patch.name;
+    if (patch.kind !== undefined) upd.kind = patch.kind;
+    if (patch.provider !== undefined) upd.provider = patch.provider;
+    if (patch.monthlyContribution !== undefined)
+      upd.monthly_contribution = patch.monthlyContribution;
+    if (patch.currentValue !== undefined) upd.current_value = patch.currentValue;
+    if (patch.expectedMonthlyPension !== undefined)
+      upd.expected_monthly_pension = patch.expectedMonthlyPension;
+    if (patch.startsOn !== undefined) upd.starts_on = patch.startsOn;
+    if (patch.note !== undefined) upd.note = patch.note;
+    if (Object.keys(upd).length === 0) return;
+    const { error } = await this.supabase.from("pension_contracts").update(upd).eq("id", id);
+    if (error) throw error;
+  }
+
+  async deletePensionContract(id: string): Promise<void> {
+    const { error } = await this.supabase.from("pension_contracts").delete().eq("id", id);
+    if (error) throw error;
   }
 
   async addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory> {

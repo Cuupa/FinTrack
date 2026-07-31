@@ -100,6 +100,7 @@ export type FeatureFlag =
   | "finHealth"
   | "firePlanner"
   | "debtPayoff"
+  | "pension"
   | "insurance"
   | "taxPack"
   | "household";

@@ -285,6 +285,33 @@ export const GOALS_TOUR_STEPS: TourStep[] = [
 ];
 
 /** Debt payoff (/debt, components/debt/debt-view.tsx). */
+export const PENSION_TOUR_STEPS: TourStep[] = [
+  {
+    key: "pensionSummary",
+    target: "pension-summary",
+    titleKey: "tour.pension.summary.title",
+    bodyKey: "tour.pension.summary.body",
+  },
+  {
+    key: "pensionAssumptions",
+    target: "pension-assumptions",
+    titleKey: "tour.pension.assumptions.title",
+    bodyKey: "tour.pension.assumptions.body",
+  },
+  {
+    key: "pensionPoints",
+    target: "pension-points",
+    titleKey: "tour.pension.points.title",
+    bodyKey: "tour.pension.points.body",
+  },
+  {
+    key: "pensionContracts",
+    target: "pension-contracts",
+    titleKey: "tour.pension.contracts.title",
+    bodyKey: "tour.pension.contracts.body",
+  },
+];
+
 export const DEBT_TOUR_STEPS: TourStep[] = [
   {
     key: "debtTotals",

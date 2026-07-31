@@ -7,6 +7,7 @@ import {
   emptyPortfolio,
   MAX_PORTFOLIOS,
   type LlmConfig,
+  type PensionPoint,
   type PortfolioData,
   type Profile,
   type TagAssignments,
@@ -20,6 +21,7 @@ import type {
   PlannedCashflowInput,
   DataStore,
   GoalInput,
+  PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -125,6 +127,9 @@ export class LocalStore implements DataStore {
         accountBalances: parsed.accountBalances ?? [],
         // Backfill blobs saved before planned one-off repayments existed.
         extraRepayments: parsed.extraRepayments ?? [],
+        // Backfill blobs saved before the pension record existed.
+        pensionPoints: parsed.pensionPoints ?? [],
+        pensionContracts: parsed.pensionContracts ?? [],
         // Backfill blobs saved before the spending entity existed.
         spendingCategories: parsed.spendingCategories ?? [],
         spendingTransactions: parsed.spendingTransactions ?? [],
@@ -419,6 +424,38 @@ export class LocalStore implements DataStore {
       ...others,
       ...points.map((p) => ({ accountId, date: p.date, amount: p.amount })),
     ];
+    this.write(data);
+  }
+
+  async setPensionPoints(entries: PensionPoint[]) {
+    const data = this.read();
+    // Replace-set, deduped by year and sorted: the DB's unique (user, year)
+    // index enforces the same shape, so the guest blob must not drift from it.
+    const byYear = new Map<number, PensionPoint>();
+    for (const e of entries) byYear.set(e.year, e);
+    data.pensionPoints = [...byYear.values()].sort((a, b) => a.year - b.year);
+    this.write(data);
+  }
+
+  async addPensionContract(input: PensionContractInput, id?: string) {
+    const data = this.read();
+    const contract = { ...input, id: id ?? newId() };
+    data.pensionContracts.push(contract);
+    this.write(data);
+    return contract;
+  }
+
+  async updatePensionContract(id: string, patch: Partial<PensionContractInput>) {
+    const data = this.read();
+    data.pensionContracts = data.pensionContracts.map((c) =>
+      c.id === id ? { ...c, ...patch } : c,
+    );
+    this.write(data);
+  }
+
+  async deletePensionContract(id: string) {
+    const data = this.read();
+    data.pensionContracts = data.pensionContracts.filter((c) => c.id !== id);
     this.write(data);
   }
 

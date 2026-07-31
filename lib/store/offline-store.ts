@@ -28,6 +28,8 @@ import type {
   PlannedCashflow,
   Goal,
   LlmConfig,
+  PensionContract,
+  PensionPoint,
   Portfolio,
   PortfolioData,
   Profile,
@@ -49,6 +51,7 @@ import type {
   PlannedCashflowInput,
   DataStore,
   GoalInput,
+  PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -370,6 +373,52 @@ export class OfflineStore implements DataStore {
       await this.inner.setExtraRepayments(accountId, points);
     } catch (err) {
       await this.handleFailure(err, "setExtraRepayments", accountId, { accountId, points });
+    }
+  }
+
+  async setPensionPoints(entries: PensionPoint[]): Promise<void> {
+    await this.mirror.setPensionPoints(entries);
+    // Replace-set over the user's whole record, so there is no per-row key to
+    // dedupe on — "pension" is the queue key, and a replay is idempotent.
+    try {
+      await this.inner.setPensionPoints(entries);
+    } catch (err) {
+      await this.handleFailure(err, "setPensionPoints", "pension", { entries });
+    }
+  }
+
+  async addPensionContract(
+    input: PensionContractInput,
+    id?: string,
+  ): Promise<PensionContract> {
+    const contractId = id ?? newId();
+    const contract = await this.mirror.addPensionContract(input, contractId);
+    try {
+      await this.inner.addPensionContract(input, contractId);
+    } catch (err) {
+      await this.handleFailure(err, "addPensionContract", contractId, input);
+    }
+    return contract;
+  }
+
+  async updatePensionContract(
+    id: string,
+    patch: Partial<PensionContractInput>,
+  ): Promise<void> {
+    await this.mirror.updatePensionContract(id, patch);
+    try {
+      await this.inner.updatePensionContract(id, patch);
+    } catch (err) {
+      await this.handleFailure(err, "updatePensionContract", id, patch);
+    }
+  }
+
+  async deletePensionContract(id: string): Promise<void> {
+    await this.mirror.deletePensionContract(id);
+    try {
+      await this.inner.deletePensionContract(id);
+    } catch (err) {
+      await this.handleFailure(err, "deletePensionContract", id, null);
     }
   }
 

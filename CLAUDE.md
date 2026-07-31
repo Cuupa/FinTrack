@@ -662,6 +662,31 @@ FX-convert) always beats a wrong instrument in the right currency.
   stepper (`shiftMonth` in `lib/finance/dates.ts`) and a progress bar per
   budgeted category, turning red past 100%; adding a budget offers only
   categories that don't already have one (one cap per category, not a list).
+- **Retirement provision** (`pension_points` + `pension_contracts` +
+  `pension_reference` tables, `profiles.pension_settings`, migration 0106, flag
+  `pension`, seeded disabled): the largest retirement asset most German users
+  have is not in the portfolio, and it is denominated in **Entgeltpunkte, not
+  euro**. `lib/finance/pension.ts` is pure (`projectPension`, `accessFactor`,
+  `standardRetirementAge`, `pensionValueOn`); the aktueller Rentenwert and the
+  Rentenniveau that turn points into euro are **DB-seeded reference data**
+  (`pension_reference`, world-readable, `usePensionReference`) — never
+  hardcoded, exactly like `basiszins` for the Vorabpauschale. With no reference
+  row the projection returns `monthlyStatutory: null` and the UI shows points
+  only, rather than inventing a figure from a constant. Everything is in
+  **today's money** on purpose (no inflation, no wage growth, no assumed
+  return) and the page says so: a projection that quietly grew the Rentenwert
+  2 %/yr would look precise and be fiction. `PensionPoint` is keyed by **year**
+  (replace-set, like `AccountBalance` is keyed by date) so a year can never be
+  recorded twice and an offline replay is idempotent; the DB mirrors that with
+  a unique `(user_id, year)` index. `PensionContract` is a **sibling of
+  `Contract`, not one of its insurance types**: a contract is money going out
+  every month, a pension policy is defined by the income it will PAY from a
+  date decades away, which is the only figure the projection needs and the one
+  thing a `Contract` cannot express. Both rows are self-only in RLS,
+  deliberately **without** `household_peer_ids()` — a Renteninformation is
+  personal. `pension_settings` is a jsonb blob on the profile for the same
+  reason `rebalance_targets` is one (four scalars, one row per user). Surface
+  is `/pension`, in the Planning nav group.
 - **Planned income & expenses** (`planned_cashflows` table migration 0100, flag
   `plannedCashflow`, seeded disabled): the salary, a bonus, a tax refund, a
   one-off cost. A **sibling of `Contract`, deliberately not an extension** of
@@ -770,6 +795,9 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
 - `/dividends` — dividend dashboard: income by month/year, personal yield +
   yield-on-cost, per-holding breakdown, 12-month forecast from trailing
   payouts (flag `dividends`)
+- `/pension` — statutory pension points + private/company policies projected
+  to a monthly retirement income (flag `pension`): summary tiles, the
+  assumptions form, the per-year Entgeltpunkte record and the policy register
 - `/simulation` — Monte Carlo simulation. The model choice ("My portfolio" /
   "Custom") is a **tab strip at the top of the Parameters card**, not a
   control inside the form (owner rule, round 25): the mode is what the whole

@@ -22,6 +22,7 @@ import type {
   ContractInput,
   PlannedCashflowInput,
   GoalInput,
+  PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -39,6 +40,8 @@ import {
   type PlannedCashflow,
   type Goal,
   type LlmConfig,
+  type PensionContract,
+  type PensionPoint,
   type Portfolio,
   type PortfolioData,
   type Profile,
@@ -98,6 +101,11 @@ interface PortfolioContextValue {
   /** Replace-set an account's dated balance readings. */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
   setExtraRepayments(accountId: string, points: { date: string; amount: number }[]): Promise<void>;
+  /** Replace-set the whole statutory pension record, keyed by year. */
+  setPensionPoints(entries: PensionPoint[]): Promise<void>;
+  addPensionContract(input: PensionContractInput): Promise<PensionContract>;
+  updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void>;
+  deletePensionContract(id: string): Promise<void>;
   addSpendingCategory(input: SpendingCategoryInput): Promise<SpendingCategory>;
   updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void>;
   deleteSpendingCategory(id: string): Promise<void>;
@@ -500,6 +508,49 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setPensionPoints = useCallback(
+    async (entries: PensionPoint[]) => {
+      await store.setPensionPoints(entries);
+      // Mirror the store's dedupe-by-year + sort so the two never disagree.
+      const byYear = new Map<number, PensionPoint>();
+      for (const e of entries) byYear.set(e.year, e);
+      const next = [...byYear.values()].sort((a, b) => a.year - b.year);
+      setData((d) => ({ ...d, pensionPoints: next }));
+    },
+    [store],
+  );
+
+  const addPensionContract = useCallback(
+    async (input: PensionContractInput) => {
+      const contract = await store.addPensionContract(input);
+      setData((d) => ({ ...d, pensionContracts: [...d.pensionContracts, contract] }));
+      return contract;
+    },
+    [store],
+  );
+
+  const updatePensionContract = useCallback(
+    async (id: string, patch: Partial<PensionContractInput>) => {
+      await store.updatePensionContract(id, patch);
+      setData((d) => ({
+        ...d,
+        pensionContracts: d.pensionContracts.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      }));
+    },
+    [store],
+  );
+
+  const deletePensionContract = useCallback(
+    async (id: string) => {
+      await store.deletePensionContract(id);
+      setData((d) => ({
+        ...d,
+        pensionContracts: d.pensionContracts.filter((c) => c.id !== id),
+      }));
+    },
+    [store],
+  );
+
   const addSpendingCategory = useCallback(
     async (input: SpendingCategoryInput) => {
       const category = await store.addSpendingCategory(input);
@@ -838,6 +889,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     deleteAccount,
     setAccountBalances,
     setExtraRepayments,
+    setPensionPoints,
+    addPensionContract,
+    updatePensionContract,
+    deletePensionContract,
     addSpendingCategory,
     updateSpendingCategory,
     deleteSpendingCategory,

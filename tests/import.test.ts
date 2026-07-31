@@ -4,7 +4,13 @@ import { describe, expect, it } from "vitest";
 import { parseCsv, detectFormat, fingerprint, isValidTx, type ParsedTx } from "../lib/import/csv";
 import { reconcile } from "../lib/import/reconcile";
 import { portfolioToCsv } from "../lib/export/export";
-import { DEFAULT_PROFILE, type Asset, type Transaction, type PortfolioData } from "../lib/types";
+import {
+  DEFAULT_PROFILE,
+  emptyPortfolio,
+  type Asset,
+  type Transaction,
+  type PortfolioData,
+} from "../lib/types";
 
 const ZERO = [
   "Name;ISIN;WKN;Anzahl;Anzahl storniert;Status;Orderart;Limit;Stop;Erstellt Datum;Erstellt Zeit;Gültig bis;Richtung;Wert;Wert storniert;Mindermengenzuschlag;Ausführung Datum;Ausführung Zeit;Ausführung Kurs;Anzahl ausgeführt;Anzahl offen;Gestrichen Datum;Gestrichen Zeit",
@@ -563,21 +569,11 @@ describe("csv parsers — fintrack (self re-import)", () => {
       },
     ];
     const data: PortfolioData = {
+      ...emptyPortfolio(),
       profile: { ...DEFAULT_PROFILE, currency: "EUR", name: null, locale: null },
       portfolios: [{ id: "p1", name: "Main" }],
       assets,
       transactions,
-      watchlist: [],
-      savingsPlans: [],
-      tagGroups: [],
-      tagAssignments: {},
-      valuationPoints: [],
-      accounts: [],
-      accountBalances: [],
-      spendingCategories: [],
-      spendingTransactions: [],
-      budgets: [],
-      llmConfig: null,
     };
 
     const csv = portfolioToCsv(data);

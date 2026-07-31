@@ -11,6 +11,8 @@ import type {
   Contract,
   Goal,
   LlmConfig,
+  PensionContract,
+  PensionPoint,
   PlannedCashflow,
   Portfolio,
   PortfolioData,
@@ -34,6 +36,7 @@ export type BudgetInput = Omit<Budget, "id">;
 export type ContractInput = Omit<Contract, "id">;
 export type PlannedCashflowInput = Omit<PlannedCashflow, "id">;
 export type GoalInput = Omit<Goal, "id">;
+export type PensionContractInput = Omit<PensionContract, "id">;
 
 /** Patch shape for `DataStore.updatePortfolio` — every field optional, only
  *  the fields present are changed. `renamePortfolio` is a thin wrapper around
@@ -111,6 +114,16 @@ export interface DataStore {
    * `setAccountBalances`. Amounts are native-currency magnitudes.
    */
   setExtraRepayments(accountId: string, points: { date: string; amount: number }[]): Promise<void>;
+  /**
+   * Replace-set the whole statutory pension record (flag `pension`), keyed by
+   * year the way `setAccountBalances` is keyed by date -- idempotent and
+   * replay-safe, and a year can never end up recorded twice.
+   */
+  setPensionPoints(entries: PensionPoint[]): Promise<void>;
+  /** Creates a retirement policy. `id` — see `addAsset`'s doc above. */
+  addPensionContract(input: PensionContractInput, id?: string): Promise<PensionContract>;
+  updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void>;
+  deletePensionContract(id: string): Promise<void>;
   /** Creates a spending category. `id` — see `addAsset`'s doc above. */
   addSpendingCategory(input: SpendingCategoryInput, id?: string): Promise<SpendingCategory>;
   updateSpendingCategory(id: string, patch: Partial<SpendingCategoryInput>): Promise<void>;
