@@ -1,44 +1,59 @@
 "use client";
 
 // Planned one-off repayments (Sondertilgungen) as an input of the payoff plan,
-// sitting next to the extra monthly payment (owner correction, round 27).
-// Nothing here is booked: a repayment that actually happened is a transfer on
-// the accounts page and lands in the balance by itself. This is the what-if
-// lever the balance chart and "time to debt-free" react to.
+// sitting next to the extra monthly payment.
 //
-// Storage is unchanged (`account_extra_repayments` via `setExtraRepayments`,
-// replace-set per account); the target liability is simply chosen here instead
-// of being implied by the dialog it used to live in.
+// LIVE, never persisted (owner rule, round 27): this is the same kind of lever
+// as the extra monthly payment right above it -- you type a number, the chart
+// and "time to debt-free" answer, and nothing is written anywhere. Storing it
+// made a what-if look like a commitment, and the plan is not a record of what
+// happened: a repayment actually made is a transfer on the accounts page and
+// lands in the balance by itself.
+//
+// So the state lives in `DebtView` (one array, lifted only so the plan can
+// read it) and dies with the page. No store, no save, no save error.
 
 import { useMemo, useState } from "react";
-import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { DeleteAction, RowActions } from "@/components/ui/row-actions";
 
 export interface RepaymentDebt {
   id: string;
   name: string;
-  /** The account's own currency -- amounts are stored natively. */
+  /** The account's own currency -- amounts are entered natively. */
   currency: string;
+}
+
+/** One planned lump sum, in its account's own currency. */
+export interface PlannedRepayment {
+  accountId: string;
+  /** YYYY-MM-DD the lump sum is paid. */
+  date: string;
+  amount: number;
 }
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
-export function DebtRepaymentsPlanner({ debts }: { debts: RepaymentDebt[] }) {
-  const { data, setExtraRepayments } = usePortfolio();
+export function DebtRepaymentsPlanner({
+  debts,
+  value,
+  onChange,
+}: {
+  debts: RepaymentDebt[];
+  value: PlannedRepayment[];
+  onChange: (next: PlannedRepayment[]) => void;
+}) {
   const { t } = useI18n();
   const todayIso = today();
 
   const [accountId, setAccountId] = useState(debts[0]?.id ?? "");
   const [date, setDate] = useState(todayIso);
   const [amount, setAmount] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // A debt deleted while selected falls back to the first one, so the form
@@ -48,56 +63,31 @@ export function DebtRepaymentsPlanner({ debts }: { debts: RepaymentDebt[] }) {
 
   const planned = useMemo(
     () =>
-      data.extraRepayments
+      value
         .filter((r) => byId.has(r.accountId))
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
-    [data.extraRepayments, byId],
+    [value, byId],
   );
 
-  /** Replace-set: `next` is that account's whole set of planned lump sums. */
-  async function persist(id: string, next: { date: string; amount: number }[]) {
-    setBusy(true);
-    setError(null);
-    try {
-      await setExtraRepayments(id, next);
-      return true;
-    } catch (err) {
-      const reason = isStorageFullError(err) ? null : storeErrorReason(err);
-      setError(
-        isStorageFullError(err)
-          ? t("common.storageFull")
-          : reason
-            ? `${t("debt.repayments.error")} ${reason}`
-            : t("debt.repayments.error"),
-      );
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function otherRepayments(id: string, dropDate?: string) {
-    return data.extraRepayments
-      .filter((r) => r.accountId === id && r.date !== dropDate)
-      .map((r) => ({ date: r.date, amount: r.amount }));
-  }
-
-  async function add() {
+  function add() {
     if (!target || !date) return;
-    const value = parseDecimal(amount);
-    if (!Number.isFinite(value) || value <= 0) {
+    const parsed = parseDecimal(amount);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
       setError(t("common.invalidAmount"));
       return;
     }
+    setError(null);
     // Upsert by date: a second amount on a date the debt already has replaces
     // it instead of quietly stacking two lump sums.
-    const next = otherRepayments(target.id, date);
-    next.push({ date, amount: value });
-    if (await persist(target.id, next)) setAmount("");
+    onChange([
+      ...value.filter((r) => !(r.accountId === target.id && r.date === date)),
+      { accountId: target.id, date, amount: parsed },
+    ]);
+    setAmount("");
   }
 
-  async function remove(id: string, dropDate: string) {
-    await persist(id, otherRepayments(id, dropDate));
+  function remove(id: string, dropDate: string) {
+    onChange(value.filter((r) => !(r.accountId === id && r.date === dropDate)));
   }
 
   if (debts.length === 0) return null;
@@ -141,18 +131,14 @@ export function DebtRepaymentsPlanner({ debts }: { debts: RepaymentDebt[] }) {
             value={amount}
             onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
             onKeyDown={(e) => {
-              if (e.key === "Enter") void add();
+              if (e.key === "Enter") add();
             }}
             placeholder="0"
             className={inputCls}
             data-private
           />
         </div>
-        <Button
-          variant="secondary"
-          disabled={busy || !date || !amount.trim()}
-          onClick={() => void add()}
-        >
+        <Button variant="secondary" disabled={!date || !amount.trim()} onClick={add}>
           {t("debt.repayments.add")}
         </Button>
       </div>
@@ -180,8 +166,7 @@ export function DebtRepaymentsPlanner({ debts }: { debts: RepaymentDebt[] }) {
                   <RowActions>
                     <DeleteAction
                       label={t("debt.repayments.remove")}
-                      disabled={busy}
-                      onClick={() => void remove(r.accountId, r.date)}
+                      onClick={() => remove(r.accountId, r.date)}
                     />
                   </RowActions>
                 </td>

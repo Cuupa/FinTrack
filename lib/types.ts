@@ -194,25 +194,6 @@ export interface AccountBalance {
 }
 
 /**
- * A planned one-off repayment on a liability account (Sondertilgung): the
- * bonus that goes into the mortgage next June, the inheritance that clears the
- * car loan. Shaped exactly like {@link AccountBalance} -- an account id plus a
- * dated native-currency magnitude -- and edited the same replace-set way.
- *
- * It is a PLANNING input, not a booking: `lib/finance/debt.ts` applies it in
- * the month it falls due on top of the regular payment. A repayment dated
- * before the plan starts is ignored, because a payment already made is already
- * in the balance the plan starts from.
- */
-export interface ExtraRepayment {
-  accountId: string;
-  /** YYYY-MM-DD the lump sum is paid. */
-  date: string;
-  /** Native-currency amount paid on top of the regular payment (positive). */
-  amount: number;
-}
-
-/**
  * One year of the user's statutory pension record (flag `pension`), copied
  * from their Renteninformation: `points` are Entgeltpunkte, where 1.0 is a
  * year at exactly the national average income.
@@ -782,8 +763,6 @@ export interface PortfolioData {
   accounts: Account[];
   /** Dated balance readings per account (see `AccountBalance`). */
   accountBalances: AccountBalance[];
-  /** Planned one-off repayments per liability (see `ExtraRepayment`). */
-  extraRepayments: ExtraRepayment[];
   /** Statutory pension record, one entry per year (flag `pension`). */
   pensionPoints: PensionPoint[];
   /** Private/company retirement policies (flag `pension`). */
@@ -833,7 +812,6 @@ export function emptyPortfolio(): PortfolioData {
     valuationPoints: [],
     accounts: [],
     accountBalances: [],
-    extraRepayments: [],
     pensionPoints: [],
     pensionContracts: [],
     spendingCategories: [],

@@ -11,6 +11,8 @@
 // Planned one-off repayments sit in the plan card next to the extra monthly
 // payment (`DebtRepaymentsPlanner`), because they are a what-if input of this
 // simulation -- a repayment actually made is a transfer on the accounts page.
+// Like the extra monthly payment they are LIVE and never stored (owner rule):
+// the `lumpSums` state below is the whole of their existence.
 //
 // Durations are always shown as years + months (owner rule, round 26): nobody
 // converts "490 months" in their head.
@@ -48,11 +50,11 @@ import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DebtDetailsDialog } from "./debt-details-dialog";
-import { DebtRepaymentsPlanner } from "./debt-repayments";
+import { DebtRepaymentsPlanner, type PlannedRepayment } from "./debt-repayments";
 import { DebtBalanceChart, DebtSplitChart, debtColor } from "./debt-chart";
 import { EditAction, RowActions } from "@/components/ui/row-actions";
 
-type SortKey = "name" | "balance" | "rate" | "lumpSums" | "term" | "payoffDate";
+type SortKey = "order" | "name" | "balance" | "rate" | "term" | "interest";
 
 /** The scope selector's "everything at once" value; any other value is an
  *  account id. Not a valid uuid, so it can never collide with one. */
@@ -72,6 +74,10 @@ export function DebtView() {
 
   const movements = useAccountMovements();
 
+  // What-if lump sums, in each account's own currency. Declared before `rows`
+  // because the memo below reads them.
+  const [lumpSums, setLumpSums] = useState<PlannedRepayment[]>([]);
+
   const rows = useMemo(() => {
     return liabilityAccounts.map((account) => {
       const rate = accountFxRate(account, valuation);
@@ -81,7 +87,7 @@ export function DebtView() {
       // Planned lump sums, converted to the base currency like the instalment.
       // Ones dated in the past are already inside the balance above, so the
       // schedule drops them (lumpSumsByMonth) rather than paying them twice.
-      const lumpSums = data.extraRepayments
+      const accountLumpSums = lumpSums
         .filter((r) => r.accountId === account.id)
         .map((r) => ({ date: r.date, amount: r.amount * rate }));
       const schedule = hasSchedule
@@ -91,7 +97,7 @@ export function DebtView() {
             account.minPayment! * rate,
             todayIso,
             steps,
-            lumpSums,
+            accountLumpSums,
           )
         : null;
       // What was owed on each past date: the loan sum at `openedOn`, every
@@ -110,25 +116,18 @@ export function DebtView() {
         repaid: Math.max(0, original - balance),
         payment: (account.minPayment ?? 0) * rate,
         steps,
-        lumpSums,
-        plannedLumpSums: lumpSums
+        lumpSums: accountLumpSums,
+        plannedLumpSums: accountLumpSums
           .filter((l) => l.date >= todayIso)
           .reduce((s, l) => s + l.amount, 0),
         schedule,
       };
     });
-  }, [
-    liabilityAccounts,
-    data.accountBalances,
-    data.extraRepayments,
-    valuation,
-    todayIso,
-    movements,
-  ]);
+  }, [liabilityAccounts, data.accountBalances, lumpSums, valuation, todayIso, movements]);
 
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "balance",
-    dir: "desc",
+    key: "order",
+    dir: "asc",
   });
   const [detailsFor, setDetailsFor] = useState<Account | null>(null);
   // How far back the chart reaches. The same strip the depot chart uses, for
@@ -138,21 +137,6 @@ export function DebtView() {
   const [strategy, setStrategy] = useState<DebtStrategy>("avalanche");
   const [extra, setExtra] = useState("");
   const [scope, setScope] = useState<string>(ALL);
-
-  const sortedRows = useMemo(() => {
-    const copy = [...rows];
-    copy.sort((x, y) => {
-      let cmp = 0;
-      if (sort.key === "name") cmp = x.account.name.localeCompare(y.account.name);
-      else if (sort.key === "balance") cmp = x.balance - y.balance;
-      else if (sort.key === "rate")
-        cmp = (x.account.interestRate ?? -1) - (y.account.interestRate ?? -1);
-      else if (sort.key === "lumpSums") cmp = x.plannedLumpSums - y.plannedLumpSums;
-      else cmp = (x.schedule?.months ?? Infinity) - (y.schedule?.months ?? Infinity);
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-    return copy;
-  }, [rows, sort]);
 
   function toggleSort(key: SortKey) {
     setSort((s) =>
@@ -181,7 +165,7 @@ export function DebtView() {
     [rows],
   );
 
-  // The lump-sum editor stores native amounts, so it gets each account's own
+  // The lump-sum editor takes native amounts, so it gets each account's own
   // currency -- unlike the plan figures, which are all in the base currency.
   const repaymentDebts = useMemo(
     () =>
@@ -208,6 +192,35 @@ export function DebtView() {
     [planDebts, strategy, todayIso],
   );
   const totalLumpSums = rows.reduce((s, r) => s + r.plannedLumpSums, 0);
+
+  // One table, not two: the payoff order used to be its own card repeating
+  // name, term and payoff date. It is a column here instead.
+  const planEntryById = useMemo(
+    () => new Map(plan.perDebt.map((p) => [p.id, p])),
+    [plan.perDebt],
+  );
+  const sortedRows = useMemo(() => {
+    const orderOf = (id: string) => {
+      const i = plan.order.indexOf(id);
+      return i === -1 ? Infinity : i;
+    };
+    const copy = [...rows];
+    copy.sort((x, y) => {
+      let cmp = 0;
+      if (sort.key === "order") cmp = orderOf(x.account.id) - orderOf(y.account.id);
+      else if (sort.key === "name") cmp = x.account.name.localeCompare(y.account.name);
+      else if (sort.key === "balance") cmp = x.balance - y.balance;
+      else if (sort.key === "rate")
+        cmp = (x.account.interestRate ?? -1) - (y.account.interestRate ?? -1);
+      else if (sort.key === "interest")
+        cmp =
+          (planEntryById.get(x.account.id)?.totalInterest ?? -1) -
+          (planEntryById.get(y.account.id)?.totalInterest ?? -1);
+      else cmp = (x.schedule?.months ?? Infinity) - (y.schedule?.months ?? Infinity);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [rows, sort, plan.order, planEntryById]);
 
   // The chart's scope: every debt stacked, or one debt on its own. A selected
   // debt that disappears (deleted account) falls back to "all" rather than
@@ -297,29 +310,28 @@ export function DebtView() {
   const thCls =
     "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
-  const planEntryById = new Map(plan.perDebt.map((p) => [p.id, p]));
   const colorById = new Map(planDebts.map((d, i) => [d.id, debtColor(i)]));
   const debtFreeDate = plan.totalMonths != null ? addMonthsToDate(todayIso, plan.totalMonths) : null;
 
   return (
     <div className="space-y-6">
+      {/* Four figures, not six: "originally borrowed" and "repaid so far" are
+          two readings of the same fact, so they ride along under the balance
+          they explain. */}
       <Card data-tour="debt-totals">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Stat label={t("debt.totals.debt")} value={formatCurrency(totalDebt, base)} isPrivate />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
-            label={t("debt.totals.original")}
-            value={formatCurrency(totalOriginal, base)}
-            isPrivate
-          />
-          <Stat
-            label={t("debt.totals.repaid")}
-            value={formatCurrency(totalRepaid, base)}
+            label={t("debt.totals.debt")}
+            value={formatCurrency(totalDebt, base)}
             sub={
               totalOriginal > 0
-                ? `${formatNumber((totalRepaid / totalOriginal) * 100, 1)}%`
+                ? t("debt.totals.repaidOf", {
+                    repaid: formatCurrency(totalRepaid, base),
+                    original: formatCurrency(totalOriginal, base),
+                    pct: formatNumber((totalRepaid / totalOriginal) * 100, 1),
+                  })
                 : undefined
             }
-            valueClassName={totalRepaid > 0 ? "text-emerald-600 dark:text-emerald-400" : ""}
             isPrivate
           />
           <Stat
@@ -342,170 +354,15 @@ export function DebtView() {
         </div>
       </Card>
 
-      <Card data-tour="debt-list">
-        <h2 className="text-lg font-semibold">{t("debt.list.title")}</h2>
-        {liabilityAccounts.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">{t("debt.list.empty")}</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls} onClick={() => toggleSort("name")}>
-                    {t("debt.list.name")}
-                    {arrow("name")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("balance")}>
-                    {t("debt.list.balance")}
-                    {arrow("balance")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("rate")}>
-                    {t("debt.list.rate")}
-                    {arrow("rate")}
-                  </th>
-                  <th className={thCls}>{t("debt.list.fixedUntil")}</th>
-                  <th className={`${thCls} text-right`}>{t("debt.list.payment")}</th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("lumpSums")}>
-                    {t("debt.list.lumpSums")}
-                    {arrow("lumpSums")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("term")}>
-                    {t("debt.list.term")}
-                    {arrow("term")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("payoffDate")}>
-                    {t("debt.list.payoffDate")}
-                    {arrow("payoffDate")}
-                  </th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map(({ account, balance, payment, plannedLumpSums, schedule }) => (
-                  <tr
-                    key={account.id}
-                    className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className="px-3 py-2 font-medium" data-private>
-                      <span className="flex items-center gap-2">
-                        <span
-                          aria-hidden
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: colorById.get(account.id) ?? "transparent" }}
-                        />
-                        {account.name}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-private>
-                      {formatCurrency(balance, base)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {account.interestRate != null ? `${account.interestRate}%` : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-zinc-500">
-                      {account.rateFixedUntil && account.followUpRate != null ? (
-                        <>
-                          <span className="whitespace-nowrap">
-                            {formatDate(account.rateFixedUntil)}
-                          </span>
-                          <span className="block whitespace-nowrap">
-                            {t("debt.list.followUp", { rate: account.followUpRate })}
-                          </span>
-                        </>
-                      ) : (
-                        t("debt.list.noFixedPeriod")
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-private>
-                      {payment > 0 ? formatCurrency(payment, base) : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-private>
-                      {plannedLumpSums > 0 ? formatCurrency(plannedLumpSums, base) : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {schedule?.months != null ? formatMonthsShort(schedule.months, t) : "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {schedule ? (
-                        schedule.payoffDate ? (
-                          formatDate(schedule.payoffDate)
-                        ) : (
-                          t("debt.list.neverPaysOff")
-                        )
-                      ) : (
-                        <span className="text-zinc-500">{t("debt.list.needsDetails")}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <RowActions>
-                        <EditAction
-                          label={t("debt.list.editDetails")}
-                          onClick={() => setDetailsFor(account)}
-                        />
-                      </RowActions>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {planDebts.length > 0 && (
-        <Card data-tour="debt-chart">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold">{t("debt.chart.title")}</h2>
-              <p className="mt-1 max-w-2xl text-sm text-zinc-500">{t("debt.chart.intro")}</p>
-            </div>
-            <div className="flex flex-wrap items-end gap-4">
-              <SegmentedControl
-                size="sm"
-                value={tf}
-                onChange={setTf}
-                options={TIMEFRAMES.map((x) => ({ label: x, value: x }))}
-              />
-              {planDebts.length > 1 && (
-              <div className="w-full sm:w-64">
-                <label className="text-sm font-medium">{t("debt.chart.scopeLabel")}</label>
-                <SelectMenu
-                  className="mt-1 w-full"
-                  ariaLabel={t("debt.chart.scopeLabel")}
-                  value={scopeId}
-                  onChange={setScope}
-                  options={[
-                    { value: ALL, label: t("debt.chart.all") },
-                    ...planDebts.map((d) => ({ value: d.id, label: d.name })),
-                  ]}
-                />
-              </div>
-              )}
-            </div>
-          </div>
-
-          <DebtBalanceChart
-            series={plan.series}
-            history={historyRows}
-            baseline={extraVal > 0 ? baseline.series : undefined}
-            debts={chartDebts}
-            base={base}
-            markers={markers}
-          />
-
-          <h3 className="mt-6 text-sm font-semibold text-zinc-600 dark:text-zinc-300">
-            {t("debt.chart.splitTitle")}
-          </h3>
-          <DebtSplitChart years={years} base={base} />
-        </Card>
-      )}
-
+      {/* The plan and the chart it moves, together and above the table: the
+          levers are the point of this page, and they used to sit two cards
+          below the thing they change. */}
       {planDebts.length > 0 && (
         <Card data-tour="debt-plan">
           <h2 className="text-lg font-semibold">{t("debt.plan.title")}</h2>
-          <p className="mt-1 text-sm text-zinc-500">{t("debt.plan.intro")}</p>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-500">{t("debt.plan.intro")}</p>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="text-sm font-medium">{t("debt.plan.strategyLabel")}</label>
               <SelectMenu
@@ -533,28 +390,35 @@ export function DebtView() {
                 data-private
               />
             </div>
+            {planDebts.length > 1 && (
+              <div>
+                <label className="text-sm font-medium">{t("debt.chart.scopeLabel")}</label>
+                <SelectMenu
+                  className="mt-1 w-full"
+                  ariaLabel={t("debt.chart.scopeLabel")}
+                  value={scopeId}
+                  onChange={setScope}
+                  options={[
+                    { value: ALL, label: t("debt.chart.all") },
+                    ...planDebts.map((d) => ({ value: d.id, label: d.name })),
+                  ]}
+                />
+              </div>
+            )}
           </div>
 
           <div className="mt-6">
-            <DebtRepaymentsPlanner debts={repaymentDebts} />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Stat
-              label={t("debt.plan.totalMonths")}
-              value={plan.totalMonths != null ? formatMonths(plan.totalMonths, t) : "—"}
-            />
-            <Stat
-              label={t("debt.plan.totalInterest")}
-              value={formatCurrency(plan.totalInterest, base)}
-              isPrivate
+            <DebtRepaymentsPlanner
+              debts={repaymentDebts}
+              value={lumpSums}
+              onChange={setLumpSums}
             />
           </div>
 
           {(extraVal > 0 || totalLumpSums > 0) &&
             baseline.totalMonths != null &&
             plan.totalMonths != null && (
-              <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+              <p className="mt-4 text-sm text-emerald-700 dark:text-emerald-400">
                 {t("debt.plan.savings", {
                   months: baseline.totalMonths - plan.totalMonths,
                   amount: formatCurrency(
@@ -565,40 +429,133 @@ export function DebtView() {
               </p>
             )}
 
+          <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-800" data-tour="debt-chart">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">{t("debt.chart.title")}</h3>
+              <SegmentedControl
+                size="sm"
+                value={tf}
+                onChange={setTf}
+                options={TIMEFRAMES.map((x) => ({ label: x, value: x }))}
+              />
+            </div>
+            <DebtBalanceChart
+              series={plan.series}
+              history={historyRows}
+              baseline={extraVal > 0 ? baseline.series : undefined}
+              debts={chartDebts}
+              base={base}
+              markers={markers}
+            />
+          </div>
+        </Card>
+      )}
+
+      <Card data-tour="debt-list">
+        <h2 className="text-lg font-semibold">{t("debt.list.title")}</h2>
+        {liabilityAccounts.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">{t("debt.list.empty")}</p>
+        ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls}>{t("debt.plan.order")}</th>
-                  <th className={thCls}>{t("debt.list.name")}</th>
-                  <th className={`${thCls} text-right`}>{t("debt.list.term")}</th>
-                  <th className={thCls}>{t("debt.list.payoffDate")}</th>
-                  <th className={`${thCls} text-right`}>{t("debt.plan.totalInterest")}</th>
+                  <th className={thCls} onClick={() => toggleSort("order")}>
+                    {t("debt.plan.order")}
+                    {arrow("order")}
+                  </th>
+                  <th className={thCls} onClick={() => toggleSort("name")}>
+                    {t("debt.list.name")}
+                    {arrow("name")}
+                  </th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("balance")}>
+                    {t("debt.list.balance")}
+                    {arrow("balance")}
+                  </th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("rate")}>
+                    {t("debt.list.rate")}
+                    {arrow("rate")}
+                  </th>
+                  <th className={`${thCls} text-right`}>{t("debt.list.payment")}</th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("term")}>
+                    {t("debt.list.term")}
+                    {arrow("term")}
+                  </th>
+                  <th className={`${thCls} text-right`} onClick={() => toggleSort("interest")}>
+                    {t("debt.list.interest")}
+                    {arrow("interest")}
+                  </th>
+                  <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
-                {plan.order.map((id, i) => {
-                  const entry = planEntryById.get(id);
-                  if (!entry) return null;
+                {sortedRows.map(({ account, balance, payment, schedule }) => {
+                  const order = plan.order.indexOf(account.id);
+                  const entry = planEntryById.get(account.id);
                   return (
                     <tr
-                      key={id}
+                      key={account.id}
                       className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
                     >
-                      <td className="px-3 py-2 tabular-nums text-zinc-500">{i + 1}</td>
+                      <td className="px-3 py-2 tabular-nums text-zinc-500">
+                        {order >= 0 ? order + 1 : "—"}
+                      </td>
                       <td className="px-3 py-2 font-medium" data-private>
-                        {entry.name}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {entry.payoffMonth != null ? formatMonthsShort(entry.payoffMonth, t) : "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {entry.payoffMonth != null
-                          ? formatDate(addMonthsToDate(todayIso, entry.payoffMonth))
-                          : "—"}
+                        <span className="flex items-center gap-2">
+                          <span
+                            aria-hidden
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: colorById.get(account.id) ?? "transparent" }}
+                          />
+                          {account.name}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums" data-private>
-                        {formatCurrency(entry.totalInterest, base)}
+                        {formatCurrency(balance, base)}
+                      </td>
+                      {/* The follow-up rate rides under the rate it replaces,
+                          instead of costing a column of its own. */}
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {account.interestRate != null ? `${account.interestRate}%` : "—"}
+                        {account.rateFixedUntil && account.followUpRate != null && (
+                          <span className="block whitespace-nowrap text-xs text-zinc-500">
+                            {formatDate(account.rateFixedUntil)}
+                            {" · "}
+                            {t("debt.list.followUp", { rate: account.followUpRate })}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums" data-private>
+                        {payment > 0 ? formatCurrency(payment, base) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {schedule ? (
+                          schedule.months != null ? (
+                            <>
+                              {formatMonthsShort(schedule.months, t)}
+                              {schedule.payoffDate && (
+                                <span className="block whitespace-nowrap text-xs text-zinc-500">
+                                  {formatDate(schedule.payoffDate)}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            t("debt.list.neverPaysOff")
+                          )
+                        ) : (
+                          <span className="text-zinc-500">{t("debt.list.needsDetails")}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums" data-private>
+                        {entry ? formatCurrency(entry.totalInterest, base) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <RowActions>
+                          <EditAction
+                            label={t("debt.list.editDetails")}
+                            onClick={() => setDetailsFor(account)}
+                          />
+                        </RowActions>
                       </td>
                     </tr>
                   );
@@ -606,6 +563,13 @@ export function DebtView() {
               </tbody>
             </table>
           </div>
+        )}
+      </Card>
+
+      {planDebts.length > 0 && (
+        <Card>
+          <h2 className="text-lg font-semibold">{t("debt.chart.splitTitle")}</h2>
+          <DebtSplitChart years={years} base={base} />
         </Card>
       )}
 

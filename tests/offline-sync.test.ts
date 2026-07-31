@@ -340,9 +340,6 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
     async addImportedSpendingFingerprints() {
       calls.push("addImportedSpendingFingerprints");
     },
-    async setExtraRepayments() {
-      calls.push("setExtraRepayments");
-    },
     async setPensionPoints() {
       calls.push("setPensionPoints");
     },

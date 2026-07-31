@@ -109,12 +109,6 @@ export interface DataStore {
    */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
   /**
-   * Replace-set the planned one-off repayments (Sondertilgungen) of one
-   * liability account, same idempotent/replay-safe contract as
-   * `setAccountBalances`. Amounts are native-currency magnitudes.
-   */
-  setExtraRepayments(accountId: string, points: { date: string; amount: number }[]): Promise<void>;
-  /**
    * Replace-set the whole statutory pension record (flag `pension`), keyed by
    * year the way `setAccountBalances` is keyed by date -- idempotent and
    * replay-safe, and a year can never end up recorded twice.

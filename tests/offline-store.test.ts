@@ -319,10 +319,6 @@ function makeInner(initial: PortfolioData) {
       calls.push("deleteGoal");
       guard();
     },
-    async setExtraRepayments() {
-      calls.push("setExtraRepayments");
-      guard();
-    },
     async setPensionPoints() {
       calls.push("setPensionPoints");
       guard();

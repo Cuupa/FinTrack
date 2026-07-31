@@ -33,6 +33,35 @@ subworker; commit only the paths you claimed.
 | Download/Export erweitern | LOW | todo | lib/export/ |
 | Monte Carlo: dynamische Entnahme + Vereinheitlichung | LOW | todo | — |
 | Tooltips überarbeiten | — | todo | — |
+| Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
+| /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Sondertilgung ist live, /debt entschlackt (2026-07-31)
+
+**Live statt gespeichert (Owner-Regel).** 0105 hatte Sondertilgungen eine
+Tabelle gegeben, also schrieb jede Eingabe eine Zeile - eine Simulation sah aus
+wie eine Zusage. Der Hebel direkt darueber (zusaetzliche Monatsrate) war immer
+schon reines React-State. Jetzt beide gleich: `lumpSums` liegt in `DebtView`,
+`DebtRepaymentsPlanner` ist controlled (`value`/`onChange`), mehrere
+Sondertilgungen stapeln sich in der Liste, ein Reload vergisst alles.
+
+Der ganze Store-Seam ist raus: `ExtraRepayment`, `PortfolioData.extraRepayments`,
+`setExtraRepayments` in DataStore/Local/Supabase/Offline, Queue-Op, Sync-Case,
+Context. Migration 0110 droppt `account_extra_repayments` und nimmt es vorher
+aus `admin_feature_usage()` (sonst 500). 0105 bleibt liegen. Tote Keys entfernt
+(`debt.repayments.error`, `admin.usage.feature.extraRepayments`).
+
+**Layout.** Der Graph stand hinter zwei Karten, und "Zeit bis schuldenfrei" plus
+"Zinsen" standen doppelt auf der Seite. Neu: Kennzahlen (6 -> 4, "urspruenglich"
+und "getilgt" als Unterzeile), dann Tilgungsplan MIT Graph in einer Karte
+(Regler direkt ueber der Kurve, die sie bewegen), dann die Tabelle - die
+Tilgungsreihenfolge ist jetzt eine Spalte darin statt einer eigenen Karte,
+Zinsbindung ruecht unter den Zinssatz. Graph beginnt bei y=815 statt hinter der
+Tabelle. Ausschweifende Intro-Texte gekuerzt (Owner-Regel: kurz und praezise).
+
+Verifiziert DE 1080p: 26 Jahre 6 Monate -> 19 Jahre 8 Monate, Zinsen
+146.667,48 -> 94.169,98, Ersparnis-Zeile 52.497,49 = die Differenz. 1082
+Unit-Tests, 46 E2E gruen.
 
 ## Erledigt: KPIs der Übersicht (2026-07-31)
 

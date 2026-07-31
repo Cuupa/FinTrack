@@ -125,8 +125,6 @@ export class LocalStore implements DataStore {
         // Backfill blobs saved before the accounts entity existed.
         accounts: parsed.accounts ?? [],
         accountBalances: parsed.accountBalances ?? [],
-        // Backfill blobs saved before planned one-off repayments existed.
-        extraRepayments: parsed.extraRepayments ?? [],
         // Backfill blobs saved before the pension record existed.
         pensionPoints: parsed.pensionPoints ?? [],
         pensionContracts: parsed.pensionContracts ?? [],
@@ -382,7 +380,6 @@ export class LocalStore implements DataStore {
     data.accounts = data.accounts.filter((a) => a.id !== id);
     // Cascade: balance readings and spending transactions belong to their account.
     data.accountBalances = data.accountBalances.filter((b) => b.accountId !== id);
-    data.extraRepayments = data.extraRepayments.filter((r) => r.accountId !== id);
     const removedTxIds = data.spendingTransactions
       .filter((t) => t.accountId === id)
       .map((t) => t.id);
@@ -413,16 +410,6 @@ export class LocalStore implements DataStore {
     data.accountBalances = [
       ...others,
       ...points.map((p) => ({ accountId, date: p.date, balance: p.balance })),
-    ];
-    this.write(data);
-  }
-
-  async setExtraRepayments(accountId: string, points: { date: string; amount: number }[]) {
-    const data = this.read();
-    const others = data.extraRepayments.filter((r) => r.accountId !== accountId);
-    data.extraRepayments = [
-      ...others,
-      ...points.map((p) => ({ accountId, date: p.date, amount: p.amount })),
     ];
     this.write(data);
   }

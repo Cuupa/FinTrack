@@ -15,7 +15,6 @@ import {
   MAX_PORTFOLIOS,
   type Account,
   type AccountBalance,
-  type ExtraRepayment,
   type AccountKind,
   type PensionContract,
   type PensionContractKind,
@@ -386,7 +385,6 @@ export class SupabaseStore implements DataStore {
       valuationsRes,
       accountsRes,
       accountBalancesRes,
-      extraRepaymentsRes,
       pensionPointsRes,
       pensionContractsRes,
       spendingCategoriesRes,
@@ -452,10 +450,6 @@ export class SupabaseStore implements DataStore {
         .from("account_balances")
         .select("account_id, balance_on, balance")
         .order("balance_on", { ascending: true }),
-      this.supabase
-        .from("account_extra_repayments")
-        .select("account_id, paid_on, amount")
-        .order("paid_on", { ascending: true }),
       this.supabase
         .from("pension_points")
         .select("year, points, note")
@@ -527,7 +521,6 @@ export class SupabaseStore implements DataStore {
     if (valuationsRes.error) throw valuationsRes.error;
     if (accountsRes.error) throw accountsRes.error;
     if (accountBalancesRes.error) throw accountBalancesRes.error;
-    if (extraRepaymentsRes.error) throw extraRepaymentsRes.error;
     if (pensionPointsRes.error) throw pensionPointsRes.error;
     if (pensionContractsRes.error) throw pensionContractsRes.error;
     if (spendingCategoriesRes.error) throw spendingCategoriesRes.error;
@@ -656,14 +649,6 @@ export class SupabaseStore implements DataStore {
       }[]
     ).map((r) => ({ accountId: r.account_id, date: r.balance_on, balance: Number(r.balance) }));
 
-    const extraRepayments: ExtraRepayment[] = (
-      (extraRepaymentsRes.data ?? []) as {
-        account_id: string;
-        paid_on: string;
-        amount: number | string;
-      }[]
-    ).map((r) => ({ accountId: r.account_id, date: r.paid_on, amount: Number(r.amount) }));
-
     const pensionPoints: PensionPoint[] = (
       (pensionPointsRes.data ?? []) as { year: number; points: number | string; note: string | null }[]
     ).map((r) => ({ year: r.year, points: Number(r.points), note: r.note ?? null }));
@@ -734,7 +719,6 @@ export class SupabaseStore implements DataStore {
       valuationPoints,
       accounts,
       accountBalances,
-      extraRepayments,
       pensionPoints,
       pensionContracts,
       spendingCategories,
@@ -1207,38 +1191,6 @@ export class SupabaseStore implements DataStore {
         account_id: accountId,
         balance_on: p.date,
         balance: p.balance,
-      })),
-    );
-    if (insErr) throw insErr;
-  }
-
-  async setExtraRepayments(
-    accountId: string,
-    points: { date: string; amount: number }[],
-  ): Promise<void> {
-    // Attributed to the ACCOUNT's owner, not the acting editor — same reason
-    // as setAccountBalances above (a household peer must not reassign the
-    // plan to themselves).
-    const { data: acct, error: acctErr } = await this.supabase
-      .from("accounts")
-      .select("user_id")
-      .eq("id", accountId)
-      .single();
-    if (acctErr) throw acctErr;
-    const ownerId = (acct as { user_id: string }).user_id;
-
-    const { error: delErr } = await this.supabase
-      .from("account_extra_repayments")
-      .delete()
-      .eq("account_id", accountId);
-    if (delErr) throw delErr;
-    if (points.length === 0) return;
-    const { error: insErr } = await this.supabase.from("account_extra_repayments").insert(
-      points.map((p) => ({
-        user_id: ownerId,
-        account_id: accountId,
-        paid_on: p.date,
-        amount: p.amount,
       })),
     );
     if (insErr) throw insErr;

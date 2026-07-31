@@ -177,14 +177,6 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       await inner.setAccountBalances(accountId, points);
       return;
     }
-    case "setExtraRepayments": {
-      const { accountId, points } = op.payload as {
-        accountId: string;
-        points: { date: string; amount: number }[];
-      };
-      await inner.setExtraRepayments(accountId, points);
-      return;
-    }
     case "setPensionPoints": {
       const { entries } = op.payload as { entries: PensionPoint[] };
       await inner.setPensionPoints(entries);
