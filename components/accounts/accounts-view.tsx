@@ -26,7 +26,17 @@ import { Button, Card, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError } from "@/lib/store/errors";
 import { AccountBalancesDialog } from "./account-balances-dialog";
 import { AccountEditDialog } from "./account-edit-dialog";
@@ -62,10 +72,7 @@ export function AccountsView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "name",
-    dir: "asc",
-  });
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("name");
   const [balancesFor, setBalancesFor] = useState<Account | null>(null);
   const [editing, setEditing] = useState<Account | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
@@ -78,22 +85,13 @@ export function AccountsView() {
       const signed = a.isLiability ? -magnitude : magnitude;
       return { account: a, signed };
     });
-    withValues.sort((x, y) => {
-      let cmp = 0;
-      if (sort.key === "name") cmp = x.account.name.localeCompare(y.account.name);
-      else if (sort.key === "kind") cmp = kindLabel(x.account.kind).localeCompare(kindLabel(y.account.kind));
-      else cmp = x.signed - y.signed;
-      return sort.dir === "asc" ? cmp : -cmp;
+    return applySort(withValues, (r, key) => {
+      if (key === "name") return r.account.name;
+      if (key === "kind") return kindLabel(r.account.kind);
+      return r.signed;
     });
-    return withValues;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.accounts, data.accountBalances, sort, movements]);
-
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
-  }
+  }, [data.accounts, data.accountBalances, applySort, movements]);
 
   async function submit() {
     const trimmed = name.trim();
@@ -142,9 +140,6 @@ export function AccountsView() {
 
   const pager = usePagination(rows);
 
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   return (
     <div className="space-y-6">
@@ -307,85 +302,72 @@ export function AccountsView() {
         {data.accounts.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.list.empty")}</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls} onClick={() => toggleSort("name")}>
-                    {t("accounts.list.name")}
-                    {arrow("name")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("kind")}>
-                    {t("accounts.list.kind")}
-                    {arrow("kind")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("balance")}>
-                    {t("accounts.list.balance")}
-                    {arrow("balance")}
-                  </th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {pager.rows.map(({ account, signed }) => {
-                  const cur = account.currency || base;
-                  return (
-                    <tr
-                      key={account.id}
-                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+          <>
+          <Table className="mt-4">
+            <Thead>
+              <Th sort={sort} sortKey="name" onSort={toggleSort}>
+                {t("accounts.list.name")}
+              </Th>
+              <Th sort={sort} sortKey="kind" onSort={toggleSort}>
+                {t("accounts.list.kind")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="balance" onSort={toggleSort}>
+                {t("accounts.list.balance")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
+              {pager.rows.map(({ account, signed }) => {
+                const cur = account.currency || base;
+                return (
+                  <Tr key={account.id}>
+                    <Td className="font-medium" data-private>
+                      {account.name}
+                      {!account.isLiability && (account.interestRate ?? 0) > 0 && (
+                        <div className="text-xs font-normal text-zinc-500">
+                          {t("accounts.list.interest", {
+                            rate: String(account.interestRate),
+                            frequency: t(
+                              `cashInterest.freq.${account.interestFrequency ?? "MONTHLY"}` as Parameters<
+                                typeof t
+                              >[0],
+                            ),
+                          })}
+                        </div>
+                      )}
+                    </Td>
+                    <Td className="text-zinc-500">{kindLabel(account.kind)}</Td>
+                    <Td
+                      align="right"
+                      className={`tabular-nums ${signed < 0 ? "text-red-600 dark:text-red-400" : ""}`}
+                      data-private
                     >
-                      <td className="px-3 py-2 font-medium" data-private>
-                        {account.name}
-                        {!account.isLiability && (account.interestRate ?? 0) > 0 && (
-                          <div className="text-xs font-normal text-zinc-500">
-                            {t("accounts.list.interest", {
-                              rate: String(account.interestRate),
-                              frequency: t(
-                                `cashInterest.freq.${account.interestFrequency ?? "MONTHLY"}` as Parameters<
-                                  typeof t
-                                >[0],
-                              ),
-                            })}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">{kindLabel(account.kind)}</td>
-                      <td
-                        className={`px-3 py-2 text-right tabular-nums ${
-                          signed < 0 ? "text-red-600 dark:text-red-400" : ""
-                        }`}
-                        data-private
-                      >
-                        {formatCurrency(signed, cur)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <RowActions>
-                          <EditAction
-                            label={t("accounts.list.edit")}
-                            onClick={() => setEditing(account)}
-                          />
-                          {/* Its own affordance, not an edit: a dated balance
-                              series is a second entity behind this row. */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setBalancesFor(account)}
-                          >
-                            {t("accounts.list.editBalances")}
-                          </Button>
-                          <DeleteAction
-                            label={t("accounts.list.delete")}
-                            onClick={() => setConfirmDelete(account)}
-                          />
-                        </RowActions>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      {formatCurrency(signed, cur)}
+                    </Td>
+                    <Td>
+                      <RowActions>
+                        <EditAction
+                          label={t("accounts.list.edit")}
+                          onClick={() => setEditing(account)}
+                        />
+                        {/* Its own affordance, not an edit: a dated balance
+                            series is a second entity behind this row. */}
+                        <Button size="sm" variant="ghost" onClick={() => setBalancesFor(account)}>
+                          {t("accounts.list.editBalances")}
+                        </Button>
+                        <DeleteAction
+                          label={t("accounts.list.delete")}
+                          onClick={() => setConfirmDelete(account)}
+                        />
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
             <TablePagination pager={pager} />
-          </div>
+          </>
         )}
       </Card>
 

@@ -14,7 +14,17 @@ import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/f
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -87,10 +97,7 @@ export function SpendingView() {
   const [managingCategories, setManagingCategories] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "date",
-    dir: "desc",
-  });
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("date", "desc");
   const [confirmDelete, setConfirmDelete] = useState<SpendingTransaction | null>(null);
   const [editingTx, setEditingTx] = useState<SpendingTransaction | null>(null);
   const [editBusy, setEditBusy] = useState(false);
@@ -132,31 +139,20 @@ export function SpendingView() {
     return c ? `${c.groupName} · ${c.name}` : t("spending.list.uncategorized");
   }
 
-  const rows = useMemo(() => {
-    const list = [...data.spendingTransactions];
-    list.sort((x, y) => {
-      let cmp = 0;
-      if (sort.key === "date") cmp = x.date < y.date ? -1 : x.date > y.date ? 1 : 0;
-      else if (sort.key === "payee") cmp = x.payee.localeCompare(y.payee);
-      else if (sort.key === "category") cmp = categoryLabel(x.categoryId).localeCompare(categoryLabel(y.categoryId));
-      else if (sort.key === "account") {
-        cmp = (accountsById.get(x.accountId)?.name ?? "").localeCompare(
-          accountsById.get(y.accountId)?.name ?? "",
-        );
-      } else cmp = x.amount - y.amount;
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-    return list;
+  const rows = useMemo(
+    () =>
+      applySort(data.spendingTransactions, (tx, key) => {
+        if (key === "date") return tx.date;
+        if (key === "payee") return tx.payee;
+        if (key === "category") return categoryLabel(tx.categoryId);
+        if (key === "account") return accountsById.get(tx.accountId)?.name ?? "";
+        return tx.amount;
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.spendingTransactions, sort, accountsById, categoriesById]);
+    [data.spendingTransactions, applySort, accountsById, categoriesById],
+  );
 
   const pager = usePagination(rows);
-
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
-  }
 
   function onPayeeBlur() {
     if (categoryId) return;
@@ -221,10 +217,6 @@ export function SpendingView() {
       await updateSpendingTransaction(u.id, { categoryId: u.categoryId });
     }
   }
-
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   return (
     <div className="space-y-6">
@@ -431,87 +423,76 @@ export function SpendingView() {
         {data.spendingTransactions.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("spending.list.empty")}</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls} onClick={() => toggleSort("date")}>
-                    {t("spending.list.date")}
-                    {arrow("date")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("payee")}>
-                    {t("spending.list.payee")}
-                    {arrow("payee")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("category")}>
-                    {t("spending.list.category")}
-                    {arrow("category")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("account")}>
-                    {t("spending.list.account")}
-                    {arrow("account")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("amount")}>
-                    {t("spending.list.amount")}
-                    {arrow("amount")}
-                  </th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {pager.rows.map((tx) => {
-                  const account = accountsById.get(tx.accountId);
-                  const currency = account?.currency || base;
-                  return (
-                    <tr
-                      key={tx.id}
-                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+          <>
+          <Table className="mt-4">
+            <Thead>
+              <Th sort={sort} sortKey="date" onSort={toggleSort}>
+                {t("spending.list.date")}
+              </Th>
+              <Th sort={sort} sortKey="payee" onSort={toggleSort}>
+                {t("spending.list.payee")}
+              </Th>
+              <Th sort={sort} sortKey="category" onSort={toggleSort}>
+                {t("spending.list.category")}
+              </Th>
+              <Th sort={sort} sortKey="account" onSort={toggleSort}>
+                {t("spending.list.account")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="amount" onSort={toggleSort}>
+                {t("spending.list.amount")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
+              {pager.rows.map((tx) => {
+                const account = accountsById.get(tx.accountId);
+                const currency = account?.currency || base;
+                return (
+                  <Tr key={tx.id}>
+                    <Td className="text-zinc-500">{formatDate(tx.date)}</Td>
+                    <Td className="font-medium" data-private>
+                      {tx.payee}
+                    </Td>
+                    <Td className="text-zinc-500">{categoryLabel(tx.categoryId)}</Td>
+                    <Td className="text-zinc-500" data-private>
+                      {account?.name ?? "—"}
+                    </Td>
+                    <Td
+                      align="right"
+                      className={`tabular-nums ${tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""}`}
+                      data-private
                     >
-                      <td className="px-3 py-2 text-zinc-500">{formatDate(tx.date)}</td>
-                      <td className="px-3 py-2 font-medium" data-private>
-                        {tx.payee}
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">{categoryLabel(tx.categoryId)}</td>
-                      <td className="px-3 py-2 text-zinc-500" data-private>
-                        {account?.name ?? "—"}
-                      </td>
-                      <td
-                        className={`px-3 py-2 text-right tabular-nums ${
-                          tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""
-                        }`}
-                        data-private
-                      >
-                        {formatCurrency(tx.amount, currency)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <RowActions>
-                          {/* Offered only on an expense that is not already
-                              tied to a contract: turning income, or a
-                              contract's own booking, into a contract is
-                              meaningless. Stays a labelled button: it creates
-                              a new entity rather than acting on this row. */}
-                          {contractsEnabled && tx.amount < 0 && !tx.recurringId && (
-                            <Button size="sm" variant="ghost" onClick={() => setToContract(tx)}>
-                              {t("spending.list.makeContract")}
-                            </Button>
-                          )}
-                          <EditAction
-                            label={t("spending.list.edit")}
-                            onClick={() => setEditingTx(tx)}
-                          />
-                          <DeleteAction
-                            label={t("spending.list.delete")}
-                            onClick={() => setConfirmDelete(tx)}
-                          />
-                        </RowActions>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      {formatCurrency(tx.amount, currency)}
+                    </Td>
+                    <Td>
+                      <RowActions>
+                        {/* Offered only on an expense that is not already
+                            tied to a contract: turning income, or a
+                            contract's own booking, into a contract is
+                            meaningless. Stays a labelled button: it creates
+                            a new entity rather than acting on this row. */}
+                        {contractsEnabled && tx.amount < 0 && !tx.recurringId && (
+                          <Button size="sm" variant="ghost" onClick={() => setToContract(tx)}>
+                            {t("spending.list.makeContract")}
+                          </Button>
+                        )}
+                        <EditAction
+                          label={t("spending.list.edit")}
+                          onClick={() => setEditingTx(tx)}
+                        />
+                        <DeleteAction
+                          label={t("spending.list.delete")}
+                          onClick={() => setConfirmDelete(tx)}
+                        />
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
             <TablePagination pager={pager} />
-          </div>
+          </>
         )}
       </Card>
 

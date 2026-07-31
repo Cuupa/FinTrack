@@ -47,6 +47,8 @@ import {
 } from "@/lib/format";
 import { formatMonths, formatMonthsShort } from "@/lib/i18n/duration";
 import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DebtDetailsDialog } from "./debt-details-dialog";
@@ -125,10 +127,7 @@ export function DebtView() {
     });
   }, [liabilityAccounts, data.accountBalances, lumpSums, valuation, todayIso, movements]);
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "order",
-    dir: "asc",
-  });
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("order");
   const [detailsFor, setDetailsFor] = useState<Account | null>(null);
   // How far back the chart reaches. The same strip the depot chart uses, for
   // the same reason: "from today" answers nothing about a debt you have been
@@ -137,12 +136,6 @@ export function DebtView() {
   const [strategy, setStrategy] = useState<DebtStrategy>("avalanche");
   const [extra, setExtra] = useState("");
   const [scope, setScope] = useState<string>(ALL);
-
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
-  }
 
   const totalDebt = rows.reduce((s, r) => s + r.balance, 0);
   const totalMinPayment = rows.reduce((s, r) => s + r.payment, 0);
@@ -199,28 +192,21 @@ export function DebtView() {
     () => new Map(plan.perDebt.map((p) => [p.id, p])),
     [plan.perDebt],
   );
-  const sortedRows = useMemo(() => {
-    const orderOf = (id: string) => {
-      const i = plan.order.indexOf(id);
-      return i === -1 ? Infinity : i;
-    };
-    const copy = [...rows];
-    copy.sort((x, y) => {
-      let cmp = 0;
-      if (sort.key === "order") cmp = orderOf(x.account.id) - orderOf(y.account.id);
-      else if (sort.key === "name") cmp = x.account.name.localeCompare(y.account.name);
-      else if (sort.key === "balance") cmp = x.balance - y.balance;
-      else if (sort.key === "rate")
-        cmp = (x.account.interestRate ?? -1) - (y.account.interestRate ?? -1);
-      else if (sort.key === "interest")
-        cmp =
-          (planEntryById.get(x.account.id)?.totalInterest ?? -1) -
-          (planEntryById.get(y.account.id)?.totalInterest ?? -1);
-      else cmp = (x.schedule?.months ?? Infinity) - (y.schedule?.months ?? Infinity);
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-    return copy;
-  }, [rows, sort, plan.order, planEntryById]);
+  const sortedRows = useMemo(
+    () =>
+      applySort(rows, (r, key) => {
+        if (key === "order") {
+          const i = plan.order.indexOf(r.account.id);
+          return i === -1 ? null : i;
+        }
+        if (key === "name") return r.account.name;
+        if (key === "balance") return r.balance;
+        if (key === "rate") return r.account.interestRate;
+        if (key === "interest") return planEntryById.get(r.account.id)?.totalInterest;
+        return r.schedule?.months;
+      }),
+    [rows, applySort, plan.order, planEntryById],
+  );
 
   // The chart's scope: every debt stacked, or one debt on its own. A selected
   // debt that disappears (deleted account) falls back to "all" rather than
@@ -306,9 +292,6 @@ export function DebtView() {
     );
   }, [rows, scopeId, todayIso, t, plan.series, historyRows]);
 
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   const colorById = new Map(planDebts.map((d, i) => [d.id, debtColor(i)]));
   const debtFreeDate = plan.totalMonths != null ? addMonthsToDate(todayIso, plan.totalMonths) : null;
@@ -456,113 +439,98 @@ export function DebtView() {
         {liabilityAccounts.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("debt.list.empty")}</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls} onClick={() => toggleSort("order")}>
-                    {t("debt.plan.order")}
-                    {arrow("order")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("name")}>
-                    {t("debt.list.name")}
-                    {arrow("name")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("balance")}>
-                    {t("debt.list.balance")}
-                    {arrow("balance")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("rate")}>
-                    {t("debt.list.rate")}
-                    {arrow("rate")}
-                  </th>
-                  <th className={`${thCls} text-right`}>{t("debt.list.payment")}</th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("term")}>
-                    {t("debt.list.term")}
-                    {arrow("term")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("interest")}>
-                    {t("debt.list.interest")}
-                    {arrow("interest")}
-                  </th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map(({ account, balance, payment, schedule }) => {
-                  const order = plan.order.indexOf(account.id);
-                  const entry = planEntryById.get(account.id);
-                  return (
-                    <tr
-                      key={account.id}
-                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                    >
-                      <td className="px-3 py-2 tabular-nums text-zinc-500">
-                        {order >= 0 ? order + 1 : "—"}
-                      </td>
-                      <td className="px-3 py-2 font-medium" data-private>
-                        <span className="flex items-center gap-2">
-                          <span
-                            aria-hidden
-                            className="h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: colorById.get(account.id) ?? "transparent" }}
-                          />
-                          {account.name}
+          <Table className="mt-4">
+            <Thead>
+              <Th sort={sort} sortKey="order" onSort={toggleSort}>
+                {t("debt.plan.order")}
+              </Th>
+              <Th sort={sort} sortKey="name" onSort={toggleSort}>
+                {t("debt.list.name")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="balance" onSort={toggleSort}>
+                {t("debt.list.balance")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="rate" onSort={toggleSort}>
+                {t("debt.list.rate")}
+              </Th>
+              <Th align="right">{t("debt.list.payment")}</Th>
+              <Th align="right" sort={sort} sortKey="term" onSort={toggleSort}>
+                {t("debt.list.term")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="interest" onSort={toggleSort}>
+                {t("debt.list.interest")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
+              {sortedRows.map(({ account, balance, payment, schedule }) => {
+                const order = plan.order.indexOf(account.id);
+                const entry = planEntryById.get(account.id);
+                return (
+                  <Tr key={account.id}>
+                    <Td className="tabular-nums text-zinc-500">{order >= 0 ? order + 1 : "—"}</Td>
+                    <Td className="font-medium" data-private>
+                      <span className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: colorById.get(account.id) ?? "transparent" }}
+                        />
+                        {account.name}
+                      </span>
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
+                      {formatCurrency(balance, base)}
+                    </Td>
+                    {/* The follow-up rate rides under the rate it replaces,
+                        instead of costing a column of its own. */}
+                    <Td align="right" className="tabular-nums">
+                      {account.interestRate != null ? `${account.interestRate}%` : "—"}
+                      {account.rateFixedUntil && account.followUpRate != null && (
+                        <span className="block whitespace-nowrap text-xs text-zinc-500">
+                          {formatDate(account.rateFixedUntil)}
+                          {" · "}
+                          {t("debt.list.followUp", { rate: account.followUpRate })}
                         </span>
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums" data-private>
-                        {formatCurrency(balance, base)}
-                      </td>
-                      {/* The follow-up rate rides under the rate it replaces,
-                          instead of costing a column of its own. */}
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {account.interestRate != null ? `${account.interestRate}%` : "—"}
-                        {account.rateFixedUntil && account.followUpRate != null && (
-                          <span className="block whitespace-nowrap text-xs text-zinc-500">
-                            {formatDate(account.rateFixedUntil)}
-                            {" · "}
-                            {t("debt.list.followUp", { rate: account.followUpRate })}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums" data-private>
-                        {payment > 0 ? formatCurrency(payment, base) : "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {schedule ? (
-                          schedule.months != null ? (
-                            <>
-                              {formatMonthsShort(schedule.months, t)}
-                              {schedule.payoffDate && (
-                                <span className="block whitespace-nowrap text-xs text-zinc-500">
-                                  {formatDate(schedule.payoffDate)}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            t("debt.list.neverPaysOff")
-                          )
+                      )}
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
+                      {payment > 0 ? formatCurrency(payment, base) : "—"}
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      {schedule ? (
+                        schedule.months != null ? (
+                          <>
+                            {formatMonthsShort(schedule.months, t)}
+                            {schedule.payoffDate && (
+                              <span className="block whitespace-nowrap text-xs text-zinc-500">
+                                {formatDate(schedule.payoffDate)}
+                              </span>
+                            )}
+                          </>
                         ) : (
-                          <span className="text-zinc-500">{t("debt.list.needsDetails")}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums" data-private>
-                        {entry ? formatCurrency(entry.totalInterest, base) : "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <RowActions>
-                          <EditAction
-                            label={t("debt.list.editDetails")}
-                            onClick={() => setDetailsFor(account)}
-                          />
-                        </RowActions>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          t("debt.list.neverPaysOff")
+                        )
+                      ) : (
+                        <span className="text-zinc-500">{t("debt.list.needsDetails")}</span>
+                      )}
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
+                      {entry ? formatCurrency(entry.totalInterest, base) : "—"}
+                    </Td>
+                    <Td align="right">
+                      <RowActions>
+                        <EditAction
+                          label={t("debt.list.editDetails")}
+                          onClick={() => setDetailsFor(account)}
+                        />
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
         )}
       </Card>
 

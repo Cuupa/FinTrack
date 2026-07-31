@@ -33,8 +33,25 @@ subworker; commit only the paths you claimed.
 | Download/Export erweitern | LOW | todo | lib/export/ |
 | Monte Carlo: dynamische Entnahme + Vereinheitlichung | LOW | todo | — |
 | Tooltips überarbeiten | MEDIUM | done | 17 Keys x 3 Sprachen entlokalisiert, shared-portfolio-view übersetzt |
+| Vereinheitlichung: Tabellen-Shell | HIGH | teilweise (3 von 22) | debt-view, spending-view, accounts-view auf Table/Thead/Th/Tr/Td + useSort |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Teilweise: Tabellen auf den gemeinsamen Shell (2026-07-31)
+
+`components/ui/table.tsx` (Table/Thead/Th/Tbody/Tr/Td) und `useSort` gab es
+schon, aber nur 3 von 25 Tabellen nutzten sie - der Rest baute die Header-Klasse
+selbst. Gemessen: 11 verschiedene Header-Stile, 10 Hover-Varianten.
+
+Migriert: debt-view, spending-view, accounts-view. Dabei faellt je ein
+handgebautes `useState({key,dir})` + Toggle + Inline-Comparator weg
+(`useSort`/`sortRows`), und die Header werden zu echten Buttons mit `aria-sort`
+- vorher waren es `<th onClick>`, also per Tastatur unerreichbar. Verifiziert:
+Sortierung per Maus und per Enter, aria-sort kippt korrekt, Header-Klassen auf
+/accounts und /debt identisch.
+
+Offen: die restlichen ~19 Tabellen (Assets, Dividenden, Rebalancing, Risiko,
+Ziele, Sparplaene, Wiederkehrende, shared-view, 6x /admin).
 
 ## Erledigt: Tooltips zeigen nicht mehr auf andere Elemente (2026-07-31)
 
