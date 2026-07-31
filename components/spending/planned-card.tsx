@@ -31,6 +31,7 @@ import { missingFieldCls, missingLabelCls, useFormTouched } from "@/lib/forms/re
 import { isStorageFullError } from "@/lib/store/errors";
 import { PLANNED_INTERVALS, type PlannedCashflow, type PlannedInterval } from "@/lib/types";
 import type { PlannedCashflowInput } from "@/lib/store/types";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -276,14 +277,16 @@ function PlannedCardInner() {
                           {monthly === null ? "—" : formatCurrency(monthly, currency)}
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" onClick={() => setEditing(plan)}>
-                              {t("spending.planned.edit")}
-                            </Button>
-                            <Button size="sm" variant="danger" onClick={() => setDeleting(plan)}>
-                              {t("spending.planned.delete")}
-                            </Button>
-                          </div>
+                          <RowActions>
+                            <EditAction
+                              label={t("spending.planned.edit")}
+                              onClick={() => setEditing(plan)}
+                            />
+                            <DeleteAction
+                              label={t("spending.planned.delete")}
+                              onClick={() => setDeleting(plan)}
+                            />
+                          </RowActions>
                         </td>
                       </tr>
                     );

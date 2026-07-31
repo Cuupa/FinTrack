@@ -34,6 +34,7 @@ import { useFeature } from "@/lib/flags/flags-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import type { SpendingTransaction } from "@/lib/types";
 import type { ContractInput } from "@/lib/store/types";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "date" | "amount";
 
@@ -291,14 +292,16 @@ export default function RecurringDetailPage({
                         {formatCurrency(tx.amount, cur)}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => setEditingTx(tx)}>
-                            {t("spending.list.edit")}
-                          </Button>
-                          <Button size="sm" variant="danger" onClick={() => setConfirmDelete(tx)}>
-                            {t("spending.list.delete")}
-                          </Button>
-                        </div>
+                        <RowActions>
+                          <EditAction
+                            label={t("spending.list.edit")}
+                            onClick={() => setEditingTx(tx)}
+                          />
+                          <DeleteAction
+                            label={t("spending.list.delete")}
+                            onClick={() => setConfirmDelete(tx)}
+                          />
+                        </RowActions>
                       </td>
                     </tr>
                   );

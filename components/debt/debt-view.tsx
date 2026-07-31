@@ -44,12 +44,13 @@ import {
   stripLeadingZero,
 } from "@/lib/format";
 import { formatMonths, formatMonthsShort } from "@/lib/i18n/duration";
-import { Button, Card, SegmentedControl, Stat } from "@/components/ui/primitives";
+import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DebtDetailsDialog } from "./debt-details-dialog";
 import { DebtRepaymentsPlanner } from "./debt-repayments";
 import { DebtBalanceChart, DebtSplitChart, debtColor } from "./debt-chart";
+import { EditAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "name" | "balance" | "rate" | "lumpSums" | "term" | "payoffDate";
 
@@ -436,9 +437,12 @@ export function DebtView() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Button size="sm" variant="secondary" onClick={() => setDetailsFor(account)}>
-                        {t("debt.list.editDetails")}
-                      </Button>
+                      <RowActions>
+                        <EditAction
+                          label={t("debt.list.editDetails")}
+                          onClick={() => setDetailsFor(account)}
+                        />
+                      </RowActions>
                     </td>
                   </tr>
                 ))}

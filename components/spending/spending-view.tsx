@@ -28,6 +28,7 @@ import { ImportSpending } from "./import-spending";
 // recurs"; the analysis of where the money goes lives one page over.
 import { RecurringCard } from "./recurring-card";
 import { PLANNED_INTERVALS, type PlannedInterval, type SpendingTransaction } from "@/lib/types";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -449,23 +450,26 @@ export function SpendingView() {
                         {formatCurrency(tx.amount, currency)}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex justify-end gap-2">
+                        <RowActions>
                           {/* Offered only on an expense that is not already
                               tied to a contract: turning income, or a
                               contract's own booking, into a contract is
-                              meaningless. */}
+                              meaningless. Stays a labelled button: it creates
+                              a new entity rather than acting on this row. */}
                           {contractsEnabled && tx.amount < 0 && !tx.recurringId && (
-                            <Button size="sm" onClick={() => setToContract(tx)}>
+                            <Button size="sm" variant="ghost" onClick={() => setToContract(tx)}>
                               {t("spending.list.makeContract")}
                             </Button>
                           )}
-                          <Button size="sm" variant="secondary" onClick={() => setEditingTx(tx)}>
-                            {t("spending.list.edit")}
-                          </Button>
-                          <Button size="sm" variant="danger" onClick={() => setConfirmDelete(tx)}>
-                            {t("spending.list.delete")}
-                          </Button>
-                        </div>
+                          <EditAction
+                            label={t("spending.list.edit")}
+                            onClick={() => setEditingTx(tx)}
+                          />
+                          <DeleteAction
+                            label={t("spending.list.delete")}
+                            onClick={() => setConfirmDelete(tx)}
+                          />
+                        </RowActions>
                       </td>
                     </tr>
                   );

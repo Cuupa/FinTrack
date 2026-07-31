@@ -39,6 +39,7 @@ import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -559,18 +560,17 @@ export function GoalsView() {
           )}
         </td>
         <td className="px-3 py-2">
-          <div className="flex items-center justify-end gap-2">
+          <RowActions>
             {!derived && (
               <>
-                <Button size="sm" variant="secondary" onClick={() => setEditing(goal)}>
-                  {t("goals.list.edit")}
-                </Button>
-                <Button size="sm" variant="danger" onClick={() => setConfirmDelete(goal)}>
-                  {t("goals.list.delete")}
-                </Button>
+                <EditAction label={t("goals.list.edit")} onClick={() => setEditing(goal)} />
+                <DeleteAction
+                  label={t("goals.list.delete")}
+                  onClick={() => setConfirmDelete(goal)}
+                />
               </>
             )}
-          </div>
+          </RowActions>
         </td>
       </tr>
     );

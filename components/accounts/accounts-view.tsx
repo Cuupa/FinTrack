@@ -30,6 +30,7 @@ import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 import { AccountBalancesDialog } from "./account-balances-dialog";
 import { AccountEditDialog } from "./account-edit-dialog";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -358,17 +359,25 @@ export function AccountsView() {
                         {formatCurrency(signed, cur)}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => setEditing(account)}>
-                            {t("accounts.list.edit")}
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={() => setBalancesFor(account)}>
+                        <RowActions>
+                          <EditAction
+                            label={t("accounts.list.edit")}
+                            onClick={() => setEditing(account)}
+                          />
+                          {/* Its own affordance, not an edit: a dated balance
+                              series is a second entity behind this row. */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setBalancesFor(account)}
+                          >
                             {t("accounts.list.editBalances")}
                           </Button>
-                          <Button size="sm" variant="danger" onClick={() => setConfirmDelete(account)}>
-                            {t("accounts.list.delete")}
-                          </Button>
-                        </div>
+                          <DeleteAction
+                            label={t("accounts.list.delete")}
+                            onClick={() => setConfirmDelete(account)}
+                          />
+                        </RowActions>
                       </td>
                     </tr>
                   );

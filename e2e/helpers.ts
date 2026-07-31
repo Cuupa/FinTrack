@@ -47,14 +47,18 @@ export async function openDashboard(page: Page): Promise<void> {
 
 /**
  * Add an OTHER (manual-valuation) holding — a fully network-free seed: name-only
- * master data, an opening value, no Yahoo lookup and no catalog. Assumes the
- * dashboard is open in EN with the tour dismissed.
+ * master data, an opening value, no Yahoo lookup and no catalog.
+ *
+ * Navigates to /portfolio itself: holdings and the add-asset entry point moved
+ * off the dashboard, and every spec that assumed otherwise sat red.
  */
 export async function addOtherAsset(
   page: Page,
   name: string,
   value: string,
 ): Promise<void> {
+  await page.goto("/portfolio");
+  await dismissTour(page);
   await page.locator('[data-tour="add-asset"]').click();
   // Scope to the modal: once an OTHER asset exists, the holdings table grows an
   // "Other" type-filter button that would otherwise collide with the form's.

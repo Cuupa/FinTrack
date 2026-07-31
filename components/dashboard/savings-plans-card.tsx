@@ -31,6 +31,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { TablePagination, usePagination } from "@/components/ui/table";
 import { isStorageFullError } from "@/lib/store/errors";
 import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
+import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 
 const rowInputCls =
   "w-24 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -479,34 +480,21 @@ function SavingsPlansCardInner() {
                       {plan.active ? formatDate(nextOccurrence(plan, todayISO)) : t("sp.paused")}
                     </td>
                     <td className="py-2">
-                      <span className="flex shrink-0 items-center justify-end gap-1">
-                        <button
-                          type="button"
+                      <RowActions>
+                        <EditAction
+                          label={t("sp.edit")}
                           onClick={() => {
                             setCreating(false);
                             setEditing((cur) => (cur?.id === plan.id ? null : plan));
                           }}
-                          className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                        >
-                          {t("sp.edit")}
-                        </button>
-                        <button
-                          type="button"
+                        />
+                        <PauseAction
+                          label={plan.active ? t("sp.pause") : t("sp.resume")}
+                          paused={!plan.active}
                           onClick={() => handleToggleActive(plan)}
-                          className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                        >
-                          {plan.active ? t("sp.pause") : t("sp.resume")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleting(plan)}
-                          className="px-1 text-zinc-400 hover:text-red-500"
-                          aria-label={t("sp.deleteTitle")}
-                          title={t("sp.deleteTitle")}
-                        >
-                          ✕
-                        </button>
-                      </span>
+                        />
+                        <DeleteAction label={t("sp.deleteTitle")} onClick={() => setDeleting(plan)} />
+                      </RowActions>
                     </td>
                   </tr>
                 );

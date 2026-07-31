@@ -11,8 +11,9 @@ test.describe("dashboard boot & i18n", () => {
     await dismissTour(page);
     // Guest default locale is English.
     await expect(page.getByText("Everything you own, owe and spend, in one place.")).toBeVisible();
-    // The add-asset entry point is always present with no data.
-    await expect(page.locator('[data-tour="add-asset"]')).toBeVisible();
+    // The area cards are the dashboard's own content and are always present
+    // with no data. (The add-asset entry point lives on /portfolio now.)
+    await expect(page.locator('[data-tour="areas"]')).toBeVisible();
   });
 
   test("switching locale re-renders copy and updates <html lang>", async ({ page }) => {

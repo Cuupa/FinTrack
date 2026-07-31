@@ -20,6 +20,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
+import { useRouter } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finance/contract-bookings";
@@ -38,6 +39,7 @@ import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import type { ContractInput } from "@/lib/store/types";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "name" | "amount" | "interval" | "next";
 
@@ -83,6 +85,7 @@ export function RecurringCard() {
     deletePlannedCashflow,
   } = usePortfolio();
   const { t } = useI18n();
+  const router = useRouter();
   // The flag decides visibility, the plan decides unlocked: a locked entry
   // surface stays on screen behind a teaser rather than vanishing.
   const contracts = useFeature("contracts");
@@ -481,16 +484,16 @@ export function RecurringCard() {
                       the change-scope question sits next to the bookings it
                       would rewrite instead of being asked twice in two places. */}
                   <td className="px-3 py-2">
-                    <div className="flex justify-end gap-2">
-                      <Link href={`/recurring/${r.kind}/${r.id}?edit=1`}>
-                        <Button size="sm" variant="secondary">
-                          {t("contracts.list.edit")}
-                        </Button>
-                      </Link>
-                      <Button size="sm" variant="danger" onClick={() => setConfirmDelete(r)}>
-                        {t("contracts.list.delete")}
-                      </Button>
-                    </div>
+                    <RowActions>
+                      <EditAction
+                        label={t("contracts.list.edit")}
+                        onClick={() => router.push(`/recurring/${r.kind}/${r.id}?edit=1`)}
+                      />
+                      <DeleteAction
+                        label={t("contracts.list.delete")}
+                        onClick={() => setConfirmDelete(r)}
+                      />
+                    </RowActions>
                   </td>
                 </tr>
               ))}

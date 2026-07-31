@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
+import { DeleteAction, RowActions } from "@/components/ui/row-actions";
 
 export interface RepaymentDebt {
   id: string;
@@ -176,15 +177,13 @@ export function DebtRepaymentsPlanner({ debts }: { debts: RepaymentDebt[] }) {
                   {formatCurrency(r.amount, byId.get(r.accountId)?.currency ?? "")}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => void remove(r.accountId, r.date)}
-                    disabled={busy}
-                    aria-label={t("debt.repayments.remove")}
-                    className="text-zinc-400 hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400"
-                  >
-                    ✕
-                  </button>
+                  <RowActions>
+                    <DeleteAction
+                      label={t("debt.repayments.remove")}
+                      disabled={busy}
+                      onClick={() => void remove(r.accountId, r.date)}
+                    />
+                  </RowActions>
                 </td>
               </tr>
             ))}
