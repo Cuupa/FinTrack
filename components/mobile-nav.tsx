@@ -22,6 +22,7 @@ import {
   groupedRoutes,
   hidesNavigation,
   isActiveRoute,
+  routeFeatureState,
   type NavRoute,
 } from "@/lib/nav/routes";
 
@@ -55,8 +56,7 @@ export function MobileNav() {
 
   // Same rule as the sidebar: a Pro-locked route stays visible (its page
   // shows the blurred teaser), only an off flag removes the entry.
-  const featureState = (r: NavRoute) =>
-    r.flag ? getFeature(r.flag) : { enabled: true, locked: false };
+  const featureState = (r: NavRoute) => routeFeatureState(r, getFeature);
   const visible = NAV_ROUTES.filter((r) => featureState(r).enabled);
   const tabs = visible.filter((r) => r.primary).slice(0, TAB_BUDGET);
   const rest = visible.filter((r) => !tabs.includes(r));

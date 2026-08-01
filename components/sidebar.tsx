@@ -23,6 +23,7 @@ import {
   groupedRoutes,
   hidesNavigation,
   isActiveRoute,
+  routeFeatureState,
   type NavRoute,
 } from "@/lib/nav/routes";
 
@@ -38,8 +39,7 @@ export function Sidebar() {
   // paywall is a teaser, not a hidden feature, so the entry has to be
   // reachable for its blurred preview to be seen at all. Only a flag that is
   // off outright removes the entry (`enabled` is false then).
-  const featureState = (r: NavRoute) =>
-    r.flag ? getFeature(r.flag) : { enabled: true, locked: false };
+  const featureState = (r: NavRoute) => routeFeatureState(r, getFeature);
   const visibleLinks = NAV_ROUTES.filter((l) => featureState(l).enabled);
   const { ungrouped, sections } = groupedRoutes(visibleLinks);
 

@@ -15,7 +15,7 @@ export const en = {
   "nav.contracts": "Recurring",
   "nav.goals": "Goals",
   "nav.health": "Health",
-  "nav.fire": "FIRE",
+  "nav.retirement": "Retirement",
   "nav.debt": "Liabilities",
   "nav.household": "Household",
   "nav.analysis": "Analysis",
@@ -1246,6 +1246,14 @@ export const en = {
   "health.unit.months": "months",
   "health.noData": "Not enough data yet",
 
+  // Retirement (/retirement): the FIRE planner and the pension projection are
+  // two answers to one question, so they are tabs of one page.
+  "retirement.title": "Retirement",
+  "retirement.subtitle":
+    "What you will live on once you stop working: your own capital, and what you are entitled to.",
+  "retirement.tab.fire": "FIRE",
+  "retirement.tab.pension": "Pension",
+
   // FIRE planner (ROADMAP #8)
   "fire.title": "Retirement / FIRE planner",
   "fire.subtitle": "How big a portfolio covers your expenses, and how long it takes to get there.",
@@ -1282,7 +1290,6 @@ export const en = {
   "duration.yearsShort": "{n}y",
   "duration.monthsShort": "{n}mo",
 
-  "nav.pension": "Retirement",
   "pension.save": "Save",
   "pension.saved": "Saved",
   "pension.edit": "Edit",
@@ -2182,7 +2189,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.contracts": "Wiederkehrend",
   "nav.goals": "Ziele",
   "nav.health": "Gesundheit",
-  "nav.fire": "FIRE",
+  "nav.retirement": "Ruhestand",
   "nav.debt": "Verbindlichkeiten",
   "nav.household": "Haushalt",
   "nav.analysis": "Analyse",
@@ -3415,6 +3422,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "health.unit.months": "Monate",
   "health.noData": "Noch nicht genug Daten",
 
+  // Ruhestand (/retirement): FIRE-Planer und Rentenhochrechnung sind zwei
+  // Antworten auf dieselbe Frage und damit Reiter einer Seite.
+  "retirement.title": "Ruhestand",
+  "retirement.subtitle":
+    "Wovon du lebst, wenn du aufhörst zu arbeiten: dein eigenes Kapital und das, was dir zusteht.",
+  "retirement.tab.fire": "FIRE",
+  "retirement.tab.pension": "Rente",
+
   // FIRE-Planer (ROADMAP #8)
   "fire.title": "Rente / FIRE-Planer",
   "fire.subtitle": "Wie groß dein Portfolio sein muss, um deine Ausgaben zu decken, und wie lange es dauert, dorthin zu kommen.",
@@ -3451,7 +3466,6 @@ export const de: Partial<Record<MessageKey, string>> = {
   "duration.yearsShort": "{n} J.",
   "duration.monthsShort": "{n} Mon.",
 
-  "nav.pension": "Rente",
   "pension.save": "Speichern",
   "pension.saved": "Gespeichert",
   "pension.edit": "Bearbeiten",
@@ -4351,7 +4365,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.contracts": "Recurrente",
   "nav.goals": "Metas",
   "nav.health": "Salud",
-  "nav.fire": "FIRE",
+  "nav.retirement": "Jubilación",
   "nav.debt": "Pasivos",
   "nav.household": "Hogar",
   "nav.analysis": "Análisis",
@@ -5580,6 +5594,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "health.unit.months": "meses",
   "health.noData": "Todavía no hay suficientes datos",
 
+  // Jubilación (/retirement): el planificador FIRE y la proyección de pensión
+  // responden a la misma pregunta, así que son pestañas de una sola página.
+  "retirement.title": "Jubilación",
+  "retirement.subtitle":
+    "De qué vivirás cuando dejes de trabajar: tu propio capital y aquello a lo que tienes derecho.",
+  "retirement.tab.fire": "FIRE",
+  "retirement.tab.pension": "Pensión",
+
   // Planificador FIRE (ROADMAP #8)
   "fire.title": "Jubilación / planificador FIRE",
   "fire.subtitle": "Cuánto patrimonio cubre tus gastos y cuánto tiempo te llevará conseguirlo.",
@@ -5616,7 +5638,6 @@ export const es: Partial<Record<MessageKey, string>> = {
   "duration.yearsShort": "{n} a.",
   "duration.monthsShort": "{n} m.",
 
-  "nav.pension": "Jubilación",
   "pension.save": "Guardar",
   "pension.saved": "Guardado",
   "pension.edit": "Editar",

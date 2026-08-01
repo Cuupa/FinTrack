@@ -1145,7 +1145,7 @@ sets, money that flows, plans and entitlements. Each rides the full store seam
   deliberately **without** `household_peer_ids()` — a Renteninformation is
   personal. `pension_settings` is a jsonb blob on the profile for the same
   reason `rebalance_targets` is one (four scalars, one row per user). Surface
-  is `/pension`, in the Planning nav group.
+  is the Pension tab of `/retirement`, in the Planning nav group.
 - **Recurring payments** (flag `contracts`): one card on `/spending`
   (`components/spending/recurring-card.tsx`) listing contracts AND planned
   cashflows together, because "what recurs?" is one question. The separate
@@ -1321,9 +1321,19 @@ Moved out of CLAUDE.md, which keeps the route table and the binding rules.
 - `/dividends` — dividend dashboard: income by month/year, personal yield +
   yield-on-cost, per-holding breakdown, 12-month forecast from trailing
   payouts (flag `dividends`)
-- `/pension` — statutory pension points + private/company policies projected
-  to a monthly retirement income (flag `pension`): summary tiles, the
-  assumptions form, the per-year Entgeltpunkte record and the policy register
+- `/retirement` — what you live on once you stop working, as two tabs of one
+  page (the old `/fire` and `/pension` routes redirect onto their tab with
+  `?tab=`). **FIRE** (flag `firePlanner`): Lean/regular/Fat FIRE numbers,
+  years-to-FI and the withdrawal Monte Carlo. **Pension** (flag `pension`):
+  statutory pension points + private/company policies projected to a monthly
+  retirement income — summary tiles, the assumptions form, the per-year
+  Entgeltpunkte record and the policy register.
+  Each half keeps its own flag and gates its own panel, so either can be off
+  or Pro-locked alone; the tab strip is built from whatever is enabled and the
+  page only falls back to `FeatureUnavailable` when both are off. The page
+  header is keyed on the active tab because `TourOverlay` resolves its steps
+  once per mount — a tour swapped in place would hunt for the other panel's
+  `data-tour` targets and come up empty.
 - `/simulation` — Monte Carlo simulation. The model choice ("My portfolio" /
   "Custom") is a **tab strip at the top of the Parameters card**, not a
   control inside the form (owner rule, round 25): the mode is what the whole

@@ -23,12 +23,13 @@ import {
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
+import { Tabs } from "@/components/ui/tabs";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import type { ChartScale } from "@/components/charts/performance-chart";
 import { useFeatureFlags, type FeatureState } from "@/lib/flags/flags-context";
-import { LockIcon, ProGate } from "@/components/billing/pro-teaser";
+import { ProGate } from "@/components/billing/pro-teaser";
 import { SimulationTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 type SimMode = "portfolio" | "custom";
@@ -401,30 +402,17 @@ export function MonteCarloPanel() {
             a padlock) and gates the panel as a whole — blurring only a
             fragment in the middle of the form read as a rendering glitch. */}
         {showModeToggle && (
-          <div
-            data-tour="sim-model"
-            className="mt-3 border-b border-zinc-200 dark:border-zinc-800"
-          >
-            <div role="tablist" className="-mb-px flex gap-6">
-              {MODE_TABS.map(({ value, labelKey, feature }) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={effectiveMode === value}
-                  onClick={() => setMode(value)}
-                  className={`flex items-center gap-1.5 border-b-2 pb-2.5 text-sm font-medium transition-colors ${
-                    effectiveMode === value
-                      ? "border-emerald-500 text-zinc-900 dark:text-white"
-                      : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                  }`}
-                >
-                  {t(labelKey)}
-                  {feature.locked && <LockIcon className="h-3.5 w-3.5 text-zinc-400" />}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Tabs
+            dataTour="sim-model"
+            className="mt-3"
+            value={effectiveMode}
+            onChange={setMode}
+            items={MODE_TABS.map(({ value, labelKey, feature }) => ({
+              value,
+              label: t(labelKey),
+              locked: feature.locked,
+            }))}
+          />
         )}
         {showModeToggle && (
           <p className="mt-2 text-xs text-zinc-500">

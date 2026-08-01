@@ -21,6 +21,7 @@ import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
 import type { LlmProviderId } from "@/lib/llm/types";
 import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Tabs } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { isStorageFullError } from "@/lib/store/errors";
@@ -190,26 +191,15 @@ export function SettingsView() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="border-b border-zinc-200 dark:border-zinc-800">
-        <div role="tablist" className="-mb-px flex gap-6">
-          {visibleTabs.map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === key}
-              onClick={() => setTab(key)}
-              className={`border-b-2 pb-2.5 text-sm font-medium transition-colors ${
-                activeTab === key
-                  ? "border-emerald-500 text-zinc-900 dark:text-white"
-                  : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              {t(TAB_LABEL_KEYS[key])}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs
+        value={activeTab}
+        onChange={setTab}
+        items={visibleTabs.map((key) => ({
+          value: key,
+          label: t(TAB_LABEL_KEYS[key]),
+          locked: key === "ai" && ai.locked,
+        }))}
+      />
 
       {activeTab === "general" && (
         <div className="space-y-6">

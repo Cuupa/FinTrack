@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { dismissTour, setLocale } from "./helpers";
 
-// Retirement provision (/pension, flag `pension`) in Guest Mode.
+// Retirement provision (the Pension tab of /retirement, flag `pension`) in
+// Guest Mode. The merge of /fire and /pension into one page is covered by
+// e2e/retirement.spec.ts; this spec is about the projection surface itself.
 //
 // The projection arithmetic is pinned by tests/pension.test.ts; what only a
 // browser can see is the wiring: that a typed year survives the store seam and
@@ -15,7 +17,7 @@ import { dismissTour, setLocale } from "./helpers";
 // is asserted here rather than worked around: points still have to add up.
 
 async function openPension(page: Page): Promise<void> {
-  await page.goto("/pension");
+  await page.goto("/retirement?tab=pension");
   await dismissTour(page);
 }
 
@@ -157,7 +159,7 @@ test("the page is German in the German locale", async ({ page }) => {
   await setLocale(page, "de");
   await openPension(page);
 
-  await expect(page.getByRole("heading", { level: 1, name: "Rente" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Ruhestand" })).toBeVisible();
   await expect(page.locator('[data-tour="pension-points"]')).toContainText("Entgeltpunkte");
   await expect(page.locator('[data-tour="pension-contracts"]')).toContainText(
     "Rentenversicherungen",

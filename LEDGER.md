@@ -36,9 +36,16 @@ ansehen laesst.
 | LLM-Kontext um die neuen Daten erweitern | LOW | noch nicht angefasst |
 | Download/Export um die restlichen Daten erweitern | LOW | noch nicht angefasst |
 | Monte Carlo: dynamische Entnahme, Stresszenarien, FIRE/Simulation vereinheitlichen | LOW | groesster Brocken, eigene Runde |
-| FIRE + Rente unter einem Navipunkt | LOW | braucht Tab-Seite + Redirect wie /spending -> /accounts |
+| Kontenauswahl als Multiselect | — | neu vom Owner, noch nicht angefasst |
 
 ## Erledigt
+
+### Runde 2026-08-01 (dritter Teil)
+
+| Task | Commit / Umfang |
+| --- | --- |
+| FIRE + Rente unter einem Navipunkt | `/retirement` mit Tab-Strip, `/fire` + `/pension` leiten weiter, `routeFeatureState` fuer Mehrfach-Flags, `e2e/retirement.spec.ts` |
+| Tab-Strip einmal statt viermal | `components/ui/tabs.tsx`, uebernommen von /analysis, Settings und dem Simulations-Modell |
 
 ### Runde 2026-08-01 (zweiter Teil)
 

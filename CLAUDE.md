@@ -448,7 +448,13 @@ subscriptions on 404/410. SW `push`/`notificationclick` handlers in
 Every flag-gated route degrades to `FeatureUnavailable` when its flag is off
 and to `<ProTeaser>` when the plan locks it. Nav metadata is declared once in
 `lib/nav/routes.tsx` (grouped everyday / invest / plan) and rendered by both
-`Sidebar` and `MobileNav` — never add a route to one of them by hand.
+`Sidebar` and `MobileNav` — never add a route to one of them by hand. A route
+carries `flags: FeatureFlag[]`, and `routeFeatureState` (same file) is the one
+place that turns them into `{enabled, locked}` for every renderer: an entry is
+visible while ANY of its flags is on and only reads as locked when EVERY
+feature still visible to the user is locked. Multiple flags exist because a
+page can merge two features (`/retirement`); its tab strip drops the tab whose
+flag is off, so the entry must not vanish with either half.
 
 | Route | Flag | What it is |
 | --- | --- | --- |
@@ -466,9 +472,8 @@ and to `<ProTeaser>` when the plan locks it. Nav metadata is declared once in
 | `/xray` | `xray` | ETF look-through to constituent stocks |
 | `/rebalancing` | `rebalance` | target weights + trade suggestions |
 | `/goals` | `goals` | named goals, composite goals, derived liability payoff goals |
-| `/fire` | `firePlanner` | FIRE numbers, years-to-FI, withdrawal Monte Carlo |
+| `/retirement` | `firePlanner` + `pension` | two tabs: FIRE numbers/years-to-FI/withdrawal Monte Carlo, and pension points + policies -> monthly retirement income. `/fire` and `/pension` redirect onto their tab |
 | `/health` | `finHealth` | financial-health gauges |
-| `/pension` | `pension` | pension points + policies -> monthly retirement income |
 | `/simulation` | `simulation` | Monte Carlo |
 | `/pricing` | `billing` | Free-vs-Pro comparison (MONETIZATION.md) |
 | `/login` | — | Supabase email/password + Google/GitHub OAuth |
@@ -535,7 +540,7 @@ client pages (see `app/assets/[id]/page.tsx`).
   `toursDone[tourId]`) is the one wrapper the named tours alias, and
   `PageHeaderWithTour` pairs a `PageHeader` with its "?" so **every primary
   page** carries the affordance next to its heading (/accounts, /spending,
-  /goals, /health, /fire, /debt, /household, /dividends, /xray,
+  /goals, /health, /retirement, /debt, /household, /dividends, /xray,
   /analysis; the dashboard, risk, rebalancing, simulation and asset-tags
   tours keep their existing card-level buttons). Its `ready` prop is the
   page's "content is on screen" condition (loaded, not errored, not locked)
@@ -680,3 +685,9 @@ client pages (see `app/assets/[id]/page.tsx`).
   sites handling it.
 - `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
   `footer` render prop (used for "+ New asset…" in the savings-plan form).
+- **One tab strip, one segmented control.** `Tabs` (`components/ui/tabs.tsx`)
+  switches the whole view under it (/analysis, /retirement, settings, the
+  simulation model picker) and renders the padlock for a locked tab itself;
+  `SegmentedControl` (`components/ui/primitives.tsx`) switches a control's
+  units (timeframe, scale). Four hand-rolled copies of the tab markup had
+  already drifted apart on the accessibility role — never inline a fifth.

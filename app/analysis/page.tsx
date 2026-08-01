@@ -9,6 +9,7 @@ import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
 import { TaxView } from "@/components/analysis/tax-view";
 import { RiskDisclaimer } from "@/components/ui/risk-disclaimer";
+import { Tabs } from "@/components/ui/tabs";
 import { ProTeaser } from "@/components/billing/pro-teaser";
 import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
 import { ANALYSIS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
@@ -83,24 +84,16 @@ function AnalysisPageInner() {
 
       {/* Primary tabs: underline style, visually distinct from the in-card
           breakdown pills. */}
-      <div data-tour="analysis-tabs" className="border-b border-zinc-200 dark:border-zinc-800">
-        <div className="-mb-px flex gap-6">
-          {tabs.map((key) => (
-            <button
-              key={key}
-              onClick={() => selectTab(key)}
-              aria-pressed={tab === key}
-              className={`border-b-2 pb-2.5 text-sm font-medium transition-colors ${
-                tab === key
-                  ? "border-emerald-500 text-zinc-900 dark:text-white"
-                  : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              {tr(key === "tax" ? "tax.tabLabel" : `analysis.tab.${key}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs
+        dataTour="analysis-tabs"
+        value={tab}
+        onChange={selectTab}
+        items={tabs.map((key) => ({
+          value: key,
+          label: tr(key === "tax" ? "tax.tabLabel" : `analysis.tab.${key}`),
+          locked: key === "risks" ? risk.locked : key === "tax" ? taxReport.locked : false,
+        }))}
+      />
 
       {tab === "distributions" && <AllocationView />}
       {tab === "returns" && <ReturnsView />}

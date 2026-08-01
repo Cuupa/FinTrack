@@ -74,7 +74,7 @@ to `/pricing`.
 Adopted on **every** surface that gates on a Pro flag: the /analysis risk and
 tax tabs (the tab itself stays visible), /dividends, /simulation, /xray,
 /rebalancing, the flag-gated pages /accounts, /spending, /goals, /health,
-/fire, /debt, /pension, the dashboard `AreaCards` (a locked area
+/retirement (per tab), /debt, the dashboard `AreaCards` (a locked area
 keeps its grid slot) and the self-gated cards (watchlist, savings plans,
 budgets — each split into a gate wrapper plus a `*Inner` holding the hooks).
 

@@ -16,7 +16,7 @@
 
 import type { ReactNode } from "react";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
-import type { FeatureFlag } from "@/lib/flags/flags-context";
+import type { FeatureFlag, FeatureState } from "@/lib/flags/flags-context";
 
 /** The areas of the product. The dashboard belongs to none of them: it is the
     home that summarises all three, so it sits above the first group header. */
@@ -35,7 +35,11 @@ export type NavRoute = {
   key: MessageKey;
   /** Children of a 24x24 stroke-only <svg>; the renderer supplies the frame. */
   icon: ReactNode;
-  flag?: FeatureFlag;
+  /** Flags gating the entry. A page that merges two features (/retirement)
+      lists both, because its tab strip simply drops the tab whose flag is off
+      — one entry that vanishes when either half is disabled would hide a
+      feature the user still has. */
+  flags?: FeatureFlag[];
   /** Candidate for the mobile tab bar, which only has room for a handful.
       Everything else stays reachable there through the "More" sheet. */
   primary?: boolean;
@@ -58,7 +62,7 @@ export const NAV_ROUTES: NavRoute[] = [
     key: "nav.accounts",
     // Wallet glyph: rounded card + clasp dot.
     icon: <path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm0 4h18M16 14h.01" />,
-    flag: "accounts",
+    flags: ["accounts"],
     primary: true,
     group: "everyday",
   },
@@ -72,7 +76,7 @@ export const NAV_ROUTES: NavRoute[] = [
     icon: <path d="M4 19V5m0 14h16M7 15l4-5 3 3 5-6" />,
     // Same flag as /spending: the cards and the data are the same, and a flag
     // of its own would let the nav offer a page whose every card is a teaser.
-    flag: "spending",
+    flags: ["spending"],
     primary: true,
     group: "everyday",
   },
@@ -81,7 +85,7 @@ export const NAV_ROUTES: NavRoute[] = [
     key: "nav.debt",
     // Downward trending bar chart glyph: paying a balance down over time.
     icon: <path d="M4 20h16M6 20V13l4 2 4-6 4 3v8" />,
-    flag: "debtPayoff",
+    flags: ["debtPayoff"],
     group: "everyday",
   },
   {
@@ -89,7 +93,7 @@ export const NAV_ROUTES: NavRoute[] = [
     key: "nav.household",
     // Two-person glyph: shared/collaborative access.
     icon: <path d="M9 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 12v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M17 5a3 3 0 0 1 0 6M21 20v-2a5 5 0 0 0-3.5-4.8" />,
-    flag: "household",
+    flags: ["household"],
     group: "everyday",
   },
 
@@ -118,21 +122,21 @@ export const NAV_ROUTES: NavRoute[] = [
     key: "nav.dividends",
     // Coin/payout glyph: circle + € strokes.
     icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM15 9.5A3.5 3.5 0 0 0 9 12a3.5 3.5 0 0 0 6 2.5M7.5 11h4m-4 2h4" />,
-    flag: "dividends",
+    flags: ["dividends"],
     group: "invest",
   },
   {
     href: "/xray",
     key: "nav.xray",
     icon: <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,
-    flag: "xray",
+    flags: ["xray"],
     group: "invest",
   },
   {
     href: "/rebalancing",
     key: "nav.rebalance",
     icon: <path d="M12 3v18M5 7h14M7 7l-3 6a3 3 0 0 0 6 0L7 7zm10 0l-3 6a3 3 0 0 0 6 0l-3-6z" />,
-    flag: "rebalance",
+    flags: ["rebalance"],
     group: "invest",
   },
 
@@ -142,23 +146,20 @@ export const NAV_ROUTES: NavRoute[] = [
     key: "nav.goals",
     // Target glyph: three concentric rings + center dot.
     icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />,
-    flag: "goals",
+    flags: ["goals"],
     group: "plan",
   },
+  // FIRE and the statutory pension were two entries answering one question:
+  // what do I live on once I stop working. Side by side in the same group they
+  // read as rival planners, and the German labels ("FIRE", "Rente") gave no
+  // hint that the second one is where your entitlements live. One entry, two
+  // tabs — and it survives either flag being off on its own.
   {
-    href: "/fire",
-    key: "nav.fire",
-    // Flag-on-a-pole glyph: reaching the goal.
-    icon: <path d="M6 3v18M6 4h11l-3 4 3 4H6" />,
-    flag: "firePlanner",
-    group: "plan",
-  },
-  {
-    href: "/pension",
-    key: "nav.pension",
-    // Seated-figure glyph: drawing a pension rather than earning a salary.
+    href: "/retirement",
+    key: "nav.retirement",
+    // Seated-figure glyph: drawing an income rather than earning a salary.
     icon: <path d="M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 21v-4a5 5 0 0 1 5-5h0a5 5 0 0 1 5 5v4M4 21h16" />,
-    flag: "pension",
+    flags: ["firePlanner", "pension"],
     group: "plan",
   },
   {
@@ -166,17 +167,36 @@ export const NAV_ROUTES: NavRoute[] = [
     key: "nav.health",
     // Pulse glyph: heartbeat line through a circle.
     icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 12h3l1.5-4 3 8 1.5-4H18" />,
-    flag: "finHealth",
+    flags: ["finHealth"],
     group: "plan",
   },
   {
     href: "/simulation",
     key: "nav.simulation",
     icon: <path d="M9 17V9m4 8V5m4 12v-6M4 21h16" />,
-    flag: "simulation",
+    flags: ["simulation"],
     group: "plan",
   },
 ];
+
+/**
+ * Whether a nav entry is shown, and whether it carries a padlock.
+ *
+ * Both renderers used to inline this, which was fine while every route had at
+ * most one flag. With `/retirement` gating on two, "visible" and "locked" stop
+ * being the same question: the entry belongs in the nav while ANY of its
+ * features is on, and it is only a paywall teaser when EVERY feature the user
+ * can still see is locked. A route whose flags are all off disappears
+ * outright, exactly as a single off flag always did.
+ */
+export function routeFeatureState(
+  route: NavRoute,
+  getFeature: (flag: FeatureFlag) => FeatureState,
+): FeatureState {
+  if (!route.flags?.length) return { enabled: true, locked: false };
+  const live = route.flags.map(getFeature).filter((s) => s.enabled);
+  return { enabled: live.length > 0, locked: live.every((s) => s.locked) };
+}
 
 /** A group paired with the routes of it that survived flag filtering. */
 export type NavSection = { id: NavGroup; key: MessageKey; routes: NavRoute[] };
