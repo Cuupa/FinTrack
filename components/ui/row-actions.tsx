@@ -85,6 +85,33 @@ export function DeleteAction({ label, onClick, disabled }: ActionProps) {
   );
 }
 
+/**
+ * Promotes a one-off row into a recurring entry. A circular arrow, because
+ * that is what "it comes back" looks like everywhere else.
+ *
+ * An icon like the rest even though it CREATES something rather than editing
+ * this row: a labelled button parked between two icons was the one style
+ * break left in the ledger, and "same action, three visual weights" is
+ * exactly what this file exists to stop.
+ */
+export function RecurringAction({ label, onClick, disabled }: ActionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={QUIET}
+      aria-label={label}
+      title={label}
+    >
+      <Icon>
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+        <path d="M21 3v6h-6" />
+      </Icon>
+    </button>
+  );
+}
+
 /** Pause when running, resume when paused -- one button, `paused` picks the
  *  glyph, the caller picks the word. */
 export function PauseAction({

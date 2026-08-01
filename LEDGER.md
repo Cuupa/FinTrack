@@ -39,8 +39,51 @@ subworker; commit only the paths you claimed.
 | Vereinheitlichung: Tabellen-Shell | HIGH | teilweise (3 von 22) | debt-view, spending-view, accounts-view auf Table/Thead/Th/Tr/Td + useSort |
 | Tabellen-Shell Batch 2 (nutzerseitig) | HIGH | done | debt-repayments, recurring/[kind]/[id], account-balances-dialog, valuation-section, recurring-card, savings-plans-card, asset-detail, shared-portfolio-view, e2e/table-shell.spec.ts |
 | Tabellen-Shell Batch 3 (/admin) | HIGH | done (nicht browser-verifiziert, /admin braucht Supabase) | app/admin/{billing,flags,usage,audit,errors,prices} |
+| Ein-/Ausgaben: 4 gemeldete Punkte | HIGH | done | spending-view, ui/row-actions (RecurringAction), dictionaries, e2e/income.spec.ts |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Einnahmen sind keine gespiegelten Ausgaben (2026-08-01)
+
+Vier gemeldete Punkte, alle in `spending-view` plus ein neues Row-Action-Icon.
+
+1. **Die Maske aendert sich jetzt beim Umschalten.** Vorher war sie fuer
+   Ausgabe und Einnahme zeichengleich.
+2. **"Empfaenger" wird bei Einnahmen zu "Zahler"** (`spending.form.payerLabel`,
+   Platzhalter "z. B. Arbeitgeber", en/de/es). Geld raus hat einen Empfaenger,
+   Geld rein eine Quelle - den Arbeitgeber beim Gehalt "Empfaenger" zu nennen
+   war schlicht verkehrt herum.
+3. **"Umbuchung auf" faellt bei Einnahmen weg.** Das Feld beschreibt Geld, das
+   DIESES Konto Richtung eines anderen eigenen verlaesst; bei einer Einnahme
+   kommt es an, die Frage hatte also keine Antwort. Ein vor dem Umschalten
+   gesetzter Wert wird geleert, sonst wuerde aus einem unsichtbaren Feld
+   heraus gebucht. Dieselbe Umbuchung wird als Ausgabe auf dem Konto erfasst,
+   das sie tatsaechlich verlaesst.
+4. **"Als wiederkehrend anlegen" gibt es jetzt auch bei Einnahmen.** Es fehlte
+   dort mit Grund: ein `Contract` ist eine Zahlungs-Verpflichtung (unsigniert,
+   immer als Geld raus dargestellt), ein Gehalt darin haette wie eine
+   Dauerlast gelesen. Loesung ist nicht, die Regel zu beugen, sondern die
+   passende Entitaet zu nehmen: Einnahmen werden zu einem `PlannedCashflow`
+   (signiert), Ausgaben bleiben ein Contract. Die Karte fuehrt beide ohnehin
+   zusammen, der Nutzer sieht den Unterschied nie. Angeboten wird es jetzt
+   fuer jede Zeile, die noch an keinem wiederkehrenden Eintrag haengt.
+5. **Der Stilbruch ist weg.** Die Aktion war ein beschrifteter Textbutton
+   zwischen zwei Icons - jetzt `RecurringAction`, ein Kreispfeil, mit dem
+   bisherigen Wort als Accessible Name und Tooltip. Titel und Text der
+   Rueckfrage sind neutral formuliert ("Eintrag" statt "Zahlung"), weil sie
+   jetzt auch fuer Einnahmen erscheinen.
+
+Verifiziert im Browser auf Deutsch bei 1080p (Zahler + kein Umbuchen bei
+Einnahme, Empfaenger + Umbuchen bei Ausgabe, drei Icons auf beiden
+Ledger-Zeilen, null Konsolenmeldungen). Neu `e2e/income.spec.ts` (2 Tests).
+1092 Unit-Tests, 54 E2E gruen.
+
+**Nicht angefasst, bewusst:** der Bearbeiten-Dialog zeigt "Umbuchung auf" auch
+bei Einnahmen weiter an. Dort kann eine BESTEHENDE Zeile den Wert schon
+tragen, und ein Feld auszublenden, das etwas enthaelt, verwirft still
+Nutzerdaten. Ebenso bleibt die Ledger-Spalte "Empfaenger" - die Tabelle
+mischt beide Richtungen, ein Wort fuer beide gibt es im Deutschen nicht ohne
+Behoerdendeutsch.
 
 ## Erledigt: Tabellen-Shell, Batch 3 - /admin (2026-08-01)
 

@@ -38,7 +38,7 @@ import { ImportSpending } from "./import-spending";
 // recurs"; the analysis of where the money goes lives one page over.
 import { RecurringCard } from "./recurring-card";
 import { PLANNED_INTERVALS, type PlannedInterval, type SpendingTransaction } from "@/lib/types";
-import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
+import { DeleteAction, EditAction, RecurringAction, RowActions } from "@/components/ui/row-actions";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -104,16 +104,42 @@ export function SpendingView() {
   const [editError, setEditError] = useState<string | null>(null);
   const [toContract, setToContract] = useState<SpendingTransaction | null>(null);
 
+  /** Money in reads differently from money out, so the form follows the tab. */
+  const isIncome = txType === "income";
+
   /**
-   * Turns one booking into a monthly contract, prefilled from the row the user
-   * clicked, and links the booking to it so the recurring detector stops
+   * Turns one booking into a monthly recurring entry, prefilled from the row
+   * the user clicked, and links the booking to it so the detector stops
    * offering the same charge as a suggestion.
    *
    * Monthly is assumed because a single booking carries no cadence; the
-   * contracts page is where the interval, the booking account and the transfer
+   * entry's own page is where the interval, the account and the transfer
    * target get adjusted.
    */
-  async function makeContract(tx: SpendingTransaction) {
+  async function makeRecurring(tx: SpendingTransaction) {
+    // Income promotes to a planned cashflow, not a contract. A Contract is a
+    // commitment to PAY (unsigned amount, always rendered as money out), so a
+    // salary filed as one would read as a standing charge -- which is why this
+    // action used to be withheld from income rows entirely. The recurring card
+    // merges both entities anyway, so the user never sees the distinction.
+    if (tx.amount > 0) {
+      const plan = await addPlannedCashflow({
+        name: tx.payee,
+        accountId: tx.accountId,
+        categoryId: tx.categoryId,
+        amount: tx.amount,
+        interval: "MONTHLY",
+        startDate: tx.date,
+        endDate: null,
+        // Booking resumes after the one that seeded it, so this one is not
+        // posted a second time.
+        lastBookedDate: tx.date,
+        transferAccountId: null,
+        note: null,
+      });
+      await updateSpendingTransaction(tx.id, { plannedId: plan.id });
+      return;
+    }
     const contract = await addContract({
       name: tx.payee,
       amount: Math.abs(tx.amount),
@@ -122,8 +148,6 @@ export function SpendingView() {
       cancellationNoticeDays: null,
       categoryId: tx.categoryId,
       accountId: tx.accountId,
-      // Booking resumes after the charge that seeded it, so this one is not
-      // posted a second time.
       bookingStartDate: tx.date,
       lastBookedDate: tx.date,
       targetAccountId: null,
@@ -231,7 +255,13 @@ export function SpendingView() {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800">
               <SegmentedControl
                 value={txType}
-                onChange={(v) => setTxType(v)}
+                onChange={(v) => {
+                  setTxType(v);
+                  // The transfer picker is hidden on income; a value typed
+                  // before the switch would otherwise still be submitted from
+                  // a field the user can no longer see.
+                  if (v === "income") setTransferAccountId("");
+                }}
                 options={[
                   { value: "expense", label: t("spending.form.type.expense") },
                   { value: "income", label: t("spending.form.type.income") },
@@ -303,16 +333,20 @@ export function SpendingView() {
                   />
                 </div>
               )}
+              {/* Money out has a recipient, money in has a source. One field,
+                  but calling a salary's employer the "payee" was backwards. */}
               <div>
                 <label className="text-sm font-medium" htmlFor="spending-payee">
-                  {t("spending.form.payeeLabel")}
+                  {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
                 </label>
                 <input
                   id="spending-payee"
                   value={payee}
                   onChange={(e) => setPayee(e.target.value)}
                   onBlur={onPayeeBlur}
-                  placeholder={t("spending.form.payeePlaceholder")}
+                  placeholder={t(
+                    isIncome ? "spending.form.payerPlaceholder" : "spending.form.payeePlaceholder",
+                  )}
                   className={inputCls}
                   data-private
                 />
@@ -349,7 +383,14 @@ export function SpendingView() {
               {/* Same control and same words as the edit dialog: marking a
                   booking as a transfer keeps it out of the expense figures and
                   moves the other account instead, which is what makes a rate
-                  actually retire a debt. */}
+                  actually retire a debt.
+
+                  Expenses only. "Transfer TO" describes money leaving THIS
+                  account for another of your own; on an income booking the
+                  money is arriving, so the field asked a question with no
+                  answer. The same move is recorded as an expense from the
+                  account it actually leaves. */}
+              {!isIncome && (
               <div>
                 <label className="text-sm font-medium">{t("spending.edit.transferLabel")}</label>
                 <SelectMenu
@@ -370,6 +411,7 @@ export function SpendingView() {
                     : t("spending.edit.transferHintOff")}
                 </p>
               </div>
+              )}
               <div className="sm:col-span-2 lg:col-span-3">
                 <label className="text-sm font-medium" htmlFor="spending-note">
                   {t("spending.form.noteLabel")}
@@ -466,15 +508,16 @@ export function SpendingView() {
                     </Td>
                     <Td>
                       <RowActions>
-                        {/* Offered only on an expense that is not already
-                            tied to a contract: turning income, or a
-                            contract's own booking, into a contract is
-                            meaningless. Stays a labelled button: it creates
-                            a new entity rather than acting on this row. */}
-                        {contractsEnabled && tx.amount < 0 && !tx.recurringId && (
-                          <Button size="sm" variant="ghost" onClick={() => setToContract(tx)}>
-                            {t("spending.list.makeContract")}
-                          </Button>
+                        {/* Withheld only from a row that already belongs to a
+                            recurring entry -- the charge is registered
+                            somewhere, so offering to register it again is
+                            noise. Income qualifies exactly like an expense;
+                            `makeRecurring` picks the right entity. */}
+                        {contractsEnabled && !tx.recurringId && !tx.plannedId && (
+                          <RecurringAction
+                            label={t("spending.list.makeContract")}
+                            onClick={() => setToContract(tx)}
+                          />
                         )}
                         <EditAction
                           label={t("spending.list.edit")}
@@ -565,7 +608,7 @@ export function SpendingView() {
         onConfirm={() => {
           const tx = toContract;
           setToContract(null);
-          if (tx) void makeContract(tx);
+          if (tx) void makeRecurring(tx);
         }}
         onCancel={() => setToContract(null)}
       />
