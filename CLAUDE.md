@@ -407,6 +407,25 @@ FX-convert) always beats a wrong instrument in the right currency.
   be subtracted again (a day-one portfolio once read −100%).
 - `monte-carlo.ts` — pure simulation, run off-thread via
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
+  Decumulation lives in `withdrawal.ts` (pure): four strategies (`fixed`,
+  `percentOfPortfolio`, `guardrails`, `floorCeiling`), asked once per
+  retirement YEAR, plus sequence-of-returns stress (`earlyCrash`,
+  `lostDecade`) that only bites once withdrawals start. **The comparison
+  replays every strategy over the SAME drawn market path** — comparing across
+  different draws would measure the draw, not the strategy. `compareStrategies`
+  is opt-in and the result section is omitted when it was not asked for.
+- **One Monte Carlo runner**: `useMonteCarloRun` (`lib/simulation/`) owns the
+  param hash, the seed, the cache read/write, the worker and the main-thread
+  fallback for BOTH /simulation and the FIRE tab. They used to carry two
+  copies with *different* hash field sets, so neither could reuse the other's
+  stored run and a new parameter silently returned a stale result. Any field
+  that changes the result must be in `hashSimParams`.
+- The strategy pickers, the per-strategy steps and the comparison table are
+  `WithdrawalStrategyPanel` / `WithdrawalComparison`
+  (`components/simulation/withdrawal-strategy-panel.tsx`), shared by both
+  surfaces. Pickers+steps sit with the parameters, the comparison with the
+  results. The table never crowns a winner: the strategies trade the same risk
+  against each other, so it shows both sides.
 - `dividends.ts` — dividends from **real events** (`/api/dividends`, Yahoo)
   scaled by shares held on each pay date; accumulating funds show none. The
   hinted listing is **authoritative in `dividendsByQuery`**: if it resolves,

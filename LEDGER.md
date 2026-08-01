@@ -32,7 +32,6 @@ ansehen laesst.
 
 | Task | Prio | Warum noch offen |
 | --- | --- | --- |
-| Monte Carlo: dynamische Entnahme, Stresszenarien, FIRE/Simulation vereinheitlichen | LOW | groesster Brocken, eigene Runde |
 
 ## Erledigt
 
@@ -45,6 +44,7 @@ ansehen laesst.
 | Kontenauswahl ist ein Multiselect | `SelectMenu` bekommt `multiple`, leere Auswahl = alle Konten, `e2e/accounts-unified.spec.ts` erweitert |
 | LLM-Kontext kennt den Rest der App | Buchungen, Budgets, Wiederkehrendes, Ziele, Rente, FIRE, Watchlist, Tags — je hinter dem eigenen Flag; `/datenschutz` nachgezogen |
 | Export umfasst alles | Ein Abschnitt je Entitaet, leere fallen weg; `parseFinTrack` begrenzt Abschnitte; JSON traegt den API-Key nicht mehr; `hasExportableData` statt "nur Depot"; `tests/export.test.ts` |
+| Monte Carlo: Entnahmestrategien, Stress, ein Runner | `lib/finance/withdrawal.ts` (4 Strategien + Sequenzstress), Vergleich ueber identische Pfade, `useMonteCarloRun` fuer /simulation UND FIRE, `WithdrawalStrategyPanel`/`WithdrawalComparison`, `tests/withdrawal.test.ts` |
 | Demo-Account ist nicht mehr nur ein Depot | `demo_user.sql`: Konten inkl. Kredit, 18 Monate Buchungen, Budgets, Vertraege, Planung, Ziele, Sparplaene, Watchlist, Tags, Rente. **Noch nicht ausgefuehrt** (lokal kein Postgres, kein Docker-Daemon) |
 
 ### Runde 2026-08-01 (zweiter Teil)

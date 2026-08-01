@@ -1247,6 +1247,62 @@ export const en = {
   "health.unit.months": "months",
   "health.noData": "Not enough data yet",
 
+  // Withdrawal strategies + sequence-of-returns stress, shared by /simulation
+  // and the FIRE tab. The steps are deliberately imperative: a strategy you
+  // cannot execute is a chart, not a plan.
+  "withdrawal.strategyLabel": "Withdrawal strategy",
+  "withdrawal.strategy.fixed": "Fixed amount",
+  "withdrawal.strategy.fixed.desc":
+    "The classic rule: set the amount on the day you retire and keep drawing it. Steady income, and the only strategy that can run the portfolio dry.",
+  "withdrawal.strategy.percentOfPortfolio": "Share of the portfolio",
+  "withdrawal.strategy.percentOfPortfolio.desc":
+    "Always the same percentage of what is actually left. It can never run out, but your income falls with the market.",
+  "withdrawal.strategy.guardrails": "Guardrails",
+  "withdrawal.strategy.guardrails.desc":
+    "Keep last year's income until the rate drifts too far, then step it up or down. Few changes, and each one small.",
+  "withdrawal.strategy.floorCeiling": "Floor and ceiling",
+  "withdrawal.strategy.floorCeiling.desc":
+    "Follows the portfolio, but never below a floor or above a ceiling. A compromise between a steady income and one that adjusts.",
+  "withdrawal.stepsTitle": "What you do",
+  "withdrawal.steps.fixed.1": "At retirement, take your withdrawal rate times the portfolio.",
+  "withdrawal.steps.fixed.2": "Transfer that same amount every year, whatever the market did.",
+  "withdrawal.steps.fixed.3":
+    "Check the balance once a year anyway: if it keeps falling, you need a different plan, not a smaller month.",
+  "withdrawal.steps.percentOfPortfolio.1":
+    "Pick one day a year and note the portfolio value on it.",
+  "withdrawal.steps.percentOfPortfolio.2": "Multiply it by your rate. That is next year's income.",
+  "withdrawal.steps.percentOfPortfolio.3":
+    "Hold a cash buffer of one to two years, so a bad year cuts the calculation and not your groceries.",
+  "withdrawal.steps.guardrails.1":
+    "Once a year, divide last year's income by the current portfolio value.",
+  "withdrawal.steps.guardrails.2":
+    "Inside the band around your target rate, change nothing at all.",
+  "withdrawal.steps.guardrails.3":
+    "Outside it, move the income by one step: down when the rate is too high, up when it is too low.",
+  "withdrawal.steps.floorCeiling.1":
+    "Work out your rate times the current portfolio, as you would for a share of the portfolio.",
+  "withdrawal.steps.floorCeiling.2":
+    "Compare it against your floor and your ceiling, both set from the first year's income.",
+  "withdrawal.steps.floorCeiling.3":
+    "Draw the figure in between. Set the floor at what you genuinely need, not at what you would like.",
+  "withdrawal.stressLabel": "Stress scenario",
+  "withdrawal.stress.none": "No stress",
+  "withdrawal.stress.none.desc": "Returns fall in whatever order the simulation draws them.",
+  "withdrawal.stress.earlyCrash": "Crash at the start",
+  "withdrawal.stress.earlyCrash.desc":
+    "A heavy loss in the first month of retirement. The same returns, in the worst possible order.",
+  "withdrawal.stress.lostDecade": "Lost decade",
+  "withdrawal.stress.lostDecade.desc":
+    "The first ten years of retirement grow by nothing at all, while you are already drawing.",
+  "withdrawal.compareTitle": "Every strategy, same markets",
+  "withdrawal.compareHint":
+    "All four run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with an income that moves.",
+  "withdrawal.col.strategy": "Strategy",
+  "withdrawal.col.success": "Lasts",
+  "withdrawal.col.income": "Income / year",
+  "withdrawal.col.worstYear": "Worst year",
+  "withdrawal.col.leftOver": "Left over",
+
   // Retirement (/retirement): the FIRE planner and the pension projection are
   // two answers to one question, so they are tabs of one page.
   "retirement.title": "Retirement",
@@ -3424,6 +3480,66 @@ export const de: Partial<Record<MessageKey, string>> = {
   "health.unit.months": "Monate",
   "health.noData": "Noch nicht genug Daten",
 
+  // Entnahmestrategien + Renditereihenfolge-Stress, geteilt von /simulation
+  // und dem FIRE-Reiter. Die Schritte sind bewusst Anweisungen: eine Strategie,
+  // die du nicht ausführen kannst, ist ein Diagramm und kein Plan.
+  "withdrawal.strategyLabel": "Entnahmestrategie",
+  "withdrawal.strategy.fixed": "Fester Betrag",
+  "withdrawal.strategy.fixed.desc":
+    "Die klassische Regel: Betrag am Tag des Ruhestands festlegen und immer weiter entnehmen. Stabiles Einkommen, und die einzige Strategie, die das Depot leerlaufen lassen kann.",
+  "withdrawal.strategy.percentOfPortfolio": "Anteil am Depot",
+  "withdrawal.strategy.percentOfPortfolio.desc":
+    "Immer derselbe Prozentsatz von dem, was tatsächlich noch da ist. Kann nie ausgehen, dafür sinkt dein Einkommen mit dem Markt.",
+  "withdrawal.strategy.guardrails": "Leitplanken",
+  "withdrawal.strategy.guardrails.desc":
+    "Du behältst das Einkommen des Vorjahres, bis die Entnahmequote zu weit abdriftet, und passt es dann an. Wenige Änderungen, jede davon klein.",
+  "withdrawal.strategy.floorCeiling": "Unter- und Obergrenze",
+  "withdrawal.strategy.floorCeiling.desc":
+    "Folgt dem Depot, aber nie unter eine Untergrenze und nie über eine Obergrenze. Der Kompromiss zwischen stabilem und mitlaufendem Einkommen.",
+  "withdrawal.stepsTitle": "Was du tust",
+  "withdrawal.steps.fixed.1":
+    "Zum Ruhestand nimmst du deine Entnahmerate mal dem Depotwert.",
+  "withdrawal.steps.fixed.2":
+    "Diesen Betrag überweist du dir jedes Jahr, egal was der Markt gemacht hat.",
+  "withdrawal.steps.fixed.3":
+    "Schau trotzdem einmal im Jahr auf den Stand: sinkt er dauerhaft, brauchst du einen anderen Plan und keinen knapperen Monat.",
+  "withdrawal.steps.percentOfPortfolio.1":
+    "Such dir einen Stichtag im Jahr und notier den Depotwert an diesem Tag.",
+  "withdrawal.steps.percentOfPortfolio.2":
+    "Multiplizier ihn mit deiner Rate. Das ist dein Einkommen für das nächste Jahr.",
+  "withdrawal.steps.percentOfPortfolio.3":
+    "Halt einen Puffer von ein bis zwei Jahresausgaben in bar, damit ein schlechtes Jahr die Rechnung kürzt und nicht deinen Einkauf.",
+  "withdrawal.steps.guardrails.1":
+    "Einmal im Jahr teilst du das Einkommen des Vorjahres durch den aktuellen Depotwert.",
+  "withdrawal.steps.guardrails.2":
+    "Liegt das Ergebnis im Band um deine Zielrate, änderst du gar nichts.",
+  "withdrawal.steps.guardrails.3":
+    "Liegt es außerhalb, gehst du einen Schritt: runter, wenn die Quote zu hoch ist, rauf, wenn sie zu niedrig ist.",
+  "withdrawal.steps.floorCeiling.1":
+    "Rechne deine Rate mal dem aktuellen Depotwert, wie beim Anteil am Depot.",
+  "withdrawal.steps.floorCeiling.2":
+    "Vergleich das mit deiner Unter- und Obergrenze, beide vom Einkommen des ersten Jahres abgeleitet.",
+  "withdrawal.steps.floorCeiling.3":
+    "Entnimm den Wert dazwischen. Setz die Untergrenze auf das, was du wirklich brauchst, nicht auf das, was du gern hättest.",
+  "withdrawal.stressLabel": "Stressszenario",
+  "withdrawal.stress.none": "Ohne Stress",
+  "withdrawal.stress.none.desc":
+    "Die Renditen fallen in der Reihenfolge an, die die Simulation zieht.",
+  "withdrawal.stress.earlyCrash": "Crash zu Beginn",
+  "withdrawal.stress.earlyCrash.desc":
+    "Ein schwerer Verlust im ersten Monat des Ruhestands. Dieselben Renditen, in der denkbar schlechtesten Reihenfolge.",
+  "withdrawal.stress.lostDecade": "Verlorenes Jahrzehnt",
+  "withdrawal.stress.lostDecade.desc":
+    "Die ersten zehn Jahre im Ruhestand wachsen überhaupt nicht, während du schon entnimmst.",
+  "withdrawal.compareTitle": "Alle Strategien, gleiche Märkte",
+  "withdrawal.compareHint":
+    "Alle vier laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem Einkommen, das schwankt.",
+  "withdrawal.col.strategy": "Strategie",
+  "withdrawal.col.success": "Reicht",
+  "withdrawal.col.income": "Einkommen / Jahr",
+  "withdrawal.col.worstYear": "Schlechtestes Jahr",
+  "withdrawal.col.leftOver": "Rest",
+
   // Ruhestand (/retirement): FIRE-Planer und Rentenhochrechnung sind zwei
   // Antworten auf dieselbe Frage und damit Reiter einer Seite.
   "retirement.title": "Ruhestand",
@@ -5596,6 +5712,65 @@ export const es: Partial<Record<MessageKey, string>> = {
   "health.gauge.netWorthToIncome.hint": "Patrimonio neto como múltiplo de un año de ingresos.",
   "health.unit.months": "meses",
   "health.noData": "Todavía no hay suficientes datos",
+
+  // Estrategias de retiro + estrés de secuencia de rentabilidades, compartido
+  // por /simulation y la pestaña FIRE. Los pasos son imperativos a propósito:
+  // una estrategia que no puedes ejecutar es un gráfico, no un plan.
+  "withdrawal.strategyLabel": "Estrategia de retiro",
+  "withdrawal.strategy.fixed": "Importe fijo",
+  "withdrawal.strategy.fixed.desc":
+    "La regla clásica: fijas el importe el día en que te jubilas y lo retiras siempre. Ingreso estable, y la única estrategia que puede agotar la cartera.",
+  "withdrawal.strategy.percentOfPortfolio": "Porcentaje de la cartera",
+  "withdrawal.strategy.percentOfPortfolio.desc":
+    "Siempre el mismo porcentaje de lo que queda de verdad. Nunca se agota, pero tu ingreso baja con el mercado.",
+  "withdrawal.strategy.guardrails": "Barreras",
+  "withdrawal.strategy.guardrails.desc":
+    "Mantienes el ingreso del año anterior hasta que la tasa se desvía demasiado, y entonces lo ajustas. Pocos cambios, y cada uno pequeño.",
+  "withdrawal.strategy.floorCeiling": "Suelo y techo",
+  "withdrawal.strategy.floorCeiling.desc":
+    "Sigue a la cartera, pero nunca por debajo de un suelo ni por encima de un techo. El punto medio entre un ingreso estable y uno que se ajusta.",
+  "withdrawal.stepsTitle": "Qué haces",
+  "withdrawal.steps.fixed.1": "Al jubilarte, toma tu tasa de retiro por el valor de la cartera.",
+  "withdrawal.steps.fixed.2":
+    "Transfiere ese mismo importe cada año, pase lo que pase en el mercado.",
+  "withdrawal.steps.fixed.3":
+    "Aun así revisa el saldo una vez al año: si baja de forma sostenida, necesitas otro plan, no un mes más ajustado.",
+  "withdrawal.steps.percentOfPortfolio.1":
+    "Elige un día fijo al año y anota el valor de la cartera ese día.",
+  "withdrawal.steps.percentOfPortfolio.2":
+    "Multiplícalo por tu tasa. Ese es tu ingreso del año siguiente.",
+  "withdrawal.steps.percentOfPortfolio.3":
+    "Mantén un colchón de uno o dos años de gastos en efectivo, para que un mal año recorte el cálculo y no tu compra.",
+  "withdrawal.steps.guardrails.1":
+    "Una vez al año, divide el ingreso del año pasado entre el valor actual de la cartera.",
+  "withdrawal.steps.guardrails.2":
+    "Si queda dentro de la banda alrededor de tu tasa objetivo, no cambies nada.",
+  "withdrawal.steps.guardrails.3":
+    "Si queda fuera, mueve el ingreso un paso: hacia abajo cuando la tasa es alta, hacia arriba cuando es baja.",
+  "withdrawal.steps.floorCeiling.1":
+    "Calcula tu tasa por el valor actual de la cartera, igual que en el porcentaje de la cartera.",
+  "withdrawal.steps.floorCeiling.2":
+    "Compáralo con tu suelo y tu techo, ambos derivados del ingreso del primer año.",
+  "withdrawal.steps.floorCeiling.3":
+    "Retira la cifra intermedia. Pon el suelo en lo que necesitas de verdad, no en lo que te gustaría.",
+  "withdrawal.stressLabel": "Escenario de estrés",
+  "withdrawal.stress.none": "Sin estrés",
+  "withdrawal.stress.none.desc":
+    "Las rentabilidades llegan en el orden que saca la simulación.",
+  "withdrawal.stress.earlyCrash": "Caída al principio",
+  "withdrawal.stress.earlyCrash.desc":
+    "Una pérdida fuerte en el primer mes de jubilación. Las mismas rentabilidades, en el peor orden posible.",
+  "withdrawal.stress.lostDecade": "Década perdida",
+  "withdrawal.stress.lostDecade.desc":
+    "Los primeros diez años de jubilación no crecen nada, mientras ya estás retirando.",
+  "withdrawal.compareTitle": "Todas las estrategias, los mismos mercados",
+  "withdrawal.compareHint":
+    "Las cuatro corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso que se mueve.",
+  "withdrawal.col.strategy": "Estrategia",
+  "withdrawal.col.success": "Aguanta",
+  "withdrawal.col.income": "Ingreso / año",
+  "withdrawal.col.worstYear": "Peor año",
+  "withdrawal.col.leftOver": "Resto",
 
   // Jubilación (/retirement): el planificador FIRE y la proyección de pensión
   // responden a la misma pregunta, así que son pestañas de una sola página.

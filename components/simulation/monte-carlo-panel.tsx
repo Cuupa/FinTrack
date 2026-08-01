@@ -4,7 +4,7 @@
 // runs 1,000+ paths in a Web Worker, and renders the probability fan plus
 // best/median/worst outcomes. Initial capital defaults to current net worth.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
@@ -13,17 +13,20 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { estimatePortfolioModel, type PortfolioModel } from "@/lib/finance/stats";
 import { monthlyContributionOf } from "@/lib/finance/savings-plans";
-import {
-  runMonteCarlo,
-  runPortfolioMonteCarlo,
-  type MonteCarloParams,
-  type MonteCarloResult,
-  type PortfolioMonteCarloParams,
+import type {
+  MonteCarloParams,
+  PortfolioMonteCarloParams,
 } from "@/lib/finance/monte-carlo";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "@/components/ui/tabs";
+import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
+import type { StressScenario, WithdrawalStrategyId } from "@/lib/finance/withdrawal";
+import {
+  WithdrawalComparison,
+  WithdrawalStrategyPanel,
+} from "@/components/simulation/withdrawal-strategy-panel";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DistributionChart } from "@/components/charts/distribution-chart";
@@ -41,61 +44,6 @@ const CUSTOM_VOL_DEFAULT = 16;
 // Default annual withdrawal rate (percent) — the classic "4% rule".
 const WITHDRAWAL_RATE_DEFAULT = 4;
 
-function fnv1a(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16);
-}
-
-/** Stable cache key from the params, ignoring the seed (same inputs → reuse). */
-function hashSimParams(
-  kind: "scalar" | "portfolio",
-  params: MonteCarloParams | PortfolioMonteCarloParams,
-): string {
-  const r = (n: number) => Math.round(n * 1e6) / 1e6;
-  let canon: unknown;
-  if (kind === "portfolio") {
-    const p = params as PortfolioMonteCarloParams;
-    canon = {
-      kind,
-      initialCapital: r(p.initialCapital),
-      monthlyContribution: r(p.monthlyContribution),
-      years: p.years,
-      runs: p.runs,
-      withdrawalYears: p.withdrawalYears ?? 0,
-      withdrawalRate: r(p.withdrawalRate ?? 0),
-      rebalanceYearly: !!p.rebalanceYearly,
-      assets: p.assets.map((a) => ({ weight: r(a.weight), mean: r(a.mean), vol: r(a.vol) })),
-      corr: p.corr.map((row) => row.map(r)),
-    };
-  } else {
-    const p = params as MonteCarloParams;
-    canon = {
-      kind,
-      initialCapital: r(p.initialCapital),
-      monthlyContribution: r(p.monthlyContribution),
-      years: p.years,
-      runs: p.runs,
-      withdrawalYears: p.withdrawalYears ?? 0,
-      withdrawalRate: r(p.withdrawalRate ?? 0),
-      expectedReturn: r(p.expectedReturn),
-      volatility: r(p.volatility),
-    };
-  }
-  return fnv1a(JSON.stringify(canon));
-}
-
-/** A fresh 32-bit seed from Web Crypto (never Math.random) for the sim PRNG. */
-function randomSeed(): number {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    return crypto.getRandomValues(new Uint32Array(1))[0];
-  }
-  return (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
-}
-
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
@@ -106,7 +54,7 @@ function pct(fraction: number, digits = 1): string {
 }
 
 export function MonteCarloPanel() {
-  const { data, loadSimulation, saveSimulation } = usePortfolio();
+  const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
   const currency = data.profile.currency;
@@ -238,20 +186,21 @@ export function MonteCarloPanel() {
   const volatility = volOverride ?? CUSTOM_VOL_DEFAULT;
   const usingEstimates = returnOverride === null && volOverride === null;
 
-  const [result, setResult] = useState<MonteCarloResult | null>(null);
+  // The worker, the cache and the fallback are the same ones the FIRE planner
+  // uses -- one runner, one cache key.
+  const simulation = useMonteCarloRun();
+  const { result, running } = simulation;
   const [scale, setScale] = useState<ChartScale>("log");
   const [hover, setHover] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
+  // How the income is decided each year, and whether the losses are forced to
+  // the front. What-if levers: live state, never persisted.
+  const [withdrawalStrategy, setWithdrawalStrategy] = useState<WithdrawalStrategyId>("fixed");
+  const [stress, setStress] = useState<StressScenario>("none");
   // In "My portfolio" mode the parameters are auto-derived; the user must opt in
   // to editing them.
   const [editing, setEditing] = useState(false);
   const locked = effectiveMode === "portfolio" && !editing;
-  const workerRef = useRef<Worker | null>(null);
   const [tourReplay, setTourReplay] = useState(0);
-
-  useEffect(() => {
-    return () => workerRef.current?.terminate();
-  }, []);
 
   function update<K extends keyof typeof form>(key: K, value: number) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -298,6 +247,11 @@ export function MonteCarloPanel() {
               withdrawalYears,
               withdrawalRate,
               rebalanceYearly,
+              withdrawalStrategy,
+              stress,
+              // The comparison is what says what the strategy choice costs, so
+              // it is computed alongside rather than behind a second button.
+              compareStrategies: withdrawalYears > 0,
             } satisfies PortfolioMonteCarloParams,
           }
         : {
@@ -312,77 +266,13 @@ export function MonteCarloPanel() {
               seed,
               withdrawalYears,
               withdrawalRate,
+              withdrawalStrategy,
+              stress,
+              compareStrategies: withdrawalYears > 0,
             } satisfies MonteCarloParams,
           };
 
-    const hash = hashSimParams(message.kind, message.params);
-    setRunning(true);
-
-    // Prefer a Web Worker for the "background" execution the PRD asks for, but
-    // never let a worker hiccup break the feature: any failure to construct,
-    // load, or respond falls back to the same pure computation on the main
-    // thread. The sim is fast enough that the fallback is imperceptible.
-    let settled = false;
-    const finish = (r: MonteCarloResult, fromCache = false) => {
-      if (settled) return;
-      settled = true;
-      setResult(r);
-      setRunning(false);
-      workerRef.current?.terminate();
-      workerRef.current = null;
-      // Persist fresh runs so an identical re-run reuses the stored result.
-      if (!fromCache) {
-        void saveSimulation({
-          hash,
-          params: message.params,
-          seed,
-          result: r,
-          createdAt: new Date().toISOString(),
-        }).catch(() => {});
-      }
-    };
-    const fallback = () =>
-      finish(
-        message.kind === "portfolio"
-          ? runPortfolioMonteCarlo(message.params)
-          : runMonteCarlo(message.params),
-      );
-
-    const compute = () => {
-      try {
-        const worker = new Worker(
-          new URL("../../lib/finance/monte-carlo.worker.ts", import.meta.url),
-        );
-        workerRef.current?.terminate();
-        workerRef.current = worker;
-        const watchdog = setTimeout(fallback, 4000);
-        worker.onmessage = (e: MessageEvent<MonteCarloResult>) => {
-          clearTimeout(watchdog);
-          finish(e.data);
-        };
-        worker.onerror = () => {
-          clearTimeout(watchdog);
-          fallback();
-        };
-        worker.postMessage(message);
-      } catch {
-        fallback();
-      }
-    };
-
-    // Reuse a stored run with identical params before computing anything.
-    void loadSimulation(hash)
-      .then((cached) => {
-        if (settled) return;
-        if (cached && cached.result) {
-          finish(cached.result as MonteCarloResult, true);
-        } else {
-          compute();
-        }
-      })
-      .catch(() => {
-        if (!settled) compute();
-      });
+    simulation.run(message);
   }
 
   const final = result?.bands[result.bands.length - 1];
@@ -533,6 +423,17 @@ export function MonteCarloPanel() {
                       <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
                     </div>
                   )}
+                  {/* The rate says how much; the strategy says how that amount
+                      is decided again each year, and the stress says what it is
+                      being tested against. Same panel as the FIRE tab. */}
+                  {form.withdrawalYears > 0 && (
+                    <WithdrawalStrategyPanel
+                      strategy={withdrawalStrategy}
+                      onStrategy={setWithdrawalStrategy}
+                      stress={stress}
+                      onStress={setStress}
+                    />
+                  )}
                 </div>
               </div>
             </ProGate>
@@ -680,6 +581,16 @@ export function MonteCarloPanel() {
                   />
                 </div>
               </Card>
+            )}
+
+            {/* What the strategy choice actually costs, right under what the
+                chosen one pays. */}
+            {result.strategyComparison && (
+              <WithdrawalComparison
+                comparison={result.strategyComparison}
+                strategy={withdrawalStrategy}
+                currency={currency}
+              />
             )}
 
             <Card data-tour="sim-chart">

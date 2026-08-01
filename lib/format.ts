@@ -151,6 +151,20 @@ export function formatPercent(fraction: number, digits = 2): string {
   }).format(fraction);
 }
 
+/**
+ * An unsigned percentage, for a LEVEL rather than a change: a success
+ * probability, a share, a quota. `formatPercent` above forces a sign because
+ * almost every percentage in this app is a return, and "+88%" reading as a
+ * survival probability is simply wrong.
+ */
+export function formatPercentPlain(fraction: number, digits = 1): string {
+  return new Intl.NumberFormat(intlLocale(), {
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(fraction);
+}
+
 export function formatNumber(value: number, digits = 2): string {
   return new Intl.NumberFormat(intlLocale(), {
     maximumFractionDigits: digits,

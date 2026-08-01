@@ -15,7 +15,7 @@
 // page's full per-asset model UI -- an honestly-scoped MVP rather than a
 // second full simulation control panel.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
@@ -28,11 +28,12 @@ import { useHistory } from "@/lib/history/use-history";
 import { portfolioOrBenchmarkStats } from "@/lib/finance/stats";
 import { monthlyContributionOf } from "@/lib/finance/savings-plans";
 import { computeFirePlan, trailingAnnualExpenses } from "@/lib/finance/fire";
+import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
+import type { StressScenario, WithdrawalStrategyId } from "@/lib/finance/withdrawal";
 import {
-  runMonteCarlo,
-  type MonteCarloParams,
-  type MonteCarloResult,
-} from "@/lib/finance/monte-carlo";
+  WithdrawalComparison,
+  WithdrawalStrategyPanel,
+} from "@/components/simulation/withdrawal-strategy-panel";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { Button, Card, Stat } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
@@ -55,40 +56,6 @@ const RETURN_HORIZON_YEARS = 20;
 const RETIREMENT_WITHDRAWAL_YEARS = 30;
 const SIMULATION_RUNS = 5000;
 
-function fnv1a(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16);
-}
-
-/** Stable cache key from the params, ignoring the seed (same inputs -> reuse). */
-function hashFireParams(params: MonteCarloParams): string {
-  const r = (n: number) => Math.round(n * 1e6) / 1e6;
-  return fnv1a(
-    JSON.stringify({
-      initialCapital: r(params.initialCapital),
-      monthlyContribution: r(params.monthlyContribution),
-      years: params.years,
-      expectedReturn: r(params.expectedReturn),
-      volatility: r(params.volatility),
-      withdrawalYears: params.withdrawalYears ?? 0,
-      withdrawalRate: r(params.withdrawalRate ?? 0),
-      runs: params.runs,
-    }),
-  );
-}
-
-/** A fresh 32-bit seed from Web Crypto (never Math.random). */
-function randomSeed(): number {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    return crypto.getRandomValues(new Uint32Array(1))[0];
-  }
-  return (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
-}
-
 function formatYears(years: number | null, t: T): string {
   if (years === null) return t("fire.never");
   if (years === 0) return t("fire.alreadyThere");
@@ -96,7 +63,9 @@ function formatYears(years: number | null, t: T): string {
 }
 
 export function FireView() {
-  const { data, loadSimulation, saveSimulation } = usePortfolio();
+  const { data } = usePortfolio();
+  // The worker, the cache and the fallback are the same ones /simulation uses.
+  const simulation = useMonteCarloRun();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
   const currency = data.profile.currency;
@@ -165,6 +134,10 @@ export function FireView() {
   // Editable overrides -- default to the measured/derived figures, user can
   // adjust any of them; recomputes live client-side, no worker involved.
   const [withdrawalRatePercent, setWithdrawalRatePercent] = useState(DEFAULT_WITHDRAWAL_RATE);
+  // How the income is decided each year, and whether the losses are forced to
+  // the front. Both are what-if levers: live state, never persisted.
+  const [withdrawalStrategy, setWithdrawalStrategy] = useState<WithdrawalStrategyId>("fixed");
+  const [stress, setStress] = useState<StressScenario>("none");
   const [expensesOverride, setExpensesOverride] = useState<number | null>(null);
   const [contributionOverride, setContributionOverride] = useState<number | null>(null);
   const [returnOverride, setReturnOverride] = useState<number | null>(null);
@@ -186,92 +159,32 @@ export function FireView() {
   );
 
   // --- Full worker-run Monte Carlo, seeded from the chosen FIRE target. ---
-  const [result, setResult] = useState<MonteCarloResult | null>(null);
-  const [running, setRunning] = useState(false);
-  const workerRef = useRef<Worker | null>(null);
-
-  useEffect(() => {
-    return () => workerRef.current?.terminate();
-  }, []);
+  const { result, running } = simulation;
 
   function runSimulation() {
     const accumulationYears = Math.max(
       1,
       Math.min(80, Math.ceil(plan.yearsToRegular ?? RETIREMENT_WITHDRAWAL_YEARS)),
     );
-    const seed = randomSeed();
-    const params: MonteCarloParams = {
-      initialCapital: Math.max(0, Math.round(netWorth)),
-      monthlyContribution: Math.max(0, effectiveContribution),
-      years: accumulationYears,
-      expectedReturn: effectiveReturnPercent / 100,
-      volatility: stats.volatility,
-      runs: SIMULATION_RUNS,
-      seed,
-      withdrawalYears: RETIREMENT_WITHDRAWAL_YEARS,
-      withdrawalRate: withdrawalRatePercent / 100,
-    };
-    const hash = hashFireParams(params);
-    setRunning(true);
-
-    // Same "worker with main-thread fallback" resilience as
-    // monte-carlo-panel.tsx: any failure to construct, load, or respond
-    // falls back to the pure computation on the main thread.
-    let settled = false;
-    const finish = (r: MonteCarloResult, fromCache = false) => {
-      if (settled) return;
-      settled = true;
-      setResult(r);
-      setRunning(false);
-      workerRef.current?.terminate();
-      workerRef.current = null;
-      if (!fromCache) {
-        void saveSimulation({
-          hash,
-          params,
-          seed,
-          result: r,
-          createdAt: new Date().toISOString(),
-        }).catch(() => {});
-      }
-    };
-    const fallback = () => finish(runMonteCarlo(params));
-
-    const compute = () => {
-      try {
-        const worker = new Worker(
-          new URL("../../lib/finance/monte-carlo.worker.ts", import.meta.url),
-        );
-        workerRef.current?.terminate();
-        workerRef.current = worker;
-        const watchdog = setTimeout(fallback, 4000);
-        worker.onmessage = (e: MessageEvent<MonteCarloResult>) => {
-          clearTimeout(watchdog);
-          finish(e.data);
-        };
-        worker.onerror = () => {
-          clearTimeout(watchdog);
-          fallback();
-        };
-        worker.postMessage({ kind: "scalar", params });
-      } catch {
-        fallback();
-      }
-    };
-
-    // Reuse a stored run with identical params before computing anything.
-    void loadSimulation(hash)
-      .then((cached) => {
-        if (settled) return;
-        if (cached && cached.result) {
-          finish(cached.result as MonteCarloResult, true);
-        } else {
-          compute();
-        }
-      })
-      .catch(() => {
-        if (!settled) compute();
-      });
+    simulation.run({
+      kind: "scalar",
+      params: {
+        initialCapital: Math.max(0, Math.round(netWorth)),
+        monthlyContribution: Math.max(0, effectiveContribution),
+        years: accumulationYears,
+        expectedReturn: effectiveReturnPercent / 100,
+        volatility: stats.volatility,
+        runs: SIMULATION_RUNS,
+        seed: randomSeed(),
+        withdrawalYears: RETIREMENT_WITHDRAWAL_YEARS,
+        withdrawalRate: withdrawalRatePercent / 100,
+        withdrawalStrategy,
+        stress,
+        // The comparison is the point of the strategy picker: it is what says
+        // what the choice costs, so it is always computed alongside.
+        compareStrategies: true,
+      },
+    });
   }
 
   const successProbability =
@@ -351,6 +264,17 @@ export function FireView() {
         <p className="mt-1 text-xs text-zinc-500">
           {t("fire.simulation.withdrawalYearsNote", { years: String(RETIREMENT_WITHDRAWAL_YEARS) })}
         </p>
+        {/* The strategy and the stress belong WITH the run button: they are
+            what the run is testing, not a reading of its result. */}
+        <div className="mt-4">
+          <WithdrawalStrategyPanel
+            strategy={withdrawalStrategy}
+            onStrategy={setWithdrawalStrategy}
+            stress={stress}
+            onStress={setStress}
+          />
+        </div>
+
         <div className="mt-4">
           <Button variant="primary" onClick={runSimulation} disabled={running}>
             {running ? t("fire.simulation.running") : t("fire.simulation.run")}
@@ -375,6 +299,13 @@ export function FireView() {
                 />
               </Card>
             </div>
+            {result.strategyComparison && (
+              <WithdrawalComparison
+                comparison={result.strategyComparison}
+                strategy={withdrawalStrategy}
+                currency={currency}
+              />
+            )}
             <DistributionChart
               result={result}
               currency={currency}
