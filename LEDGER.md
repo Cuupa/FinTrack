@@ -98,6 +98,27 @@ wiederkehrend - aus der Kreditrate wurde stillschweigend eine verbrauchte
 Ausgabe, die die Schuld ab dem Monat nicht mehr tilgte. Wird jetzt
 uebernommen, `e2e/income.spec.ts` pinnt es.
 
+**Produktionsdaten muessen bereinigt werden: Migration 0112.** Der Fix wirkt
+nur auf NEUE Eintraege; alles, was vor dem Fix ueber "Als wiederkehrend
+anlegen" aus einer Umbuchung entstanden ist, hat `target_account_id` bis heute
+auf `null`. 0112 holt das Ziel aus der Buchung zurueck, die den Eintrag
+gesaet hat (die einzige verknuepfte Zeile, die selbst noch ein Ziel traegt),
+und markiert die davon erzeugten Buchungen nach. Nur eindeutige Faelle werden
+angefasst (`having count(distinct ...) = 1`), Schritt 2 nur fuer die in
+Schritt 1 reparierten Vertraege - ein Vertrag, der sein Ziel schon hatte, ist
+kein Indiz fuer diesen Bug. Reine Datenreparatur, `schema.sql` bleibt bewusst
+unberuehrt (eine frische Datenbank hat diese Zeilen nicht).
+
+Folge, bevor sie ueberrascht: Ausgaben-Summen der Vergangenheit SINKEN, weil
+Umbuchungen weder Einnahme noch Ausgabe sind. Das ist der korrigierte Stand,
+nicht ein neuer Fehler. Die Datei traegt oben eine reine Lese-Abfrage, mit der
+sich der Umfang vorher ansehen laesst.
+
+Syntaktisch geprueft (pglast, SQL + PL/pgSQL-Rumpf; alle Migrationen parsen).
+**Nicht gegen eine echte Datenbank ausgefuehrt** - lokal laeuft kein Postgres
+(nur der psql-Client, kein Docker-Daemon), und ohne Supabase-Keys gibt es
+keine Testinstanz. Vor dem Anwenden also die Lese-Abfrage.
+
 **Nicht angefasst, bewusst:** der Bearbeiten-Dialog zeigt "Umbuchung auf" auch
 bei Einnahmen weiter an. Dort kann eine BESTEHENDE Zeile den Wert schon
 tragen, und ein Feld auszublenden, das etwas enthaelt, verwirft still
