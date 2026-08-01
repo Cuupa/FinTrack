@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addOtherAsset, dismissTour, openAssetDetail, setLocale } from "./helpers";
+import { addOtherAsset, dismissTour, openAddAccountModal, openAssetDetail, setLocale, submitAddAccountModal } from "./helpers";
 
 // Pins what the shared table shell (components/ui/table.tsx) guarantees on the
 // surfaces migrated in round 27: every column header is a real <button> that
@@ -18,9 +18,10 @@ test("no table header nests a button inside a button", async ({ page }) => {
 test("the recurring card's headers sort and announce it", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill("Current account");
   await page.locator("#account-opening").fill("2000");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
 
   await page.goto("/spending");
   await dismissTour(page);

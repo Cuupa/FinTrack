@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Income is not a mirror of expense (owner report, round 27): the entry mask
 // used to render identically for both, so a salary asked for a "payee" and
@@ -9,9 +9,10 @@ import { dismissTour } from "./helpers";
 async function seedAccount(page: import("@playwright/test").Page, name = "Current account") {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill(name);
   await page.locator("#account-opening").fill("3000");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name)).toBeVisible();
 }
 

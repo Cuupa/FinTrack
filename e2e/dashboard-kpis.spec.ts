@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // The overview is not a depot report (owner call): four of the hero's six
 // figures used to be securities-only, on a page that also answers for
@@ -13,9 +13,10 @@ import { dismissTour } from "./helpers";
 async function seed(page: import("@playwright/test").Page) {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill("Current account");
   await page.locator("#account-opening").fill("4000");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   await expect(
     page.locator('[data-tour="accounts-list"]').getByText("Current account"),
   ).toBeVisible();

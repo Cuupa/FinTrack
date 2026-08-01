@@ -62,15 +62,9 @@ export const NAV_ROUTES: NavRoute[] = [
     primary: true,
     group: "everyday",
   },
-  {
-    href: "/spending",
-    key: "nav.spending",
-    // Receipt glyph: bordered rect + itemized lines.
-    icon: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3zm2 4h8M8 11h8M8 15h5" />,
-    flag: "spending",
-    primary: true,
-    group: "everyday",
-  },
+  // No /spending entry (round 28): accounts and the bookings against them are
+  // one surface now, so a second tab pointing at the same cards would be the
+  // duplication the merge removed. The route still exists and redirects.
   {
     href: "/cashflow",
     key: "nav.cashflow",

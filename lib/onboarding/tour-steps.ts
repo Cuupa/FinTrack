@@ -210,7 +210,10 @@ export const ACCOUNTS_TOUR_STEPS: TourStep[] = [
   },
   {
     key: "accountsForm",
-    target: "accounts-form",
+    // The form moved into a modal behind this button, so the tour points at
+    // the button: a target inside a closed dialog is not on screen, and
+    // TourOverlay resolves its steps once per mount.
+    target: "add-account",
     titleKey: "tour.accounts.form.title",
     bodyKey: "tour.accounts.form.body",
   },
@@ -220,30 +223,15 @@ export const ACCOUNTS_TOUR_STEPS: TourStep[] = [
     titleKey: "tour.accounts.list.title",
     bodyKey: "tour.accounts.list.body",
   },
-];
-
-/** Spending ledger (/spending, components/spending/spending-view.tsx). */
-export const SPENDING_TOUR_STEPS: TourStep[] = [
-  {
-    key: "spendingTotals",
-    target: "spending-totals",
-    titleKey: "tour.spending.totals.title",
-    bodyKey: "tour.spending.totals.body",
-  },
+  // /spending merged into this page (round 28), so its tour merged too --
+  // a separate SPENDING_TOUR_STEPS would have had no page left to run on.
   {
     key: "spendingForm",
     target: "spending-form",
     titleKey: "tour.spending.form.title",
     bodyKey: "tour.spending.form.body",
   },
-  {
-    key: "spendingTable",
-    target: "spending-table",
-    titleKey: "tour.spending.table.title",
-    bodyKey: "tour.spending.table.body",
-  },
-  // The detected-charge suggestions moved here with the contract register.
-  // The step is skipped on a page that has none: `TourOverlay` keeps only the
+  // Skipped on a page with no detected charges: TourOverlay keeps only the
   // steps whose target is on screen at mount.
   {
     key: "spendingRecurring",
@@ -251,7 +239,14 @@ export const SPENDING_TOUR_STEPS: TourStep[] = [
     titleKey: "tour.contracts.suggestions.title",
     bodyKey: "tour.contracts.suggestions.body",
   },
+  {
+    key: "spendingTable",
+    target: "spending-table",
+    titleKey: "tour.spending.table.title",
+    bodyKey: "tour.spending.table.body",
+  },
 ];
+
 
 /** Goals (/goals, components/goals/goals-view.tsx). */
 export const GOALS_TOUR_STEPS: TourStep[] = [

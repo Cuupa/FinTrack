@@ -1,42 +1,12 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { SpendingView } from "@/components/spending/spending-view";
-import { SpendingSkeleton } from "@/components/spending/spending-skeleton";
-import { FeatureUnavailable } from "@/components/feature-unavailable";
-import { ProTeaser } from "@/components/billing/pro-teaser";
-import { LoadError } from "@/components/ui/load-error";
-import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { useFeature } from "@/lib/flags/flags-context";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
-import { SPENDING_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
-
+// Bookings merged into /accounts (owner call, round 28): an account and the
+// bookings against it are one thing, and a second page rendering the same
+// cards was exactly the split the merge removed.
+//
+// The route stays and redirects rather than 404s. It has been in the nav, in
+// the PWA's install scope and in browser histories since the feature shipped,
+// and a bookmark that suddenly dead-ends is a worse answer than a hop.
 export default function SpendingPage() {
-  const { t } = useI18n();
-  const { loading, loadError, reload } = usePortfolio();
-  const { enabled, locked } = useFeature("spending");
-  return (
-    <div className="space-y-6">
-      <PageHeaderWithTour
-        title={t("spending.title")}
-        subtitle={t("spending.subtitle")}
-        tourId="spending"
-        steps={SPENDING_TOUR_STEPS}
-        ready={enabled && !locked && !loading && !loadError}
-      />
-      {!enabled ? (
-        <FeatureUnavailable />
-      ) : loading ? (
-        <SpendingSkeleton />
-      ) : loadError ? (
-        <LoadError onRetry={reload} />
-      ) : locked ? (
-        <ProTeaser feature="spending">
-          <SpendingView />
-        </ProTeaser>
-      ) : (
-        <SpendingView />
-      )}
-    </div>
-  );
+  redirect("/accounts");
 }

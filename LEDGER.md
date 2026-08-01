@@ -41,9 +41,83 @@ subworker; commit only the paths you claimed.
 | Tabellen-Shell Batch 3 (/admin) | HIGH | done (nicht browser-verifiziert, /admin braucht Supabase) | app/admin/{billing,flags,usage,audit,errors,prices} |
 | Ein-/Ausgaben: 4 gemeldete Punkte | HIGH | done | spending-view, ui/row-actions (RecurringAction), dictionaries, e2e/income.spec.ts |
 | Ein-/Ausgaben: Ledger-Spalte + Ziel-Spalte | HIGH | done | recurring-card, dictionaries; dabei Umbuchungsziel-Bug gefunden, Migration 0112 |
+| Konten + Buchungen vereinheitlicht | HIGH | done | accounts-hero (neu), accounts-view (aufgeteilt), app/accounts, spending-view (Filter-Props), /spending -> Redirect, nav/routes, tour-steps, e2e/accounts-unified.spec.ts |
+| Mobile-Nav nicht sticky | HIGH | done, nicht reproduziert (kein WebKit lokal) | app/layout.tsx (min-h-dvh statt Prozent-Kette) |
 | Monatsletzter als Rhythmus | MEDIUM | done, Migration 0113 muss laufen | dates.ts, planned.ts, contract-bookings.ts, types, supabase-store, spending-view, recurring-form, planned-form, migration 0113 + schema.sql, tests/month-end.test.ts |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Konten und Buchungen sind eine Seite (2026-08-01)
+
+Vorbild war ausdruecklich die Depot-Ansicht, und /accounts hat jetzt dieselbe
+Form:
+
+- **Hero mit Graph und Auswahl.** `AccountsHero` (neu) zeigt die Zahl, ein
+  Dropdown ("Alle Konten" + jedes Konto), die Zeitraum-Leiste und die Kurve.
+  Die Reihe kommt aus dem vorhandenen `accountsValueSeries` - kein neuer
+  Rechenweg. Bewusst OHNE Benchmarks und Rendite-Modus: ein Kontostand ist
+  eine gesetzte Zahl, die zwischen Ablesungen fortgeschrieben wird, es gibt
+  keine Preisreihe zum Vergleichen.
+- **Das Dropdown filtert die Seite, nicht nur den Graphen.** Ein gewaehltes
+  Konto verengt Kurve, Kennzahlen UND die Buchungen darunter - erst das macht
+  aus einer Kontenliste den Auszug eines Kontos. Eine Umbuchung bleibt dabei
+  auf BEIDEN beteiligten Konten sichtbar, sonst fehlte die Rate im Auszug der
+  Hypothek, auf die sie gezahlt wird.
+- **"Konto hinzufuegen" sitzt im Header** und oeffnet ein Modal, genau wie
+  "Position hinzufuegen" auf /portfolio. Das Dauer-Formular, das vorher den
+  eigentlichen Inhalt nach unten geschoben hat, ist weg.
+- **Darunter: Wiederkehrend, dann Buchungen** (mit Paging, wie gehabt ueber
+  `usePagination`). Untereinander, nicht nebeneinander: beides sind breite
+  Tabellen mit 5+ Spalten, und das Depot stapelt Positionen, Sparplaene und
+  Watchlist aus demselben Grund.
+
+`/spending` ist damit doppelt und **leitet auf /accounts um** statt zu 404en
+(die Route stand in der Navigation, im PWA-Scope und in Lesezeichen). Der
+Nav-Eintrag ist raus, `accounts.title`/`nav.accounts` heissen jetzt "Konten &
+Buchungen". Das Flag `spending` ist **nicht** stale: es gatet weiter /cashflow
+und den Buchungsteil dieser Seite, damit die Zusammenlegung niemandem etwas
+freischaltet.
+
+Stale geworden und mitgeraeumt: `SPENDING_TOUR_STEPS` haette keine Seite mehr
+gehabt, die Schritte sind in `ACCOUNTS_TOUR_STEPS` aufgegangen (der
+Formular-Schritt zeigt jetzt auf den Header-Button - ein Ziel in einem
+geschlossenen Dialog ist nicht auf dem Bildschirm, und `TourOverlay` loest
+seine Schritte einmal pro Mount auf). `spending-totals` war schon vorher tot.
+
+Dabei zwei echte Fehler gefunden:
+
+1. **Die Erfassungsmaske war unbedienbar, wenn beim Mount noch kein Konto
+   existierte** - `useState(data.accounts[0]?.id ?? "")` blieb leer, der
+   Absenden-Knopf damit dauerhaft deaktiviert. Auf der zusammengelegten Seite
+   ist "es gab noch keins" der Normalfall, weil man Konten hier anlegt. Das
+   Konto wird jetzt abgeleitet statt per Effekt nachgezogen (Next 16 bricht bei
+   setState im Effekt).
+2. **"Transactions" vs "Buchungen"**: dieselbe Tabelle hiess auf Englisch wie
+   das Depot-Transaktionslog. Jetzt "Bookings" - genau die Zweideutigkeit, die
+   die Zusammenlegung aufloesen soll.
+
+Verifiziert auf Deutsch bei 1080p (Kurve: 3.000 EUR ab 01.01.2024, Stufe auf
+8.000 EUR am 01.06.2025, Veraenderung MAX 5.000 EUR; null Konsolenmeldungen).
+Neu `e2e/accounts-unified.spec.ts` (3 Tests: Kartenreihenfolge, Redirect,
+Filterung). Neun Specs zogen auf die geteilten Helfer `openAddAccountModal` /
+`submitAddAccountModal` um. 1103 Unit-Tests, 60 E2E gruen, Build sauber.
+
+## Erledigt: Mobile-Navigation bleibt unten (2026-08-01)
+
+`html { height: 100% }` + `body { min-height: 100% }` loest gegen den
+LAYOUT-Viewport auf. Der aendert sich auf dem Handy nicht, wenn die Adresszeile
+einklappt - das Dokument wird also hoeher als der sichtbare Bereich, und eine
+`position: fixed; bottom: 0`-Leiste wandert mit dem Scrollen. Jetzt
+`min-h-dvh` auf `<body>` und gar keine Hoehe mehr auf `<html>`; die dynamische
+Viewport-Einheit misst das Echte.
+
+**Ehrlich gesagt: nicht reproduziert.** In Chromium (auch mit
+Handy-Viewport, `isMobile`, Touch) blieb die Leiste vorher wie nachher bei
+y=788 kleben. WebKit waere die Engine, auf der so etwas auftritt - der Download
+klappt, aber die Linux-Systembibliotheken dafuer fehlen und deren Installation
+braucht sudo. Die Aenderung ist der Standardfix fuer genau dieses Fehlerbild
+und in Chromium regressionsfrei; falls es auf dem Geraet bleibt, brauche ich
+Browser und OS-Version.
 
 ## Erledigt: Monatsletzter als Rhythmus (2026-08-01)
 

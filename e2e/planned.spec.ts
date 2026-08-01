@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Planned income & expenses (flag `plannedCashflow`) in Guest Mode.
 //
@@ -20,9 +20,10 @@ function daysAgo(days: number): string {
 async function addChecking(page: Page, name: string) {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill(name);
   await page.locator("#account-opening").fill("1000");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   // `.first()`: the kind column reads "Checking" too, so the name is not unique.
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name).first()).toBeVisible();
 }

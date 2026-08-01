@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Accounts (/accounts, flag `accounts`) in Guest Mode. Everything here is
 // wiring the unit tests structurally cannot see: an amount typed with
@@ -18,13 +18,14 @@ async function addAccount(
 ): Promise<void> {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill(name);
   await page.getByRole("button", { name: "Type" }).click();
   // Not exact: every option carries an always-rendered (transparent) check
   // glyph, so the accessible name is "✓ Mortgage".
   await page.getByRole("option", { name: kind }).click();
   await page.locator("#account-opening").fill(opening);
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name)).toBeVisible();
 }
 
@@ -70,9 +71,10 @@ test("a booked balance moves the listed figure", async ({ page }) => {
 test("an unparseable amount is reported instead of silently dropped", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill("Broken input");
   await page.locator("#account-opening").fill("12.34.56");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
 
   await expect(page.getByText(/not a valid amount/i)).toBeVisible();
   await expect(page.locator('[data-tour="accounts-list"]').getByText("Broken input")).toHaveCount(0);

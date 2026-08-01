@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addOtherAsset, dismissTour } from "./helpers";
+import { addOtherAsset, dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Wiring the unit tests can't see: an asset account's rate actually growing its
 // balance, a goal tracking one position, and the booking form's recurring
@@ -8,11 +8,12 @@ import { addOtherAsset, dismissTour } from "./helpers";
 test("an asset account's interest rate grows its balance", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill("Tagesgeld");
   await page.locator("#account-opening").fill("10000");
   await page.locator("#account-opened").fill("2024-01-01");
   await page.locator("#account-interest").fill("3");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
 
   const row = page.locator("table tbody tr").first();
   await expect(row).toContainText("Tagesgeld");
@@ -42,8 +43,9 @@ test("a goal can track a single position", async ({ page }) => {
 test("the recurring switch turns a booking into a recurring entry", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill("Giro");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
 
   await page.goto("/spending");
   await dismissTour(page);

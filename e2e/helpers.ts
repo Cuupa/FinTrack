@@ -86,3 +86,22 @@ export async function openAssetDetail(page: Page, name: string): Promise<void> {
   await dismissTour(page);
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 }
+
+/**
+ * Opens the add-account modal from the /accounts header button. The form moved
+ * behind it in round 28, mirroring how /portfolio hides "add asset", so every
+ * spec that seeds an account goes through here instead of typing into a form
+ * that is no longer on the page.
+ */
+export async function openAddAccountModal(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Add account", exact: true }).first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+}
+
+/** Submits that modal and waits for it to close. */
+export async function submitAddAccountModal(page: Page): Promise<void> {
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Add account", exact: true })
+    .click();
+}

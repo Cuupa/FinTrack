@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Liabilities (/debt, flag `debtPayoff`) in Guest Mode. The wiring worth
 // pinning is the payoff plan reacting to its two what-if levers: the extra
@@ -17,11 +17,12 @@ const MORTGAGE = "E2E mortgage";
 async function seedMortgage(page: Page): Promise<void> {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill(MORTGAGE);
   await page.getByRole("button", { name: "Type" }).click();
   await page.getByRole("option", { name: "Mortgage" }).click();
   await page.locator("#account-opening").fill("200000");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   await expect(page.locator('[data-tour="accounts-list"]').getByText(MORTGAGE)).toBeVisible();
 
   await page.goto("/debt");
@@ -40,12 +41,13 @@ async function seedMortgage(page: Page): Promise<void> {
 test("a balance is read as repayment against the original loan sum", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill("Old mortgage");
   await page.getByRole("button", { name: "Type" }).click();
   await page.getByRole("option", { name: "Mortgage" }).click();
   await page.locator("#account-opening").fill("300000");
   await page.locator("#account-opened").fill("2019-04-01");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
 
   const row = page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Old mortgage" });
   await row.getByRole("button", { name: "Balances" }).click();

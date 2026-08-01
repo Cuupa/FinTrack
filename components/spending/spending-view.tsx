@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { today } from "@/lib/finance/dates";
+import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
@@ -44,9 +44,27 @@ const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 type SortKey = "date" | "payee" | "category" | "account" | "amount";
+
+/** Oldest booking date, the anchor a MAX timeframe resolves against. */
+function earliestBookingDate(txs: readonly { date: string }[]): string | null {
+  let min: string | null = null;
+  for (const tx of txs) if (min === null || tx.date < min) min = tx.date;
+  return min;
+}
 type TxType = "expense" | "income";
 
-export function SpendingView() {
+export function SpendingView({
+  accountId: scopeAccountId,
+  timeframe,
+}: {
+  /** Narrows the ledger to one account and prefills the entry mask with it.
+   *  Undefined (or the ALL sentinel) means every account, which is how this
+   *  view behaved before /accounts absorbed it. */
+  accountId?: string;
+  /** Narrows the ledger to the window the accounts chart is showing, so the
+   *  bookings under it are the ones that produced that curve. */
+  timeframe?: Timeframe;
+} = {}) {
   const {
     data,
     addSpendingTransaction,
@@ -57,6 +75,7 @@ export function SpendingView() {
   } = usePortfolio();
   const { t } = useI18n();
   const contractsEnabled = useFeatureFlag("contracts");
+  const todayIso = today();
   const base = data.profile.currency;
 
   const accountsById = useMemo(
@@ -74,7 +93,12 @@ export function SpendingView() {
   );
 
   // Quick-add form state.
-  const [accountId, setAccountId] = useState(data.accounts[0]?.id ?? "");
+  // The PICKED account, which may be empty (no accounts existed when this
+  // mounted) or stale (the account was deleted). `accountId` below resolves
+  // that, derived rather than synced in an effect -- Next 16 fails the build on
+  // setState inside one, and the page now creates accounts alongside this form,
+  // so "there were none at mount" is the normal case rather than an edge one.
+  const [pickedAccountId, setPickedAccountId] = useState("");
   const [txType, setTxType] = useState<TxType>("expense");
   const [amount, setAmount] = useState("");
   const [payee, setPayee] = useState("");
@@ -104,6 +128,15 @@ export function SpendingView() {
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [toContract, setToContract] = useState<SpendingTransaction | null>(null);
+
+  // Falls back to the account the page is scoped to, then to the first one
+  // that exists, so the submit button is never disabled by a selection the
+  // user cannot see or change.
+  const accountId =
+    pickedAccountId && data.accounts.some((a) => a.id === pickedAccountId)
+      ? pickedAccountId
+      : (scopeAccountId ?? data.accounts[0]?.id ?? "");
+  const setAccountId = setPickedAccountId;
 
   /** Money in reads differently from money out, so the form follows the tab. */
   const isIncome = txType === "income";
@@ -172,9 +205,23 @@ export function SpendingView() {
     return c ? `${c.groupName} · ${c.name}` : t("spending.list.uncategorized");
   }
 
+  // A transfer shows up on BOTH accounts it touches, so scoping to one account
+  // keeps a booking whose target is that account -- otherwise a rate paid into
+  // the mortgage would be missing from the mortgage's own statement.
+  const scoped = useMemo(() => {
+    const from = timeframe
+      ? timeframeStart(timeframe, todayIso, earliestBookingDate(data.spendingTransactions))
+      : null;
+    return data.spendingTransactions.filter((tx) => {
+      if (from && tx.date < from) return false;
+      if (!scopeAccountId) return true;
+      return tx.accountId === scopeAccountId || tx.transferAccountId === scopeAccountId;
+    });
+  }, [data.spendingTransactions, scopeAccountId, timeframe, todayIso]);
+
   const rows = useMemo(
     () =>
-      applySort(data.spendingTransactions, (tx, key) => {
+      applySort(scoped, (tx, key) => {
         if (key === "date") return tx.date;
         if (key === "payee") return tx.payee;
         if (key === "category") return categoryLabel(tx.categoryId);
@@ -182,7 +229,7 @@ export function SpendingView() {
         return tx.amount;
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.spendingTransactions, applySort, accountsById, categoriesById],
+    [scoped, applySort, accountsById, categoriesById],
   );
 
   const pager = usePagination(rows);

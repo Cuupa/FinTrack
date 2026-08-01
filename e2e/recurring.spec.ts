@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Recurring payments (/spending, flag `contracts`) in Guest Mode, after the
 // separate contract register was removed AND the card's own "add" button went
@@ -15,9 +15,10 @@ import { dismissTour } from "./helpers";
 async function seedAccount(page: import("@playwright/test").Page, name = "Current account") {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill(name);
   await page.locator("#account-opening").fill("2000");
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name)).toBeVisible();
 }
 

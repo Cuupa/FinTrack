@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour } from "./helpers";
+import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Goals (/goals, flag `goals`) in Guest Mode. Rules the unit tests can't see
 // because they live in the wiring: a goal needs no target date, a liability
@@ -11,13 +11,14 @@ import { dismissTour } from "./helpers";
 async function addLoan(page: Page, name: string, opening: string) {
   await page.goto("/accounts");
   await dismissTour(page);
+  await openAddAccountModal(page);
   await page.locator("#account-name").fill(name);
   await page.getByRole("button", { name: "Type" }).click();
   // Not exact: every option carries an always-rendered (transparent) check
   // glyph, so the accessible name is "✓ Loan".
   await page.getByRole("option", { name: "Loan" }).click();
   await page.locator("#account-opening").fill(opening);
-  await page.getByRole("button", { name: "Add account", exact: true }).click();
+  await submitAddAccountModal(page);
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name)).toBeVisible();
 }
 

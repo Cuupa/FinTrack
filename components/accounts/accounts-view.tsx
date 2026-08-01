@@ -1,15 +1,21 @@
 "use client";
 
-// Accounts & liabilities surface (ROADMAP #1, flag `accounts`): the net-worth
-// home where balance accounts (checking/savings/credit/loan/mortgage/other) sit
-// beside investments. Assets add to net worth, liabilities subtract — this is
-// the one entity that can push net worth below zero. Everything rides the store
-// seam via usePortfolio(); no mode branching.
+// Accounts & liabilities (ROADMAP #1, flag `accounts`): balance accounts
+// (checking/savings/credit/loan/mortgage/other) beside investments. Assets add
+// to net worth, liabilities subtract -- this is the one entity that can push
+// net worth below zero. Everything rides the store seam; no mode branching.
+//
+// Two pieces, composed by app/accounts/page.tsx (round 28):
+//   AddAccountForm -- modal content behind the header button, matching how
+//                     /portfolio hides "add asset" behind one.
+//   AccountsTable  -- the list itself.
+// The totals moved to `AccountsHero`, which owns the figure, the account
+// picker and the chart; a second copy of "assets / liabilities / net" directly
+// under it was the duplication this restructure exists to remove.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { useLivePrices } from "@/lib/live/live-prices-context";
 import { today } from "@/lib/finance/dates";
 import {
   ACCOUNT_KINDS,
@@ -19,10 +25,10 @@ import {
   type AccountKind,
   type InterestFrequency,
 } from "@/lib/types";
-import { accountsTotals, currentAccountBalance } from "@/lib/finance/accounts";
+import { currentAccountBalance } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat } from "@/components/ui/primitives";
+import { Button, Card } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -47,20 +53,13 @@ const inputCls =
 
 type SortKey = "name" | "kind" | "balance";
 
-export function AccountsView() {
-  const { data, addAccount, deleteAccount } = usePortfolio();
-  const { valuation } = useLivePrices();
+/** The add-account form. Lives in a modal now, so it closes itself on success
+ *  via `onDone` instead of resetting in place. */
+export function AddAccountForm({ onDone }: { onDone?: () => void }) {
+  const { data, addAccount } = usePortfolio();
   const { t } = useI18n();
   const base = data.profile.currency;
 
-  const movements = useAccountMovements();
-
-  const totals = useMemo(
-    () => accountsTotals(data.accounts, data.accountBalances, valuation, movements),
-    [data.accounts, data.accountBalances, valuation, movements],
-  );
-
-  // Add-account form state.
   const [name, setName] = useState("");
   const [kind, setKind] = useState<AccountKind>("checking");
   const [currency, setCurrency] = useState(base);
@@ -72,26 +71,7 @@ export function AccountsView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("name");
-  const [balancesFor, setBalancesFor] = useState<Account | null>(null);
-  const [editing, setEditing] = useState<Account | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
-
   const kindLabel = (k: AccountKind) => t(`accounts.kind.${k}` as Parameters<typeof t>[0]);
-
-  const rows = useMemo(() => {
-    const withValues = data.accounts.map((a) => {
-      const magnitude = currentAccountBalance(a, data.accountBalances, movements);
-      const signed = a.isLiability ? -magnitude : magnitude;
-      return { account: a, signed };
-    });
-    return applySort(withValues, (r, key) => {
-      if (key === "name") return r.account.name;
-      if (key === "kind") return kindLabel(r.account.kind);
-      return r.signed;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.accounts, data.accountBalances, applySort, movements]);
 
   async function submit() {
     const trimmed = name.trim();
@@ -131,6 +111,7 @@ export function AccountsView() {
       setOpenedOn(today());
       setInterestRate("");
       setInterestFrequency("MONTHLY");
+      onDone?.();
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("accounts.form.error"));
     } finally {
@@ -138,171 +119,171 @@ export function AccountsView() {
     }
   }
 
+  return (
+    <div data-tour="accounts-form">
+      <h2 className="text-lg font-semibold">{t("accounts.form.title")}</h2>
+      <p className="mt-1 text-sm text-zinc-500">{t("accounts.form.intro")}</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <label className="text-sm font-medium" htmlFor="account-name">
+            {t("accounts.form.nameLabel")}
+          </label>
+          <input
+            id="account-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("accounts.form.namePlaceholder")}
+            className={inputCls}
+            data-private
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">{t("accounts.form.kindLabel")}</label>
+          <SelectMenu
+            className="mt-1 w-full"
+            ariaLabel={t("accounts.form.kindLabel")}
+            value={kind}
+            onChange={(v) => setKind(v as AccountKind)}
+            options={ACCOUNT_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor="account-currency">
+            {t("accounts.form.currencyLabel")}
+          </label>
+          <input
+            id="account-currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+            placeholder={base}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor="account-opening">
+            {t("accounts.form.openingLabel", { currency: currency.trim() || base })}
+          </label>
+          <input
+            id="account-opening"
+            inputMode="decimal"
+            value={opening}
+            onChange={(e) => setOpening(stripLeadingZero(e.target.value))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void submit();
+            }}
+            placeholder="0"
+            className={inputCls}
+            data-private
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor="account-opened">
+            {t("accounts.form.openedLabel")}
+          </label>
+          <input
+            id="account-opened"
+            type="date"
+            value={openedOn}
+            max={today()}
+            onChange={(e) => setOpenedOn(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        {!LIABILITY_KINDS.includes(kind) && (
+          <>
+            <div>
+              <label className="text-sm font-medium" htmlFor="account-interest">
+                {t("accounts.form.interestLabel")}
+              </label>
+              <input
+                id="account-interest"
+                inputMode="decimal"
+                value={interestRate}
+                onChange={(e) => setInterestRate(stripLeadingZero(e.target.value))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void submit();
+                }}
+                placeholder="0"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">
+                {t("accounts.form.interestFrequencyLabel")}
+              </label>
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("accounts.form.interestFrequencyLabel")}
+                value={interestFrequency}
+                onChange={(v) => setInterestFrequency(v as InterestFrequency)}
+                options={INTEREST_FREQUENCIES.map((f) => ({
+                  value: f,
+                  label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
+                }))}
+              />
+            </div>
+          </>
+        )}
+        <div className="flex items-end">
+          <Button
+            variant="primary"
+            disabled={busy || !name.trim() || !openedOn}
+            onClick={() => void submit()}
+          >
+            {t("accounts.form.add")}
+          </Button>
+        </div>
+      </div>
+      {!LIABILITY_KINDS.includes(kind) && interestRate.trim() !== "" && (
+        <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.interestHint")}</p>
+      )}
+      {LIABILITY_KINDS.includes(kind) && (
+        <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
+      )}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+/** The account list. `selectedId` only marks the row the hero is scoped to --
+ *  the list always shows every account, since hiding the others would leave no
+ *  way back to them. */
+export function AccountsTable({ selectedId }: { selectedId?: string }) {
+  const { data, deleteAccount } = usePortfolio();
+  const { t } = useI18n();
+  const base = data.profile.currency;
+  const movements = useAccountMovements();
+
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("name");
+  const [balancesFor, setBalancesFor] = useState<Account | null>(null);
+  const [editing, setEditing] = useState<Account | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
+
+  const kindLabel = (k: AccountKind) => t(`accounts.kind.${k}` as Parameters<typeof t>[0]);
+
+  const rows = useMemo(() => {
+    const withValues = data.accounts.map((a) => {
+      const magnitude = currentAccountBalance(a, data.accountBalances, movements);
+      const signed = a.isLiability ? -magnitude : magnitude;
+      return { account: a, signed };
+    });
+    return applySort(withValues, (r, key) => {
+      if (key === "name") return r.account.name;
+      if (key === "kind") return kindLabel(r.account.kind);
+      return r.signed;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.accounts, data.accountBalances, applySort, movements]);
+
   const pager = usePagination(rows);
 
-
   return (
-    <div className="space-y-6">
-      <Card data-tour="accounts-totals">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Stat label={t("accounts.totals.assets")} value={formatCurrency(totals.assets, base)} isPrivate />
-          <Stat
-            label={t("accounts.totals.liabilities")}
-            value={formatCurrency(totals.liabilities, base)}
-            valueClassName={totals.liabilities > 0 ? "text-red-600 dark:text-red-400" : ""}
-            isPrivate
-          />
-          <Stat
-            label={t("accounts.totals.net")}
-            value={formatCurrency(totals.net, base)}
-            valueClassName={totals.net < 0 ? "text-red-600 dark:text-red-400" : ""}
-            isPrivate
-          />
-        </div>
-
-        {/* "Netto" here and "Nettovermögen" on the dashboard are the same idea
-            computed in two places, which is exactly what made the areas read as
-            unrelated. Say the relation out loud and link it. */}
-        <p className="mt-4 border-t border-zinc-200 pt-3 text-sm text-zinc-500 dark:border-zinc-800">
-          {t("accounts.totals.partOfNetWorth")}{" "}
-          <Link
-            href="/"
-            className="font-medium text-zinc-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600 dark:text-zinc-200 dark:focus-visible:outline-emerald-400"
-          >
-            {t("stat.netWorth")}
-          </Link>
-        </p>
-      </Card>
-
-      <Card data-tour="accounts-form">
-        <h2 className="text-lg font-semibold">{t("accounts.form.title")}</h2>
-        <p className="mt-1 text-sm text-zinc-500">{t("accounts.form.intro")}</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-name">
-              {t("accounts.form.nameLabel")}
-            </label>
-            <input
-              id="account-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("accounts.form.namePlaceholder")}
-              className={inputCls}
-              data-private
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">{t("accounts.form.kindLabel")}</label>
-            <SelectMenu
-              className="mt-1 w-full"
-              ariaLabel={t("accounts.form.kindLabel")}
-              value={kind}
-              onChange={(v) => setKind(v as AccountKind)}
-              options={ACCOUNT_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-currency">
-              {t("accounts.form.currencyLabel")}
-            </label>
-            <input
-              id="account-currency"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-              placeholder={base}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-opening">
-              {t("accounts.form.openingLabel", { currency: currency.trim() || base })}
-            </label>
-            <input
-              id="account-opening"
-              inputMode="decimal"
-              value={opening}
-              onChange={(e) => setOpening(stripLeadingZero(e.target.value))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void submit();
-              }}
-              placeholder="0"
-              className={inputCls}
-              data-private
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-opened">
-              {t("accounts.form.openedLabel")}
-            </label>
-            <input
-              id="account-opened"
-              type="date"
-              value={openedOn}
-              max={today()}
-              onChange={(e) => setOpenedOn(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          {!LIABILITY_KINDS.includes(kind) && (
-            <>
-              <div>
-                <label className="text-sm font-medium" htmlFor="account-interest">
-                  {t("accounts.form.interestLabel")}
-                </label>
-                <input
-                  id="account-interest"
-                  inputMode="decimal"
-                  value={interestRate}
-                  onChange={(e) => setInterestRate(stripLeadingZero(e.target.value))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void submit();
-                  }}
-                  placeholder="0"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">
-                  {t("accounts.form.interestFrequencyLabel")}
-                </label>
-                <SelectMenu
-                  className="mt-1 w-full"
-                  ariaLabel={t("accounts.form.interestFrequencyLabel")}
-                  value={interestFrequency}
-                  onChange={(v) => setInterestFrequency(v as InterestFrequency)}
-                  options={INTEREST_FREQUENCIES.map((f) => ({
-                    value: f,
-                    label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
-                  }))}
-                />
-              </div>
-            </>
-          )}
-          <div className="flex items-end">
-            <Button
-              variant="primary"
-              disabled={busy || !name.trim() || !openedOn}
-              onClick={() => void submit()}
-            >
-              {t("accounts.form.add")}
-            </Button>
-          </div>
-        </div>
-        {!LIABILITY_KINDS.includes(kind) && interestRate.trim() !== "" && (
-          <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.interestHint")}</p>
-        )}
-        {LIABILITY_KINDS.includes(kind) && (
-          <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
-        )}
-        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      </Card>
-
-      <Card data-tour="accounts-list">
-        <h2 className="text-lg font-semibold">{t("accounts.list.title")}</h2>
-        {data.accounts.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">{t("accounts.list.empty")}</p>
-        ) : (
-          <>
+    <Card data-tour="accounts-list">
+      <h2 className="text-lg font-semibold">{t("accounts.list.title")}</h2>
+      {data.accounts.length === 0 ? (
+        <p className="mt-3 text-sm text-zinc-500">{t("accounts.list.empty")}</p>
+      ) : (
+        <>
           <Table className="mt-4">
             <Thead>
               <Th sort={sort} sortKey="name" onSort={toggleSort}>
@@ -320,7 +301,7 @@ export function AccountsView() {
               {pager.rows.map(({ account, signed }) => {
                 const cur = account.currency || base;
                 return (
-                  <Tr key={account.id}>
+                  <Tr key={account.id} selected={account.id === selectedId}>
                     <Td className="font-medium" data-private>
                       {account.name}
                       {!account.isLiability && (account.interestRate ?? 0) > 0 && (
@@ -366,10 +347,22 @@ export function AccountsView() {
               })}
             </Tbody>
           </Table>
-            <TablePagination pager={pager} />
-          </>
-        )}
-      </Card>
+          <TablePagination pager={pager} />
+        </>
+      )}
+
+      {/* "Netto" here and "Nettovermögen" on the dashboard are the same idea
+          computed in two places, which is exactly what made the areas read as
+          unrelated. Say the relation out loud and link it. */}
+      <p className="mt-4 border-t border-zinc-200 pt-3 text-sm text-zinc-500 dark:border-zinc-800">
+        {t("accounts.totals.partOfNetWorth")}{" "}
+        <Link
+          href="/"
+          className="font-medium text-zinc-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600 dark:text-zinc-200 dark:focus-visible:outline-emerald-400"
+        >
+          {t("stat.netWorth")}
+        </Link>
+      </p>
 
       {balancesFor && (
         <AccountBalancesDialog
@@ -393,7 +386,9 @@ export function AccountsView() {
       <ConfirmDialog
         open={confirmDelete !== null}
         title={t("accounts.delete.title")}
-        message={confirmDelete ? t("accounts.delete.message", { name: confirmDelete.name }) : undefined}
+        message={
+          confirmDelete ? t("accounts.delete.message", { name: confirmDelete.name }) : undefined
+        }
         confirmLabel={t("accounts.list.delete")}
         onConfirm={() => {
           if (confirmDelete) void deleteAccount(confirmDelete.id);
@@ -401,6 +396,6 @@ export function AccountsView() {
         }}
         onCancel={() => setConfirmDelete(null)}
       />
-    </div>
+    </Card>
   );
 }

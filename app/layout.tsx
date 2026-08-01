@@ -53,7 +53,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       suppressHydrationWarning
     >
       <head>
@@ -68,10 +68,18 @@ export default function RootLayout({
           }}
         />
       </head>
-      {/* No overflow clipping on <body>: on iOS Safari that breaks the fixed
-          bottom nav's stickiness. Horizontal overflow is contained on <main>
-          instead, leaving the fixed MobileNav anchored to the viewport. */}
-      <body className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      {/* Two rules keep the fixed bottom nav pinned on a phone.
+          1. No overflow clipping on <body>: on iOS Safari that breaks the
+             fixed bottom nav's stickiness. Horizontal overflow is contained on
+             <main> instead, leaving MobileNav anchored to the viewport.
+          2. `min-h-dvh`, not a percentage chain. `html { height: 100% }` +
+             `body { min-height: 100% }` resolves against the LAYOUT viewport,
+             which on mobile Safari does not change as the URL bar collapses —
+             so the document ends up taller than the visual viewport and a
+             `position: fixed; bottom: 0` bar drifts with the scroll instead of
+             staying put. The dynamic viewport unit tracks the real thing, and
+             it needs no height on <html> at all. */}
+      <body className="min-h-dvh bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         <Providers>
           <GuestBanner />
           {/* Needs FeatureFlagsProvider/LivePricesProvider, so it lives inside
