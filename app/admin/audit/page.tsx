@@ -17,7 +17,17 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatInstant } from "@/lib/format";
 import { formatCompactJson, formatFullJson } from "@/lib/admin/audit-format";
@@ -93,9 +103,13 @@ export default function AdminAuditPage() {
     return Array.from(set).sort();
   }, [rows]);
 
+  // The fetch already returns newest first; the sort makes that a column the
+  // reader can flip, which the four hand-written headers here never were.
+  const sort = useSort<"created" | "actor" | "action" | "target">("created", "desc");
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (rows ?? []).filter((r) => {
+    const matching = (rows ?? []).filter((r) => {
       if (actionFilter !== "all" && r.action !== actionFilter) return false;
       if (!q) return true;
       return (
@@ -105,7 +119,16 @@ export default function AdminAuditPage() {
         (r.target ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, actionFilter, query]);
+    return sort.apply(matching, (r, key) =>
+      key === "created"
+        ? r.created_at
+        : key === "actor"
+          ? (r.actor_email ?? r.actor_id)
+          : key === "action"
+            ? r.action
+            : r.target,
+    );
+  }, [rows, actionFilter, query, sort]);
 
 
   // Same 25-row paging as every other table in the app.
@@ -160,18 +183,26 @@ export default function AdminAuditPage() {
             </p>
           ) : (
             <>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                  <th className="px-3 py-2 font-medium">{t("admin.audit.colCreated")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.audit.colActor")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.audit.colAction")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.audit.colTarget")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.audit.colOld")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.audit.colNew")}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <Thead>
+                <Th sort={sort.sort} sortKey="created" onSort={sort.toggle}>
+                  {t("admin.audit.colCreated")}
+                </Th>
+                <Th sort={sort.sort} sortKey="actor" onSort={sort.toggle}>
+                  {t("admin.audit.colActor")}
+                </Th>
+                <Th sort={sort.sort} sortKey="action" onSort={sort.toggle}>
+                  {t("admin.audit.colAction")}
+                </Th>
+                <Th sort={sort.sort} sortKey="target" onSort={sort.toggle}>
+                  {t("admin.audit.colTarget")}
+                </Th>
+                {/* The two value columns hold JSON blobs; ordering by a
+                    pretty-printed object is not a question anyone asks. */}
+                <Th>{t("admin.audit.colOld")}</Th>
+                <Th>{t("admin.audit.colNew")}</Th>
+              </Thead>
+              <Tbody>
                 {pager.rows.map((r) => {
                   const isExpanded = expanded === r.id;
                   const oldCompact = formatCompactJson(r.old_value);
@@ -179,21 +210,21 @@ export default function AdminAuditPage() {
                   const hasMoreDetail = oldCompact.truncated || newCompact.truncated;
                   return (
                     <Fragment key={r.id}>
-                      <tr className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                        <td className="px-3 py-2 align-top text-xs whitespace-nowrap text-zinc-500">
+                      <Tr selected={isExpanded}>
+                        <Td className="align-top text-xs whitespace-nowrap text-zinc-500">
                           {formatInstant(r.created_at)}
-                        </td>
-                        <td className="max-w-[10rem] truncate px-3 py-2 align-top text-xs text-zinc-500">
+                        </Td>
+                        <Td className="max-w-[10rem] truncate align-top text-xs text-zinc-500">
                           {r.actor_email ?? r.actor_id}
-                        </td>
-                        <td className="px-3 py-2 align-top font-mono text-xs">{r.action}</td>
-                        <td className="max-w-[10rem] truncate px-3 py-2 align-top font-mono text-xs text-zinc-500">
+                        </Td>
+                        <Td className="align-top font-mono text-xs">{r.action}</Td>
+                        <Td className="max-w-[10rem] truncate align-top font-mono text-xs text-zinc-500">
                           {r.target ?? "—"}
-                        </td>
-                        <td className="max-w-[14rem] px-3 py-2 align-top font-mono text-xs text-zinc-500">
+                        </Td>
+                        <Td className="max-w-[14rem] align-top font-mono text-xs text-zinc-500">
                           <div className="truncate">{oldCompact.text}</div>
-                        </td>
-                        <td className="max-w-[14rem] px-3 py-2 align-top font-mono text-xs text-zinc-500">
+                        </Td>
+                        <Td className="max-w-[14rem] align-top font-mono text-xs text-zinc-500">
                           <div className="truncate">{newCompact.text}</div>
                           {hasMoreDetail && (
                             <button
@@ -204,11 +235,11 @@ export default function AdminAuditPage() {
                               {isExpanded ? t("admin.audit.collapse") : t("admin.audit.expand")}
                             </button>
                           )}
-                        </td>
-                      </tr>
+                        </Td>
+                      </Tr>
                       {isExpanded && (
-                        <tr className="border-b border-zinc-100 dark:border-zinc-800/60">
-                          <td colSpan={6} className="bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
+                        <Tr selected>
+                          <Td colSpan={6} className="py-3">
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div>
                                 <div className="text-xs font-medium text-zinc-500">
@@ -227,14 +258,14 @@ export default function AdminAuditPage() {
                                 </pre>
                               </div>
                             </div>
-                          </td>
-                        </tr>
+                          </Td>
+                        </Tr>
                       )}
                     </Fragment>
                   );
                 })}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
             <TablePagination pager={pager} />
             </>
           )}

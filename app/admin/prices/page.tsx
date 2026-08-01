@@ -27,7 +27,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatCurrency, formatInstant } from "@/lib/format";
 import { intlLocale } from "@/lib/i18n/locale";
@@ -92,7 +102,7 @@ export default function AdminPricesPage() {
   const [rowsVersion, setRowsVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [staleOnly, setStaleOnly] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "synced", dir: 1 });
+  const sort = useSort<SortKey>("synced");
   const [revalidating, setRevalidating] = useState<Set<string>>(new Set());
   const [revalidatingAll, setRevalidatingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,16 +139,12 @@ export default function AdminPricesPage() {
         (r.quote_id ?? "").toLowerCase().includes(q)
       );
     });
-    const dir = sort.dir;
-    return [...list].sort((a, b) => compare(a, b, sort.key, base, fx) * dir);
+    return sort.apply(list, (r, key) => sortValue(r, key, base, fx));
   }, [rows, query, staleOnly, sort, base, fx]);
 
 
   // Same 25-row paging as every other table in the app.
   const pager = usePagination(filtered);
-  function toggleSort(key: SortKey) {
-    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
-  }
 
   const revalidateOne = async (id: string) => {
     setError(null);
@@ -227,43 +233,30 @@ export default function AdminPricesPage() {
             </p>
           ) : (
             <>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                  <Th label={t("admin.prices.colName")} k="name" sort={sort} onSort={toggleSort} />
-                  <Th label={t("admin.prices.colType")} k="type" sort={sort} onSort={toggleSort} />
-                  <th className="px-3 py-2 font-medium">{t("admin.prices.colQuote")}</th>
-                  <Th
-                    label={t("admin.prices.colPrice")}
-                    k="price"
-                    sort={sort}
-                    onSort={toggleSort}
-                    align="right"
-                  />
-                  <Th
-                    label={t("admin.prices.colPriceBase")}
-                    k="priceBase"
-                    sort={sort}
-                    onSort={toggleSort}
-                    align="right"
-                  />
-                  <Th
-                    label={t("admin.prices.colFxRate")}
-                    k="fxRate"
-                    sort={sort}
-                    onSort={toggleSort}
-                    align="right"
-                  />
-                  <Th
-                    label={t("admin.prices.colSynced")}
-                    k="synced"
-                    sort={sort}
-                    onSort={toggleSort}
-                  />
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <Thead>
+                <Th sort={sort.sort} sortKey="name" onSort={sort.toggle}>
+                  {t("admin.prices.colName")}
+                </Th>
+                <Th sort={sort.sort} sortKey="type" onSort={sort.toggle}>
+                  {t("admin.prices.colType")}
+                </Th>
+                <Th>{t("admin.prices.colQuote")}</Th>
+                <Th align="right" sort={sort.sort} sortKey="price" onSort={sort.toggle}>
+                  {t("admin.prices.colPrice")}
+                </Th>
+                <Th align="right" sort={sort.sort} sortKey="priceBase" onSort={sort.toggle}>
+                  {t("admin.prices.colPriceBase")}
+                </Th>
+                <Th align="right" sort={sort.sort} sortKey="fxRate" onSort={sort.toggle}>
+                  {t("admin.prices.colFxRate")}
+                </Th>
+                <Th sort={sort.sort} sortKey="synced" onSort={sort.toggle}>
+                  {t("admin.prices.colSynced")}
+                </Th>
+                <Th />
+              </Thead>
+              <Tbody>
                 {pager.rows.map((r) => {
                   const lastPrice = numOrNull(r.last_price);
                   const status = priceStaleness(r.price_synced_at);
@@ -272,33 +265,30 @@ export default function AdminPricesPage() {
                   const rate = rateForRow(r, base, fx);
                   const basePrice = lastPrice != null ? lastPrice * rate : null;
                   return (
-                    <tr
-                      key={r.id}
-                      className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                    >
-                      <td className="px-3 py-2">
+                    <Tr key={r.id}>
+                      <Td>
                         <div className="font-medium">{r.name}</div>
                         <div className="font-mono text-xs text-zinc-500">{identifier(r)}</div>
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">{t(`assetType.${r.type}`)}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-zinc-500">
+                      </Td>
+                      <Td className="text-zinc-500">{t(`assetType.${r.type}`)}</Td>
+                      <Td className="font-mono text-xs text-zinc-500">
                         {r.quote_source ?? "—"}
                         {r.quote_id ? `:${r.quote_id}` : ""}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
+                      </Td>
+                      <Td align="right" className="tabular-nums">
                         {lastPrice != null ? (
                           formatCurrency(lastPrice, nativeCur)
                         ) : (
                           <EstimatedBadge compact tip={t("admin.prices.syntheticTip")} />
                         )}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
+                      </Td>
+                      <Td align="right" className="tabular-nums">
                         {basePrice != null ? formatCurrency(basePrice, base) : "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-zinc-500">
+                      </Td>
+                      <Td align="right" className="tabular-nums text-zinc-500">
                         {lastPrice != null ? formatRate(rate) : "—"}
-                      </td>
-                      <td className="px-3 py-2">
+                      </Td>
+                      <Td>
                         <div className="flex items-center gap-2">
                           <StalenessBadge status={status} label={t(`admin.prices.staleness.${status}`)} />
                           {r.price_synced_at && (
@@ -307,8 +297,8 @@ export default function AdminPricesPage() {
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-3 py-2 text-right">
+                      </Td>
+                      <Td align="right">
                         <Button
                           variant="secondary"
                           size="sm"
@@ -319,12 +309,12 @@ export default function AdminPricesPage() {
                             ? t("admin.prices.revalidating")
                             : t("admin.prices.revalidate")}
                         </Button>
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   );
                 })}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
             <TablePagination pager={pager} />
             </>
           )}
@@ -357,60 +347,30 @@ function rateForRow(r: InstrumentRow, base: string, fx: Record<string, number>):
   return nativeCur === base ? 1 : (fx[nativeCur] ?? 1);
 }
 
-function compare(
-  a: InstrumentRow,
-  b: InstrumentRow,
+/** The cell value each column is ordered by. A row with no price and one that
+ *  has never synced both come back null, so `sortRows` keeps them at the
+ *  bottom whichever way the arrow points -- which is where "unknown" belongs
+ *  on a page you open to find what is stale. */
+function sortValue(
+  r: InstrumentRow,
   key: SortKey,
   base: string,
   fx: Record<string, number>,
-): number {
+): string | number | null {
   switch (key) {
     case "name":
-      return a.name.localeCompare(b.name);
+      return r.name;
     case "type":
-      return a.type.localeCompare(b.type);
+      return r.type;
     case "price":
-      return (numOrNull(a.last_price) ?? -1) - (numOrNull(b.last_price) ?? -1);
+      return numOrNull(r.last_price);
     case "priceBase": {
-      const av = numOrNull(a.last_price);
-      const bv = numOrNull(b.last_price);
-      const abase = av != null ? av * rateForRow(a, base, fx) : -1;
-      const bbase = bv != null ? bv * rateForRow(b, base, fx) : -1;
-      return abase - bbase;
+      const v = numOrNull(r.last_price);
+      return v != null ? v * rateForRow(r, base, fx) : null;
     }
     case "fxRate":
-      return rateForRow(a, base, fx) - rateForRow(b, base, fx);
-    case "synced": {
-      const at = a.price_synced_at ? Date.parse(a.price_synced_at) : 0;
-      const bt = b.price_synced_at ? Date.parse(b.price_synced_at) : 0;
-      return at - bt;
-    }
+      return rateForRow(r, base, fx);
+    case "synced":
+      return r.price_synced_at ? Date.parse(r.price_synced_at) : null;
   }
-}
-
-function Th({
-  label,
-  k,
-  sort,
-  onSort,
-  align = "left",
-}: {
-  label: string;
-  k: SortKey;
-  sort: { key: SortKey; dir: 1 | -1 };
-  onSort: (k: SortKey) => void;
-  align?: "left" | "right";
-}) {
-  const active = sort.key === k;
-  return (
-    <th className={`px-3 py-2 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
 }

@@ -21,7 +21,17 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatInstant } from "@/lib/format";
@@ -96,7 +106,7 @@ export default function AdminErrorsPage() {
   const [purgeTarget, setPurgeTarget] = useState<PurgeTarget>(null);
   const [purging, setPurging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "created", dir: -1 });
+  const sort = useSort<SortKey>("created", "desc");
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -116,10 +126,6 @@ export default function AdminErrorsPage() {
     };
   }, [rowsVersion]);
 
-  function toggleSort(key: SortKey) {
-    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
-  }
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const fromMs = dateFrom ? new Date(dateFrom).getTime() : null;
@@ -133,8 +139,7 @@ export default function AdminErrorsPage() {
         (r.digest ?? "").toLowerCase().includes(q)
       );
     });
-    const dir = sort.dir;
-    return [...list].sort((a, b) => compare(a, b, sort.key) * dir);
+    return sort.apply(list, sortValue);
   }, [rows, levelFilter, query, dateFrom, sort]);
 
 
@@ -284,36 +289,43 @@ export default function AdminErrorsPage() {
             </p>
           ) : (
             <>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                  <Th label={t("admin.errors.colLevel")} k="level" sort={sort} onSort={toggleSort} />
-                  <Th label={t("admin.errors.colKind")} k="kind" sort={sort} onSort={toggleSort} />
-                  <Th label={t("admin.errors.colMessage")} k="message" sort={sort} onSort={toggleSort} />
-                  <Th label={t("admin.errors.colRoute")} k="route" sort={sort} onSort={toggleSort} />
-                  <Th label={t("admin.errors.colDigest")} k="digest" sort={sort} onSort={toggleSort} />
-                  <Th label={t("admin.errors.colCreated")} k="created" sort={sort} onSort={toggleSort} />
-                  <Th
-                    label={t("admin.errors.colUserAgent")}
-                    k="userAgent"
-                    sort={sort}
-                    onSort={toggleSort}
-                  />
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <Thead>
+                <Th sort={sort.sort} sortKey="level" onSort={sort.toggle}>
+                  {t("admin.errors.colLevel")}
+                </Th>
+                <Th sort={sort.sort} sortKey="kind" onSort={sort.toggle}>
+                  {t("admin.errors.colKind")}
+                </Th>
+                <Th sort={sort.sort} sortKey="message" onSort={sort.toggle}>
+                  {t("admin.errors.colMessage")}
+                </Th>
+                <Th sort={sort.sort} sortKey="route" onSort={sort.toggle}>
+                  {t("admin.errors.colRoute")}
+                </Th>
+                <Th sort={sort.sort} sortKey="digest" onSort={sort.toggle}>
+                  {t("admin.errors.colDigest")}
+                </Th>
+                <Th sort={sort.sort} sortKey="created" onSort={sort.toggle}>
+                  {t("admin.errors.colCreated")}
+                </Th>
+                <Th sort={sort.sort} sortKey="userAgent" onSort={sort.toggle}>
+                  {t("admin.errors.colUserAgent")}
+                </Th>
+              </Thead>
+              <Tbody>
                 {pager.rows.map((r) => {
                   const isExpanded = expanded === r.id;
                   const shortMessage = (r.message ?? "").slice(0, 80);
                   const hasMore = (r.message ?? "").length > 80 || !!r.stack;
                   return (
                     <Fragment key={r.id}>
-                      <tr className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40">
-                        <td className={`px-3 py-2 align-top text-xs ${levelClass(r.level)}`}>
+                      <Tr selected={isExpanded}>
+                        <Td className={`align-top text-xs ${levelClass(r.level)}`}>
                           {t(levelLabelKey(r.level))}
-                        </td>
-                        <td className="px-3 py-2 align-top font-mono text-xs text-zinc-500">{r.kind}</td>
-                        <td className="max-w-xs px-3 py-2 align-top">
+                        </Td>
+                        <Td className="align-top font-mono text-xs text-zinc-500">{r.kind}</Td>
+                        <Td className="max-w-xs align-top">
                           <div className="truncate">{shortMessage || "—"}</div>
                           {hasMore && (
                             <button
@@ -324,23 +336,23 @@ export default function AdminErrorsPage() {
                               {isExpanded ? t("admin.errors.collapse") : t("admin.errors.expand")}
                             </button>
                           )}
-                        </td>
-                        <td className="max-w-[10rem] truncate px-3 py-2 align-top font-mono text-xs text-zinc-500">
+                        </Td>
+                        <Td className="max-w-[10rem] truncate align-top font-mono text-xs text-zinc-500">
                           {r.route ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 align-top font-mono text-xs text-zinc-500">
+                        </Td>
+                        <Td className="align-top font-mono text-xs text-zinc-500">
                           {r.digest ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 align-top text-xs text-zinc-500 whitespace-nowrap">
+                        </Td>
+                        <Td className="align-top text-xs text-zinc-500 whitespace-nowrap">
                           {formatInstant(r.created_at)}
-                        </td>
-                        <td className="max-w-[12rem] truncate px-3 py-2 align-top text-xs text-zinc-500">
+                        </Td>
+                        <Td className="max-w-[12rem] truncate align-top text-xs text-zinc-500">
                           {r.user_agent ?? "—"}
-                        </td>
-                      </tr>
+                        </Td>
+                      </Tr>
                       {isExpanded && (
-                        <tr className="border-b border-zinc-100 dark:border-zinc-800/60">
-                          <td colSpan={7} className="bg-zinc-50 px-3 py-3 dark:bg-zinc-900/40">
+                        <Tr selected>
+                          <Td colSpan={7} className="py-3">
                             <p className="whitespace-pre-wrap break-words text-xs">
                               {r.message || t("admin.errors.noStack")}
                             </p>
@@ -349,14 +361,14 @@ export default function AdminErrorsPage() {
                                 {r.stack}
                               </pre>
                             )}
-                          </td>
-                        </tr>
+                          </Td>
+                        </Tr>
                       )}
                     </Fragment>
                   );
                 })}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
             <TablePagination pager={pager} />
             </>
           )}
@@ -383,46 +395,23 @@ export default function AdminErrorsPage() {
   );
 }
 
-function compare(a: ErrorLogRow, b: ErrorLogRow, key: SortKey): number {
+/** The cell value each column is ordered by. Level sorts by SEVERITY, not by
+ *  its label: alphabetically "error" would file between "debug" and "info". */
+function sortValue(r: ErrorLogRow, key: SortKey): string | number {
   switch (key) {
     case "level":
-      return levelRank(a.level) - levelRank(b.level);
+      return levelRank(r.level);
     case "kind":
-      return a.kind.localeCompare(b.kind);
+      return r.kind;
     case "message":
-      return (a.message ?? "").localeCompare(b.message ?? "");
+      return r.message ?? "";
     case "route":
-      return (a.route ?? "").localeCompare(b.route ?? "");
+      return r.route ?? "";
     case "digest":
-      return (a.digest ?? "").localeCompare(b.digest ?? "");
+      return r.digest ?? "";
     case "created":
-      return Date.parse(a.created_at) - Date.parse(b.created_at);
+      return Date.parse(r.created_at);
     case "userAgent":
-      return (a.user_agent ?? "").localeCompare(b.user_agent ?? "");
+      return r.user_agent ?? "";
   }
-}
-
-function Th({
-  label,
-  k,
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: SortKey;
-  sort: { key: SortKey; dir: 1 | -1 };
-  onSort: (k: SortKey) => void;
-}) {
-  const active = sort.key === k;
-  return (
-    <th className="px-3 py-2 font-medium">
-      <button
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
 }

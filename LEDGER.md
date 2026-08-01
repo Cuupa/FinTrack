@@ -38,9 +38,36 @@ subworker; commit only the paths you claimed.
 | Tooltips überarbeiten | MEDIUM | done | 17 Keys x 3 Sprachen entlokalisiert, shared-portfolio-view übersetzt |
 | Vereinheitlichung: Tabellen-Shell | HIGH | teilweise (3 von 22) | debt-view, spending-view, accounts-view auf Table/Thead/Th/Tr/Td + useSort |
 | Tabellen-Shell Batch 2 (nutzerseitig) | HIGH | done | debt-repayments, recurring/[kind]/[id], account-balances-dialog, valuation-section, recurring-card, savings-plans-card, asset-detail, shared-portfolio-view, e2e/table-shell.spec.ts |
-| Tabellen-Shell Batch 3 (/admin) | HIGH | in Arbeit | app/admin/{billing,flags,usage,audit,errors,prices} |
+| Tabellen-Shell Batch 3 (/admin) | HIGH | done (nicht browser-verifiziert, /admin braucht Supabase) | app/admin/{billing,flags,usage,audit,errors,prices} |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Tabellen-Shell, Batch 3 - /admin (2026-08-01)
+
+Die letzten sieben Tabellen: billing, flags (zwei), usage, audit, errors,
+prices. Vier weitere lokale Header-Komponenten sind weg (`GrantTh`, `SortTh`
+und zweimal ein `Th`, das den geteilten sogar namensgleich verdeckte), dazu
+vier `compare`-Funktionen, die zu reinen `sortValue`-Funktionen werden.
+
+Die Audit-Tabelle war die einzige in der App **ganz ohne** Sortierung und
+**ohne** Hover-Hervorhebung - jetzt beides, sortierbar nach Zeitpunkt, Akteur,
+Aktion und Ziel. Die beiden JSON-Spalten bleiben bewusst unsortierbar.
+
+Zwei Verhaltensaenderungen, beide absichtlich und im Code kommentiert: eine
+Pro-Freigabe ohne Ablaufdatum und eine Instrumentenzeile ohne Kurs bzw. ohne
+Sync-Zeitpunkt standen bisher per `Infinity` bzw. `-1` mal ganz oben, mal ganz
+unten. Jetzt gilt fuer sie dieselbe Regel wie ueberall sonst (`sortRows`):
+fehlende Werte stehen in **beiden** Richtungen hinten. "Laeuft nie ab" ist kein
+Datum, und "nie synchronisiert" ist kein Kurs.
+
+Aufgeklappte Detailzeilen (audit, errors) nutzen jetzt `Tr selected` statt
+eines eigenen `bg-zinc-50`.
+
+**Nicht im Browser verifiziert**: /admin verlangt eine Supabase-Admin-Session,
+lokal laeuft nur der Gast-Modus, und die Routen leiten dort auf die Uebersicht
+um (geprueft: sechsmal Redirect, null Konsolenmeldungen). Abgesichert ist es
+ueber Typecheck, Lint und einen sauberen Produktions-Build; das Markup ist
+derselbe Shell wie auf den nutzerseitigen Seiten, die verifiziert sind.
 
 ## Erledigt: Tabellen-Shell, Batch 2 (2026-08-01)
 

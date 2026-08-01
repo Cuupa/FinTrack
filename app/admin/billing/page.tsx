@@ -24,6 +24,8 @@ import { Button, Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { adminAuthToken, adminDelete, adminGet, adminPost } from "@/lib/admin/client";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 
 interface BillingAdminData {
   priceMonthly: string | null;
@@ -55,49 +57,20 @@ interface UserResult {
 
 type GrantSortKey = "email" | "expiresAt" | "note" | "createdAt";
 
-function grantCompare(a: GrantRow, b: GrantRow, key: GrantSortKey): number {
+/** The cell value each grant column is ordered by. A null expiry stays null so
+ *  `sortRows` files it last in BOTH directions -- "never expires" is not a
+ *  date, and it should not lead the list just because the arrow flipped. */
+function grantSortValue(g: GrantRow, key: GrantSortKey): string | number | null {
   switch (key) {
     case "email":
-      return (a.email ?? a.userId).localeCompare(b.email ?? b.userId);
-    case "expiresAt": {
-      // Infinite (null) sorts after every dated expiry, ascending.
-      const av = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
-      const bv = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
-      return av - bv;
-    }
+      return g.email ?? g.userId;
+    case "expiresAt":
+      return g.expiresAt ? new Date(g.expiresAt).getTime() : null;
     case "note":
-      return (a.note ?? "").localeCompare(b.note ?? "");
+      return g.note ?? "";
     case "createdAt":
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(g.createdAt).getTime();
   }
-}
-
-// Sortable column header: same toggle-direction idiom as SortTh in
-// app/admin/flags/page.tsx (click to sort ascending, click again to flip
-// direction, ▲/▼ indicator next to the active column).
-function GrantTh({
-  label,
-  k,
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: GrantSortKey;
-  sort: { key: GrantSortKey; dir: 1 | -1 };
-  onSort: (k: GrantSortKey) => void;
-}) {
-  return (
-    <th className="py-2 pr-4 text-left">
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
 }
 
 async function searchUsers(q: string, token: string): Promise<UserResult[]> {
@@ -141,10 +114,7 @@ export default function AdminBillingPage() {
   const [grants, setGrants] = useState<GrantRow[] | null>(null);
   const [grantsError, setGrantsError] = useState<string | null>(null);
   const [grantsVersion, setGrantsVersion] = useState(0);
-  const [grantSort, setGrantSort] = useState<{ key: GrantSortKey; dir: 1 | -1 }>({
-    key: "createdAt",
-    dir: -1,
-  });
+  const grantSort = useSort<GrantSortKey>("createdAt", "desc");
   const [revokeTarget, setRevokeTarget] = useState<GrantRow | null>(null);
   const [revoking, setRevoking] = useState(false);
 
@@ -216,13 +186,9 @@ export default function AdminBillingPage() {
   }, [grantsVersion]);
 
   const sortedGrants = useMemo(
-    () => (grants ?? []).slice().sort((a, b) => grantCompare(a, b, grantSort.key) * grantSort.dir),
+    () => grantSort.apply(grants ?? [], grantSortValue),
     [grants, grantSort],
   );
-
-  function toggleGrantSort(key: GrantSortKey) {
-    setGrantSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
-  }
 
   const grantUser = async () => {
     if (!chosenUser) return;
@@ -666,57 +632,40 @@ export default function AdminBillingPage() {
           ) : grants.length === 0 ? (
             <p className="text-sm text-zinc-500">{t("admin.billing.grantsEmpty")}</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-800">
-                  <GrantTh
-                    label={t("admin.billing.grantsColEmail")}
-                    k="email"
-                    sort={grantSort}
-                    onSort={toggleGrantSort}
-                  />
-                  <GrantTh
-                    label={t("admin.billing.grantsColEndDate")}
-                    k="expiresAt"
-                    sort={grantSort}
-                    onSort={toggleGrantSort}
-                  />
-                  <GrantTh
-                    label={t("admin.billing.grantsColNote")}
-                    k="note"
-                    sort={grantSort}
-                    onSort={toggleGrantSort}
-                  />
-                  <GrantTh
-                    label={t("admin.billing.grantsColCreated")}
-                    k="createdAt"
-                    sort={grantSort}
-                    onSort={toggleGrantSort}
-                  />
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <Thead>
+                <Th sort={grantSort.sort} sortKey="email" onSort={grantSort.toggle}>
+                  {t("admin.billing.grantsColEmail")}
+                </Th>
+                <Th sort={grantSort.sort} sortKey="expiresAt" onSort={grantSort.toggle}>
+                  {t("admin.billing.grantsColEndDate")}
+                </Th>
+                <Th sort={grantSort.sort} sortKey="note" onSort={grantSort.toggle}>
+                  {t("admin.billing.grantsColNote")}
+                </Th>
+                <Th sort={grantSort.sort} sortKey="createdAt" onSort={grantSort.toggle}>
+                  {t("admin.billing.grantsColCreated")}
+                </Th>
+                <Th />
+              </Thead>
+              <Tbody>
                 {sortedGrants.map((g) => (
-                  <tr
-                    key={g.id}
-                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className="py-2 pr-4">{g.email ?? g.userId}</td>
-                    <td className="py-2 pr-4">
+                  <Tr key={g.id}>
+                    <Td>{g.email ?? g.userId}</Td>
+                    <Td>
                       {g.expiresAt ? formatInstant(g.expiresAt) : t("admin.billing.grantsUnlimited")}
-                    </td>
-                    <td className="py-2 pr-4 text-zinc-500">{g.note}</td>
-                    <td className="py-2 pr-4 text-zinc-500">{formatInstant(g.createdAt)}</td>
-                    <td className="py-2">
+                    </Td>
+                    <Td className="text-zinc-500">{g.note}</Td>
+                    <Td className="text-zinc-500">{formatInstant(g.createdAt)}</Td>
+                    <Td>
                       <Button variant="danger" size="sm" onClick={() => setRevokeTarget(g)}>
                         {t("admin.billing.revoke")}
                       </Button>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
           )}
         </div>
       </Card>

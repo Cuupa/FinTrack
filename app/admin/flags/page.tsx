@@ -15,6 +15,8 @@ import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 
 interface FlagRow {
   flag: string;
@@ -38,56 +40,29 @@ interface UserResult {
 // components/assets/asset-detail.tsx (click to sort ascending, click again to
 // flip direction, ▲/▼ indicator next to the active column), generalized over
 // the sort-key union so both tables on this page can share it.
-function SortTh<K extends string>({
-  label,
-  k,
-  align = "left",
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: K;
-  align?: "left" | "right";
-  sort: { key: K; dir: 1 | -1 };
-  onSort: (k: K) => void;
-}) {
-  return (
-    <th className={`py-2 pr-4 ${align === "right" ? "text-right" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
-}
-
 type FlagSortKey = "flag" | "enabled" | "plan";
 
-function flagCompare(a: FlagRow, b: FlagRow, key: FlagSortKey): number {
+function flagSortValue(f: FlagRow, key: FlagSortKey): string | boolean {
   switch (key) {
     case "flag":
-      return a.flag.localeCompare(b.flag);
+      return f.flag;
     case "enabled":
-      return Number(a.enabled) - Number(b.enabled);
+      return f.enabled;
     case "plan":
-      return a.requiredPlan.localeCompare(b.requiredPlan);
+      return f.requiredPlan;
   }
 }
 
 type OverrideSortKey = "user" | "flag" | "enabled";
 
-function overrideCompare(a: OverrideRow, b: OverrideRow, key: OverrideSortKey): number {
+function overrideSortValue(o: OverrideRow, key: OverrideSortKey): string | boolean {
   switch (key) {
     case "user":
-      return a.user_id.localeCompare(b.user_id);
+      return o.user_id;
     case "flag":
-      return a.flag.localeCompare(b.flag);
+      return o.flag;
     case "enabled":
-      return Number(a.enabled) - Number(b.enabled);
+      return o.enabled;
   }
 }
 
@@ -130,14 +105,8 @@ export default function AdminFlagsPage() {
   const [savingFlag, setSavingFlag] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [flagSort, setFlagSort] = useState<{ key: FlagSortKey; dir: 1 | -1 }>({
-    key: "flag",
-    dir: 1,
-  });
-  const [overrideSort, setOverrideSort] = useState<{ key: OverrideSortKey; dir: 1 | -1 }>({
-    key: "user",
-    dir: 1,
-  });
+  const flagSort = useSort<FlagSortKey>("flag");
+  const overrideSort = useSort<OverrideSortKey>("user");
 
   const [newUserId, setNewUserId] = useState("");
   const [newFlag, setNewFlag] = useState("");
@@ -238,27 +207,14 @@ export default function AdminFlagsPage() {
   const selectedFlag = newFlag || flags?.[0]?.flag || "";
 
   const sortedFlags = useMemo(
-    () => (flags ?? []).slice().sort((a, b) => flagCompare(a, b, flagSort.key) * flagSort.dir),
+    () => flagSort.apply(flags ?? [], flagSortValue),
     [flags, flagSort],
   );
 
-  function toggleFlagSort(key: FlagSortKey) {
-    setFlagSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
-  }
-
   const sortedOverrides = useMemo(
-    () =>
-      (overrides ?? [])
-        .slice()
-        .sort((a, b) => overrideCompare(a, b, overrideSort.key) * overrideSort.dir),
+    () => overrideSort.apply(overrides ?? [], overrideSortValue),
     [overrides, overrideSort],
   );
-
-  function toggleOverrideSort(key: OverrideSortKey) {
-    setOverrideSort((s) =>
-      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 },
-    );
-  }
 
   const toggleGlobal = async (flag: string, enabled: boolean) => {
     setSavingFlag(flag);
@@ -346,40 +302,25 @@ export default function AdminFlagsPage() {
             <Skeleton className="h-9 w-full" />
           </div>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500 dark:border-zinc-800">
-                  <SortTh
-                    label={t("admin.flags.colName")}
-                    k="flag"
-                    sort={flagSort}
-                    onSort={toggleFlagSort}
-                  />
-                  <th className="py-2 pr-4">{t("admin.flags.colDescription")}</th>
-                  <SortTh
-                    label={t("admin.flags.colPlan")}
-                    k="plan"
-                    sort={flagSort}
-                    onSort={toggleFlagSort}
-                  />
-                  <SortTh
-                    label={t("admin.flags.colEnabled")}
-                    k="enabled"
-                    sort={flagSort}
-                    onSort={toggleFlagSort}
-                  />
-                </tr>
-              </thead>
-              <tbody>
+          <Table className="mt-3">
+            <Thead>
+              <Th sort={flagSort.sort} sortKey="flag" onSort={flagSort.toggle}>
+                {t("admin.flags.colName")}
+              </Th>
+              <Th>{t("admin.flags.colDescription")}</Th>
+              <Th sort={flagSort.sort} sortKey="plan" onSort={flagSort.toggle}>
+                {t("admin.flags.colPlan")}
+              </Th>
+              <Th sort={flagSort.sort} sortKey="enabled" onSort={flagSort.toggle}>
+                {t("admin.flags.colEnabled")}
+              </Th>
+            </Thead>
+            <Tbody>
                 {sortedFlags.map((f) => (
-                  <tr
-                    key={f.flag}
-                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className="py-2 pr-4 font-mono text-xs">{f.flag}</td>
-                    <td className="py-2 pr-4 text-zinc-500">{f.description}</td>
-                    <td className="py-2 pr-4">
+                  <Tr key={f.flag}>
+                    <Td className="font-mono text-xs">{f.flag}</Td>
+                    <Td className="text-zinc-500">{f.description}</Td>
+                    <Td>
                       <SelectMenu
                         value={f.requiredPlan === "pro" ? "pro" : "free"}
                         onChange={(v) => setPlan(f.flag, v)}
@@ -390,8 +331,8 @@ export default function AdminFlagsPage() {
                           { value: "pro", label: t("admin.flags.planPro") },
                         ]}
                       />
-                    </td>
-                    <td className="py-2">
+                    </Td>
+                    <Td>
                       <button
                         type="button"
                         role="switch"
@@ -409,12 +350,11 @@ export default function AdminFlagsPage() {
                           }`}
                         />
                       </button>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </Tbody>
+          </Table>
         )}
       </Card>
 
@@ -514,50 +454,34 @@ export default function AdminFlagsPage() {
           ) : overrides.length === 0 ? (
             <p className="text-sm text-zinc-500">{t("admin.flags.noOverrides")}</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500 dark:border-zinc-800">
-                  <SortTh
-                    label={t("admin.flags.userId")}
-                    k="user"
-                    sort={overrideSort}
-                    onSort={toggleOverrideSort}
-                  />
-                  <SortTh
-                    label={t("admin.flags.colName")}
-                    k="flag"
-                    sort={overrideSort}
-                    onSort={toggleOverrideSort}
-                  />
-                  <SortTh
-                    label={t("admin.flags.colEnabled")}
-                    k="enabled"
-                    sort={overrideSort}
-                    onSort={toggleOverrideSort}
-                  />
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <Thead>
+                <Th sort={overrideSort.sort} sortKey="user" onSort={overrideSort.toggle}>
+                  {t("admin.flags.userId")}
+                </Th>
+                <Th sort={overrideSort.sort} sortKey="flag" onSort={overrideSort.toggle}>
+                  {t("admin.flags.colName")}
+                </Th>
+                <Th sort={overrideSort.sort} sortKey="enabled" onSort={overrideSort.toggle}>
+                  {t("admin.flags.colEnabled")}
+                </Th>
+                <Th />
+              </Thead>
+              <Tbody>
                 {sortedOverrides.map((o) => (
-                  <tr
-                    key={`${o.user_id}:${o.flag}`}
-                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className="py-2 pr-4 font-mono text-xs">{o.user_id}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{o.flag}</td>
-                    <td className="py-2 pr-4">
-                      {o.enabled ? t("admin.flags.enabled") : t("admin.flags.disabled")}
-                    </td>
-                    <td className="py-2">
+                  <Tr key={`${o.user_id}:${o.flag}`}>
+                    <Td className="font-mono text-xs">{o.user_id}</Td>
+                    <Td className="font-mono text-xs">{o.flag}</Td>
+                    <Td>{o.enabled ? t("admin.flags.enabled") : t("admin.flags.disabled")}</Td>
+                    <Td>
                       <Button variant="danger" size="sm" onClick={() => setRemoveTarget(o)}>
                         {t("admin.flags.remove")}
                       </Button>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
           )}
         </div>
       </Card>

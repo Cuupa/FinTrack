@@ -19,6 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatNumber } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 
 interface UsageRow {
   feature: string;
@@ -43,7 +45,7 @@ export default function AdminUsagePage() {
   const { t } = useI18n();
   const [data, setData] = useState<UsageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "users", dir: -1 });
+  const sort = useSort<SortKey>("users", "desc");
 
   // Bumped by the retry button to re-run the effect below. State is only ever
   // set in a promise continuation: Next's set-state-in-effect rule fails the
@@ -74,23 +76,8 @@ export default function AdminUsagePage() {
 
   const num = (v: number | null | undefined) => (v == null ? "—" : formatNumber(v, 0));
 
-  function toggleSort(key: SortKey) {
-    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: -1 }));
-  }
+  const rows = data ? sort.apply(data.features, (r, key) => r[key]) : [];
 
-  const rows = data
-    ? [...data.features].sort((a, b) => {
-        const va = sort.key === "feature" ? a.feature : a[sort.key];
-        const vb = sort.key === "feature" ? b.feature : b[sort.key];
-        if (va < vb) return -1 * sort.dir;
-        if (va > vb) return 1 * sort.dir;
-        return 0;
-      })
-    : [];
-
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
   const adoption = (r: UsageRow) =>
     data?.users.total ? Math.min(1, r.users / data.users.total) : 0;
 
@@ -137,50 +124,44 @@ export default function AdminUsagePage() {
           <Card>
             <h2 className="text-lg font-semibold">{t("admin.usage.featuresTitle")}</h2>
             <p className="mt-1 text-sm text-zinc-500">{t("admin.usage.featuresIntro")}</p>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                    <th className={thCls} onClick={() => toggleSort("feature")}>
-                      {t("admin.usage.colFeature")}
-                      {arrow("feature")}
-                    </th>
-                    <th className={`${thCls} text-right`} onClick={() => toggleSort("users")}>
-                      {t("admin.usage.colUsers")}
-                      {arrow("users")}
-                    </th>
-                    <th className={`${thCls} text-right`} onClick={() => toggleSort("records")}>
-                      {t("admin.usage.colRecords")}
-                      {arrow("records")}
-                    </th>
-                    <th className="px-3 py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr
-                      key={r.feature}
-                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                    >
-                      <td className="px-3 py-2 font-medium">
-                        {t(`admin.usage.feature.${r.feature}` as MessageKey)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{num(r.users)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{num(r.records)}</td>
-                      <td className="w-40 px-3 py-2">
-                        {/* Share of registered users who have at least one row. */}
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                          <div
-                            className="h-full rounded-full bg-emerald-500"
-                            style={{ width: `${adoption(r) * 100}%` }}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table className="mt-4">
+              <Thead>
+                <Th sort={sort.sort} sortKey="feature" onSort={sort.toggle}>
+                  {t("admin.usage.colFeature")}
+                </Th>
+                <Th align="right" sort={sort.sort} sortKey="users" onSort={sort.toggle}>
+                  {t("admin.usage.colUsers")}
+                </Th>
+                <Th align="right" sort={sort.sort} sortKey="records" onSort={sort.toggle}>
+                  {t("admin.usage.colRecords")}
+                </Th>
+                <Th />
+              </Thead>
+              <Tbody>
+                {rows.map((r) => (
+                  <Tr key={r.feature}>
+                    <Td className="font-medium">
+                      {t(`admin.usage.feature.${r.feature}` as MessageKey)}
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      {num(r.users)}
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      {num(r.records)}
+                    </Td>
+                    <Td className="w-40">
+                      {/* Share of registered users who have at least one row. */}
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${adoption(r) * 100}%` }}
+                        />
+                      </div>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
           </Card>
 
           <Card>
