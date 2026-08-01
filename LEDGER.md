@@ -16,6 +16,8 @@ gelaufen. Bis dahin quittiert die betroffene Tabelle einen 400/500:
 | 0111 | Rentenpunkte-Deckel greift nicht (`max_points` fehlt) |
 | 0112 | Datenreparatur: verlorene Umbuchungsziele bleiben `null` |
 | 0113 | `contracts`/`planned_cashflows` quittieren `month_end` mit 400 |
+| 0114 | Die Retry-Queue der Kurs-Cron bleibt aus (Sync laeuft normal weiter) |
+| 0115 | Nur die Flag-Beschreibung in `/admin/flags` bleibt alt |
 
 0112 traegt oben eine reine Lese-Abfrage, mit der sich der Umfang vorher
 ansehen laesst.
@@ -26,7 +28,25 @@ ansehen laesst.
 | --- | --- | --- | --- |
 | — | — | — | — |
 
+## Offen (TODO.md)
+
+| Task | Prio | Warum noch offen |
+| --- | --- | --- |
+| Demo-SQL auf die neuen Features erweitern | LOW | noch nicht angefasst |
+| LLM-Kontext um die neuen Daten erweitern | LOW | noch nicht angefasst |
+| Download/Export um die restlichen Daten erweitern | LOW | noch nicht angefasst |
+| Monte Carlo: dynamische Entnahme, Stresszenarien, FIRE/Simulation vereinheitlichen | LOW | groesster Brocken, eigene Runde |
+| FIRE + Rente unter einem Navipunkt | LOW | braucht Tab-Seite + Redirect wie /spending -> /accounts |
+
 ## Erledigt
+
+### Runde 2026-08-01 (zweiter Teil)
+
+| Task | Commit / Umfang |
+| --- | --- |
+| Rendite-Modus nennt das Depot; Fehler in `windowChange` | 4124195 — Notiz + Depot-Label auf `/`, negative Basis war keine Basis |
+| Kurs-Sync: Retry-Queue statt haengender Zeilen | 7587b00 — `lib/server/price-retry.ts`, Migration 0114, Spalte in /admin/prices |
+| Split hinter `splitDetection`, Teilen-Schalter, InfoTip-Aria | d925460 — Migration 0115 |
 
 ### Runde 2026-08-01
 
