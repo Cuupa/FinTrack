@@ -276,6 +276,11 @@ export interface PensionSettings {
   annualPoints: number | null;
   /** Desired monthly pension, base currency; null = no target set. */
   targetMonthly: number | null;
+  /** Cumulative Entgeltpunkte as printed on the Renteninformation -- the one
+   *  number the user actually has in hand. Null = only the per-year record. */
+  totalPoints: number | null;
+  /** The year `totalPoints` was stated for; per-year rows after it add on top. */
+  totalPointsYear: number | null;
 }
 
 export const DEFAULT_PENSION_SETTINGS: PensionSettings = {
@@ -283,6 +288,8 @@ export const DEFAULT_PENSION_SETTINGS: PensionSettings = {
   retirementAge: null,
   annualPoints: null,
   targetMonthly: null,
+  totalPoints: null,
+  totalPointsYear: null,
 };
 
 /**

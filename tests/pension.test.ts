@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   accessFactor,
   averageAnnualPoints,
+  currentPensionPoints,
+  maxPointsOn,
   pensionLevelOn,
   pensionValueOn,
   projectPension,
@@ -12,9 +14,9 @@ import {
 import { DEFAULT_PENSION_SETTINGS, type PensionContract, type PensionPoint } from "../lib/types";
 
 const reference: PensionReference[] = [
-  { year: 2023, pensionValue: 37.6, levelPct: 48.2 },
-  { year: 2024, pensionValue: 39.32, levelPct: 48.1 },
-  { year: 2025, pensionValue: 40.79, levelPct: 48.0 },
+  { year: 2023, pensionValue: 37.6, levelPct: 48.2, maxPoints: 2.03 },
+  { year: 2024, pensionValue: 39.32, levelPct: 48.1, maxPoints: 2.0 },
+  { year: 2025, pensionValue: 40.79, levelPct: 48.0, maxPoints: 1.91 },
 ];
 
 function points(spec: [number, number][]): PensionPoint[] {
@@ -56,8 +58,8 @@ describe("pensionValueOn", () => {
 describe("pensionLevelOn", () => {
   it("carries forward and ignores rows with no level recorded", () => {
     const sparse: PensionReference[] = [
-      { year: 2023, pensionValue: 37.6, levelPct: 48.2 },
-      { year: 2024, pensionValue: 39.32, levelPct: null },
+      { year: 2023, pensionValue: 37.6, levelPct: 48.2, maxPoints: null },
+      { year: 2024, pensionValue: 39.32, levelPct: null, maxPoints: null },
     ];
     expect(pensionLevelOn(sparse, 2024)).toBe(48.2);
     expect(pensionLevelOn([], 2024)).toBeNull();
@@ -77,6 +79,54 @@ describe("totalPensionPoints / averageAnnualPoints", () => {
 
   it("is 0 with no history rather than NaN", () => {
     expect(averageAnnualPoints([])).toBe(0);
+  });
+});
+
+describe("maxPointsOn", () => {
+  it("carries the newest cap at or before the year forward", () => {
+    expect(maxPointsOn(reference, 2024)).toBe(2.0);
+    expect(maxPointsOn(reference, 2030)).toBe(1.91);
+  });
+
+  it("uses the newest recorded cap for a year predating the table", () => {
+    // The ratio is structural (BBG ~ 2x the average wage), not a trend, so an
+    // old year is capped rather than left uncapped.
+    expect(maxPointsOn(reference, 1990)).toBe(1.91);
+  });
+
+  it("is null with no cap recorded at all, which disables the cap", () => {
+    expect(maxPointsOn([], 2025)).toBeNull();
+    expect(
+      maxPointsOn([{ year: 2025, pensionValue: 40.79, levelPct: null, maxPoints: null }], 2025),
+    ).toBeNull();
+  });
+});
+
+describe("currentPensionPoints", () => {
+  const settings = { totalPoints: null, totalPointsYear: null };
+
+  it("sums the per-year record when no statement total is on file", () => {
+    expect(currentPensionPoints(points([[2024, 1.0]]), settings)).toBeCloseTo(1, 10);
+  });
+
+  it("takes the statement total and adds only the years after it", () => {
+    const entries = points([
+      [2023, 1.1],
+      [2024, 1.2],
+      [2025, 1.3],
+    ]);
+    // The statement covers everything up to and including 2024.
+    expect(
+      currentPensionPoints(entries, { totalPoints: 17.03, totalPointsYear: 2024 }),
+    ).toBeCloseTo(17.03 + 1.3, 10);
+  });
+
+  it("ignores the per-year record entirely when the total has no as-of year", () => {
+    const entries = points([[2024, 1.2]]);
+    expect(currentPensionPoints(entries, { totalPoints: 17.03, totalPointsYear: null })).toBeCloseTo(
+      17.03,
+      10,
+    );
   });
 });
 
@@ -203,6 +253,73 @@ describe("projectPension", () => {
     expect(p.retirementYear).toBeNull();
     expect(p.futurePoints).toBe(0);
     expect(p.totalPoints).toBeCloseTo(4, 10);
+  });
+
+  it("caps a cumulative total typed into one year instead of multiplying it", () => {
+    // The reported bug: 17 points is a Renteninformation TOTAL, but it went
+    // into a single year's row, so the average read 17 points PER year and the
+    // projection returned roughly 20.000 EUR a month.
+    const p = projectPension({
+      entries: points([[2025, 17]]),
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990 },
+      currentYear: 2025,
+    });
+    expect(p.rawAnnualPoints).toBe(17);
+    expect(p.annualPoints).toBe(1.91);
+    expect(p.annualPointsCapped).toBe(true);
+    expect(p.maxAnnualPoints).toBe(1.91);
+    // 17 earned + 32 years x 1.91, not 17 + 32 x 17.
+    expect(p.totalPoints).toBeCloseTo(17 + 32 * 1.91, 10);
+    expect(p.monthlyStatutory!).toBeLessThan(4000);
+  });
+
+  it("leaves a plausible assumption alone", () => {
+    const p = projectPension({
+      entries,
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, annualPoints: 1.2 },
+      currentYear: 2025,
+    });
+    expect(p.annualPoints).toBe(1.2);
+    expect(p.annualPointsCapped).toBe(false);
+  });
+
+  it("takes the statement total as the entitlement earned so far", () => {
+    const p = projectPension({
+      entries: [],
+      contracts: [],
+      reference,
+      settings: {
+        ...DEFAULT_PENSION_SETTINGS,
+        birthYear: 1990,
+        totalPoints: 17.0322,
+        totalPointsYear: 2025,
+        annualPoints: 1,
+      },
+      currentYear: 2025,
+    });
+    expect(p.currentPoints).toBeCloseTo(17.0322, 10);
+    expect(p.monthlyEarned).toBeCloseTo(17.0322 * 40.79, 10);
+    expect(p.totalPoints).toBeCloseTo(17.0322 + 32, 10);
+  });
+
+  it("extrapolates nothing from a statement total on its own", () => {
+    // A total is a stock, not a rate: with no per-year record and no explicit
+    // assumption there is nothing to measure a future year from, so the page
+    // reports the entitlement rather than inventing an income history.
+    const p = projectPension({
+      entries: [],
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, totalPoints: 17.0322 },
+      currentYear: 2025,
+    });
+    expect(p.annualPoints).toBe(0);
+    expect(p.futurePoints).toBe(0);
+    expect(p.totalPoints).toBeCloseTo(17.0322, 10);
   });
 
   it("reports points but no euro figure with no reference data", () => {

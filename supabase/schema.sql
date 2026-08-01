@@ -24,7 +24,7 @@ create table if not exists public.profiles (
   rebalance_targets jsonb not null default '{"mode":"trade","weights":{},"custom":[]}'::jsonb,
   -- Retirement projection assumptions (migration 0106): {birthYear,
   -- retirementAge, annualPoints, targetMonthly}.
-  pension_settings jsonb not null default '{"birthYear":null,"retirementAge":null,"annualPoints":null,"targetMonthly":null}'::jsonb,
+  pension_settings jsonb not null default '{"birthYear":null,"retirementAge":null,"annualPoints":null,"targetMonthly":null,"totalPoints":null,"totalPointsYear":null}'::jsonb,
   created_at timestamptz not null default now()
 );
 alter table public.profiles add column if not exists display_name text;
@@ -38,7 +38,7 @@ alter table public.profiles add column if not exists tax_withheld_override jsonb
 alter table public.profiles add column if not exists tour_done_at timestamptz;
 alter table public.profiles add column if not exists tours_done jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists rebalance_targets jsonb not null default '{"mode":"trade","weights":{},"custom":[]}'::jsonb;
-alter table public.profiles add column if not exists pension_settings jsonb not null default '{"birthYear":null,"retirementAge":null,"annualPoints":null,"targetMonthly":null}'::jsonb;
+alter table public.profiles add column if not exists pension_settings jsonb not null default '{"birthYear":null,"retirementAge":null,"annualPoints":null,"targetMonthly":null,"totalPoints":null,"totalPointsYear":null}'::jsonb;
 
 -- Instruments catalog --------------------------------------------------------
 -- Global reference data (the known assets + provider quote symbols). Source of
@@ -206,24 +206,30 @@ on conflict (year) do nothing;
 -- value in force in its second half; the finance layer reads it carry-forward.
 -- Reference data, world-readable, owner-written -- the same rule as basiszins:
 -- points can only be turned into euro with this table, never with a constant.
+-- `max_points` is the most Entgeltpunkte one year of work can earn
+-- (Beitragsbemessungsgrenze / Durchschnittsentgelt, which the legislator keeps
+-- at roughly 2.0). The projection caps its per-remaining-year assumption with
+-- it, so a CUMULATIVE total typed into a single year's row cannot multiply into
+-- a fantasy pension -- see migration 0111.
 create table if not exists public.pension_reference (
   year int primary key,
   pension_value numeric not null,
   level_pct numeric,
-  note text
+  note text,
+  max_points numeric
 );
 alter table public.pension_reference enable row level security;
 drop policy if exists "pension reference readable" on public.pension_reference;
 create policy "pension reference readable" on public.pension_reference for select using (true);
-insert into public.pension_reference (year, pension_value, level_pct, note) values
-  (2018, 32.03, 48.1, 'Rentenwert West ab 01.07.2018'),
-  (2019, 33.05, 48.2, 'Rentenwert West ab 01.07.2019'),
-  (2020, 34.19, 48.2, 'Rentenwert West ab 01.07.2020'),
-  (2021, 34.19, 49.4, 'Rentenwert West ab 01.07.2021 (keine Erhoehung)'),
-  (2022, 36.02, 48.1, 'Rentenwert West ab 01.07.2022'),
-  (2023, 37.60, 48.2, 'Rentenwert West ab 01.07.2023'),
-  (2024, 39.32, 48.1, 'Rentenwert ab 01.07.2024 (Ost/West vereinheitlicht)'),
-  (2025, 40.79, 48.0, 'Rentenwert ab 01.07.2025')
+insert into public.pension_reference (year, pension_value, level_pct, max_points, note) values
+  (2018, 32.03, 48.1, 2.06, 'Rentenwert West ab 01.07.2018'),
+  (2019, 33.05, 48.2, 2.07, 'Rentenwert West ab 01.07.2019'),
+  (2020, 34.19, 48.2, 2.04, 'Rentenwert West ab 01.07.2020'),
+  (2021, 34.19, 49.4, 2.05, 'Rentenwert West ab 01.07.2021 (keine Erhoehung)'),
+  (2022, 36.02, 48.1, 2.01, 'Rentenwert West ab 01.07.2022'),
+  (2023, 37.60, 48.2, 2.03, 'Rentenwert West ab 01.07.2023'),
+  (2024, 39.32, 48.1, 2.00, 'Rentenwert ab 01.07.2024 (Ost/West vereinheitlicht)'),
+  (2025, 40.79, 48.0, 1.91, 'Rentenwert ab 01.07.2025')
 on conflict (year) do nothing;
 
 -- Best-effort DB-backed per-IP rate limiting for the market-data API proxies.

@@ -21,7 +21,8 @@ async function openPension(page: Page): Promise<void> {
 
 async function addYear(page: Page, year: string, points: string): Promise<void> {
   const card = page.locator('[data-tour="pension-points"]');
-  await card.getByLabel("Year").fill(year);
+  // Exact: the card also carries the statement total's "As of year" field.
+  await card.getByLabel("Year", { exact: true }).fill(year);
   await card.getByLabel("Points", { exact: true }).fill(points);
   await card.getByRole("button", { name: "Add year", exact: true }).click();
 }
@@ -65,6 +66,41 @@ test("deleting a year asks first and then removes it", async ({ page }) => {
   await confirm.getByRole("button", { name: "Delete", exact: true }).click();
 
   await expect(pointsRow(page, "2022")).toHaveCount(0);
+});
+
+test("the statement total is its own field and survives a reload", async ({ page }) => {
+  // A Renteninformation leads with a CUMULATIVE figure. Typed into a year's
+  // row it used to be read as an annual rate (17 points -> ~20.000 EUR/month),
+  // so it has a field of its own now.
+  await openPension(page);
+  const card = page.locator('[data-tour="pension-points"]');
+  await card.getByLabel("Total points").fill("17.0322");
+  await card.getByLabel("As of year").fill("2025");
+  await card.getByRole("button", { name: "Save", exact: true }).click();
+
+  const summary = page.locator('[data-tour="pension-summary"]');
+  await expect(summary).toContainText("17.03");
+
+  await page.reload();
+  await dismissTour(page);
+  await expect(card.getByLabel("Total points")).toHaveValue("17.0322");
+  await expect(summary).toContainText("17.03");
+});
+
+test("years after the statement total add to it instead of replacing it", async ({ page }) => {
+  await openPension(page);
+  const card = page.locator('[data-tour="pension-points"]');
+  await card.getByLabel("Total points").fill("10");
+  await card.getByLabel("As of year").fill("2024");
+  await card.getByRole("button", { name: "Save", exact: true }).click();
+
+  // Covered by the statement: must NOT be counted twice.
+  await addYear(page, "2023", "1.00");
+  await expect(page.locator('[data-tour="pension-summary"]')).toContainText("10.00");
+
+  // After the statement: genuinely new, so it adds.
+  await addYear(page, "2025", "1.50");
+  await expect(page.locator('[data-tour="pension-summary"]')).toContainText("11.50");
 });
 
 test("a birth year extrapolates the remaining years", async ({ page }) => {

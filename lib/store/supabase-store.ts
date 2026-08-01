@@ -66,6 +66,8 @@ function normalizePensionSettings(raw: unknown): PensionSettings {
     retirementAge: num(r.retirementAge),
     annualPoints: num(r.annualPoints),
     targetMonthly: num(r.targetMonthly),
+    totalPoints: num(r.totalPoints),
+    totalPointsYear: num(r.totalPointsYear),
   };
 }
 

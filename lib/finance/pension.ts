@@ -28,6 +28,10 @@ export interface PensionReference {
   pensionValue: number;
   /** Sicherungsniveau vor Steuern in percent, or null when not recorded. */
   levelPct: number | null;
+  /** Most Entgeltpunkte one year of work can possibly earn: the
+   *  Beitragsbemessungsgrenze divided by the Durchschnittsentgelt, which the
+   *  legislator keeps at roughly 2.0. Null when not recorded. */
+  maxPoints: number | null;
 }
 
 /** Deduction per month of drawing the pension before the standard age (0.3%). */
@@ -64,9 +68,45 @@ export function pensionLevelOn(rows: readonly PensionReference[], year: number):
   return best?.levelPct ?? null;
 }
 
+/** The maximum Entgeltpunkte a year can earn in `year` (carry-forward like the
+ *  Rentenwert). Null with no reference data, which disables the cap entirely
+ *  rather than falling back to a constant. */
+export function maxPointsOn(rows: readonly PensionReference[], year: number): number | null {
+  let best: PensionReference | null = null;
+  let newest: PensionReference | null = null;
+  for (const r of rows) {
+    if (r.maxPoints == null) continue;
+    if (newest === null || r.year > newest.year) newest = r;
+    if (r.year <= year && (best === null || r.year > best.year)) best = r;
+  }
+  // A year before the table starts still gets a cap: the ratio is structural
+  // (the BBG is set at ~2x the average wage), not a figure that trends.
+  return (best ?? newest)?.maxPoints ?? null;
+}
+
 /** Entgeltpunkte recorded so far. */
 export function totalPensionPoints(entries: readonly PensionPoint[]): number {
   return entries.reduce((s, e) => s + (Number.isFinite(e.points) ? e.points : 0), 0);
+}
+
+/**
+ * Entgeltpunkte earned to date.
+ *
+ * A Renteninformation leads with a CUMULATIVE total ("Sie haben bisher 17,0322
+ * Entgeltpunkte erworben"); the year-by-year split is buried in the
+ * Versicherungsverlauf. So the total is what the user has in hand, and
+ * `settings.totalPoints` is where it goes. Per-year rows are the optional
+ * detail: while a total is on record, only the years AFTER it add on top, the
+ * same way the next statement will count them.
+ */
+export function currentPensionPoints(
+  entries: readonly PensionPoint[],
+  settings: Pick<PensionSettings, "totalPoints" | "totalPointsYear">,
+): number {
+  if (settings.totalPoints == null) return totalPensionPoints(entries);
+  const asOf = settings.totalPointsYear;
+  const after = asOf == null ? [] : entries.filter((e) => e.year > asOf);
+  return settings.totalPoints + totalPensionPoints(after);
 }
 
 /**
@@ -113,8 +153,15 @@ export interface PensionProjection {
   /** Points still expected between `currentYear` and retirement. */
   futurePoints: number;
   totalPoints: number;
-  /** Points assumed per remaining year (explicit setting or measured average). */
+  /** Points assumed per remaining year, after the plausibility cap. */
   annualPoints: number;
+  /** What was assumed before the cap, so the UI can say what it corrected. */
+  rawAnnualPoints: number;
+  /** The cap in force, or null when there is no reference data to cap with. */
+  maxAnnualPoints: number | null;
+  /** True when the assumption had to be capped -- the signature of a
+   *  cumulative total typed into a single year's row. */
+  annualPointsCapped: boolean;
   /** Calendar year the pension starts, or null without a birth year. */
   retirementYear: number | null;
   /** Regelaltersgrenze for the cohort, or null without a birth year. */
@@ -139,6 +186,8 @@ export interface PensionProjection {
  * Projects the monthly retirement income: the points already earned plus one
  * assumed year's worth for every year left, valued at the current Rentenwert
  * and adjusted by the Zugangsfaktor, plus whatever the private policies pay.
+ * The per-year assumption is capped at what a year can physically earn (see
+ * `maxPointsOn`), so a cumulative total in the wrong field cannot multiply.
  *
  * With no birth year there is no retirement date, so nothing is extrapolated
  * and the projection reports the entitlement earned so far -- an honest "here
@@ -152,7 +201,7 @@ export function projectPension(input: {
   currentYear: number;
 }): PensionProjection {
   const { entries, contracts, reference, settings, currentYear } = input;
-  const currentPoints = totalPensionPoints(entries);
+  const currentPoints = currentPensionPoints(entries, settings);
   const pensionValue = pensionValueOn(reference, currentYear);
   const monthlyEarned = pensionValue != null ? currentPoints * pensionValue : null;
 
@@ -162,7 +211,17 @@ export function projectPension(input: {
   const retirementYear =
     birthYear != null && retirementAge != null ? Math.round(birthYear + retirementAge) : null;
 
-  const annualPoints = settings.annualPoints ?? averageAnnualPoints(entries);
+  // The per-remaining-year assumption is CAPPED at what a year can physically
+  // earn. Without it, one wrong row poisoned every figure on the page: a user
+  // who copied their statement's cumulative total (17 points) into a single
+  // year got 17 points assumed for each of the ~32 years left, i.e. ~530 points
+  // and a ~20.000 EUR monthly pension. The cap is reference data, not a
+  // constant here (same rule as the Rentenwert), and no reference data means no
+  // cap rather than an invented one.
+  const rawAnnualPoints = settings.annualPoints ?? averageAnnualPoints(entries);
+  const maxAnnualPoints = maxPointsOn(reference, currentYear);
+  const annualPoints =
+    maxAnnualPoints != null ? Math.min(rawAnnualPoints, maxAnnualPoints) : rawAnnualPoints;
   const yearsLeft = retirementYear != null ? Math.max(0, retirementYear - currentYear) : 0;
   const futurePoints = annualPoints * yearsLeft;
   const totalPoints = currentPoints + futurePoints;
@@ -182,6 +241,9 @@ export function projectPension(input: {
     futurePoints,
     totalPoints,
     annualPoints,
+    rawAnnualPoints,
+    maxAnnualPoints,
+    annualPointsCapped: annualPoints < rawAnnualPoints,
     retirementYear,
     standardAge,
     accessFactor: factor,

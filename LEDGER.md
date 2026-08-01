@@ -28,6 +28,8 @@ subworker; commit only the paths you claimed.
 | Konto-Buchungen (5 Punkte) | HIGH | done | spending-view (Umbuchung + Zukunftsdatum), recurring-card (Add-Button weg), planned-form.tsx (aus planned-card extrahiert), select-menu a11y, e2e/recurring.spec.ts neu |
 | PlannedCard toter Code | — | done | Flag `plannedCashflow` ist NICHT stale: forecast-card + LLM-Kontext gaten weiter darauf |
 | KPIs: Übersicht war "nur Depot" | MEDIUM | done | net-worth-hero (Sparquote + Abgedeckte Monate statt G/V-Paar, nur auf /), e2e/dashboard-kpis.spec.ts |
+| Resilience: eine kaputte Tabelle killt die App | HIGH | done (3e9c085) | supabase-store `degraded`, components/portfolio/degraded-banner.tsx |
+| Rente: 17 Punkte -> 20k/Monat | HIGH | done, Migration 0111 muss laufen | lib/finance/pension.ts, lib/types.ts, lib/store/supabase-store.ts, lib/pension/, components/pension/, dictionaries, migration 0111, tests/pension.test.ts, e2e/pension.spec.ts |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
@@ -36,6 +38,42 @@ subworker; commit only the paths you claimed.
 | Vereinheitlichung: Tabellen-Shell | HIGH | teilweise (3 von 22) | debt-view, spending-view, accounts-view auf Table/Thead/Th/Tr/Td + useSort |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: 17 Rentenpunkte waren keine 20k Rente (2026-08-01)
+
+Die Renteninformation nennt einen **Gesamtstand** ("Sie haben bisher 17,0322
+Entgeltpunkte erworben"); die Aufteilung pro Jahr steht im
+Versicherungsverlauf, den niemand abtippt. Die Seite bot aber nur "Jahr +
+Punkte" an, also landeten die 17 in einer Jahreszeile - und
+`averageAnnualPoints` las das als 17 Punkte **pro Jahr**, rechnete es ueber 32
+Restjahre hoch und meldete rund 20.000 EUR im Monat.
+
+Zwei Antworten:
+
+1. **Der Gesamtstand bekommt ein eigenes Feld** (`totalPoints` +
+   `totalPointsYear` in `pension_settings`, gelesen von
+   `currentPensionPoints`). Jahreszeilen NACH dem Stichjahr kommen obendrauf,
+   genau wie die naechste Renteninformation sie zaehlen wird. Die
+   Jahr-fuer-Jahr-Tabelle ist jetzt ausdruecklich das optionale Detail.
+2. **Die Annahme pro Restjahr wird gedeckelt** auf das, was ein Jahr
+   ueberhaupt bringen kann (`pension_reference.max_points` =
+   Beitragsbemessungsgrenze / Durchschnittsentgelt, ~2,0). Reference Data wie
+   der Rentenwert daneben, also **kein Deckel ohne Zeile** statt einer
+   Konstante im Finanzkern. Gedeckelt wird sichtbar (`annualPointsCapped`),
+   nicht stillschweigend, und das Eingabefeld warnt schon beim Tippen.
+
+`usePensionReference` selektiert jetzt `*`: eine Datenbank ohne 0111 haette
+sonst bei `max_points` einen 400 kassiert und dabei den Rentenwert mitverloren
+- Euro-Werte weg wegen einer Spalte, die nur plausibilisiert. Fehler wird
+gemeldet statt verschluckt.
+
+Verifiziert: 17 Punkte + Jahrgang 1990 ergeben 17 + 32 x 1,91 Punkte statt
+17 + 32 x 17. 1092 Unit-Tests, 9 E2E auf /pension gruen (inkl. der
+Du-Form-Pruefung fuer die neue deutsche Copy), DE im Browser bei 1080p.
+
+**Offen fuer den Owner: Migration 0111 muss laufen.** Vorher greift der Deckel
+nicht (kein `max_points` = kein Deckel), das Gesamtstand-Feld funktioniert aber
+schon, weil `pension_settings` ein jsonb-Blob ist.
 
 ## Teilweise: Tabellen auf den gemeinsamen Shell (2026-07-31)
 

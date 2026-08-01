@@ -96,6 +96,9 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
     try {
       await updateProfile({
         pensionSettings: {
+          // Spread first: the statement total is edited in the points card and
+          // must survive a save here, not be reset to null by omission.
+          ...settings,
           birthYear: parsedBirthYear,
           retirementAge: optionalNumber(retirementAge),
           annualPoints: optionalNumber(annualPoints),
@@ -152,7 +155,12 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             placeholder={projection.annualPoints.toFixed(2)}
           />
           <span className="mt-1 block text-xs text-zinc-500">
-            {t("pension.annualPointsHint", { points: projection.annualPoints.toFixed(2) })}
+            {projection.maxAnnualPoints != null
+              ? t("pension.annualPointsHintMax", {
+                  points: projection.annualPoints.toFixed(2),
+                  max: projection.maxAnnualPoints.toFixed(2),
+                })
+              : t("pension.annualPointsHint", { points: projection.annualPoints.toFixed(2) })}
           </span>
         </label>
         <label className="block text-sm">
@@ -179,7 +187,93 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
 
 type PointSortKey = "year" | "points" | "note";
 
-function PointsCard() {
+/**
+ * The cumulative figure the Renteninformation actually leads with. It used to
+ * have nowhere to go, so it was typed into a year's row and the projection read
+ * it as an annual rate -- 17 points became ~20.000 EUR a month. Its own field,
+ * with its own as-of year, above the year-by-year detail.
+ */
+function TotalPointsFields({ maxPoints }: { maxPoints: number | null }) {
+  const { t } = useI18n();
+  const { data, updateProfile } = usePortfolio();
+  const settings = data.profile.pensionSettings;
+
+  const [total, setTotal] = useState(
+    settings.totalPoints != null ? String(settings.totalPoints) : "",
+  );
+  const [asOf, setAsOf] = useState(
+    settings.totalPointsYear != null ? String(settings.totalPointsYear) : "",
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function save() {
+    setError(null);
+    setSaved(false);
+    try {
+      await updateProfile({
+        pensionSettings: {
+          ...settings,
+          totalPoints: optionalNumber(total),
+          totalPointsYear: optionalNumber(asOf),
+        },
+      });
+      setSaved(true);
+    } catch (err) {
+      setError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : `${t("pension.saveFailed")} ${storeErrorReason(err)}`.trim(),
+      );
+    }
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-medium">{t("pension.total.title")}</h3>
+      <p className="mt-1 text-xs text-zinc-500">
+        {maxPoints != null
+          ? t("pension.total.hintMax", { max: maxPoints.toFixed(2) })
+          : t("pension.total.hint")}
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-4">
+        <label className="block text-sm">
+          <span className="text-zinc-500">{t("pension.total.points")}</span>
+          <input
+            className={inputCls}
+            inputMode="decimal"
+            value={total}
+            onChange={(e) => {
+              setTotal(stripLeadingZero(e.target.value));
+              setSaved(false);
+            }}
+            placeholder="17,0322"
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="text-zinc-500">{t("pension.total.year")}</span>
+          <input
+            className={inputCls}
+            inputMode="numeric"
+            value={asOf}
+            onChange={(e) => {
+              setAsOf(stripLeadingZero(e.target.value));
+              setSaved(false);
+            }}
+            placeholder={String(new Date().getFullYear())}
+          />
+        </label>
+        <div className="flex items-end gap-3 sm:col-span-2">
+          <Button onClick={save}>{t("pension.save")}</Button>
+          {saved && <span className="pb-2 text-xs text-emerald-600">{t("pension.saved")}</span>}
+        </div>
+      </div>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function PointsCard({ maxPoints }: { maxPoints: number | null }) {
   const { t } = useI18n();
   const { data, setPensionPoints } = usePortfolio();
   const entries = data.pensionPoints;
@@ -189,6 +283,11 @@ function PointsCard() {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PensionPoint | null>(null);
+
+  // The moment the mistake is actually made: a cumulative total typed into a
+  // single year. Say so here rather than letting the projection quietly cap it.
+  const typedPoints = optionalNumber(points);
+  const overMax = maxPoints != null && typedPoints != null && typedPoints > maxPoints;
 
   const sort = useSort<PointSortKey>("year", "desc");
   const rows = useMemo(
@@ -233,6 +332,14 @@ function PointsCard() {
   return (
     <Card>
       <h2 className="text-sm font-semibold">{t("pension.points.title")}</h2>
+
+      <div className="mt-3">
+        <TotalPointsFields maxPoints={maxPoints} />
+      </div>
+
+      <h3 className="mt-6 border-t border-zinc-100 pt-4 text-sm font-medium dark:border-zinc-800">
+        {t("pension.points.detailTitle")}
+      </h3>
       <p className="mt-1 text-xs text-zinc-500">{t("pension.points.hint")}</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
@@ -253,6 +360,11 @@ function PointsCard() {
             value={points}
             onChange={(e) => setPoints(stripLeadingZero(e.target.value))}
           />
+          {overMax && (
+            <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
+              {t("pension.points.overMax", { max: maxPoints!.toFixed(2) })}
+            </span>
+          )}
         </label>
         <label className="block text-sm sm:col-span-2">
           <span className="text-zinc-500">{t("pension.points.note")}</span>
@@ -665,6 +777,14 @@ export function PensionView() {
             value={level != null ? `${level.toFixed(1)} %` : "—"}
           />
         </div>
+        {projection.annualPointsCapped && projection.maxAnnualPoints != null && (
+          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
+            {t("pension.cappedNotice", {
+              raw: projection.rawAnnualPoints.toFixed(2),
+              max: projection.maxAnnualPoints.toFixed(2),
+            })}
+          </p>
+        )}
         {projection.gap > 0 && (
           <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
             {t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}
@@ -677,7 +797,7 @@ export function PensionView() {
         <AssumptionsCard projection={projection} />
       </div>
       <div data-tour="pension-points">
-        <PointsCard />
+        <PointsCard maxPoints={projection.maxAnnualPoints} />
       </div>
       <div data-tour="pension-contracts">
         <ContractsCard />

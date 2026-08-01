@@ -1121,7 +1121,23 @@ sets, money that flows, plans and entitlements. Each rides the full store seam
   2 %/yr would look precise and be fiction. `PensionPoint` is keyed by **year**
   (replace-set, like `AccountBalance` is keyed by date) so a year can never be
   recorded twice and an offline replay is idempotent; the DB mirrors that with
-  a unique `(user_id, year)` index. `PensionContract` is a **sibling of
+  a unique `(user_id, year)` index. But a year is **not what the user has in
+  hand**: a Renteninformation leads with a CUMULATIVE total and buries the
+  per-year split in the Versicherungsverlauf, so a user typed their 17 total
+  points into one year's row, `averageAnnualPoints` read it as 17 points *per
+  year*, extrapolated it over the 32 years left and projected a ~20.000 EUR
+  monthly pension (round 27). Two answers, both in migration 0111: the total
+  gets its own field (`pension_settings.totalPoints` + `totalPointsYear`, read
+  by `currentPensionPoints` — per-year rows dated AFTER it add on top, exactly
+  as the next statement will count them), and `projectPension` **caps** its
+  per-remaining-year assumption at `pension_reference.max_points`, the most
+  Entgeltpunkte a year can physically earn (Beitragsbemessungsgrenze /
+  Durchschnittsentgelt, which the legislator keeps near 2.0). The cap is
+  reference data like the Rentenwert beside it, so no seeded row means **no
+  cap** rather than a constant; `annualPointsCapped` surfaces on the page
+  instead of silently correcting. `usePensionReference` selects `*` for the
+  same reason: a database that has not run 0111 must not lose the Rentenwert
+  over a column it only uses to sanity-check. `PensionContract` is a **sibling of
   `Contract`, not one of its insurance types**: a contract is money going out
   every month, a pension policy is defined by the income it will PAY from a
   date decades away, which is the only figure the projection needs and the one
