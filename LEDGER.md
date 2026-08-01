@@ -35,6 +35,14 @@ ansehen laesst.
 
 ## Erledigt
 
+### Runde 2026-08-02
+
+| Task | Commit / Umfang |
+| --- | --- |
+| Rentenprognose war um ~5x zu hoch | Median statt Mittelwert (`typicalAnnualPoints`), Ausreisserzeile wird benannt, Seite zeigt ihre eigene Rechnung |
+| Loeschen sieht aus wie ueberall | `RowActions`/`DeleteAction` in beiden Renten-Tabellen |
+| FIRE rechnet die Rente ein | `PensionBridge` + `fireNumberWithPension`, Fixpunkt aus Ziel und Datum, Schalter + Zeile "was die Rente bringt". **Offen: die Monte-Carlo-Laeufe beruecksichtigen die Rente noch nicht** |
+
 ### Runde 2026-08-01 (dritter Teil)
 
 | Task | Commit / Umfang |

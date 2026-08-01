@@ -439,6 +439,28 @@ FX-convert) always beats a wrong instrument in the right currency.
   (flag `dividendCalendar`, Yahoo `quoteSummary`, cookie+crumb, **fails soft
   to null**) only ever re-dates a projected payment; the `≈` stays on **every**
   amount, since only the date is ever confirmed. Details in DOCUMENTATION.md.
+- **FIRE consumes the pension, it does not sit next to it** (owner rule,
+  round 29: "rente ist für fire ja schon wichtig oder nicht?"). `computeFirePlan`
+  takes an optional `PensionBridge` built from the SAME `projectPension` the
+  Pension tab renders, so the two tabs cannot disagree. The target is two
+  phases, not one: the portfolio carries the FULL expenses for the bridge years
+  until the pension starts, and only the shortfall in perpetuity after that
+  (`fireNumberWithPension`). Target and retirement date are solved as a fixed
+  point — each depends on the other. No pension (or the flag off) reproduces
+  the old numbers exactly. **Known gap**: only the DETERMINISTIC targets fold
+  the pension in; the Monte Carlo run still frames decumulation purely as a
+  withdrawal rate on the portfolio.
+- **The pension's per-year assumption is a MEDIAN, never a mean**
+  (`typicalAnnualPoints`). A Renteninformation leads with a cumulative total,
+  that total keeps getting typed into a single year's row, and a mean turns one
+  such row into ~5x the real assumption — a five-figure monthly pension against
+  a statement saying 2.640 EUR (reported 2026-08). `maxPointsOn` is the other
+  half of the defence but it is reference data, and reference data can be
+  absent (lagging migration, no Supabase): a projection must not need a DB row
+  in order to not be absurd. The offending row is reported (`outlierYear`), not
+  silently dropped — it is the user's data to correct. The page also shows its
+  own arithmetic, because one opaque number cannot be argued with when it
+  disagrees with the official letter.
 - **Vorabpauschale estimator** (`tax.ts`, flag `vorabEstimate`): per fund per
   completed year, `startValue x Basiszins x 0.7 − distributions`, capped at
   the value gain. Basiszins is DB-seeded reference data (`basiszins`,

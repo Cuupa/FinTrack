@@ -27,7 +27,10 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { portfolioOrBenchmarkStats } from "@/lib/finance/stats";
 import { monthlyContributionOf } from "@/lib/finance/savings-plans";
-import { computeFirePlan, trailingAnnualExpenses } from "@/lib/finance/fire";
+import { computeFirePlan, trailingAnnualExpenses, type PensionBridge } from "@/lib/finance/fire";
+import { projectPension } from "@/lib/finance/pension";
+import { usePensionReference } from "@/lib/pension/use-pension-reference";
+import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
 import type { StressScenario, WithdrawalStrategyId } from "@/lib/finance/withdrawal";
 import {
@@ -35,7 +38,7 @@ import {
   WithdrawalStrategyPanel,
 } from "@/components/simulation/withdrawal-strategy-panel";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import { Button, Card, Stat } from "@/components/ui/primitives";
+import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -133,6 +136,43 @@ export function FireView() {
 
   // Editable overrides -- default to the measured/derived figures, user can
   // adjust any of them; recomputes live client-side, no worker involved.
+  // The pension is not a neighbouring feature, it is an input to this one:
+  // guaranteed income from a fixed year is capital you never have to
+  // accumulate. Same projection the Pension tab shows, so the two tabs cannot
+  // disagree about the figure.
+  const pensionReference = usePensionReference();
+  const pensionEnabled = useFeatureFlag("pension");
+  const projection = useMemo(
+    () =>
+      projectPension({
+        entries: data.pensionPoints,
+        contracts: data.pensionContracts,
+        reference: pensionReference,
+        settings: data.profile.pensionSettings,
+        currentYear: Number(todayIso.slice(0, 4)),
+      }),
+    [
+      data.pensionPoints,
+      data.pensionContracts,
+      data.profile.pensionSettings,
+      pensionReference,
+      todayIso,
+    ],
+  );
+  // Without a Rentenwert the statutory half cannot be valued, so only the
+  // private policies count -- the same "report what is known, invent nothing"
+  // rule the Pension tab follows.
+  const pensionMonthly = projection.monthlyTotal ?? projection.monthlyPrivate;
+  const pensionBridge: PensionBridge | undefined =
+    pensionEnabled && projection.retirementYear != null && pensionMonthly > 0
+      ? {
+          annualIncome: pensionMonthly * 12,
+          yearsUntilStart: Math.max(0, projection.retirementYear - Number(todayIso.slice(0, 4))),
+        }
+      : undefined;
+  const [countPension, setCountPension] = useState(true);
+  const appliedPension = countPension ? pensionBridge : undefined;
+
   const [withdrawalRatePercent, setWithdrawalRatePercent] = useState(DEFAULT_WITHDRAWAL_RATE);
   // How the income is decided each year, and whether the losses are forced to
   // the front. Both are what-if levers: live state, never persisted.
@@ -154,8 +194,16 @@ export function FireView() {
         effectiveContribution,
         effectiveReturnPercent / 100,
         withdrawalRatePercent / 100,
+        appliedPension,
       ),
-    [netWorth, effectiveExpenses, effectiveContribution, effectiveReturnPercent, withdrawalRatePercent],
+    [
+      netWorth,
+      effectiveExpenses,
+      effectiveContribution,
+      effectiveReturnPercent,
+      withdrawalRatePercent,
+      appliedPension,
+    ],
   );
 
   // --- Full worker-run Monte Carlo, seeded from the chosen FIRE target. ---
@@ -218,6 +266,38 @@ export function FireView() {
             <p className="mt-1 text-xs text-zinc-500">{t("fire.withdrawalRate.hint")}</p>
           </div>
         </div>
+
+        {/* What the pension is worth to this plan, in one line. A user who has
+            never opened the Pension tab is told the number is missing rather
+            than silently getting the pension-free target. */}
+        {pensionEnabled && (
+          <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+            {pensionBridge ? (
+              <>
+                <Toggle
+                  checked={countPension}
+                  onChange={setCountPension}
+                  label={t("fire.pension.count")}
+                  hint={t("fire.pension.hint", {
+                    amount: formatCurrency(pensionMonthly, currency),
+                    year: String(projection.retirementYear),
+                  })}
+                />
+                {countPension && plan.regularWithoutPension > plan.regular && (
+                  <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
+                    {t("fire.pension.saves", {
+                      without: formatCurrency(plan.regularWithoutPension, currency),
+                      with: formatCurrency(plan.regular, currency),
+                      years: String(Math.round(plan.bridgeYears)),
+                    })}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-zinc-500">{t("fire.pension.missing")}</p>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <NumberField

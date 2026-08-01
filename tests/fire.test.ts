@@ -3,6 +3,7 @@ import {
   computeFirePlan,
   fatFireNumber,
   fireNumber,
+  fireNumberWithPension,
   leanFireNumber,
   trailingAnnualExpenses,
   yearsToFire,
@@ -135,5 +136,83 @@ describe("computeFirePlan", () => {
     const plan = computeFirePlan(50000, 40000, 500, 0.06, 0);
     expect(plan.regular).toBe(Infinity);
     expect(plan.yearsToRegular).toBeNull();
+  });
+});
+
+// Folding the pension in (owner, 2026-08: "rente ist für fire ja schon
+// wichtig oder nicht?"). It is: guaranteed income from a certain year onward
+// is capital you do not have to accumulate, and ignoring it overstates the
+// target by a large multiple for anyone with a pension record.
+describe("FIRE with a pension", () => {
+  const EXPENSES = 40000;
+  const RATE = 0.04;
+
+  it("is identical to the pension-free number when there is none", () => {
+    expect(fireNumberWithPension(EXPENSES, RATE, 0, 20)).toBe(fireNumber(EXPENSES, RATE));
+    const plain = computeFirePlan(100000, EXPENSES, 1000, 0.06, RATE);
+    const withNone = computeFirePlan(100000, EXPENSES, 1000, 0.06, RATE, {
+      annualIncome: 0,
+      yearsUntilStart: 20,
+    });
+    expect(withNone.regular).toBe(plain.regular);
+    expect(withNone.yearsToRegular).toBe(plain.yearsToRegular);
+  });
+
+  it("collapses to the residual perpetuity once the pension is already flowing", () => {
+    // No bridge to fund: the portfolio only ever covers what the pension does
+    // not, so this is the classic formula on the shortfall.
+    expect(fireNumberWithPension(EXPENSES, RATE, 15000, 0)).toBeCloseTo(
+      (EXPENSES - 15000) / RATE,
+      6,
+    );
+  });
+
+  it("needs only the bridge when the pension covers the whole budget", () => {
+    // 10 years to fund, then the pension takes over entirely: the target is
+    // the present value of those 10 years, NOT 25x expenses forever.
+    const target = fireNumberWithPension(EXPENSES, RATE, EXPENSES, 10);
+    const annuity = (EXPENSES * (1 - Math.pow(1 + RATE, -10))) / RATE;
+    expect(target).toBeCloseTo(annuity, 6);
+    expect(target).toBeLessThan(fireNumber(EXPENSES, RATE));
+  });
+
+  it("lowers the target, and a longer bridge lowers it less", () => {
+    const soon = fireNumberWithPension(EXPENSES, RATE, 20000, 5);
+    const later = fireNumberWithPension(EXPENSES, RATE, 20000, 25);
+    const never = fireNumber(EXPENSES, RATE);
+    expect(soon).toBeLessThan(later);
+    expect(later).toBeLessThan(never);
+  });
+
+  it("reports what accounting for the pension was worth", () => {
+    const plan = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE, {
+      annualIncome: 18000,
+      yearsUntilStart: 30,
+    });
+    expect(plan.regularWithoutPension).toBe(fireNumber(EXPENSES, RATE));
+    expect(plan.regular).toBeLessThan(plan.regularWithoutPension);
+    expect(plan.pensionAnnual).toBe(18000);
+    // Retiring before the pension starts leaves a real bridge to fund.
+    expect(plan.bridgeYears).toBeGreaterThan(0);
+  });
+
+  it("reaches FIRE no later once the pension is counted", () => {
+    const without = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE);
+    const with_ = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE, {
+      annualIncome: 18000,
+      yearsUntilStart: 30,
+    });
+    expect(with_.yearsToRegular).not.toBeNull();
+    expect(with_.yearsToRegular!).toBeLessThanOrEqual(without.yearsToRegular!);
+  });
+
+  it("nets the pension against each variant's own budget", () => {
+    const plan = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE, {
+      annualIncome: 18000,
+      yearsUntilStart: 30,
+    });
+    // Lean still costs less than regular, which still costs less than fat.
+    expect(plan.lean).toBeLessThan(plan.regular);
+    expect(plan.regular).toBeLessThan(plan.fat);
   });
 });

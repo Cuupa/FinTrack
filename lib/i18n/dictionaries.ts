@@ -1316,6 +1316,12 @@ export const en = {
   "fire.subtitle": "How big a portfolio covers your expenses, and how long it takes to get there.",
   "fire.withdrawalRate.label": "Withdrawal rate",
   "fire.withdrawalRate.hint": "The classic \"4% rule\" assumes a portfolio withdrawn at this rate lasts through retirement.",
+  "fire.pension.count": "Count my pension",
+  "fire.pension.hint": "{amount} a month from {year}, from the Pension tab.",
+  "fire.pension.saves":
+    "Your pension takes the target from {without} down to {with}: the portfolio only has to carry everything for the {years} years before it starts, and after that just the shortfall.",
+  "fire.pension.missing":
+    "No pension income recorded yet. Add your Entgeltpunkte or a policy on the Pension tab and this target drops.",
   "fire.annualExpenses.label": "Annual expenses",
   "fire.annualExpenses.hint": "Defaults to your trailing 12-month spending; edit to try a different budget.",
   "fire.noExpenseData": "No spending history yet, enter your expenses manually.",
@@ -3559,6 +3565,12 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.subtitle": "Wie groß dein Portfolio sein muss, um deine Ausgaben zu decken, und wie lange es dauert, dorthin zu kommen.",
   "fire.withdrawalRate.label": "Entnahmerate",
   "fire.withdrawalRate.hint": "Die klassische \"4%-Regel\" geht davon aus, dass ein Portfolio bei dieser Entnahmerate die ganze Rentenzeit über reicht.",
+  "fire.pension.count": "Rente einrechnen",
+  "fire.pension.hint": "{amount} pro Monat ab {year}, aus dem Reiter Rente.",
+  "fire.pension.saves":
+    "Deine Rente senkt das Ziel von {without} auf {with}: das Depot muss nur die {years} Jahre bis zum Rentenbeginn komplett tragen, danach nur noch die Lücke.",
+  "fire.pension.missing":
+    "Noch keine Rente erfasst. Trag im Reiter Rente deine Entgeltpunkte oder einen Vertrag ein, dann sinkt dieses Ziel.",
   "fire.annualExpenses.label": "Jährliche Ausgaben",
   "fire.annualExpenses.hint": "Standardmäßig deine Ausgaben der letzten 12 Monate; du kannst sie anpassen, um ein anderes Budget zu testen.",
   "fire.noExpenseData": "Noch keine Ausgabenhistorie, trag deine Ausgaben manuell ein.",
@@ -5797,6 +5809,12 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.subtitle": "Cuánto patrimonio cubre tus gastos y cuánto tiempo te llevará conseguirlo.",
   "fire.withdrawalRate.label": "Tasa de retiro",
   "fire.withdrawalRate.hint": "La clásica \"regla del 4%\" asume que un patrimonio retirado a esta tasa dura toda la jubilación.",
+  "fire.pension.count": "Contar mi pensión",
+  "fire.pension.hint": "{amount} al mes desde {year}, de la pestaña Pensión.",
+  "fire.pension.saves":
+    "Tu pensión baja el objetivo de {without} a {with}: la cartera solo tiene que cubrirlo todo durante los {years} años previos, y después únicamente la diferencia.",
+  "fire.pension.missing":
+    "Todavía no hay pensión registrada. Añade tus puntos o un plan en la pestaña Pensión y este objetivo bajará.",
   "fire.annualExpenses.label": "Gastos anuales",
   "fire.annualExpenses.hint": "Por defecto usa tu gasto de los últimos 12 meses; edítalo para probar otro presupuesto.",
   "fire.noExpenseData": "Todavía no hay historial de gastos, introduce tus gastos manualmente.",

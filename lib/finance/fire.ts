@@ -82,6 +82,63 @@ export function fatFireNumber(annualExpenses: number, withdrawalRate: number): n
   return fireNumber(annualExpenses * FAT_FIRE_EXPENSE_RATIO, withdrawalRate);
 }
 
+/**
+ * Guaranteed income that starts LATER than the FIRE date -- the statutory
+ * pension plus private policies, straight out of `projectPension`.
+ *
+ * This is the piece that makes the FIRE number honest for anyone who is not
+ * self-employed. Someone retiring at 45 does not need to fund the rest of
+ * their life from the portfolio: they need to fund it until the pension
+ * starts, and after that only whatever the pension fails to cover. Ignoring it
+ * overstates the target by a large multiple -- the same class of error as
+ * planning the pension while ignoring the portfolio.
+ */
+export interface PensionBridge {
+  /** Annual guaranteed income once it starts, base currency, today's money. */
+  annualIncome: number;
+  /** Years from TODAY until the first payment. */
+  yearsUntilStart: number;
+}
+
+/** Present value of `amount` paid once a year for `years` years, discounted at
+ *  `rate`. The withdrawal rate doubles as the discount rate on purpose: it is
+ *  already this module's statement about what a portfolio sustainably earns. */
+function annuityPresentValue(amount: number, years: number, rate: number): number {
+  if (amount <= 0 || years <= 0) return 0;
+  if (rate <= 0) return amount * years;
+  return (amount * (1 - Math.pow(1 + rate, -years))) / rate;
+}
+
+/**
+ * The FIRE number when a pension starts `bridgeYears` after you stop working.
+ *
+ * Two pieces, and they are the two phases of the plan:
+ *   bridge     -- the portfolio alone funds the FULL expenses until the
+ *                 pension starts
+ *   perpetuity -- from then on it funds only what the pension leaves over,
+ *                 discounted back to the FIRE date
+ *
+ * With no pension (or one already flowing and covering everything) this
+ * collapses to `annualExpenses / withdrawalRate`, i.e. exactly `fireNumber`.
+ */
+export function fireNumberWithPension(
+  annualExpenses: number,
+  withdrawalRate: number,
+  pensionAnnual: number,
+  bridgeYears: number,
+): number {
+  if (withdrawalRate <= 0) return Infinity;
+  const expenses = Math.max(0, annualExpenses);
+  const pension = Math.max(0, pensionAnnual);
+  if (pension <= 0) return expenses / withdrawalRate;
+  const bridge = Math.max(0, bridgeYears);
+  const residual = Math.max(0, expenses - pension);
+  const discount = Math.pow(1 + withdrawalRate, -bridge);
+  return (
+    annuityPresentValue(expenses, bridge, withdrawalRate) + (residual / withdrawalRate) * discount
+  );
+}
+
 /** Iteration cap for `yearsToFire` -- 100 years of monthly compounding, so the
  *  loop is always bounded rather than running unbounded when the target is
  *  never reached. */
@@ -137,6 +194,69 @@ export interface FirePlan {
   yearsToFat: number | null;
   /** The withdrawal rate (fraction) this plan was computed at, for display. */
   withdrawalRate: number;
+  /** Annual pension income folded in, or 0 when none was supplied. */
+  pensionAnnual: number;
+  /** Years the portfolio must carry the FULL expenses alone before the pension
+   *  starts, for the regular target. 0 without a pension. */
+  bridgeYears: number;
+  /** The regular target IGNORING the pension, so the page can say what
+   *  accounting for it is worth. Equals `regular` when there is none. */
+  regularWithoutPension: number;
+}
+
+/** How many times to chase the fixed point below. It converges in two or three
+    -- a lower target retires you sooner, which lengthens the bridge, which
+    raises the target again, by less each time. */
+const BRIDGE_ITERATIONS = 8;
+
+/**
+ * The target and the date it is reached, solved together.
+ *
+ * They depend on each other: the capital needed depends on how long the
+ * portfolio has to carry the expenses alone, and that depends on when you stop
+ * working, which depends on the capital needed. So this starts from the
+ * pension-free target and iterates until the answer stops moving.
+ */
+function solveTarget(
+  currentNetWorth: number,
+  annualExpenses: number,
+  monthlyContribution: number,
+  annualReturnRate: number,
+  withdrawalRate: number,
+  pension: PensionBridge | undefined,
+): { target: number; years: number | null; bridgeYears: number } {
+  const plain = fireNumber(annualExpenses, withdrawalRate);
+  if (!pension || pension.annualIncome <= 0) {
+    return {
+      target: plain,
+      years: yearsToFire(currentNetWorth, plain, monthlyContribution, annualReturnRate),
+      bridgeYears: 0,
+    };
+  }
+
+  let years = yearsToFire(currentNetWorth, plain, monthlyContribution, annualReturnRate) ?? 0;
+  let target = plain;
+  let bridgeYears = Math.max(0, pension.yearsUntilStart - years);
+
+  for (let i = 0; i < BRIDGE_ITERATIONS; i++) {
+    bridgeYears = Math.max(0, pension.yearsUntilStart - years);
+    target = fireNumberWithPension(
+      annualExpenses,
+      withdrawalRate,
+      pension.annualIncome,
+      bridgeYears,
+    );
+    const next = yearsToFire(currentNetWorth, target, monthlyContribution, annualReturnRate);
+    // Never reached: the bridge cannot be pinned down, so report the target
+    // computed from the last usable estimate rather than a fabricated date.
+    if (next === null) return { target, years: null, bridgeYears };
+    if (Math.abs(next - years) < 0.01) {
+      years = next;
+      break;
+    }
+    years = next;
+  }
+  return { target, years, bridgeYears };
 }
 
 /**
@@ -153,17 +273,36 @@ export function computeFirePlan(
   monthlyContribution: number,
   annualReturnRate: number,
   withdrawalRate: number,
+  /** Guaranteed later income. Omitted (or zero) reproduces the pension-free
+   *  numbers exactly, so a user with no pension record sees no change. */
+  pension?: PensionBridge,
 ): FirePlan {
-  const regular = fireNumber(annualExpenses, withdrawalRate);
-  const lean = leanFireNumber(annualExpenses, withdrawalRate);
-  const fat = fatFireNumber(annualExpenses, withdrawalRate);
+  const solve = (expenses: number) =>
+    solveTarget(
+      currentNetWorth,
+      expenses,
+      monthlyContribution,
+      annualReturnRate,
+      withdrawalRate,
+      pension,
+    );
+  // Lean and Fat scale the EXPENSES, not the target, so the pension is netted
+  // against the budget each variant actually assumes -- a leaner budget is
+  // covered by the same pension to a greater extent, which is the whole point.
+  const regular = solve(annualExpenses);
+  const lean = solve(annualExpenses * LEAN_FIRE_EXPENSE_RATIO);
+  const fat = solve(annualExpenses * FAT_FIRE_EXPENSE_RATIO);
+
   return {
-    regular,
-    lean,
-    fat,
-    yearsToRegular: yearsToFire(currentNetWorth, regular, monthlyContribution, annualReturnRate),
-    yearsToLean: yearsToFire(currentNetWorth, lean, monthlyContribution, annualReturnRate),
-    yearsToFat: yearsToFire(currentNetWorth, fat, monthlyContribution, annualReturnRate),
+    regular: regular.target,
+    lean: lean.target,
+    fat: fat.target,
+    yearsToRegular: regular.years,
+    yearsToLean: lean.years,
+    yearsToFat: fat.years,
     withdrawalRate,
+    pensionAnnual: pension?.annualIncome ?? 0,
+    bridgeYears: regular.bridgeYears,
+    regularWithoutPension: fireNumber(annualExpenses, withdrawalRate),
   };
 }
