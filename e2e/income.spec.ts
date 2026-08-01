@@ -73,6 +73,59 @@ test("income can be promoted to a recurring entry, not just expenses", async ({ 
   // It lands in the merged recurring card, and the promoted row stops
   // offering the action a second time.
   const card = page.locator('[data-tour="recurring-card"]');
-  await expect(card.locator("tbody tr").filter({ hasText: "Salary" })).toHaveCount(1);
+  const promoted = card.locator("tbody tr").filter({ hasText: "Salary" });
+  await expect(promoted).toHaveCount(1);
   await expect(ledger.filter({ hasText: "Salary" }).getByRole("button", action)).toHaveCount(0);
+
+  // "Goes to" answers the question the overview could not: this one is
+  // credited, it does not move to another account and is not consumed.
+  await expect(promoted).toContainText("Credited");
+});
+
+test("the recurring card says where the money ends up", async ({ page }) => {
+  await seedAccount(page);
+  await page.goto("/spending");
+  await dismissTour(page);
+  await book(page, "Expense", "Netflix", "17.99");
+
+  const row = page.locator("tbody tr").filter({ hasText: "Netflix" }).first();
+  await row.getByRole("button", { name: "Add as recurring", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Add as recurring", exact: true })
+    .click();
+
+  // An expense with no transfer target leaves for good, and the column says so
+  // rather than leaving the reader to guess.
+  const card = page.locator('[data-tour="recurring-card"]');
+  await expect(card.locator("tbody tr").filter({ hasText: "Netflix" })).toContainText("Spent");
+});
+
+test("promoting a transfer keeps its target account", async ({ page }) => {
+  await seedAccount(page);
+  await seedAccount(page, "Mortgage");
+
+  await page.goto("/spending");
+  await dismissTour(page);
+  const form = page.locator('[data-tour="spending-form"]');
+  await form.locator("#spending-amount").fill("1035");
+  await form.locator("#spending-payee").fill("Mortgage instalment");
+  await form.getByRole("button", { name: "Transfer to" }).click();
+  await page.getByRole("option", { name: "Mortgage" }).click();
+  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+
+  const row = page.locator("tbody tr").filter({ hasText: "Mortgage instalment" }).first();
+  await row.getByRole("button", { name: "Add as recurring", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Add as recurring", exact: true })
+    .click();
+
+  // The promoted entry still moves money to the loan account. Nulling the
+  // target here silently turned an instalment into a consumed expense, so it
+  // stopped retiring the debt from the month it was promoted.
+  const card = page.locator('[data-tour="recurring-card"]');
+  const promoted = card.locator("tbody tr").filter({ hasText: "Mortgage instalment" });
+  await expect(promoted).toContainText("Mortgage");
+  await expect(promoted).not.toContainText("Spent");
 });

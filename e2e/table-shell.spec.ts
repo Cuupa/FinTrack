@@ -31,7 +31,7 @@ test("the recurring card's headers sort and announce it", async ({ page }) => {
   await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
 
   const card = page.locator('[data-tour="recurring-card"]');
-  await expect(card.locator("th[aria-sort]")).toHaveCount(4);
+  await expect(card.locator("th[aria-sort]")).toHaveCount(5);
 
   // By accessible name, not by text: the sort arrow is an aria-hidden glyph
   // inside the header, so the <th>'s textContent is never the label alone.

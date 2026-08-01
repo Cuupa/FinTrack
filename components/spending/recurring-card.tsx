@@ -48,7 +48,7 @@ import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
-type SortKey = "name" | "amount" | "interval" | "next";
+type SortKey = "name" | "amount" | "target" | "interval" | "next";
 
 /** One row of the merged list, whichever entity produced it. */
 interface RecurringRow {
@@ -62,6 +62,15 @@ interface RecurringRow {
   /** Next due date, or null when it never books (a register-only contract). */
   next: string | null;
   accountName: string | null;
+  /**
+   * Where the money ends up: the name of the user's own account it is moved
+   * to, or null when it is simply consumed (an expense) or credited (income).
+   *
+   * The list showed the account a charge is booked FROM but never this, so a
+   * loan instalment that retires a debt and a subscription that is gone for
+   * good read identically -- the one question the overview could not answer.
+   */
+  targetName: string | null;
 }
 
 /** A due occurrence from either source, in the shape the review list needs. */
@@ -130,6 +139,9 @@ export function RecurringCard() {
         intervalLabel: intervalLabel(c.interval),
         next: nextContractBooking(c, todayIso),
         accountName: c.accountId ? (accountsById.get(c.accountId)?.name ?? null) : null,
+        targetName: c.targetAccountId
+          ? (accountsById.get(c.targetAccountId)?.name ?? null)
+          : null,
       });
     }
     for (const p of data.plannedCashflows) {
@@ -142,14 +154,28 @@ export function RecurringCard() {
         intervalLabel: intervalLabel(p.interval),
         next: nextPlannedOccurrence(p, todayIso),
         accountName: accountsById.get(p.accountId)?.name ?? null,
+        targetName: p.transferAccountId
+          ? (accountsById.get(p.transferAccountId)?.name ?? null)
+          : null,
       });
     }
     // A never-due row has `next === null`, and sortRows files missing values
     // last in BOTH directions -- "no next date" is not a date, and floating
     // those to the top would bury the actionable rows.
-    return sort.apply(out, (r, key) =>
-      key === "name" ? r.name : key === "amount" ? r.amount : key === "interval" ? r.intervalLabel : r.next,
-    );
+    return sort.apply(out, (r, key) => {
+      if (key === "name") return r.name;
+      if (key === "amount") return r.amount;
+      if (key === "interval") return r.intervalLabel;
+      // Sorted by the words actually on screen, so the transfers group
+      // together and the consumed ones sit apart from them.
+      if (key === "target") {
+        return (
+          r.targetName ??
+          t(r.amount < 0 ? "recurring.target.consumed" : "recurring.target.credited")
+        );
+      }
+      return r.next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.contracts, data.plannedCashflows, accountsById, base, sort, todayIso, t]);
 
@@ -399,6 +425,9 @@ export function RecurringCard() {
               <Th align="right" sort={sort.sort} sortKey="amount" onSort={sort.toggle}>
                 {t("recurring.col.amount")}
               </Th>
+              <Th sort={sort.sort} sortKey="target" onSort={sort.toggle}>
+                {t("recurring.col.target")}
+              </Th>
               <Th sort={sort.sort} sortKey="interval" onSort={sort.toggle}>
                 {t("recurring.col.interval")}
               </Th>
@@ -428,6 +457,12 @@ export function RecurringCard() {
                     data-private
                   >
                     {formatCurrency(r.amount, r.currency)}
+                  </Td>
+                  {/* Money moved to another of your own accounts keeps its
+                      name; money that is gone says so. */}
+                  <Td className="text-zinc-500" data-private={r.targetName ? true : undefined}>
+                    {r.targetName ??
+                      t(r.amount < 0 ? "recurring.target.consumed" : "recurring.target.credited")}
                   </Td>
                   <Td className="text-zinc-500">{r.intervalLabel}</Td>
                   <Td className="text-zinc-500">

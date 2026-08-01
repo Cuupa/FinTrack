@@ -134,7 +134,11 @@ export function SpendingView() {
         // Booking resumes after the one that seeded it, so this one is not
         // posted a second time.
         lastBookedDate: tx.date,
-        transferAccountId: null,
+        // Carried over, not dropped: a booking that moves money to another of
+        // your own accounts still does so every month. Nulling it here turned
+        // a loan instalment into a consumed expense the moment it was
+        // promoted, which stopped it retiring the debt.
+        transferAccountId: tx.transferAccountId ?? null,
         note: null,
       });
       await updateSpendingTransaction(tx.id, { plannedId: plan.id });
@@ -150,7 +154,9 @@ export function SpendingView() {
       accountId: tx.accountId,
       bookingStartDate: tx.date,
       lastBookedDate: tx.date,
-      targetAccountId: null,
+      // Same carry-over as above: `Contract.targetAccountId` is the field that
+      // makes a rate actually retire a debt.
+      targetAccountId: tx.transferAccountId ?? null,
       insuranceType: null,
       sumInsured: null,
     });

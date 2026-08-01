@@ -75,15 +75,33 @@ Vier gemeldete Punkte, alle in `spending-view` plus ein neues Row-Action-Icon.
 
 Verifiziert im Browser auf Deutsch bei 1080p (Zahler + kein Umbuchen bei
 Einnahme, Empfaenger + Umbuchen bei Ausgabe, drei Icons auf beiden
-Ledger-Zeilen, null Konsolenmeldungen). Neu `e2e/income.spec.ts` (2 Tests).
-1092 Unit-Tests, 54 E2E gruen.
+Ledger-Zeilen, Ziel-Spalte mit Verbraucht / Hauskredit / Gutschrift, null
+Konsolenmeldungen). Neu `e2e/income.spec.ts` (4 Tests). 1092 Unit-Tests,
+56 E2E gruen.
+
+Nachgereicht, zwei weitere gemeldete Punkte:
+
+6. **Die Ledger-Spalte heisst "Empfaenger / Zahler"** (en "Payee / payer", es
+   "Beneficiario / pagador"). Die Tabelle mischt beide Richtungen, also nennt
+   die Ueberschrift beide - genau wie ein Kontoauszug es tut. Ein Gehalt unter
+   "Empfaenger" war dort so verkehrt herum wie in der Maske.
+7. **Die Wiederkehrend-Karte hat eine Spalte "Ziel"** (sortierbar wie der
+   Rest): der Name des eigenen Kontos, auf das umgebucht wird, sonst
+   "Verbraucht" bei Ausgaben und "Gutschrift" bei Einnahmen. Vorher stand dort
+   nur das Konto, VON dem gebucht wird - eine Kreditrate, die eine Schuld
+   tilgt, und ein Abo, das weg ist, lasen sich identisch.
+
+**Dabei einen echten Fehler gefunden**, den erst diese Spalte sichtbar gemacht
+hat: `makeRecurring` setzte `targetAccountId`/`transferAccountId` hart auf
+`null`. Eine Buchung mit Umbuchungsziel verlor es also beim Anlegen als
+wiederkehrend - aus der Kreditrate wurde stillschweigend eine verbrauchte
+Ausgabe, die die Schuld ab dem Monat nicht mehr tilgte. Wird jetzt
+uebernommen, `e2e/income.spec.ts` pinnt es.
 
 **Nicht angefasst, bewusst:** der Bearbeiten-Dialog zeigt "Umbuchung auf" auch
 bei Einnahmen weiter an. Dort kann eine BESTEHENDE Zeile den Wert schon
 tragen, und ein Feld auszublenden, das etwas enthaelt, verwirft still
-Nutzerdaten. Ebenso bleibt die Ledger-Spalte "Empfaenger" - die Tabelle
-mischt beide Richtungen, ein Wort fuer beide gibt es im Deutschen nicht ohne
-Behoerdendeutsch.
+Nutzerdaten.
 
 ## Erledigt: Tabellen-Shell, Batch 3 - /admin (2026-08-01)
 
