@@ -5,9 +5,15 @@
 // depot, so the two areas read as one product (owner rule, round 28).
 //
 // The account picker is the page's filter, not just the chart's: whatever is
-// selected here also narrows the bookings below. "All accounts" is the default
-// and answers the everyday-money question; picking one turns the page into that
-// account's statement.
+// selected here also narrows the bookings below. It is a MULTI-select (owner
+// call): "how much do my two current accounts hold together" and "what did I
+// spend out of either card" are ordinary questions, and one-at-a-time forced
+// the user to answer them by adding the figures up on paper.
+//
+// An EMPTY selection means every account, rather than a sentinel option sitting
+// in the list. A sentinel would have to be ticked and unticked like a real
+// account while meaning the opposite of one, and "all" is exactly the state you
+// are in before you have picked anything.
 //
 // No benchmarks and no return mode, unlike the depot hero. An account balance
 // is a figure the user SETS, carried forward between readings -- there is no
@@ -28,19 +34,17 @@ import { ChartControls } from "@/components/charts/chart-controls";
 import { PerformanceChart, type ChartScale } from "@/components/charts/performance-chart";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
-/** Sentinel for "no account filter". Not an id, so it can never collide. */
-export const ALL_ACCOUNTS = "all";
-
 export function AccountsHero({
-  accountId,
-  onAccount,
+  accountIds,
+  onAccounts,
   timeframe,
   onTimeframe,
   scale,
   onScale,
 }: {
-  accountId: string;
-  onAccount: (id: string) => void;
+  /** Empty means every account. */
+  accountIds: string[];
+  onAccounts: (ids: string[]) => void;
   timeframe: Timeframe;
   onTimeframe: (tf: Timeframe) => void;
   scale: ChartScale;
@@ -52,10 +56,14 @@ export function AccountsHero({
   const base = data.profile.currency;
   const movements = useAccountMovements();
 
+  // A selection can name an account that has since been deleted, so it filters
+  // the live list rather than mapping over the ids.
   const selected = useMemo(
     () =>
-      accountId === ALL_ACCOUNTS ? data.accounts : data.accounts.filter((a) => a.id === accountId),
-    [data.accounts, accountId],
+      accountIds.length === 0
+        ? data.accounts
+        : data.accounts.filter((a) => accountIds.includes(a.id)),
+    [data.accounts, accountIds],
   );
 
   const totals = useMemo(
@@ -80,22 +88,30 @@ export function AccountsHero({
   const change = series.length < 2 ? 0 : series[series.length - 1].value - series[0].value;
 
   const options = useMemo(
-    () => [
-      { value: ALL_ACCOUNTS, label: t("accounts.hero.all") },
-      ...data.accounts.map((a) => ({ value: a.id, label: a.name })),
-    ],
-    [data.accounts, t],
+    () => data.accounts.map((a) => ({ value: a.id, label: a.name })),
+    [data.accounts],
   );
 
-  const one = accountId !== ALL_ACCOUNTS ? selected[0] : undefined;
-  const scopeLabel = one ? one.name : t("accounts.hero.all");
+  // "One account" is what turns the page into that account's statement, and it
+  // is the selection length that decides it -- not whether a filter is set.
+  const one = accountIds.length > 0 && selected.length === 1 ? selected[0] : undefined;
+  const filtered = accountIds.length > 0;
+  const scopeLabel = one
+    ? one.name
+    : filtered
+      ? t("select.nSelected", { count: String(selected.length) })
+      : t("accounts.hero.all");
 
   return (
     <Card data-tour="accounts-totals">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-zinc-500">
-            {one ? t("accounts.hero.oneScope") : t("accounts.hero.allScope")}
+            {one
+              ? t("accounts.hero.oneScope")
+              : filtered
+                ? t("accounts.hero.someScope")
+                : t("accounts.hero.allScope")}
           </p>
           <p
             className={`mt-1 text-3xl font-semibold tabular-nums ${
@@ -109,10 +125,12 @@ export function AccountsHero({
         {/* The page's filter lives with the figure it scopes, exactly like the
             depot's picker sits on its own hero. */}
         <SelectMenu
+          multiple
           className="w-full sm:w-64"
           ariaLabel={t("accounts.hero.pick")}
-          value={accountId}
-          onChange={onAccount}
+          value={accountIds}
+          onChange={onAccounts}
+          emptyLabel={t("accounts.hero.all")}
           searchable={data.accounts.length > 8}
           options={options}
         />
@@ -141,7 +159,7 @@ export function AccountsHero({
           value={
             one
               ? t(`accounts.kind.${one.kind}` as Parameters<typeof t>[0])
-              : String(data.accounts.length)
+              : String(selected.length)
           }
         />
       </div>

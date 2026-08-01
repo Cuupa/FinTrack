@@ -683,8 +683,14 @@ client pages (see `app/assets/[id]/page.tsx`).
   localStorage is full; every mutation surface shows the localized
   `common.storageFull` message instead of crashing. Keep new mutation call
   sites handling it.
-- `SelectMenu` supports opt-in `searchable` (filter input in the popover) and a
-  `footer` render prop (used for "+ New asset…" in the savings-plan form).
+- `SelectMenu` supports opt-in `searchable` (filter input in the popover), a
+  `footer` render prop (used for "+ New asset…" in the savings-plan form) and
+  opt-in `multiple` (the /accounts filter). Multi mode keeps the popover open
+  while values are toggled, requires an `emptyLabel`, and offers a row that
+  clears back to it. **An empty multi-selection means "all", never a sentinel
+  option in the list** — a sentinel would tick and untick like a real row while
+  meaning the opposite of one. Callers therefore hold `string[]`, not
+  `id | SENTINEL`.
 - **One tab strip, one segmented control.** `Tabs` (`components/ui/tabs.tsx`)
   switches the whole view under it (/analysis, /retirement, settings, the
   simulation model picker) and renders the padlock for a locked tab itself;

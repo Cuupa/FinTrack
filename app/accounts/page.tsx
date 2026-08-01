@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 
-import { AccountsHero, ALL_ACCOUNTS } from "@/components/accounts/accounts-hero";
+import { AccountsHero } from "@/components/accounts/accounts-hero";
 import { AccountsTable, AddAccountForm } from "@/components/accounts/accounts-view";
 import { AccountsSkeleton } from "@/components/accounts/accounts-skeleton";
 import { SpendingView } from "@/components/spending/spending-view";
@@ -44,7 +44,9 @@ export default function AccountsPage() {
   // user the bookings half that their plan or the flag never granted them.
   const spendingEnabled = useFeatureFlag("spending");
 
-  const [accountId, setAccountId] = useState<string>(ALL_ACCOUNTS);
+  // Empty = every account. The picker is a multi-select, so the page's filter
+  // is a list all the way down rather than an id plus a sentinel.
+  const [accountIds, setAccountIds] = useState<string[]>([]);
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [adding, setAdding] = useState(false);
@@ -87,20 +89,15 @@ export default function AccountsPage() {
       ) : (
         <>
           <AccountsHero
-            accountId={accountId}
-            onAccount={setAccountId}
+            accountIds={accountIds}
+            onAccounts={setAccountIds}
             timeframe={timeframe}
             onTimeframe={setTimeframe}
             scale={scale}
             onScale={setScale}
           />
-          <AccountsTable selectedId={accountId === ALL_ACCOUNTS ? undefined : accountId} />
-          {spendingEnabled && (
-            <SpendingView
-              accountId={accountId === ALL_ACCOUNTS ? undefined : accountId}
-              timeframe={timeframe}
-            />
-          )}
+          <AccountsTable selectedIds={accountIds} />
+          {spendingEnabled && <SpendingView accountIds={accountIds} timeframe={timeframe} />}
         </>
       )}
 

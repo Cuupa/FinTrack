@@ -51,31 +51,43 @@ test("the old spending route still lands on the merged page", async ({ page }) =
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Accounts");
 });
 
-test("picking one account scopes the bookings under it", async ({ page }) => {
+test("picking accounts scopes the bookings under them", async ({ page }) => {
   await addAccount(page, "Current account", "3000");
   await addAccount(page, "Savings", "9000");
+  await addAccount(page, "Cash", "200");
 
   await page.goto("/accounts");
   await dismissTour(page);
   await book(page, "Current account", "Netflix", "17.99");
   await book(page, "Savings", "Interest", "12");
+  await book(page, "Cash", "Bakery", "4.20");
 
   const ledger = page.locator('[data-tour="spending-table"] tbody tr');
   const hero = page.locator('[data-tour="accounts-totals"]');
+  const picker = page.getByRole("button", { name: "Which accounts to show" });
   await expect(ledger.filter({ hasText: "Netflix" })).toHaveCount(1);
-  await expect(ledger.filter({ hasText: "Interest" })).toHaveCount(1);
   await expect(hero).toContainText("Net across all accounts");
 
   // Narrow to one account: the hero scope and the ledger both follow.
-  await page.getByRole("button", { name: "Which accounts to show" }).click();
+  await picker.click();
   await page.getByRole("option", { name: "Savings" }).click();
 
   await expect(hero).toContainText("Balance");
   await expect(ledger.filter({ hasText: "Interest" })).toHaveCount(1);
   await expect(ledger.filter({ hasText: "Netflix" })).toHaveCount(0);
 
-  // And back: "all accounts" restores both.
-  await page.getByRole("button", { name: "Which accounts to show" }).click();
-  await page.getByRole("option", { name: "All accounts" }).click();
+  // The popover stays open in multi mode, so a second account is one more
+  // click rather than a fresh trip through the picker.
+  await page.getByRole("option", { name: "Current account" }).click();
+  await expect(hero).toContainText("Net across the selected accounts");
+  await expect(ledger.filter({ hasText: "Interest" })).toHaveCount(1);
   await expect(ledger.filter({ hasText: "Netflix" })).toHaveCount(1);
+  // Still a filter, not "everything": the third account stays out.
+  await expect(ledger.filter({ hasText: "Bakery" })).toHaveCount(0);
+  await expect(picker).toContainText("2 selected");
+
+  // And back to everything, without unticking each account by hand.
+  await page.getByRole("button", { name: "All accounts", exact: true }).click();
+  await expect(ledger.filter({ hasText: "Bakery" })).toHaveCount(1);
+  await expect(hero).toContainText("Net across all accounts");
 });

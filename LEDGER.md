@@ -36,7 +36,6 @@ ansehen laesst.
 | LLM-Kontext um die neuen Daten erweitern | LOW | noch nicht angefasst |
 | Download/Export um die restlichen Daten erweitern | LOW | noch nicht angefasst |
 | Monte Carlo: dynamische Entnahme, Stresszenarien, FIRE/Simulation vereinheitlichen | LOW | groesster Brocken, eigene Runde |
-| Kontenauswahl als Multiselect | — | neu vom Owner, noch nicht angefasst |
 
 ## Erledigt
 
@@ -46,6 +45,7 @@ ansehen laesst.
 | --- | --- |
 | FIRE + Rente unter einem Navipunkt | `/retirement` mit Tab-Strip, `/fire` + `/pension` leiten weiter, `routeFeatureState` fuer Mehrfach-Flags, `e2e/retirement.spec.ts` |
 | Tab-Strip einmal statt viermal | `components/ui/tabs.tsx`, uebernommen von /analysis, Settings und dem Simulations-Modell |
+| Kontenauswahl ist ein Multiselect | `SelectMenu` bekommt `multiple`, leere Auswahl = alle Konten, `e2e/accounts-unified.spec.ts` erweitert |
 
 ### Runde 2026-08-01 (zweiter Teil)
 

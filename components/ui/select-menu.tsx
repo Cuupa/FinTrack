@@ -1,9 +1,18 @@
 "use client";
 
-// Single-select dropdown styled like the header portfolio picker: a bordered
+// The app's dropdown, styled like the header portfolio picker: a bordered
 // button that opens a popover list with a checkmark on the current value.
 // Optional `footer` (rendered with a `close` callback) for extra actions such
 // as "+ New portfolio".
+//
+// Opt-in `multiple` turns the same control into a multi-select: the popover
+// stays open while values are toggled, and the button summarises the count. It
+// is a mode of this component rather than a second picker so that every list in
+// the app keeps one look, one keyboard behaviour and one search box.
+//
+// In multi mode an EMPTY selection is a legitimate state, not a broken one --
+// what it means belongs to the caller (on /accounts it means every account),
+// which is why the empty label is a required prop rather than a hardcoded "—".
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -15,23 +24,30 @@ export interface SelectOption {
   keywords?: string[];
 }
 
-export function SelectMenu({
-  value,
-  options,
-  onChange,
-  className = "",
-  ariaLabel,
-  footer,
-  searchable = false,
-}: {
-  value: string;
+type SelectMenuBase = {
   options: SelectOption[];
-  onChange: (value: string) => void;
   className?: string;
   ariaLabel?: string;
   footer?: (close: () => void) => ReactNode;
   searchable?: boolean;
-}) {
+};
+
+type SingleSelectProps = SelectMenuBase & {
+  multiple?: false;
+  value: string;
+  onChange: (value: string) => void;
+};
+
+type MultiSelectProps = SelectMenuBase & {
+  multiple: true;
+  value: string[];
+  onChange: (values: string[]) => void;
+  /** Button label while nothing is selected -- the caller's word for "all". */
+  emptyLabel: string;
+};
+
+export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
+  const { options, className = "", ariaLabel, footer, searchable = false } = props;
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -46,7 +62,34 @@ export function SelectMenu({
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const selected = options.find((o) => o.value === value);
+  const selectedValues = props.multiple ? props.value : [props.value];
+  const isOn = (value: string) => selectedValues.includes(value);
+
+  /** Single: replace and close. Multi: toggle and stay open, because picking a
+      second value is the normal next action and a popover that closed after
+      every tick would make selecting three accounts three round trips. */
+  const pick = (value: string) => {
+    if (props.multiple) {
+      props.onChange(
+        props.value.includes(value)
+          ? props.value.filter((v) => v !== value)
+          : [...props.value, value],
+      );
+      return;
+    }
+    props.onChange(value);
+    setOpen(false);
+  };
+
+  const buttonLabel = () => {
+    if (!props.multiple) return options.find((o) => o.value === props.value)?.label ?? "—";
+    if (selectedValues.length === 0) return props.emptyLabel;
+    if (selectedValues.length === 1) {
+      return options.find((o) => o.value === selectedValues[0])?.label ?? props.emptyLabel;
+    }
+    return t("select.nSelected", { count: String(selectedValues.length) });
+  };
+
   const filtered =
     searchable && query.trim()
       ? options.filter((o) => {
@@ -74,7 +117,7 @@ export function SelectMenu({
         aria-label={ariaLabel}
         className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
       >
-        <span className="truncate">{selected?.label ?? "—"}</span>
+        <span className="truncate">{buttonLabel()}</span>
         <span className="text-[10px] text-zinc-400">▾</span>
       </button>
 
@@ -93,10 +136,7 @@ export function SelectMenu({
                   } else if (e.key === "Enter") {
                     e.preventDefault();
                     const first = filtered[0];
-                    if (first) {
-                      onChange(first.value);
-                      setOpen(false);
-                    }
+                    if (first) pick(first.value);
                   }
                 }}
                 placeholder={t("select.search")}
@@ -105,22 +145,37 @@ export function SelectMenu({
               />
             </div>
           )}
-          <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+          {/* The way back to "everything". Without it a multi-select is a trap:
+              unticking the last value by hand is the only route to the default
+              state, and nothing on screen says that state exists. */}
+          {props.multiple && props.value.length > 0 && (
+            <div className="border-b border-zinc-100 p-1.5 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => props.onChange([])}
+                className="w-full rounded-sm px-1.5 py-1 text-left text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              >
+                {props.emptyLabel}
+              </button>
+            </div>
+          )}
+          <ul
+            className="max-h-60 overflow-y-auto py-1"
+            role="listbox"
+            aria-multiselectable={props.multiple ? true : undefined}
+          >
             {filtered.length === 0 ? (
               <li className="px-3 py-1.5 text-sm text-zinc-400">{t("select.noResults")}</li>
             ) : (
               filtered.map((o) => {
-                const on = o.value === value;
+                const on = isOn(o.value);
                 return (
                   <li key={o.value}>
                     <button
                       type="button"
                       role="option"
                       aria-selected={on}
-                      onClick={() => {
-                        onChange(o.value);
-                        setOpen(false);
-                      }}
+                      onClick={() => pick(o.value)}
                       className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
                       {/* Decorative: the tick renders for every option and is

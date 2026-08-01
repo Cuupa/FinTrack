@@ -245,10 +245,10 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
   );
 }
 
-/** The account list. `selectedId` only marks the row the hero is scoped to --
+/** The account list. `selectedIds` only marks the rows the hero is scoped to --
  *  the list always shows every account, since hiding the others would leave no
- *  way back to them. */
-export function AccountsTable({ selectedId }: { selectedId?: string }) {
+ *  way back to them. Empty means no filter, so nothing is singled out. */
+export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) {
   const { data, deleteAccount } = usePortfolio();
   const { t } = useI18n();
   const base = data.profile.currency;
@@ -301,7 +301,7 @@ export function AccountsTable({ selectedId }: { selectedId?: string }) {
               {pager.rows.map(({ account, signed }) => {
                 const cur = account.currency || base;
                 return (
-                  <Tr key={account.id} selected={account.id === selectedId}>
+                  <Tr key={account.id} selected={selectedIds.includes(account.id)}>
                     <Td className="font-medium" data-private>
                       {account.name}
                       {!account.isLiability && (account.interestRate ?? 0) > 0 && (

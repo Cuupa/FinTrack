@@ -1268,12 +1268,23 @@ Moved out of CLAUDE.md, which keeps the route table and the binding rules.
 - `/` — dashboard: net-worth hero chart + add-asset + sortable/filterable
   table, plus the savings-plans card (flag `savingsPlans`) and watchlist card
   (flag `watchlist`)
-- `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1):
-  add-account form + sortable list + per-account dated-balance editor
-- `/spending` — categorised expense/income ledger (flag `spending`, ROADMAP
-  #2): quick-add form + sortable transaction table + category manager modal,
-  plus the cash-flow forecast and planned-income/expense cards (flag
-  `plannedCashflow`)
+- `/accounts` — balance accounts & liabilities (flag `accounts`, ROADMAP #1)
+  AND the bookings against them (flag `spending`, ROADMAP #2), one page since
+  round 28: hero (figure, account filter, timeframe, curve), sortable account
+  list with the per-account dated-balance editor, then the quick-add mask,
+  what recurs, and the sortable booking table with its category manager.
+  `/spending` redirects here. The forecast and the planned income/expenses
+  (flag `plannedCashflow`) live on `/cashflow`.
+  The hero's account picker is a **multi-select** and is the whole page's
+  filter: it scopes the figure, the curve, the highlighted rows and the ledger
+  together. An **empty selection means every account** — there is no "all"
+  option in the list, because a sentinel would tick and untick like a real
+  account while meaning the opposite of one. A transfer belongs to both
+  accounts it touches, so the ledger keeps a booking whose *target* is in the
+  selection; with several accounts picked, a transfer between two of them is
+  still one row. The entry mask books onto ONE account and prefills with the
+  first selected, since a booking has a single home even when the page is
+  showing several.
 - `/goals` — named goals (flag `goals`, ROADMAP #6). A target **date is
   optional** (open-ended goals are first class; a date only buys the
   monthly-needed figure). A goal is either atomic ("emergency fund") or

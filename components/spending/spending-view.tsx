@@ -54,13 +54,13 @@ function earliestBookingDate(txs: readonly { date: string }[]): string | null {
 type TxType = "expense" | "income";
 
 export function SpendingView({
-  accountId: scopeAccountId,
+  accountIds: scopeAccountIds = [],
   timeframe,
 }: {
-  /** Narrows the ledger to one account and prefills the entry mask with it.
-   *  Undefined (or the ALL sentinel) means every account, which is how this
-   *  view behaved before /accounts absorbed it. */
-  accountId?: string;
+  /** Narrows the ledger to the selected accounts and prefills the entry mask
+   *  with the first of them. Empty means every account, which is how this view
+   *  behaved before /accounts absorbed it. */
+  accountIds?: string[];
   /** Narrows the ledger to the window the accounts chart is showing, so the
    *  bookings under it are the ones that produced that curve. */
   timeframe?: Timeframe;
@@ -129,13 +129,14 @@ export function SpendingView({
   const [editError, setEditError] = useState<string | null>(null);
   const [toContract, setToContract] = useState<SpendingTransaction | null>(null);
 
-  // Falls back to the account the page is scoped to, then to the first one
-  // that exists, so the submit button is never disabled by a selection the
-  // user cannot see or change.
+  // Falls back to the first account the page is scoped to, then to the first
+  // one that exists, so the submit button is never disabled by a selection the
+  // user cannot see or change. A booking lands on ONE account even when the
+  // page is showing several, so the mask picks the first rather than nothing.
   const accountId =
     pickedAccountId && data.accounts.some((a) => a.id === pickedAccountId)
       ? pickedAccountId
-      : (scopeAccountId ?? data.accounts[0]?.id ?? "");
+      : (scopeAccountIds[0] ?? data.accounts[0]?.id ?? "");
   const setAccountId = setPickedAccountId;
 
   /** Money in reads differently from money out, so the form follows the tab. */
@@ -205,19 +206,24 @@ export function SpendingView({
     return c ? `${c.groupName} · ${c.name}` : t("spending.list.uncategorized");
   }
 
-  // A transfer shows up on BOTH accounts it touches, so scoping to one account
-  // keeps a booking whose target is that account -- otherwise a rate paid into
-  // the mortgage would be missing from the mortgage's own statement.
+  // A transfer shows up on BOTH accounts it touches, so scoping keeps a booking
+  // whose TARGET is in the selection -- otherwise a rate paid into the mortgage
+  // would be missing from the mortgage's own statement. With several accounts
+  // picked a transfer between two of them is one booking, not two: it is the
+  // same row matching on either side.
   const scoped = useMemo(() => {
     const from = timeframe
       ? timeframeStart(timeframe, todayIso, earliestBookingDate(data.spendingTransactions))
       : null;
     return data.spendingTransactions.filter((tx) => {
       if (from && tx.date < from) return false;
-      if (!scopeAccountId) return true;
-      return tx.accountId === scopeAccountId || tx.transferAccountId === scopeAccountId;
+      if (scopeAccountIds.length === 0) return true;
+      return (
+        scopeAccountIds.includes(tx.accountId) ||
+        (tx.transferAccountId != null && scopeAccountIds.includes(tx.transferAccountId))
+      );
     });
-  }, [data.spendingTransactions, scopeAccountId, timeframe, todayIso]);
+  }, [data.spendingTransactions, scopeAccountIds, timeframe, todayIso]);
 
   const rows = useMemo(
     () =>

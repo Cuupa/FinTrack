@@ -22,12 +22,13 @@ test.describe("analysis (Guest Mode)", () => {
     await expect(page.getByRole("button", { name: "Investments" })).toBeVisible();
     await expect(page.locator('[role="img"]').first()).toBeVisible();
 
-    // Switch to Returns — the subtitle blurb tracks the active tab.
-    await page.getByRole("button", { name: /^Returns$/ }).click();
+    // Switch to Returns — the subtitle blurb tracks the active tab. The tabs
+    // are a real tablist (components/ui/tabs.tsx), not bare buttons.
+    await page.getByRole("tab", { name: /^Returns$/ }).click();
     await expect(page.getByText(/contribution-adjusted returns by quarter/)).toBeVisible();
 
     // Switch to Trades.
-    await page.getByRole("button", { name: /^Trades$/ }).click();
+    await page.getByRole("tab", { name: /^Trades$/ }).click();
     await expect(page.getByText(/Realized P&L over time/)).toBeVisible();
   });
 });
