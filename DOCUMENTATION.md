@@ -1367,6 +1367,18 @@ Moved out of CLAUDE.md, which keeps the route table and the binding rules.
   only the model fragment mid-form read as a rendering glitch. A mode whose
   flag is off outright loses its tab; with a single visible mode the strip
   disappears entirely.
+  Once the withdrawal phase has a duration, the panel also carries the
+  **withdrawal strategy** and the **stress scenario** — see `lib/finance/
+  withdrawal.ts`. The rate says how MUCH; the strategy says how that amount is
+  decided again each year (`fixed` ignores the portfolio, `percentOfPortfolio`
+  can never deplete but swings, `guardrails` moves rarely and by a step,
+  `floorCeiling` tracks within bounds); the stress says what it is tested
+  against. Each strategy carries three imperative steps, because a strategy
+  nobody can execute is a chart and not a plan. `WithdrawalComparison` runs all
+  four over the SAME simulated paths and shows what it lasts, what it pays, the
+  worst year and what is left — deliberately without naming a winner, since a
+  higher success rate is bought with an income that moves. Identical panel on
+  the FIRE tab; identical runner (`useMonteCarloRun`) behind both.
 - `/login` — Supabase email/password + Google/GitHub OAuth
 - `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
   linked via `LegalFooter` in the root layout). The privacy policy makes
