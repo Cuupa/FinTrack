@@ -45,6 +45,7 @@ import { priceStaleness, needsAttention, type PriceStaleness } from "@/lib/admin
 import { Button, Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
+import { InfoTip } from "@/components/ui/info-tip";
 import { adminAuthToken, adminPost } from "@/lib/admin/client";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
@@ -62,9 +63,11 @@ interface InstrumentRow {
   quote_id: string | null;
   last_price: number | string | null;
   price_synced_at: string | null;
+  price_failed_at?: string | null;
+  price_fail_count?: number | null;
 }
 
-type SortKey = "name" | "type" | "price" | "priceBase" | "fxRate" | "synced";
+type SortKey = "name" | "type" | "price" | "priceBase" | "fxRate" | "synced" | "retries";
 
 const STALENESS_CLASS: Record<PriceStaleness, string> = {
   fresh:
@@ -113,9 +116,10 @@ export default function AdminPricesPage() {
     let active = true;
     supabase
       .from("instruments")
-      .select(
-        "id, isin, wkn, symbol, name, type, currency, quote_source, quote_id, last_price, price_synced_at",
-      )
+      // `*`: naming the migration-0114 columns would make PostgREST reject the
+      // whole query on a database that has not run it yet, and the page would
+      // show an empty catalog instead of a missing column.
+      .select("*")
       .order("name")
       .then(({ data }) => {
         if (!active) return;
@@ -254,6 +258,15 @@ export default function AdminPricesPage() {
                 <Th sort={sort.sort} sortKey="synced" onSort={sort.toggle}>
                   {t("admin.prices.colSynced")}
                 </Th>
+                <Th
+                  align="right"
+                  sort={sort.sort}
+                  sortKey="retries"
+                  onSort={sort.toggle}
+                  after={<InfoTip text={t("admin.prices.retriesTip")} />}
+                >
+                  {t("admin.prices.colRetries")}
+                </Th>
                 <Th />
               </Thead>
               <Tbody>
@@ -297,6 +310,20 @@ export default function AdminPricesPage() {
                             </span>
                           )}
                         </div>
+                      </Td>
+                      <Td align="right" className="tabular-nums">
+                        {r.price_fail_count && r.price_fail_count > 0 ? (
+                          <span className="text-amber-700 dark:text-amber-400">
+                            {r.price_fail_count}
+                            {r.price_failed_at && (
+                              <span className="ml-2 text-xs text-zinc-500">
+                                {formatInstant(r.price_failed_at)}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </Td>
                       <Td align="right">
                         <Button
@@ -372,5 +399,9 @@ function sortValue(
       return rateForRow(r, base, fx);
     case "synced":
       return r.price_synced_at ? Date.parse(r.price_synced_at) : null;
+    case "retries":
+      // 0 is "never failed", not a small failure count: null keeps it out of
+      // the way in both directions, like every other missing value here.
+      return r.price_fail_count && r.price_fail_count > 0 ? r.price_fail_count : null;
   }
 }

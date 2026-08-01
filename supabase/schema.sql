@@ -74,6 +74,14 @@ create table if not exists public.instruments (
 );
 alter table public.instruments add column if not exists quote_scale numeric not null default 1;
 alter table public.instruments add column if not exists name_synced_at timestamptz;
+-- Price-cron retry queue (migration 0114): consecutive failures and when the
+-- last sweep gave up, so a rate-limited row goes first next time instead of
+-- waiting for the daily self-heal.
+alter table public.instruments add column if not exists price_failed_at timestamptz;
+alter table public.instruments add column if not exists price_fail_count integer not null default 0;
+create index if not exists instruments_price_failed_idx
+  on public.instruments (price_failed_at)
+  where price_failed_at is not null;
 -- `create table if not exists` above is a no-op on an existing database, so
 -- re-apply the widened type check idempotently for upgrades too.
 alter table public.instruments drop constraint if exists instruments_type_check;

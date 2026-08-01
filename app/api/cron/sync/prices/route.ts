@@ -24,6 +24,12 @@ import {
   listingHint,
 } from "@/lib/server/quote-policy";
 import {
+  compareRetryPriority,
+  failurePatch,
+  isRetryDue,
+  successPatch,
+} from "@/lib/server/price-retry";
+import {
   encodeOnvistaQuoteId,
   onvistaQuote,
   parseOnvistaQuoteId,
@@ -51,6 +57,9 @@ interface InstrumentRow {
   quote_scale: number | string | null;
   last_price: number | string | null;
   quote_pinned: boolean | null;
+  /** Optional: absent until migration 0114 has run (the select uses `*`). */
+  price_failed_at?: string | null;
+  price_fail_count?: number | null;
 }
 
 const FX_CURRENCIES = ["USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
@@ -98,12 +107,40 @@ async function syncEquities(
   /** Identifiers that finished the sweep without a price, echoed in the
    *  response so a caller sees the gap without reading the error log. */
   unpriced: string[],
+  /** Rows that were in the retry queue and priced on this run. */
+  recovered: { count: number },
+  /** False until migration 0114 has run; every queue write is skipped then. */
+  retryQueue: boolean,
 ): Promise<number> {
   let updated = 0;
+  const now = Date.parse(syncedAt);
+  // A row that ends this sweep without a price joins the retry queue, so the
+  // next run serves it first instead of leaving it behind whatever tripped the
+  // rate limit. Failing to write the stamp must never mask the price failure
+  // itself, so it is logged and swallowed here.
+  const markFailed = async (r: InstrumentRow) => {
+    if (!retryQueue) return;
+    const { error } = await supabase
+      .from("instruments")
+      .update(failurePatch(r, syncedAt))
+      .eq("id", r.id);
+    if (error) {
+      await logServerError({
+        route: "/api/cron/sync/prices",
+        level: "warn",
+        message: `could not queue ${r.isin ?? r.wkn ?? r.symbol ?? r.id} for retry: ${error.message}`,
+      });
+    }
+  };
   await Promise.all(
     rows.map(async (r) => {
       const query = r.isin || r.wkn || r.symbol;
       if (!query) return;
+      // Due for a retry: it goes first in this sweep (the rows are sorted
+      // before we get here) and gets the hint-less re-resolve right now rather
+      // than waiting for the 03 UTC self-heal it may have been rate-limited
+      // out of.
+      const queued = retryQueue && isRetryDue(r, now);
 
       // Rows already learned onto onvista (by the Yahoo-miss fallback below,
       // or seeded directly) skip Yahoo entirely - there's no Yahoo hint to
@@ -111,10 +148,18 @@ async function syncEquities(
       // `revalidate`.
       if (r.quote_source === "onvista" && r.quote_id) {
         const parsed = parseOnvistaQuoteId(r.quote_id);
-        if (!parsed) return;
+        if (!parsed) {
+          unpriced.push(query);
+          await markFailed(r);
+          return;
+        }
         try {
           const q = await onvistaQuote(parsed.entityType, parsed.entityValue);
-          if (!q) return;
+          if (!q) {
+            unpriced.push(query);
+            await markFailed(r);
+            return;
+          }
           let p = q.price;
           if (r.currency && q.currency && q.currency !== r.currency) {
             p = p * (await fxRate(q.currency, r.currency));
@@ -123,10 +168,15 @@ async function syncEquities(
           if (scale !== 1) p = p * scale;
           const { error } = await supabase
             .from("instruments")
-            .update({ last_price: p, price_synced_at: syncedAt })
+            .update({ last_price: p, price_synced_at: syncedAt, ...(retryQueue ? successPatch() : {}) })
             .eq("id", r.id);
-          if (!error) updated += 1;
+          if (!error) {
+            updated += 1;
+            if (queued) recovered.count += 1;
+          }
         } catch (err) {
+          unpriced.push(query);
+          await markFailed(r);
           await logServerError({
             route: "/api/cron/sync/prices",
             level: "warn",
@@ -155,7 +205,7 @@ async function syncEquities(
       // hint always reuse it and never fall back to search; rows without
       // one (not yet seeded) keep resolving normally. Non-COMMODITY rows
       // are excluded from this and instead self-heal daily below.
-      const hint = listingHint(r, revalidate);
+      const hint = listingHint(r, revalidate || queued);
       // A COMMODITY row's authoritative listing can trade in a different
       // currency than the instrument's native one (gold's replacement
       // listing GC=F is USD, the gold row itself is EUR) - resolveQuote's
@@ -201,6 +251,7 @@ async function syncEquities(
           // listing in the wrong currency. Said out loud, because "the seed is
           // wrong" is a fix only the owner can make.
           unpriced.push(query);
+          await markFailed(r);
           await logServerError({
             route: "/api/cron/sync/prices",
             level: "warn",
@@ -227,6 +278,7 @@ async function syncEquities(
             const ref = await resolveOnvistaInstrument(query);
             if (!ref) {
               unpriced.push(query);
+              await markFailed(r);
               await logServerError({
                 route: "/api/cron/sync/prices",
                 level: "warn",
@@ -237,6 +289,7 @@ async function syncEquities(
             const oq = await onvistaQuote(ref.entityType, ref.entityValue);
             if (!oq) {
               unpriced.push(query);
+              await markFailed(r);
               await logServerError({
                 route: "/api/cron/sync/prices",
                 level: "warn",
@@ -260,11 +313,16 @@ async function syncEquities(
                 price_synced_at: syncedAt,
                 quote_source: "onvista",
                 quote_id: encodeOnvistaQuoteId(ref.entityType, ref.entityValue),
+                ...(retryQueue ? successPatch() : {}),
               })
               .eq("id", r.id);
-            if (!error) updated += 1;
+            if (!error) {
+              updated += 1;
+              if (queued) recovered.count += 1;
+            }
           } else {
             unpriced.push(query);
+            await markFailed(r);
             await logServerError({
               route: "/api/cron/sync/prices",
               level: "warn",
@@ -294,6 +352,7 @@ async function syncEquities(
         const patch: Record<string, unknown> = {
           last_price: p,
           price_synced_at: syncedAt,
+          ...(retryQueue ? successPatch() : {}),
         };
         if (learnsListing) {
           patch.quote_source = "yahoo";
@@ -303,12 +362,17 @@ async function syncEquities(
           .from("instruments")
           .update(patch)
           .eq("id", r.id);
-        if (!error) updated += 1;
+        if (!error) {
+          updated += 1;
+          if (queued) recovered.count += 1;
+        }
       } catch (err) {
         // Never silent: a row that stays unpriced is exactly what the admin
         // sees as "unknown", and the reason belonged in the log rather than
         // in a swallowed exception (owner rule: an error only in the console
         // does not exist).
+        unpriced.push(query);
+        await markFailed(r);
         await logServerError({
           route: "/api/cron/sync/prices",
           level: "warn",
@@ -386,11 +450,12 @@ async function handle(req: Request): Promise<Response> {
   // All instruments — including user-added ones that have no quote listing yet.
   // Equities/ETFs are resolved by identifier (ISIN/WKN/symbol); crypto needs a
   // CoinGecko id, so only rows that already carry one are synced.
-  const { data, error } = await supabase
-    .from("instruments")
-    .select(
-      "id, isin, wkn, symbol, name, currency, type, quote_source, quote_id, quote_scale, last_price, quote_pinned",
-    );
+  // `*` rather than a column list on purpose: a deploy lands before the owner
+  // runs the migration, and naming `price_failed_at` in the list would make
+  // PostgREST reject the whole query until then -- no rows, no price sync at
+  // all. With `*` the key is simply absent, which is what `retryQueue` below
+  // reads.
+  const { data, error } = await supabase.from("instruments").select("*");
   if (error) return serverFail("/api/cron/sync/prices", error.message);
 
   const rows = (data ?? []) as InstrumentRow[];
@@ -406,18 +471,28 @@ async function handle(req: Request): Promise<Response> {
     new Date(syncedAt).getUTCHours() === 3;
 
   const unpriced: string[] = [];
+  const recovered = { count: 0 };
+  // Migration 0114 present? PostgREST omits a column it does not have, so an
+  // absent key means the retry queue is not there yet and every write to it
+  // must be skipped -- otherwise the failure stamp would take the price update
+  // down with it.
+  const retryQueue = rows.length > 0 && rows[0].price_fail_count !== undefined;
+  // Rows that failed last time go first. The Yahoo limiter serves acquirers in
+  // call order, so when the breaker trips mid-sweep this decides who was
+  // already served -- without it, a rate limit cut off the same tail every run
+  // and those rows never got their turn.
+  const now = Date.parse(syncedAt);
+  const equityRows = rows
+    .filter(
+      (r) =>
+        (r.type === "STOCK" || r.type === "ETF" || r.type === "COMMODITY") &&
+        r.quote_source !== "coingecko",
+    )
+    .sort((a, b) => compareRetryPriority(a, b, now));
+  const queued = retryQueue ? equityRows.filter((r) => isRetryDue(r, now)).length : 0;
+
   const [equities, crypto, fx] = await Promise.all([
-    syncEquities(
-      supabase,
-      rows.filter(
-        (r) =>
-          (r.type === "STOCK" || r.type === "ETF" || r.type === "COMMODITY") &&
-          r.quote_source !== "coingecko",
-      ),
-      syncedAt,
-      revalidate,
-      unpriced,
-    ),
+    syncEquities(supabase, equityRows, syncedAt, revalidate, unpriced, recovered, retryQueue),
     syncCrypto(
       supabase,
       rows.filter((r) => r.quote_source === "coingecko" && r.quote_id),
@@ -426,7 +501,18 @@ async function handle(req: Request): Promise<Response> {
     syncFx(supabase, syncedAt),
   ]);
 
-  return Response.json({ ok: true, syncedAt, equities, crypto, fxRates: fx, unpriced });
+  return Response.json({
+    ok: true,
+    syncedAt,
+    equities,
+    crypto,
+    fxRates: fx,
+    unpriced,
+    // What the retry queue did this run: how many rows came in stuck, and how
+    // many of them left priced.
+    queued,
+    recovered: recovered.count,
+  });
 }
 
 // POST only: this mutates the catalog (prices/FX), so it must not be a safe
