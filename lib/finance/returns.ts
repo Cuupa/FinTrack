@@ -105,13 +105,22 @@ export function cumulativeReturnSeries(series: SeriesPoint[], flows: Flow[]): Se
  * Falls back to the (already contribution-adjusted) TWR when the starting
  * value is negligible relative to the window's peak, where the raw ratio
  * would blow up (same 2%-of-peak threshold as `cumulativeReturnSeries`).
+ *
+ * "Nonzero" means nonzero, not positive: accounts and liabilities fold into
+ * this series, so a net worth carrying a mortgage is negative on every point of
+ * the window. Looking for a POSITIVE baseline found none there, left `start` at
+ * 0 and reported the ENTIRE net worth as the window's change (a portfolio with
+ * a 200k mortgage read "−178,681 €" for a year in which it gained 3k). A
+ * negative start is a real baseline for the absolute delta; it is not a usable
+ * denominator, though — "return on minus 195,000" has no meaning — so the
+ * percentage falls back to the TWR, exactly as it does for a negligible start.
  */
 export function windowChange(
   series: SeriesPoint[],
   flows: Flow[],
   twr: number,
 ): { abs: number; pct: number } {
-  const startPoint = series.find((p) => p.value > 0);
+  const startPoint = series.find((p) => p.value !== 0);
   const start = startPoint?.value ?? 0;
   const startDate = startPoint?.date ?? "";
   const end = series[series.length - 1]?.value ?? 0;

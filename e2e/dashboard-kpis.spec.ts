@@ -63,3 +63,54 @@ test("the overview leads with everyday money, the portfolio page with the depot"
   await expect(depotHero).toContainText("Unrealized P&L");
   await expect(depotHero).not.toContainText("Savings rate");
 });
+
+// Return mode plots the depot's TWROR while the currency line plots net worth,
+// so on the overview the two modes answer different questions. Only the wiring
+// can show that the line renames itself and the note appears there and nowhere
+// else -- and, with a mortgage seeded, that the window's change is the window's
+// change and not the whole debt.
+test("return mode says it measures the depot, and the change is not the debt", async ({
+  page,
+}) => {
+  await page.goto("/accounts");
+  await dismissTour(page);
+
+  await openAddAccountModal(page);
+  await page.getByRole("dialog").locator("#account-name").fill("Current account");
+  await page.getByRole("dialog").locator("#account-opening").fill("4000");
+  await submitAddAccountModal(page);
+
+  await openAddAccountModal(page);
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#account-name").fill("House");
+  await dialog.getByRole("button", { name: "Type" }).click();
+  await page.getByRole("option", { name: "Mortgage", exact: true }).click();
+  await dialog.locator("#account-opening").fill("200000");
+  await submitAddAccountModal(page);
+
+  await page.goto("/");
+  await dismissTour(page);
+  const hero = page.locator('[data-tour="net-worth"]');
+  const note = hero.getByText(/Return and risk figures cover the portfolio only/);
+
+  // Net worth is -196,000 across the whole window. The chart's accessible
+  // summary carries the window change, and with flat balances that change is
+  // zero -- it must never be the entire net worth.
+  await expect(hero).toContainText("196,000");
+  const chart = hero.locator("[aria-label*='Net worth chart']");
+  await expect(chart).toBeVisible();
+  expect(await chart.getAttribute("aria-label")).not.toContain("196,000");
+
+  await expect(note).toBeHidden();
+  await hero.getByRole("button", { name: "Return", exact: true }).click();
+  await expect(note).toBeVisible();
+
+  // The depot page has nothing to disambiguate: no account is in its line.
+  await page.goto("/portfolio");
+  await dismissTour(page);
+  const depotHero = page.locator('[data-tour="net-worth"]');
+  await depotHero.getByRole("button", { name: "Return", exact: true }).click();
+  await expect(
+    depotHero.getByText(/Return and risk figures cover the portfolio only/),
+  ).toBeHidden();
+});

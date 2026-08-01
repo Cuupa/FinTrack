@@ -662,6 +662,10 @@ export const en = {
     "{name} chart from {start} to {end}: {startValue} to {endValue}.",
   "chart.netWorth.ariaLabel":
     "Net worth chart, {timeframe}: from {start} to {end} ({change}, {pct}).",
+  "chart.depotReturn.ariaLabel":
+    "Portfolio return chart, {timeframe}: from {start} to {end} ({pct}).",
+  "chart.returnScope":
+    "Return and risk figures cover the portfolio only: an account balance and a debt have no price to compound.",
   "chart.assetPrice.ariaLabel":
     "{name} price chart, {timeframe}: from {start} to {end}, {startValue} to {endValue}.",
   "chart.sharedPortfolio.ariaLabel":
@@ -2821,6 +2825,10 @@ export const de: Partial<Record<MessageKey, string>> = {
     "{name}-Diagramm von {start} bis {end}: {startValue} auf {endValue}.",
   "chart.netWorth.ariaLabel":
     "Vermögensverlauf, {timeframe}: von {start} bis {end} ({change}, {pct}).",
+  "chart.depotReturn.ariaLabel":
+    "Depotrendite, {timeframe}: von {start} bis {end} ({pct}).",
+  "chart.returnScope":
+    "Rendite- und Risikozahlen beziehen sich nur auf das Depot. Ein Kontostand und eine Verbindlichkeit haben keinen Kurs.",
   "chart.assetPrice.ariaLabel":
     "Kursverlauf {name}, {timeframe}: von {start} bis {end}, {startValue} auf {endValue}.",
   "chart.sharedPortfolio.ariaLabel":
@@ -4984,6 +4992,10 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Gráfico de {name} de {start} a {end}: de {startValue} a {endValue}.",
   "chart.netWorth.ariaLabel":
     "Gráfico de patrimonio neto, {timeframe}: de {start} a {end} ({change}, {pct}).",
+  "chart.depotReturn.ariaLabel":
+    "Gráfico de rentabilidad de la cartera, {timeframe}: de {start} a {end} ({pct}).",
+  "chart.returnScope":
+    "Las cifras de rentabilidad y riesgo se refieren solo a la cartera: un saldo de cuenta y una deuda no tienen cotización.",
   "chart.assetPrice.ariaLabel":
     "Gráfico de precio de {name}, {timeframe}: de {start} a {end}, de {startValue} a {endValue}.",
   "chart.sharedPortfolio.ariaLabel":

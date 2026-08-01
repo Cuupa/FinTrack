@@ -174,6 +174,19 @@ export function NetWorthHero({
   const headlineLabel = investmentsOnly ? t("stat.depotValue") : t("stat.netWorth");
   const headlineInfo = investmentsOnly ? t("tip.depotValue") : t("tip.netWorth");
 
+  // Return mode plots `returnSeries`, and that is the DEPOT's time-weighted
+  // return -- an account balance is a figure the user sets and a debt is owed,
+  // so neither has a price series to compound. On the dashboard the currency
+  // line is net worth and the Return line is not, so the line is named after
+  // what it actually plots; the note says it once for the risk figures below,
+  // which come from that same series. Benchmarks force percent mode, so a
+  // comparison is covered by the same rule.
+  const returnScoped = !investmentsOnly && chartMode === "percent";
+  const showScopeNote =
+    !investmentsOnly &&
+    (accounts?.length ?? 0) > 0 &&
+    (chartMode === "percent" || data.assets.length > 0);
+
   // Split of that same number, so the headline can show what it is made of
   // rather than presenting a portfolio figure with accounts silently folded in.
   const acctSplit = useMemo(
@@ -390,18 +403,31 @@ export function NetWorthHero({
             mode={chartMode}
             currency={currency}
             compare={compare}
-            mainLabel={headlineLabel}
+            mainLabel={returnScoped ? t("stat.depotValue") : headlineLabel}
             returnSeries={returnSeries}
-            ariaLabel={t("chart.netWorth.ariaLabel", {
-              timeframe,
-              start: series[0] ? formatDate(series[0].date) : "",
-              end: series.length ? formatDate(series[series.length - 1].date) : "",
-              change: formatCurrency(periodChange.abs, currency),
-              pct: formatPercent(periodChange.pct),
-            })}
+            ariaLabel={
+              returnScoped
+                ? t("chart.depotReturn.ariaLabel", {
+                    timeframe,
+                    start: series[0] ? formatDate(series[0].date) : "",
+                    end: series.length ? formatDate(series[series.length - 1].date) : "",
+                    pct: formatPercent(risk.twr),
+                  })
+                : t("chart.netWorth.ariaLabel", {
+                    timeframe,
+                    start: series[0] ? formatDate(series[0].date) : "",
+                    end: series.length ? formatDate(series[series.length - 1].date) : "",
+                    change: formatCurrency(periodChange.abs, currency),
+                    pct: formatPercent(periodChange.pct),
+                  })
+            }
           />
         )}
       </div>
+
+      {showScopeNote && (
+        <p className="mt-2 text-xs text-zinc-500">{t("chart.returnScope")}</p>
+      )}
 
       {data.assets.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-3 lg:grid-cols-5 dark:border-zinc-800">

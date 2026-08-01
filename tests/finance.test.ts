@@ -114,6 +114,31 @@ describe("windowChange", () => {
     expect(abs).toBeCloseTo(4990, 6);
     expect(pct).toBe(0.37);
   });
+
+  it("regression: a net worth that is negative all window reports its real delta", () => {
+    // Depot 16k against a 200k mortgage: negative on every point. The baseline
+    // used to be searched for as the first POSITIVE value, found nothing, and
+    // the change came out as the whole net worth instead of the year's gain.
+    const series: SeriesPoint[] = [
+      { date: "2025-08-01", value: -181_900 },
+      { date: "2026-02-01", value: -180_100 },
+      { date: "2026-08-01", value: -178_681 },
+    ];
+    const { abs, pct } = windowChange(series, [], 0.22);
+    expect(abs).toBeCloseTo(3219, 6);
+    // A negative start is no denominator, so the percentage is the TWR.
+    expect(pct).toBe(0.22);
+  });
+
+  it("uses a negative first point as the baseline even once the line turns positive", () => {
+    const series: SeriesPoint[] = [
+      { date: "2025-01-01", value: -500 },
+      { date: "2025-12-31", value: 1500 },
+    ];
+    const { abs, pct } = windowChange(series, [], 0.1);
+    expect(abs).toBeCloseTo(2000, 6);
+    expect(pct).toBe(0.1);
+  });
 });
 
 describe("periodReturns", () => {
