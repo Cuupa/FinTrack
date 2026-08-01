@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { exportPortfolioCsv, exportPortfolioJson } from "@/lib/export/export";
+import { exportPortfolioCsv, exportPortfolioJson, hasExportableData } from "@/lib/export/export";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProMenuItem } from "@/components/billing/pro-teaser";
 import { useIsAdmin } from "@/lib/admin/use-is-admin";
@@ -47,7 +47,7 @@ export function ProfileMenu() {
 
   const name = data.profile.name;
   const email = user?.email ?? null;
-  const exportDisabled = data.assets.length === 0 && data.transactions.length === 0;
+  const exportDisabled = !hasExportableData(data);
 
   return (
     <div className="relative" ref={ref}>

@@ -33,7 +33,6 @@ ansehen laesst.
 | Task | Prio | Warum noch offen |
 | --- | --- | --- |
 | Demo-SQL auf die neuen Features erweitern | LOW | noch nicht angefasst |
-| Download/Export um die restlichen Daten erweitern | LOW | noch nicht angefasst |
 | Monte Carlo: dynamische Entnahme, Stresszenarien, FIRE/Simulation vereinheitlichen | LOW | groesster Brocken, eigene Runde |
 
 ## Erledigt
@@ -46,6 +45,7 @@ ansehen laesst.
 | Tab-Strip einmal statt viermal | `components/ui/tabs.tsx`, uebernommen von /analysis, Settings und dem Simulations-Modell |
 | Kontenauswahl ist ein Multiselect | `SelectMenu` bekommt `multiple`, leere Auswahl = alle Konten, `e2e/accounts-unified.spec.ts` erweitert |
 | LLM-Kontext kennt den Rest der App | Buchungen, Budgets, Wiederkehrendes, Ziele, Rente, FIRE, Watchlist, Tags — je hinter dem eigenen Flag; `/datenschutz` nachgezogen |
+| Export umfasst alles | Ein Abschnitt je Entitaet, leere fallen weg; `parseFinTrack` begrenzt Abschnitte; JSON traegt den API-Key nicht mehr; `hasExportableData` statt "nur Depot"; `tests/export.test.ts` |
 
 ### Runde 2026-08-01 (zweiter Teil)
 

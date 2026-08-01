@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { exportPortfolioCsv, exportPortfolioJson } from "@/lib/export/export";
+import { exportPortfolioCsv, exportPortfolioJson, hasExportableData } from "@/lib/export/export";
 import { Button } from "@/components/ui/primitives";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProMenuItem } from "@/components/billing/pro-teaser";
@@ -33,7 +33,7 @@ export function ExportMenu() {
 
   if (!csvEnabled && !jsonEnabled) return null;
 
-  const disabled = data.assets.length === 0 && data.transactions.length === 0;
+  const disabled = !hasExportableData(data);
 
   return (
     <div className="relative" ref={ref}>

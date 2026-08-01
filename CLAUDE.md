@@ -165,11 +165,20 @@ re-imports surface correctly. UI rule: every destructive action gets a
 `ConfirmDialog` first.
 
 The app's own CSV export (`lib/export/export.ts`, "# FinTrack export" marker
-line, assets + transactions sections) round-trips through the same seam: a
-`fintrack` `BrokerFormat` in `csv.ts` parses it back, enriching rows from the
-assets section (JSON re-import deliberately not implemented yet). Export
-surfaces (dashboard `ExportMenu` + profile menu) are gated per format by the
-`exportCsv` / `exportJson` feature flags.
+line) covers **every entity the app stores**, one `# Section` each: assets,
+transactions, brokers, savings plans, watchlist, tags, manual valuations,
+accounts, balances, spending categories, bookings, budgets, recurring
+payments, planned cashflow, goals and the pension. A section with no rows is
+**omitted, not written as a lone header** — except Assets and Transactions,
+which always render because they define the re-import format. It round-trips
+through the same seam: a `fintrack` `BrokerFormat` in `csv.ts` parses those two
+sections back, enriching rows from the assets section (JSON re-import
+deliberately not implemented yet); `parseFinTrack` bounds each section at the
+next `#` heading, or every later section counts as a skipped transaction.
+`portfolioToJson` nulls `llmConfig` — the BYO API key must never ride out in a
+downloaded file. Both surfaces (`ExportMenu` on /portfolio + profile menu)
+share `hasExportableData` and are gated per format by the `exportCsv` /
+`exportJson` feature flags.
 
 ### Live prices, FX & multi-currency
 

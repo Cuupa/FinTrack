@@ -551,6 +551,19 @@ function parseFinTrack(text: string): { rows: ParsedTx[]; skipped: number } {
   const txIdx = lines.findIndex((l) => l.trim() === "# Transactions");
   if (assetsIdx < 0 || txIdx < 0) return { rows: [], skipped: 0 };
 
+  /** Where a section's rows stop: the next `#` heading, or end of file. The
+      export writes accounts, bookings, goals and the rest after the
+      transactions, and reading to EOF counted every one of those rows as an
+      unrecognised transaction -- a correct export reported hundreds skipped. */
+  const sectionEnd = (start: number): number => {
+    for (let i = start; i < lines.length; i++) {
+      if (lines[i].trimStart().startsWith("#")) return i;
+    }
+    return lines.length;
+  };
+  const assetsEnd = Math.min(sectionEnd(assetsIdx + 2), txIdx);
+  const txEnd = sectionEnd(txIdx + 2);
+
   interface FinTrackAsset {
     name: string;
     type: string;
@@ -571,7 +584,7 @@ function parseFinTrack(text: string): { rows: ParsedTx[]; skipped: number } {
     symbol: idxExact(assetHeader, "symbol"),
     currency: idxExact(assetHeader, "currency"),
   };
-  for (let i = assetsIdx + 2; i < txIdx; i++) {
+  for (let i = assetsIdx + 2; i < assetsEnd; i++) {
     const r = splitLine(lines[i], ",");
     const row: FinTrackAsset = {
       name: r[ac.name] || "",
@@ -599,7 +612,7 @@ function parseFinTrack(text: string): { rows: ParsedTx[]; skipped: number } {
   };
   const out: ParsedTx[] = [];
   let skipped = 0;
-  for (let i = txIdx + 2; i < lines.length; i++) {
+  for (let i = txIdx + 2; i < txEnd; i++) {
     const r = splitLine(lines[i], ",");
     const assetField = r[tc.asset] || "";
     const asset = assetsById.get(assetField) ?? assetsByName.get(assetField);
