@@ -291,7 +291,18 @@ the binding rules:
   is cleared on sign-out; the account-scoped one survives.
 - Chat context is built client-side and pure (`lib/llm/context.ts`). It
   **never includes internal ids** (display data only) and **never includes the
-  tax report**. Keep `/datenschutz` accurate when these data flows change.
+  tax report**. Keep `/datenschutz` accurate when these data flows change —
+  its section 9 enumerates what the chat transmits.
+- It covers the whole product, not just the depot: holdings, savings plans,
+  watchlist, per-holding tags, risk/return, accounts, spending, budgets,
+  recurring payments, planned cashflow, goals, pension and FIRE. **Every
+  section past the holdings rides its own feature flag**, and an absent
+  section is OMITTED from the JSON rather than emitted empty — an empty array
+  reads to a model as "the user has none of these", a different claim from
+  "that feature is off". A figure the app refuses to invent (the statutory
+  pension with no Rentenwert) stays `null`. Each block mirrors the computation
+  of the page that owns it, so the assistant never quotes a figure the user
+  cannot find on screen.
 
 
 ### Asset identity

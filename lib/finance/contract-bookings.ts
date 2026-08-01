@@ -28,6 +28,16 @@ const MONTHS_PER_INTERVAL: Record<ContractInterval, number> = {
 };
 
 /**
+ * A contract's charge normalised to one month, so a yearly insurance premium
+ * and a monthly subscription can be added up or compared. The register shows
+ * the per-interval amount (that is what leaves the account, and when), which
+ * is why this is a separate reading rather than a stored field.
+ */
+export function monthlyEquivalent(contract: Pick<Contract, "amount" | "interval">): number {
+  return contract.amount / MONTHS_PER_INTERVAL[contract.interval];
+}
+
+/**
  * The k-th booking date (k = 0 is `bookingStartDate` itself). `addMonthsToDate`
  * already clamps the day-of-month to shorter months (Jan 31 -> Feb 28/29),
  * which is the same rule brokers and `savings-plans.ts` apply.

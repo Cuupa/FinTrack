@@ -36,6 +36,18 @@ import { summarizeAll } from "@/lib/finance/portfolio";
 import { accountValueOn } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { nextPlannedOccurrence, plannedMonthlyTotals } from "@/lib/finance/planned";
+import {
+  budgetProgress,
+  incomeExpenseSplit,
+  toBaseCurrency,
+  withoutTransfers,
+} from "@/lib/finance/spending";
+import { monthlyEquivalent, nextBooking } from "@/lib/finance/contract-bookings";
+import { goalTotals, subGoals, topLevelGoals } from "@/lib/finance/goals";
+import { projectPension } from "@/lib/finance/pension";
+import { usePensionReference } from "@/lib/pension/use-pension-reference";
+import { computeFirePlan, trailingAnnualExpenses } from "@/lib/finance/fire";
+import { monthlyContributionOf } from "@/lib/finance/savings-plans";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { byAssetClass, byCountry, byCurrency } from "@/lib/finance/allocation";
 import { estimatePortfolioStats, portfolioRiskStats, type StatHolding } from "@/lib/finance/stats";
@@ -84,6 +96,10 @@ const NO_BENCHMARKS: string[] = [];
 // Lookback for the history fetch, matching the 5-year default of
 // estimatePortfolioStats/portfolioRiskStats.
 const HISTORY_RANGE = "5Y";
+// The FIRE page's default withdrawal rate (the classic 4% rule). Its slider is
+// live what-if state that never leaves the component, so the snapshot reports
+// the plan at the default rather than at a position the user may have dragged.
+const DEFAULT_WITHDRAWAL_RATE = 0.04;
 
 /**
  * `active` arms the async context inputs (real histories + benchmark for
@@ -104,6 +120,16 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
   const { locale } = useI18n();
   const { config } = useLlmConfig();
   const plannedEnabled = useFeatureFlag("plannedCashflow");
+  // One flag per section. A section is passed only when its flag is on, so the
+  // assistant is never better informed than the app the user is looking at.
+  const spendingEnabled = useFeatureFlag("spending");
+  const budgetsEnabled = useFeatureFlag("budgets");
+  const contractsEnabled = useFeatureFlag("contracts");
+  const goalsEnabled = useFeatureFlag("goals");
+  const pensionEnabled = useFeatureFlag("pension");
+  const fireEnabled = useFeatureFlag("firePlanner");
+  const watchlistEnabled = useFeatureFlag("watchlist");
+  const pensionReference = usePensionReference();
   const base = data.profile.currency;
 
   const histItems = useMemo(
@@ -142,6 +168,8 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
       marketValue: h.marketValue,
     }));
 
+    const stats = estimatePortfolioStats(statHoldings, 5, histories);
+
     const dividendYields: Record<string, number> = {};
     for (const h of holdings) {
       const key = assetPriceKey(h.asset);
@@ -175,13 +203,14 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     // Planned income/expenses: the recurring figures per month plus the next
     // expected payment per plan, converted to the base currency. Ids never
     // leave the client (same rule as the rest of this snapshot).
+    const todayIso = today();
     const planned =
       plannedEnabled && data.plannedCashflows.length > 0
         ? {
             monthly: plannedMonthlyTotals(data.plannedCashflows, data.accounts, base, fxSpot),
             upcoming: data.plannedCashflows
               .map((p) => {
-                const date = nextPlannedOccurrence(p, today());
+                const date = nextPlannedOccurrence(p, todayIso);
                 if (!date) return null;
                 const cur = data.accounts.find((a) => a.id === p.accountId)?.currency || base;
                 const rate = cur === base ? 1 : (fxSpot[cur] ?? 1);
@@ -192,9 +221,149 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
           }
         : null;
 
+    // Everyday money and planning. Each block mirrors the computation its own
+    // page performs, so the assistant quotes figures the user can find on
+    // screen rather than a second opinion computed here.
+    const baseTx = toBaseCurrency(data.spendingTransactions, data.accounts, base, fxSpot);
+    const realTx = withoutTransfers(baseTx);
+
+    const yearAgo = `${Number(todayIso.slice(0, 4)) - 1}${todayIso.slice(4)}`;
+    const trailing = realTx.filter((tx) => tx.date >= yearAgo && tx.date <= todayIso);
+    const categoryNames = new Map(
+      data.spendingCategories.map((c) => [c.id, `${c.groupName} · ${c.name}`]),
+    );
+    const spentByCategory = new Map<string, number>();
+    for (const tx of trailing) {
+      if (tx.amount >= 0) continue;
+      const name = categoryNames.get(tx.categoryId ?? "") ?? "Uncategorized";
+      spentByCategory.set(name, (spentByCategory.get(name) ?? 0) + -tx.amount);
+    }
+    const split = incomeExpenseSplit(trailing);
+    const spending =
+      spendingEnabled && data.spendingTransactions.length > 0
+        ? {
+            trailing12m: { income: split.income, expense: split.expense },
+            topCategories: [...spentByCategory.entries()]
+              .map(([name, amount]) => ({ name, amount }))
+              .sort((a, b) => b.amount - a.amount)
+              .slice(0, 12),
+          }
+        : null;
+
+    const budgets =
+      budgetsEnabled && data.budgets.length > 0
+        ? budgetProgress(baseTx, data.budgets, todayIso.slice(0, 7)).map((b) => ({
+            category: categoryNames.get(b.categoryId) ?? "?",
+            cap: b.cap,
+            spent: b.spent,
+          }))
+        : null;
+
+    const contracts =
+      contractsEnabled && data.contracts.length > 0
+        ? data.contracts.map((c) => ({
+            name: c.name,
+            monthly: monthlyEquivalent(c),
+            interval: c.interval,
+            nextDue: nextBooking(c, todayIso),
+          }))
+        : null;
+
+    // Composite parents report the sum over their parts (`goalTotals`), and the
+    // parts themselves are left out so the same money is not counted twice.
+    const goals =
+      goalsEnabled && data.goals.length > 0
+        ? topLevelGoals(data.goals).map((g) => {
+            const totals = goalTotals(
+              g,
+              subGoals(data.goals, g.id),
+              data.accounts,
+              data.accountBalances,
+              { base, fx: fxSpot },
+              undefined,
+              movements,
+            );
+            return {
+              name: g.name,
+              target: totals.target,
+              current: totals.current,
+              targetDate: g.targetDate ?? null,
+            };
+          })
+        : null;
+
+    const projection = pensionEnabled
+      ? projectPension({
+          entries: data.pensionPoints,
+          contracts: data.pensionContracts,
+          reference: pensionReference,
+          settings: data.profile.pensionSettings,
+          currentYear: Number(todayIso.slice(0, 4)),
+        })
+      : null;
+    const pension =
+      projection && (projection.totalPoints > 0 || projection.monthlyPrivate > 0)
+        ? {
+            totalPoints: projection.totalPoints,
+            statutoryMonthly: projection.monthlyStatutory,
+            privateMonthly: projection.monthlyPrivate,
+            totalMonthly: projection.monthlyTotal,
+            retirementYear: projection.retirementYear,
+          }
+        : null;
+
+    // The FIRE page's own defaults: trailing expenses, the savings plans'
+    // monthly contribution and the measured expected return. The withdrawal
+    // rate is the page's 4% default, since a slider position is UI state that
+    // deliberately never leaves the component.
+    const annualExpenses = trailingAnnualExpenses(data.spendingTransactions, todayIso);
+    const netWorth =
+      holdings.reduce((s, h) => s + h.marketValue, 0) +
+      data.accounts.reduce(
+        (s, a) =>
+          s + accountValueOn(a, data.accountBalances, todayIso, { base, fx: fxSpot }, movements),
+        0,
+      );
+    const plan =
+      fireEnabled && annualExpenses > 0
+        ? computeFirePlan(
+            netWorth,
+            annualExpenses,
+            monthlyContributionOf(data.savingsPlans, data.assets, valuation),
+            stats?.expectedReturn ?? 0,
+            DEFAULT_WITHDRAWAL_RATE,
+          )
+        : null;
+    const fire = plan
+      ? {
+          annualExpenses,
+          withdrawalRate: plan.withdrawalRate,
+          fireNumber: plan.regular,
+          leanFireNumber: plan.lean,
+          fatFireNumber: plan.fat,
+          yearsToFire: plan.yearsToRegular,
+        }
+      : null;
+
+    // Tag values are the user's own words, so they travel verbatim -- but the
+    // group and value IDS never do, only the "Group=Value" reading.
+    const groupNames = new Map(data.tagGroups.map((g) => [g.id, g.name]));
+    const tags: Record<string, string[]> = {};
+    for (const asset of data.assets) {
+      const byGroup = data.tagAssignments[asset.id];
+      if (!byGroup) continue;
+      const labels: string[] = [];
+      for (const [groupId, values] of Object.entries(byGroup)) {
+        const group = groupNames.get(groupId);
+        if (!group) continue;
+        for (const value of values) labels.push(`${group}=${value}`);
+      }
+      if (labels.length) tags[assetPriceKey(asset)] = labels;
+    }
+
     const contextJson = buildPortfolioContext({
       baseCurrency: base,
-      today: today(),
+      today: todayIso,
       holdings,
       assets: data.assets,
       savingsPlans: data.savingsPlans,
@@ -202,7 +371,7 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
       // No-holdings falls back to null here (not a benchmark) — an empty
       // portfolio should read as empty to the assistant, not as "invested
       // like FTSE All-World".
-      portfolioStats: estimatePortfolioStats(statHoldings, 5, histories),
+      portfolioStats: stats,
       riskStats: portfolioRiskStats(statHoldings, 5, histories),
       benchmark: ba ? { name: compare[0]?.label ?? "MSCI World", ...ba } : null,
       allocationByClass: byAssetClass(holdings),
@@ -229,6 +398,17 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
       // currency, so the assistant knows a salary is coming instead of reading
       // the ledger as the user's entire income. Only when the flag is on.
       planned,
+      spending,
+      budgets,
+      contracts,
+      goals,
+      pension,
+      fire,
+      watchlist:
+        watchlistEnabled && data.watchlist.length > 0
+          ? data.watchlist.map((w) => w.name)
+          : undefined,
+      tags: Object.keys(tags).length > 0 ? tags : undefined,
     });
 
     const prompt = buildSystemPrompt(contextJson, locale);
@@ -243,7 +423,26 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     data.accounts,
     data.accountBalances,
     data.plannedCashflows,
+    data.spendingTransactions,
+    data.spendingCategories,
+    data.budgets,
+    data.contracts,
+    data.goals,
+    data.pensionPoints,
+    data.pensionContracts,
+    data.profile.pensionSettings,
+    data.watchlist,
+    data.tagGroups,
+    data.tagAssignments,
+    pensionReference,
     plannedEnabled,
+    spendingEnabled,
+    budgetsEnabled,
+    contractsEnabled,
+    goalsEnabled,
+    pensionEnabled,
+    fireEnabled,
+    watchlistEnabled,
     base,
     valuation,
     locale,

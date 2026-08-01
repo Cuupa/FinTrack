@@ -1243,9 +1243,24 @@ Guest Mode has no scope choice (the guest blob IS the browser) and never
 renders the control.
 
 Chat context is built client-side, pure, no React (`lib/llm/context.ts`,
-`buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot of
-holdings, savings plans, risk/allocation stats, sent as the system-prompt
-preamble. Risk stats feed from real 5y histories plus portfolio beta/alpha
+`buildPortfolioContext`/`buildSystemPrompt`): a compact JSON snapshot sent as
+the system-prompt preamble. It covers the whole product, not only the depot —
+holdings (with the user's own tags), savings plans, watchlist,
+risk/allocation stats, accounts and liabilities, the spending window and its
+biggest categories, budgets vs actual, recurring payments normalised to a
+month, planned cashflow, goals, the pension projection and the FIRE targets.
+Everything past the holdings rides its own feature flag: `usePortfolioChat`
+passes a section only when that flag is on, and `buildPortfolioContext`
+**omits an absent section entirely rather than emitting it empty** — an empty
+array reads to a model as "the user has none of these", which is a different
+claim from "that feature is switched off". Each block reuses the pure helper
+its own page uses (`incomeExpenseSplit`, `budgetProgress`, `goalTotals`,
+`projectPension`, `computeFirePlan`, …) so the assistant cannot quote a figure
+the user is unable to find on screen, and a figure the app itself refuses to
+invent stays `null` (the statutory pension without a reference Rentenwert).
+The FIRE block reports the plan at the page's default 4% withdrawal rate: the
+slider is live what-if state that deliberately never leaves the component.
+Risk stats feed from real 5y histories plus portfolio beta/alpha
 vs MSCI World (`risk.vsBenchmark`) — the same composite-levels math as the
 risk page KPI tiles; `usePortfolioChat(active)` arms those history/benchmark
 fetches only once the panel is first opened, and the per-conversation system
@@ -1254,10 +1269,9 @@ transaction id — display data only: name, ISIN, type, ...) and **never
 includes the tax report** (Freistellungsauftrag amounts stay out, per the
 plan's open question). `/datenschutz` documents the BYO-key opt-in, where the
 key can be stored (always browser-local for guests; account DB or
-browser-local, by choice, for registered users), and that portfolio
-data is transmitted to the chosen provider only when the chat is used — keep
-that section accurate if these data flows change, same rule as the rest of
-the privacy policy.
+browser-local, by choice, for registered users), and **enumerates what the
+extract contains** (section 9) — keep that list accurate whenever a section is
+added here, same rule as the rest of the privacy policy.
 
 ## Route design notes
 

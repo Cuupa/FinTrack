@@ -224,12 +224,18 @@ function DatenschutzDE({
           verschiebt den Schlüssel sofort vom einen zum anderen Ort.
         </p>
         <p>
-          Nutzt du den Chat, werden deine Portfoliodaten (Positionen, Sparpläne, Risikokennzahlen)
-          zusammen mit deiner Nachricht an den von dir gewählten Anbieter übertragen, damit
-          dieser eine Antwort erzeugen kann. Diese Übertragung erfolgt über unseren Server als
-          reinen Durchleiter (Proxy): Wir speichern und protokollieren die übertragenen Inhalte
-          nicht. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du
-          durch das aktive Hinterlegen eines eigenen Schlüssels erteilst.
+          Nutzt du den Chat, wird ein Auszug deiner Finanzdaten zusammen mit deiner Nachricht an
+          den von dir gewählten Anbieter übertragen, damit
+          dieser eine Antwort erzeugen kann. Enthalten sind je nach freigeschalteter Funktion:
+          Positionen, Sparpläne, Watchlist und deine eigenen Tags, Risiko- und Renditekennzahlen,
+          Konten und Verbindlichkeiten, Buchungen (Summen und Kategorien, keine einzelnen
+          Buchungen), Budgets, wiederkehrende Zahlungen, geplante Ein- und Ausgaben, Ziele sowie
+          deine Altersvorsorge. Der Auszug enthält ausschließlich Anzeigedaten:{" "}
+          <strong>keine internen Datensatz-IDs</strong> und{" "}
+          <strong>nicht deine Steuerauswertung</strong>. Diese Übertragung erfolgt über unseren
+          Server als reinen Durchleiter (Proxy): Wir speichern und protokollieren die übertragenen
+          Inhalte nicht. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die
+          du durch das aktive Hinterlegen eines eigenen Schlüssels erteilst.
         </p>
         <p>
           Welche Daten der jeweilige Anbieter mit deiner Anfrage verarbeitet und wie lange er sie
@@ -471,11 +477,16 @@ function DatenschutzEN({
           the other.
         </p>
         <p>
-          When you use the chat, your portfolio data (holdings, savings plans, risk figures) is
-          sent together with your message to the provider you chose, so it can generate a reply.
-          This transmission goes through our server acting purely as a relay (proxy): we do not
-          store or log the transmitted content. The legal basis is your consent (Art. 6(1)(a)
-          GDPR), given by actively adding your own key.
+          When you use the chat, an extract of your financial data is sent together with your
+          message to the provider you chose, so it can generate a reply. Depending on which
+          features are enabled, it covers: holdings, savings plans, your watchlist and your own
+          tags, risk and return figures, accounts and liabilities, spending (totals and
+          categories, not individual bookings), budgets, recurring payments, planned income and
+          expenses, goals, and your retirement provision. The extract contains display data only:{" "}
+          <strong>no internal record IDs</strong> and <strong>not your tax report</strong>. This
+          transmission goes through our server acting purely as a relay (proxy): we do not store
+          or log the transmitted content. The legal basis is your consent (Art. 6(1)(a) GDPR),
+          given by actively adding your own key.
         </p>
         <p>
           What data the respective provider processes with your request and how long it retains

@@ -198,6 +198,134 @@ describe("buildPortfolioContext", () => {
   });
 });
 
+// The everyday-money and planning sections. Each rides its own feature flag,
+// so the caller passes it only when that flag is on -- which is why "absent"
+// has to stay distinguishable from "the user has none".
+describe("buildPortfolioContext: everyday money & planning", () => {
+  it("omits every flagged section when the caller passes nothing", () => {
+    const parsed = JSON.parse(buildPortfolioContext(baseInput()));
+    for (const key of [
+      "spending",
+      "budgets",
+      "recurringPayments",
+      "goals",
+      "pension",
+      "fire",
+      "watchlist",
+    ]) {
+      expect(key in parsed).toBe(false);
+    }
+  });
+
+  it("carries the spending window and its biggest categories", () => {
+    const input = baseInput();
+    input.spending = {
+      trailing12m: { income: 48000.456, expense: 31000.123 },
+      topCategories: [
+        { name: "Wohnen · Miete", amount: 14400 },
+        { name: "Essen · Supermarkt", amount: 4200.5 },
+      ],
+    };
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.spending.trailing12m).toEqual({ income: 48000.46, expense: 31000.12 });
+    expect(parsed.spending.topCategories[0]).toEqual({ name: "Wohnen · Miete", amount: 14400 });
+  });
+
+  it("reports budgets as cap versus spent, over-budget included", () => {
+    const input = baseInput();
+    input.budgets = [
+      { category: "Essen · Supermarkt", cap: 400, spent: 512.349 },
+      { category: "Freizeit · Kino", cap: 50, spent: 0 },
+    ];
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.budgets).toEqual([
+      { category: "Essen · Supermarkt", cap: 400, spent: 512.35 },
+      { category: "Freizeit · Kino", cap: 50, spent: 0 },
+    ]);
+  });
+
+  it("normalises recurring payments to a month and keeps the interval", () => {
+    const input = baseInput();
+    input.contracts = [
+      { name: "Hausrat", monthly: 8.25, interval: "ANNUAL", nextDue: "2027-01-01" },
+      { name: "Handy", monthly: 12, interval: "MONTHLY", nextDue: null },
+    ];
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.recurringPayments[0]).toEqual({
+      name: "Hausrat",
+      monthly: 8.25,
+      interval: "ANNUAL",
+      nextDue: "2027-01-01",
+    });
+    expect(parsed.recurringPayments[1].nextDue).toBeNull();
+  });
+
+  it("derives a goal's progress percentage and tolerates a zero target", () => {
+    const input = baseInput();
+    input.goals = [
+      { name: "Notgroschen", target: 10000, current: 2500, targetDate: "2027-12-31" },
+      { name: "Open ended", target: 0, current: 500, targetDate: null },
+    ];
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.goals[0].progressPct).toBe(25);
+    expect(parsed.goals[1].progressPct).toBe(0);
+  });
+
+  it("keeps an unvaluable statutory pension null instead of inventing euros", () => {
+    const input = baseInput();
+    input.pension = {
+      totalPoints: 17.0322,
+      statutoryMonthly: null,
+      privateMonthly: 250,
+      totalMonthly: null,
+      retirementYear: 2057,
+    };
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.pension.totalPoints).toBe(17.03);
+    expect(parsed.pension.statutoryMonthly).toBeNull();
+    expect(parsed.pension.totalMonthly).toBeNull();
+    expect(parsed.pension.privateMonthly).toBe(250);
+  });
+
+  it("surfaces the FIRE targets with the withdrawal rate as a percentage", () => {
+    const input = baseInput();
+    input.fire = {
+      annualExpenses: 30000,
+      withdrawalRate: 0.04,
+      fireNumber: 750000,
+      leanFireNumber: 525000,
+      fatFireNumber: 1125000,
+      yearsToFire: null,
+    };
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.fire.withdrawalRatePct).toBe(4);
+    expect(parsed.fire.fireNumber).toBe(750000);
+    expect(parsed.fire.yearsToFire).toBeNull();
+  });
+
+  it("attaches the user's own tag values to the holding they belong to", () => {
+    const input = baseInput();
+    input.watchlist = ["Rheinmetall"];
+    input.tags = { [vwceAsset.isin as string]: ["Strategie=Kern"] };
+    const parsed = JSON.parse(buildPortfolioContext(input));
+    expect(parsed.watchlist).toEqual(["Rheinmetall"]);
+    const vwce = parsed.holdings.find((h: { name: string }) => h.name === "Vanguard FTSE All-World");
+    expect(vwce.tags).toEqual(["Strategie=Kern"]);
+    const btc = parsed.holdings.find((h: { name: string }) => h.name === "Bitcoin");
+    expect("tags" in btc).toBe(false);
+  });
+
+  it("still never leaks an internal id or the tax report", () => {
+    const input = baseInput();
+    input.goals = [{ name: "Notgroschen", target: 10000, current: 2500, targetDate: null }];
+    input.contracts = [{ name: "Handy", monthly: 12, interval: "MONTHLY", nextDue: null }];
+    const json = buildPortfolioContext(input);
+    expect(json).not.toContain('"sp1"');
+    expect(json.toLowerCase()).not.toContain("freistellung");
+    expect(json.toLowerCase()).not.toContain("vorabpauschale");
+  });
+});
+
 describe("buildSystemPrompt", () => {
   it("wraps the JSON with the locale + non-advisor framing and embeds the JSON verbatim", () => {
     const json = buildPortfolioContext(baseInput());

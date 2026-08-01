@@ -12,6 +12,14 @@
 //    — see the plan's open question #2).
 //  - Numbers are rounded to keep the payload compact (2 decimals; fractions
 //    like weights/returns are surfaced as *Pct fields, already ×100).
+//  - Every section past the holdings rides a feature flag. The caller passes a
+//    section only when its flag is ON, and an absent section is simply left out
+//    of the JSON rather than emitted empty — an empty array reads to a model as
+//    "the user has none of these", which is a different claim from "this app
+//    does not have that feature turned on".
+//  - A figure the app itself refuses to invent stays null here (the statutory
+//    pension without a reference Rentenwert). The prompt tells the model to say
+//    a figure is unavailable rather than fill the gap.
 
 import type { HoldingSummary } from "../finance/portfolio";
 import type { PortfolioRiskStats, PortfolioStats } from "../finance/stats";
@@ -68,6 +76,60 @@ export interface PortfolioContextInput {
     /** The next expected payments, signed, base currency. */
     upcoming: { name: string; date: string; amount: number }[];
   } | null;
+
+  // Everyday money and planning. Each rides its own feature flag and is only
+  // passed when that flag is on, so the assistant never answers from a surface
+  // the user cannot open. All id-free and already in the base currency, same
+  // rule as everything above.
+
+  /** Spending ledger (flag `spending`): the trailing twelve months, and where
+   *  the money actually went. Transfers are excluded upstream -- moving money
+   *  between your own accounts is not income and not an expense. */
+  spending?: {
+    trailing12m: { income: number; expense: number };
+    /** Expense per category over the same window, largest first. */
+    topCategories: { name: string; amount: number }[];
+  } | null;
+  /** Monthly caps and the current month's usage (flag `budgets`). */
+  budgets?: { category: string; cap: number; spent: number }[] | null;
+  /** Recurring commitments (flag `contracts`), each normalised to one month so
+   *  a yearly insurance and a monthly subscription can be compared. */
+  contracts?: { name: string; monthly: number; interval: string; nextDue: string | null }[] | null;
+  /** Named goals (flag `goals`). Composite parents arrive already derived from
+   *  their parts, so nothing is counted twice. */
+  goals?:
+    | {
+        name: string;
+        target: number;
+        current: number;
+        targetDate: string | null;
+      }[]
+    | null;
+  /** Retirement provision (flag `pension`), monthly figures in today's money.
+   *  `statutoryMonthly` is null when there is no reference Rentenwert to value
+   *  the points with -- report the points, never invent the euros. */
+  pension?: {
+    totalPoints: number;
+    statutoryMonthly: number | null;
+    privateMonthly: number;
+    totalMonthly: number | null;
+    retirementYear: number | null;
+  } | null;
+  /** FIRE planner (flag `firePlanner`), base currency. */
+  fire?: {
+    annualExpenses: number;
+    withdrawalRate: number;
+    fireNumber: number;
+    leanFireNumber: number;
+    fatFireNumber: number;
+    /** Null when the current contribution never reaches the target. */
+    yearsToFire: number | null;
+  } | null;
+  /** Instruments followed without a position (flag `watchlist`), names only. */
+  watchlist?: string[];
+  /** assetPriceKey(asset) -> "Group=Value" strings from the user's own tag
+   *  groups. Values are user data and are passed through verbatim. */
+  tags?: Record<string, string[]>;
 }
 
 function round2(n: number): number {
@@ -98,7 +160,9 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
   const holdings = input.holdings
     .filter((h) => h.marketValue !== 0 || h.position.shares !== 0)
     .map((h) => {
-      const yieldFrac = input.dividendYields?.[assetPriceKey(h.asset)];
+      const key = assetPriceKey(h.asset);
+      const yieldFrac = input.dividendYields?.[key];
+      const tags = input.tags?.[key];
       return {
         name: h.asset.name,
         type: h.asset.type,
@@ -110,6 +174,7 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
         unrealizedPLPct: pct2(h.unrealizedPLPercent),
         realizedPL: round2(h.realizedPL),
         ...(yieldFrac != null ? { dividendYieldPct: pct2(yieldFrac) } : {}),
+        ...(tags?.length ? { tags } : {}),
       };
     });
 
@@ -171,6 +236,63 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
       }
     : null;
 
+  const spending = input.spending
+    ? {
+        trailing12m: {
+          income: round2(input.spending.trailing12m.income),
+          expense: round2(input.spending.trailing12m.expense),
+        },
+        topCategories: input.spending.topCategories.map((c) => ({
+          name: c.name,
+          amount: round2(c.amount),
+        })),
+      }
+    : null;
+
+  const budgets = (input.budgets ?? []).map((b) => ({
+    category: b.category,
+    cap: round2(b.cap),
+    spent: round2(b.spent),
+  }));
+
+  const contracts = (input.contracts ?? []).map((c) => ({
+    name: c.name,
+    monthly: round2(c.monthly),
+    interval: c.interval,
+    nextDue: c.nextDue,
+  }));
+
+  const goals = (input.goals ?? []).map((g) => ({
+    name: g.name,
+    target: round2(g.target),
+    current: round2(g.current),
+    progressPct: g.target > 0 ? pct2(g.current / g.target) : 0,
+    targetDate: g.targetDate,
+  }));
+
+  const pension = input.pension
+    ? {
+        totalPoints: round2(input.pension.totalPoints),
+        statutoryMonthly:
+          input.pension.statutoryMonthly != null ? round2(input.pension.statutoryMonthly) : null,
+        privateMonthly: round2(input.pension.privateMonthly),
+        totalMonthly:
+          input.pension.totalMonthly != null ? round2(input.pension.totalMonthly) : null,
+        retirementYear: input.pension.retirementYear,
+      }
+    : null;
+
+  const fire = input.fire
+    ? {
+        annualExpenses: round2(input.fire.annualExpenses),
+        withdrawalRatePct: pct2(input.fire.withdrawalRate),
+        fireNumber: round2(input.fire.fireNumber),
+        leanFireNumber: round2(input.fire.leanFireNumber),
+        fatFireNumber: round2(input.fire.fatFireNumber),
+        yearsToFire: input.fire.yearsToFire != null ? round2(input.fire.yearsToFire) : null,
+      }
+    : null;
+
   const context = {
     baseCurrency: input.baseCurrency,
     today: input.today,
@@ -180,6 +302,13 @@ export function buildPortfolioContext(input: PortfolioContextInput): string {
     holdings,
     ...(accounts.length ? { accounts } : {}),
     ...(planned ? { plannedCashflows: planned } : {}),
+    ...(spending ? { spending } : {}),
+    ...(budgets.length ? { budgets } : {}),
+    ...(contracts.length ? { recurringPayments: contracts } : {}),
+    ...(goals.length ? { goals } : {}),
+    ...(pension ? { pension } : {}),
+    ...(fire ? { fire } : {}),
+    ...(input.watchlist?.length ? { watchlist: input.watchlist } : {}),
     savingsPlans,
     risk:
       risk || perAsset.length > 0
