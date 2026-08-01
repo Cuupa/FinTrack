@@ -3,8 +3,42 @@
 // Pure and side-effect-free so it can run inside a Web Worker. Simulates
 // monthly compounding with normally-distributed returns plus monthly
 // contributions, then reduces many runs into percentile bands per year.
+//
+// Decumulation is delegated to `./withdrawal.ts`: which strategy decides the
+// annual income, and whether a forced bad sequence of returns is applied. The
+// strategy is asked once per retirement YEAR (not per month), because that is
+// how the rules are actually stated and followed -- nobody recalculates their
+// guardrails in March.
 
-export interface MonteCarloParams {
+import {
+  annualWithdrawal,
+  stressedReturn,
+  summarizeStrategy,
+  WITHDRAWAL_STRATEGIES,
+  type StrategyOutcome,
+  type StrategyRunTally,
+  type StressScenario,
+  type WithdrawalPlan,
+  type WithdrawalStrategyId,
+} from "./withdrawal";
+
+/** The strategy knobs shared by both simulation entry points. */
+export interface WithdrawalOptions {
+  /** Absent = the historical behaviour: a fixed nominal amount set at
+      retirement, i.e. the `fixed` strategy. */
+  withdrawalStrategy?: WithdrawalStrategyId;
+  guardrailBand?: number;
+  guardrailAdjust?: number;
+  floor?: number;
+  ceiling?: number;
+  /** Forced sequence-of-returns stress. Absent = "none". */
+  stress?: StressScenario;
+  /** Run EVERY strategy over the same market paths and report the comparison.
+      Same seed, same draws, so the rows differ only by the strategy. */
+  compareStrategies?: boolean;
+}
+
+export interface MonteCarloParams extends WithdrawalOptions {
   initialCapital: number;
   monthlyContribution: number;
   years: number;
@@ -59,6 +93,20 @@ export interface MonteCarloResult {
   finalDistribution: number[];
   /** Present only when a decumulation phase used a withdrawal RATE. */
   withdrawal?: WithdrawalSummary;
+  /** Every strategy over the SAME market paths. Present only when asked for. */
+  strategyComparison?: StrategyOutcome[];
+}
+
+/** Reads the strategy knobs off the params, defaulting to today's behaviour. */
+function planOf(params: WithdrawalOptions & { withdrawalRate?: number }): WithdrawalPlan {
+  return {
+    strategy: params.withdrawalStrategy ?? "fixed",
+    rate: Math.max(0, params.withdrawalRate ?? 0),
+    band: params.guardrailBand,
+    adjust: params.guardrailAdjust,
+    floor: params.floor,
+    ceiling: params.ceiling,
+  };
 }
 
 /** Deterministic, seedable PRNG (mulberry32) — reproducible runs for auditing. */
@@ -86,6 +134,89 @@ function percentile(sorted: number[], p: number): number {
   return sorted[idx];
 }
 
+/** One run's outcome along an already-drawn path of monthly returns. */
+interface PathWalk {
+  /** Value at the end of each year 1..totalYears. */
+  yearEnd: number[];
+  final: number;
+  /** Income drawn in each retirement year. */
+  annualIncomes: number[];
+  /** rate x value at retirement -- the first year's income. */
+  initialWithdrawal: number;
+  /** True when the portfolio hit zero during decumulation. */
+  depleted: boolean;
+}
+
+interface WalkOptions {
+  initialCapital: number;
+  monthlyContribution: number;
+  accMonths: number;
+  months: number;
+  plan: WithdrawalPlan;
+  flatWithdrawal: number;
+  usesRate: boolean;
+  stress: StressScenario;
+  monthlyDrift: number;
+}
+
+/**
+ * Walk one already-drawn return path. Split out from the draw so that the
+ * strategy comparison can replay the SAME market on every strategy: comparing
+ * strategies across different random paths would measure the draw, not the
+ * strategy.
+ *
+ * The income is decided once per retirement year rather than per month,
+ * matching how the rules are actually written.
+ */
+function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
+  let value = o.initialCapital;
+  const yearEnd: number[] = [];
+  const annualIncomes: number[] = [];
+  let monthlyWithdrawal = o.usesRate ? 0 : o.flatWithdrawal;
+  let initialWithdrawal = 0;
+  let previousAnnual = 0;
+  let depleted = false;
+
+  for (let m = 1; m <= o.months; m++) {
+    // 0 in the first month of decumulation, negative while accumulating.
+    const monthsIntoRetirement = m - o.accMonths - 1;
+
+    if (monthsIntoRetirement >= 0 && monthsIntoRetirement % 12 === 0) {
+      const yearsIntoRetirement = monthsIntoRetirement / 12;
+      if (yearsIntoRetirement === 0) initialWithdrawal = o.plan.rate * value;
+      const annual = o.usesRate
+        ? annualWithdrawal(o.plan, {
+            initialWithdrawal,
+            portfolioValue: value,
+            previousWithdrawal: previousAnnual,
+            yearsIntoRetirement,
+          })
+        : o.flatWithdrawal * 12;
+      annualIncomes.push(annual);
+      previousAnnual = annual;
+      monthlyWithdrawal = annual / 12;
+    }
+
+    const monthReturn = stressedReturn(
+      o.stress,
+      path[m - 1],
+      monthsIntoRetirement,
+      o.monthlyDrift,
+    );
+    // Accumulate, then draw down (never below 0 — a depleted portfolio simply
+    // has nothing left to withdraw).
+    const cashflow = m <= o.accMonths ? o.monthlyContribution : -monthlyWithdrawal;
+    value = value * (1 + monthReturn) + cashflow;
+    if (value <= 0) {
+      value = 0;
+      if (monthsIntoRetirement >= 0) depleted = true;
+    }
+    if (m % 12 === 0) yearEnd.push(value);
+  }
+
+  return { yearEnd, final: value, annualIncomes, initialWithdrawal, depleted };
+}
+
 export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
   const {
     initialCapital,
@@ -107,38 +238,70 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     Math.pow(1 + expectedReturn, 1 / 12) - 1; // geometric monthly drift
   const monthlyVol = volatility / Math.sqrt(12);
   const rng = mulberry32(params.seed >>> 0);
+  const plan = planOf(params);
+  const stress = params.stress ?? "none";
+  const walkOptions: Omit<WalkOptions, "plan"> = {
+    initialCapital,
+    monthlyContribution,
+    accMonths,
+    months,
+    flatWithdrawal,
+    usesRate,
+    stress,
+    monthlyDrift: monthlyMean,
+  };
 
   // yearValues[y] collects every run's value at the end of year y.
   const yearValues: number[][] = Array.from({ length: totalYears + 1 }, () => []);
   const finals: number[] = [];
   const withdrawals: number[] = []; // per-run annual withdrawal amount (rate mode)
+  const compare = params.compareStrategies === true && usesRate;
+  const tallies = new Map<WithdrawalStrategyId, StrategyRunTally[]>(
+    compare ? WITHDRAWAL_STRATEGIES.map((s) => [s, [] as StrategyRunTally[]]) : [],
+  );
+  const path = new Array<number>(months);
 
   for (let r = 0; r < runs; r++) {
-    let value = initialCapital;
-    yearValues[0].push(value);
-    // Fixed nominal monthly withdrawal for this run, set at retirement.
-    let runMonthlyWithdrawal = usesRate ? 0 : flatWithdrawal;
-    for (let m = 1; m <= months; m++) {
-      // Lock in the rate-based withdrawal from the value at retirement.
-      if (usesRate && m === accMonths + 1) {
-        runMonthlyWithdrawal = (withdrawalRate * value) / 12;
-        withdrawals.push(withdrawalRate * value);
-      }
-      const monthReturn = monthlyMean + monthlyVol * gaussian(rng);
-      // Accumulate, then draw down in the withdrawal phase (never below 0 — a
-      // depleted portfolio simply has nothing left to withdraw).
-      const cashflow = m <= accMonths ? monthlyContribution : -runMonthlyWithdrawal;
-      value = value * (1 + monthReturn) + cashflow;
-      if (value < 0) value = 0;
-      if (m % 12 === 0) {
-        const y = m / 12;
-        if (y <= totalYears) yearValues[y].push(value);
+    // Draw the market once per run; every strategy below sees this same one.
+    for (let m = 0; m < months; m++) path[m] = monthlyMean + monthlyVol * gaussian(rng);
+
+    const walk = walkPath(path, { ...walkOptions, plan });
+    yearValues[0].push(initialCapital);
+    for (let y = 1; y <= totalYears && y <= walk.yearEnd.length; y++) {
+      yearValues[y].push(walk.yearEnd[y - 1]);
+    }
+    finals.push(walk.final);
+    if (usesRate) withdrawals.push(walk.initialWithdrawal);
+
+    if (compare) {
+      for (const strategy of WITHDRAWAL_STRATEGIES) {
+        const alt =
+          strategy === plan.strategy
+            ? walk
+            : walkPath(path, { ...walkOptions, plan: { ...plan, strategy } });
+        tallies.get(strategy)!.push({
+          incomes: alt.annualIncomes,
+          endValue: alt.final,
+          depleted: alt.depleted,
+        });
       }
     }
-    finals.push(value);
   }
 
-  return reduceRuns(params, yearValues, finals, initialCapital, monthlyContribution, withdrawals);
+  const result = reduceRuns(
+    params,
+    yearValues,
+    finals,
+    initialCapital,
+    monthlyContribution,
+    withdrawals,
+  );
+  if (compare) {
+    result.strategyComparison = WITHDRAWAL_STRATEGIES.map((s) =>
+      summarizeStrategy(s, tallies.get(s) ?? []),
+    );
+  }
+  return result;
 }
 
 /** Reduce per-year run snapshots into percentile bands + a final distribution. */
@@ -195,7 +358,7 @@ export interface PortfolioAsset {
   vol: number;
 }
 
-export interface PortfolioMonteCarloParams {
+export interface PortfolioMonteCarloParams extends WithdrawalOptions {
   initialCapital: number;
   monthlyContribution: number;
   years: number;
@@ -272,52 +435,110 @@ export function runPortfolioMonteCarlo(
       Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
     );
 
+  const plan = planOf(params);
+  const stress = params.stress ?? "none";
+  // Weighted drift, so the lost-decade scenario removes the PORTFOLIO's
+  // expected growth rather than one asset's.
+  const blendedDrift = assets.reduce((s, a, i) => s + weights[i] * monthlyMean[i], 0);
+
   const yearValues: number[][] = Array.from({ length: totalYears + 1 }, () => []);
   const finals: number[] = [];
   const withdrawals: number[] = []; // per-run annual withdrawal amount (rate mode)
   const z = new Array<number>(n);
+  const compare = params.compareStrategies === true && usesRate;
+  const tallies = new Map<WithdrawalStrategyId, StrategyRunTally[]>(
+    compare ? WITHDRAWAL_STRATEGIES.map((s) => [s, [] as StrategyRunTally[]]) : [],
+  );
+  // One run's correlated per-asset monthly returns, drawn once and replayed for
+  // every strategy under comparison (see walkPath's note: comparing across
+  // different draws would measure the draw).
+  const rets: number[][] = Array.from({ length: n }, () => new Array<number>(months).fill(0));
 
-  for (let r = 0; r < runs; r++) {
+  /** Walk this run's already-drawn returns under one strategy. */
+  const walk = (p: WithdrawalPlan): PathWalk => {
     const values = weights.map((w) => initialCapital * w);
-    yearValues[0].push(initialCapital);
-    // Fixed nominal monthly withdrawal for this run, set at retirement.
-    let runMonthlyWithdrawal = usesRate ? 0 : flatWithdrawal;
+    const yearEnd: number[] = [];
+    const annualIncomes: number[] = [];
+    let monthlyWithdrawal = usesRate ? 0 : flatWithdrawal;
+    let initialWithdrawal = 0;
+    let previousAnnual = 0;
+    let depleted = false;
 
     for (let m = 1; m <= months; m++) {
-      for (let i = 0; i < n; i++) z[i] = gaussian(rng);
-      // Accumulate then draw down; withdrawals come proportionally from assets.
+      const monthsIntoRetirement = m - accMonths - 1;
       const accumulating = m <= accMonths;
       let portValue = 0;
       for (let i = 0; i < n; i++) portValue += values[i];
-      // Lock in the rate-based withdrawal from the value at retirement.
-      if (usesRate && m === accMonths + 1) {
-        runMonthlyWithdrawal = (withdrawalRate * portValue) / 12;
-        withdrawals.push(withdrawalRate * portValue);
+
+      if (monthsIntoRetirement >= 0 && monthsIntoRetirement % 12 === 0) {
+        const yearsIntoRetirement = monthsIntoRetirement / 12;
+        if (yearsIntoRetirement === 0) initialWithdrawal = p.rate * portValue;
+        const annual = usesRate
+          ? annualWithdrawal(p, {
+              initialWithdrawal,
+              portfolioValue: portValue,
+              previousWithdrawal: previousAnnual,
+              yearsIntoRetirement,
+            })
+          : flatWithdrawal * 12;
+        annualIncomes.push(annual);
+        previousAnnual = annual;
+        monthlyWithdrawal = annual / 12;
       }
+
       for (let i = 0; i < n; i++) {
-        let c = 0; // correlated standard normal for asset i: (L · z)_i
-        for (let k = 0; k <= i; k++) c += L[i][k] * z[k];
-        const ret = monthlyMean[i] + monthlyVol[i] * c;
+        const ret = stressedReturn(stress, rets[i][m - 1], monthsIntoRetirement, blendedDrift);
         const cash = accumulating
           ? monthlyContribution * weights[i]
-          : -runMonthlyWithdrawal * (portValue > 0 ? values[i] / portValue : weights[i]);
+          : -monthlyWithdrawal * (portValue > 0 ? values[i] / portValue : weights[i]);
         values[i] = values[i] * (1 + ret) + cash;
         if (values[i] < 0) values[i] = 0;
       }
+      let total = 0;
+      for (let i = 0; i < n; i++) total += values[i];
+      if (total <= 0 && monthsIntoRetirement >= 0) depleted = true;
       if (m % 12 === 0) {
-        let total = 0;
-        for (let i = 0; i < n; i++) total += values[i];
         // Optional annual rebalance back to target weights.
         if (rebalanceYearly && total > 0) {
           for (let i = 0; i < n; i++) values[i] = total * weights[i];
         }
-        const y = m / 12;
-        if (y <= totalYears) yearValues[y].push(total);
+        yearEnd.push(total);
       }
     }
-    let total = 0;
-    for (let i = 0; i < n; i++) total += values[i];
-    finals.push(total);
+    let final = 0;
+    for (let i = 0; i < n; i++) final += values[i];
+    return { yearEnd, final, annualIncomes, initialWithdrawal, depleted };
+  };
+
+  for (let r = 0; r < runs; r++) {
+    // Draw the whole run's correlated market first.
+    for (let m = 0; m < months; m++) {
+      for (let i = 0; i < n; i++) z[i] = gaussian(rng);
+      for (let i = 0; i < n; i++) {
+        let c = 0; // correlated standard normal for asset i: (L · z)_i
+        for (let k = 0; k <= i; k++) c += L[i][k] * z[k];
+        rets[i][m] = monthlyMean[i] + monthlyVol[i] * c;
+      }
+    }
+
+    const primary = walk(plan);
+    yearValues[0].push(initialCapital);
+    for (let y = 1; y <= totalYears && y <= primary.yearEnd.length; y++) {
+      yearValues[y].push(primary.yearEnd[y - 1]);
+    }
+    finals.push(primary.final);
+    if (usesRate) withdrawals.push(primary.initialWithdrawal);
+
+    if (compare) {
+      for (const strategy of WITHDRAWAL_STRATEGIES) {
+        const alt = strategy === plan.strategy ? primary : walk({ ...plan, strategy });
+        tallies.get(strategy)!.push({
+          incomes: alt.annualIncomes,
+          endValue: alt.final,
+          depleted: alt.depleted,
+        });
+      }
+    }
   }
 
   // Represent as the equivalent scalar params for display continuity.
@@ -332,6 +553,22 @@ export function runPortfolioMonteCarlo(
     withdrawalYears: params.withdrawalYears,
     monthlyWithdrawal: params.monthlyWithdrawal,
     withdrawalRate: params.withdrawalRate,
+    withdrawalStrategy: params.withdrawalStrategy,
+    stress: params.stress,
+    compareStrategies: params.compareStrategies,
   };
-  return reduceRuns(equivParams, yearValues, finals, initialCapital, monthlyContribution, withdrawals);
+  const result = reduceRuns(
+    equivParams,
+    yearValues,
+    finals,
+    initialCapital,
+    monthlyContribution,
+    withdrawals,
+  );
+  if (compare) {
+    result.strategyComparison = WITHDRAWAL_STRATEGIES.map((s) =>
+      summarizeStrategy(s, tallies.get(s) ?? []),
+    );
+  }
+  return result;
 }
