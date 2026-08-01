@@ -32,7 +32,17 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
@@ -94,10 +104,7 @@ export function RecurringCard() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<RecurringRow | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "next",
-    dir: "asc",
-  });
+  const sort = useSort<SortKey>("next");
 
   const accountsById = useMemo(
     () => new Map(data.accounts.map((a) => [a.id, a])),
@@ -137,22 +144,12 @@ export function RecurringCard() {
         accountName: accountsById.get(p.accountId)?.name ?? null,
       });
     }
-    out.sort((x, y) => {
-      let cmp = 0;
-      if (sort.key === "name") cmp = x.name.localeCompare(y.name);
-      else if (sort.key === "amount") cmp = x.amount - y.amount;
-      else if (sort.key === "interval") cmp = x.intervalLabel.localeCompare(y.intervalLabel);
-      else {
-        // Never-due rows sort last in both directions: "no next date" is not a
-        // date, and floating them to the top would bury the actionable rows.
-        if (x.next === null && y.next === null) cmp = 0;
-        else if (x.next === null) return 1;
-        else if (y.next === null) return -1;
-        else cmp = x.next.localeCompare(y.next);
-      }
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-    return out;
+    // A never-due row has `next === null`, and sortRows files missing values
+    // last in BOTH directions -- "no next date" is not a date, and floating
+    // those to the top would bury the actionable rows.
+    return sort.apply(out, (r, key) =>
+      key === "name" ? r.name : key === "amount" ? r.amount : key === "interval" ? r.intervalLabel : r.next,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.contracts, data.plannedCashflows, accountsById, base, sort, todayIso, t]);
 
@@ -337,17 +334,7 @@ export function RecurringCard() {
     }
   }
 
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
-  }
-
   const pager = usePagination(rows);
-
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   return (
     <Card data-tour="recurring-card">
@@ -403,36 +390,27 @@ export function RecurringCard() {
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("recurring.empty")}</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className={thCls} onClick={() => toggleSort("name")}>
-                  {t("recurring.col.name")}
-                  {arrow("name")}
-                </th>
-                <th className={`${thCls} text-right`} onClick={() => toggleSort("amount")}>
-                  {t("recurring.col.amount")}
-                  {arrow("amount")}
-                </th>
-                <th className={thCls} onClick={() => toggleSort("interval")}>
-                  {t("recurring.col.interval")}
-                  {arrow("interval")}
-                </th>
-                <th className={thCls} onClick={() => toggleSort("next")}>
-                  {t("recurring.col.next")}
-                  {arrow("next")}
-                </th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table>
+            <Thead>
+              <Th sort={sort.sort} sortKey="name" onSort={sort.toggle}>
+                {t("recurring.col.name")}
+              </Th>
+              <Th align="right" sort={sort.sort} sortKey="amount" onSort={sort.toggle}>
+                {t("recurring.col.amount")}
+              </Th>
+              <Th sort={sort.sort} sortKey="interval" onSort={sort.toggle}>
+                {t("recurring.col.interval")}
+              </Th>
+              <Th sort={sort.sort} sortKey="next" onSort={sort.toggle}>
+                {t("recurring.col.next")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
               {pager.rows.map((r) => (
-                <tr
-                  key={`${r.kind}:${r.id}`}
-                  className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                >
-                  <td className="px-3 py-2 font-medium" data-private>
+                <Tr key={`${r.kind}:${r.id}`}>
+                  <Td className="font-medium" data-private>
                     {/* Click through to the entry's own page: what it is plus
                         every booking it has produced. */}
                     <Link href={`/recurring/${r.kind}/${r.id}`} className="hover:underline">
@@ -441,23 +419,24 @@ export function RecurringCard() {
                     {r.accountName && (
                       <div className="text-xs font-normal text-zinc-500">{r.accountName}</div>
                     )}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right tabular-nums ${
+                  </Td>
+                  <Td
+                    align="right"
+                    className={`tabular-nums ${
                       r.amount < 0 ? "text-red-600 dark:text-red-400" : ""
                     }`}
                     data-private
                   >
                     {formatCurrency(r.amount, r.currency)}
-                  </td>
-                  <td className="px-3 py-2 text-zinc-500">{r.intervalLabel}</td>
-                  <td className="px-3 py-2 text-zinc-500">
+                  </Td>
+                  <Td className="text-zinc-500">{r.intervalLabel}</Td>
+                  <Td className="text-zinc-500">
                     {r.next ? formatDate(r.next) : t("recurring.noNext")}
-                  </td>
+                  </Td>
                   {/* Edit opens the row's own page straight in its editor, so
                       the change-scope question sits next to the bookings it
                       would rewrite instead of being asked twice in two places. */}
-                  <td className="px-3 py-2">
+                  <Td>
                     <RowActions>
                       <EditAction
                         label={t("contracts.list.edit")}
@@ -468,11 +447,11 @@ export function RecurringCard() {
                         onClick={() => setConfirmDelete(r)}
                       />
                     </RowActions>
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table>
+            </Tbody>
+          </Table>
           <TablePagination pager={pager} />
         </div>
       )}

@@ -16,13 +16,22 @@ import type { Asset } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
+import { DeleteAction, RowActions } from "@/components/ui/row-actions";
 import { isStorageFullError } from "@/lib/store/errors";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
-
-type SortKey = "date" | "value";
 
 export function ValuationSection({ asset }: { asset: Asset }) {
   const { data, setAssetValuations } = usePortfolio();
@@ -38,10 +47,7 @@ export function ValuationSection({ asset }: { asset: Asset }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "date",
-    dir: "desc",
-  });
+  const sort = useSort<"date" | "value">("date", "desc");
 
   // Latest entered value = the asset's current value (mirrors manualCurrentPrice).
   const latest = useMemo(() => {
@@ -50,18 +56,10 @@ export function ValuationSection({ asset }: { asset: Asset }) {
     return best;
   }, [points]);
 
-  const sortedRows = useMemo(() => {
-    const rows = [...points];
-    rows.sort((a, b) => {
-      const cmp = sort.key === "date" ? (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : a.value - b.value;
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-    return rows;
-  }, [points, sort]);
-
-  function toggleSort(key: SortKey) {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }));
-  }
+  const sortedRows = useMemo(
+    () => sort.apply(points, (p, key) => (key === "date" ? p.date : p.value)),
+    [points, sort],
+  );
 
   // Replace-set write: `next` is the whole set of {date, value} for this asset.
   async function persist(next: { date: string; value: number }[]) {
@@ -91,10 +89,6 @@ export function ValuationSection({ asset }: { asset: Asset }) {
     const next = points.filter((p) => p.date !== pointDate).map((p) => ({ date: p.date, value: p.value }));
     await persist(next);
   }
-
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   const pager = usePagination(sortedRows);
 
@@ -157,46 +151,37 @@ export function ValuationSection({ asset }: { asset: Asset }) {
       {points.length === 0 ? (
         <p className="mt-4 text-sm text-zinc-500">{t("valuation.empty")}</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className={thCls} onClick={() => toggleSort("date")}>
-                  {t("valuation.dateLabel")}
-                  {arrow("date")}
-                </th>
-                <th className={`${thCls} text-right`} onClick={() => toggleSort("value")}>
-                  {t("valuation.valueLabel", { currency: cur })}
-                  {arrow("value")}
-                </th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table>
+            <Thead>
+              <Th sort={sort.sort} sortKey="date" onSort={sort.toggle}>
+                {t("valuation.dateLabel")}
+              </Th>
+              <Th align="right" sort={sort.sort} sortKey="value" onSort={sort.toggle}>
+                {t("valuation.valueLabel", { currency: cur })}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
               {pager.rows.map((p) => (
-                <tr
-                  key={p.date}
-                  className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                >
-                  <td className="px-3 py-2">{formatDate(p.date)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums" data-private>
+                <Tr key={p.date}>
+                  <Td>{formatDate(p.date)}</Td>
+                  <Td align="right" className="tabular-nums" data-private>
                     {formatCurrency(p.value, cur)}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => void remove(p.date)}
-                      disabled={busy}
-                      aria-label={t("valuation.remove")}
-                      className="text-zinc-400 hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400"
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
+                  </Td>
+                  <Td align="right">
+                    <RowActions>
+                      <DeleteAction
+                        label={t("valuation.remove")}
+                        onClick={() => void remove(p.date)}
+                        disabled={busy}
+                      />
+                    </RowActions>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table>
+            </Tbody>
+          </Table>
           <TablePagination pager={pager} />
         </div>
       )}

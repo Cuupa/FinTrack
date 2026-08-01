@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DeleteAction, RowActions } from "@/components/ui/row-actions";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 
 export interface RepaymentDebt {
   id: string;
@@ -61,12 +63,15 @@ export function DebtRepaymentsPlanner({
   const target = debts.find((d) => d.id === accountId) ?? debts[0];
   const byId = useMemo(() => new Map(debts.map((d) => [d.id, d])), [debts]);
 
+  const sort = useSort<"date" | "account" | "amount">("date");
   const planned = useMemo(
     () =>
-      value
-        .filter((r) => byId.has(r.accountId))
-        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
-    [value, byId],
+      sort.apply(
+        value.filter((r) => byId.has(r.accountId)),
+        (r, key) =>
+          key === "date" ? r.date : key === "amount" ? r.amount : (byId.get(r.accountId)?.name ?? ""),
+      ),
+    [value, byId, sort],
   );
 
   function add() {
@@ -148,32 +153,39 @@ export function DebtRepaymentsPlanner({
       {planned.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("debt.repayments.empty")}</p>
       ) : (
-        <table className="mt-3 w-full text-sm">
-          <tbody>
+        <Table className="mt-3">
+          <Thead>
+            <Th sort={sort.sort} sortKey="date" onSort={sort.toggle}>
+              {t("debt.repayments.dateLabel")}
+            </Th>
+            <Th sort={sort.sort} sortKey="account" onSort={sort.toggle}>
+              {t("debt.repayments.accountLabel")}
+            </Th>
+            <Th align="right" sort={sort.sort} sortKey="amount" onSort={sort.toggle}>
+              {t("tx.amount")}
+            </Th>
+            <Th />
+          </Thead>
+          <Tbody>
             {planned.map((r) => (
-              <tr
-                key={`${r.accountId}-${r.date}`}
-                className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-              >
-                <td className="px-3 py-2">{formatDate(r.date)}</td>
-                <td className="px-3 py-2" data-private>
-                  {byId.get(r.accountId)?.name}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-private>
+              <Tr key={`${r.accountId}-${r.date}`}>
+                <Td>{formatDate(r.date)}</Td>
+                <Td data-private>{byId.get(r.accountId)?.name}</Td>
+                <Td align="right" className="tabular-nums" data-private>
                   {formatCurrency(r.amount, byId.get(r.accountId)?.currency ?? "")}
-                </td>
-                <td className="px-3 py-2 text-right">
+                </Td>
+                <Td align="right">
                   <RowActions>
                     <DeleteAction
                       label={t("debt.repayments.remove")}
                       onClick={() => remove(r.accountId, r.date)}
                     />
                   </RowActions>
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             ))}
-          </tbody>
-        </table>
+          </Tbody>
+        </Table>
       )}
     </div>
   );

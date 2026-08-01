@@ -28,7 +28,17 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError } from "@/lib/store/errors";
 import { PlanForm, INTERVAL_KEY } from "@/components/savings/plan-form";
 import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
@@ -185,14 +195,7 @@ function SavingsPlansCardInner() {
   const plans = data.savingsPlans;
   const todayISO = today();
 
-  const [planSort, setPlanSort] = useState<{ key: PlanSortKey; dir: 1 | -1 }>({
-    key: "next",
-    dir: 1,
-  });
-  const togglePlanSort = (key: PlanSortKey) =>
-    setPlanSort((s) =>
-      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "amount" ? -1 : 1 },
-    );
+  const planSort = useSort<PlanSortKey>("next");
 
   // Rows joined with their asset + next occurrence, sorted by the active column.
   const planRows = useMemo(() => {
@@ -200,28 +203,23 @@ function SavingsPlansCardInner() {
       const asset = assetById.get(plan.assetId);
       return asset ? [{ plan, asset, next: nextOccurrence(plan, todayISO) }] : [];
     });
-    const val = (r: (typeof rows)[number]): string | number => {
-      switch (planSort.key) {
+    return planSort.apply(rows, (r, key) => {
+      switch (key) {
         case "asset":
-          return r.asset.name.toLowerCase();
+          return r.asset.name;
         case "portfolio":
-          return (portfolioById.get(r.plan.portfolioId)?.name ?? "").toLowerCase();
+          return portfolioById.get(r.plan.portfolioId)?.name ?? "";
         case "type":
           return r.plan.bookingType ?? "BUY";
         case "amount":
           return r.plan.amount;
+        // Ranked, not alphabetical: weekly comes before monthly comes before
+        // quarterly, which the translated label never sorts into.
         case "interval":
           return INTERVAL_RANK[r.plan.interval];
         case "next":
           return r.next;
       }
-    };
-    return rows.sort((a, b) => {
-      const va = val(a);
-      const vb = val(b);
-      if (va < vb) return -1 * planSort.dir;
-      if (va > vb) return 1 * planSort.dir;
-      return 0;
     });
   }, [plans, assetById, portfolioById, planSort, todayISO]);
   // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
@@ -305,13 +303,18 @@ function SavingsPlansCardInner() {
   );
 
   // Effective price/qty/amount per row, folding in any user override.
+  const dueSort = useSort<"date" | "asset" | "amount">("date");
   const rowsWithEdits = useMemo(
     () =>
-      dueRows.map((row) => ({
-        row,
-        derived: deriveRow(row, rowEdits.get(rowKey(row.plan.id, row.date))),
-      })),
-    [dueRows, rowEdits],
+      dueSort.apply(
+        dueRows.map((row) => ({
+          row,
+          derived: deriveRow(row, rowEdits.get(rowKey(row.plan.id, row.date))),
+        })),
+        ({ row, derived }, key) =>
+          key === "date" ? row.date : key === "asset" ? row.asset.name : derived.amount,
+      ),
+    [dueRows, rowEdits, dueSort],
   );
   const hasInvalidRow = rowsWithEdits.some(
     ({ derived }) =>
@@ -439,47 +442,50 @@ function SavingsPlansCardInner() {
       {plans.length === 0 && !creating ? (
         <p className="mt-3 text-sm text-zinc-500">{t("sp.empty")}</p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                <PlanTh label={t("sp.asset")} k="asset" sort={planSort} onSort={togglePlanSort} />
-                <PlanTh label={t("sp.portfolio")} k="portfolio" sort={planSort} onSort={togglePlanSort} />
-                <PlanTh label={t("sp.bookingType")} k="type" sort={planSort} onSort={togglePlanSort} />
-                <PlanTh label={t("sp.amount")} k="amount" align="right" sort={planSort} onSort={togglePlanSort} />
-                <PlanTh label={t("sp.interval")} k="interval" sort={planSort} onSort={togglePlanSort} />
-                <PlanTh label={t("sp.nextHeader")} k="next" sort={planSort} onSort={togglePlanSort} />
-                <th className="py-2" />
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-3">
+          <Table>
+            <Thead>
+              <Th sort={planSort.sort} sortKey="asset" onSort={planSort.toggle}>
+                {t("sp.asset")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="portfolio" onSort={planSort.toggle}>
+                {t("sp.portfolio")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="type" onSort={planSort.toggle}>
+                {t("sp.bookingType")}
+              </Th>
+              <Th align="right" sort={planSort.sort} sortKey="amount" onSort={planSort.toggle}>
+                {t("sp.amount")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="interval" onSort={planSort.toggle}>
+                {t("sp.interval")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="next" onSort={planSort.toggle}>
+                {t("sp.nextHeader")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
               {pager.rows.map(({ plan, asset }) => {
                 const cur = asset.currency || base;
                 const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
                 return (
-                  <tr
-                    key={plan.id}
-                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className={`max-w-[12rem] truncate py-2 pr-3 font-medium ${muted}`}>
-                      {asset.name}
-                    </td>
-                    <td className={`max-w-[10rem] truncate py-2 pr-3 ${muted}`}>
+                  <Tr key={plan.id}>
+                    <Td className={`max-w-[12rem] truncate font-medium ${muted}`}>{asset.name}</Td>
+                    <Td className={`max-w-[10rem] truncate ${muted}`}>
                       {portfolioById.get(plan.portfolioId)?.name ?? "—"}
-                    </td>
-                    <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                    </Td>
+                    <Td className={`whitespace-nowrap ${muted}`}>
                       {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
-                    </td>
-                    <td className={`py-2 pr-3 text-right tabular-nums ${muted}`} data-private>
+                    </Td>
+                    <Td align="right" className={`tabular-nums ${muted}`} data-private>
                       {formatCurrency(plan.amount, cur)}
-                    </td>
-                    <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
-                      {t(INTERVAL_KEY[plan.interval])}
-                    </td>
-                    <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
+                    </Td>
+                    <Td className={`whitespace-nowrap ${muted}`}>{t(INTERVAL_KEY[plan.interval])}</Td>
+                    <Td className={`whitespace-nowrap ${muted}`}>
                       {plan.active ? formatDate(nextOccurrence(plan, todayISO)) : t("sp.paused")}
-                    </td>
-                    <td className="py-2">
+                    </Td>
+                    <Td>
                       <RowActions>
                         <EditAction
                           label={t("sp.edit")}
@@ -495,12 +501,12 @@ function SavingsPlansCardInner() {
                         />
                         <DeleteAction label={t("sp.deleteTitle")} onClick={() => setDeleting(plan)} />
                       </RowActions>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
               })}
-            </tbody>
-          </table>
+            </Tbody>
+          </Table>
           <TablePagination pager={pager} />
         </div>
       )}
@@ -515,74 +521,72 @@ function SavingsPlansCardInner() {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">{t("sp.reviewTitle")}</h3>
           <p className="text-sm text-zinc-500">{t("sp.reviewHint")}</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                  <th className="py-2 pr-3 font-medium">{t("tx.date")}</th>
-                  <th className="py-2 pr-3 font-medium">{t("sp.asset")}</th>
-                  <th className="py-2 pr-3 text-right font-medium">{t("sp.amount")}</th>
-                  <th className="py-2 pr-3 text-right font-medium">{t("tx.price")}</th>
-                  <th className="py-2 pr-3 text-right font-medium">{t("tx.fee")}</th>
-                  <th className="py-2 text-right font-medium">{t("tx.qty")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rowsWithEdits.map(({ row, derived }) => {
-                  const cur = row.asset.currency || base;
-                  const key = rowKey(row.plan.id, row.date);
-                  return (
-                    <tr
-                      key={key}
-                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
-                    >
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatDate(row.date)}</td>
-                      <td className="max-w-[16rem] truncate py-2 pr-3">{row.asset.name}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                        {formatCurrency(derived.amount, cur)}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        <span className="inline-flex items-center gap-1">
-                          <input
-                            inputMode="decimal"
-                            aria-label={t("tx.price")}
-                            value={derived.priceInput}
-                            onChange={(e) =>
-                              setRowEdit(key, { price: stripLeadingZero(e.target.value) })
-                            }
-                            className={rowInputCls}
-                          />
-                          {row.synthetic && !historyLoading && <EstimatedBadge compact />}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums" data-private>
+          <Table>
+            <Thead>
+              <Th sort={dueSort.sort} sortKey="date" onSort={dueSort.toggle}>
+                {t("tx.date")}
+              </Th>
+              <Th sort={dueSort.sort} sortKey="asset" onSort={dueSort.toggle}>
+                {t("sp.asset")}
+              </Th>
+              <Th align="right" sort={dueSort.sort} sortKey="amount" onSort={dueSort.toggle}>
+                {t("sp.amount")}
+              </Th>
+              {/* Price, fee and quantity are text inputs, so they stay
+                  unsortable: reordering the list while the user is typing in
+                  one of these cells would move the field out from under them. */}
+              <Th align="right">{t("tx.price")}</Th>
+              <Th align="right">{t("tx.fee")}</Th>
+              <Th align="right">{t("tx.qty")}</Th>
+            </Thead>
+            <Tbody>
+              {rowsWithEdits.map(({ row, derived }) => {
+                const cur = row.asset.currency || base;
+                const key = rowKey(row.plan.id, row.date);
+                return (
+                  <Tr key={key}>
+                    <Td className="whitespace-nowrap">{formatDate(row.date)}</Td>
+                    <Td className="max-w-[16rem] truncate">{row.asset.name}</Td>
+                    <Td align="right" className="tabular-nums" data-private>
+                      {formatCurrency(derived.amount, cur)}
+                    </Td>
+                    <Td align="right" className="tabular-nums">
+                      <span className="inline-flex items-center gap-1">
                         <input
                           inputMode="decimal"
-                          aria-label={t("tx.fee")}
-                          value={derived.feeInput}
+                          aria-label={t("tx.price")}
+                          value={derived.priceInput}
                           onChange={(e) =>
-                            setRowEdit(key, { fee: stripLeadingZero(e.target.value) })
+                            setRowEdit(key, { price: stripLeadingZero(e.target.value) })
                           }
                           className={rowInputCls}
                         />
-                      </td>
-                      <td className="py-2 text-right tabular-nums" data-private>
-                        <input
-                          inputMode="decimal"
-                          aria-label={t("tx.qty")}
-                          value={derived.qtyInput}
-                          onChange={(e) =>
-                            setRowEdit(key, { qty: stripLeadingZero(e.target.value) })
-                          }
-                          className={rowInputCls}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {row.synthetic && !historyLoading && <EstimatedBadge compact />}
+                      </span>
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
+                      <input
+                        inputMode="decimal"
+                        aria-label={t("tx.fee")}
+                        value={derived.feeInput}
+                        onChange={(e) => setRowEdit(key, { fee: stripLeadingZero(e.target.value) })}
+                        className={rowInputCls}
+                      />
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
+                      <input
+                        inputMode="decimal"
+                        aria-label={t("tx.qty")}
+                        value={derived.qtyInput}
+                        onChange={(e) => setRowEdit(key, { qty: stripLeadingZero(e.target.value) })}
+                        className={rowInputCls}
+                      />
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
           {historyLoading && <p className="text-xs text-zinc-400">{t("sp.loadingPrices")}</p>}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2">
@@ -623,32 +627,3 @@ function SavingsPlansCardInner() {
 type PlanSortKey = "asset" | "portfolio" | "type" | "amount" | "interval" | "next";
 
 const INTERVAL_RANK: Record<string, number> = { WEEKLY: 0, MONTHLY: 1, QUARTERLY: 2 };
-
-function PlanTh({
-  label,
-  k,
-  align,
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: PlanSortKey;
-  align?: "right";
-  sort: { key: PlanSortKey; dir: 1 | -1 };
-  onSort: (k: PlanSortKey) => void;
-}) {
-  return (
-    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
-          align === "right" ? "justify-end" : ""
-        }`}
-      >
-        {label}
-        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
-}

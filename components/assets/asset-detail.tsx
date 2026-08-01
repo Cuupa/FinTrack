@@ -77,7 +77,18 @@ import { AssetTags } from "./asset-tags";
 import { AssetDetailSkeleton } from "./asset-detail-skeleton";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
 // Read-only savings-plan list on the asset page is scoped to a single asset,
@@ -85,35 +96,6 @@ import {MessageKey} from "@/lib/i18n/dictionaries";
 // vocabulary mirrors it (components/dashboard/savings-plans-card.tsx).
 type AssetPlanSortKey = "portfolio" | "type" | "amount" | "interval" | "next";
 const PLAN_INTERVAL_RANK: Record<string, number> = { WEEKLY: 0, MONTHLY: 1, QUARTERLY: 2 };
-
-function PlanTh({
-  label,
-  k,
-  align,
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: AssetPlanSortKey;
-  align?: "right";
-  sort: { key: AssetPlanSortKey; dir: 1 | -1 };
-  onSort: (k: AssetPlanSortKey) => void;
-}) {
-  return (
-    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
-          align === "right" ? "justify-end" : ""
-        }`}
-      >
-        {label}
-        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
-}
 
 export function AssetDetail({
   assetId,
@@ -154,10 +136,7 @@ export function AssetDetail({
   const { t } = useI18n();
   const currency = data.profile.currency;
   const [planModalOpen, setPlanModalOpen] = useState(false);
-  const [planSort, setPlanSort] = useState<{ key: AssetPlanSortKey; dir: 1 | -1 }>({
-    key: "next",
-    dir: 1,
-  });
+  const planSort = useSort<AssetPlanSortKey>("next");
   const [reviewingSplits, setReviewingSplits] = useState(false);
   const [splitBusy, setSplitBusy] = useState(false);
   const [splitError, setSplitError] = useState<string | null>(null);
@@ -502,34 +481,26 @@ export function AssetDetail({
   // list is a handful of rows, so sorting inline every render is negligible.
   const assetPlans = !(held && savingsPlansEnabled)
     ? []
-    : data.savingsPlans
-        .filter((p) => p.assetId === asset.id)
-        .map((plan) => ({ plan, next: nextOccurrence(plan, todayISO) }))
-        .sort((a, b) => {
-          const val = (r: { plan: (typeof a)["plan"]; next: string }): string | number => {
-            switch (planSort.key) {
-              case "portfolio":
-                return (portfolios.find((p) => p.id === r.plan.portfolioId)?.name ?? "").toLowerCase();
-              case "type":
-                return r.plan.bookingType ?? "BUY";
-              case "amount":
-                return r.plan.amount;
-              case "interval":
-                return PLAN_INTERVAL_RANK[r.plan.interval];
-              case "next":
-                return r.next;
-            }
-          };
-          const va = val(a);
-          const vb = val(b);
-          if (va < vb) return -1 * planSort.dir;
-          if (va > vb) return 1 * planSort.dir;
-          return 0;
-        });
-  const togglePlanSort = (key: AssetPlanSortKey) =>
-    setPlanSort((s) =>
-      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "amount" ? -1 : 1 },
-    );
+    : planSort.apply(
+        data.savingsPlans
+          .filter((p) => p.assetId === asset.id)
+          .map((plan) => ({ plan, next: nextOccurrence(plan, todayISO) })),
+        (r, key) => {
+          switch (key) {
+            case "portfolio":
+              return portfolios.find((p) => p.id === r.plan.portfolioId)?.name ?? "";
+            case "type":
+              return r.plan.bookingType ?? "BUY";
+            case "amount":
+              return r.plan.amount;
+            // Ranked, not alphabetical: weekly before monthly before quarterly.
+            case "interval":
+              return PLAN_INTERVAL_RANK[r.plan.interval];
+            case "next":
+              return r.next;
+          }
+        },
+      );
   // Plan-limit cap (MONETIZATION.md Phase 4): only blocks creating a NEW
   // plan from this page's "new plan" entry point, never the read-only list
   // above or an existing plan's own edit/pause/delete on the dashboard card.
@@ -915,79 +886,53 @@ export function AssetDetail({
             <h3 className="border-b border-zinc-200 px-3 py-2 text-sm font-semibold dark:border-zinc-800">
               {t("sp.title")}
             </h3>
-            <div className="overflow-x-auto px-3 pb-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                    {multiPortfolio && (
-                      <PlanTh
-                        label={t("sp.portfolio")}
-                        k="portfolio"
-                        sort={planSort}
-                        onSort={togglePlanSort}
-                      />
-                    )}
-                    <PlanTh
-                      label={t("sp.bookingType")}
-                      k="type"
-                      sort={planSort}
-                      onSort={togglePlanSort}
-                    />
-                    <PlanTh
-                      label={t("sp.amount")}
-                      k="amount"
-                      align="right"
-                      sort={planSort}
-                      onSort={togglePlanSort}
-                    />
-                    <PlanTh
-                      label={t("sp.interval")}
-                      k="interval"
-                      sort={planSort}
-                      onSort={togglePlanSort}
-                    />
-                    <PlanTh
-                      label={t("sp.nextHeader")}
-                      k="next"
-                      sort={planSort}
-                      onSort={togglePlanSort}
-                    />
-                  </tr>
-                </thead>
-                <tbody>
-                  {assetPlans.map(({ plan, next }) => {
-                    const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
-                    return (
-                      <tr
-                        key={plan.id}
-                        className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                      >
-                        {multiPortfolio && (
-                          <td className={`max-w-[10rem] truncate py-2 pr-3 font-medium ${muted}`}>
-                            {portfolios.find((p) => p.id === plan.portfolioId)?.name ?? "—"}
-                          </td>
-                        )}
-                        <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
-                          {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
-                        </td>
-                        <td
-                          className={`py-2 pr-3 text-right tabular-nums ${muted}`}
-                          data-private
-                        >
-                          {formatCurrency(plan.amount, nativeCur)}
-                        </td>
-                        <td className={`py-2 pr-3 whitespace-nowrap ${muted}`}>
-                          {t(INTERVAL_KEY[plan.interval])}
-                        </td>
-                        <td className={`py-2 whitespace-nowrap ${muted}`}>
-                          {plan.active ? formatDate(next) : t("sp.paused")}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Table className="px-3 pb-1">
+              <Thead>
+                {multiPortfolio && (
+                  <Th sort={planSort.sort} sortKey="portfolio" onSort={planSort.toggle}>
+                    {t("sp.portfolio")}
+                  </Th>
+                )}
+                <Th sort={planSort.sort} sortKey="type" onSort={planSort.toggle}>
+                  {t("sp.bookingType")}
+                </Th>
+                <Th align="right" sort={planSort.sort} sortKey="amount" onSort={planSort.toggle}>
+                  {t("sp.amount")}
+                </Th>
+                <Th sort={planSort.sort} sortKey="interval" onSort={planSort.toggle}>
+                  {t("sp.interval")}
+                </Th>
+                <Th sort={planSort.sort} sortKey="next" onSort={planSort.toggle}>
+                  {t("sp.nextHeader")}
+                </Th>
+              </Thead>
+              <Tbody>
+                {assetPlans.map(({ plan, next }) => {
+                  const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
+                  return (
+                    <Tr key={plan.id}>
+                      {multiPortfolio && (
+                        <Td className={`max-w-[10rem] truncate font-medium ${muted}`}>
+                          {portfolios.find((p) => p.id === plan.portfolioId)?.name ?? "—"}
+                        </Td>
+                      )}
+                      <Td className={`whitespace-nowrap ${muted}`}>
+                        {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
+                      </Td>
+                      <Td align="right" className={`tabular-nums ${muted}`} data-private>
+                        {formatCurrency(plan.amount, nativeCur)}
+                      </Td>
+                      <Td className={`whitespace-nowrap ${muted}`}>
+                        {t(INTERVAL_KEY[plan.interval])}
+                      </Td>
+                      <Td className={`whitespace-nowrap ${muted}`}>
+                        {plan.active ? formatDate(next) : t("sp.paused")}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
           </div>
         )}
 
@@ -1118,57 +1063,29 @@ function txTypeLabel(t: (key: MessageKey) => string, type: TransactionType, isCa
 
 type TxSortKey = "date" | "type" | "portfolio" | "quantity" | "price" | "fee" | "tax" | "total";
 
-function TxTh({
-  label,
-  k,
-  align = "left",
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: TxSortKey;
-  align?: "left" | "right";
-  sort: { key: TxSortKey; dir: 1 | -1 };
-  onSort: (k: TxSortKey) => void;
-}) {
-  return (
-    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">
-          {sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}
-        </span>
-      </button>
-    </th>
-  );
-}
-
-function txCompare(
-  a: Transaction,
-  b: Transaction,
+/** The cell value each sortable transaction column is ordered by. */
+function txSortValue(
+  tx: Transaction,
   key: TxSortKey,
   portfolioName: (id: string) => string,
-): number {
+): string | number {
   switch (key) {
     case "date":
-      return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+      return tx.date;
     case "type":
-      return a.type.localeCompare(b.type);
+      return tx.type;
     case "portfolio":
-      return portfolioName(a.portfolioId).localeCompare(portfolioName(b.portfolioId));
+      return portfolioName(tx.portfolioId);
     case "quantity":
-      return a.quantity - b.quantity;
+      return tx.quantity;
     case "price":
-      return a.price - b.price;
+      return tx.price;
     case "fee":
-      return a.fee - b.fee;
+      return tx.fee;
     case "tax":
-      return a.tax - b.tax;
+      return tx.tax;
     case "total":
-      return a.quantity * a.price - b.quantity * b.price;
+      return tx.quantity * tx.price;
   }
 }
 
@@ -1189,10 +1106,7 @@ function TransactionsTable({
 }) {
   // Aliased to `tr` — the row map below binds `t` to the transaction.
   const { t: tr } = useI18n();
-  const [sort, setSort] = useState<{ key: TxSortKey; dir: 1 | -1 }>({
-    key: "date",
-    dir: -1,
-  });
+  const sort = useSort<TxSortKey>("date", "desc");
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const portfolioNameById = useMemo(() => {
@@ -1201,42 +1115,48 @@ function TransactionsTable({
   }, [portfolios]);
 
   const rows = useMemo(
-    () => [...txs].sort((a, b) => txCompare(a, b, sort.key, portfolioNameById) * sort.dir),
+    () => sort.apply(txs, (tx, key) => txSortValue(tx, key, portfolioNameById)),
     [txs, sort, portfolioNameById],
   );
-
-  function toggle(key: TxSortKey) {
-    setSort((s) =>
-      s.key === key
-        ? { key, dir: (s.dir * -1) as 1 | -1 }
-        : { key, dir: key === "date" ? -1 : 1 },
-    );
-  }
 
   const multiPortfolio = portfolios.length > 1;
   const pager = usePagination(rows);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-            <TxTh label={tr("tx.date")} k="date" sort={sort} onSort={toggle} />
-            <TxTh label={tr("tx.type")} k="type" sort={sort} onSort={toggle} />
-            {multiPortfolio && (
-              <TxTh label={tr("tx.portfolio")} k="portfolio" sort={sort} onSort={toggle} />
-            )}
-            <TxTh label={tr("tx.qty")} k="quantity" align="right" sort={sort} onSort={toggle} />
-            <TxTh label={tr("tx.price")} k="price" align="right" sort={sort} onSort={toggle} />
-            <TxTh label={tr("tx.fee")} k="fee" align="right" sort={sort} onSort={toggle} />
-            {!isCash && (
-              <TxTh label={tr("tx.tax")} k="tax" align="right" sort={sort} onSort={toggle} />
-            )}
-            <TxTh label={tr("tx.total")} k="total" align="right" sort={sort} onSort={toggle} />
-            <th className="py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
+    <div>
+      <Table>
+        <Thead>
+          <Th sort={sort.sort} sortKey="date" onSort={sort.toggle}>
+            {tr("tx.date")}
+          </Th>
+          <Th sort={sort.sort} sortKey="type" onSort={sort.toggle}>
+            {tr("tx.type")}
+          </Th>
+          {multiPortfolio && (
+            <Th sort={sort.sort} sortKey="portfolio" onSort={sort.toggle}>
+              {tr("tx.portfolio")}
+            </Th>
+          )}
+          <Th align="right" sort={sort.sort} sortKey="quantity" onSort={sort.toggle}>
+            {tr("tx.qty")}
+          </Th>
+          <Th align="right" sort={sort.sort} sortKey="price" onSort={sort.toggle}>
+            {tr("tx.price")}
+          </Th>
+          <Th align="right" sort={sort.sort} sortKey="fee" onSort={sort.toggle}>
+            {tr("tx.fee")}
+          </Th>
+          {!isCash && (
+            <Th align="right" sort={sort.sort} sortKey="tax" onSort={sort.toggle}>
+              {tr("tx.tax")}
+            </Th>
+          )}
+          <Th align="right" sort={sort.sort} sortKey="total" onSort={sort.toggle}>
+            {tr("tx.total")}
+          </Th>
+          <Th />
+        </Thead>
+        <Tbody>
           {pager.rows.map((t) =>
             editingId === t.id ? (
               <TransactionEditRow
@@ -1252,12 +1172,9 @@ function TransactionsTable({
                 onCancel={() => setEditingId(null)}
               />
             ) : (
-              <tr
-                key={t.id}
-                className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-              >
-                <td className="py-2 pr-3 whitespace-nowrap">{formatDateTime(t.date)}</td>
-                <td className="py-2 pr-3">
+              <Tr key={t.id}>
+                <Td className="whitespace-nowrap">{formatDateTime(t.date)}</Td>
+                <Td>
                   <span
                     className={
                       t.type === "BUY"
@@ -1273,34 +1190,35 @@ function TransactionsTable({
                   >
                     {isCash ? txTypeLabel(tr, t.type, true) : t.type}
                   </span>
-                </td>
+                </Td>
                 {multiPortfolio && (
-                  <td className="py-2 pr-3 text-zinc-500">
+                  <Td className="text-zinc-500">
                     {portfolioNameById(t.portfolioId) || (
                       <span className="text-zinc-400">—</span>
                     )}
-                  </td>
+                  </Td>
                 )}
-                <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                <Td align="right" className="tabular-nums" data-private>
                   {t.type === "SPLIT" ? `×${formatNumber(t.quantity, 4)}` : formatNumber(t.quantity, 4)}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
+                </Td>
+                <Td align="right" className="tabular-nums">
                   {isCash || t.type === "SPLIT" ? (
                     <span className="text-zinc-400">—</span>
                   ) : (
                     formatCurrency(t.price, currency)
                   )}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                </Td>
+                <Td align="right" className="tabular-nums" data-private>
                   {formatCurrency(t.fee, currency)}
-                </td>
+                </Td>
                 {!isCash && (
-                  <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                  <Td align="right" className="tabular-nums" data-private>
                     {formatCurrency(t.tax, currency)}
-                  </td>
+                  </Td>
                 )}
-                <td
-                  className={`py-2 pr-3 text-right tabular-nums ${
+                <Td
+                  align="right"
+                  className={`tabular-nums ${
                     t.type === "SPLIT"
                       ? "text-zinc-400"
                       : t.type === "BUY"
@@ -1317,33 +1235,18 @@ function TransactionsTable({
                       {formatCurrency(t.quantity * t.price, currency)}
                     </>
                   )}
-                </td>
-                <td className="py-2 text-right whitespace-nowrap">
-                  <button
-                    onClick={() => setEditingId(t.id)}
-                    className="px-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                    aria-label={tr("tx.edit")}
-                    title={tr("tx.edit")}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="inline h-3.5 w-3.5">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => onDelete(t)}
-                    className="px-1 text-zinc-400 hover:text-red-500"
-                    aria-label={tr("tx.deleteTitle")}
-                    title={tr("tx.deleteTitle")}
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
+                </Td>
+                <Td align="right">
+                  <RowActions>
+                    <EditAction label={tr("tx.edit")} onClick={() => setEditingId(t.id)} />
+                    <DeleteAction label={tr("tx.deleteTitle")} onClick={() => onDelete(t)} />
+                  </RowActions>
+                </Td>
+              </Tr>
             ),
           )}
-        </tbody>
-      </table>
+        </Tbody>
+      </Table>
       <TablePagination pager={pager} />
     </div>
   );
@@ -1390,7 +1293,7 @@ function TransactionEditRow({
   };
 
   return (
-    <tr className="border-b border-zinc-100 bg-zinc-50 dark:border-zinc-800/60 dark:bg-zinc-800/30">
+    <Tr selected>
       <td className="py-1.5 pr-2">
         <input
           type="datetime-local"
@@ -1450,7 +1353,7 @@ function TransactionEditRow({
           ✕
         </button>
       </td>
-    </tr>
+    </Tr>
   );
 }
 

@@ -10,7 +10,17 @@ import Link from "next/link";
 import type { SharePayload, SharePt } from "@/lib/share/share";
 import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import {
+  Table,
+  TablePagination,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  usePagination,
+} from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -27,35 +37,6 @@ import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 const TFS: Timeframe[] = ["1M", "3M", "YTD", "1Y", "5Y", "MAX"];
 
 type HoldingSortKey = "name" | "type" | "allocation" | "ret" | "value";
-
-function SortTh({
-  label,
-  k,
-  sort,
-  onSort,
-  align = "left",
-}: {
-  label: string;
-  k: HoldingSortKey;
-  sort: { key: HoldingSortKey; dir: 1 | -1 };
-  onSort: (k: HoldingSortKey) => void;
-  align?: "left" | "right";
-}) {
-  const active = sort.key === k;
-
-  return (
-    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 uppercase hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
-}
 
 /** Slice a dated series to a timeframe; optionally re-base a cumulative-return
  *  series so it restarts at 0 at the window start. */
@@ -117,31 +98,25 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
   }));
 
   // Sortable holdings table.
-  const [sort, setSort] = useState<{ key: HoldingSortKey; dir: 1 | -1 }>({
-    key: "allocation",
-    dir: -1,
-  });
-  const sortedHoldings = useMemo(() => {
-    const arr = [...holdings];
-    arr.sort((a, b) => {
-      switch (sort.key) {
-        case "name":
-          return a.name.localeCompare(b.name) * sort.dir;
-        case "type":
-          return a.type.localeCompare(b.type) * sort.dir;
-        case "ret":
-          return (a.ret - b.ret) * sort.dir;
-        case "value":
-          return ((a.value ?? 0) - (b.value ?? 0)) * sort.dir;
-        case "allocation":
-        default:
-          return (a.allocation - b.allocation) * sort.dir;
-      }
-    });
-    return arr;
-  }, [holdings, sort]);
-  const toggleSort = (key: HoldingSortKey) =>
-    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: -1 }));
+  const sort = useSort<HoldingSortKey>("allocation", "desc");
+  const sortedHoldings = useMemo(
+    () =>
+      sort.apply(holdings, (h, key) => {
+        switch (key) {
+          case "name":
+            return h.name;
+          case "type":
+            return h.type;
+          case "ret":
+            return h.ret;
+          case "value":
+            return h.value ?? 0;
+          case "allocation":
+            return h.allocation;
+        }
+      }),
+    [holdings, sort],
+  );
   const pager = usePagination(sortedHoldings);
 
   return (
@@ -282,42 +257,47 @@ export function SharedPortfolioView({ payload }: { payload: SharePayload }) {
           Holdings
           <InfoTip text={t("shared.holdingsTip")} />
         </h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <SortTh label="Name" k="name" sort={sort} onSort={toggleSort} />
-                <SortTh label="Type" k="type" sort={sort} onSort={toggleSort} />
-                <SortTh label="Allocation" k="allocation" sort={sort} onSort={toggleSort} align="right" />
-                <SortTh label="Return" k="ret" sort={sort} onSort={toggleSort} align="right" />
-                {!incognito && (
-                  <SortTh label="Value" k="value" sort={sort} onSort={toggleSort} align="right" />
-                )}
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-3">
+          <Table>
+            <Thead>
+              <Th sort={sort.sort} sortKey="name" onSort={sort.toggle}>
+                Name
+              </Th>
+              <Th sort={sort.sort} sortKey="type" onSort={sort.toggle}>
+                Type
+              </Th>
+              <Th align="right" sort={sort.sort} sortKey="allocation" onSort={sort.toggle}>
+                Allocation
+              </Th>
+              <Th align="right" sort={sort.sort} sortKey="ret" onSort={sort.toggle}>
+                Return
+              </Th>
+              {!incognito && (
+                <Th align="right" sort={sort.sort} sortKey="value" onSort={sort.toggle}>
+                  Value
+                </Th>
+              )}
+            </Thead>
+            <Tbody>
               {pager.rows.map((h, i) => (
-                <tr
-                  key={`${h.name}-${i}`}
-                  className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                >
-                  <td className="py-2 pr-3 font-medium">{h.name}</td>
-                  <td className="py-2 pr-3 text-zinc-500">{h.type}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
+                <Tr key={`${h.name}-${i}`}>
+                  <Td className="font-medium">{h.name}</Td>
+                  <Td className="text-zinc-500">{h.type}</Td>
+                  <Td align="right" className="tabular-nums">
                     {formatNumber(h.allocation * 100, 1)}%
-                  </td>
-                  <td className={`py-2 pr-3 text-right tabular-nums ${plColor(h.ret)}`}>
+                  </Td>
+                  <Td align="right" className={`tabular-nums ${plColor(h.ret)}`}>
                     {formatPercent(h.ret)}
-                  </td>
+                  </Td>
                   {!incognito && (
-                    <td className="py-2 pr-3 text-right tabular-nums">
+                    <Td align="right" className="tabular-nums">
                       {h.value != null ? formatCurrency(h.value, currency) : "—"}
-                    </td>
+                    </Td>
                   )}
-                </tr>
+                </Tr>
               ))}
-            </tbody>
-          </table>
+            </Tbody>
+          </Table>
           <TablePagination pager={pager} />
         </div>
       </Card>

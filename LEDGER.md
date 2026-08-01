@@ -37,8 +37,48 @@ subworker; commit only the paths you claimed.
 | Monte Carlo: dynamische Entnahme + Vereinheitlichung | LOW | todo | — |
 | Tooltips überarbeiten | MEDIUM | done | 17 Keys x 3 Sprachen entlokalisiert, shared-portfolio-view übersetzt |
 | Vereinheitlichung: Tabellen-Shell | HIGH | teilweise (3 von 22) | debt-view, spending-view, accounts-view auf Table/Thead/Th/Tr/Td + useSort |
+| Tabellen-Shell Batch 2 (nutzerseitig) | HIGH | done | debt-repayments, recurring/[kind]/[id], account-balances-dialog, valuation-section, recurring-card, savings-plans-card, asset-detail, shared-portfolio-view, e2e/table-shell.spec.ts |
+| Tabellen-Shell Batch 3 (/admin) | HIGH | in Arbeit | app/admin/{billing,flags,usage,audit,errors,prices} |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Tabellen-Shell, Batch 2 (2026-08-01)
+
+Der Ledger nannte drei offene Dateien, gezaehlt waren es acht nutzerseitige
+plus sechs unter /admin. Batch 2 nimmt die acht: debt-repayments,
+recurring/[kind]/[id], account-balances-dialog, valuation-section,
+recurring-card, savings-plans-card, asset-detail (zwei Tabellen) und
+shared-portfolio-view.
+
+Weg sind sieben handgebaute `useState({key,dir})` samt Toggle und
+Inline-Comparator und drei lokale Header-Komponenten, die den Sortier-Button
+je einmal nachgebaut hatten (`PlanTh` zweimal, `TxTh`, `SortTh`). Vier
+Tabellen waren gar nicht sortierbar und sind es jetzt (Owner-Regel): die
+Sondertilgungen, die Buchungsliste einer wiederkehrenden Zahlung (dort waren
+Empfaenger und Kategorie tote Header), die Faelligkeitsliste im
+Sparplan-Review und die Kontostaende.
+
+Zwei Dinge fielen dabei nebenbei auf und sind mitgenommen:
+
+1. **Vier Tabellen hatten noch eigene Zeilen-Aktionen** (ein handgebautes
+   Bleistift-SVG plus ✕) statt `RowActions` - genau die Gabelung, die Runde 24
+   fuer acht andere Tabellen schon geschlossen hatte. Jetzt ueberall dieselben
+   Icons mit demselben Accessible Name.
+2. **`sortRows` kann "fehlt sortiert immer zuletzt" von Haus aus**, also faellt
+   die handgeschriebene Sonderbehandlung fuer Eintraege ohne naechstes Datum
+   in `recurring-card` weg - dieselbe Regel, nur nicht mehr doppelt.
+
+Drei Spalten bleiben bewusst unsortierbar: Kurs, Gebuehr und Stueckzahl im
+Sparplan-Review sind Eingabefelder, und eine Umsortierung waehrend des Tippens
+zoege dem Nutzer das Feld unter dem Cursor weg.
+
+Verifiziert im Browser auf Deutsch bei 1080p: /portfolio 6, /spending 4,
+/accounts 3, Asset-Detail 9 sortierbare Header, null verschachtelte Buttons,
+null Konsolenmeldungen. Neu `e2e/table-shell.spec.ts` (4 Tests) pinnt
+`aria-sort`, das Sortieren per Enter und den deutschen Fall. 1092 Unit-Tests,
+52 E2E gruen.
+
+Offen (Batch 3): 6x /admin (billing, flags, usage, audit, errors, prices).
 
 ## Teilweise: Tabellen-Shell, Batch 1 von 2 (2026-08-01)
 

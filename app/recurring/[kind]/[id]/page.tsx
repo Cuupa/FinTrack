@@ -35,8 +35,8 @@ import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import type { SpendingTransaction } from "@/lib/types";
 import type { ContractInput } from "@/lib/store/types";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
-
-type SortKey = "date" | "amount";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 
 export default function RecurringDetailPage({
   params,
@@ -72,10 +72,7 @@ export default function RecurringDetailPage({
   const [txBusy, setTxBusy] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<SpendingTransaction | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "date",
-    dir: "desc",
-  });
+  const sort = useSort<"date" | "payee" | "category" | "amount">("date", "desc");
 
   const contract = kind === "contract" ? data.contracts.find((c) => c.id === id) : undefined;
   const plan = kind === "planned" ? data.plannedCashflows.find((p) => p.id === id) : undefined;
@@ -96,13 +93,14 @@ export default function RecurringDetailPage({
     const mine = data.spendingTransactions.filter((tx) =>
       kind === "contract" ? tx.recurringId === id : tx.plannedId === id,
     );
-    mine.sort((x, y) => {
-      const cmp =
-        sort.key === "date" ? (x.date < y.date ? -1 : x.date > y.date ? 1 : 0) : x.amount - y.amount;
-      return sort.dir === "asc" ? cmp : -cmp;
+    return sort.apply(mine, (tx, key) => {
+      if (key === "date") return tx.date;
+      if (key === "amount") return tx.amount;
+      if (key === "payee") return tx.payee;
+      const cat = tx.categoryId ? categoriesById.get(tx.categoryId) : null;
+      return cat ? `${cat.groupName} · ${cat.name}` : null;
     });
-    return mine;
-  }, [data.spendingTransactions, kind, id, sort]);
+  }, [data.spendingTransactions, kind, id, sort, categoriesById]);
 
   const booked = bookings.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
@@ -142,12 +140,6 @@ export default function RecurringDetailPage({
     } finally {
       setBusy(false);
     }
-  }
-
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
   }
 
   if (loadError) {
@@ -190,12 +182,6 @@ export default function RecurringDetailPage({
   // "no contract" and dereferenced the missing plan — the page crashed for
   // every entry that only tracks a cost and books nothing.
   const accountId = contract ? contract.accountId : plan!.accountId;
-
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
-  const thPlainCls =
-    "px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500";
 
   return (
     <div className={PAGE_STACK}>
@@ -250,65 +236,61 @@ export default function RecurringDetailPage({
         {bookings.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("recurring.detail.noBookings")}</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls} onClick={() => toggleSort("date")}>
-                    {t("spending.form.dateLabel")}
-                    {arrow("date")}
-                  </th>
-                  <th className={thPlainCls}>{t("spending.form.payeeLabel")}</th>
-                  <th className={thPlainCls}>{t("spending.form.categoryLabel")}</th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("amount")}>
-                    {t("recurring.col.amount")}
-                    {arrow("amount")}
-                  </th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {bookings.map((tx) => {
-                  const cat = tx.categoryId ? categoriesById.get(tx.categoryId) : null;
-                  const cur = accountsById.get(tx.accountId)?.currency || base;
-                  return (
-                    <tr
-                      key={tx.id}
-                      className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
+          <Table className="mt-4">
+            <Thead>
+              <Th sort={sort.sort} sortKey="date" onSort={sort.toggle}>
+                {t("spending.form.dateLabel")}
+              </Th>
+              <Th sort={sort.sort} sortKey="payee" onSort={sort.toggle}>
+                {t("spending.form.payeeLabel")}
+              </Th>
+              <Th sort={sort.sort} sortKey="category" onSort={sort.toggle}>
+                {t("spending.form.categoryLabel")}
+              </Th>
+              <Th align="right" sort={sort.sort} sortKey="amount" onSort={sort.toggle}>
+                {t("recurring.col.amount")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
+              {bookings.map((tx) => {
+                const cat = tx.categoryId ? categoriesById.get(tx.categoryId) : null;
+                const cur = accountsById.get(tx.accountId)?.currency || base;
+                return (
+                  <Tr key={tx.id}>
+                    <Td className="text-zinc-500">{formatDate(tx.date)}</Td>
+                    <Td className="font-medium" data-private>
+                      {tx.payee}
+                    </Td>
+                    <Td className="text-zinc-500">
+                      {cat ? `${cat.groupName} · ${cat.name}` : t("spending.form.categoryNone")}
+                    </Td>
+                    <Td
+                      align="right"
+                      className={`tabular-nums ${
+                        tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""
+                      }`}
+                      data-private
                     >
-                      <td className="px-3 py-2 text-zinc-500">{formatDate(tx.date)}</td>
-                      <td className="px-3 py-2 font-medium" data-private>
-                        {tx.payee}
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">
-                        {cat ? `${cat.groupName} · ${cat.name}` : t("spending.form.categoryNone")}
-                      </td>
-                      <td
-                        className={`px-3 py-2 text-right tabular-nums ${
-                          tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""
-                        }`}
-                        data-private
-                      >
-                        {formatCurrency(tx.amount, cur)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <RowActions>
-                          <EditAction
-                            label={t("spending.list.edit")}
-                            onClick={() => setEditingTx(tx)}
-                          />
-                          <DeleteAction
-                            label={t("spending.list.delete")}
-                            onClick={() => setConfirmDelete(tx)}
-                          />
-                        </RowActions>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      {formatCurrency(tx.amount, cur)}
+                    </Td>
+                    <Td>
+                      <RowActions>
+                        <EditAction
+                          label={t("spending.list.edit")}
+                          onClick={() => setEditingTx(tx)}
+                        />
+                        <DeleteAction
+                          label={t("spending.list.delete")}
+                          onClick={() => setConfirmDelete(tx)}
+                        />
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
         )}
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </Card>
