@@ -274,6 +274,7 @@ interface ContractRow {
   // it yet still deserialises instead of throwing.
   account_id?: string | null;
   booking_start_date?: string | null;
+  month_end?: boolean | null;
   last_booked_date?: string | null;
   target_account_id?: string | null;
 }
@@ -291,6 +292,7 @@ function contractFromRow(r: ContractRow): Contract {
     sumInsured: r.sum_insured != null ? Number(r.sum_insured) : null,
     accountId: r.account_id ?? null,
     bookingStartDate: r.booking_start_date ?? null,
+    monthEnd: r.month_end ?? false,
     lastBookedDate: r.last_booked_date ?? null,
     targetAccountId: r.target_account_id ?? null,
   };
@@ -304,6 +306,7 @@ interface PlannedCashflowRow {
   amount: number | string;
   interval: string;
   start_date: string;
+  month_end?: boolean | null;
   end_date: string | null;
   last_booked_date: string | null;
   transfer_account_id: string | null;
@@ -319,6 +322,7 @@ function plannedCashflowFromRow(r: PlannedCashflowRow): PlannedCashflow {
     amount: Number(r.amount),
     interval: r.interval as PlannedCashflow["interval"],
     startDate: r.start_date,
+    monthEnd: r.month_end ?? false,
     endDate: r.end_date,
     lastBookedDate: r.last_booked_date,
     transferAccountId: r.transfer_account_id,
@@ -487,13 +491,13 @@ export class SupabaseStore implements DataStore {
           // `booksSpending()` reads as "this contract does not post anything".
           // A contract with an account and a start date therefore sat in the
           // register forever without a single charge reaching the ledger.
-          "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured, account_id, booking_start_date, last_booked_date, target_account_id",
+          "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured, account_id, booking_start_date, month_end, last_booked_date, target_account_id",
         )
         .order("created_at", { ascending: true }),
       this.supabase
         .from("planned_cashflows")
         .select(
-          "id, name, account_id, category_id, amount, interval, start_date, end_date, last_booked_date, transfer_account_id, note",
+          "id, name, account_id, category_id, amount, interval, start_date, month_end, end_date, last_booked_date, transfer_account_id, note",
         )
         .order("start_date", { ascending: true }),
       this.supabase
@@ -1439,6 +1443,7 @@ export class SupabaseStore implements DataStore {
         sum_insured: input.sumInsured ?? null,
         account_id: input.accountId ?? null,
         booking_start_date: input.bookingStartDate ?? null,
+        month_end: input.monthEnd ?? false,
         last_booked_date: input.lastBookedDate ?? null,
         target_account_id: input.targetAccountId ?? null,
       })
@@ -1462,6 +1467,7 @@ export class SupabaseStore implements DataStore {
     if (patch.sumInsured !== undefined) upd.sum_insured = patch.sumInsured;
     if (patch.accountId !== undefined) upd.account_id = patch.accountId;
     if (patch.bookingStartDate !== undefined) upd.booking_start_date = patch.bookingStartDate;
+    if (patch.monthEnd !== undefined) upd.month_end = patch.monthEnd;
     if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
     if (patch.targetAccountId !== undefined) upd.target_account_id = patch.targetAccountId;
     if (Object.keys(upd).length === 0) return;
@@ -1496,6 +1502,7 @@ export class SupabaseStore implements DataStore {
         amount: input.amount,
         interval: input.interval,
         start_date: input.startDate,
+        month_end: input.monthEnd ?? false,
         end_date: input.endDate,
         last_booked_date: input.lastBookedDate,
         transfer_account_id: input.transferAccountId,
@@ -1518,6 +1525,7 @@ export class SupabaseStore implements DataStore {
     if (patch.amount !== undefined) upd.amount = patch.amount;
     if (patch.interval !== undefined) upd.interval = patch.interval;
     if (patch.startDate !== undefined) upd.start_date = patch.startDate;
+    if (patch.monthEnd !== undefined) upd.month_end = patch.monthEnd;
     if (patch.endDate !== undefined) upd.end_date = patch.endDate;
     if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
     if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;

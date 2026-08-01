@@ -456,6 +456,9 @@ export interface Contract {
    *  `SavingsPlan.startDate`, so the schedule stays derivable rather than
    *  stored per occurrence. Null whenever `accountId` is null. */
   bookingStartDate?: string | null;
+  /** Pins every booking to the last day of its month; see
+   *  `PlannedCashflow.monthEnd` for why this is stored rather than inferred. */
+  monthEnd?: boolean;
   /** Last date a booking was actually posted, or null if none yet. Advanced
    *  only after the user confirms the due bookings, mirroring
    *  `SavingsPlan.lastRunDate`. */
@@ -542,6 +545,17 @@ export interface PlannedCashflow {
    *  `SavingsPlan.startDate`/`Contract.bookingStartDate`, so the schedule stays
    *  derivable instead of stored per occurrence. */
   startDate: string;
+  /**
+   * Pins every occurrence to the LAST day of its month, whatever day
+   * `startDate` names. Rent and salaries land on the month's end, not on "the
+   * 30th", and those two only agree in some months.
+   *
+   * A field of its own rather than something read off `startDate`: a start on
+   * the 30th is genuinely ambiguous between the two intents, and guessing
+   * would move a payment the user never asked to move. Optional, so rows
+   * written before the column existed keep their literal day.
+   */
+  monthEnd?: boolean;
   /** YYYY-MM-DD of the last occurrence (inclusive), or null for open-ended.
    *  Fixed-term income like parental allowance ends after twelve payments. */
   endDate: string | null;

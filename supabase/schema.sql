@@ -746,6 +746,12 @@ alter table public.contracts
   add column if not exists account_id uuid references public.accounts (id) on delete set null;
 alter table public.contracts
   add column if not exists booking_start_date date;
+-- Month-end schedule (migration 0113): pins every booking to the last day of
+-- its month, which the day-of-month clamp cannot express. Stored rather than
+-- read off the start date -- "the 30th" and "the last day" are different
+-- intents that only agree in some months.
+alter table public.contracts
+  add column if not exists month_end boolean not null default false;
 alter table public.contracts
   add column if not exists last_booked_date date;
 -- Migration 0096: where the money goes when the contract is not consumption
@@ -796,6 +802,9 @@ create table if not exists public.planned_cashflows (
   note text,
   created_at timestamptz not null default now()
 );
+-- Month-end schedule (migration 0113); see the note on contracts.month_end.
+alter table public.planned_cashflows
+  add column if not exists month_end boolean not null default false;
 alter table public.planned_cashflows
   drop constraint if exists planned_cashflows_interval_check;
 alter table public.planned_cashflows

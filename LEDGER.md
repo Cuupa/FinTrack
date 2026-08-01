@@ -40,8 +40,46 @@ subworker; commit only the paths you claimed.
 | Tabellen-Shell Batch 2 (nutzerseitig) | HIGH | done | debt-repayments, recurring/[kind]/[id], account-balances-dialog, valuation-section, recurring-card, savings-plans-card, asset-detail, shared-portfolio-view, e2e/table-shell.spec.ts |
 | Tabellen-Shell Batch 3 (/admin) | HIGH | done (nicht browser-verifiziert, /admin braucht Supabase) | app/admin/{billing,flags,usage,audit,errors,prices} |
 | Ein-/Ausgaben: 4 gemeldete Punkte | HIGH | done | spending-view, ui/row-actions (RecurringAction), dictionaries, e2e/income.spec.ts |
+| Ein-/Ausgaben: Ledger-Spalte + Ziel-Spalte | HIGH | done | recurring-card, dictionaries; dabei Umbuchungsziel-Bug gefunden, Migration 0112 |
+| Monatsletzter als Rhythmus | MEDIUM | done, Migration 0113 muss laufen | dates.ts, planned.ts, contract-bookings.ts, types, supabase-store, spending-view, recurring-form, planned-form, migration 0113 + schema.sql, tests/month-end.test.ts |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Erledigt: Monatsletzter als Rhythmus (2026-08-01)
+
+Gemeldet: "Es waere noch cool wenn durch einen Mechanismus der Monatsletzter
+gewaehlt werden koennte."
+
+Der vorhandene Tag-Clamp in `addMonthsToDate` kann das nicht ausdruecken. Er
+laeuft vom Startdatum los und kuerzt nur dort, wo der Zielmonat kuerzer ist -
+ein Eintrag mit Anker auf dem 28. bleibt also fuer immer auf dem 28. Wer am
+31. startet, bekommt zufaellig Monatsende; wer im Februar anfaengt, nie.
+
+Deshalb ein **gespeichertes Flag** (`monthEnd`) statt einer Herleitung aus dem
+Startdatum: ein Start am 30. ist zwischen "der 30." und "der letzte Tag" echt
+mehrdeutig, und Raten waere hier gleichbedeutend damit, eine Zahlung zu
+verschieben, um die niemand gebeten hat.
+
+- Rein: `lastDayOfMonth` (dates.ts), `plannedOccurrenceAt` und
+  `bookingOccurrenceAt` schnappen darauf ein. WEEKLY und ONCE bleiben aussen
+  vor - "letzter Tag des Monats, woechentlich" ist kein Rhythmus, und eine
+  Einmalzahlung ist ein Datum, das der Nutzer selbst gesetzt hat.
+- Store-Seam: `Contract.monthEnd` + `PlannedCashflow.monthEnd`, Migration 0113
+  **und** schema.sql (die planned-Spalte muss NACH ihrem `create table`
+  stehen, sonst baut eine frische Datenbank nicht). Default `false`, also
+  verschiebt der Deploy keinen einzigen bestehenden Eintrag.
+- UI: eine Checkbox unter dem Rhythmus in der Erfassungsmaske, im
+  Vertragsformular und im Planformular - nur dort, wo der Rhythmus
+  monatsbasiert ist. Beim Speichern wird sie fuer einen unpassenden Rhythmus
+  ausdruecklich auf `false` gesetzt, damit kein unsichtbares Flag zurueckbleibt.
+
+Verifiziert auf Deutsch bei 1080p: Start 15.01.2026, monatlich, Haken gesetzt
+-> faellig 31.01., 28.02., 31.03., 30.04., 31.05., 30.06., 31.07., naechste
+31.08. Neu `tests/month-end.test.ts` (11 Tests, inkl. Schaltjahr) plus ein
+E2E-Test. 1103 Unit-Tests, 57 E2E gruen, Build sauber.
+
+**Offen fuer den Owner: Migration 0113 muss laufen.** Vorher kassiert
+`contracts`/`planned_cashflows` bei `month_end` einen 400.
 
 ## Erledigt: Einnahmen sind keine gespiegelten Ausgaben (2026-08-01)
 

@@ -79,6 +79,7 @@ export function RecurringForm({
   // earlier date is exactly how you say "this has been running since March",
   // and the due-review dialog then offers those charges for catching up.
   const [bookingStartDate, setBookingStartDate] = useState(initial?.bookingStartDate ?? today());
+  const [monthEnd, setMonthEnd] = useState(initial?.monthEnd ?? false);
   const [isInsurance, setIsInsurance] = useState(Boolean(initial?.insuranceType));
   const [insuranceType, setInsuranceType] = useState<InsuranceType | "">(
     initial?.insuranceType ?? "",
@@ -108,6 +109,8 @@ export function RecurringForm({
       accountId: accountId || null,
       targetAccountId: (accountId && targetAccountId) || null,
       bookingStartDate: accountId ? bookingStartDate || today() : null,
+      // Only meaningful once it books; a register-only entry schedules nothing.
+      monthEnd: accountId ? monthEnd : false,
       // Editing keeps whatever has already been posted: resetting this would
       // offer every charge since the start date a second time.
       lastBookedDate: initial?.lastBookedDate ?? null,
@@ -200,6 +203,17 @@ export function RecurringForm({
             className={inputCls}
           />
           <p className="mt-1 text-sm text-zinc-500">{t("contracts.form.startHint")}</p>
+          {/* A contract only ever runs monthly, quarterly or annually, so
+              month-end always applies once it books. */}
+          <label className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
+            <input
+              type="checkbox"
+              checked={monthEnd}
+              onChange={(e) => setMonthEnd(e.target.checked)}
+              className="h-4 w-4"
+            />
+            {t("recurring.monthEnd")}
+          </label>
         </div>
       )}
       {/* Only meaningful once the contract books: it says the money is not

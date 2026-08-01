@@ -12,7 +12,7 @@
 // instead of leaving orphaned rows behind.
 
 import type { Account, AccountBalance, Contract, ContractInterval } from "../types";
-import { addMonthsToDate } from "./dates";
+import { addMonthsToDate, lastDayOfMonth } from "./dates";
 import { accountBalanceOn } from "./accounts";
 import { accountRateSteps, rateOnDate } from "./debt";
 import type { AccountMovements } from "./account-ledger";
@@ -36,8 +36,11 @@ export function bookingOccurrenceAt(
   startDate: string,
   interval: ContractInterval,
   k: number,
+  /** Pins the result to the last day of its month (`Contract.monthEnd`). */
+  monthEnd = false,
 ): string {
-  return addMonthsToDate(startDate, MONTHS_PER_INTERVAL[interval] * k);
+  const date = addMonthsToDate(startDate, MONTHS_PER_INTERVAL[interval] * k);
+  return monthEnd ? lastDayOfMonth(date) : date;
 }
 
 /** Whether this contract posts bookings at all. */
@@ -55,7 +58,7 @@ export function dueBookings(contract: Contract, today: string): string[] {
   const start = contract.bookingStartDate!;
   const out: string[] = [];
   for (let k = 0; out.length < MAX_DUE_BOOKINGS; k++) {
-    const date = bookingOccurrenceAt(start, contract.interval, k);
+    const date = bookingOccurrenceAt(start, contract.interval, k, contract.monthEnd);
     if (date > today) break;
     if (contract.lastBookedDate && date <= contract.lastBookedDate) continue;
     out.push(date);
@@ -74,7 +77,7 @@ export function nextBooking(contract: Contract, today: string): string | null {
   const floor =
     contract.lastBookedDate && contract.lastBookedDate > today ? contract.lastBookedDate : today;
   for (let k = 0; k < 1000; k++) {
-    const date = bookingOccurrenceAt(start, contract.interval, k);
+    const date = bookingOccurrenceAt(start, contract.interval, k, contract.monthEnd);
     if (date >= floor && !(contract.lastBookedDate && date <= contract.lastBookedDate)) return date;
   }
   return null;

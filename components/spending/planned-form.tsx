@@ -47,6 +47,7 @@ export function PlannedForm({
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [interval, setInterval] = useState<PlannedInterval>(initial?.interval ?? "MONTHLY");
   const [startDate, setStartDate] = useState(initial?.startDate ?? today());
+  const [monthEnd, setMonthEnd] = useState(initial?.monthEnd ?? false);
   const [endDate, setEndDate] = useState(initial?.endDate ?? "");
   const [transferAccountId, setTransferAccountId] = useState(initial?.transferAccountId ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
@@ -57,6 +58,9 @@ export function PlannedForm({
   const missingName = !name.trim();
   const missingAmount = !amount.trim();
   const canSubmit = !busy && accountId !== "" && !missingName && !missingAmount && startDate !== "";
+
+  /** Month-end only has a meaning for the month-based cadences. */
+  const monthEndApplies = interval !== "ONCE" && interval !== "WEEKLY";
 
   async function submit() {
     const magnitude = parseDecimal(amount);
@@ -72,6 +76,9 @@ export function PlannedForm({
         amount: isIncome ? magnitude : -magnitude,
         interval,
         startDate,
+        // Cleared for a cadence it cannot apply to, so switching to weekly
+        // never leaves a hidden flag behind.
+        monthEnd: monthEndApplies && monthEnd,
         endDate: endDate || null,
         // Editing keeps whatever has already been booked; a fresh plan starts
         // with a clean slate.
@@ -170,6 +177,17 @@ export function PlannedForm({
               label: t(`spending.planned.interval.${i}` as Parameters<typeof t>[0]),
             }))}
           />
+          {monthEndApplies && (
+            <label className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
+              <input
+                type="checkbox"
+                checked={monthEnd}
+                onChange={(e) => setMonthEnd(e.target.checked)}
+                className="h-4 w-4"
+              />
+              {t("recurring.monthEnd")}
+            </label>
+          )}
         </div>
         <div>
           <label className="text-sm font-medium">{t("spending.planned.categoryLabel")}</label>

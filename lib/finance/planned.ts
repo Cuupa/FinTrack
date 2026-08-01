@@ -20,7 +20,7 @@ import type {
   PlannedInterval,
   SpendingTransaction,
 } from "../types";
-import { addDays, addMonthsToDate, shiftMonth } from "./dates";
+import { addDays, addMonthsToDate, lastDayOfMonth, shiftMonth } from "./dates";
 import { booksSpending, bookingOccurrenceAt } from "./contract-bookings";
 import { isLiquidAccount, liquidCashEffect, toBaseCurrency } from "./spending";
 
@@ -42,12 +42,17 @@ const MONTHS_PER_INTERVAL: Record<Exclude<PlannedInterval, "ONCE" | "WEEKLY">, n
  * which is the rule contracts and savings plans apply too.
  */
 export function plannedOccurrenceAt(
-  plan: Pick<PlannedCashflow, "startDate" | "interval">,
+  plan: Pick<PlannedCashflow, "startDate" | "interval" | "monthEnd">,
   k: number,
 ): string | null {
+  // `monthEnd` overrides the clamp rather than refining it: the anchor day
+  // stops mattering entirely, so a plan started on the 1st still lands on the
+  // 31st. WEEKLY is left alone -- "the last day of the month, weekly" is not a
+  // schedule -- and ONCE is a single date the user picked outright.
   if (plan.interval === "ONCE") return k === 0 ? plan.startDate : null;
   if (plan.interval === "WEEKLY") return addDays(plan.startDate, 7 * k);
-  return addMonthsToDate(plan.startDate, MONTHS_PER_INTERVAL[plan.interval] * k);
+  const date = addMonthsToDate(plan.startDate, MONTHS_PER_INTERVAL[plan.interval] * k);
+  return plan.monthEnd ? lastDayOfMonth(date) : date;
 }
 
 /**
@@ -287,7 +292,7 @@ export function plannedForecast(input: PlannedForecastInput): ForecastMonth[] {
       continue;
     }
     for (let k = 0; k < 600; k++) {
-      const date = bookingOccurrenceAt(contract.bookingStartDate!, contract.interval, k);
+      const date = bookingOccurrenceAt(contract.bookingStartDate!, contract.interval, k, contract.monthEnd);
       if (date > windowEnd) break;
       if (date < from) continue;
       if (contract.lastBookedDate && date <= contract.lastBookedDate) continue;

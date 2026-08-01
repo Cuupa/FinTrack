@@ -92,6 +92,7 @@ export function SpendingView() {
   // to go and never a separate "new" button.
   const [recurring, setRecurring] = useState(false);
   const [interval, setInterval] = useState<PlannedInterval>("MONTHLY");
+  const [monthEnd, setMonthEnd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [managingCategories, setManagingCategories] = useState(false);
@@ -106,6 +107,8 @@ export function SpendingView() {
 
   /** Money in reads differently from money out, so the form follows the tab. */
   const isIncome = txType === "income";
+  /** Month-end only has a meaning for the month-based cadences. */
+  const monthEndApplies = interval !== "ONCE" && interval !== "WEEKLY";
 
   /**
    * Turns one booking into a monthly recurring entry, prefilled from the row
@@ -211,6 +214,9 @@ export function SpendingView() {
           amount: signed,
           interval,
           startDate: date,
+          // Never stored for a cadence it cannot apply to, so switching to
+          // weekly after ticking it does not leave a hidden flag behind.
+          monthEnd: monthEndApplies && monthEnd,
           endDate: null,
           lastBookedDate: null,
           transferAccountId: transfer,
@@ -337,6 +343,20 @@ export function SpendingView() {
                       label: t(`recurring.interval.${i}` as Parameters<typeof t>[0]),
                     }))}
                   />
+                  {/* Offered only where it means something: "the last day of
+                      the month" is not a weekly cadence, and a one-off is a
+                      date the user already picked outright. */}
+                  {monthEndApplies && (
+                    <label className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
+                      <input
+                        type="checkbox"
+                        checked={monthEnd}
+                        onChange={(e) => setMonthEnd(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      {t("recurring.monthEnd")}
+                    </label>
+                  )}
                 </div>
               )}
               {/* Money out has a recipient, money in has a source. One field,

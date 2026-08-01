@@ -54,6 +54,19 @@ export function addMonthsToDate(iso: string, months: number): string {
   return toISODate(target);
 }
 
+/**
+ * The last day of the month `iso` falls in ("2026-02-10" -> "2026-02-28").
+ *
+ * Month-end is deliberately its own concept rather than something inferred
+ * from a start date landing on the 30th or 31st: "the 30th" and "the last day"
+ * are different intents that only agree in some months, and guessing between
+ * them silently moves a rent payment.
+ */
+export function lastDayOfMonth(iso: string): string {
+  const d = parseISODate(iso);
+  return toISODate(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)));
+}
+
 export function today(): string {
   return toISODate(new Date());
 }

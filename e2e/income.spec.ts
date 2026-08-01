@@ -101,6 +101,34 @@ test("the recurring card says where the money ends up", async ({ page }) => {
   await expect(card.locator("tbody tr").filter({ hasText: "Netflix" })).toContainText("Spent");
 });
 
+test("a recurring entry can be pinned to the last day of the month", async ({ page }) => {
+  await seedAccount(page);
+  await page.goto("/spending");
+  await dismissTour(page);
+
+  const form = page.locator('[data-tour="spending-form"]');
+  await form.locator("#spending-recurring").click();
+  await form.locator("#spending-amount").fill("900");
+  await form.locator("#spending-payee").fill("Rent");
+  // Anchored mid-month on purpose: without the flag every occurrence would
+  // keep landing on the 15th.
+  await form.locator("#spending-date").fill("2026-01-15");
+  await form.getByLabel(/last day of the month/i).check();
+  await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+
+  // The next due date is a month end, not the 15th it was started on.
+  const row = page.locator('[data-tour="recurring-card"] tbody tr').filter({ hasText: "Rent" });
+  await expect(row).toHaveCount(1);
+  await expect(row).not.toContainText("15");
+
+  // It survives a reload, so the flag reached the store rather than local state.
+  await page.reload();
+  await dismissTour(page);
+  await expect(
+    page.locator('[data-tour="recurring-card"] tbody tr').filter({ hasText: "Rent" }),
+  ).toHaveCount(1);
+});
+
 test("promoting a transfer keeps its target account", async ({ page }) => {
   await seedAccount(page);
   await seedAccount(page, "Mortgage");
