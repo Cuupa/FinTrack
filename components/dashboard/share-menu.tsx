@@ -126,12 +126,16 @@ export function ShareMenu() {
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {/* Snapshot vs Live mode. Live keeps the shared view in sync as the
-              owner's portfolio changes; it needs an account. */}
+              owner's portfolio changes; it needs an account.
+
+              The heading names the switch and stays put (owner rule): when it
+              flipped between "Snapshot" and "Live" it read like a label of the
+              current state, so nobody could tell whether the word described
+              what they had or what they would get. Only the description below
+              changes, and it says which way the switch is set. */}
           <div className="flex items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
             <div className="min-w-0">
-              <div className="text-sm font-medium">
-                {live ? t("share.live") : t("share.snapshot")}
-              </div>
+              <div className="text-sm font-medium">{t("share.live")}</div>
               <div className="text-xs text-zinc-500">
                 {live ? t("share.liveDesc") : t("share.snapshotDesc")}
               </div>
@@ -141,6 +145,7 @@ export function ShareMenu() {
               role="switch"
               aria-checked={live}
               disabled={!user}
+              aria-label={t("share.live")}
               title={user ? t("share.live") : t("share.liveHint")}
               onClick={() => setLive((v) => !v)}
               className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-40 ${

@@ -1470,7 +1470,7 @@ insert into public.feature_flags (flag, description) values
   ('exportJson', 'Portfolio export — Download JSON'),
   ('errorLogging', 'Server-side capture of client error reports'),
   ('importPp', 'CSV import — Portfolio Performance format'),
-  ('splitDetection', 'Automatic stock split detection + review on asset detail'),
+  ('splitDetection', 'Share splits: automatic detection + review on asset detail, and the manual SPLIT entry in the transaction form'),
   ('vorabEstimate', 'Vorabpauschale estimate on the annual tax report'),
   ('dividendCalendar', 'Announced dividend calendar (confirmed upcoming ex/pay dates)')
 on conflict (flag) do nothing;

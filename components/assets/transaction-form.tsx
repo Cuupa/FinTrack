@@ -50,6 +50,19 @@ export function TransactionForm({
   const isCash = asset.type === "CASH";
   const cur = asset.currency || "EUR";
 
+  // Booking a share split by hand rides the same flag as detecting one
+  // (`splitDetection`, which already gates the review card on the detail page):
+  // a user who cannot be told about a split has no use for the entry mask
+  // either, and two flags for one feature is exactly the fork this codebase
+  // keeps closing. Infrastructural, nothing to sell -- so it hides rather than
+  // locks.
+  const splitsEnabled = useFeatureFlag("splitDetection");
+  const types: TransactionType[] = isCash
+    ? ["BUY", "SELL", "INTEREST"]
+    : splitsEnabled
+      ? ["BUY", "SELL", "BOOKING", "SPLIT"]
+      : ["BUY", "SELL", "BOOKING"];
+
   // Prefer the live valuation price (already in the holding's currency); fall
   // back to the synthetic walk. `inst.lastPrice` is in the instrument's NATIVE
   // currency and can mismatch the holding's currency, so it's only read below
@@ -187,14 +200,10 @@ export function TransactionForm({
       {/* Buy / Sell / Booking / Split (or Interest, for cash) segmented toggle */}
       <div
         className={`grid w-full gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/60 sm:inline-flex sm:w-fit ${
-          isCash ? "grid-cols-3" : "grid-cols-4"
+          types.length === 3 ? "grid-cols-3" : "grid-cols-4"
         }`}
       >
-        {(
-          isCash
-            ? (["BUY", "SELL", "INTEREST"] as TransactionType[])
-            : (["BUY", "SELL", "BOOKING", "SPLIT"] as TransactionType[])
-        ).map((tt) => {
+        {types.map((tt) => {
           const active = type === tt;
           const activeBg =
             tt === "BUY"

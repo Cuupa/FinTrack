@@ -5,6 +5,8 @@
 
 import { useState, type FocusEvent, type MouseEvent } from "react";
 
+import { useI18n } from "@/lib/i18n/i18n-context";
+
 // Bubble width (matches Tailwind w-56) and the minimum gap kept from the
 // viewport edges when clamping the fixed-position overlay bubble.
 const BUBBLE_W = 224;
@@ -28,6 +30,7 @@ export function InfoTip({
    */
   overlay?: boolean;
 }) {
+  const { t } = useI18n();
   // Overlay mode only: bubble anchor in viewport coordinates (null = hidden).
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -56,7 +59,7 @@ export function InfoTip({
     >
       <button
         type="button"
-        aria-label="What is this?"
+        aria-label={t("common.whatIsThis")}
         className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-zinc-300 text-[10px] font-semibold leading-none text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-600 dark:border-zinc-600 dark:text-zinc-500 dark:hover:border-zinc-400 dark:hover:text-zinc-300"
       >
         i
