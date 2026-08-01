@@ -450,16 +450,25 @@ FX-convert) always beats a wrong instrument in the right currency.
   the old numbers exactly. **Known gap**: only the DETERMINISTIC targets fold
   the pension in; the Monte Carlo run still frames decumulation purely as a
   withdrawal rate on the portfolio.
-- **The pension's per-year assumption is a MEDIAN, never a mean**
-  (`typicalAnnualPoints`). A Renteninformation leads with a cumulative total,
-  that total keeps getting typed into a single year's row, and a mean turns one
-  such row into ~5x the real assumption — a five-figure monthly pension against
-  a statement saying 2.640 EUR (reported 2026-08). `maxPointsOn` is the other
-  half of the defence but it is reference data, and reference data can be
-  absent (lagging migration, no Supabase): a projection must not need a DB row
-  in order to not be absurd. The offending row is reported (`outlierYear`), not
-  silently dropped — it is the user's data to correct. The page also shows its
-  own arithmetic, because one opaque number cannot be argued with when it
+- **The pension extrapolates a TREND, not a flat year** (`pointsTrend`).
+  Entgeltpunkte are salary ÷ national average wage, so a career still in
+  progress pushes them up every year; holding the latest value flat to
+  retirement understates a rising biography by roughly a thousand euros a month
+  against the Renteninformation (reported 2026-08). Least squares over the last
+  5 plausible years, slope only from **three years up** (two define a line
+  through noise), each projected year clamped to `maxPoints`. A typed
+  `annualPoints` wins and is held flat — the user stated one number, the app
+  does not then argue with a trend.
+- **An impossible year is discarded, never clamped** (`plausibleEntries`).
+  `maxPoints` is the Beitragsbemessungsgrenze in points: a row above it is not
+  a year, it is the statement's cumulative total in the wrong field. Clamping
+  it to the cap would silently assume the MAXIMUM a year can earn for every
+  remaining year — an invented figure dressed as a correction. Without
+  reference data the same row is caught statistically (3x the median) — some
+  filter must survive there, because a trend fitted through a cumulative total
+  makes every remaining year worse than the last. The row is reported
+  (`outlierYear`), not hidden: it is the user's data to correct. The page shows
+  its own arithmetic, because one opaque number cannot be argued with when it
   disagrees with the official letter.
 - **Vorabpauschale estimator** (`tax.ts`, flag `vorabEstimate`): per fund per
   completed year, `startValue x Basiszins x 0.7 − distributions`, capped at

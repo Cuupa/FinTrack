@@ -8,12 +8,15 @@ Commit, nicht hierher.
 ## Offen fuer den Owner: Migrationen
 
 Diese Migrationen sind geschrieben, aber noch nicht gegen die Live-Datenbank
-gelaufen. Bis dahin quittiert die betroffene Tabelle einen 400/500:
+gelaufen. Bis dahin quittiert die betroffene Tabelle einen 400/500.
+
+**Diese Liste ist eine Notiz, kein Befund.** 0111 stand hier noch drin,
+obwohl sie laengst gelaufen war — und eine Fehlersuche darauf zu stuetzen
+fuehrt zur falschen Diagnose. Erst gegen die Live-DB pruefen, dann schliessen.
 
 | Migration | Wirkung ohne sie |
 | --- | --- |
 | 0108 + 0109 | `/admin/usage` laeuft auf 500 |
-| 0111 | Rentenpunkte-Deckel greift nicht (`max_points` fehlt) |
 | 0112 | Datenreparatur: verlorene Umbuchungsziele bleiben `null` |
 | 0113 | `contracts`/`planned_cashflows` quittieren `month_end` mit 400 |
 | 0114 | Die Retry-Queue der Kurs-Cron bleibt aus (Sync laeuft normal weiter) |

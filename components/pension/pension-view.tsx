@@ -791,6 +791,15 @@ export function PensionView() {
             </>
           )}
         </p>
+        {projection.annualPointsSlope !== 0 && (
+          <p className="mt-1 text-xs text-zinc-500">
+            {t("pension.calc.trend", {
+              start: projection.annualPointsStart.toFixed(2),
+              end: projection.annualPointsEnd.toFixed(2),
+              years: String(projection.trendSampleSize),
+            })}
+          </p>
+        )}
         {projection.outlierYear && (
           <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
             {t("pension.outlierNotice", {

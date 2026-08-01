@@ -6,6 +6,7 @@ import {
   currentPensionPoints,
   maxPointsOn,
   pensionLevelOn,
+  pointsTrend,
   pensionValueOn,
   projectPension,
   standardRetirementAge,
@@ -257,10 +258,16 @@ describe("projectPension", () => {
     expect(p.totalPoints).toBeCloseTo(4, 10);
   });
 
-  it("caps a cumulative total typed into one year instead of multiplying it", () => {
+  it("discards a cumulative total typed into one year instead of multiplying it", () => {
     // The reported bug: 17 points is a Renteninformation TOTAL, but it went
     // into a single year's row, so the average read 17 points PER year and the
     // projection returned roughly 20.000 EUR a month.
+    //
+    // A year above the Beitragsbemessungsgrenze is not a year, so it is
+    // dropped rather than clamped to the cap. Clamping would have silently
+    // assumed the MAXIMUM a year can earn, for every year left -- an invented
+    // figure dressed as a correction. With nothing else on record the honest
+    // answer is that no rate is known, and the row is named so it gets fixed.
     const p = projectPension({
       entries: points([[2025, 17]]),
       contracts: [],
@@ -268,13 +275,13 @@ describe("projectPension", () => {
       settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990 },
       currentYear: 2025,
     });
-    expect(p.rawAnnualPoints).toBe(17);
-    expect(p.annualPoints).toBe(1.91);
-    expect(p.annualPointsCapped).toBe(true);
     expect(p.maxAnnualPoints).toBe(1.91);
-    // 17 earned + 32 years x 1.91, not 17 + 32 x 17.
-    expect(p.totalPoints).toBeCloseTo(17 + 32 * 1.91, 10);
-    expect(p.monthlyStatutory!).toBeLessThan(4000);
+    expect(p.outlierYear?.year).toBe(2025);
+    expect(p.annualPoints).toBe(0);
+    // The 17 still counts as EARNED; it is only the per-year rate it must not
+    // become. Nowhere near the 17 + 32 x 17 the bug produced.
+    expect(p.totalPoints).toBeCloseTo(17, 10);
+    expect(p.monthlyStatutory!).toBeLessThan(1000);
   });
 
   it("leaves a plausible assumption alone", () => {
@@ -285,7 +292,9 @@ describe("projectPension", () => {
       settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, annualPoints: 1.2 },
       currentYear: 2025,
     });
-    expect(p.annualPoints).toBe(1.2);
+    // A typed assumption is held flat, so every projected year is exactly it.
+    expect(p.annualPoints).toBeCloseTo(1.2, 10);
+    expect(p.annualPointsSlope).toBe(0);
     expect(p.annualPointsCapped).toBe(false);
   });
 
@@ -384,7 +393,7 @@ describe("a cumulative total typed into one year", () => {
     // 31 years left. The mean would have assumed 6.44/yr -> ~219 points; the
     // median assumes 1.2 -> ~56, which is the order of magnitude a career
     // actually produces.
-    expect(projection.annualPoints).toBe(1.2);
+    expect(projection.annualPoints).toBeCloseTo(1.2, 10);
     expect(projection.totalPoints).toBeLessThan(70);
     expect(projection.outlierYear?.year).toBe(2025);
   });
@@ -415,5 +424,140 @@ describe("a cumulative total typed into one year", () => {
       currentYear: 2026,
     });
     expect(projection.pensionValue).toBe(40.79);
+  });
+});
+
+// Entgeltpunkte are your salary divided by the national average, so a career
+// that is still going pushes them UP year after year. Holding the latest value
+// flat to retirement understates a rising biography badly -- reported as being
+// about a thousand euros a month short against the Renteninformation.
+describe("projecting a rising career", () => {
+  const rising = points([
+    [2023, 1.0],
+    [2024, 1.2],
+    [2025, 1.4],
+  ]);
+
+  it("fits the increase instead of holding the last year flat", () => {
+    const trend = pointsTrend(rising, 2.0);
+    expect(trend.slope).toBeCloseTo(0.2, 6);
+    expect(trend.base).toBeCloseTo(1.4, 6);
+    expect(trend.sampleSize).toBe(3);
+  });
+
+  it("needs three years before it will claim a slope", () => {
+    // Two points define a line through noise with unearned confidence.
+    expect(pointsTrend(points([[2024, 1.2], [2025, 1.4]]), 2.0).slope).toBe(0);
+    expect(pointsTrend(points([[2025, 1.4]]), 2.0).slope).toBe(0);
+    // ...but the level is still carried forward.
+    expect(pointsTrend(points([[2024, 1.2], [2025, 1.4]]), 2.0).base).toBeCloseTo(1.4, 6);
+  });
+
+  it("projects more than the flat assumption, and says so per year", () => {
+    const settings = { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 };
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings,
+      currentYear: 2026,
+    });
+    // Rising, so the last projected year is worth more than the first.
+    expect(p.annualPointsEnd).toBeGreaterThan(p.annualPointsStart);
+    expect(p.annualPointsSlope).toBeCloseTo(0.2, 6);
+    // And the whole projection beats holding 1.4 flat for the same span.
+    const flat = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: { ...settings, annualPoints: 1.4 },
+      currentYear: 2026,
+    });
+    expect(p.totalPoints).toBeGreaterThan(flat.totalPoints);
+  });
+
+  it("never projects a year above the Beitragsbemessungsgrenze", () => {
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      currentYear: 2026,
+    });
+    // 0.2/yr over 31 years would reach 7+ points without the cap.
+    expect(p.annualPointsEnd).toBeLessThanOrEqual(p.maxAnnualPoints!);
+    expect(p.annualPointsCapped).toBe(true);
+  });
+
+  it("does not run away when there is no cap to stop it", () => {
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference: [],
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      currentYear: 2026,
+    });
+    // A three-year slope carried thirty years is past what the sample can
+    // support, so it stops at twice the current year rather than compounding.
+    expect(p.annualPointsEnd).toBeLessThanOrEqual(1.4 * 2 + 1e-9);
+  });
+
+  it("a falling record projects downward, not upward", () => {
+    const falling = points([
+      [2023, 1.6],
+      [2024, 1.4],
+      [2025, 1.2],
+    ]);
+    const p = projectPension({
+      entries: falling,
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      currentYear: 2026,
+    });
+    expect(p.annualPointsSlope).toBeLessThan(0);
+    expect(p.annualPointsEnd).toBeLessThan(p.annualPointsStart);
+    // Never below zero: a year cannot earn negative points.
+    expect(p.annualPointsEnd).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// A short sample does not license a long straight line.
+describe("how far the trend is carried", () => {
+  const rising = points([
+    [2023, 1.0],
+    [2024, 1.2],
+    [2025, 1.4],
+  ]);
+
+  it("stops advancing the slope after twice the measured window", () => {
+    // 3 recorded years -> the slope runs 6 years past the last one (to 2031),
+    // reaching 1.4 + 6 x 0.2 = 2.6, and then holds flat for the rest.
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference: [],
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      currentYear: 2026,
+    });
+    // The 2x-base ceiling (2.8) is never reached, because the horizon bites
+    // first at 2.6.
+    expect(p.annualPointsEnd).toBeCloseTo(2.6, 6);
+  });
+
+  it("does not let a steep short sample assume the maximum for a whole career", () => {
+    // With a real Beitragsbemessungsgrenze the projection still saturates, but
+    // the point is that it is the CAP doing it, not an unbounded straight line.
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      currentYear: 2026,
+    });
+    expect(p.annualPointsEnd).toBeLessThanOrEqual(p.maxAnnualPoints!);
+    // Averaged over the whole run it stays under the cap: the early years are
+    // genuinely below it.
+    expect(p.annualPoints).toBeLessThan(p.maxAnnualPoints!);
   });
 });

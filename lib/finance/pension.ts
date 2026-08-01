@@ -125,6 +125,104 @@ export function averageAnnualPoints(entries: readonly PensionPoint[], window = 5
     career step change is well under this; a cumulative total is far over it. */
 const OUTLIER_FACTOR = 3;
 
+/** How far past the measured window the fitted slope may be carried before the
+    level is held flat. See the note in `projectPension`. */
+const TREND_EXTRAPOLATION_FACTOR = 2;
+
+/**
+ * The recorded years that a year could actually have produced.
+ *
+ * `maxPoints` is the Beitragsbemessungsgrenze expressed in Entgeltpunkte: no
+ * single year can exceed it, so a row that does is not a year at all -- it is
+ * the Renteninformation's cumulative total in the wrong field. Dropping it is
+ * the honest reading, and it beats bending the estimator around it: once the
+ * impossible rows are gone the remaining ones can be modelled properly,
+ * including their TREND.
+ *
+ * With no reference data there is no physical cap, so the same row is caught
+ * statistically instead: anything a multiple above the median of the record.
+ * Some filter has to survive here, because what comes next is a TREND, and a
+ * trend fitted through a cumulative total does not merely overstate one year --
+ * it makes every remaining year worse than the last.
+ */
+export function plausibleEntries(
+  entries: readonly PensionPoint[],
+  maxPoints: number | null,
+): PensionPoint[] {
+  const real = entries.filter((e) => Number.isFinite(e.points) && e.points > 0);
+  if (maxPoints != null) return real.filter((e) => e.points <= maxPoints);
+  const typical = typicalAnnualPoints(real, real.length || 1);
+  if (typical <= 0) return real;
+  return real.filter((e) => e.points <= typical * OUTLIER_FACTOR);
+}
+
+/** A straight line through the recorded years: what a year earns now, and how
+ *  fast that is moving. */
+export interface PointsTrend {
+  /** Points in `baseYear`, from the fit. */
+  base: number;
+  /** Change per calendar year. Zero when there is nothing to fit. */
+  slope: number;
+  /** The year `base` refers to -- the most recent one in the sample. */
+  baseYear: number;
+  /** How many rows the fit rests on. */
+  sampleSize: number;
+}
+
+/**
+ * Least-squares trend over the most recent `window` plausible years.
+ *
+ * Entgeltpunkte are your salary divided by the national average, so they are
+ * not a flat line for anyone whose career is still going: promotions and
+ * above-average raises push them up year after year. Holding the latest value
+ * flat to retirement therefore understates a rising biography badly -- for a
+ * 30-year horizon it was worth about a thousand euros a month against the
+ * Renteninformation.
+ *
+ * One row cannot define a slope and two rows define one far too confidently on
+ * noise, so a slope is only fitted from three years up; below that the level
+ * is carried flat, which is what the DRV's own "if you carry on as before"
+ * figure does.
+ */
+export function pointsTrend(
+  entries: readonly PensionPoint[],
+  maxPoints: number | null,
+  window = 5,
+): PointsTrend {
+  const recent = plausibleEntries(entries, maxPoints)
+    .sort((a, b) => b.year - a.year)
+    .slice(0, Math.max(1, window))
+    .sort((a, b) => a.year - b.year);
+
+  if (recent.length === 0) return { base: 0, slope: 0, baseYear: 0, sampleSize: 0 };
+  const baseYear = recent[recent.length - 1].year;
+  if (recent.length < 3) {
+    return {
+      base: recent[recent.length - 1].points,
+      slope: 0,
+      baseYear,
+      sampleSize: recent.length,
+    };
+  }
+
+  const n = recent.length;
+  const meanYear = recent.reduce((s, e) => s + e.year, 0) / n;
+  const meanPoints = recent.reduce((s, e) => s + e.points, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (const e of recent) {
+    num += (e.year - meanYear) * (e.points - meanPoints);
+    den += (e.year - meanYear) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  return {
+    base: meanPoints + slope * (baseYear - meanYear),
+    slope,
+    baseYear,
+    sampleSize: n,
+  };
+}
+
 /**
  * The assumption for every year still to come: the MEDIAN of the recent
  * window, not the mean.
@@ -165,11 +263,21 @@ export function typicalAnnualPoints(entries: readonly PensionPoint[], window = 5
  */
 export function annualPointsOutlier(
   entries: readonly PensionPoint[],
+  maxPoints: number | null = null,
   window = 5,
 ): PensionPoint | null {
+  const recent = [...entries].sort((a, b) => b.year - a.year).slice(0, Math.max(1, window));
+  // With a Beitragsbemessungsgrenze the test is not statistical at all: a year
+  // above it is impossible, full stop.
+  if (maxPoints != null) {
+    let worst: PensionPoint | null = null;
+    for (const e of recent) {
+      if (e.points > maxPoints && (worst === null || e.points > worst.points)) worst = e;
+    }
+    return worst;
+  }
   const typical = typicalAnnualPoints(entries, window);
   if (typical <= 0) return null;
-  const recent = [...entries].sort((a, b) => b.year - a.year).slice(0, Math.max(1, window));
   let worst: PensionPoint | null = null;
   for (const e of recent) {
     if (e.points > typical * OUTLIER_FACTOR && (worst === null || e.points > worst.points)) {
@@ -220,9 +328,19 @@ export interface PensionProjection {
   /** True when the assumption had to be capped -- the signature of a
    *  cumulative total typed into a single year's row. */
   annualPointsCapped: boolean;
-  /** A recorded year far above the typical one, or null. The median assumption
-   *  already ignores it, but the row itself is still wrong and only the user
-   *  can correct it. */
+  /** Points assumed for the FIRST remaining year, after the cap. */
+  annualPointsStart: number;
+  /** Points assumed for the LAST remaining year -- above `annualPointsStart`
+   *  whenever the recorded years are rising. */
+  annualPointsEnd: number;
+  /** Fitted change per calendar year. 0 when the user typed an assumption, or
+   *  when there are too few years to fit one. */
+  annualPointsSlope: number;
+  /** How many recorded years the trend rests on. 0 with a typed assumption. */
+  trendSampleSize: number;
+  /** A recorded year that no year could have produced (above the
+   *  Beitragsbemessungsgrenze), or null. Excluded from the trend, but the row
+   *  itself is still wrong and only the user can correct it. */
   outlierYear: PensionPoint | null;
   /** Calendar year the pension starts, or null without a birth year. */
   retirementYear: number | null;
@@ -284,12 +402,49 @@ export function projectPension(input: {
   // and a ~20.000 EUR monthly pension. The cap is reference data, not a
   // constant here (same rule as the Rentenwert), and no reference data means no
   // cap rather than an invented one.
-  const rawAnnualPoints = settings.annualPoints ?? typicalAnnualPoints(entries);
   const maxAnnualPoints = maxPointsOn(reference, currentYear);
-  const annualPoints =
-    maxAnnualPoints != null ? Math.min(rawAnnualPoints, maxAnnualPoints) : rawAnnualPoints;
+  const trend = pointsTrend(entries, maxAnnualPoints);
   const yearsLeft = retirementYear != null ? Math.max(0, retirementYear - currentYear) : 0;
-  const futurePoints = annualPoints * yearsLeft;
+
+  // A ceiling for the fitted trend when there is no Beitragsbemessungsgrenze to
+  // clamp against. A three-year slope carried thirty years is an extrapolation
+  // well past what the sample supports, and Entgeltpunkte are a RATIO to the
+  // national average wage -- earning twice the average every year for the rest
+  // of a career is already the extreme end.
+  const trendCeiling = maxAnnualPoints ?? Math.max(trend.base * 2, trend.base);
+
+  // A typed assumption is one number, so it is held flat: the user said what
+  // they expect per year and the app does not then argue with a trend.
+  const manual = settings.annualPoints;
+  const rawAnnualPoints = manual ?? trend.base;
+
+  let futurePoints = 0;
+  let annualPointsStart = 0;
+  let annualPointsEnd = 0;
+  let capped = false;
+  // How long the fitted slope is carried before the level is held flat. A
+  // three-year sample does not license a thirty-year straight line: extended
+  // that far it reaches the Beitragsbemessungsgrenze within a few years and
+  // then quietly assumes the MAXIMUM for the rest of the career, which is the
+  // same overstatement as before wearing a different hat. Careers do rise, but
+  // they also plateau. Twice the measured window is as far as the data reaches.
+  const trendYears = trend.sampleSize * TREND_EXTRAPOLATION_FACTOR;
+
+  for (let i = 0; i < yearsLeft; i++) {
+    const year = currentYear + i;
+    const advanced = Math.min(Math.max(0, year - trend.baseYear), trendYears);
+    const raw = manual ?? trend.base + trend.slope * advanced;
+    const value = Math.max(0, Math.min(raw, trendCeiling));
+    if (value < raw) capped = true;
+    if (i === 0) annualPointsStart = value;
+    annualPointsEnd = value;
+    futurePoints += value;
+  }
+  // The flat-equivalent, so every existing display keeps meaning what it said.
+  const annualPoints =
+    yearsLeft > 0
+      ? futurePoints / yearsLeft
+      : Math.max(0, Math.min(rawAnnualPoints, trendCeiling));
   const totalPoints = currentPoints + futurePoints;
 
   const factor =
@@ -309,8 +464,12 @@ export function projectPension(input: {
     annualPoints,
     rawAnnualPoints,
     maxAnnualPoints,
-    annualPointsCapped: annualPoints < rawAnnualPoints,
-    outlierYear: annualPointsOutlier(entries),
+    annualPointsCapped: capped,
+    annualPointsStart,
+    annualPointsEnd,
+    annualPointsSlope: manual != null ? 0 : trend.slope,
+    trendSampleSize: manual != null ? 0 : trend.sampleSize,
+    outlierYear: annualPointsOutlier(entries, maxAnnualPoints),
     retirementYear,
     standardAge,
     accessFactor: factor,
