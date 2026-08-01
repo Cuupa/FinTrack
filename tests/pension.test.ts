@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   accessFactor,
+  annualPointsOutlier,
   averageAnnualPoints,
   currentPensionPoints,
   maxPointsOn,
@@ -9,6 +10,7 @@ import {
   projectPension,
   standardRetirementAge,
   totalPensionPoints,
+  typicalAnnualPoints,
   type PensionReference,
 } from "../lib/finance/pension";
 import { DEFAULT_PENSION_SETTINGS, type PensionContract, type PensionPoint } from "../lib/types";
@@ -336,5 +338,82 @@ describe("projectPension", () => {
     expect(p.monthlyTotal).toBeNull();
     // No total means no honest gap, even with a target set.
     expect(p.gap).toBe(0);
+  });
+});
+
+// The reported case (owner, 2026-08): the projection said ~8.400 EUR/month
+// where the Renteninformation said 2.640,13. The cause was a CUMULATIVE total
+// typed into a single year's row -- the mistake the UI already warns about --
+// dragging the mean-based per-year assumption to roughly five times reality.
+// The cap that would have caught it is reference data, and reference data can
+// be absent, so the assumption itself has to survive the bad row.
+describe("a cumulative total typed into one year", () => {
+  const entries = points([
+    [2023, 1.1],
+    [2024, 1.2],
+    // The Renteninformation's running total, in the wrong field.
+    [2025, 17.03],
+  ]);
+
+  it("moves the mean but not the median", () => {
+    expect(averageAnnualPoints(entries)).toBeCloseTo(6.443, 3);
+    expect(typicalAnnualPoints(entries)).toBe(1.2);
+  });
+
+  it("is reported so the user can correct the row", () => {
+    const outlier = annualPointsOutlier(entries);
+    expect(outlier?.year).toBe(2025);
+    expect(outlier?.points).toBe(17.03);
+  });
+
+  it("finds nothing to report in a normal record", () => {
+    expect(annualPointsOutlier(points([[2023, 1.1], [2024, 1.2], [2025, 1.3]]))).toBeNull();
+  });
+
+  it("keeps the projection plausible even with NO reference data to cap with", () => {
+    const settings = { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 };
+    // No reference rows at all: `maxPointsOn` returns null, so the cap is off.
+    // This is the live situation whenever migration 0111 has not run.
+    const projection = projectPension({
+      entries,
+      contracts: [],
+      reference: [],
+      settings,
+      currentYear: 2026,
+    });
+    // 31 years left. The mean would have assumed 6.44/yr -> ~219 points; the
+    // median assumes 1.2 -> ~56, which is the order of magnitude a career
+    // actually produces.
+    expect(projection.annualPoints).toBe(1.2);
+    expect(projection.totalPoints).toBeLessThan(70);
+    expect(projection.outlierYear?.year).toBe(2025);
+  });
+
+  it("still prefers an explicit assumption the user typed", () => {
+    const settings = {
+      ...DEFAULT_PENSION_SETTINGS,
+      birthYear: 1990,
+      retirementAge: 67,
+      annualPoints: 1.5,
+    };
+    const projection = projectPension({
+      entries,
+      contracts: [],
+      reference,
+      settings,
+      currentYear: 2026,
+    });
+    expect(projection.annualPoints).toBe(1.5);
+  });
+
+  it("surfaces the Rentenwert it valued the points at", () => {
+    const projection = projectPension({
+      entries: points([[2025, 1.2]]),
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990 },
+      currentYear: 2026,
+    });
+    expect(projection.pensionValue).toBe(40.79);
   });
 });

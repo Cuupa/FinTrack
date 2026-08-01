@@ -1368,8 +1368,14 @@ export const en = {
   "pension.birthYear": "Year of birth",
   "pension.retirementAge": "Planned retirement age",
   "pension.annualPoints": "Pension points per year",
-  "pension.annualPointsHint": "Your average so far: {points}",
-  "pension.annualPointsHintMax": "Your average so far: {points}. One year can earn at most {max}.",
+  "pension.annualPointsHint": "Your typical year so far: {points}",
+  "pension.annualPointsHintMax":
+    "Your typical year so far: {points}. One year can earn at most {max}.",
+  "pension.calc.points":
+    "{current} points earned + {annual} per year × {years} years = {total} points.",
+  "pension.calc.money": "{total} × {value} per point × {factor} = {monthly} per month.",
+  "pension.outlierNotice":
+    "{year} records {points} points, far above your other years. The projection ignores it, but the row is still wrong: a Renteninformation's cumulative total belongs in “Total points”, not in a single year.",
   "pension.targetMonthly": "Target pension / month",
   "pension.standardAge": "Standard retirement age: {age}",
   "pension.cappedNotice": "{raw} points a year is more than a year can earn, so the projection assumes {max}. If that is your total so far, it belongs in “Total points”.",
@@ -3605,8 +3611,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.birthYear": "Geburtsjahr",
   "pension.retirementAge": "Geplantes Renteneintrittsalter",
   "pension.annualPoints": "Entgeltpunkte pro Jahr",
-  "pension.annualPointsHint": "Dein bisheriger Durchschnitt: {points}",
-  "pension.annualPointsHintMax": "Dein bisheriger Durchschnitt: {points}. Ein Jahr bringt höchstens {max}.",
+  "pension.annualPointsHint": "Dein typisches Jahr bisher: {points}",
+  "pension.annualPointsHintMax":
+    "Dein typisches Jahr bisher: {points}. Ein Jahr bringt höchstens {max}.",
+  "pension.calc.points":
+    "{current} Punkte erworben + {annual} pro Jahr × {years} Jahre = {total} Punkte.",
+  "pension.calc.money": "{total} × {value} pro Punkt × {factor} = {monthly} pro Monat.",
+  "pension.outlierNotice":
+    "{year} steht mit {points} Punkten weit über deinen anderen Jahren. Die Hochrechnung lässt die Zeile außen vor, falsch ist sie trotzdem: der Gesamtstand aus der Renteninformation gehört in „Entgeltpunkte insgesamt“, nicht in ein einzelnes Jahr.",
   "pension.targetMonthly": "Wunschrente / Monat",
   "pension.standardAge": "Regelaltersgrenze: {age}",
   "pension.cappedNotice": "{raw} Punkte pro Jahr kann ein Jahr nicht bringen, die Hochrechnung nimmt deshalb {max} an. Ist das dein bisheriger Gesamtstand, gehört er in „Entgeltpunkte insgesamt“.",
@@ -5837,8 +5849,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.birthYear": "Año de nacimiento",
   "pension.retirementAge": "Edad de jubilación prevista",
   "pension.annualPoints": "Puntos de pensión por año",
-  "pension.annualPointsHint": "Tu media hasta ahora: {points}",
-  "pension.annualPointsHintMax": "Tu media hasta ahora: {points}. Un año da como máximo {max}.",
+  "pension.annualPointsHint": "Tu año típico hasta ahora: {points}",
+  "pension.annualPointsHintMax":
+    "Tu año típico hasta ahora: {points}. Un año da como máximo {max}.",
+  "pension.calc.points":
+    "{current} puntos ganados + {annual} al año × {years} años = {total} puntos.",
+  "pension.calc.money": "{total} × {value} por punto × {factor} = {monthly} al mes.",
+  "pension.outlierNotice":
+    "{year} registra {points} puntos, muy por encima de tus otros años. La proyección lo ignora, pero la fila sigue estando mal: el total acumulado de la Renteninformation va en «Puntos totales», no en un solo año.",
   "pension.targetMonthly": "Pensión objetivo / mes",
   "pension.standardAge": "Edad ordinaria de jubilación: {age}",
   "pension.cappedNotice": "{raw} puntos al año es más de lo que un año puede dar, así que la proyección asume {max}. Si esa cifra es tu total acumulado, va en «Puntos totales».",

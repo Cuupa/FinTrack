@@ -44,6 +44,7 @@ import {
   usePagination,
 } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
+import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 
@@ -400,13 +401,12 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
                   <Td align="right">{row.points.toFixed(4)}</Td>
                   <Td className="text-zinc-500">{row.note ?? ""}</Td>
                   <Td align="right">
-                    <button
-                      type="button"
-                      onClick={() => setPendingDelete(row)}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      {t("common.delete")}
-                    </button>
+                    <RowActions>
+                      <DeleteAction
+                        label={t("common.delete")}
+                        onClick={() => setPendingDelete(row)}
+                      />
+                    </RowActions>
                   </Td>
                 </Tr>
               ))}
@@ -647,22 +647,10 @@ function ContractsCard() {
                   <Td align="right">{money(c.currentValue)}</Td>
                   <Td className="text-zinc-500">{c.startsOn ?? "—"}</Td>
                   <Td align="right">
-                    <div className="flex justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(c)}
-                        className="text-xs hover:underline"
-                      >
-                        {t("pension.edit")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingDelete(c)}
-                        className="text-xs text-red-600 hover:underline"
-                      >
-                        {t("common.delete")}
-                      </button>
-                    </div>
+                    <RowActions>
+                      <EditAction label={t("pension.edit")} onClick={() => setEditing(c)} />
+                      <DeleteAction label={t("common.delete")} onClick={() => setPendingDelete(c)} />
+                    </RowActions>
                   </Td>
                 </Tr>
               ))}
@@ -777,6 +765,40 @@ export function PensionView() {
             value={level != null ? `${level.toFixed(1)} %` : "—"}
           />
         </div>
+        {/* The projection's own arithmetic, in full. A single number cannot be
+            argued with when it disagrees with the Renteninformation; these two
+            lines say which input is responsible. */}
+        <p className="mt-4 text-xs text-zinc-500">
+          {t("pension.calc.points", {
+            current: projection.currentPoints.toFixed(2),
+            annual: projection.annualPoints.toFixed(2),
+            years: String(
+              projection.retirementYear != null
+                ? Math.max(0, projection.retirementYear - new Date().getFullYear())
+                : 0,
+            ),
+            total: projection.totalPoints.toFixed(2),
+          })}
+          {projection.pensionValue != null && (
+            <>
+              {" "}
+              {t("pension.calc.money", {
+                total: projection.totalPoints.toFixed(2),
+                value: formatCurrency(projection.pensionValue, currency),
+                factor: projection.accessFactor.toFixed(3),
+                monthly: money(projection.monthlyStatutory),
+              })}
+            </>
+          )}
+        </p>
+        {projection.outlierYear && (
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+            {t("pension.outlierNotice", {
+              year: String(projection.outlierYear.year),
+              points: projection.outlierYear.points.toFixed(2),
+            })}
+          </p>
+        )}
         {projection.annualPointsCapped && projection.maxAnnualPoints != null && (
           <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
             {t("pension.cappedNotice", {

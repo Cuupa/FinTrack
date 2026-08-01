@@ -121,6 +121,64 @@ export function averageAnnualPoints(entries: readonly PensionPoint[], window = 5
   return totalPensionPoints(recent) / recent.length;
 }
 
+/** How far above the typical year a row has to sit to be called out. A real
+    career step change is well under this; a cumulative total is far over it. */
+const OUTLIER_FACTOR = 3;
+
+/**
+ * The assumption for every year still to come: the MEDIAN of the recent
+ * window, not the mean.
+ *
+ * A year's Entgeltpunkte barely move from one year to the next, so the median
+ * and the mean agree on real data. They disagree in exactly one situation, and
+ * it is the situation that keeps happening: a Renteninformation leads with a
+ * CUMULATIVE total, and that total gets typed into a single year's row. One
+ * row of 17 among rows of 1.2 drags the mean to ~6.4, every remaining year
+ * inherits it, and the projection lands near 200 points and a five-figure
+ * monthly pension against a statement saying 2.640 EUR. The median ignores it.
+ *
+ * `maxPointsOn` is the other half of that defence, but it is reference data:
+ * absent (a lagging migration, no Supabase) there is no cap at all, and a
+ * projection must not depend on a row existing in order to not be absurd.
+ */
+export function typicalAnnualPoints(entries: readonly PensionPoint[], window = 5): number {
+  const recent = [...entries]
+    .sort((a, b) => b.year - a.year)
+    .slice(0, Math.max(1, window))
+    .map((e) => (Number.isFinite(e.points) ? e.points : 0))
+    .sort((a, b) => a - b);
+  if (recent.length === 0) return 0;
+  const mid = Math.floor(recent.length / 2);
+  // Even counts take the LOWER of the two middles rather than their average:
+  // with two rows, one of which may be a mistyped cumulative total, averaging
+  // reintroduces exactly the problem the median is here to remove.
+  return recent.length % 2 === 1 ? recent[mid] : recent[mid - 1];
+}
+
+/**
+ * A recorded year far above the typical one -- the signature of a cumulative
+ * total in a per-year row. Null when nothing stands out.
+ *
+ * Reported rather than silently dropped: the row is the user's data and only
+ * they can say whether it is wrong, but a projection resting on it has to say
+ * so out loud.
+ */
+export function annualPointsOutlier(
+  entries: readonly PensionPoint[],
+  window = 5,
+): PensionPoint | null {
+  const typical = typicalAnnualPoints(entries, window);
+  if (typical <= 0) return null;
+  const recent = [...entries].sort((a, b) => b.year - a.year).slice(0, Math.max(1, window));
+  let worst: PensionPoint | null = null;
+  for (const e of recent) {
+    if (e.points > typical * OUTLIER_FACTOR && (worst === null || e.points > worst.points)) {
+      worst = e;
+    }
+  }
+  return worst;
+}
+
 /**
  * Regelaltersgrenze for a birth cohort, in years: 65 up to 1946, rising by one
  * month per cohort to 66 (1947-1957), then by two months per cohort to 67
@@ -162,12 +220,20 @@ export interface PensionProjection {
   /** True when the assumption had to be capped -- the signature of a
    *  cumulative total typed into a single year's row. */
   annualPointsCapped: boolean;
+  /** A recorded year far above the typical one, or null. The median assumption
+   *  already ignores it, but the row itself is still wrong and only the user
+   *  can correct it. */
+  outlierYear: PensionPoint | null;
   /** Calendar year the pension starts, or null without a birth year. */
   retirementYear: number | null;
   /** Regelaltersgrenze for the cohort, or null without a birth year. */
   standardAge: number | null;
   /** Zugangsfaktor applied to the projected pension. */
   accessFactor: number;
+  /** The Rentenwert the points were valued at, or null with no reference data.
+   *  Surfaced so the page can show its own arithmetic: one opaque number is
+   *  impossible to argue with when it disagrees with the official statement. */
+  pensionValue: number | null;
   /** Gross monthly statutory pension at retirement, in today's money. Null
    *  when there is no reference Rentenwert to value the points with. */
   monthlyStatutory: number | null;
@@ -218,7 +284,7 @@ export function projectPension(input: {
   // and a ~20.000 EUR monthly pension. The cap is reference data, not a
   // constant here (same rule as the Rentenwert), and no reference data means no
   // cap rather than an invented one.
-  const rawAnnualPoints = settings.annualPoints ?? averageAnnualPoints(entries);
+  const rawAnnualPoints = settings.annualPoints ?? typicalAnnualPoints(entries);
   const maxAnnualPoints = maxPointsOn(reference, currentYear);
   const annualPoints =
     maxAnnualPoints != null ? Math.min(rawAnnualPoints, maxAnnualPoints) : rawAnnualPoints;
@@ -244,9 +310,11 @@ export function projectPension(input: {
     rawAnnualPoints,
     maxAnnualPoints,
     annualPointsCapped: annualPoints < rawAnnualPoints,
+    outlierYear: annualPointsOutlier(entries),
     retirementYear,
     standardAge,
     accessFactor: factor,
+    pensionValue,
     monthlyStatutory,
     monthlyEarned,
     monthlyPrivate,
