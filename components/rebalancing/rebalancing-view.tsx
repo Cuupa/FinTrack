@@ -17,11 +17,15 @@ import type { Slice } from "@/lib/finance/allocation";
 import { formatCurrency, parseDecimal, plColor } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { PALETTE } from "@/lib/colors";
 import { RebalancingTour, TourReplayButton } from "@/components/onboarding/page-tours";
 
 type RebalanceMode = "trade" | "buyOnly";
+
+type SortKey = "position" | "current" | "targetPct" | "targetValue" | "action";
 
 interface Target {
   id: string;
@@ -30,6 +34,14 @@ interface Target {
   current: number;
   /** Target weight as a percentage (0..100). */
   pct: number;
+}
+
+interface EnrichedTarget extends Target {
+  targetValue: number;
+  delta: number;
+  /** Buy-only keeps over-weight/zero-target positions untouched. */
+  kept: boolean;
+  isCustom: boolean;
 }
 
 let customSeq = 0;
@@ -146,6 +158,36 @@ export function RebalancingView() {
   // buy-only grows the pool to `buyOnlyTotal` with new contributions.
   const total = buyOnly ? buyOnlyTotal : currentTotal;
   const additionalNeeded = Math.max(0, total - currentTotal);
+
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("position");
+  const enrichedRows = useMemo<EnrichedTarget[]>(
+    () =>
+      rows.map((r) => {
+        const rawTarget = (r.pct / 100) * total;
+        // Buy-only keeps over-weight/zero-target positions untouched.
+        const kept = buyOnly && rawTarget < r.current;
+        const targetValue = kept ? r.current : rawTarget;
+        return {
+          ...r,
+          targetValue,
+          delta: targetValue - r.current,
+          kept,
+          isCustom: r.id.startsWith("custom-"),
+        };
+      }),
+    [rows, total, buyOnly],
+  );
+  const sortedRows = useMemo(
+    () =>
+      applySort(enrichedRows, (r, key) => {
+        if (key === "position") return r.name;
+        if (key === "current") return r.current;
+        if (key === "targetPct") return r.pct;
+        if (key === "targetValue") return r.targetValue;
+        return r.delta;
+      }),
+    [enrichedRows, applySort],
+  );
 
   // One colour per position (by name), shared across both donuts and the table
   // swatches so the same holding is the same colour everywhere.
@@ -275,100 +317,107 @@ export function RebalancingView() {
           </div>
         </div>
 
-        <div data-tour="rebalance-table" className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <th className="py-2 pr-3">{t("rebalance.colPosition")}</th>
-                <th className="py-2 pr-3 text-right">{t("rebalance.current")}</th>
-                <th data-tour="rebalance-target-pct" className="py-2 pr-3 text-right">
-                  {t("rebalance.colTargetPct")}
-                </th>
-                <th className="py-2 pr-3 text-right">{t("rebalance.colTargetValue")}</th>
-                <th data-tour="rebalance-orders" className="py-2 pr-3 text-right">
-                  {t("rebalance.colAction")}
-                </th>
-                <th className="py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const rawTarget = (r.pct / 100) * total;
-                // Buy-only keeps over-weight/zero-target positions untouched.
-                const kept = buyOnly && rawTarget < r.current;
-                const targetValue = kept ? r.current : rawTarget;
-                const delta = targetValue - r.current;
-                const isCustom = r.id.startsWith("custom-");
-                return (
-                  <tr
-                    key={r.id}
-                    onMouseEnter={() => setActiveName(r.name)}
-                    onMouseLeave={() => setActiveName(null)}
-                    className={`border-b border-zinc-100 last:border-0 dark:border-zinc-800/60 ${
-                      activeName === r.name ? "bg-zinc-50 dark:bg-zinc-800/40" : ""
-                    }`}
-                  >
-                    <td className="py-2 pr-3">
-                      <div className="inline-flex items-center gap-2">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
-                          style={{ backgroundColor: colorByName[r.name] ?? "#a1a1aa" }}
-                        />
-                        {isCustom ? (
-                          <input
-                            value={r.name}
-                            onChange={(e) => renameCustom(r.id, e.target.value)}
-                            className="w-40 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-                          />
-                        ) : (
-                          <span className="font-medium">{r.name}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-zinc-500" data-private>
-                      {formatCurrency(r.current, base)}
-                    </td>
-                    <td className="py-2 pr-3 text-right">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.1"
-                        min={0}
-                        value={r.pct}
-                        onChange={(e) => setPct(r.id, e.target.value)}
-                        className="w-20 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+        <div data-tour="rebalance-table">
+          <Table className="mt-4" ariaLabel={t("rebalance.targetAllocation")}>
+            <Thead>
+              <Th sort={sort} sortKey="position" onSort={toggleSort}>
+                {t("rebalance.colPosition")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="current" onSort={toggleSort}>
+                {t("rebalance.current")}
+              </Th>
+              <Th
+                data-tour="rebalance-target-pct"
+                align="right"
+                sort={sort}
+                sortKey="targetPct"
+                onSort={toggleSort}
+              >
+                {t("rebalance.colTargetPct")}
+              </Th>
+              <Th align="right" sort={sort} sortKey="targetValue" onSort={toggleSort}>
+                {t("rebalance.colTargetValue")}
+              </Th>
+              <Th
+                data-tour="rebalance-orders"
+                align="right"
+                sort={sort}
+                sortKey="action"
+                onSort={toggleSort}
+              >
+                {t("rebalance.colAction")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
+              {sortedRows.map((r) => (
+                <Tr
+                  key={r.id}
+                  selected={activeName === r.name}
+                  onMouseEnter={() => setActiveName(r.name)}
+                  onMouseLeave={() => setActiveName(null)}
+                >
+                  <Td>
+                    <div className="inline-flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                        style={{ backgroundColor: colorByName[r.name] ?? "#a1a1aa" }}
                       />
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
-                      {formatCurrency(targetValue, base)}
-                    </td>
-                    <td
-                      className={`py-2 pr-3 text-right tabular-nums ${
-                        kept || Math.abs(delta) < 0.005 ? "text-zinc-400" : plColor(delta)
-                      }`}
-                      data-private
-                    >
-                      {kept || Math.abs(delta) < 0.005
-                        ? t("rebalance.keep")
-                        : `${delta >= 0 ? t("rebalance.buy") : t("rebalance.sell")} ${formatCurrency(Math.abs(delta), base)}`}
-                    </td>
-                    <td className="py-2 text-right">
-                      {isCustom && (
-                        <button
-                          type="button"
-                          onClick={() => removeCustom(r.id)}
-                          className="text-xs text-zinc-400 hover:text-red-500"
-                          aria-label={t("rebalance.removePosition")}
-                        >
-                          ✕
-                        </button>
+                      {r.isCustom ? (
+                        <input
+                          value={r.name}
+                          onChange={(e) => renameCustom(r.id, e.target.value)}
+                          className="w-40 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                        />
+                      ) : (
+                        <span className="font-medium">{r.name}</span>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </Td>
+                  <Td align="right" className="tabular-nums text-zinc-500" data-private>
+                    {formatCurrency(r.current, base)}
+                  </Td>
+                  <Td align="right">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min={0}
+                      value={r.pct}
+                      onChange={(e) => setPct(r.id, e.target.value)}
+                      className="w-20 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </Td>
+                  <Td align="right" className="tabular-nums" data-private>
+                    {formatCurrency(r.targetValue, base)}
+                  </Td>
+                  <Td
+                    align="right"
+                    className={`tabular-nums ${
+                      r.kept || Math.abs(r.delta) < 0.005 ? "text-zinc-400" : plColor(r.delta)
+                    }`}
+                    data-private
+                  >
+                    {r.kept || Math.abs(r.delta) < 0.005
+                      ? t("rebalance.keep")
+                      : `${r.delta >= 0 ? t("rebalance.buy") : t("rebalance.sell")} ${formatCurrency(Math.abs(r.delta), base)}`}
+                  </Td>
+                  <Td align="right">
+                    {r.isCustom && (
+                      <button
+                        type="button"
+                        onClick={() => removeCustom(r.id)}
+                        className="text-xs text-zinc-400 hover:text-red-500"
+                        aria-label={t("rebalance.removePosition")}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
         </div>
 
         <div className="mt-4 flex items-center justify-between text-sm">

@@ -37,7 +37,8 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError } from "@/lib/store/errors";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
@@ -371,10 +372,7 @@ export function GoalsView() {
 
   // Not targetDate: an open-ended goal is a first-class goal, so the default
   // order must not be the one column it deliberately leaves empty.
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "progress",
-    dir: "desc",
-  });
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("progress", "desc");
   const [confirmDelete, setConfirmDelete] = useState<Goal | null>(null);
   const deletedSubGoals = confirmDelete ? subGoals(data.goals, confirmDelete.id).length : 0;
   const [editing, setEditing] = useState<Goal | null>(null);
@@ -447,40 +445,34 @@ export function GoalsView() {
       };
     };
 
-    const bySort = (x: Row, y: Row) => {
-      let cmp = 0;
-      if (sort.key === "name") cmp = x.goal.name.localeCompare(y.goal.name);
-      else if (sort.key === "progress") cmp = x.pct - y.pct;
-      else if (sort.key === "targetAmount") cmp = x.target - y.target;
-      else cmp = (x.goal.targetDate ?? "").localeCompare(y.goal.targetDate ?? "");
-      return sort.dir === "asc" ? cmp : -cmp;
+    const value = (r: Row, key: SortKey) => {
+      if (key === "name") return r.goal.name;
+      if (key === "progress") return r.pct;
+      if (key === "targetAmount") return r.target;
+      return r.goal.targetDate;
     };
 
     // Sub-goals stay under their parent; sorting reorders the top level and,
     // inside each composite goal, its own parts.
     const tree: TreeRow[] = [...payoffGoals, ...topLevelGoals(data.goals)].map((g) => {
       const children = subGoals(data.goals, g.id);
-      return { ...measure(g, children), children: children.map((c) => measure(c, [])).sort(bySort) };
+      return {
+        ...measure(g, children),
+        children: applySort(children.map((c) => measure(c, [])), value),
+      };
     });
-    tree.sort(bySort);
-    return tree;
+    return applySort(tree, value);
   }, [
     data.goals,
     data.accounts,
     data.accountBalances,
     payoffGoals,
     valuation,
-    sort,
+    applySort,
     todayIso,
     investments,
     movements,
   ]);
-
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
-    );
-  }
 
   /**
    * One table row. `childCount` > 0 marks a composite goal, whose figures are
@@ -505,11 +497,8 @@ export function GoalsView() {
         ? data.portfolios.find((p) => p.id === goal.linkedPortfolioId)
         : null;
     return (
-      <tr
-        key={goal.id}
-        className="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-      >
-        <td className={`px-3 py-2 font-medium ${isChild ? "pl-8" : ""}`} data-private>
+      <Tr key={goal.id}>
+        <Td className={`font-medium ${isChild ? "pl-8" : ""}`} data-private>
           {isChild && <span className="mr-1 text-zinc-400">↳</span>}
           {goal.name}
           <div className="text-xs font-normal text-zinc-500">
@@ -527,8 +516,8 @@ export function GoalsView() {
                     ? t("goals.list.linkedTo", { name: linkedAccount.name })
                     : t("goals.list.manualTracking")}
           </div>
-        </td>
-        <td className="px-3 py-2">
+        </Td>
+        <Td>
           <div className="min-w-[10rem]">
             <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
               <span data-private>
@@ -548,18 +537,18 @@ export function GoalsView() {
               </p>
             )}
           </div>
-        </td>
-        <td className="px-3 py-2 text-right tabular-nums" data-private>
+        </Td>
+        <Td align="right" className="tabular-nums" data-private>
           {formatCurrency(target, base)}
-        </td>
-        <td className="px-3 py-2">
+        </Td>
+        <Td>
           {goal.targetDate ? (
             formatDate(goal.targetDate)
           ) : (
             <span className="text-zinc-500">{t("goals.list.openEnded")}</span>
           )}
-        </td>
-        <td className="px-3 py-2">
+        </Td>
+        <Td>
           <RowActions>
             {!derived && (
               <>
@@ -571,16 +560,12 @@ export function GoalsView() {
               </>
             )}
           </RowActions>
-        </td>
-      </tr>
+        </Td>
+      </Tr>
     );
   }
 
   const pager = usePagination(rows);
-
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-  const thCls =
-    "cursor-pointer select-none px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200";
 
   return (
     <div className="space-y-6">
@@ -602,38 +587,32 @@ export function GoalsView() {
         {rows.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("goals.list.empty")}</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={thCls} onClick={() => toggleSort("name")}>
-                    {t("goals.list.name")}
-                    {arrow("name")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("progress")}>
-                    {t("goals.list.progress")}
-                    {arrow("progress")}
-                  </th>
-                  <th className={`${thCls} text-right`} onClick={() => toggleSort("targetAmount")}>
-                    {t("goals.list.target")}
-                    {arrow("targetAmount")}
-                  </th>
-                  <th className={thCls} onClick={() => toggleSort("targetDate")}>
-                    {t("goals.list.targetDate")}
-                    {arrow("targetDate")}
-                  </th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            <Table className="mt-4" ariaLabel={t("goals.list.title")}>
+              <Thead>
+                <Th sort={sort} sortKey="name" onSort={toggleSort}>
+                  {t("goals.list.name")}
+                </Th>
+                <Th sort={sort} sortKey="progress" onSort={toggleSort}>
+                  {t("goals.list.progress")}
+                </Th>
+                <Th align="right" sort={sort} sortKey="targetAmount" onSort={toggleSort}>
+                  {t("goals.list.target")}
+                </Th>
+                <Th sort={sort} sortKey="targetDate" onSort={toggleSort}>
+                  {t("goals.list.targetDate")}
+                </Th>
+                <Th />
+              </Thead>
+              <Tbody>
                 {pager.rows.flatMap((row) => [
                   renderRow(row, row.children.length),
                   ...row.children.map((child) => renderRow(child, 0, true)),
                 ])}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
             <TablePagination pager={pager} />
-          </div>
+          </>
         )}
       </Card>
 

@@ -19,10 +19,12 @@ import { formatCurrency, formatDate, formatNumber, formatPercent, plColor } from
 import { assetIdentifier, type AssetType } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
 type SortKey = "name" | "price" | "value" | "entry" | "profit" | "allocation";
+type PastSortKey = "name" | "realizedPL" | "lastTransaction";
 
 const TYPE_FILTERS: (AssetType | "ALL")[] = [
   "ALL",
@@ -85,10 +87,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
 
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetType | "ALL">("ALL");
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({
-    key: "value",
-    dir: -1,
-  });
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("value", "desc");
 
   const rows = useMemo<Row[]>(() => {
     const q = query.trim().toLowerCase();
@@ -109,19 +108,33 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         entry: h.position.avgCost,
         profit: holdingPeriodProfit(h.asset, data.transactions, timeframe, valuation),
       }));
-    return list.sort((a, b) => compare(a, b, sort.key) * sort.dir);
-  }, [holdings, query, typeFilter, sort, total, data.transactions, timeframe, valuation]);
+    return applySort(list, (r, key) => {
+      if (key === "name") return r.h.asset.name;
+      // CASH has no per-unit price — sort by what's actually displayed (the
+      // position's total value) instead of the constant 1.
+      if (key === "price") return r.h.asset.type === "CASH" ? r.h.marketValue : r.h.price;
+      if (key === "entry") return r.entry;
+      if (key === "value") return r.h.marketValue;
+      if (key === "profit") return r.profit.abs;
+      return r.allocation;
+    });
+  }, [holdings, query, typeFilter, applySort, total, data.transactions, timeframe, valuation]);
 
   const pager = usePagination(rows);
-  const pastPager = usePagination(pastHoldings);
+
+  const pastSort = useSort<PastSortKey>("name");
+  const sortedPastHoldings = useMemo(
+    () =>
+      pastSort.apply(pastHoldings, (h, key) => {
+        if (key === "name") return h.asset.name;
+        if (key === "realizedPL") return h.realizedPL;
+        return lastTxDate.get(h.asset.id) ?? null;
+      }),
+    [pastHoldings, pastSort, lastTxDate],
+  );
+  const pastPager = usePagination(sortedPastHoldings);
 
   if (data.assets.length === 0) return null;
-
-  function toggleSort(key: SortKey) {
-    setSort((s) =>
-      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: -1 },
-    );
-  }
 
   return (
     <>
@@ -206,84 +219,86 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         </ul>
 
         {/* Desktop: full sortable table. */}
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <Th label={t("table.name")} k="name" sort={sort} onSort={toggleSort} />
-                <Th label={t("table.currentPrice")} k="price" sort={sort} onSort={toggleSort} align="right" />
-                <Th label={t("table.entryPrice")} k="entry" sort={sort} onSort={toggleSort} align="right" />
-                <Th label={t("table.currentValue")} k="value" sort={sort} onSort={toggleSort} align="right" />
-                <Th label={`${t("table.profit")} (${timeframe})`} k="profit" sort={sort} onSort={toggleSort} align="right" />
-                <Th label={t("table.allocation")} k="allocation" sort={sort} onSort={toggleSort} align="right" />
-              </tr>
-            </thead>
-            <tbody>
-              {pager.rows.map(({ h, allocation, entry, profit }) => {
-                const nativeCur = h.currency || currency;
-                const isCash = h.asset.type === "CASH";
-                const gain = h.price - entry;
-                return (
-                  <tr
-                    key={h.asset.id}
-                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className="px-4 py-3">
-                      <Link href={`/assets/${h.asset.id}`} className="font-medium hover:underline">
-                        {h.asset.name}
-                      </Link>
-                      <div className="text-xs text-zinc-500">
-                        <AssetIdentifiers asset={h.asset} />
+        <Table className="hidden md:block" ariaLabel={t("table.holdings")}>
+          <Thead>
+            <Th sort={sort} sortKey="name" onSort={toggleSort}>
+              {t("table.name")}
+            </Th>
+            <Th align="right" sort={sort} sortKey="price" onSort={toggleSort}>
+              {t("table.currentPrice")}
+            </Th>
+            <Th align="right" sort={sort} sortKey="entry" onSort={toggleSort}>
+              {t("table.entryPrice")}
+            </Th>
+            <Th align="right" sort={sort} sortKey="value" onSort={toggleSort}>
+              {t("table.currentValue")}
+            </Th>
+            <Th align="right" sort={sort} sortKey="profit" onSort={toggleSort}>
+              {`${t("table.profit")} (${timeframe})`}
+            </Th>
+            <Th align="right" sort={sort} sortKey="allocation" onSort={toggleSort}>
+              {t("table.allocation")}
+            </Th>
+          </Thead>
+          <Tbody>
+            {pager.rows.map(({ h, allocation, entry, profit }) => {
+              const nativeCur = h.currency || currency;
+              const isCash = h.asset.type === "CASH";
+              const gain = h.price - entry;
+              return (
+                <Tr key={h.asset.id}>
+                  <Td>
+                    <Link href={`/assets/${h.asset.id}`} className="font-medium hover:underline">
+                      {h.asset.name}
+                    </Link>
+                    <div className="text-xs text-zinc-500">
+                      <AssetIdentifiers asset={h.asset} />
+                    </div>
+                  </Td>
+                  <Td align="right" className="tabular-nums" {...(isCash ? { "data-private": "" } : {})}>
+                    {isCash ? (
+                      formatCurrency(h.marketValue, currency)
+                    ) : (
+                      <>
+                        {formatCurrency(h.price, nativeCur)}
+                        {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
+                        {entry > 0 && (
+                          <span className={`ml-1 text-xs ${plColor(gain)}`}>
+                            ({formatPercent(gain / entry)})
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Td>
+                  <Td align="right" className="tabular-nums text-zinc-500" data-private>
+                    {isCash ? "—" : formatCurrency(entry, nativeCur)}
+                  </Td>
+                  <Td align="right" className="font-medium tabular-nums" data-private>
+                    {formatCurrency(h.marketValue, currency)}
+                  </Td>
+                  <Td align="right" className={`tabular-nums ${plColor(profit.abs)}`} data-private>
+                    {profit.abs >= 0 ? "+" : ""}
+                    {formatCurrency(profit.abs, currency)}
+                    <span className="ml-1 text-xs opacity-80">({formatPercent(profit.pct)})</span>
+                  </Td>
+                  <Td align="right" className="tabular-nums">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-zinc-100 sm:block dark:bg-zinc-800">
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${Math.min(100, allocation * 100)}%` }}
+                        />
                       </div>
-                    </td>
-                    <td
-                      className="px-4 py-3 text-right tabular-nums"
-                      {...(isCash ? { "data-private": "" } : {})}
-                    >
-                      {isCash ? (
-                        formatCurrency(h.marketValue, currency)
-                      ) : (
-                        <>
-                          {formatCurrency(h.price, nativeCur)}
-                          {h.syntheticPrice && <EstimatedBadge compact tip={t("data.estimatedPriceTip")} />}
-                          {entry > 0 && (
-                            <span className={`ml-1 text-xs ${plColor(gain)}`}>
-                              ({formatPercent(gain / entry)})
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-500" data-private>
-                      {isCash ? "—" : formatCurrency(entry, nativeCur)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums" data-private>
-                      {formatCurrency(h.marketValue, currency)}
-                    </td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${plColor(profit.abs)}`} data-private>
-                      {profit.abs >= 0 ? "+" : ""}
-                      {formatCurrency(profit.abs, currency)}
-                      <span className="ml-1 text-xs opacity-80">({formatPercent(profit.pct)})</span>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-zinc-100 sm:block dark:bg-zinc-800">
-                          <div
-                            className="h-full rounded-full bg-emerald-500"
-                            style={{ width: `${Math.min(100, allocation * 100)}%` }}
-                          />
-                        </div>
-                        <span className="w-12 text-right tabular-nums">
-                          {formatNumber(allocation * 100, 1)}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <span className="w-12 text-right tabular-nums">
+                        {formatNumber(allocation * 100, 1)}%
+                      </span>
+                    </div>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </Tbody>
+        </Table>
         <div className="px-4 pb-4">
           <TablePagination pager={pager} />
         </div>
@@ -300,40 +315,46 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
           {t("table.pastHoldings")}{" "}
           <span className="font-normal text-zinc-400">({pastHoldings.length})</span>
         </summary>
-        <div className="overflow-x-auto border-t border-zinc-200 dark:border-zinc-800">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
-                <th className="px-4 py-2 font-medium">{t("table.name")}</th>
-                <th className="px-4 py-2 text-right font-medium">{t("stat.realized")}</th>
-                <th className="px-4 py-2 text-right font-medium">{t("table.lastTransaction")}</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="border-t border-zinc-200 dark:border-zinc-800">
+          <Table ariaLabel={t("table.pastHoldings")}>
+            <Thead>
+              <Th sort={pastSort.sort} sortKey="name" onSort={pastSort.toggle}>
+                {t("table.name")}
+              </Th>
+              <Th align="right" sort={pastSort.sort} sortKey="realizedPL" onSort={pastSort.toggle}>
+                {t("stat.realized")}
+              </Th>
+              <Th
+                align="right"
+                sort={pastSort.sort}
+                sortKey="lastTransaction"
+                onSort={pastSort.toggle}
+              >
+                {t("table.lastTransaction")}
+              </Th>
+            </Thead>
+            <Tbody>
               {pastPager.rows.map((h) => (
-                <tr
-                  key={h.asset.id}
-                  className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                >
-                  <td className="px-4 py-3">
+                <Tr key={h.asset.id}>
+                  <Td>
                     <Link href={`/assets/${h.asset.id}`} className="font-medium hover:underline">
                       {h.asset.name}
                     </Link>
                     <div className="text-xs text-zinc-500">
                       <AssetIdentifiers asset={h.asset} />
                     </div>
-                  </td>
-                  <td className={`px-4 py-3 text-right tabular-nums ${plColor(h.realizedPL)}`} data-private>
+                  </Td>
+                  <Td align="right" className={`tabular-nums ${plColor(h.realizedPL)}`} data-private>
                     {h.realizedPL >= 0 ? "+" : ""}
                     {formatCurrency(h.realizedPL, currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-zinc-500">
+                  </Td>
+                  <Td align="right" className="tabular-nums text-zinc-500">
                     {formatDate(lastTxDate.get(h.asset.id) ?? "")}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table>
+            </Tbody>
+          </Table>
           <div className="px-4 pb-4">
             <TablePagination pager={pastPager} />
           </div>
@@ -342,53 +363,4 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     )}
     </>
   );
-}
-
-function Th({
-  label,
-  k,
-  sort,
-  onSort,
-  align = "left",
-}: {
-  label: string;
-  k: SortKey;
-  sort: { key: SortKey; dir: 1 | -1 };
-  onSort: (k: SortKey) => void;
-  align?: "left" | "right";
-}) {
-  const active = sort.key === k;
-  return (
-    <th className={`px-4 py-2 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        onClick={() => onSort(k)}
-        className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        {label}
-        <span className="text-[10px]">{active ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
-  );
-}
-
-function compare(a: Row, b: Row, key: SortKey): number {
-  switch (key) {
-    case "name":
-      return a.h.asset.name.localeCompare(b.h.asset.name);
-    case "price": {
-      // CASH has no per-unit price — sort by what's actually displayed (the
-      // position's total value) instead of the constant 1.
-      const av = a.h.asset.type === "CASH" ? a.h.marketValue : a.h.price;
-      const bv = b.h.asset.type === "CASH" ? b.h.marketValue : b.h.price;
-      return av - bv;
-    }
-    case "entry":
-      return a.entry - b.entry;
-    case "value":
-      return a.h.marketValue - b.h.marketValue;
-    case "profit":
-      return a.profit.abs - b.profit.abs;
-    case "allocation":
-      return a.allocation - b.allocation;
-  }
 }

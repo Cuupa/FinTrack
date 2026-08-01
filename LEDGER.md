@@ -30,6 +30,7 @@ subworker; commit only the paths you claimed.
 | KPIs: Übersicht war "nur Depot" | MEDIUM | done | net-worth-hero (Sparquote + Abgedeckte Monate statt G/V-Paar, nur auf /), e2e/dashboard-kpis.spec.ts |
 | Resilience: eine kaputte Tabelle killt die App | HIGH | done (3e9c085) | supabase-store `degraded`, components/portfolio/degraded-banner.tsx |
 | Rente: 17 Punkte -> 20k/Monat | HIGH | done, Migration 0111 muss laufen | lib/finance/pension.ts, lib/types.ts, lib/store/supabase-store.ts, lib/pension/, components/pension/, dictionaries, migration 0111, tests/pension.test.ts, e2e/pension.spec.ts |
+| Tabellen-Shell Batch 1 | HIGH | done | goals-view, dividends-view, asset-table, rebalancing-view, risk-view, ui/table.tsx (`after`) |
 | Demo-SQL erweitern | LOW | todo | supabase/ |
 | LLM: neue Daten aufnehmen | LOW | todo | lib/llm/context.ts |
 | Download/Export erweitern | LOW | todo | lib/export/ |
@@ -38,6 +39,32 @@ subworker; commit only the paths you claimed.
 | Vereinheitlichung: Tabellen-Shell | HIGH | teilweise (3 von 22) | debt-view, spending-view, accounts-view auf Table/Thead/Th/Tr/Td + useSort |
 | Sondertilgung: LIVE statt persistiert | HIGH | done | debt-repayments (controlled), debt-view, Store-Seam raus, Migration 0110, e2e/debt.spec.ts |
 | /debt-Layout entschlackt | HIGH | done | Graph + Regler in eine Karte oben, Tilgungsreihenfolge in die Tabelle, 6->4 Kennzahlen |
+
+## Teilweise: Tabellen-Shell, Batch 1 von 2 (2026-08-01)
+
+Der Ledger-Stand "3 von 22" war veraltet: gezaehlt sind es 18 Dateien, die den
+Shell schon importieren, und 7 mit rohem `<table>`. Batch 1 nimmt die fuenf
+nutzerseitigen: goals-view, dividends-view, asset-table, rebalancing-view,
+risk-view. Weg sind fuenf handgebaute `useState({key,dir})` samt Toggle und
+Inline-Comparator; drei Tabellen ("Nach Position" bei Dividenden, "Frueher
+gehalten" bei den Positionen, die Zielallokation im Rebalancing) waren gar
+nicht sortierbar und sind es jetzt (Owner-Regel).
+
+Dabei eine echte Ergaenzung am Shell statt einer Kopie: `Th` bekommt `after`.
+Die Risiko-Tabelle haengt an jede Spalte einen `InfoTip`, und der ist selbst
+ein `<button>` - im Sortier-Button verschachtelt ergibt das ungueltiges HTML,
+das React beim Hydrieren anmeckert. Der Subworker hatte dafuer den kompletten
+Sortier-Button in `risk-view` nachgebaut, also genau die Gabelung, gegen die
+dieser Task laeuft. Jetzt rendert der Shell den Tip als Geschwister. Der Tip
+folgt seinem Label auch in rechtsbuendigen Spalten (der Sortierpfeil dreht
+sich dort, der Tip nicht) - so wie jeder andere InfoTip in der App.
+
+Verifiziert im Browser bei 1080p: /portfolio 6, /rebalancing 5, /dividends 4,
+/analysis-Risiken 6 sortierbare Header, `aria-sort` kippt per Klick, null
+verschachtelte Buttons, null Konsolenfehler. 1092 Unit-Tests, 48 E2E gruen.
+
+Offen (Batch 2): risk-view ist durch, es bleiben debt-repayments,
+recurring/[kind]/[id] und 3x /admin (billing, flags, usage).
 
 ## Erledigt: 17 Rentenpunkte waren keine 20k Rente (2026-08-01)
 

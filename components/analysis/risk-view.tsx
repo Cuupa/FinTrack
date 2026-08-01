@@ -26,6 +26,9 @@ import { MetricCard } from "@/components/analysis/metric-card";
 import { formatNumber, formatPercent, plColor } from "@/lib/format";
 import { Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
+import { type SortState } from "@/lib/tables/sort";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
 import { RiskTour, TourReplayButton } from "@/components/onboarding/page-tours";
@@ -62,7 +65,7 @@ export function RiskView() {
 
   const [tf, setTf] = useState<Timeframe>("1Y");
   const [scope, setScope] = useState<string[]>([]);
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "weight", dir: -1 });
+  const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("weight", "desc");
   const [tourReplay, setTourReplay] = useState(0);
   const years = YEARS_FOR_TF[tf as RiskTimeframe];
 
@@ -209,16 +212,8 @@ export function RiskView() {
         weight: total > 0 ? h.marketValue / total : 0,
       };
     });
-    const val = (r: (typeof rows)[number], k: SortKey): number | string =>
-      k === "name" ? r.name.toLowerCase() : (r[k] ?? -Infinity);
-    return rows.sort((a, b) => {
-      const va = val(a, sort.key);
-      const vb = val(b, sort.key);
-      if (va < vb) return -1 * sort.dir;
-      if (va > vb) return 1 * sort.dir;
-      return 0;
-    });
-  }, [holdings, assetLevels, histories, years, benchLevels, total, sort]);
+    return applySort(rows, (r, key) => (key === "name" ? r.name : r[key]));
+  }, [holdings, assetLevels, histories, years, benchLevels, total, applySort]);
 
   const model = useMemo(
     () =>
@@ -237,9 +232,6 @@ export function RiskView() {
       </Card>
     );
   }
-
-  const toggleSort = (key: SortKey) =>
-    setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "name" ? 1 : -1 }));
 
   return (
     <div className="space-y-6">
@@ -364,88 +356,78 @@ export function RiskView() {
           {t("risk.byAsset")}
           <InfoTip text={t("risk.byAssetTip")} />
         </h3>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                <RiskTh label={t("risk.asset")} k="name" sort={sort} onSort={toggleSort} />
-                <RiskTh
-                  label={t("risk.volatility")}
-                  tip={t("risk.volatilityTip")}
-                  k="vol"
-                  align="right"
-                  sort={sort}
-                  onSort={toggleSort}
-                />
-                <RiskTh
-                  label={t("risk.beta")}
-                  suffix={t("risk.betaSuffix")}
-                  tip={t("risk.betaTip")}
-                  k="beta"
-                  align="right"
-                  sort={sort}
-                  onSort={toggleSort}
-                />
-                <RiskTh
-                  label={t("risk.alpha")}
-                  tip={t("risk.alphaTip")}
-                  k="alpha"
-                  align="right"
-                  sort={sort}
-                  onSort={toggleSort}
-                />
-                <RiskTh
-                  label={t("risk.sharpe")}
-                  tip={t("risk.sharpeTip")}
-                  k="sharpe"
-                  align="right"
-                  sort={sort}
-                  onSort={toggleSort}
-                />
-                <RiskTh
-                  label={t("risk.weight")}
-                  tip={t("risk.weightTip")}
-                  k="weight"
-                  align="right"
-                  sort={sort}
-                  onSort={toggleSort}
-                />
-              </tr>
-            </thead>
-            <tbody>
-              {assetRows.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60"
-                >
-                  <td className="py-2 pr-3">
-                    <Link href={`/assets/${r.id}`} className="font-medium hover:underline">
-                      {r.name}
-                    </Link>
-                    {r.symbol && (
-                      <span className="ml-1 font-mono text-xs text-zinc-500">{r.symbol}</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {r.vol > 0 ? formatPercent(r.vol, 1) : "—"}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    {r.beta != null ? formatNumber(r.beta, 2) : "—"}
-                  </td>
-                  <td className={`py-2 pr-3 text-right tabular-nums ${r.alpha != null ? plColor(r.alpha) : ""}`}>
-                    {r.alpha != null ? formatPercent(r.alpha, 1) : "—"}
-                  </td>
-                  <td className={`py-2 pr-3 text-right tabular-nums ${r.sharpe != null ? sharpeColor(r.sharpe) : ""}`}>
-                    {r.sharpe != null ? formatNumber(r.sharpe, 2) : "—"}
-                  </td>
-                  <td className="py-2 text-right tabular-nums text-zinc-500">
-                    {formatPercent(r.weight, 1)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table className="mt-3" ariaLabel={t("risk.byAsset")}>
+          <Thead>
+            <Th sort={sort} sortKey="name" onSort={toggleSort}>
+              {t("risk.asset")}
+            </Th>
+            <TipTh
+              label={t("risk.volatility")}
+              tip={t("risk.volatilityTip")}
+              sortKey="vol"
+              sort={sort}
+              onSort={toggleSort}
+            />
+            <TipTh
+              label={t("risk.beta")}
+              suffix={t("risk.betaSuffix")}
+              tip={t("risk.betaTip")}
+              sortKey="beta"
+              sort={sort}
+              onSort={toggleSort}
+            />
+            <TipTh
+              label={t("risk.alpha")}
+              tip={t("risk.alphaTip")}
+              sortKey="alpha"
+              sort={sort}
+              onSort={toggleSort}
+            />
+            <TipTh
+              label={t("risk.sharpe")}
+              tip={t("risk.sharpeTip")}
+              sortKey="sharpe"
+              sort={sort}
+              onSort={toggleSort}
+            />
+            <TipTh
+              label={t("risk.weight")}
+              tip={t("risk.weightTip")}
+              sortKey="weight"
+              sort={sort}
+              onSort={toggleSort}
+            />
+          </Thead>
+          <Tbody>
+            {assetRows.map((r) => (
+              <Tr key={r.id}>
+                <Td>
+                  <Link href={`/assets/${r.id}`} className="font-medium hover:underline">
+                    {r.name}
+                  </Link>
+                  {r.symbol && (
+                    <span className="ml-1 font-mono text-xs text-zinc-500">{r.symbol}</span>
+                  )}
+                </Td>
+                <Td align="right" className="tabular-nums">
+                  {r.vol > 0 ? formatPercent(r.vol, 1) : "—"}
+                </Td>
+                <Td align="right" className="tabular-nums">
+                  {r.beta != null ? formatNumber(r.beta, 2) : "—"}
+                </Td>
+                <Td align="right" className={`tabular-nums ${r.alpha != null ? plColor(r.alpha) : ""}`}>
+                  {r.alpha != null ? formatPercent(r.alpha, 1) : "—"}
+                </Td>
+                <Td align="right" className={`tabular-nums ${r.sharpe != null ? sharpeColor(r.sharpe) : ""}`}>
+                  {r.sharpe != null ? formatNumber(r.sharpe, 2) : "—"}
+                </Td>
+                <Td align="right" className="tabular-nums text-zinc-500">
+                  {formatPercent(r.weight, 1)}
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
       </Card>
 
       {/* Correlation heatmap */}
@@ -465,41 +447,44 @@ export function RiskView() {
 }
 
 
-function RiskTh({
+/**
+ * A right-aligned, sortable column header with an explanatory (i) tip.
+ * Built on top of the shared `Th` (for the shell's padding/alignment) but
+ * NOT via its own sortable-button mode: `InfoTip` renders a real `<button>`,
+ * and nesting that inside Th's sort `<button>` is invalid HTML that React
+ * flags as a hydration error. The sort button and the tip button are
+ * siblings here instead, right-aligned by the cell's own text-align.
+ */
+/** A right-aligned sortable header carrying an InfoTip. The tip is a <button>
+ *  of its own, so it rides the shell's `after` slot as a SIBLING of the sort
+ *  button; nesting the two would be invalid HTML React rejects at hydration. */
+function TipTh({
   label,
   suffix,
   tip,
-  k,
-  align = "left",
+  sortKey,
   sort,
   onSort,
 }: {
   label: string;
-  /** Muted, lowercase-style annotation appended after the label (e.g. the benchmark a beta/alpha is measured against). */
+  /** Muted annotation after the label, e.g. the benchmark a beta is measured against. */
   suffix?: string;
-  /** Explanatory tooltip text shown via an (i) affordance next to the header. */
-  tip?: string;
-  k: SortKey;
-  align?: "left" | "right";
-  sort: { key: SortKey; dir: 1 | -1 };
-  onSort: (k: SortKey) => void;
+  tip: string;
+  sortKey: SortKey;
+  sort: SortState<SortKey>;
+  onSort: (key: SortKey) => void;
 }) {
   return (
-    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <span className={`inline-flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}>
-        <button
-          onClick={() => onSort(k)}
-          className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
-        >
-          {label}
-          {suffix && <span className="normal-case text-zinc-400 dark:text-zinc-500">({suffix})</span>}
-          <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-        </button>
-        {/* overlay: the table wrapper is overflow-x-auto, which would clip an
-            absolutely-positioned bubble — render it fixed at viewport coords. */}
-        {tip && <InfoTip text={tip} overlay />}
-      </span>
-    </th>
+    <Th
+      align="right"
+      sort={sort}
+      sortKey={sortKey}
+      onSort={onSort}
+      after={<InfoTip text={tip} overlay />}
+    >
+      {label}
+      {suffix && <span className="normal-case text-zinc-400 dark:text-zinc-500"> ({suffix})</span>}
+    </Th>
   );
 }
 

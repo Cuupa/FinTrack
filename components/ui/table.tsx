@@ -98,6 +98,11 @@ export function Tr({
  * without them it renders a plain, non-interactive header (for an actions
  * column, say). A sortable header is a real <button> inside the <th> so it
  * is reachable by Tab and activated by Enter/Space for free.
+ *
+ * `after` hangs something BESIDE the sort button rather than inside it: an
+ * `InfoTip` is itself a <button>, and a button nested in a button is invalid
+ * HTML that React rejects at hydration. It lives here so a column needing one
+ * does not have to re-implement the sort button to get it.
  */
 export function Th<K extends string>({
   children,
@@ -105,6 +110,7 @@ export function Th<K extends string>({
   sort,
   sortKey,
   onSort,
+  after,
   className = "",
   ...rest
 }: {
@@ -113,6 +119,7 @@ export function Th<K extends string>({
   sort?: SortState<K>;
   sortKey?: K;
   onSort?: (key: K) => void;
+  after?: ReactNode;
   className?: string;
 } & Omit<ThHTMLAttributes<HTMLTableCellElement>, "onSort">) {
   const sortable = sort !== undefined && sortKey !== undefined && onSort !== undefined;
@@ -122,14 +129,14 @@ export function Th<K extends string>({
     return (
       <th scope="col" className={base} {...rest}>
         {children}
+        {after}
       </th>
     );
   }
 
   const active = sort.key === sortKey;
-  return (
-    <th scope="col" aria-sort={ariaSortFor(sort, sortKey)} className={base} {...rest}>
-      <button
+  const button = (
+    <button
         type="button"
         onClick={() => onSort(sortKey)}
         className={`inline-flex select-none items-center gap-1 uppercase tracking-wide transition-colors hover:text-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:hover:text-zinc-200 dark:focus-visible:outline-emerald-400 ${
@@ -145,6 +152,21 @@ export function Th<K extends string>({
           {active && sort.dir === "desc" ? "▼" : "▲"}
         </span>
       </button>
+  );
+
+  return (
+    <th scope="col" aria-sort={ariaSortFor(sort, sortKey)} className={base} {...rest}>
+      {/* Not reversed for a right-aligned column, unlike the sort arrow inside
+          the button: an InfoTip trails its label everywhere else in the app,
+          and flipping it here would park it on the far side of the arrow. */}
+      {after ? (
+        <span className="inline-flex items-center gap-1">
+          {button}
+          {after}
+        </span>
+      ) : (
+        button
+      )}
     </th>
   );
 }

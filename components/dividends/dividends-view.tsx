@@ -42,7 +42,8 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardSkeleton, ListRowSkeleton } from "@/components/dividends/dividends-skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { TablePagination, usePagination } from "@/components/ui/table";
+import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from "@/components/ui/table";
+import { useSort } from "@/components/ui/use-sort";
 import { yAxisWidth } from "@/components/charts/axis";
 import { intlLocale } from "@/lib/i18n/locale";
 
@@ -55,6 +56,9 @@ interface AssetDividends {
   /** Native → base rate. */
   rate: number;
 }
+
+type HoldingSortKey = "asset" | "t12m" | "allTime" | "yield" | "yieldOnCost";
+type UpSortKey = "asset" | "ex" | "pay" | "amount";
 
 /** "2025-01" → "Jan '25" in the active locale. */
 function monthLabel(ym: string): string {
@@ -175,28 +179,34 @@ export function DividendsView() {
       .map(([year, value]) => ({ label: year, value }));
   }, [perAsset, range, t12mStart, todayISO]);
 
-  // Per-holding rows, ranked by trailing-12-month income.
+  // Per-holding rows, ranked by trailing-12-month income by default.
+  const holdingSort = useSort<HoldingSortKey>("t12m", "desc");
   const rows = useMemo(() => {
-    return perAsset
-      .map(({ asset, payments, rate }) => {
-        let allTime = 0;
-        let t12m = 0;
-        for (const p of payments) {
-          const v = p.total * rate;
-          allTime += v;
-          if (p.date >= t12mStart) t12m += v;
-        }
-        const h = holdingById.get(asset.id);
-        return {
-          asset,
-          allTime,
-          t12m,
-          yield: h && h.marketValue > 0 ? t12m / h.marketValue : 0,
-          yieldOnCost: h && h.costBasis > 0 ? t12m / h.costBasis : 0,
-        };
-      })
-      .sort((a, b) => b.t12m - a.t12m);
-  }, [perAsset, holdingById, t12mStart]);
+    const list = perAsset.map(({ asset, payments, rate }) => {
+      let allTime = 0;
+      let t12m = 0;
+      for (const p of payments) {
+        const v = p.total * rate;
+        allTime += v;
+        if (p.date >= t12mStart) t12m += v;
+      }
+      const h = holdingById.get(asset.id);
+      return {
+        asset,
+        allTime,
+        t12m,
+        yield: h && h.marketValue > 0 ? t12m / h.marketValue : 0,
+        yieldOnCost: h && h.costBasis > 0 ? t12m / h.costBasis : 0,
+      };
+    });
+    return holdingSort.apply(list, (r, key) => {
+      if (key === "asset") return r.asset.name;
+      if (key === "t12m") return r.t12m;
+      if (key === "allTime") return r.allTime;
+      if (key === "yield") return r.yield;
+      return r.yieldOnCost;
+    });
+  }, [perAsset, holdingById, t12mStart, holdingSort]);
 
   // Upcoming dividends: each per-share event of the trailing year, projected
   // one year forward at the CURRENT share count. Deliberately independent of
@@ -239,36 +249,18 @@ export function DividendsView() {
 
   const upcomingTotal = useMemo(() => upcoming.reduce((s, f) => s + f.amount, 0), [upcoming]);
 
-  const [upSort, setUpSort] = useState<{ key: "asset" | "ex" | "pay" | "amount"; dir: 1 | -1 }>({
-    key: "pay",
-    dir: 1,
-  });
-  const toggleUpSort = (key: "asset" | "ex" | "pay" | "amount") =>
-    setUpSort((s) =>
-      s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: key === "amount" ? -1 : 1 },
-    );
-  const sortedUpcoming = useMemo(() => {
-    const rows = [...upcoming];
-    return rows.sort((a, b) => {
-      if (upSort.key === "amount") return (a.amount - b.amount) * upSort.dir;
-      let va: string;
-      let vb: string;
-      if (upSort.key === "asset") {
-        va = a.asset.name.toLowerCase();
-        vb = b.asset.name.toLowerCase();
-      } else if (upSort.key === "ex") {
+  const upSort = useSort<UpSortKey>("pay");
+  const sortedUpcoming = useMemo(
+    () =>
+      upSort.apply(upcoming, (r, key) => {
+        if (key === "amount") return r.amount;
+        if (key === "asset") return r.asset.name;
         // Projected rows (no ex-date) sort to the end.
-        va = a.exDate ?? "9999-99-99";
-        vb = b.exDate ?? "9999-99-99";
-      } else {
-        va = a.date;
-        vb = b.date;
-      }
-      if (va < vb) return -1 * upSort.dir;
-      if (va > vb) return 1 * upSort.dir;
-      return 0;
-    });
-  }, [upcoming, upSort]);
+        if (key === "ex") return r.exDate;
+        return r.date;
+      }),
+    [upcoming, upSort],
+  );
 
   const upcomingPager = usePagination(sortedUpcoming);
   const holdingsPager = usePagination(rows);
@@ -425,59 +417,54 @@ export function DividendsView() {
           <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
         ) : (
           <>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                    <UpTh label={t("sp.asset")} k="asset" sort={upSort} onSort={toggleUpSort} />
-                    <UpTh label={t("div.exDate")} k="ex" sort={upSort} onSort={toggleUpSort} />
-                    <UpTh label={t("div.payDate")} k="pay" sort={upSort} onSort={toggleUpSort} />
-                    <UpTh
-                      label={t("sp.amount")}
-                      k="amount"
-                      align="right"
-                      sort={upSort}
-                      onSort={toggleUpSort}
-                    />
-                  </tr>
-                </thead>
-                <tbody>
-                  {upcomingPager.rows.map((f, i) => (
-                    <tr
-                      key={`${f.asset.id}:${f.date}:${i}`}
-                      className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                    >
-                      <td className="max-w-[16rem] py-2 pr-3">
-                        <Link
-                          href={`/assets/${f.asset.id}`}
-                          className="block truncate font-medium hover:underline"
-                        >
-                          {f.asset.name}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-3 tabular-nums">
-                        {f.exDate ? formatDate(f.exDate) : <span className="text-zinc-400">–</span>}
-                      </td>
-                      <td className="py-2 pr-3 tabular-nums">
-                        {formatDate(f.date)}
-                        {f.confirmed && (
-                          <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
-                            {t("div.confirmedDate")}
-                          </span>
-                        )}
-                      </td>
-                      {/* The amount is always a projection from last year's
-                          payout; only the DATE is ever confirmed, so the ≈
-                          stays on every row. */}
-                      <td className="py-2 text-right tabular-nums" data-private>
-                        ≈ {formatCurrency(f.amount, currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <TablePagination pager={upcomingPager} />
-            </div>
+            <Table className="mt-3" ariaLabel={t("div.upcoming")}>
+              <Thead>
+                <Th sort={upSort.sort} sortKey="asset" onSort={upSort.toggle}>
+                  {t("sp.asset")}
+                </Th>
+                <Th sort={upSort.sort} sortKey="ex" onSort={upSort.toggle}>
+                  {t("div.exDate")}
+                </Th>
+                <Th sort={upSort.sort} sortKey="pay" onSort={upSort.toggle}>
+                  {t("div.payDate")}
+                </Th>
+                <Th align="right" sort={upSort.sort} sortKey="amount" onSort={upSort.toggle}>
+                  {t("sp.amount")}
+                </Th>
+              </Thead>
+              <Tbody>
+                {upcomingPager.rows.map((f, i) => (
+                  <Tr key={`${f.asset.id}:${f.date}:${i}`}>
+                    <Td className="max-w-[16rem]">
+                      <Link
+                        href={`/assets/${f.asset.id}`}
+                        className="block truncate font-medium hover:underline"
+                      >
+                        {f.asset.name}
+                      </Link>
+                    </Td>
+                    <Td className="tabular-nums">
+                      {f.exDate ? formatDate(f.exDate) : <span className="text-zinc-400">–</span>}
+                    </Td>
+                    <Td className="tabular-nums">
+                      {formatDate(f.date)}
+                      {f.confirmed && (
+                        <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
+                          {t("div.confirmedDate")}
+                        </span>
+                      )}
+                    </Td>
+                    {/* The amount is always a projection from last year's
+                        payout; only the DATE is ever confirmed, so the ≈
+                        stays on every row. */}
+                    <Td align="right" className="tabular-nums" data-private>
+                      ≈ {formatCurrency(f.amount, currency)}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+            <TablePagination pager={upcomingPager} />
             <p className="mt-3 text-xs text-zinc-400">{t("div.forecastDisclaimer")}</p>
           </>
         )}
@@ -497,82 +484,61 @@ export function DividendsView() {
         ) : rows.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("div.none")}</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500 dark:border-zinc-800">
-                  <th className="py-2 pr-3 font-medium">{t("sp.asset")}</th>
-                  <th className="py-2 pr-3 text-right font-medium">{t("div.col12m")}</th>
-                  <th className="py-2 pr-3 text-right font-medium">{t("div.colTotal")}</th>
-                  <th className="py-2 pr-3 text-right font-medium">{t("div.colYield")}</th>
-                  <th className="py-2 text-right font-medium">{t("div.colYoC")}</th>
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            <Table className="mt-3" ariaLabel={t("div.byHolding")}>
+              <Thead>
+                <Th sort={holdingSort.sort} sortKey="asset" onSort={holdingSort.toggle}>
+                  {t("sp.asset")}
+                </Th>
+                <Th align="right" sort={holdingSort.sort} sortKey="t12m" onSort={holdingSort.toggle}>
+                  {t("div.col12m")}
+                </Th>
+                <Th align="right" sort={holdingSort.sort} sortKey="allTime" onSort={holdingSort.toggle}>
+                  {t("div.colTotal")}
+                </Th>
+                <Th align="right" sort={holdingSort.sort} sortKey="yield" onSort={holdingSort.toggle}>
+                  {t("div.colYield")}
+                </Th>
+                <Th
+                  align="right"
+                  sort={holdingSort.sort}
+                  sortKey="yieldOnCost"
+                  onSort={holdingSort.toggle}
+                >
+                  {t("div.colYoC")}
+                </Th>
+              </Thead>
+              <Tbody>
                 {holdingsPager.rows.map((r) => (
-                  <tr
-                    key={r.asset.id}
-                    className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40"
-                  >
-                    <td className="max-w-[14rem] py-2 pr-3">
+                  <Tr key={r.asset.id}>
+                    <Td className="max-w-[14rem]">
                       <Link
                         href={`/assets/${r.asset.id}`}
                         className="block truncate font-medium hover:underline"
                       >
                         {r.asset.name}
                       </Link>
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
                       {formatCurrency(r.t12m, currency)}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums" data-private>
+                    </Td>
+                    <Td align="right" className="tabular-nums" data-private>
                       {formatCurrency(r.allTime, currency)}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">
+                    </Td>
+                    <Td align="right" className="tabular-nums">
                       {formatPercent(r.yield)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums">
+                    </Td>
+                    <Td align="right" className="tabular-nums">
                       {formatPercent(r.yieldOnCost)}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
-              </tbody>
-            </table>
+              </Tbody>
+            </Table>
             <TablePagination pager={holdingsPager} />
-          </div>
+          </>
         )}
       </Card>
     </div>
-  );
-}
-
-type UpSortKey = "asset" | "ex" | "pay" | "amount";
-
-function UpTh({
-  label,
-  k,
-  align,
-  sort,
-  onSort,
-}: {
-  label: string;
-  k: UpSortKey;
-  align?: "right";
-  sort: { key: UpSortKey; dir: 1 | -1 };
-  onSort: (k: UpSortKey) => void;
-}) {
-  return (
-    <th className={`py-2 pr-3 font-medium ${align === "right" ? "text-right" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className={`inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 ${
-          align === "right" ? "justify-end" : ""
-        }`}
-      >
-        {label}
-        <span className="text-[10px]">{sort.key === k ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
-      </button>
-    </th>
   );
 }
