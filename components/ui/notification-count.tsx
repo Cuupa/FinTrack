@@ -6,13 +6,18 @@
 // back to zero (see lib/notifications/notifications.ts), and it renders nothing
 // at all when there is nothing to do. Capped at 99+ so a neglected inbox cannot
 // widen the rail.
+//
+// Plain coloured text, never a filled pill (owner rule: no badges anywhere in
+// this app). A filled amber circle read as a warning about the entry itself,
+// and it cost the label the width it needed: "Konten & Buchungen" truncated to
+// "Konten & Buchu…" purely to make room for a one-digit count.
 
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function NotificationCount({
   count,
-  /** Overlays the top-right corner of a nav icon (collapsed rail, tab bar)
-   *  instead of sitting inline after a label. */
+  /** Sits at the top-right corner of a nav icon (collapsed rail, tab bar)
+   *  instead of inline after a label. */
   overlay = false,
 }: {
   count: number;
@@ -24,8 +29,8 @@ export function NotificationCount({
     <span
       role="status"
       aria-label={t("notif.pending", { count })}
-      className={`inline-flex items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white tabular-nums dark:bg-amber-400 dark:text-zinc-900 ${
-        overlay ? "absolute -top-1 -right-1.5 min-w-[1.05rem]" : "min-w-[1.25rem] py-0.5"
+      className={`text-[11px] font-semibold text-emerald-600 tabular-nums dark:text-emerald-400 ${
+        overlay ? "absolute -top-2 -right-2 leading-none" : ""
       }`}
     >
       {count > 99 ? "99+" : count}

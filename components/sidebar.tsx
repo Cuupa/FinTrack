@@ -120,7 +120,7 @@ export function Sidebar() {
   return (
     <aside
       className={`sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col border-r border-zinc-200 md:flex dark:border-zinc-800 ${
-        collapsed ? "w-16" : "w-56"
+        collapsed ? "w-16" : "w-64"
       } transition-[width] duration-150`}
     >
       {/* Only the link list scrolls. The account row below sits outside it on
