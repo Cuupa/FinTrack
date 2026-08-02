@@ -99,10 +99,26 @@ import type {
 interface PortfolioRow {
   id: string;
   name: string;
-  fee_order_flat: number | string | null;
-  fee_order_free_from: number | string | null;
-  fee_savings_plan: number | string | null;
-  tax_allowance: number | string | null;
+  fee_order_flat?: number | string | null;
+  fee_order_free_from?: number | string | null;
+  fee_savings_plan?: number | string | null;
+  tax_allowance?: number | string | null;
+}
+
+interface ProfileRow {
+  currency: string;
+  display_name: string | null;
+  locale: string | null;
+  theme: string | null;
+  tax_allowance?: number | null;
+  tour_done_at?: string | null;
+  church_tax_rate?: number | null;
+  tax_teilfreistellung?: boolean | null;
+  tax_vorabpauschale?: Record<string, number> | null;
+  tax_withheld_override?: Record<string, number> | null;
+  tours_done?: Record<string, string> | null;
+  rebalance_targets?: unknown;
+  pension_settings?: unknown;
 }
 
 function portfolioFromRow(r: PortfolioRow): Portfolio {
@@ -129,9 +145,9 @@ interface AssetRow {
   id: string;
   notes: string | null;
   currency: string | null;
-  interest_rate: number | null;
-  interest_frequency: Asset["interestFrequency"] | null;
-  interest_post_day: Asset["interestPostDay"] | null;
+  interest_rate?: number | null;
+  interest_frequency?: Asset["interestFrequency"] | null;
+  interest_post_day?: Asset["interestPostDay"] | null;
   // Optional: a DB that predates migration 0116 doesn't return this.
   front_load?: number | string | null;
   instrument: InstrumentEmbed | InstrumentEmbed[] | null;
@@ -145,14 +161,25 @@ interface TxRow {
   quantity: number;
   price: number;
   fee: number;
-  tax: number;
+  tax?: number;
   executed_at: string;
 }
 
 /** Selected in three places (initial load, insert echo); one list so an added
  *  column cannot reach only some of them. */
-const SAVINGS_PLAN_COLUMNS =
-  "id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date, account_id, front_load";
+const SAVINGS_PLAN_BASE_COLUMNS = [
+  "id",
+  "asset_id",
+  "portfolio_id",
+  "amount",
+  "frequency",
+  "booking_type",
+  "start_date",
+  "active",
+  "last_run_date",
+];
+const SAVINGS_PLAN_NEW_COLUMNS = ["account_id", "front_load"];
+const SAVINGS_PLAN_COLUMNS = [...SAVINGS_PLAN_BASE_COLUMNS, ...SAVINGS_PLAN_NEW_COLUMNS].join(", ");
 
 interface SavingsPlanRow {
   id: string;
@@ -193,8 +220,8 @@ interface AccountRow {
   is_liability: boolean;
   opening_balance: number | string | null;
   opened_on: string;
-  interest_rate: number | string | null;
-  min_payment: number | string | null;
+  interest_rate?: number | string | null;
+  min_payment?: number | string | null;
   rate_fixed_until?: string | null;
   follow_up_rate?: number | string | null;
   // Optional: a DB that predates migration 0104 doesn't return this.
@@ -391,6 +418,40 @@ function embed(row: AssetRow): InstrumentEmbed | null {
   return Array.isArray(i) ? (i[0] ?? null) : i;
 }
 
+interface QueryError {
+  message?: string;
+  code?: string;
+}
+
+/** "You selected a column this database does not have yet." 42703 is Postgres'
+ *  own undefined_column; PGRST204 is PostgREST answering the same thing out of
+ *  its schema cache. */
+export function isMissingColumnError(err: QueryError | null): boolean {
+  if (!err) return false;
+  if (err.code === "42703" || err.code === "PGRST204") return true;
+  return /column .* does not exist|could not find the .* column/i.test(err.message ?? "");
+}
+
+export async function selectTolerant<T>(
+  run: (columns: string) => PromiseLike<{ data: unknown; error: QueryError | null }>,
+  base: readonly string[],
+  added: readonly string[],
+): Promise<{ data: T | null; error: QueryError | null; missingColumns: string[] }> {
+  const first = await run([...base, ...added].join(", "));
+  if (added.length === 0 || !isMissingColumnError(first.error)) {
+    return { data: (first.data ?? null) as T | null, error: first.error, missingColumns: [] };
+  }
+  const retry = await run(base.join(", "));
+  return {
+    data: (retry.data ?? null) as T | null,
+    error: retry.error,
+    // A retry that also failed dropped nothing: the caller's own error path
+    // owns it, and naming phantom columns would send the user after the wrong
+    // migration.
+    missingColumns: retry.error ? [] : [...added],
+  };
+}
+
 export class SupabaseStore implements DataStore {
   readonly persistent = true;
 
@@ -423,40 +484,50 @@ export class SupabaseStore implements DataStore {
       goalsRes,
       llmSettingsRes,
     ] = await Promise.all([
-      this.supabase
-        .from("profiles")
-        .select(
-          "currency, display_name, locale, theme, tax_allowance, church_tax_rate, tax_teilfreistellung, tax_vorabpauschale, tax_withheld_override, tour_done_at, tours_done, rebalance_targets, pension_settings",
-        )
-        .eq("id", this.userId)
-        .maybeSingle(),
-      // Household-shared tables (migrations 0092/0093): no explicit
-      // .eq("user_id", ...) filter — RLS alone decides which rows are
-      // visible, so a household peer's rows are included automatically
-      // without the store needing to know about households at all.
-      // llm_settings/profiles (below) deliberately stay self-only.
-      this.supabase
-        .from("portfolios")
-        .select("id, name, fee_order_flat, fee_order_free_from, fee_savings_plan, tax_allowance")
-        .order("created_at", { ascending: true }),
-      this.supabase
-        .from("assets")
-        .select(
-          "id, notes, currency, interest_rate, interest_frequency, interest_post_day, front_load, instrument:instruments (isin, wkn, symbol, name, type, currency)",
-        ),
+      selectTolerant<ProfileRow>(
+        (cols) =>
+          this.supabase.from("profiles").select(cols).eq("id", this.userId).maybeSingle(),
+        ["currency", "display_name", "locale", "theme", "tax_allowance", "tour_done_at"],
+        [
+          "church_tax_rate",
+          "tax_teilfreistellung",
+          "tax_vorabpauschale",
+          "tax_withheld_override",
+          "tours_done",
+          "rebalance_targets",
+          "pension_settings",
+        ],
+      ),
+
+      selectTolerant<PortfolioRow[]>(
+        (cols) => this.supabase.from("portfolios").select(cols).order("created_at", { ascending: true }),
+        ["id", "name"],
+        ["fee_order_flat", "fee_order_free_from", "fee_savings_plan", "tax_allowance"],
+      ),
+      selectTolerant<AssetRow[]>(
+        (cols) => this.supabase.from("assets").select(cols),
+        ["id", "notes", "currency", "instrument:instruments (isin, wkn, symbol, name, type, currency)"],
+        ["interest_rate", "interest_frequency", "interest_post_day", "front_load"],
+      ),
       // RLS scopes transactions to the user's (or a household peer's) assets
       // — no user_id column of its own.
-      this.supabase
-        .from("transactions")
-        .select("id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at"),
-      this.supabase
-        .from("watchlist_items")
-        .select("id, currency, instrument:instruments (isin, wkn, symbol, name, type, currency)")
-        .order("created_at", { ascending: true }),
-      this.supabase
-        .from("savings_plans")
-        .select(SAVINGS_PLAN_COLUMNS)
-        .order("created_at", { ascending: true }),
+      selectTolerant<TxRow[]>(
+        (cols) => this.supabase.from("transactions").select(cols),
+        ["id", "asset_id", "portfolio_id", "type", "quantity", "price", "fee", "executed_at"],
+        ["tax"],
+      ),
+      selectTolerant<Pick<AssetRow, "id" | "currency" | "instrument">[]>(
+        (cols) =>
+          this.supabase.from("watchlist_items").select(cols).order("created_at", { ascending: true }),
+        ["id", "instrument:instruments (isin, wkn, symbol, name, type, currency)"],
+        ["currency"],
+      ),
+      selectTolerant<SavingsPlanRow[]>(
+        (cols) =>
+          this.supabase.from("savings_plans").select(cols).order("created_at", { ascending: true }),
+        SAVINGS_PLAN_BASE_COLUMNS,
+        SAVINGS_PLAN_NEW_COLUMNS,
+      ),
       this.supabase
         .from("tag_groups")
         .select("id, name")
@@ -468,12 +539,17 @@ export class SupabaseStore implements DataStore {
         .from("asset_valuations")
         .select("asset_id, valued_on, value")
         .order("valued_on", { ascending: true }),
-      this.supabase
-        .from("accounts")
-        .select(
-          "id, name, kind, currency, is_liability, opening_balance, opened_on, interest_rate, interest_frequency, min_payment, rate_fixed_until, follow_up_rate",
-        )
-        .order("created_at", { ascending: true }),
+      selectTolerant<AccountRow[]>(
+        (cols) => this.supabase.from("accounts").select(cols).order("created_at", { ascending: true }),
+        ["id", "name", "kind", "currency", "is_liability", "opening_balance", "opened_on"],
+        [
+          "interest_rate",
+          "interest_frequency",
+          "min_payment",
+          "rate_fixed_until",
+          "follow_up_rate",
+        ],
+      ),
       this.supabase
         .from("account_balances")
         .select("account_id, balance_on, balance")
@@ -496,40 +572,72 @@ export class SupabaseStore implements DataStore {
         .from("spending_categories")
         .select("id, group_name, name, tax_deductible")
         .order("created_at", { ascending: true }),
-      this.supabase
-        .from("spending_transactions")
-        .select(
-          "id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id, planned_id, savings_plan_id",
-        )
-        .order("date", { ascending: false }),
+      selectTolerant<SpendingTransactionRow[]>(
+        (cols) =>
+          this.supabase.from("spending_transactions").select(cols).order("date", { ascending: false }),
+        ["id", "account_id", "category_id", "date", "amount", "payee", "note", "recurring_id"],
+        ["transfer_account_id", "planned_id", "savings_plan_id"],
+      ),
       this.supabase
         .from("budgets")
         .select("id, category_id, amount")
         .order("created_at", { ascending: true }),
-      this.supabase
-        .from("contracts")
-        .select(
-          // The booking columns (migration 0095) MUST be listed here. They were
-          // written on insert and mapped in `contractFromRow`, but never
-          // selected -- so every contract came back with accountId null, which
-          // `booksSpending()` reads as "this contract does not post anything".
-          // A contract with an account and a start date therefore sat in the
-          // register forever without a single charge reaching the ledger.
-          "id, name, amount, interval, renewal_date, cancellation_notice_days, category_id, insurance_type, sum_insured, account_id, booking_start_date, month_end, last_booked_date, target_account_id",
-        )
-        .order("created_at", { ascending: true }),
-      this.supabase
-        .from("planned_cashflows")
-        .select(
-          "id, name, account_id, category_id, amount, interval, start_date, month_end, end_date, last_booked_date, transfer_account_id, note",
-        )
-        .order("start_date", { ascending: true }),
-      this.supabase
-        .from("goals")
-        .select(
-          "id, name, target_amount, target_date, linked_account_id, manual_current_amount, tracks_investments, linked_portfolio_id, linked_asset_id, parent_goal_id",
-        )
-        .order("created_at", { ascending: true }),
+      selectTolerant<ContractRow[]>(
+        (cols) => this.supabase.from("contracts").select(cols).order("created_at", { ascending: true }),
+        // The booking columns (migration 0095) MUST be listed here. They were
+        // written on insert and mapped in `contractFromRow`, but never
+        // selected -- so every contract came back with accountId null, which
+        // `booksSpending()` reads as "this contract does not post anything".
+        // A contract with an account and a start date therefore sat in the
+        // register forever without a single charge reaching the ledger.
+        [
+          "id",
+          "name",
+          "amount",
+          "interval",
+          "renewal_date",
+          "cancellation_notice_days",
+          "category_id",
+          "insurance_type",
+          "sum_insured",
+          "account_id",
+          "booking_start_date",
+          "last_booked_date",
+        ],
+        ["month_end", "target_account_id"],
+      ),
+      selectTolerant<PlannedCashflowRow[]>(
+        (cols) =>
+          this.supabase.from("planned_cashflows").select(cols).order("start_date", { ascending: true }),
+        [
+          "id",
+          "name",
+          "account_id",
+          "category_id",
+          "amount",
+          "interval",
+          "start_date",
+          "end_date",
+          "last_booked_date",
+          "transfer_account_id",
+          "note",
+        ],
+        ["month_end"],
+      ),
+      selectTolerant<GoalRow[]>(
+        (cols) => this.supabase.from("goals").select(cols).order("created_at", { ascending: true }),
+        [
+          "id",
+          "name",
+          "target_amount",
+          "target_date",
+          "linked_account_id",
+          "manual_current_amount",
+          "tracks_investments",
+          "linked_portfolio_id",
+        ],
+        ["linked_asset_id", "parent_goal_id"],
+      ),
       // Personal, never household-shared (see migration 0093's comment).
       this.supabase
         .from("llm_settings")
@@ -589,8 +697,42 @@ export class SupabaseStore implements DataStore {
     optional(goalsRes, "goals");
     optional(llmSettingsRes, "llmSettings");
 
+    // A column the database does not have yet is not an error the user can act
+    // on beyond running the migration, but it IS a silently narrower app -- so
+    // it is named exactly like a degraded table rather than passing unnoticed.
+    const staleColumns = (
+      res: { missingColumns?: string[] },
+      resource: string,
+    ) => {
+      const missing = res.missingColumns ?? [];
+      if (missing.length === 0) return;
+      degraded.push({ resource, reason: `missing columns: ${missing.join(", ")}` });
+      reportError({
+        kind: "fetch",
+        level: "warn",
+        message: `portfolio load: ${resource} is missing columns (${missing.join(", ")}) -- run the pending migrations`,
+      });
+    };
+
+    staleColumns(profileRes, "profile");
+    staleColumns(portfoliosRes, "portfolios");
+    staleColumns(assetsRes, "assets");
+    staleColumns(txRes, "transactions");
+    staleColumns(watchRes, "watchlist");
+    staleColumns(plansRes, "savingsPlans");
+    staleColumns(accountsRes, "accounts");
+    staleColumns(spendingTransactionsRes, "spendingTransactions");
+    staleColumns(contractsRes, "contracts");
+    staleColumns(plannedRes, "plannedCashflows");
+    staleColumns(goalsRes, "goals");
+
     // Ensure the user has at least one portfolio (creating a default for
     // pre-multi-portfolio accounts) and backfill orphaned transactions.
+    // A FAILED query is not an empty one: creating "Main" off a query that
+    // errored would hand a user with existing depots a phantom broker and
+    // reparent every orphaned transaction into it. Portfolios are the depot's
+    // spine, so a failure here belongs on the retry screen.
+    if (portfoliosRes.error) throw portfoliosRes.error;
     let portfolios: Portfolio[] = ((portfoliosRes.data ?? []) as PortfolioRow[]).map(
       portfolioFromRow,
     );
@@ -641,9 +783,12 @@ export class SupabaseStore implements DataStore {
         // The user's own trading currency wins; fall back to the instrument's.
         currency: r.currency ?? inst?.currency ?? null,
         notes: r.notes,
-        interestRate: r.interest_rate,
-        interestFrequency: r.interest_frequency,
-        interestPostDay: r.interest_post_day,
+        // `?? null`, not the bare value: a database that has not run the
+        // migration adding the column returns the row WITHOUT the key, and
+        // `undefined` is not what the finance layer's `number | null` means.
+        interestRate: r.interest_rate ?? null,
+        interestFrequency: r.interest_frequency ?? null,
+        interestPostDay: r.interest_post_day ?? null,
         frontLoad: r.front_load != null ? Number(r.front_load) : null,
       };
     });
@@ -1048,7 +1193,7 @@ export class SupabaseStore implements DataStore {
       .select(SAVINGS_PLAN_COLUMNS)
       .single();
     if (error) throw error;
-    return planFromRow(data as SavingsPlanRow);
+    return planFromRow(data as unknown as SavingsPlanRow);
   }
 
   async updateSavingsPlan(id: string, patch: Partial<SavingsPlanInput>): Promise<void> {
