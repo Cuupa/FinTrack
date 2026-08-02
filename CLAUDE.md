@@ -504,6 +504,27 @@ FX-convert) always beats a wrong instrument in the right currency.
   (`outlierYear`), not hidden: it is the user's data to correct. The page shows
   its own arithmetic, because one opaque number cannot be argued with when it
   disagrees with the official letter.
+- **A private policy's return is MEASURED, never typed** (round 30). The form
+  used to ask for an "expected return in percent", a figure no insurer's
+  statement prints; `pension_contract_values` (migration 0120, full store seam,
+  keyed by date like `account_balances`) holds the Standmitteilung's dated
+  values instead, and `contractReturn` runs an XIRR over them plus the premiums
+  in between. It refuses a span under `MIN_RETURN_SPAN_DAYS` (half a year) or a
+  single reading. `resolveContract` reads the newest value as the capital and
+  fills the return in, but a TYPED `expectedReturnPct` still wins — the user's
+  own assumption about the future, the same rule `annualPoints` follows against
+  the fitted trend. Every `projectPension` caller passes `contractValues`, so
+  the pension tab, FIRE and the LLM context cannot disagree.
+- **A policy's premium debits an account like a savings plan's rate does**:
+  `PensionContract.accountId`/`bookingStartDate`/`lastBookedDate` (migration
+  0121), due occurrences from `lib/finance/pension-bookings.ts` (pure, reuses
+  `bookingOccurrenceAt` and the `MAX_DUE_BOOKINGS` cap), reviewed on the pension
+  tab and never posted silently. The booking carries `pensionContractId`, which
+  `isTransfer` counts as a TRANSFER: a premium buys an entitlement worth what
+  left the account, so booking it as spending would overstate expenses by the
+  full premium every month. The receiving side is a policy, not an `Account`,
+  which is why `transferAccountId` cannot carry it (same case as
+  `savingsPlanId`).
 - **Vorabpauschale estimator** (`tax.ts`, flag `vorabEstimate`): per fund per
   completed year, `startValue x Basiszins x 0.7 − distributions`, capped at
   the value gain. Basiszins is DB-seeded reference data (`basiszins`,
@@ -755,6 +776,10 @@ client pages (see `app/assets/[id]/page.tsx`).
     stays snug. `formatCompactCurrency` compacts with universal k/M/B suffixes
     in **every** locale (Intl's compact notation doesn't compact thousands in
     de-DE — that's why it exists).
+- **One form footer**: `FormActions` (`components/ui/form-actions.tsx`) is where
+  every button that changes stored data sits — under the fields, right aligned,
+  cancel before the committing action, the error line on its left. Seven
+  hand-rolled copies of that markup had already drifted; never inline an eighth.
 - Form submit buttons disable on *presence only* (empty required fields) via
   `lib/forms/required.ts` (`useFormTouched` + amber `missingFieldCls`, hint key
   `form.missingFields`); content validation (valid number, > 0, …) stays at

@@ -181,7 +181,11 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
         aria-label={ariaLabel}
         className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
       >
-        <span className="truncate">{buttonLabel()}</span>
+        {/* The trigger's width is fixed by the layout around it, so a long
+            account name still clips here -- the title keeps it readable. */}
+        <span className="truncate" title={buttonLabel()}>
+          {buttonLabel()}
+        </span>
         <span className="text-[10px] text-zinc-400">▾</span>
       </button>
 
@@ -299,7 +303,9 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
                                 ✓
                               </span>
                             )}
-                            <span className="truncate">{o.label}</span>
+                            <span className="truncate" title={o.label}>
+                              {o.label}
+                            </span>
                           </button>
                         </li>
                       );

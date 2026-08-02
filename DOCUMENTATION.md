@@ -1186,6 +1186,22 @@ sets, money that flows, plans and entitlements. Each rides the full store seam
   personal. `pension_settings` is a jsonb blob on the profile for the same
   reason `rebalance_targets` is one (four scalars, one row per user). Surface
   is the Pension tab of `/retirement`, in the Planning nav group.
+  Round 30 gave a policy the two things it was still guessing at. Its RETURN is
+  now measured rather than typed: `pension_contract_values` (migration 0120,
+  one dated reading per row, keyed by date like `account_balances` and
+  replace-set per policy) records what the annual Standmitteilung states, and
+  `contractReturn` runs an XIRR over the oldest reading, every monthly premium
+  in between and the newest reading. Under half a year apart (or with one
+  reading only) it returns null instead of annualising noise, and intermediate
+  readings are not flows — they are the record, not cash. `resolveContract`
+  then reads the newest value as the capital and fills the measured rate in,
+  while a typed `expectedReturnPct` still wins. Its PREMIUM now moves money:
+  `accountId` + `bookingStartDate` + `lastBookedDate` (migration 0121) make it
+  a Verrechnungskonto exactly like a savings plan's, `pension-bookings.ts`
+  derives the due dates (pure, reusing `bookingOccurrenceAt` and the
+  `MAX_DUE_BOOKINGS` cap), and the review list on the tab writes the
+  transactions first and advances `lastBookedDate` second. Those bookings carry
+  `pension_contract_id` and count as transfers, not spending.
 - **Recurring payments** (flag `contracts`): one card on `/spending`
   (`components/spending/recurring-card.tsx`) listing contracts AND planned
   cashflows together, because "what recurs?" is one question. The separate

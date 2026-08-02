@@ -22,6 +22,8 @@ fuehrt zur falschen Diagnose. Erst gegen die Live-DB pruefen, dann schliessen.
 | 0114 | Die Retry-Queue der Kurs-Cron bleibt aus (Sync laeuft normal weiter) |
 | 0115 | Nur die Flag-Beschreibung in `/admin/flags` bleibt alt |
 | 0116 | Sparplan-Verrechnungskonto und Ausgabeaufschlag quittieren 400 |
+| 0120 | Vertragsstände lassen sich nicht speichern (Rendite bleibt getippt) |
+| 0121 | Verrechnungskonto am Vertrag quittiert 400, Beiträge buchen nicht |
 
 0112 traegt oben eine reine Lese-Abfrage, mit der sich der Umfang vorher
 ansehen laesst.
@@ -30,9 +32,7 @@ ansehen laesst.
 
 | Task | Prio | Status | Paths |
 | --- | --- | --- | --- |
-| Vertragsrendite aus Ständen (XIRR) | 1 | laeuft | `lib/types.ts`, `lib/store/*`, `lib/finance/pension.ts`, `components/pension/*`, `supabase/*`, `tests/pension.test.ts` |
-| Vertragsbeiträge als Buchung vom Konto | 2 | offen | `lib/finance/pension-bookings.ts`, `components/pension/*`, `lib/store/*`, `supabase/*` |
-| Formular-Buttons einheitlich unter die Felder | 3 | offen | `components/**` (Formulare) |
+| — | — | — | — |
 
 ## Offen (TODO.md)
 
@@ -40,6 +40,18 @@ ansehen laesst.
 | --- | --- | --- |
 
 ## Erledigt
+
+### Runde 2026-08-02 (dritter Teil)
+
+| Task | Commit / Umfang |
+| --- | --- |
+| Vertragsrendite wird gemessen | f505792 — `pension_contract_values` (0120) am vollen Store-Seam, `contractReturn` (XIRR, min. ein halbes Jahr Abstand), `resolveContract`; getippte Rendite gewinnt weiter |
+| Beitrag läuft vom Konto | b121b12 — Verrechnungskonto + Review-Liste am Vertrag, `pension_contract_id` (0121) zählt die Buchung als Umbuchung, Zähler in der Navigation |
+| Eine Fußzeile für Formulare | c8cc952 — `FormActions`, sieben handgeschriebene Kopien ersetzt, Abbrechen vor der Hauptaktion |
+| Langer Name im Dropdown | Voller Text als `title` an Trigger und Option |
+
+**Offen aus dieser Runde**: die Monte-Carlo-Läufe rechnen die Rente weiterhin
+nicht ein (nur die deterministischen FIRE-Ziele tun das).
 
 ### Runde 2026-08-02 (zweiter Teil)
 
@@ -52,8 +64,8 @@ ansehen laesst.
 | Dropdown im Modal | f7d1cc8 — Popover per Portal an den Body, fest positioniert über der Modal-Ebene |
 | Zähler in Pillenform | f7d1cc8 — Rand statt Füllung, Pille statt Kreis |
 
-**Offen aus derselben Runde** (in TODO.md notiert): Vertragsrendite aus mehreren
-Ständen (XIRR), Vertragsbeiträge als Buchung von einem Konto.
+**Beides inzwischen erledigt** (dritter Teil oben): Vertragsrendite aus
+mehreren Ständen, Vertragsbeiträge als Buchung von einem Konto.
 
 ### Runde 2026-08-02
 
