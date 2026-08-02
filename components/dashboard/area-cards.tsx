@@ -94,7 +94,7 @@ function AccountsCard() {
     }));
     const assets = withBalance.filter((r) => !r.account.isLiability);
     const source = assets.length > 0 ? assets : withBalance;
-    return [...source].sort((x, y) => y.balance - x.balance).slice(0, 3);
+    return [...source].sort((x, y) => y.balance - x.balance).slice(0, 10);
   }, [data.accounts, data.accountBalances, movements]);
 
   const hasAssetAccount = data.accounts.some((a) => !a.isLiability);
