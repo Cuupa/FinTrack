@@ -1158,7 +1158,24 @@ sets, money that flows, plans and entitlements. Each rides the full store seam
   Durchschnittsentgelt, which the legislator keeps near 2.0). The cap is
   reference data like the Rentenwert beside it, so no seeded row means **no
   cap** rather than a constant; `annualPointsCapped` surfaces on the page
-  instead of silently correcting. `usePensionReference` selects `*` for the
+  instead of silently correcting. Round 30 finished the job the round-27 field
+  started, because one total is not enough either: the letter prints **no
+  per-year figure at all**, so a projection has to derive one. `PensionStatement`
+  (`pension_statements`, migration 0117) records one row per letter — year +
+  cumulative total — and `statementAnnualPoints` measures the rate by
+  subtraction (13,2739 in 2023 minus 5,0232 in 2017 over six years = 1,375
+  points a year), picking the older letter the way the DRV picks its window:
+  the shortest span reaching five years, else the widest there is. That rate
+  beats `averageAnnualPoints` whenever two letters exist, `allStatements` folds
+  the round-27 settings pair in as one more letter, and the page prints the
+  whole subtraction under the table rather than one opaque rate. The trend
+  opt-in switches off with it (two totals already average everything between
+  them), and the trend CEILING is measured against the assumption in force —
+  derived from the per-year rows alone it is 0 when there are none, which
+  clamped every remaining year to nothing. `looksLikeStatements` spots the
+  older mistake (rows that only rise, newest above `maxPoints`) and the page
+  offers a one-click move into the statements list, with a `ConfirmDialog`,
+  never silently. `usePensionReference` selects `*` for the
   same reason: a database that has not run 0111 must not lose the Rentenwert
   over a column it only uses to sanity-check. `PensionContract` is a **sibling of
   `Contract`, not one of its insurance types**: a contract is money going out

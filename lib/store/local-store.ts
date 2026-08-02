@@ -8,6 +8,7 @@ import {
   MAX_PORTFOLIOS,
   type LlmConfig,
   type PensionPoint,
+  type PensionStatement,
   type PortfolioData,
   type Profile,
   type TagAssignments,
@@ -127,6 +128,7 @@ export class LocalStore implements DataStore {
         accountBalances: parsed.accountBalances ?? [],
         // Backfill blobs saved before the pension record existed.
         pensionPoints: parsed.pensionPoints ?? [],
+        pensionStatements: parsed.pensionStatements ?? [],
         pensionContracts: parsed.pensionContracts ?? [],
         // Backfill blobs saved before the spending entity existed.
         spendingCategories: parsed.spendingCategories ?? [],
@@ -427,6 +429,14 @@ export class LocalStore implements DataStore {
     const byYear = new Map<number, PensionPoint>();
     for (const e of entries) byYear.set(e.year, e);
     data.pensionPoints = [...byYear.values()].sort((a, b) => a.year - b.year);
+    this.write(data);
+  }
+
+  async setPensionStatements(entries: PensionStatement[]) {
+    const data = this.read();
+    const byYear = new Map<number, PensionStatement>();
+    for (const e of entries) byYear.set(e.year, e);
+    data.pensionStatements = [...byYear.values()].sort((a, b) => a.year - b.year);
     this.write(data);
   }
 

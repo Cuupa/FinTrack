@@ -35,6 +35,7 @@ export type MutationOp =
   | "deleteAccount"
   | "setAccountBalances"
   | "setPensionPoints"
+  | "setPensionStatements"
   | "addPensionContract"
   | "updatePensionContract"
   | "deletePensionContract"

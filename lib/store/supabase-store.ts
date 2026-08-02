@@ -20,6 +20,7 @@ import {
   type PensionContract,
   type PensionContractKind,
   type PensionPoint,
+  type PensionStatement,
   type PensionSettings,
   type Asset,
   type Budget,
@@ -412,6 +413,7 @@ export class SupabaseStore implements DataStore {
       accountsRes,
       accountBalancesRes,
       pensionPointsRes,
+      pensionStatementsRes,
       pensionContractsRes,
       spendingCategoriesRes,
       spendingTransactionsRes,
@@ -479,6 +481,10 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("pension_points")
         .select("year, points, note")
+        .order("year", { ascending: true }),
+      this.supabase
+        .from("pension_statements")
+        .select("year, total_points, note")
         .order("year", { ascending: true }),
       this.supabase
         .from("pension_contracts")
@@ -573,6 +579,7 @@ export class SupabaseStore implements DataStore {
     optional(accountsRes, "accounts");
     optional(accountBalancesRes, "accountBalances");
     optional(pensionPointsRes, "pensionPoints");
+    optional(pensionStatementsRes, "pensionStatements");
     optional(pensionContractsRes, "pensionContracts");
     optional(spendingCategoriesRes, "spendingCategories");
     optional(spendingTransactionsRes, "spendingTransactions");
@@ -705,6 +712,14 @@ export class SupabaseStore implements DataStore {
       (pensionPointsRes.data ?? []) as { year: number; points: number | string; note: string | null }[]
     ).map((r) => ({ year: r.year, points: Number(r.points), note: r.note ?? null }));
 
+    const pensionStatements: PensionStatement[] = (
+      (pensionStatementsRes.data ?? []) as {
+        year: number;
+        total_points: number | string;
+        note: string | null;
+      }[]
+    ).map((r) => ({ year: r.year, totalPoints: Number(r.total_points), note: r.note ?? null }));
+
     const pensionContracts: PensionContract[] = (
       (pensionContractsRes.data ?? []) as {
         id: string;
@@ -773,6 +788,7 @@ export class SupabaseStore implements DataStore {
       degraded,
       accountBalances,
       pensionPoints,
+      pensionStatements,
       pensionContracts,
       spendingCategories,
       spendingTransactions,
@@ -1270,6 +1286,25 @@ export class SupabaseStore implements DataStore {
         user_id: this.userId,
         year: e.year,
         points: e.points,
+        note: e.note ?? null,
+      })),
+    );
+    if (insErr) throw insErr;
+  }
+
+  async setPensionStatements(entries: PensionStatement[]): Promise<void> {
+    // Replace-set, same reasoning as setPensionPoints above.
+    const { error: delErr } = await this.supabase
+      .from("pension_statements")
+      .delete()
+      .eq("user_id", this.userId);
+    if (delErr) throw delErr;
+    if (entries.length === 0) return;
+    const { error: insErr } = await this.supabase.from("pension_statements").insert(
+      entries.map((e) => ({
+        user_id: this.userId,
+        year: e.year,
+        total_points: e.totalPoints,
         note: e.note ?? null,
       })),
     );

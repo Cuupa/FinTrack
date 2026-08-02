@@ -295,6 +295,7 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     const projection = pensionEnabled
       ? projectPension({
           entries: data.pensionPoints,
+          statements: data.pensionStatements,
           contracts: data.pensionContracts,
           reference: pensionReference,
           settings: data.profile.pensionSettings,
@@ -429,6 +430,7 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
     data.contracts,
     data.goals,
     data.pensionPoints,
+    data.pensionStatements,
     data.pensionContracts,
     data.profile.pensionSettings,
     data.watchlist,

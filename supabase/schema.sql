@@ -576,6 +576,23 @@ create unique index if not exists pension_points_unique_key
   on public.pension_points (user_id, year);
 create index if not exists pension_points_user_id_idx on public.pension_points (user_id);
 
+-- One Renteninformation: the CUMULATIVE Entgeltpunkte total the letter states,
+-- at the year it was issued. This is what the user actually has in hand -- the
+-- letter prints no per-year figure at all -- and two of them give the accrual
+-- rate by subtraction. `pension_points` above stays for the Versicherungsverlauf.
+create table if not exists public.pension_statements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  year int not null,
+  total_points numeric not null,
+  note text,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists pension_statements_unique_key
+  on public.pension_statements (user_id, year);
+create index if not exists pension_statements_user_id_idx
+  on public.pension_statements (user_id);
+
 -- A policy that PAYS a monthly pension (private Rentenversicherung, Riester,
 -- Ruerup, a company scheme). A sibling of `contracts`, not one of its
 -- insurance types: a contract is money going out every month, this is defined
@@ -1097,6 +1114,7 @@ alter table public.asset_valuations enable row level security;
 alter table public.accounts enable row level security;
 alter table public.account_balances enable row level security;
 alter table public.pension_points enable row level security;
+alter table public.pension_statements enable row level security;
 alter table public.pension_contracts enable row level security;
 alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
@@ -1217,6 +1235,9 @@ create policy "own account balances" on public.account_balances
 -- from is one of the more sensitive documents a user owns.
 drop policy if exists "own pension points" on public.pension_points;
 create policy "own pension points" on public.pension_points
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "own pension statements" on public.pension_statements;
+create policy "own pension statements" on public.pension_statements
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "own pension contracts" on public.pension_contracts;
 create policy "own pension contracts" on public.pension_contracts
@@ -2218,6 +2239,7 @@ begin
     union all select 'plannedCashflow', count(distinct pc.user_id), count(*)::bigint from public.planned_cashflows pc
     union all select 'goals', count(distinct go.user_id), count(*)::bigint from public.goals go
     union all select 'pensionPoints', count(distinct pp.user_id), count(*)::bigint from public.pension_points pp
+    union all select 'pensionStatements', count(distinct pst.user_id), count(*)::bigint from public.pension_statements pst
     union all select 'pensionContracts', count(distinct pk.user_id), count(*)::bigint from public.pension_contracts pk
     union all select 'llm', count(distinct l.user_id), count(*)::bigint from public.llm_settings l
     union all select 'push', count(distinct ps.user_id), count(*)::bigint from public.push_subscriptions ps

@@ -343,6 +343,9 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
     async setPensionPoints() {
       calls.push("setPensionPoints");
     },
+    async setPensionStatements() {
+      calls.push("setPensionStatements");
+    },
     async addPensionContract(input, id) {
       calls.push("addPensionContract");
       return { ...input, id: id ?? "pc1" };

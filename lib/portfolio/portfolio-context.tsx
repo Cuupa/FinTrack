@@ -42,6 +42,7 @@ import {
   type LlmConfig,
   type PensionContract,
   type PensionPoint,
+  type PensionStatement,
   type Portfolio,
   type PortfolioData,
   type Profile,
@@ -102,6 +103,7 @@ interface PortfolioContextValue {
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
   /** Replace-set the whole statutory pension record, keyed by year. */
   setPensionPoints(entries: PensionPoint[]): Promise<void>;
+  setPensionStatements(entries: PensionStatement[]): Promise<void>;
   addPensionContract(input: PensionContractInput): Promise<PensionContract>;
   updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void>;
   deletePensionContract(id: string): Promise<void>;
@@ -503,6 +505,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setPensionStatements = useCallback(
+    async (entries: PensionStatement[]) => {
+      await store.setPensionStatements(entries);
+      const byYear = new Map<number, PensionStatement>();
+      for (const e of entries) byYear.set(e.year, e);
+      const next = [...byYear.values()].sort((a, b) => a.year - b.year);
+      setData((d) => ({ ...d, pensionStatements: next }));
+    },
+    [store],
+  );
+
   const addPensionContract = useCallback(
     async (input: PensionContractInput) => {
       const contract = await store.addPensionContract(input);
@@ -872,6 +885,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     deleteAccount,
     setAccountBalances,
     setPensionPoints,
+    setPensionStatements,
     addPensionContract,
     updatePensionContract,
     deletePensionContract,

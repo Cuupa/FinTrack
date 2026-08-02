@@ -464,9 +464,22 @@ FX-convert) always beats a wrong instrument in the right currency.
   the old numbers exactly. **Known gap**: only the DETERMINISTIC targets fold
   the pension in; the Monte Carlo run still frames decumulation purely as a
   withdrawal rate on the portfolio.
-- **The pension's default IS the Renteninformation's own method**: the flat
-  average of the last five plausible years, carried forward with **no career
-  progression**. That is what "wenn Sie so weitermachen wie bisher" means on
+- **The Renteninformation states a TOTAL, never a per-year figure** (owner
+  rule, round 30, reported furiously: "da steht nur drauf wie viel Punkte man
+  GESAMT hat"). So the letters are the primary record — `pensionStatements`
+  (`pension_statements`, migration 0117), one row per letter — and the annual
+  rate is DERIVED by subtracting two of them over the years between
+  (`statementAnnualPoints`, mirroring the DRV's five-year window: the shortest
+  span reaching five years, else the widest available). The old single
+  `pensionSettings.totalPoints` pair is folded in as one more letter by
+  `allStatements`, so nothing entered earlier disappears. The per-year
+  `pensionPoints` table stays for the Versicherungsverlauf, which most people
+  never request; when it holds several letters' totals instead
+  (`looksLikeStatements`: only ever rising, newest above `maxPoints`) the page
+  OFFERS to move them and never does it silently.
+- **The pension's default IS the Renteninformation's own method**: with a
+  year-by-year record, the flat average of the last five plausible years,
+  carried forward with **no career progression**. That is what "wenn Sie so weitermachen wie bisher" means on
   the letter, and a projection the user cannot reconcile with their own
   statement is worthless however well argued. Assuming a rising career on top
   of it overstated the pension by ~12 points, about 490 EUR a month (reported

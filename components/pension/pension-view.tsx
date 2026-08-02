@@ -15,9 +15,12 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import {
+  allStatements,
+  looksLikeStatements,
   pensionLevelOn,
   projectPension,
   standardRetirementAge,
+  statementAnnualPoints,
   type PensionProjection,
 } from "@/lib/finance/pension";
 import { usePensionReference } from "@/lib/pension/use-pension-reference";
@@ -26,6 +29,7 @@ import {
   type PensionContract,
   type PensionContractKind,
   type PensionPoint,
+  type PensionStatement,
 } from "@/lib/types";
 import type { PensionContractInput } from "@/lib/store/types";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
@@ -207,38 +211,52 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
 
 type PointSortKey = "year" | "points" | "note";
 
+type StatementSortKey = "year" | "totalPoints" | "note";
+
 /**
- * The cumulative figure the Renteninformation actually leads with. It used to
- * have nowhere to go, so it was typed into a year's row and the projection read
- * it as an annual rate -- 17 points became ~20.000 EUR a month. Its own field,
- * with its own as-of year, above the year-by-year detail.
+ * The Renteninformationen themselves, one row per letter.
+ *
+ * The letter states a cumulative TOTAL and no per-year figure at all, so this
+ * is the only table most users can actually fill in. Two letters give the
+ * accrual rate by subtraction, which is what "wenn Sie so weitermachen wie
+ * bisher" means when the year-by-year record does not exist.
  */
-function TotalPointsFields({ maxPoints }: { maxPoints: number | null }) {
+function StatementsFields() {
   const { t } = useI18n();
-  const { data, updateProfile } = usePortfolio();
+  const { data, setPensionStatements, updateProfile } = usePortfolio();
   const settings = data.profile.pensionSettings;
+  // The legacy single Gesamtstand is one more letter, listed and editable like
+  // any other, so nobody's earlier entry disappears from the page.
+  const rows = useMemo(
+    () => allStatements(data.pensionStatements, settings),
+    [data.pensionStatements, settings],
+  );
+  const rate = statementAnnualPoints(data.pensionStatements, settings);
 
-  const [total, setTotal] = useState(
-    settings.totalPoints != null ? String(settings.totalPoints) : "",
-  );
-  const [asOf, setAsOf] = useState(
-    settings.totalPointsYear != null ? String(settings.totalPointsYear) : "",
-  );
+  const [year, setYear] = useState("");
+  const [total, setTotal] = useState("");
+  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PensionStatement | null>(null);
 
-  async function save() {
+  const sort = useSort<StatementSortKey>("year", "desc");
+  const sorted = useMemo(
+    () => sort.apply(rows, (r, key) => (key === "note" ? (r.note ?? "") : r[key])),
+    [rows, sort],
+  );
+
+  /** Writing the list always retires the legacy settings pair: it now lives in
+   *  the list, and two homes for one figure is how it gets counted twice. */
+  async function write(next: PensionStatement[], onOk: () => void) {
     setError(null);
-    setSaved(false);
     try {
-      await updateProfile({
-        pensionSettings: {
-          ...settings,
-          totalPoints: optionalNumber(total),
-          totalPointsYear: optionalNumber(asOf),
-        },
-      });
-      setSaved(true);
+      await setPensionStatements(next);
+      if (settings.totalPoints != null || settings.totalPointsYear != null) {
+        await updateProfile({
+          pensionSettings: { ...settings, totalPoints: null, totalPointsYear: null },
+        });
+      }
+      onOk();
     } catch (err) {
       setError(
         isStorageFullError(err)
@@ -248,55 +266,151 @@ function TotalPointsFields({ maxPoints }: { maxPoints: number | null }) {
     }
   }
 
+  async function add() {
+    const y = optionalNumber(year);
+    const p = optionalNumber(total);
+    if (y == null || p == null) {
+      setError(t("pension.statements.invalid"));
+      return;
+    }
+    const next = [
+      ...rows.filter((s) => s.year !== y),
+      { year: y, totalPoints: p, note: optionalText(note) },
+    ];
+    await write(next, () => {
+      setYear("");
+      setTotal("");
+      setNote("");
+    });
+  }
+
   return (
     <div>
-      <h3 className="text-sm font-medium">{t("pension.total.title")}</h3>
-      <p className="mt-1 text-xs text-zinc-500">
-        {maxPoints != null
-          ? t("pension.total.hintMax", { max: maxPoints.toFixed(2) })
-          : t("pension.total.hint")}
-      </p>
+      <h3 className="text-sm font-medium">{t("pension.statements.title")}</h3>
+      <p className="mt-1 text-xs text-zinc-500">{t("pension.statements.hint")}</p>
+
       <div className="mt-3 grid gap-3 sm:grid-cols-4">
         <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.total.points")}</span>
+          <span className="text-zinc-500">{t("pension.statements.year")}</span>
+          <input
+            className={inputCls}
+            inputMode="numeric"
+            value={year}
+            onChange={(e) => setYear(stripLeadingZero(e.target.value))}
+            placeholder={String(new Date().getFullYear())}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="text-zinc-500">{t("pension.statements.total")}</span>
           <input
             className={inputCls}
             inputMode="decimal"
             value={total}
-            onChange={(e) => {
-              setTotal(stripLeadingZero(e.target.value));
-              setSaved(false);
-            }}
-            placeholder="17,0322"
+            onChange={(e) => setTotal(stripLeadingZero(e.target.value))}
+            placeholder="13,2739"
           />
         </label>
-        <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.total.year")}</span>
-          <input
-            className={inputCls}
-            inputMode="numeric"
-            value={asOf}
-            onChange={(e) => {
-              setAsOf(stripLeadingZero(e.target.value));
-              setSaved(false);
-            }}
-            placeholder={String(new Date().getFullYear())}
-          />
+        <label className="block text-sm sm:col-span-2">
+          <span className="text-zinc-500">{t("pension.statements.note")}</span>
+          <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
-        <div className="flex items-end gap-3 sm:col-span-2">
-          <Button onClick={save}>{t("pension.save")}</Button>
-          {saved && <span className="pb-2 text-xs text-emerald-600">{t("pension.saved")}</span>}
-        </div>
+      </div>
+      <div className="mt-3">
+        <Button onClick={add} disabled={year.trim() === "" || total.trim() === ""}>
+          {t("pension.statements.add")}
+        </Button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+      {rows.length > 0 && (
+        <div className="mt-4">
+          <Table ariaLabel={t("pension.statements.title")}>
+            <Thead>
+              <Th sort={sort.sort} sortKey="year" onSort={sort.toggle}>
+                {t("pension.statements.year")}
+              </Th>
+              <Th align="right" sort={sort.sort} sortKey="totalPoints" onSort={sort.toggle}>
+                {t("pension.statements.total")}
+              </Th>
+              <Th sort={sort.sort} sortKey="note" onSort={sort.toggle}>
+                {t("pension.statements.note")}
+              </Th>
+              <Th align="right" />
+            </Thead>
+            <Tbody>
+              {sorted.map((row) => (
+                <Tr key={row.year}>
+                  <Td>{row.year}</Td>
+                  <Td align="right">{row.totalPoints.toFixed(4)}</Td>
+                  <Td className="text-zinc-500">{row.note ?? ""}</Td>
+                  <Td align="right">
+                    <RowActions>
+                      <DeleteAction
+                        label={t("common.delete")}
+                        onClick={() => setPendingDelete(row)}
+                      />
+                    </RowActions>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </div>
+      )}
+
+      {/* The subtraction the whole projection rests on, spelled out. */}
+      <p className="mt-3 text-xs text-zinc-500">
+        {rate
+          ? t("pension.statements.rate", {
+              points: rate.points.toFixed(4),
+              gained: rate.gainedPoints.toFixed(4),
+              years: String(rate.toYear - rate.fromYear),
+              from: String(rate.fromYear),
+              to: String(rate.toYear),
+            })
+          : t("pension.statements.needSecond")}
+      </p>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          open
+          title={t("pension.statements.deleteTitle")}
+          message={t("pension.statements.deleteMessage", { year: String(pendingDelete.year) })}
+          confirmLabel={t("common.delete")}
+          onConfirm={async () => {
+            const y = pendingDelete.year;
+            await write(
+              rows.filter((s) => s.year !== y),
+              () => setPendingDelete(null),
+            );
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }
 
 function PointsCard({ maxPoints }: { maxPoints: number | null }) {
   const { t } = useI18n();
-  const { data, setPensionPoints } = usePortfolio();
+  const { data, setPensionPoints, setPensionStatements } = usePortfolio();
   const entries = data.pensionPoints;
+
+  // Several Renteninformationen typed into the year table: rising values, the
+  // newest above what a year can earn. Offered as a one-click move rather than
+  // done silently -- they are the user's rows.
+  const mistyped = looksLikeStatements(entries, maxPoints);
+  const [pendingMove, setPendingMove] = useState(false);
+
+  async function moveToStatements() {
+    const merged = [
+      ...data.pensionStatements.filter((s) => !entries.some((e) => e.year === s.year)),
+      ...entries.map((e) => ({ year: e.year, totalPoints: e.points, note: e.note })),
+    ];
+    await setPensionStatements(merged);
+    await setPensionPoints([]);
+    setPendingMove(false);
+  }
 
   const [year, setYear] = useState("");
   const [points, setPoints] = useState("");
@@ -354,13 +468,24 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
       <h2 className="text-sm font-semibold">{t("pension.points.title")}</h2>
 
       <div className="mt-3">
-        <TotalPointsFields maxPoints={maxPoints} />
+        <StatementsFields />
       </div>
 
       <h3 className="mt-6 border-t border-zinc-100 pt-4 text-sm font-medium dark:border-zinc-800">
         {t("pension.points.detailTitle")}
       </h3>
       <p className="mt-1 text-xs text-zinc-500">{t("pension.points.hint")}</p>
+
+      {mistyped && (
+        <div className="mt-3 rounded-md border border-amber-300 p-3 dark:border-amber-500/40">
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            {t("pension.points.looksLikeStatements")}
+          </p>
+          <div className="mt-2">
+            <Button onClick={() => setPendingMove(true)}>{t("pension.points.moveToStatements")}</Button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <label className="block text-sm">
@@ -433,6 +558,17 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
           </Table>
           <TablePagination pager={pager} />
         </div>
+      )}
+
+      {pendingMove && (
+        <ConfirmDialog
+          open
+          title={t("pension.points.moveTitle")}
+          message={t("pension.points.moveMessage", { count: String(entries.length) })}
+          confirmLabel={t("pension.points.moveToStatements")}
+          onConfirm={moveToStatements}
+          onCancel={() => setPendingMove(false)}
+        />
       )}
 
       {pendingDelete && (
@@ -744,6 +880,7 @@ export function PensionView() {
     () =>
       projectPension({
         entries: data.pensionPoints,
+        statements: data.pensionStatements,
         contracts: data.pensionContracts,
         reference,
         settings: data.profile.pensionSettings,
@@ -751,6 +888,7 @@ export function PensionView() {
       }),
     [
       data.pensionPoints,
+      data.pensionStatements,
       data.pensionContracts,
       data.profile.pensionSettings,
       reference,

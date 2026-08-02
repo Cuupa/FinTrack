@@ -278,6 +278,14 @@ export function portfolioToCsv(data: PortfolioData): string {
         .map((p) => [p.year, p.points, p.note]),
     ),
     section(
+      "Pension statements",
+      ["year", "totalPoints", "note"],
+      data.pensionStatements
+        .slice()
+        .sort((a, b) => a.year - b.year)
+        .map((p) => [p.year, p.totalPoints, p.note]),
+    ),
+    section(
       "Pension policies",
       [
         "name",
@@ -361,6 +369,7 @@ export function hasExportableData(data: PortfolioData): boolean {
     data.plannedCashflows.length > 0 ||
     data.goals.length > 0 ||
     data.pensionPoints.length > 0 ||
+    data.pensionStatements.length > 0 ||
     data.pensionContracts.length > 0
   );
 }

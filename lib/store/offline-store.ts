@@ -30,6 +30,7 @@ import type {
   LlmConfig,
   PensionContract,
   PensionPoint,
+  PensionStatement,
   Portfolio,
   PortfolioData,
   Profile,
@@ -370,6 +371,16 @@ export class OfflineStore implements DataStore {
       await this.inner.setPensionPoints(entries);
     } catch (err) {
       await this.handleFailure(err, "setPensionPoints", "pension", { entries });
+    }
+  }
+
+  async setPensionStatements(entries: PensionStatement[]): Promise<void> {
+    await this.mirror.setPensionStatements(entries);
+    // Replace-set over the whole record, same shape as setPensionPoints.
+    try {
+      await this.inner.setPensionStatements(entries);
+    } catch (err) {
+      await this.handleFailure(err, "setPensionStatements", "pension-statements", { entries });
     }
   }
 

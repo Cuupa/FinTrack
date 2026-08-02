@@ -13,6 +13,8 @@ import {
   totalPensionPoints,
   typicalAnnualPoints,
   type PensionReference,
+  looksLikeStatements,
+  statementAnnualPoints,
 } from "../lib/finance/pension";
 import { DEFAULT_PENSION_SETTINGS, type PensionContract, type PensionPoint } from "../lib/types";
 
@@ -107,29 +109,36 @@ describe("maxPointsOn", () => {
 
 describe("currentPensionPoints", () => {
   const settings = { totalPoints: null, totalPointsYear: null };
+  const stmt = (year: number, totalPoints: number) => ({ year, totalPoints, note: null });
 
-  it("sums the per-year record when no statement total is on file", () => {
-    expect(currentPensionPoints(points([[2024, 1.0]]), settings)).toBeCloseTo(1, 10);
+  it("sums the per-year record when no statement is on file", () => {
+    expect(currentPensionPoints(points([[2024, 1.0]]), [], settings)).toBeCloseTo(1, 10);
   });
 
-  it("takes the statement total and adds only the years after it", () => {
+  it("takes the newest statement total and adds only the years after it", () => {
     const entries = points([
       [2023, 1.1],
       [2024, 1.2],
       [2025, 1.3],
     ]);
     // The statement covers everything up to and including 2024.
-    expect(
-      currentPensionPoints(entries, { totalPoints: 17.03, totalPointsYear: 2024 }),
-    ).toBeCloseTo(17.03 + 1.3, 10);
-  });
-
-  it("ignores the per-year record entirely when the total has no as-of year", () => {
-    const entries = points([[2024, 1.2]]);
-    expect(currentPensionPoints(entries, { totalPoints: 17.03, totalPointsYear: null })).toBeCloseTo(
-      17.03,
+    expect(currentPensionPoints(entries, [stmt(2024, 17.03)], settings)).toBeCloseTo(
+      17.03 + 1.3,
       10,
     );
+  });
+
+  it("uses the NEWEST of several statements, older letters never add on top", () => {
+    const entries = points([[2025, 1.3]]);
+    const letters = [stmt(2009, 0), stmt(2017, 5.0232), stmt(2023, 13.2739)];
+    expect(currentPensionPoints(entries, letters, settings)).toBeCloseTo(13.2739 + 1.3, 10);
+  });
+
+  it("still honours the legacy single total from the settings", () => {
+    const entries = points([[2025, 1.3]]);
+    expect(
+      currentPensionPoints(entries, [], { totalPoints: 17.03, totalPointsYear: 2024 }),
+    ).toBeCloseTo(17.03 + 1.3, 10);
   });
 });
 
@@ -658,5 +667,70 @@ describe("the default reproduces the Renteninformation's method", () => {
     expect(trended.monthlyStatutory!).toBeGreaterThan(flat.monthlyStatutory!);
     // And the gap between them is the thing that was silently baked in before.
     expect(trended.totalPoints - flat.totalPoints).toBeGreaterThan(5);
+  });
+});
+
+describe("statementAnnualPoints", () => {
+  const stmt = (year: number, totalPoints: number) => ({ year, totalPoints, note: null });
+
+  it("measures the rate between two Renteninformationen", () => {
+    // The letters print no per-year figure at all; the difference is the rate.
+    const rate = statementAnnualPoints([stmt(2017, 5.0232), stmt(2023, 13.2739)]);
+    expect(rate).not.toBeNull();
+    expect(rate!.points).toBeCloseTo((13.2739 - 5.0232) / 6, 10);
+    expect(rate!.fromYear).toBe(2017);
+    expect(rate!.toYear).toBe(2023);
+  });
+
+  it("prefers the shortest span reaching five years over the whole history", () => {
+    // 2009 is 14 years back and covers school years; 2017 is the DRV's window.
+    const rate = statementAnnualPoints([stmt(2009, 0), stmt(2017, 5.0232), stmt(2023, 13.2739)]);
+    expect(rate!.fromYear).toBe(2017);
+  });
+
+  it("falls back to the widest span when no pair reaches five years", () => {
+    const rate = statementAnnualPoints([stmt(2021, 8), stmt(2023, 11)]);
+    expect(rate!.fromYear).toBe(2021);
+    expect(rate!.points).toBeCloseTo(1.5, 10);
+  });
+
+  it("is null with one letter, and null when the totals go backwards", () => {
+    expect(statementAnnualPoints([stmt(2023, 13.2739)])).toBeNull();
+    expect(statementAnnualPoints([stmt(2017, 14), stmt(2023, 13)])).toBeNull();
+  });
+
+  it("drives the projection: the rate carries every remaining year", () => {
+    const p = projectPension({
+      entries: [],
+      statements: [stmt(2017, 5.0232), stmt(2023, 13.2739)],
+      contracts: [],
+      reference,
+      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      currentYear: 2025,
+    });
+    const perYear = (13.2739 - 5.0232) / 6;
+    expect(p.annualPoints).toBeCloseTo(perYear, 10);
+    expect(p.currentPoints).toBeCloseTo(13.2739, 10);
+    expect(p.futurePoints).toBeCloseTo(perYear * 32, 10);
+    expect(p.statementRate!.gainedPoints).toBeCloseTo(8.2507, 10);
+  });
+});
+
+describe("looksLikeStatements", () => {
+  const row = (year: number, points: number) => ({ year, points, note: null });
+
+  it("spots several statement totals typed into the year table", () => {
+    // The case reported 2026-08: three letters, one row each.
+    expect(looksLikeStatements([row(2009, 0), row(2017, 5.0232), row(2023, 13.2739)], 2.0)).toBe(
+      true,
+    );
+  });
+
+  it("leaves a real year-by-year record alone", () => {
+    expect(looksLikeStatements([row(2021, 1.1), row(2022, 1.3), row(2023, 1.2)], 2.0)).toBe(false);
+  });
+
+  it("needs the newest value to be impossible as a year, not merely rising", () => {
+    expect(looksLikeStatements([row(2021, 1.1), row(2022, 1.2), row(2023, 1.3)], 2.0)).toBe(false);
   });
 });

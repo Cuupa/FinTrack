@@ -27,7 +27,13 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { portfolioOrBenchmarkStats } from "@/lib/finance/stats";
 import { monthlyContributionOf } from "@/lib/finance/savings-plans";
-import { computeFirePlan, trailingAnnualExpenses, type PensionBridge } from "@/lib/finance/fire";
+import {
+  computeFirePlan,
+  trailingAnnualExpenses,
+  FAT_FIRE_EXPENSE_RATIO,
+  LEAN_FIRE_EXPENSE_RATIO,
+  type PensionBridge,
+} from "@/lib/finance/fire";
 import { projectPension } from "@/lib/finance/pension";
 import { usePensionReference } from "@/lib/pension/use-pension-reference";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
@@ -37,8 +43,9 @@ import {
   WithdrawalComparison,
   WithdrawalStrategyPanel,
 } from "@/components/simulation/withdrawal-strategy-panel";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { formatCurrency, formatPercent, formatPercentPlain } from "@/lib/format";
 import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
+import { Private } from "@/components/ui/private";
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -146,6 +153,7 @@ export function FireView() {
     () =>
       projectPension({
         entries: data.pensionPoints,
+        statements: data.pensionStatements,
         contracts: data.pensionContracts,
         reference: pensionReference,
         settings: data.profile.pensionSettings,
@@ -153,6 +161,7 @@ export function FireView() {
       }),
     [
       data.pensionPoints,
+      data.pensionStatements,
       data.pensionContracts,
       data.profile.pensionSettings,
       pensionReference,
@@ -205,6 +214,27 @@ export function FireView() {
       appliedPension,
     ],
   );
+
+  // Each tile says in words what its number IS: the budget it funds and the
+  // rate it funds it at. A bare euro amount is unreadable without them.
+  function basisFor(expenseRatio: number): string {
+    const rate = formatPercentPlain(withdrawalRatePercent / 100, 1);
+    if (expenseRatio === 1) {
+      return t("fire.tile.basis", { expenses: formatCurrency(effectiveExpenses, currency), rate });
+    }
+    return t("fire.tile.basisRatio", {
+      ratio: formatPercentPlain(expenseRatio, 0),
+      expenses: formatCurrency(effectiveExpenses * expenseRatio, currency),
+      rate,
+    });
+  }
+
+  // With the pension counted the target is NOT expenses/rate any more, so the
+  // basis line would otherwise describe arithmetic the number does not follow.
+  const pensionNote =
+    appliedPension && projection.retirementYear != null
+      ? t("fire.tile.pensionApplied", { year: String(projection.retirementYear) })
+      : undefined;
 
   // --- Full worker-run Monte Carlo, seeded from the chosen FIRE target. ---
   const { result, running } = simulation;
@@ -326,16 +356,41 @@ export function FireView() {
         <p className="mt-1 text-xs text-zinc-500">{t("fire.annualReturn.hint")}</p>
       </Card>
 
-      <div data-tour="fire-targets" className="grid gap-4 sm:grid-cols-3">
-        <FireTile label={t("fire.lean.label")} amount={plan.lean} years={plan.yearsToLean} currency={currency} t={t} />
-        <FireTile
-          label={t("fire.regular.label")}
-          amount={plan.regular}
-          years={plan.yearsToRegular}
-          currency={currency}
-          t={t}
-        />
-        <FireTile label={t("fire.fat.label")} amount={plan.fat} years={plan.yearsToFat} currency={currency} t={t} />
+      <div data-tour="fire-targets">
+        <h2 className="text-lg font-semibold">{t("fire.targets.title")}</h2>
+        <p className="mt-1 text-sm text-zinc-500">{t("fire.targets.subtitle")}</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <FireTile
+            label={t("fire.lean.label")}
+            info={t("fire.lean.info", { ratio: formatPercentPlain(LEAN_FIRE_EXPENSE_RATIO, 0) })}
+            basis={basisFor(LEAN_FIRE_EXPENSE_RATIO)}
+            pensionNote={pensionNote}
+            amount={plan.lean}
+            years={plan.yearsToLean}
+            currency={currency}
+            t={t}
+          />
+          <FireTile
+            label={t("fire.regular.label")}
+            info={t("fire.regular.info")}
+            basis={basisFor(1)}
+            pensionNote={pensionNote}
+            amount={plan.regular}
+            years={plan.yearsToRegular}
+            currency={currency}
+            t={t}
+          />
+          <FireTile
+            label={t("fire.fat.label")}
+            info={t("fire.fat.info", { ratio: formatPercentPlain(FAT_FIRE_EXPENSE_RATIO, 0) })}
+            basis={basisFor(FAT_FIRE_EXPENSE_RATIO)}
+            pensionNote={pensionNote}
+            amount={plan.fat}
+            years={plan.yearsToFat}
+            currency={currency}
+            t={t}
+          />
+        </div>
       </div>
 
       <Card data-tour="fire-simulation">
@@ -405,12 +460,21 @@ export function FireView() {
 
 function FireTile({
   label,
+  info,
+  basis,
+  pensionNote,
   amount,
   years,
   currency,
   t,
 }: {
   label: string;
+  /** What this target means, on the label's ⓘ. */
+  info: string;
+  /** How this number was derived, always visible: the tooltip cannot be the
+   *  only explanation on a phone. */
+  basis: string;
+  pensionNote?: string;
   amount: number;
   years: number | null;
   currency: string;
@@ -420,10 +484,15 @@ function FireTile({
     <Card>
       <Stat
         label={label}
+        info={info}
         value={Number.isFinite(amount) ? formatCurrency(amount, currency) : "-"}
         sub={formatYears(years, t)}
         isPrivate
       />
+      <p className="mt-3 text-xs leading-snug text-zinc-500">
+        <Private>{basis}</Private>
+        {pensionNote && <span className="block">{pensionNote}</span>}
+      </p>
     </Card>
   );
 }

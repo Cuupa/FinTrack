@@ -19,7 +19,12 @@
 // this way the user sees what the entitlement is worth at today's value and
 // can compare it against today's costs.
 
-import type { PensionContract, PensionPoint, PensionSettings } from "../types";
+import type {
+  PensionContract,
+  PensionPoint,
+  PensionSettings,
+  PensionStatement,
+} from "../types";
 
 /** One year of the seeded reference table. */
 export interface PensionReference {
@@ -90,23 +95,104 @@ export function totalPensionPoints(entries: readonly PensionPoint[]): number {
 }
 
 /**
+ * Every Renteninformation on record, newest first.
+ *
+ * The legacy single "Gesamtstand" pair in the settings is folded in as one more
+ * letter, so data entered before the list existed keeps working unchanged. A
+ * listed statement for the same year wins: it is the newer input.
+ */
+export function allStatements(
+  statements: readonly PensionStatement[],
+  settings?: Pick<PensionSettings, "totalPoints" | "totalPointsYear">,
+): PensionStatement[] {
+  const rows = statements.filter((s) => Number.isFinite(s.totalPoints) && Number.isFinite(s.year));
+  const legacyYear = settings?.totalPointsYear;
+  const legacyTotal = settings?.totalPoints;
+  if (legacyTotal != null && legacyYear != null && !rows.some((s) => s.year === legacyYear)) {
+    rows.push({ year: legacyYear, totalPoints: legacyTotal, note: null });
+  }
+  return rows.sort((a, b) => b.year - a.year);
+}
+
+/** The most recent Renteninformation, or null when there is none. */
+export function latestStatement(
+  statements: readonly PensionStatement[],
+  settings?: Pick<PensionSettings, "totalPoints" | "totalPointsYear">,
+): PensionStatement | null {
+  return allStatements(statements, settings)[0] ?? null;
+}
+
+/**
  * Entgeltpunkte earned to date.
  *
- * A Renteninformation leads with a CUMULATIVE total ("Sie haben bisher 17,0322
- * Entgeltpunkte erworben"); the year-by-year split is buried in the
- * Versicherungsverlauf. So the total is what the user has in hand, and
- * `settings.totalPoints` is where it goes. Per-year rows are the optional
- * detail: while a total is on record, only the years AFTER it add on top, the
- * same way the next statement will count them.
+ * A Renteninformation states a CUMULATIVE total ("Sie haben bisher insgesamt
+ * 13,2739 Entgeltpunkte erworben") and nothing per year -- the year-by-year
+ * split only exists in the Versicherungsverlauf. So the newest letter's total
+ * is the stock, and per-year rows are the optional detail: only the years AFTER
+ * that letter add on top, the same way the next letter will count them.
  */
 export function currentPensionPoints(
   entries: readonly PensionPoint[],
-  settings: Pick<PensionSettings, "totalPoints" | "totalPointsYear">,
+  statements: readonly PensionStatement[],
+  settings?: Pick<PensionSettings, "totalPoints" | "totalPointsYear">,
 ): number {
-  if (settings.totalPoints == null) return totalPensionPoints(entries);
-  const asOf = settings.totalPointsYear;
-  const after = asOf == null ? [] : entries.filter((e) => e.year > asOf);
-  return settings.totalPoints + totalPensionPoints(after);
+  const latest = latestStatement(statements, settings);
+  // A legacy total with no as-of year cannot be placed in time, so nothing can
+  // be added on top of it -- but it is still the stock the user typed in, and
+  // dropping it would quietly zero their entitlement.
+  if (latest == null) {
+    return settings?.totalPoints ?? totalPensionPoints(entries);
+  }
+  const after = entries.filter((e) => e.year > latest.year);
+  return latest.totalPoints + totalPensionPoints(after);
+}
+
+/** The accrual rate two Renteninformationen imply, and the span it was measured
+ *  over -- so the page can show its own arithmetic instead of one opaque rate. */
+export interface StatementRate {
+  /** Entgeltpunkte per year between the two letters. */
+  points: number;
+  /** The older letter's year. */
+  fromYear: number;
+  /** The newer letter's year. */
+  toYear: number;
+  /** Points accumulated between them. */
+  gainedPoints: number;
+}
+
+/** The window the DRV itself averages over on the Renteninformation. */
+const STATEMENT_WINDOW_YEARS = 5;
+
+/**
+ * Points per year, measured from the letters themselves.
+ *
+ * This is the ONLY per-year figure a Renteninformation contains, and it is
+ * contained implicitly: two letters, a difference in total points, the years
+ * between them. Deriving it is arithmetic on the user's own documents; asking
+ * for a per-year value instead asks for a number the letter does not print.
+ *
+ * The older letter is chosen to mirror the DRV's own five-year window: the
+ * shortest span that reaches five years, so the rate is an average over a
+ * comparable stretch rather than one noisy year. When no pair reaches five
+ * years the widest available span is used -- more data beats less. Null with
+ * fewer than two letters, or when the totals go backwards: a cumulative total
+ * can only grow, so that is a typo, not a rate.
+ */
+export function statementAnnualPoints(
+  statements: readonly PensionStatement[],
+  settings?: Pick<PensionSettings, "totalPoints" | "totalPointsYear">,
+): StatementRate | null {
+  const rows = allStatements(statements, settings);
+  if (rows.length < 2) return null;
+  const newest = rows[0];
+  const older = rows.slice(1);
+  const wideEnough = older.filter((s) => newest.year - s.year >= STATEMENT_WINDOW_YEARS);
+  // Shortest span that still covers the window, else the widest span there is.
+  const pick = wideEnough.length > 0 ? wideEnough[0] : older[older.length - 1];
+  const years = newest.year - pick.year;
+  const gained = newest.totalPoints - pick.totalPoints;
+  if (years <= 0 || gained < 0) return null;
+  return { points: gained / years, fromYear: pick.year, toYear: newest.year, gainedPoints: gained };
 }
 
 /**
@@ -154,6 +240,32 @@ export function plausibleEntries(
   const typical = typicalAnnualPoints(real, real.length || 1);
   if (typical <= 0) return real;
   return real.filter((e) => e.points <= typical * OUTLIER_FACTOR);
+}
+
+/**
+ * Whether the per-year rows are in fact cumulative totals from several
+ * Renteninformationen, typed into the only table that existed for them.
+ *
+ * Two signatures together, because either alone has honest explanations: the
+ * values never go DOWN across the years (a real career has weaker years), and
+ * the newest one is above what a single year can physically earn. Reported to
+ * the user as an offer to move them, never acted on silently -- they are the
+ * user's rows and only they can say what they meant.
+ */
+export function looksLikeStatements(
+  entries: readonly PensionPoint[],
+  maxPoints: number | null,
+): boolean {
+  const sorted = [...entries]
+    .filter((e) => Number.isFinite(e.points))
+    .sort((a, b) => a.year - b.year);
+  if (sorted.length < 2) return false;
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].points < sorted[i - 1].points) return false;
+  }
+  const cap = maxPoints ?? typicalAnnualPoints(sorted, sorted.length) * OUTLIER_FACTOR;
+  if (!(cap > 0)) return false;
+  return sorted[sorted.length - 1].points > cap;
 }
 
 /** A straight line through the recorded years: what a year earns now, and how
@@ -340,6 +452,12 @@ export interface PensionProjection {
   trendSampleSize: number;
   /** True when following the record's trend is on offer at all. */
   trendAvailable: boolean;
+  /** The rate measured between two Renteninformationen, or null when fewer
+   *  than two are on record. Surfaced so the page can show the subtraction the
+   *  assumption rests on. */
+  statementRate: StatementRate | null;
+  /** The newest Renteninformation the points-so-far figure rests on. */
+  latestStatement: PensionStatement | null;
   /** A recorded year that no year could have produced (above the
    *  Beitragsbemessungsgrenze), or null. Excluded from the trend, but the row
    *  itself is still wrong and only the user can correct it. */
@@ -381,13 +499,16 @@ export interface PensionProjection {
  */
 export function projectPension(input: {
   entries: readonly PensionPoint[];
+  /** The Renteninformationen. Omitted reproduces the pre-list behaviour. */
+  statements?: readonly PensionStatement[];
   contracts: readonly PensionContract[];
   reference: readonly PensionReference[];
   settings: PensionSettings;
   currentYear: number;
 }): PensionProjection {
   const { entries, contracts, reference, settings, currentYear } = input;
-  const currentPoints = currentPensionPoints(entries, settings);
+  const statements = input.statements ?? [];
+  const currentPoints = currentPensionPoints(entries, statements, settings);
   const pensionValue = pensionValueOn(reference, currentYear);
   const monthlyEarned = pensionValue != null ? currentPoints * pensionValue : null;
 
@@ -414,21 +535,33 @@ export function projectPension(input: {
   // cannot reconcile with their own letter is worthless however well argued.
   // Assuming a rising career on top of it overstated the pension by about 12
   // points, i.e. ~490 EUR a month (reported 2026-08).
-  const flatAssumption = averageAnnualPoints(usable, 5);
-  const useTrend = settings.assumeTrend === true && trend.slope !== 0;
+  // ... and when the user only has their letters, "wie bisher" is measured
+  // BETWEEN two of them: the letter prints no per-year figure at all, so the
+  // difference in totals over the years between is the only honest reading of
+  // the same sentence. It beats the per-year rows when both exist, because
+  // those rows are typically a partial Versicherungsverlauf while the totals
+  // cover the whole record.
+  const rate = statementAnnualPoints(statements, settings);
+  const flatAssumption = rate?.points ?? averageAnnualPoints(usable, 5);
+  const useTrend = settings.assumeTrend === true && rate == null && trend.slope !== 0;
   const yearsLeft = retirementYear != null ? Math.max(0, retirementYear - currentYear) : 0;
+
+  // A typed assumption is one number, so it is held flat: the user said what
+  // they expect per year and the app does not then argue with a trend.
+  const manual = settings.annualPoints;
+  const rawAnnualPoints = manual ?? (useTrend ? trend.base : flatAssumption);
 
   // A ceiling for the fitted trend when there is no Beitragsbemessungsgrenze to
   // clamp against. A three-year slope carried thirty years is an extrapolation
   // well past what the sample supports, and Entgeltpunkte are a RATIO to the
   // national average wage -- earning twice the average every year for the rest
   // of a career is already the extreme end.
-  const trendCeiling = maxAnnualPoints ?? Math.max(trend.base * 2, trend.base);
-
-  // A typed assumption is one number, so it is held flat: the user said what
-  // they expect per year and the app does not then argue with a trend.
-  const manual = settings.annualPoints;
-  const rawAnnualPoints = manual ?? (useTrend ? trend.base : flatAssumption);
+  //
+  // It is measured against the assumption ACTUALLY in force, not against the
+  // per-year trend alone: with the assumption coming from the letters there are
+  // no per-year rows at all, so a trend-derived ceiling is 0 and would clamp
+  // every remaining year to nothing.
+  const trendCeiling = maxAnnualPoints ?? Math.max(rawAnnualPoints, trend.base) * 2;
 
   let futurePoints = 0;
   let annualPointsStart = 0;
@@ -483,9 +616,14 @@ export function projectPension(input: {
     annualPointsSlope: useTrend && manual == null ? trend.slope : 0,
     trendSampleSize: trend.sampleSize,
     // Whether following the record's trend is even on offer: it needs three
-    // plausible years and a slope that is not flat.
-    trendAvailable: manual == null && trend.slope !== 0,
-    outlierYear: annualPointsOutlier(entries, maxAnnualPoints),
+    // plausible years and a slope that is not flat. Two letters already carry
+    // the average of everything between them, so there is nothing to fit.
+    trendAvailable: manual == null && rate == null && trend.slope !== 0,
+    statementRate: rate,
+    latestStatement: latestStatement(statements, settings),
+    // A per-year row above the Beitragsbemessungsgrenze is only worth reporting
+    // while those rows still drive something.
+    outlierYear: rate == null ? annualPointsOutlier(entries, maxAnnualPoints) : null,
     retirementYear,
     standardAge,
     accessFactor: factor,

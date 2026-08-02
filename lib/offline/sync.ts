@@ -16,7 +16,13 @@
 // React, no Supabase types. `OfflineStore.sync()` (lib/store/offline-store.ts)
 // is the thin, stateful wrapper that owns *which* queue/inner/mirror to use.
 
-import type { LlmConfig, PensionPoint, PortfolioData, Profile } from "../types";
+import type {
+  LlmConfig,
+  PensionPoint,
+  PensionStatement,
+  PortfolioData,
+  Profile,
+} from "../types";
 import { RowNotFoundError } from "../store/types";
 import type {
   AccountInput,
@@ -180,6 +186,11 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
     case "setPensionPoints": {
       const { entries } = op.payload as { entries: PensionPoint[] };
       await inner.setPensionPoints(entries);
+      return;
+    }
+    case "setPensionStatements": {
+      const { entries } = op.payload as { entries: PensionStatement[] };
+      await inner.setPensionStatements(entries);
       return;
     }
     case "addPensionContract":

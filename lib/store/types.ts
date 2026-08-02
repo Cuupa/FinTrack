@@ -13,6 +13,7 @@ import type {
   LlmConfig,
   PensionContract,
   PensionPoint,
+  PensionStatement,
   PlannedCashflow,
   Portfolio,
   PortfolioData,
@@ -114,6 +115,11 @@ export interface DataStore {
    * replay-safe, and a year can never end up recorded twice.
    */
   setPensionPoints(entries: PensionPoint[]): Promise<void>;
+  /**
+   * Replace-set every Renteninformation on record (flag `pension`), keyed by
+   * year exactly like `setPensionPoints` — idempotent and replay-safe.
+   */
+  setPensionStatements(entries: PensionStatement[]): Promise<void>;
   /** Creates a retirement policy. `id` — see `addAsset`'s doc above. */
   addPensionContract(input: PensionContractInput, id?: string): Promise<PensionContract>;
   updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void>;
