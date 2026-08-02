@@ -7,10 +7,12 @@
 // at all when there is nothing to do. Capped at 99+ so a neglected inbox cannot
 // widen the rail.
 //
-// Plain coloured text, never a filled pill (owner rule: no badges anywhere in
-// this app). A filled amber circle read as a warning about the entry itself,
-// and it cost the label the width it needed: "Konten & Buchungen" truncated to
-// "Konten & Buchu…" purely to make room for a one-digit count.
+// Coloured text inside a ring of the same colour, never a filled pill (owner
+// rule: no badges anywhere in this app). A filled amber circle read as a
+// warning about the entry itself, and it cost the label the width it needed:
+// "Konten & Buchungen" truncated to "Konten & Buchu…" purely to make room for
+// a one-digit count. The outline gives the number an edge without the weight
+// of a filled badge.
 
 import { useI18n } from "@/lib/i18n/i18n-context";
 
@@ -29,8 +31,8 @@ export function NotificationCount({
     <span
       role="status"
       aria-label={t("notif.pending", { count })}
-      className={`text-[11px] font-semibold text-emerald-600 tabular-nums dark:text-emerald-400 ${
-        overlay ? "absolute -top-2 -right-2 leading-none" : ""
+      className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-emerald-600 px-1 text-[11px] font-semibold leading-none text-emerald-600 tabular-nums dark:border-emerald-400 dark:text-emerald-400 ${
+        overlay ? "absolute -top-2.5 -right-2.5" : ""
       }`}
     >
       {count > 99 ? "99+" : count}
