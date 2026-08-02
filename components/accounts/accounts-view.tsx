@@ -351,19 +351,6 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
         </>
       )}
 
-      {/* "Netto" here and "Nettovermögen" on the dashboard are the same idea
-          computed in two places, which is exactly what made the areas read as
-          unrelated. Say the relation out loud and link it. */}
-      <p className="mt-4 border-t border-zinc-200 pt-3 text-sm text-zinc-500 dark:border-zinc-800">
-        {t("accounts.totals.partOfNetWorth")}{" "}
-        <Link
-          href="/"
-          className="font-medium text-zinc-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-600 dark:text-zinc-200 dark:focus-visible:outline-emerald-400"
-        >
-          {t("stat.netWorth")}
-        </Link>
-      </p>
-
       {balancesFor && (
         <AccountBalancesDialog
           account={balancesFor}
