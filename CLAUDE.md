@@ -689,6 +689,22 @@ client pages (see `app/assets/[id]/page.tsx`).
   PostgREST `PGRST204` ("Could not find the 'target_account_id' column of
   'contracts'") on every contract with a target account. Repaired idempotently
   by migration 0103.
+- **A lagging schema narrows the app, never kills it — columns included.**
+  Round 27 made a missing TABLE survivable (`optional()` + `degraded`), but a
+  missing COLUMN was still fatal: `assets.front_load` (migration 0116) sits in
+  a CORE select, so a database that had not run 0116 failed the assets query,
+  threw out of the `Promise.all`, and took the WHOLE app down — the depot
+  included, which has nothing to do with the savings plan that column was added
+  for. Every `select` in `SupabaseStore.load` naming a recently added column
+  therefore goes through `selectTolerant` (`lib/store/supabase-store.ts`,
+  exported + unit-tested): base and added columns are separate lists, a
+  42703/PGRST204 retries once without the added ones, and what was dropped is
+  NAMED in `degraded` rather than swallowed. **When you add a column, add it to
+  that query's `added` list and make its row-type field optional (`?:`)** — a
+  database without the migration returns the row without the key, so the
+  compiler must force a `?? null` at the read. `portfolios` throws rather than
+  degrades: an errored query read as "no portfolios" would create a phantom
+  "Main" broker and reparent every orphaned transaction into it.
 - **A failed mutation must say why.** `storeErrorReason` (`lib/store/errors.ts`)
   extracts the PostgrestError's `message`/`details`/`code` and forms append it
   to their own "could not save" line (contracts, debt details) instead of

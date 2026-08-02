@@ -157,28 +157,6 @@ export function Sidebar() {
           the account is where you leave the app from, not another destination
           in it. */}
       <div className="shrink-0 border-t border-zinc-200 p-2 dark:border-zinc-800">
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
-          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 dark:focus-visible:outline-emerald-400 ${
-            collapsed ? "justify-center" : ""
-          }`}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`h-5 w-5 shrink-0 transition-transform ${collapsed ? "rotate-180" : ""}`}
-            aria-hidden="true"
-          >
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-          {!collapsed && <span className="truncate">{t("nav.collapse")}</span>}
-        </button>
         {mode === "registered" ? (
           <ProfileMenu variant="sidebar" collapsed={collapsed} />
         ) : (
@@ -204,6 +182,29 @@ export function Sidebar() {
             {!collapsed && <span className="truncate">{t("nav.login")}</span>}
           </Link>
         )}
+
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
+          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 dark:focus-visible:outline-emerald-400 ${
+            collapsed ? "justify-center" : ""
+          }`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`h-5 w-5 shrink-0 transition-transform ${collapsed ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          >
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+          {!collapsed && <span className="truncate">{t("nav.collapse")}</span>}
+        </button>
       </div>
     </aside>
   );
