@@ -1,70 +1,42 @@
 "use client";
 
-// Retirement / FIRE planner (ROADMAP #8, flag `firePlanner`): reframes the
-// existing Monte Carlo engine (lib/finance/monte-carlo.ts) and measured
-// return/volatility estimator (lib/finance/stats.ts) as a goal -- lean/
-// regular/fat FIRE numbers and years-to-FI, computed instantly client-side
-// (lib/finance/fire.ts, pure), plus an optional full worker-run Monte Carlo
-// simulation seeded from the chosen FIRE target and withdrawal rate. The
-// worker invocation + param-hash caching mirrors
-// components/simulation/monte-carlo-panel.tsx exactly (same
-// loadSimulation/saveSimulation seam via usePortfolio()); the result is
-// rendered with the same DistributionChart the /simulation page uses, plus
-// a plain success-probability summary (share of runs where the balance
-// never hit zero across the withdrawal years) rather than duplicating that
-// page's full per-asset model UI -- an honestly-scoped MVP rather than a
-// second full simulation control panel.
+// Retirement / FIRE planner (ROADMAP #8, flag `firePlanner`): the measured
+// return/volatility estimator (lib/finance/stats.ts) reframed as a goal --
+// lean/regular/fat FIRE numbers and years-to-FI, computed instantly
+// client-side (lib/finance/fire.ts, pure).
+//
+// The Monte Carlo is NOT here. This page used to carry its own run button,
+// stat tiles, strategy panel and distribution chart, which meant the app
+// offered two simulations of the same question with two sets of controls.
+// It now links into the simulator's "Ruhestand" mode, and both surfaces read
+// the same figures from `useFireInputs` so the plan and the simulation of it
+// can never disagree.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { today } from "@/lib/finance/dates";
-import { accountsValueOn } from "@/lib/finance/accounts";
-import { useAccountMovements } from "@/lib/accounts/use-account-movements";
-import { portfolioTotals, summarizeAll } from "@/lib/finance/portfolio";
+import { summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
-import { portfolioOrBenchmarkStats } from "@/lib/finance/stats";
-import { monthlyContributionOf } from "@/lib/finance/savings-plans";
 import {
   computeFirePlan,
-  trailingAnnualExpenses,
   FAT_FIRE_EXPENSE_RATIO,
   LEAN_FIRE_EXPENSE_RATIO,
-  type PensionBridge,
 } from "@/lib/finance/fire";
-import { projectPension } from "@/lib/finance/pension";
-import { usePensionReference } from "@/lib/pension/use-pension-reference";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
-import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
-import type { StressScenario, WithdrawalStrategyId } from "@/lib/finance/withdrawal";
-import {
-  WithdrawalComparison,
-  WithdrawalStrategyPanel,
-} from "@/components/simulation/withdrawal-strategy-panel";
-import { formatCurrency, formatPercent, formatPercentPlain } from "@/lib/format";
-import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
+import { useFireInputs } from "@/lib/fire/use-fire-inputs";
+import { formatCurrency, formatPercentPlain } from "@/lib/format";
+import { Card, Stat, Toggle } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
-import { DistributionChart } from "@/components/charts/distribution-chart";
 
 type T = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 // Default withdrawal rate: the classic "4% rule".
 const DEFAULT_WITHDRAWAL_RATE = 4;
-// Historical lookback/horizon for the return estimate: FIRE planning is a
-// long-run (decade-plus) horizon, so this leans further on stats.ts's
-// regression-to-mean toward the long-run capital-market assumption than the
-// general simulator's default (which couples the lookback to the
-// user-chosen accumulation horizon).
-const RETURN_HORIZON_YEARS = 20;
-// Conventional retirement duration the withdrawal phase simulates -- the
-// same span the "4% rule" (Trinity study) was calibrated against.
-const RETIREMENT_WITHDRAWAL_YEARS = 30;
-const SIMULATION_RUNS = 5000;
 
 function formatYears(years: number | null, t: T): string {
   if (years === null) return t("fire.never");
@@ -74,59 +46,20 @@ function formatYears(years: number | null, t: T): string {
 
 export function FireView() {
   const { data } = usePortfolio();
-  // The worker, the cache and the fallback are the same ones /simulation uses.
-  const simulation = useMonteCarloRun();
-  const { valuation } = useLivePrices();
   const { t } = useI18n();
   const currency = data.profile.currency;
-  const todayIso = today();
-
-  const holdings = useMemo(
-    () =>
-      summarizeAll(data.assets, data.transactions, valuation)
-        .filter((h) => h.position.shares > 0)
-        .map((h) => ({ asset: h.asset, marketValue: h.marketValue })),
-    [data.assets, data.transactions, valuation],
-  );
-
-  // Same net-worth figure as the dashboard hero / /health: holdings market
-  // value plus the signed sum of every balance account.
-  const movements = useAccountMovements();
-
-  const netWorth = useMemo(() => {
-    const totals = portfolioTotals(summarizeAll(data.assets, data.transactions, valuation));
-    const accountsNet = accountsValueOn(
-      data.accounts,
-      data.accountBalances,
-      todayIso,
-      valuation,
-      movements,
-    );
-    return totals.marketValue + accountsNet;
-  }, [
-    data.assets,
-    data.transactions,
-    data.accounts,
-    data.accountBalances,
-    valuation,
-    todayIso,
-    movements,
-  ]);
-
-  const autoAnnualExpenses = useMemo(
-    () => trailingAnnualExpenses(data.spendingTransactions, todayIso),
-    [data.spendingTransactions, todayIso],
-  );
-  const hasExpenseData = autoAnnualExpenses > 0;
-
-  const autoMonthlyContribution = useMemo(
-    () => monthlyContributionOf(data.savingsPlans, data.assets, valuation),
-    [data.savingsPlans, data.assets, valuation],
-  );
 
   // Real history feeds the measured return estimate, same source as the
   // general simulator (components/simulation/monte-carlo-panel.tsx).
   const { version } = useCatalog();
+  const { valuation } = useLivePrices();
+  const holdings = useMemo(
+    () =>
+      summarizeAll(data.assets, data.transactions, valuation).filter(
+        (h) => h.position.shares > 0,
+      ),
+    [data.assets, data.transactions, valuation],
+  );
   const histItems = useMemo(
     () =>
       holdings
@@ -136,64 +69,26 @@ export function FireView() {
     [holdings, version],
   );
   const { histories } = useHistory(histItems, "MAX", currency);
-  const stats = useMemo(
-    () => portfolioOrBenchmarkStats(holdings, RETURN_HORIZON_YEARS, histories),
-    [holdings, histories],
-  );
 
-  // Editable overrides -- default to the measured/derived figures, user can
-  // adjust any of them; recomputes live client-side, no worker involved.
-  // The pension is not a neighbouring feature, it is an input to this one:
-  // guaranteed income from a fixed year is capital you never have to
-  // accumulate. Same projection the Pension tab shows, so the two tabs cannot
-  // disagree about the figure.
-  const pensionReference = usePensionReference();
-  const pensionEnabled = useFeatureFlag("pension");
-  const projection = useMemo(
-    () =>
-      projectPension({
-        entries: data.pensionPoints,
-        statements: data.pensionStatements,
-        contracts: data.pensionContracts,
-        reference: pensionReference,
-        settings: data.profile.pensionSettings,
-        currentYear: Number(todayIso.slice(0, 4)),
-      }),
-    [
-      data.pensionPoints,
-      data.pensionStatements,
-      data.pensionContracts,
-      data.profile.pensionSettings,
-      pensionReference,
-      todayIso,
-    ],
-  );
-  // Without a Rentenwert the statutory half cannot be valued, so only the
-  // private policies count -- the same "report what is known, invent nothing"
-  // rule the Pension tab follows.
-  const pensionMonthly = projection.monthlyTotal ?? projection.monthlyPrivate;
-  const pensionBridge: PensionBridge | undefined =
-    pensionEnabled && projection.retirementYear != null && pensionMonthly > 0
-      ? {
-          annualIncome: pensionMonthly * 12,
-          yearsUntilStart: Math.max(0, projection.retirementYear - Number(todayIso.slice(0, 4))),
-        }
-      : undefined;
+  // Net worth, expenses, contribution, measured return and the pension bridge:
+  // the same figures the simulator's Ruhestand mode runs on.
+  const fire = useFireInputs(histories);
+
   const [countPension, setCountPension] = useState(true);
-  const appliedPension = countPension ? pensionBridge : undefined;
+  const appliedPension = countPension ? fire.pensionBridge : undefined;
 
   const [withdrawalRatePercent, setWithdrawalRatePercent] = useState(DEFAULT_WITHDRAWAL_RATE);
-  // How the income is decided each year, and whether the losses are forced to
-  // the front. Both are what-if levers: live state, never persisted.
-  const [withdrawalStrategy, setWithdrawalStrategy] = useState<WithdrawalStrategyId>("fixed");
-  const [stress, setStress] = useState<StressScenario>("none");
+  // Editable overrides -- default to the measured/derived figures, user can
+  // adjust any of them; recomputes live client-side, no worker involved.
   const [expensesOverride, setExpensesOverride] = useState<number | null>(null);
   const [contributionOverride, setContributionOverride] = useState<number | null>(null);
   const [returnOverride, setReturnOverride] = useState<number | null>(null);
 
-  const effectiveExpenses = expensesOverride ?? autoAnnualExpenses;
-  const effectiveContribution = contributionOverride ?? autoMonthlyContribution;
-  const effectiveReturnPercent = returnOverride ?? Math.round(stats.expectedReturn * 1000) / 10;
+  const netWorth = fire.netWorth;
+  const hasExpenseData = fire.hasExpenseData;
+  const effectiveExpenses = expensesOverride ?? fire.annualExpenses;
+  const effectiveContribution = contributionOverride ?? fire.monthlyContribution;
+  const effectiveReturnPercent = returnOverride ?? Math.round(fire.expectedReturn * 1000) / 10;
 
   const plan = useMemo(
     () =>
@@ -232,44 +127,9 @@ export function FireView() {
   // With the pension counted the target is NOT expenses/rate any more, so the
   // basis line would otherwise describe arithmetic the number does not follow.
   const pensionNote =
-    appliedPension && projection.retirementYear != null
-      ? t("fire.tile.pensionApplied", { year: String(projection.retirementYear) })
+    appliedPension && fire.retirementYear != null
+      ? t("fire.tile.pensionApplied", { year: String(fire.retirementYear) })
       : undefined;
-
-  // --- Full worker-run Monte Carlo, seeded from the chosen FIRE target. ---
-  const { result, running } = simulation;
-
-  function runSimulation() {
-    const accumulationYears = Math.max(
-      1,
-      Math.min(80, Math.ceil(plan.yearsToRegular ?? RETIREMENT_WITHDRAWAL_YEARS)),
-    );
-    simulation.run({
-      kind: "scalar",
-      params: {
-        initialCapital: Math.max(0, Math.round(netWorth)),
-        monthlyContribution: Math.max(0, effectiveContribution),
-        years: accumulationYears,
-        expectedReturn: effectiveReturnPercent / 100,
-        volatility: stats.volatility,
-        runs: SIMULATION_RUNS,
-        seed: randomSeed(),
-        withdrawalYears: RETIREMENT_WITHDRAWAL_YEARS,
-        withdrawalRate: withdrawalRatePercent / 100,
-        withdrawalStrategy,
-        stress,
-        // The comparison is the point of the strategy picker: it is what says
-        // what the choice costs, so it is always computed alongside.
-        compareStrategies: true,
-      },
-    });
-  }
-
-  const successProbability =
-    result && result.finalDistribution.length > 0
-      ? result.finalDistribution.filter((v) => v > 0).length / result.finalDistribution.length
-      : null;
-  const medianFinal = result?.bands[result.bands.length - 1]?.median ?? null;
 
   return (
     <div className="space-y-6">
@@ -300,17 +160,17 @@ export function FireView() {
         {/* What the pension is worth to this plan, in one line. A user who has
             never opened the Pension tab is told the number is missing rather
             than silently getting the pension-free target. */}
-        {pensionEnabled && (
+        {fire.pensionEnabled && (
           <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-            {pensionBridge ? (
+            {fire.pensionBridge ? (
               <>
                 <Toggle
                   checked={countPension}
                   onChange={setCountPension}
                   label={t("fire.pension.count")}
                   hint={t("fire.pension.hint", {
-                    amount: formatCurrency(pensionMonthly, currency),
-                    year: String(projection.retirementYear),
+                    amount: formatCurrency(fire.pensionMonthly, currency),
+                    year: String(fire.retirementYear),
                   })}
                 />
                 {countPension && plan.regularWithoutPension > plan.regular && (
@@ -393,66 +253,22 @@ export function FireView() {
         </div>
       </div>
 
+      {/* The simulation itself lives on /simulation, in its Ruhestand mode.
+          This page had grown a second one -- its own run button, its own two
+          tiles, its own strategy panel and chart -- so the app asked the same
+          question twice with two sets of controls. One surface, seeded from
+          exactly the plan above. */}
       <Card data-tour="fire-simulation">
         <h2 className="text-lg font-semibold">{t("fire.simulation.title")}</h2>
-        <p className="mt-1 text-sm text-zinc-500">{t("fire.simulation.subtitle")}</p>
-        <p className="mt-1 text-xs text-zinc-500">
-          {t("fire.simulation.withdrawalYearsNote", { years: String(RETIREMENT_WITHDRAWAL_YEARS) })}
-        </p>
-        {/* The strategy and the stress belong WITH the run button: they are
-            what the run is testing, not a reading of its result. */}
+        <p className="mt-1 text-sm text-zinc-500">{t("fire.simulation.movedHint")}</p>
         <div className="mt-4">
-          <WithdrawalStrategyPanel
-            strategy={withdrawalStrategy}
-            onStrategy={setWithdrawalStrategy}
-            stress={stress}
-            onStress={setStress}
-          />
+          <Link
+            href="/simulation?mode=retirement"
+            className="inline-flex items-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {t("fire.simulation.open")}
+          </Link>
         </div>
-
-        <div className="mt-4">
-          <Button variant="primary" onClick={runSimulation} disabled={running}>
-            {running ? t("fire.simulation.running") : t("fire.simulation.run")}
-          </Button>
-        </div>
-
-        {result ? (
-          <div className="mt-6 space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Card>
-                <Stat
-                  label={t("fire.simulation.medianFinal")}
-                  value={medianFinal !== null ? formatCurrency(medianFinal, currency) : "-"}
-                  isPrivate
-                />
-              </Card>
-              <Card>
-                <Stat
-                  label={t("fire.simulation.successProbability")}
-                  value={successProbability !== null ? formatPercent(successProbability) : "-"}
-                  sub={t("fire.simulation.successHint")}
-                />
-              </Card>
-            </div>
-            {result.strategyComparison && (
-              <WithdrawalComparison
-                comparison={result.strategyComparison}
-                strategy={withdrawalStrategy}
-                currency={currency}
-              />
-            )}
-            <DistributionChart
-              result={result}
-              currency={currency}
-              scale="log"
-              phaseBoundaryYear={result.params.withdrawalYears ? result.params.years : undefined}
-            />
-          </div>
-        ) : (
-          <div className="mt-6 flex h-40 items-center justify-center text-center text-sm text-zinc-500">
-            {t("fire.simulation.configurePrompt")}
-          </div>
-        )}
       </Card>
     </div>
   );

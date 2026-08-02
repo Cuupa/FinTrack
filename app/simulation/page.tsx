@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { MonteCarloPanel } from "@/components/simulation/monte-carlo-panel";
 import { FeatureUnavailable } from "@/components/feature-unavailable";
 import { ProTeaser } from "@/components/billing/pro-teaser";
@@ -17,15 +18,19 @@ export default function SimulationPage() {
         <p className="text-sm text-zinc-500">{t("sim.subtitle")}</p>
       </div>
       <RiskDisclaimer />
-      {!enabled ? (
-        <FeatureUnavailable />
-      ) : locked ? (
-        <ProTeaser feature="simulation">
+      {/* The panel reads `?mode=` (the FIRE tab links straight into the
+          retirement mode), and useSearchParams needs a boundary to prerender. */}
+      <Suspense fallback={null}>
+        {!enabled ? (
+          <FeatureUnavailable />
+        ) : locked ? (
+          <ProTeaser feature="simulation">
+            <MonteCarloPanel />
+          </ProTeaser>
+        ) : (
           <MonteCarloPanel />
-        </ProTeaser>
-      ) : (
-        <MonteCarloPanel />
-      )}
+        )}
+      </Suspense>
     </div>
   );
 }

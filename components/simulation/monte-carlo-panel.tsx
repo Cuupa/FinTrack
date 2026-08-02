@@ -5,6 +5,7 @@
 // best/median/worst outcomes. Initial capital defaults to current net worth.
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
@@ -34,8 +35,10 @@ import type { ChartScale } from "@/components/charts/performance-chart";
 import { useFeatureFlags, type FeatureState } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { SimulationTour, TourReplayButton } from "@/components/onboarding/page-tours";
+import { useFireInputs } from "@/lib/fire/use-fire-inputs";
+import { computeFirePlan } from "@/lib/finance/fire";
 
-type SimMode = "portfolio" | "custom";
+type SimMode = "portfolio" | "custom" | "retirement";
 
 // Custom-mode defaults (percent). Deliberately independent of the user's
 // holdings — a neutral world-equity baseline the user can override.
@@ -43,6 +46,11 @@ const CUSTOM_RETURN_DEFAULT = 7;
 const CUSTOM_VOL_DEFAULT = 16;
 // Default annual withdrawal rate (percent) — the classic "4% rule".
 const WITHDRAWAL_RATE_DEFAULT = 4;
+// Retirement mode: the span the "4% rule" (Trinity study) was calibrated
+// against, and the accumulation horizon to fall back on when the FIRE plan
+// never reaches its target.
+const RETIREMENT_WITHDRAWAL_YEARS = 30;
+const DEFAULT_ACCUMULATION_YEARS = 30;
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -80,22 +88,35 @@ export function MonteCarloPanel() {
     [data.savingsPlans, data.assets, valuation],
   );
 
-  // Default to simulating the real portfolio when there is one.
-  const [mode, setMode] = useState<SimMode>("portfolio");
+  // Default to simulating the real portfolio when there is one. The FIRE tab
+  // links in with `?mode=retirement`, so the deep link picks the tab. Read
+  // through useSearchParams (the page carries the Suspense boundary it needs):
+  // on a client-side navigation the panel can mount before the history entry
+  // has landed, and window.location was still the previous page's.
+  const requestedMode = useSearchParams().get("mode");
+  const [mode, setMode] = useState<SimMode>(
+    requestedMode === "retirement" || requestedMode === "custom" || requestedMode === "portfolio"
+      ? requestedMode
+      : "portfolio",
+  );
 
-  const [form, setForm] = useState({
-    monthlyContribution: 500,
-    years: 30,
+  // Every scalar is an OVERRIDE: null means "whatever the selected mode says",
+  // so switching to Ruhestand seeds the FIRE figures without an effect writing
+  // state, and an edited field survives the switch because the user meant it.
+  const [form, setForm] = useState<{
+    monthlyContribution: number | null;
+    years: number | null;
+    runs: number;
+    withdrawalYears: number | null;
+    withdrawalRate: number | null;
+  }>({
+    monthlyContribution: null,
+    years: null,
     runs: 5000,
-    withdrawalYears: 0,
-    withdrawalRate: WITHDRAWAL_RATE_DEFAULT,
+    withdrawalYears: null,
+    withdrawalRate: null,
   });
   const [rebalanceYearly, setRebalanceYearly] = useState(false);
-
-  // Estimate returns/volatility from the last `horizon` years of history, so the
-  // figures are the average over the selected period and change with it (capped
-  // by how much real history exists).
-  const lookbackYears = Math.max(1, Math.round(form.years));
 
   // Fetch REAL historical prices for the holdings (longest available), used to
   // estimate returns/volatility; falls back to the synthetic series per asset.
@@ -110,11 +131,11 @@ export function MonteCarloPanel() {
   );
   const { histories } = useHistory(histItems, "MAX", currency);
 
-  // Per-asset model (each asset's μ/σ + correlation) for the portfolio mode.
-  const model = useMemo(
-    () => estimatePortfolioModel(holdings, lookbackYears, histories),
-    [holdings, lookbackYears, histories],
-  );
+  // The FIRE plan's own inputs — net worth including accounts, trailing
+  // expenses, the measured return, the pension bridge — so the Ruhestand mode
+  // simulates the very plan the FIRE tab prints.
+  const fire = useFireInputs(histories);
+
   // Sub-feature flags: the "My portfolio" and "Custom" sections, and the
   // withdrawal phase, can each be turned off independently — and each be
   // tiered to Pro on its own. A flag that is OFF hides its section; a flag
@@ -125,38 +146,36 @@ export function MonteCarloPanel() {
   const portfolioFeature = getFeature("simulationPortfolio");
   const customFeature = getFeature("simulationCustom");
   const withdrawalFeature = getFeature("simulationWithdrawal");
+  // The retirement mode IS the FIRE planner's simulation, moved here, so it
+  // rides that flag rather than one of its own.
+  const retirementFeature = getFeature("firePlanner");
   const withdrawalAllowed = withdrawalFeature.enabled && !withdrawalFeature.locked;
 
-  const hasPortfolioData = model !== null && model.assets.length > 0;
-  const portfolioVisible = hasPortfolioData && portfolioFeature.enabled;
-  const customVisible = customFeature.enabled;
-  // Pick a mode honouring the flags: custom hidden ⇒ force portfolio;
-  // portfolio unavailable ⇒ force custom; otherwise use the user's choice.
-  // A Pro-locked mode still counts as visible and stays selectable — picking
-  // it is how the user sees what Pro would unlock.
-  const effectiveMode: SimMode = !customVisible
-    ? "portfolio"
-    : !portfolioVisible
-      ? "custom"
-      : mode;
-  const showModeToggle = portfolioVisible && customVisible;
-  // Paywall state of the selected mode: blurs the model parameters and blocks
-  // the run, since a locked mode must never actually compute.
-  const modeLocked =
-    effectiveMode === "portfolio" ? portfolioFeature.locked : customFeature.locked;
-  // Tab strip source: only the modes that are visible, in a fixed order.
+  // Tab strip source: only the modes that are visible, in a fixed order. A
+  // Pro-locked mode still counts as visible and stays selectable — picking it
+  // is how the user sees what Pro would unlock.
   const MODE_TABS: {
     value: SimMode;
-    labelKey: "sim.myPortfolio" | "sim.custom";
+    labelKey: "sim.myPortfolio" | "sim.custom" | "sim.retirement";
     feature: FeatureState;
   }[] = [
-    ...(portfolioVisible
+    ...(holdings.length > 0 && portfolioFeature.enabled
       ? [{ value: "portfolio" as const, labelKey: "sim.myPortfolio" as const, feature: portfolioFeature }]
       : []),
-    ...(customVisible
+    ...(customFeature.enabled
       ? [{ value: "custom" as const, labelKey: "sim.custom" as const, feature: customFeature }]
       : []),
+    ...(retirementFeature.enabled
+      ? [{ value: "retirement" as const, labelKey: "sim.retirement" as const, feature: retirementFeature }]
+      : []),
   ];
+  const activeTab = MODE_TABS.find((tab) => tab.value === mode) ?? MODE_TABS[0];
+  const effectiveMode: SimMode = activeTab?.value ?? "custom";
+  const isRetirement = effectiveMode === "retirement";
+  const showModeToggle = MODE_TABS.length > 1;
+  // Paywall state of the selected mode: blurs the model parameters and blocks
+  // the run, since a locked mode must never actually compute.
+  const modeLocked = activeTab?.feature.locked ?? false;
   // Estimated parameters are the defaults; overrides (if the user edits a
   // field) take precedence. Derived rather than synced via an effect.
   const [capitalOverride, setCapitalOverride] = useState<number | null>(null);
@@ -169,22 +188,79 @@ export function MonteCarloPanel() {
     null,
   );
   const useSavingsPlans = useSavingsPlansOverride ?? hasSavingsPlans;
-  const effectiveMonthlyContribution = useSavingsPlans
-    ? monthlyFromPlans
-    : form.monthlyContribution;
   // Per-asset μ/σ overrides (portfolio mode), keyed by asset name. Percent units.
   const [assetOverrides, setAssetOverrides] = useState<
     Record<string, { mean?: number; vol?: number }>
   >({});
 
-  const initialCapital =
-    capitalOverride ?? (netWorth > 0 ? Math.round(netWorth) : 10000);
   // Custom mode deliberately IGNORES the user's holdings: it starts from the
   // research-backed defaults (7% p.a. return, 16% volatility) which the user can
-  // then change. Only the "My portfolio" mode measures μ/σ from real history.
-  const expectedReturn = returnOverride ?? CUSTOM_RETURN_DEFAULT;
-  const volatility = volOverride ?? CUSTOM_VOL_DEFAULT;
+  // then change. "My portfolio" measures μ/σ per asset from real history, and
+  // Ruhestand uses the one measured figure the FIRE tab plans with.
+  const expectedReturn =
+    returnOverride ?? (isRetirement ? round1(fire.expectedReturn * 100) : CUSTOM_RETURN_DEFAULT);
+  const volatility =
+    volOverride ?? (isRetirement ? round1(fire.volatility * 100) : CUSTOM_VOL_DEFAULT);
   const usingEstimates = returnOverride === null && volOverride === null;
+
+  const withdrawalRate = form.withdrawalRate ?? WITHDRAWAL_RATE_DEFAULT;
+
+  // Ruhestand seeds itself from the FIRE plan at the rate selected here: the
+  // horizon is the time to financial independence, the capital is today's net
+  // worth including accounts, and the contribution is what the savings plans
+  // actually pay in.
+  const firePlan = useMemo(
+    () =>
+      computeFirePlan(
+        fire.netWorth,
+        fire.annualExpenses,
+        fire.monthlyContribution,
+        expectedReturn / 100,
+        withdrawalRate / 100,
+        fire.pensionBridge,
+      ),
+    [
+      fire.netWorth,
+      fire.annualExpenses,
+      fire.monthlyContribution,
+      fire.pensionBridge,
+      expectedReturn,
+      withdrawalRate,
+    ],
+  );
+  // Without recorded expenses there is no FIRE target, so there is nothing to
+  // seed from: the mode still runs, on plain defaults, and says why.
+  const fireSeeded = fire.hasExpenseData;
+  const yearsToFi = Math.max(
+    1,
+    Math.min(80, Math.ceil(firePlan.yearsToRegular ?? DEFAULT_ACCUMULATION_YEARS)),
+  );
+
+  const years =
+    form.years ?? (isRetirement && fireSeeded ? yearsToFi : DEFAULT_ACCUMULATION_YEARS);
+  const withdrawalYears =
+    form.withdrawalYears ?? (isRetirement ? RETIREMENT_WITHDRAWAL_YEARS : 0);
+  const monthlyContribution =
+    form.monthlyContribution ?? (isRetirement ? Math.round(fire.monthlyContribution) : 500);
+  const effectiveMonthlyContribution = useSavingsPlans ? monthlyFromPlans : monthlyContribution;
+
+  const initialCapital =
+    capitalOverride ??
+    (isRetirement
+      ? Math.max(0, Math.round(fire.netWorth))
+      : netWorth > 0
+        ? Math.round(netWorth)
+        : 10000);
+
+  // Estimate returns/volatility from the last `horizon` years of history, so the
+  // figures are the average over the selected period and change with it (capped
+  // by how much real history exists).
+  const lookbackYears = Math.max(1, Math.round(years));
+  // Per-asset model (each asset's μ/σ + correlation) for the portfolio mode.
+  const model = useMemo(
+    () => estimatePortfolioModel(holdings, lookbackYears, histories),
+    [holdings, lookbackYears, histories],
+  );
 
   // The worker, the cache and the fallback are the same ones the FIRE planner
   // uses -- one runner, one cache key.
@@ -206,6 +282,20 @@ export function MonteCarloPanel() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function selectMode(next: SimMode) {
+    setMode(next);
+    // The horizon, the withdrawal phase and the contribution mean something
+    // else per mode, so a mode switch drops overrides that were never typed
+    // for this mode. Capital and μ/σ keep theirs: those the user set on
+    // purpose, and the run button is right there to change them again.
+    setForm((f) => ({
+      ...f,
+      years: null,
+      withdrawalYears: null,
+      monthlyContribution: null,
+    }));
+  }
+
   function resetToEstimates() {
     setReturnOverride(null);
     setVolOverride(null);
@@ -214,11 +304,11 @@ export function MonteCarloPanel() {
   function run() {
     // A Pro-locked mode is previewed, never computed.
     if (modeLocked) return;
-    const years = Math.max(1, Math.round(form.years));
+    const horizon = Math.max(1, Math.round(years));
     // Clamp to [1,000, 25,000] paths.
     const runs = Math.min(25000, Math.max(1000, Math.round(form.runs)));
-    const withdrawalYears = withdrawalAllowed ? Math.max(0, Math.round(form.withdrawalYears)) : 0;
-    const withdrawalRate = Math.max(0, form.withdrawalRate) / 100;
+    const drawYears = withdrawalAllowed ? Math.max(0, Math.round(withdrawalYears)) : 0;
+    const drawRate = Math.max(0, withdrawalRate) / 100;
     // Seed the run's PRNG from Web Crypto (never Math.random), so the run is
     // reproducible and the seed can be persisted for auditing.
     const seed = randomSeed();
@@ -232,7 +322,7 @@ export function MonteCarloPanel() {
             params: {
               initialCapital,
               monthlyContribution: effectiveMonthlyContribution,
-              years,
+              years: horizon,
               runs,
               assets: model.assets.map((a) => {
                 const o = assetOverrides[a.name];
@@ -244,14 +334,14 @@ export function MonteCarloPanel() {
               }),
               corr: model.corr,
               seed,
-              withdrawalYears,
-              withdrawalRate,
+              withdrawalYears: drawYears,
+              withdrawalRate: drawRate,
               rebalanceYearly,
               withdrawalStrategy,
               stress,
               // The comparison is what says what the strategy choice costs, so
               // it is computed alongside rather than behind a second button.
-              compareStrategies: withdrawalYears > 0,
+              compareStrategies: drawYears > 0,
             } satisfies PortfolioMonteCarloParams,
           }
         : {
@@ -259,16 +349,16 @@ export function MonteCarloPanel() {
             params: {
               initialCapital,
               monthlyContribution: effectiveMonthlyContribution,
-              years,
+              years: horizon,
               expectedReturn: expectedReturn / 100,
               volatility: volatility / 100,
               runs,
               seed,
-              withdrawalYears,
-              withdrawalRate,
+              withdrawalYears: drawYears,
+              withdrawalRate: drawRate,
               withdrawalStrategy,
               stress,
-              compareStrategies: withdrawalYears > 0,
+              compareStrategies: drawYears > 0,
             } satisfies MonteCarloParams,
           };
 
@@ -296,7 +386,7 @@ export function MonteCarloPanel() {
             dataTour="sim-model"
             className="mt-3"
             value={effectiveMode}
-            onChange={setMode}
+            onChange={selectMode}
             items={MODE_TABS.map(({ value, labelKey, feature }) => ({
               value,
               label: t(labelKey),
@@ -308,7 +398,23 @@ export function MonteCarloPanel() {
           <p className="mt-2 text-xs text-zinc-500">
             {effectiveMode === "portfolio"
               ? t("sim.modelPortfolioDesc")
-              : t("sim.modelCustomDesc")}
+              : isRetirement
+                ? t("sim.modelRetirementDesc")
+                : t("sim.modelCustomDesc")}
+          </p>
+        )}
+        {/* What the seeded numbers mean, and where they came from: a horizon
+            the user did not type needs to say which plan produced it. */}
+        {isRetirement && !modeLocked && (
+          <p className="mt-2 text-xs text-zinc-500">
+            {!fireSeeded
+              ? t("sim.retirementNoExpenses")
+              : firePlan.yearsToRegular === null
+                ? t("sim.retirementNoTarget")
+                : t("sim.retirementSeeded", {
+                    target: formatCurrency(firePlan.regular, currency),
+                    years: yearsToFi,
+                  })}
           </p>
         )}
 
@@ -370,7 +476,7 @@ export function MonteCarloPanel() {
                   <SliderField
                     label={t("sim.monthlyContribution")}
                     suffix={currency}
-                    value={form.monthlyContribution}
+                    value={monthlyContribution}
                     onChange={(v) => update("monthlyContribution", v)}
                     min={0}
                     max={5000}
@@ -379,12 +485,12 @@ export function MonteCarloPanel() {
                 )}
               </div>
               <SliderField
-                label={t("sim.horizon")}
+                label={isRetirement ? t("sim.horizonUntilRetirement") : t("sim.horizon")}
                 suffix={t("sim.years")}
-                value={form.years}
+                value={years}
                 onChange={(v) => update("years", v)}
                 min={1}
-                max={40}
+                max={isRetirement ? 60 : 40}
                 step={1}
               />
             </div>
@@ -402,18 +508,18 @@ export function MonteCarloPanel() {
                   <SliderField
                     label={t("sim.withdrawalDuration")}
                     suffix={t("sim.years")}
-                    value={form.withdrawalYears}
+                    value={withdrawalYears}
                     onChange={(v) => update("withdrawalYears", v)}
                     min={0}
                     max={40}
                     step={1}
                   />
-                  {form.withdrawalYears > 0 && (
+                  {withdrawalYears > 0 && (
                     <div className="space-y-2">
                       <SliderField
                         label={t("sim.withdrawalRate")}
                         suffix="%"
-                        value={form.withdrawalRate}
+                        value={withdrawalRate}
                         onChange={(v) => update("withdrawalRate", v)}
                         min={0}
                         max={10}
@@ -426,7 +532,7 @@ export function MonteCarloPanel() {
                   {/* The rate says how much; the strategy says how that amount
                       is decided again each year, and the stress says what it is
                       being tested against. Same panel as the FIRE tab. */}
-                  {form.withdrawalYears > 0 && (
+                  {withdrawalYears > 0 && (
                     <WithdrawalStrategyPanel
                       strategy={withdrawalStrategy}
                       onStrategy={setWithdrawalStrategy}
@@ -461,10 +567,19 @@ export function MonteCarloPanel() {
                 />
               ) : (
                 <>
-                  <CustomAssumptionsNote
-                    usingEstimates={usingEstimates}
-                    onReset={resetToEstimates}
-                  />
+                  {isRetirement ? (
+                    <MeasuredAssumptionsNote
+                      usingEstimates={usingEstimates}
+                      onReset={resetToEstimates}
+                      expectedReturn={fire.expectedReturn}
+                      volatility={fire.volatility}
+                    />
+                  ) : (
+                    <CustomAssumptionsNote
+                      usingEstimates={usingEstimates}
+                      onReset={resetToEstimates}
+                    />
+                  )}
                   <SliderField
                     label={t("sim.expectedReturn")}
                     suffix="%"
@@ -881,6 +996,49 @@ function CustomAssumptionsNote({
         {t("sim.customAssumptionsNote", {
           ret: CUSTOM_RETURN_DEFAULT,
           vol: CUSTOM_VOL_DEFAULT,
+        })}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * What the retirement mode assumes, and that it was measured rather than
+ * picked: the same figures the FIRE tab plans with, editable here because a
+ * plan you cannot stress-test with your own numbers is a brochure.
+ */
+function MeasuredAssumptionsNote({
+  usingEstimates,
+  onReset,
+  expectedReturn,
+  volatility,
+}: {
+  usingEstimates: boolean;
+  onReset: () => void;
+  expectedReturn: number;
+  volatility: number;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-indigo-900 dark:text-indigo-200">
+          {t("sim.measuredAssumptions")}
+        </span>
+        {!usingEstimates && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="font-medium text-indigo-700 underline underline-offset-2 dark:text-indigo-300"
+          >
+            {t("sim.resetToMeasured")}
+          </button>
+        )}
+      </div>
+      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+        {t("sim.measuredAssumptionsNote", {
+          ret: formatPercent(expectedReturn),
+          vol: pct(volatility),
         })}
       </p>
     </div>

@@ -394,7 +394,7 @@ export const en = {
     "Three target sums for three lifestyles, each with the year you would reach it at your current pace.",
   "tour.fire.simulation.title": "Test it against bad luck",
   "tour.fire.simulation.body":
-    "The simulation runs thousands of market paths, so you see how often the plan survives a rough decade, not just the average case.",
+    "One click takes this plan into the simulator's Retirement mode, which runs thousands of market paths: you see how often the plan survives a rough decade, not just the average case.",
   "tour.household.create.title": "Share with someone",
   "tour.household.create.body":
     "Create a household to share your data with a partner. Without one, everything stays yours alone.",
@@ -1372,14 +1372,8 @@ export const en = {
   "fire.alreadyThere": "Already there",
   "fire.never": "Not reachable at your current savings rate",
   "fire.simulation.title": "Full simulation",
-  "fire.simulation.subtitle": "Run the Monte Carlo engine seeded from these goals to see the odds your money lasts.",
-  "fire.simulation.run": "Run simulation",
-  "fire.simulation.running": "Running...",
-  "fire.simulation.medianFinal": "Median final balance",
-  "fire.simulation.successProbability": "Probability money lasts",
-  "fire.simulation.successHint": "Share of simulated paths where the balance never ran out over the withdrawal period.",
-  "fire.simulation.withdrawalYearsNote": "Assumes a {years}-year retirement, seeded from your FIRE number.",
-  "fire.simulation.configurePrompt": "Run the simulation to see the odds",
+  "fire.simulation.movedHint": "The simulation runs in one place: the Retirement mode of the simulator, seeded from exactly this plan.",
+  "fire.simulation.open": "Open the simulation",
   "fire.unit.years": "years",
 
   "duration.year": "1 year",
@@ -1831,6 +1825,20 @@ export const en = {
   "sim.model": "Model",
   "sim.myPortfolio": "My portfolio",
   "sim.custom": "Custom",
+  "sim.retirement": "Retirement",
+  "sim.modelRetirementDesc":
+    "Simulates your FIRE plan: today's net worth, your savings plans and your measured return, followed by the drawdown.",
+  "sim.retirementSeeded":
+    "Seeded from your FIRE plan: {target} target, reached in about {years} years.",
+  "sim.retirementNoTarget":
+    "Your FIRE target is not reached at these figures, so the horizon starts at 30 years. Adjust it below.",
+  "sim.retirementNoExpenses":
+    "No recorded spending yet, so there is no FIRE target to seed from. The figures below are starting points.",
+  "sim.horizonUntilRetirement": "Years until retirement",
+  "sim.measuredAssumptions": "Measured assumptions",
+  "sim.measuredAssumptionsNote":
+    "Return {ret} and volatility {vol}, measured from your own holdings. Editable, and the same figures the FIRE plan uses.",
+  "sim.resetToMeasured": "Back to measured",
   "sim.modelPortfolioDesc":
     "Simulates each holding with its own volatility and the correlations between them.",
   "sim.modelCustomDesc": "Simulates a single blended return and volatility.",
@@ -2695,7 +2703,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Drei Zielsummen für drei Lebensstile, jeweils mit dem Jahr, in dem du sie im aktuellen Tempo erreichst.",
   "tour.fire.simulation.title": "Gegen Pech testen",
   "tour.fire.simulation.body":
-    "Die Simulation rechnet tausende Marktverläufe durch. So siehst du, wie oft der Plan ein schlechtes Jahrzehnt übersteht, nicht nur den Durchschnittsfall.",
+    "Ein Klick nimmt diesen Plan mit in den Modus Ruhestand des Simulators. Der rechnet tausende Marktverläufe durch, und du siehst, wie oft der Plan ein schlechtes Jahrzehnt übersteht, nicht nur den Durchschnittsfall.",
   "tour.household.create.title": "Mit jemandem teilen",
   "tour.household.create.body":
     "Leg einen Haushalt an, um deine Daten mit jemandem zu teilen. Ohne Haushalt bleibt alles nur bei dir.",
@@ -3679,14 +3687,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.alreadyThere": "Schon erreicht",
   "fire.never": "Mit deinem aktuellen Sparbetrag nicht erreichbar",
   "fire.simulation.title": "Vollständige Simulation",
-  "fire.simulation.subtitle": "Starte die Monte-Carlo-Simulation mit diesen Zielen, um die Wahrscheinlichkeit zu sehen, dass dein Geld reicht.",
-  "fire.simulation.run": "Simulation starten",
-  "fire.simulation.running": "Läuft...",
-  "fire.simulation.medianFinal": "Median-Endsaldo",
-  "fire.simulation.successProbability": "Wahrscheinlichkeit, dass das Geld reicht",
-  "fire.simulation.successHint": "Anteil der simulierten Verläufe, bei denen das Guthaben über die gesamte Entnahmephase nie auf null fiel.",
-  "fire.simulation.withdrawalYearsNote": "Geht von {years} Jahren Rente aus, ausgehend von deiner FIRE-Zahl.",
-  "fire.simulation.configurePrompt": "Starte die Simulation, um die Chancen zu sehen",
+  "fire.simulation.movedHint": "Die Simulation läuft an einer Stelle: im Modus Ruhestand des Simulators, mit genau diesem Plan als Ausgangspunkt.",
+  "fire.simulation.open": "Simulation öffnen",
   "fire.unit.years": "Jahre",
 
   "duration.year": "1 Jahr",
@@ -4139,6 +4141,20 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.model": "Modell",
   "sim.myPortfolio": "Mein Portfolio",
   "sim.custom": "Benutzerdefiniert",
+  "sim.retirement": "Ruhestand",
+  "sim.modelRetirementDesc":
+    "Simuliert deinen FIRE-Plan: heutiges Vermögen, deine Sparpläne und deine gemessene Rendite, danach die Entnahme.",
+  "sim.retirementSeeded":
+    "Aus deinem FIRE-Plan übernommen: Ziel {target}, erreicht in etwa {years} Jahren.",
+  "sim.retirementNoTarget":
+    "Mit diesen Zahlen wird dein FIRE-Ziel nicht erreicht, deshalb starten wir mit 30 Jahren. Passe es unten an.",
+  "sim.retirementNoExpenses":
+    "Noch keine erfassten Ausgaben, also gibt es kein FIRE-Ziel als Ausgangspunkt. Die Werte unten sind Startwerte.",
+  "sim.horizonUntilRetirement": "Jahre bis zum Ruhestand",
+  "sim.measuredAssumptions": "Gemessene Annahmen",
+  "sim.measuredAssumptionsNote":
+    "Rendite {ret} und Volatilität {vol}, gemessen an deinen eigenen Positionen. Änderbar, und dieselben Zahlen wie im FIRE-Plan.",
+  "sim.resetToMeasured": "Zurück zu gemessen",
   "sim.modelPortfolioDesc":
     "Simuliert jede Position mit ihrer eigenen Volatilität und den Korrelationen untereinander.",
   "sim.modelCustomDesc": "Simuliert eine einzelne gemischte Rendite und Volatilität.",
@@ -5001,7 +5017,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Tres importes objetivo para tres estilos de vida, cada uno con el año en que llegarías a tu ritmo actual.",
   "tour.fire.simulation.title": "Ponlo a prueba",
   "tour.fire.simulation.body":
-    "La simulación recorre miles de trayectorias de mercado, así ves con qué frecuencia el plan sobrevive a una mala década y no solo al caso medio.",
+    "Un clic lleva este plan al modo Jubilación del simulador, que recorre miles de trayectorias de mercado: ves con qué frecuencia el plan sobrevive a una mala década y no solo al caso medio.",
   "tour.household.create.title": "Compártelo con alguien",
   "tour.household.create.body":
     "Crea un hogar para compartir tus datos con otra persona. Sin él, todo sigue siendo solo tuyo.",
@@ -5981,14 +5997,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.alreadyThere": "Ya lo lograste",
   "fire.never": "No alcanzable con tu aportación actual",
   "fire.simulation.title": "Simulación completa",
-  "fire.simulation.subtitle": "Ejecuta el motor Monte Carlo con estos objetivos para ver la probabilidad de que tu dinero dure.",
-  "fire.simulation.run": "Ejecutar simulación",
-  "fire.simulation.running": "Ejecutando...",
-  "fire.simulation.medianFinal": "Saldo final mediano",
-  "fire.simulation.successProbability": "Probabilidad de que el dinero dure",
-  "fire.simulation.successHint": "Proporción de trayectorias simuladas donde el saldo nunca llegó a cero durante el periodo de retiro.",
-  "fire.simulation.withdrawalYearsNote": "Asume {years} años de jubilación, a partir de tu número FIRE.",
-  "fire.simulation.configurePrompt": "Ejecuta la simulación para ver las probabilidades",
+  "fire.simulation.movedHint": "La simulación se ejecuta en un solo sitio: el modo Jubilación del simulador, partiendo exactamente de este plan.",
+  "fire.simulation.open": "Abrir la simulación",
   "fire.unit.years": "años",
 
   "duration.year": "1 año",
@@ -6440,6 +6450,20 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.model": "Modelo",
   "sim.myPortfolio": "Mi cartera",
   "sim.custom": "Personalizado",
+  "sim.retirement": "Jubilación",
+  "sim.modelRetirementDesc":
+    "Simula tu plan FIRE: tu patrimonio actual, tus planes de ahorro y tu rentabilidad medida, y después la fase de retiro.",
+  "sim.retirementSeeded":
+    "Tomado de tu plan FIRE: objetivo {target}, alcanzado en unos {years} años.",
+  "sim.retirementNoTarget":
+    "Con estas cifras no se alcanza tu objetivo FIRE, así que empezamos con 30 años. Ajústalo abajo.",
+  "sim.retirementNoExpenses":
+    "Aún no hay gastos registrados, así que no hay objetivo FIRE del que partir. Las cifras de abajo son puntos de partida.",
+  "sim.horizonUntilRetirement": "Años hasta la jubilación",
+  "sim.measuredAssumptions": "Suposiciones medidas",
+  "sim.measuredAssumptionsNote":
+    "Rentabilidad {ret} y volatilidad {vol}, medidas sobre tus propias posiciones. Editables, y las mismas cifras que usa el plan FIRE.",
+  "sim.resetToMeasured": "Volver a lo medido",
   "sim.modelPortfolioDesc":
     "Simula cada posición con su propia volatilidad y las correlaciones entre ellas.",
   "sim.modelCustomDesc": "Simula una única rentabilidad y volatilidad combinadas.",

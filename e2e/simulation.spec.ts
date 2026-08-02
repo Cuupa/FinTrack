@@ -19,4 +19,28 @@ test.describe("simulation (Guest Mode)", () => {
     // The worker takes a few seconds; the median-outcome tile appears on success.
     await expect(page.getByText("Median outcome")).toBeVisible({ timeout: 30_000 });
   });
+
+  // There is exactly ONE Monte Carlo surface: the FIRE tab links into the
+  // simulator's Retirement mode instead of running its own.
+  test("the FIRE tab links into the retirement mode instead of simulating", async ({ page }) => {
+    await openDashboard(page);
+    await page.goto("/retirement?tab=fire");
+    await dismissTour(page);
+
+    // The old second simulation is gone: no run button on this page.
+    await expect(page.getByRole("button", { name: /Run simulation/i })).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Open the simulation" }).click();
+    await expect(page).toHaveURL(/\/simulation\?mode=retirement/);
+    await dismissTour(page);
+
+    // The deep link selects the tab, and the withdrawal phase is already part
+    // of the seeded plan.
+    await expect(page.getByRole("tab", { name: "Retirement" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByText("Years until retirement")).toBeVisible();
+    await expect(page.getByText("Measured assumptions")).toBeVisible();
+  });
 });
