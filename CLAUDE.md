@@ -450,15 +450,22 @@ FX-convert) always beats a wrong instrument in the right currency.
   the old numbers exactly. **Known gap**: only the DETERMINISTIC targets fold
   the pension in; the Monte Carlo run still frames decumulation purely as a
   withdrawal rate on the portfolio.
-- **The pension extrapolates a TREND, not a flat year** (`pointsTrend`).
-  Entgeltpunkte are salary ÷ national average wage, so a career still in
-  progress pushes them up every year; holding the latest value flat to
-  retirement understates a rising biography by roughly a thousand euros a month
-  against the Renteninformation (reported 2026-08). Least squares over the last
-  5 plausible years, slope only from **three years up** (two define a line
-  through noise), each projected year clamped to `maxPoints`. A typed
-  `annualPoints` wins and is held flat — the user stated one number, the app
-  does not then argue with a trend.
+- **The pension's default IS the Renteninformation's own method**: the flat
+  average of the last five plausible years, carried forward with **no career
+  progression**. That is what "wenn Sie so weitermachen wie bisher" means on
+  the letter, and a projection the user cannot reconcile with their own
+  statement is worthless however well argued. Assuming a rising career on top
+  of it overstated the pension by ~12 points, about 490 EUR a month (reported
+  2026-08, after an earlier flat-median attempt had it ~1.000 EUR too LOW —
+  both directions were wrong for the same reason: inventing a method instead of
+  reproducing the official one).
+- A career trend is available as an explicit opt-in (`assumeTrend`,
+  `pointsTrend`): least squares over the last 5 plausible years, slope only
+  from **three years up** (two define a line through noise), carried at most
+  **twice as far as it was measured** before the level holds flat (otherwise a
+  3-year slope reaches the Beitragsbemessungsgrenze within a few years and then
+  silently assumes the maximum for the whole career), each year clamped to
+  `maxPoints`. A typed `annualPoints` beats both and is held flat.
 - **An impossible year is discarded, never clamped** (`plausibleEntries`).
   `maxPoints` is the Beitragsbemessungsgrenze in points: a row above it is not
   a year, it is the statement's cumulative total in the wrong field. Clamping

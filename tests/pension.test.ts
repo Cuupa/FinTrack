@@ -380,7 +380,12 @@ describe("a cumulative total typed into one year", () => {
   });
 
   it("keeps the projection plausible even with NO reference data to cap with", () => {
-    const settings = { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 };
+    const settings = {
+      ...DEFAULT_PENSION_SETTINGS,
+      birthYear: 1990,
+      retirementAge: 67,
+      assumeTrend: true,
+    };
     // No reference rows at all: `maxPointsOn` returns null, so the cap is off.
     // This is the live situation whenever migration 0111 has not run.
     const projection = projectPension({
@@ -393,7 +398,8 @@ describe("a cumulative total typed into one year", () => {
     // 31 years left. The mean would have assumed 6.44/yr -> ~219 points; the
     // median assumes 1.2 -> ~56, which is the order of magnitude a career
     // actually produces.
-    expect(projection.annualPoints).toBeCloseTo(1.2, 10);
+    // The flat DRV method averages the surviving years: (1.1 + 1.2) / 2.
+    expect(projection.annualPoints).toBeCloseTo(1.15, 10);
     expect(projection.totalPoints).toBeLessThan(70);
     expect(projection.outlierYear?.year).toBe(2025);
   });
@@ -454,7 +460,12 @@ describe("projecting a rising career", () => {
   });
 
   it("projects more than the flat assumption, and says so per year", () => {
-    const settings = { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 };
+    const settings = {
+      ...DEFAULT_PENSION_SETTINGS,
+      birthYear: 1990,
+      retirementAge: 67,
+      assumeTrend: true,
+    };
     const p = projectPension({
       entries: rising,
       contracts: [],
@@ -481,7 +492,12 @@ describe("projecting a rising career", () => {
       entries: rising,
       contracts: [],
       reference,
-      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      settings: {
+        ...DEFAULT_PENSION_SETTINGS,
+        birthYear: 1990,
+        retirementAge: 67,
+        assumeTrend: true,
+      },
       currentYear: 2026,
     });
     // 0.2/yr over 31 years would reach 7+ points without the cap.
@@ -494,7 +510,12 @@ describe("projecting a rising career", () => {
       entries: rising,
       contracts: [],
       reference: [],
-      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      settings: {
+        ...DEFAULT_PENSION_SETTINGS,
+        birthYear: 1990,
+        retirementAge: 67,
+        assumeTrend: true,
+      },
       currentYear: 2026,
     });
     // A three-year slope carried thirty years is past what the sample can
@@ -512,7 +533,12 @@ describe("projecting a rising career", () => {
       entries: falling,
       contracts: [],
       reference,
-      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      settings: {
+        ...DEFAULT_PENSION_SETTINGS,
+        birthYear: 1990,
+        retirementAge: 67,
+        assumeTrend: true,
+      },
       currentYear: 2026,
     });
     expect(p.annualPointsSlope).toBeLessThan(0);
@@ -537,7 +563,12 @@ describe("how far the trend is carried", () => {
       entries: rising,
       contracts: [],
       reference: [],
-      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      settings: {
+        ...DEFAULT_PENSION_SETTINGS,
+        birthYear: 1990,
+        retirementAge: 67,
+        assumeTrend: true,
+      },
       currentYear: 2026,
     });
     // The 2x-base ceiling (2.8) is never reached, because the horizon bites
@@ -552,12 +583,80 @@ describe("how far the trend is carried", () => {
       entries: rising,
       contracts: [],
       reference,
-      settings: { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 },
+      settings: {
+        ...DEFAULT_PENSION_SETTINGS,
+        birthYear: 1990,
+        retirementAge: 67,
+        assumeTrend: true,
+      },
       currentYear: 2026,
     });
     expect(p.annualPointsEnd).toBeLessThanOrEqual(p.maxAnnualPoints!);
     // Averaged over the whole run it stays under the cap: the early years are
     // genuinely below it.
     expect(p.annualPoints).toBeLessThan(p.maxAnnualPoints!);
+  });
+});
+
+// The number on the letter is the number that has to come out (owner, 2026-08:
+// the page said 3.130,40 where the Renteninformation said 2.640,13 -- about 12
+// points, ~490 EUR a month, of assumed career progression the DRV does not
+// assume). "Wenn Sie so weitermachen wie bisher" carries the FLAT average of
+// the last five years forward, so that is the default and the trend is opt-in.
+describe("the default reproduces the Renteninformation's method", () => {
+  const rising = points([
+    [2021, 0.8],
+    [2022, 0.9],
+    [2023, 1.0],
+    [2024, 1.2],
+    [2025, 1.4],
+  ]);
+  const base = { ...DEFAULT_PENSION_SETTINGS, birthYear: 1990, retirementAge: 67 };
+
+  it("assumes no progression at all by default", () => {
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: base,
+      currentYear: 2026,
+    });
+    // The flat five-year average: (0.8 + 0.9 + 1.0 + 1.2 + 1.4) / 5.
+    expect(p.annualPoints).toBeCloseTo(1.06, 10);
+    expect(p.annualPointsSlope).toBe(0);
+    expect(p.annualPointsStart).toBeCloseTo(p.annualPointsEnd, 10);
+  });
+
+  it("offers the trend without applying it", () => {
+    const p = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: base,
+      currentYear: 2026,
+    });
+    expect(p.trendAvailable).toBe(true);
+    expect(p.annualPointsSlope).toBe(0);
+  });
+
+  it("projects strictly more once the trend is switched on", () => {
+    const flat = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: base,
+      currentYear: 2026,
+    });
+    const trended = projectPension({
+      entries: rising,
+      contracts: [],
+      reference,
+      settings: { ...base, assumeTrend: true },
+      currentYear: 2026,
+    });
+    expect(trended.annualPointsSlope).toBeGreaterThan(0);
+    expect(trended.monthlyStatutory!).toBeGreaterThan(flat.monthlyStatutory!);
+    // And the gap between them is the thing that was silently baked in before.
+    expect(trended.totalPoints - flat.totalPoints).toBeGreaterThan(5);
   });
 });

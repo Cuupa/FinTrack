@@ -281,6 +281,12 @@ export interface PensionSettings {
   totalPoints: number | null;
   /** The year `totalPoints` was stated for; per-year rows after it add on top. */
   totalPointsYear: number | null;
+  /** Carry the recorded years' TREND forward instead of their flat average.
+   *  Off by default on purpose: the Renteninformation's "wenn Sie so
+   *  weitermachen wie bisher" figure is a flat five-year average, so the
+   *  default has to reproduce the number the user can check against the
+   *  letter. The trend is a deliberate what-if on top of it. */
+  assumeTrend: boolean | null;
 }
 
 export const DEFAULT_PENSION_SETTINGS: PensionSettings = {
@@ -290,6 +296,7 @@ export const DEFAULT_PENSION_SETTINGS: PensionSettings = {
   targetMonthly: null,
   totalPoints: null,
   totalPointsYear: null,
+  assumeTrend: null,
 };
 
 /**

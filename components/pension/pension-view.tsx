@@ -29,7 +29,7 @@ import {
 } from "@/lib/types";
 import type { PensionContractInput } from "@/lib/store/types";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat } from "@/components/ui/primitives";
+import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -174,6 +174,25 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
           />
         </label>
       </div>
+      {/* Off by default: the default has to reproduce the Renteninformation,
+          which assumes no career progression at all. Offered here because a
+          rising record IS information, just not the official method. */}
+      {projection.trendAvailable && (
+        <div className="mt-4">
+          <Toggle
+            checked={settings.assumeTrend === true}
+            onChange={(next) =>
+              void updateProfile({
+                pensionSettings: { ...settings, assumeTrend: next ? true : null },
+              }).catch(() => {})
+            }
+            label={t("pension.assumeTrend")}
+            hint={t("pension.assumeTrendHint", {
+              years: String(projection.trendSampleSize),
+            })}
+          />
+        </div>
+      )}
       <div className="mt-4 flex items-center gap-3">
         <Button onClick={save}>{t("pension.save")}</Button>
         {saved && <span className="text-xs text-emerald-600">{t("pension.saved")}</span>}

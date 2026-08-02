@@ -336,8 +336,10 @@ export interface PensionProjection {
   /** Fitted change per calendar year. 0 when the user typed an assumption, or
    *  when there are too few years to fit one. */
   annualPointsSlope: number;
-  /** How many recorded years the trend rests on. 0 with a typed assumption. */
+  /** How many recorded years a trend could rest on. */
   trendSampleSize: number;
+  /** True when following the record's trend is on offer at all. */
+  trendAvailable: boolean;
   /** A recorded year that no year could have produced (above the
    *  Beitragsbemessungsgrenze), or null. Excluded from the trend, but the row
    *  itself is still wrong and only the user can correct it. */
@@ -403,7 +405,17 @@ export function projectPension(input: {
   // constant here (same rule as the Rentenwert), and no reference data means no
   // cap rather than an invented one.
   const maxAnnualPoints = maxPointsOn(reference, currentYear);
+  const usable = plausibleEntries(entries, maxAnnualPoints);
   const trend = pointsTrend(entries, maxAnnualPoints);
+  // THE DEFAULT IS THE DRV'S OWN METHOD: "wenn Sie so weitermachen wie bisher"
+  // carries the flat average of the last five years forward and assumes NO
+  // career progression. That is the figure printed on the Renteninformation,
+  // so it has to be the figure this page reproduces -- a projection the user
+  // cannot reconcile with their own letter is worthless however well argued.
+  // Assuming a rising career on top of it overstated the pension by about 12
+  // points, i.e. ~490 EUR a month (reported 2026-08).
+  const flatAssumption = averageAnnualPoints(usable, 5);
+  const useTrend = settings.assumeTrend === true && trend.slope !== 0;
   const yearsLeft = retirementYear != null ? Math.max(0, retirementYear - currentYear) : 0;
 
   // A ceiling for the fitted trend when there is no Beitragsbemessungsgrenze to
@@ -416,7 +428,7 @@ export function projectPension(input: {
   // A typed assumption is one number, so it is held flat: the user said what
   // they expect per year and the app does not then argue with a trend.
   const manual = settings.annualPoints;
-  const rawAnnualPoints = manual ?? trend.base;
+  const rawAnnualPoints = manual ?? (useTrend ? trend.base : flatAssumption);
 
   let futurePoints = 0;
   let annualPointsStart = 0;
@@ -433,7 +445,8 @@ export function projectPension(input: {
   for (let i = 0; i < yearsLeft; i++) {
     const year = currentYear + i;
     const advanced = Math.min(Math.max(0, year - trend.baseYear), trendYears);
-    const raw = manual ?? trend.base + trend.slope * advanced;
+    const raw =
+      manual ?? (useTrend ? trend.base + trend.slope * advanced : flatAssumption);
     const value = Math.max(0, Math.min(raw, trendCeiling));
     if (value < raw) capped = true;
     if (i === 0) annualPointsStart = value;
@@ -467,8 +480,11 @@ export function projectPension(input: {
     annualPointsCapped: capped,
     annualPointsStart,
     annualPointsEnd,
-    annualPointsSlope: manual != null ? 0 : trend.slope,
-    trendSampleSize: manual != null ? 0 : trend.sampleSize,
+    annualPointsSlope: useTrend && manual == null ? trend.slope : 0,
+    trendSampleSize: trend.sampleSize,
+    // Whether following the record's trend is even on offer: it needs three
+    // plausible years and a slope that is not flat.
+    trendAvailable: manual == null && trend.slope !== 0,
     outlierYear: annualPointsOutlier(entries, maxAnnualPoints),
     retirementYear,
     standardAge,

@@ -1381,7 +1381,10 @@ export const en = {
     "{current} points earned + {annual} per year × {years} years = {total} points.",
   "pension.calc.money": "{total} × {value} per point × {factor} = {monthly} per month.",
   "pension.calc.trend":
-    "Your recorded years are moving, so the projection follows them: {start} points in the first year rising to {end} in the last, fitted from {years} years and capped at what one year can earn. Type a figure above to hold it flat instead.",
+    "Following your recorded years' trend: {start} points in the first year rising to {end} in the last, fitted from {years} years and capped at what one year can earn. This deliberately departs from the Renteninformation, which assumes no progression.",
+  "pension.assumeTrend": "Assume my career keeps rising",
+  "pension.assumeTrendHint":
+    "Off by default so this page reproduces your Renteninformation, which carries the flat average of your last five years forward. On, it follows the trend of your {years} recorded years instead — a what-if, not the official figure.",
   "pension.outlierNotice":
     "{year} records {points} points, far above your other years. The projection ignores it, but the row is still wrong: a Renteninformation's cumulative total belongs in “Total points”, not in a single year.",
   "pension.targetMonthly": "Target pension / month",
@@ -3632,7 +3635,10 @@ export const de: Partial<Record<MessageKey, string>> = {
     "{current} Punkte erworben + {annual} pro Jahr × {years} Jahre = {total} Punkte.",
   "pension.calc.money": "{total} × {value} pro Punkt × {factor} = {monthly} pro Monat.",
   "pension.calc.trend":
-    "Deine erfassten Jahre bewegen sich, die Hochrechnung folgt ihnen: {start} Punkte im ersten Jahr, steigend auf {end} im letzten, ermittelt aus {years} Jahren und gedeckelt auf das, was ein Jahr bringen kann. Trag oben einen Wert ein, wenn du stattdessen flach rechnen willst.",
+    "Folgt dem Trend deiner erfassten Jahre: {start} Punkte im ersten Jahr, steigend auf {end} im letzten, ermittelt aus {years} Jahren und gedeckelt auf das, was ein Jahr bringen kann. Das weicht bewusst von der Renteninformation ab, die keine Steigerung unterstellt.",
+  "pension.assumeTrend": "Weiteren Karriereanstieg unterstellen",
+  "pension.assumeTrendHint":
+    "Standardmäßig aus, damit diese Seite deine Renteninformation nachrechnet: die schreibt den flachen Durchschnitt deiner letzten fünf Jahre fort. An folgt sie stattdessen dem Trend deiner {years} erfassten Jahre — ein Was-wäre-wenn, nicht die offizielle Zahl.",
   "pension.outlierNotice":
     "{year} steht mit {points} Punkten weit über deinen anderen Jahren. Die Hochrechnung lässt die Zeile außen vor, falsch ist sie trotzdem: der Gesamtstand aus der Renteninformation gehört in „Entgeltpunkte insgesamt“, nicht in ein einzelnes Jahr.",
   "pension.targetMonthly": "Wunschrente / Monat",
@@ -5878,7 +5884,10 @@ export const es: Partial<Record<MessageKey, string>> = {
     "{current} puntos ganados + {annual} al año × {years} años = {total} puntos.",
   "pension.calc.money": "{total} × {value} por punto × {factor} = {monthly} al mes.",
   "pension.calc.trend":
-    "Tus años registrados se mueven, así que la proyección los sigue: {start} puntos el primer año, subiendo a {end} el último, ajustado con {years} años y limitado a lo que un año puede dar. Escribe una cifra arriba si prefieres mantenerlo plano.",
+    "Sigue la tendencia de tus años registrados: {start} puntos el primer año, subiendo a {end} el último, ajustado con {years} años y limitado a lo que un año puede dar. Esto se aparta a propósito de la Renteninformation, que no supone ninguna progresión.",
+  "pension.assumeTrend": "Suponer que mi carrera sigue subiendo",
+  "pension.assumeTrendHint":
+    "Desactivado por defecto para que esta página reproduzca tu Renteninformation, que proyecta la media plana de tus últimos cinco años. Activado, sigue la tendencia de tus {years} años registrados: un supuesto, no la cifra oficial.",
   "pension.outlierNotice":
     "{year} registra {points} puntos, muy por encima de tus otros años. La proyección lo ignora, pero la fila sigue estando mal: el total acumulado de la Renteninformation va en «Puntos totales», no en un solo año.",
   "pension.targetMonthly": "Pensión objetivo / mes",

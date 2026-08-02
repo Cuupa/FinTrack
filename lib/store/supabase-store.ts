@@ -68,6 +68,9 @@ function normalizePensionSettings(raw: unknown): PensionSettings {
     targetMonthly: num(r.targetMonthly),
     totalPoints: num(r.totalPoints),
     totalPointsYear: num(r.totalPointsYear),
+    // Absent on every row written before the toggle existed, and absent means
+    // off -- the flat Renteninformation method.
+    assumeTrend: r.assumeTrend === true ? true : null,
   };
 }
 
