@@ -30,7 +30,9 @@ ansehen laesst.
 
 | Task | Prio | Status | Paths |
 | --- | --- | --- | --- |
-| — | — | — | — |
+| Vertragsrendite aus Ständen (XIRR) | 1 | laeuft | `lib/types.ts`, `lib/store/*`, `lib/finance/pension.ts`, `components/pension/*`, `supabase/*`, `tests/pension.test.ts` |
+| Vertragsbeiträge als Buchung vom Konto | 2 | offen | `lib/finance/pension-bookings.ts`, `components/pension/*`, `lib/store/*`, `supabase/*` |
+| Formular-Buttons einheitlich unter die Felder | 3 | offen | `components/**` (Formulare) |
 
 ## Offen (TODO.md)
 

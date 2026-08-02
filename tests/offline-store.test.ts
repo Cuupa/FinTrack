@@ -323,6 +323,9 @@ function makeInner(initial: PortfolioData) {
       calls.push("setPensionPoints");
       guard();
     },
+    async setPensionContractValues() {
+      calls.push("setPensionContractValues");
+    },
     async setPensionStatements() {
       calls.push("setPensionStatements");
       guard();

@@ -1477,6 +1477,23 @@ export const en = {
   "pension.contracts.dynamicHint": "Dynamik: how much the premium rises every year.",
   "pension.contracts.returnPct": "Assumed return (% p.a.)",
   "pension.contracts.returnHint": "Growth of the capital until the payout starts. Blank assumes none.",
+  "pension.contracts.returnColumn": "Return (% p. a.)",
+  "pension.values.open": "Values",
+  "pension.values.title": "Recorded values: {name}",
+  "pension.values.hint":
+    "What the policy was worth, as its annual statement states it. Two readings and the premiums in between measure what it actually earns, so nobody has to guess a return.",
+  "pension.values.date": "Date",
+  "pension.values.value": "Value",
+  "pension.values.add": "Add value",
+  "pension.values.invalid": "Enter a date and a value.",
+  "pension.values.measured":
+    "Measured return {pct} % p. a.: {start} on {from}, {paid} paid in, {end} on {to}.",
+  "pension.values.needSecond":
+    "A second reading at least six months later measures the return; until then the assumed one applies.",
+  "pension.values.typedWins":
+    "Your typed return drives the projection. Clear it to use the measured one.",
+  "pension.values.deleteTitle": "Delete value?",
+  "pension.values.deleteMessage": "The reading from {date} will be removed.",
   "pension.contracts.derivedNote":
     "In {years} years the policy holds about {capital}, which at this Rentenfaktor pays {monthly} per month.",
   "pension.contracts.derivedNoteNow":
@@ -3795,6 +3812,23 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.contracts.dynamicHint": "Um wie viel dein Beitrag jedes Jahr steigt.",
   "pension.contracts.returnPct": "Angenommene Rendite (% p. a.)",
   "pension.contracts.returnHint": "Wachstum des Kapitals bis zum Rentenbeginn. Leer heißt: kein Wachstum.",
+  "pension.contracts.returnColumn": "Rendite (% p. a.)",
+  "pension.values.open": "Stände",
+  "pension.values.title": "Erfasste Stände: {name}",
+  "pension.values.hint":
+    "Was der Vertrag wert war, so wie es auf der jährlichen Standmitteilung steht. Zwei Stände und die Beiträge dazwischen messen, was er wirklich bringt. Dann musst du keine Rendite raten.",
+  "pension.values.date": "Datum",
+  "pension.values.value": "Wert",
+  "pension.values.add": "Stand hinzufügen",
+  "pension.values.invalid": "Gib ein Datum und einen Wert ein.",
+  "pension.values.measured":
+    "Gemessene Rendite {pct} % p. a.: {start} am {from}, {paid} eingezahlt, {end} am {to}.",
+  "pension.values.needSecond":
+    "Ein zweiter Stand mindestens ein halbes Jahr später misst die Rendite. Bis dahin gilt die angenommene.",
+  "pension.values.typedWins":
+    "Deine getippte Rendite gilt für die Prognose. Lösch sie, wenn die gemessene gelten soll.",
+  "pension.values.deleteTitle": "Stand löschen?",
+  "pension.values.deleteMessage": "Der Stand vom {date} wird entfernt.",
   "pension.contracts.derivedNote":
     "In {years} Jahren stehen rund {capital} im Vertrag, das ergibt mit diesem Rentenfaktor {monthly} pro Monat.",
   "pension.contracts.derivedNoteNow":
@@ -6118,6 +6152,23 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.contracts.dynamicHint": "Cuánto sube tu prima cada año.",
   "pension.contracts.returnPct": "Rentabilidad supuesta (% anual)",
   "pension.contracts.returnHint": "Crecimiento del capital hasta el inicio del cobro. En blanco: sin crecimiento.",
+  "pension.contracts.returnColumn": "Rentabilidad (% anual)",
+  "pension.values.open": "Valores",
+  "pension.values.title": "Valores registrados: {name}",
+  "pension.values.hint":
+    "Lo que valía la póliza, tal como lo indica su extracto anual. Dos valores y las primas intermedias miden lo que rinde de verdad, así no tienes que suponer una rentabilidad.",
+  "pension.values.date": "Fecha",
+  "pension.values.value": "Valor",
+  "pension.values.add": "Añadir valor",
+  "pension.values.invalid": "Indica una fecha y un valor.",
+  "pension.values.measured":
+    "Rentabilidad medida {pct} % anual: {start} el {from}, {paid} aportado, {end} el {to}.",
+  "pension.values.needSecond":
+    "Un segundo valor al menos seis meses después mide la rentabilidad. Hasta entonces vale la supuesta.",
+  "pension.values.typedWins":
+    "Tu rentabilidad escrita manda en la proyección. Bórrala para usar la medida.",
+  "pension.values.deleteTitle": "¿Eliminar el valor?",
+  "pension.values.deleteMessage": "Se eliminará el valor del {date}.",
   "pension.contracts.derivedNote":
     "En {years} años la póliza acumula unos {capital}, lo que con este factor de renta paga {monthly} al mes.",
   "pension.contracts.derivedNoteNow":

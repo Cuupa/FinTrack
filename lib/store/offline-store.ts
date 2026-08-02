@@ -363,6 +363,19 @@ export class OfflineStore implements DataStore {
     }
   }
 
+  async setPensionContractValues(
+    contractId: string,
+    points: { date: string; value: number }[],
+  ): Promise<void> {
+    await this.mirror.setPensionContractValues(contractId, points);
+    // Keyed by contractId, replace-set per policy — idempotent on replay.
+    try {
+      await this.inner.setPensionContractValues(contractId, points);
+    } catch (err) {
+      await this.handleFailure(err, "setPensionContractValues", contractId, { contractId, points });
+    }
+  }
+
   async setPensionPoints(entries: PensionPoint[]): Promise<void> {
     await this.mirror.setPensionPoints(entries);
     // Replace-set over the user's whole record, so there is no per-row key to

@@ -622,6 +622,22 @@ create table if not exists public.pension_contracts (
 );
 create index if not exists pension_contracts_user_id_idx on public.pension_contracts (user_id);
 
+-- A policy's value on a date, as the annual statement prints it. Two readings
+-- and the premiums between them measure the return the policy actually earned
+-- (XIRR), instead of asking for a percentage nobody's statement states.
+create table if not exists public.pension_contract_values (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  contract_id uuid not null references public.pension_contracts (id) on delete cascade,
+  valued_on date not null,
+  value numeric not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists pension_contract_values_unique_key
+  on public.pension_contract_values (contract_id, valued_on);
+create index if not exists pension_contract_values_user_id_idx
+  on public.pension_contract_values (user_id);
+
 -- Household / collaboration (ROADMAP #13, flag `household`): shared
 -- read/write access to another registered user's financial data. v1 caps
 -- membership at ONE household per user (household_members.user_id has a
@@ -1131,6 +1147,7 @@ alter table public.account_balances enable row level security;
 alter table public.pension_points enable row level security;
 alter table public.pension_statements enable row level security;
 alter table public.pension_contracts enable row level security;
+alter table public.pension_contract_values enable row level security;
 alter table public.spending_categories enable row level security;
 alter table public.spending_transactions enable row level security;
 alter table public.budgets enable row level security;
@@ -1256,6 +1273,9 @@ create policy "own pension statements" on public.pension_statements
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "own pension contracts" on public.pension_contracts;
 create policy "own pension contracts" on public.pension_contracts
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "own pension contract values" on public.pension_contract_values;
+create policy "own pension contract values" on public.pension_contract_values
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 alter table public.households enable row level security;

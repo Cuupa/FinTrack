@@ -21,10 +21,13 @@
 
 import type {
   PensionContract,
+  PensionContractValue,
   PensionPoint,
   PensionSettings,
   PensionStatement,
 } from "../types";
+import { xirr, type CashFlow } from "./irr";
+import { addMonthsToDate } from "./dates";
 
 /** One year of the seeded reference table. */
 export interface PensionReference {
@@ -344,6 +347,101 @@ export function projectContract(
   };
 }
 
+/** Shortest span two readings may be apart before their difference is
+ *  annualised. Below it the annualisation multiplies a few weeks of noise into
+ *  a headline rate -- the same reason a trend needs three years, not two. */
+export const MIN_RETURN_SPAN_DAYS = 180;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** What the recorded readings say a policy actually earned, and what that
+ *  measurement rests on -- so the page can show the subtraction rather than
+ *  one derived percentage nobody can check. */
+export interface ContractReturn {
+  /** Annualised return in percent (money-weighted, XIRR over the premiums). */
+  pct: number;
+  from: PensionContractValue;
+  to: PensionContractValue;
+  /** Premiums the measurement charged between the two readings. */
+  contributions: number;
+  /** Whole days between the two readings. */
+  spanDays: number;
+}
+
+function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(b) - Date.parse(a)) / DAY_MS);
+}
+
+/**
+ * Measures a policy's return from its recorded values: the oldest reading is
+ * money put in, every monthly premium in between is money put in, and the
+ * newest reading is what came out. That is exactly an XIRR, and it answers the
+ * question the typed "expected return" only ever guessed at.
+ *
+ * Null when it cannot be measured honestly: fewer than two readings, a span
+ * under {@link MIN_RETURN_SPAN_DAYS}, or flows a rate cannot be solved for.
+ * Intermediate readings are not cash and therefore not flows -- they are kept
+ * for the chart of the record, not for the arithmetic.
+ */
+export function contractReturn(
+  contract: Pick<PensionContract, "id" | "monthlyContribution">,
+  values: readonly PensionContractValue[],
+): ContractReturn | null {
+  const own = values
+    .filter((v) => v.contractId === contract.id && Number.isFinite(v.value))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  if (own.length < 2) return null;
+
+  const from = own[0];
+  const to = own[own.length - 1];
+  const spanDays = daysBetween(from.date, to.date);
+  if (spanDays < MIN_RETURN_SPAN_DAYS) return null;
+
+  const premium = contract.monthlyContribution ?? 0;
+  const flows: CashFlow[] = [{ amount: -from.value, date: from.date }];
+  let contributions = 0;
+  if (premium > 0) {
+    for (let k = 1; ; k++) {
+      const date = addMonthsToDate(from.date, k);
+      if (date > to.date) break;
+      flows.push({ amount: -premium, date });
+      contributions += premium;
+    }
+  }
+  flows.push({ amount: to.value, date: to.date });
+
+  const rate = xirr(flows);
+  if (rate == null || !Number.isFinite(rate)) return null;
+  return { pct: rate * 100, from, to, contributions, spanDays };
+}
+
+/**
+ * The policy as the projection should read it. Two substitutions, both because
+ * a dated record beats a field typed once and never revisited:
+ *
+ * - the newest reading IS the capital, so `currentValue` follows the record;
+ * - a MEASURED return fills in for the assumed one, but never overrides it --
+ *   a typed figure is the user's own assumption about the future and wins,
+ *   the same rule `annualPoints` follows against the fitted trend.
+ *
+ * With no readings the contract is returned unchanged, so everything entered
+ * before this existed keeps projecting exactly as it did.
+ */
+export function resolveContract(
+  contract: PensionContract,
+  values: readonly PensionContractValue[],
+): PensionContract {
+  const own = values.filter((v) => v.contractId === contract.id);
+  if (own.length === 0) return contract;
+  const latest = own.reduce((a, b) => (b.date > a.date ? b : a));
+  const measured = contract.expectedReturnPct == null ? contractReturn(contract, values) : null;
+  return {
+    ...contract,
+    currentValue: latest.value,
+    expectedReturnPct: measured ? measured.pct : contract.expectedReturnPct,
+  };
+}
+
 /** A straight line through the recorded years: what a year earns now, and how
  *  fast that is moving. */
 export interface PointsTrend {
@@ -578,11 +676,15 @@ export function projectPension(input: {
   /** The Renteninformationen. Omitted reproduces the pre-list behaviour. */
   statements?: readonly PensionStatement[];
   contracts: readonly PensionContract[];
+  /** Recorded policy values. Omitted keeps every contract exactly as typed. */
+  contractValues?: readonly PensionContractValue[];
   reference: readonly PensionReference[];
   settings: PensionSettings;
   currentYear: number;
 }): PensionProjection {
-  const { entries, contracts, reference, settings, currentYear } = input;
+  const { entries, reference, settings, currentYear } = input;
+  const contractValues = input.contractValues ?? [];
+  const contracts = input.contracts.map((c) => resolveContract(c, contractValues));
   const statements = input.statements ?? [];
   const currentPoints = currentPensionPoints(entries, statements, settings);
   const pensionValue = pensionValueOn(reference, currentYear);

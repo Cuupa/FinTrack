@@ -104,6 +104,10 @@ interface PortfolioContextValue {
   /** Replace-set the whole statutory pension record, keyed by year. */
   setPensionPoints(entries: PensionPoint[]): Promise<void>;
   setPensionStatements(entries: PensionStatement[]): Promise<void>;
+  setPensionContractValues(
+    contractId: string,
+    points: { date: string; value: number }[],
+  ): Promise<void>;
   addPensionContract(input: PensionContractInput): Promise<PensionContract>;
   updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void>;
   deletePensionContract(id: string): Promise<void>;
@@ -516,6 +520,20 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setPensionContractValues = useCallback(
+    async (contractId: string, points: { date: string; value: number }[]) => {
+      await store.setPensionContractValues(contractId, points);
+      setData((d) => ({
+        ...d,
+        pensionContractValues: [
+          ...d.pensionContractValues.filter((v) => v.contractId !== contractId),
+          ...points.map((p) => ({ contractId, date: p.date, value: p.value })),
+        ],
+      }));
+    },
+    [store],
+  );
+
   const addPensionContract = useCallback(
     async (input: PensionContractInput) => {
       const contract = await store.addPensionContract(input);
@@ -886,6 +904,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setAccountBalances,
     setPensionPoints,
     setPensionStatements,
+    setPensionContractValues,
     addPensionContract,
     updatePensionContract,
     deletePensionContract,

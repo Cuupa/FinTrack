@@ -16,8 +16,15 @@ import {
   type PensionReference,
   looksLikeStatements,
   statementAnnualPoints,
+  contractReturn,
+  resolveContract,
 } from "../lib/finance/pension";
-import { DEFAULT_PENSION_SETTINGS, type PensionContract, type PensionPoint } from "../lib/types";
+import {
+  DEFAULT_PENSION_SETTINGS,
+  type PensionContract,
+  type PensionContractValue,
+  type PensionPoint,
+} from "../lib/types";
 
 const reference: PensionReference[] = [
   { year: 2023, pensionValue: 37.6, levelPct: 48.2, maxPoints: 2.03 },
@@ -791,5 +798,76 @@ describe("looksLikeStatements", () => {
 
   it("needs the newest value to be impossible as a year, not merely rising", () => {
     expect(looksLikeStatements([row(2021, 1.1), row(2022, 1.2), row(2023, 1.3)], 2.0)).toBe(false);
+  });
+});
+
+describe("contractReturn", () => {
+  const value = (date: string, v: number): PensionContractValue => ({
+    contractId: "c1",
+    date,
+    value: v,
+  });
+
+  it("measures the return between two readings, premiums included", () => {
+    // 10.000 in, nothing paid in, 11.000 a year later: 10 % p. a.
+    const r = contractReturn(contract({ monthlyContribution: null }), [
+      value("2024-01-01", 10000),
+      value("2025-01-01", 11000),
+    ]);
+    expect(r).not.toBeNull();
+    expect(r!.pct).toBeCloseTo(10, 1);
+    expect(r!.contributions).toBe(0);
+  });
+
+  it("charges the premiums paid in between, so they are not read as growth", () => {
+    // Same end value, but 100 a month went in: the policy earned far less.
+    const withPremiums = contractReturn(contract({ monthlyContribution: 100 }), [
+      value("2024-01-01", 10000),
+      value("2025-01-01", 11000),
+    ]);
+    expect(withPremiums!.contributions).toBe(1200);
+    expect(withPremiums!.pct).toBeLessThan(1);
+  });
+
+  it("refuses to annualise a span under half a year, or a single reading", () => {
+    expect(contractReturn(contract(), [value("2025-01-01", 10000)])).toBeNull();
+    expect(
+      contractReturn(contract(), [value("2025-01-01", 10000), value("2025-03-01", 11000)]),
+    ).toBeNull();
+  });
+
+  it("ignores readings belonging to another policy", () => {
+    const other: PensionContractValue = { contractId: "c2", date: "2025-01-01", value: 99999 };
+    expect(contractReturn(contract(), [value("2024-01-01", 10000), other])).toBeNull();
+  });
+});
+
+describe("resolveContract", () => {
+  const value = (date: string, v: number): PensionContractValue => ({
+    contractId: "c1",
+    date,
+    value: v,
+  });
+
+  it("takes the newest reading as the capital and fills in the measured return", () => {
+    const resolved = resolveContract(contract({ currentValue: 1, monthlyContribution: null }), [
+      value("2024-01-01", 10000),
+      value("2025-01-01", 11000),
+    ]);
+    expect(resolved.currentValue).toBe(11000);
+    expect(resolved.expectedReturnPct).toBeCloseTo(10, 1);
+  });
+
+  it("never overrides a typed return -- the user's own assumption wins", () => {
+    const resolved = resolveContract(
+      contract({ expectedReturnPct: 3, monthlyContribution: null }),
+      [value("2024-01-01", 10000), value("2025-01-01", 11000)],
+    );
+    expect(resolved.expectedReturnPct).toBe(3);
+  });
+
+  it("leaves a policy without readings exactly as it was", () => {
+    const c = contract({ currentValue: 500, expectedReturnPct: null });
+    expect(resolveContract(c, [])).toBe(c);
   });
 });

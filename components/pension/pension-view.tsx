@@ -16,10 +16,12 @@ import { useCallback, useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import {
   allStatements,
+  contractReturn,
   looksLikeStatements,
   pensionLevelOn,
   projectContract,
   projectPension,
+  resolveContract,
   standardRetirementAge,
   statementAnnualPoints,
   type PensionProjection,
@@ -30,11 +32,12 @@ import {
   PENSION_CONTRACT_KINDS,
   type PensionContract,
   type PensionContractKind,
+  type PensionContractValue,
   type PensionPoint,
   type PensionStatement,
 } from "@/lib/types";
 import type { PensionContractInput } from "@/lib/store/types";
-import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -50,7 +53,7 @@ import {
   usePagination,
 } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
-import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
+import { DeleteAction, EditAction, HistoryAction, RowActions } from "@/components/ui/row-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 
@@ -829,7 +832,184 @@ function ContractForm({
   );
 }
 
-type ContractSortKey = "name" | "kind" | "expected" | "contribution" | "currentValue" | "startsOn";
+/**
+ * The record a policy's return is measured from: what it was worth, on which
+ * date. The insurer's annual statement states exactly this, which is why it is
+ * asked for instead of a return percentage nobody's statement prints.
+ */
+function ContractValuesDialog({
+  contract,
+  onClose,
+}: {
+  contract: PensionContract;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const { data, setPensionContractValues } = usePortfolio();
+  const currency = data.profile.currency;
+
+  const rows = useMemo(
+    () => data.pensionContractValues.filter((v) => v.contractId === contract.id),
+    [data.pensionContractValues, contract.id],
+  );
+  const measured = useMemo(() => contractReturn(contract, rows), [contract, rows]);
+
+  const [date, setDate] = useState(today());
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PensionContractValue | null>(null);
+
+  const sort = useSort<"date" | "value">("date", "desc");
+  const sorted = useMemo(() => sort.apply(rows, (r, key) => r[key]), [rows, sort]);
+
+  async function write(next: PensionContractValue[], onOk: () => void) {
+    setError(null);
+    try {
+      await setPensionContractValues(
+        contract.id,
+        next.map((v) => ({ date: v.date, value: v.value })),
+      );
+      onOk();
+    } catch (err) {
+      setError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : `${t("pension.saveFailed")} ${storeErrorReason(err)}`.trim(),
+      );
+    }
+  }
+
+  async function add() {
+    const v = optionalNumber(value);
+    if (v == null || !date) {
+      setError(t("pension.values.invalid"));
+      return;
+    }
+    await write(
+      [...rows.filter((r) => r.date !== date), { contractId: contract.id, date, value: v }],
+      () => setValue(""),
+    );
+  }
+
+  return (
+    <Modal open onClose={onClose} maxWidthClass="max-w-2xl">
+      <Card>
+        <h2 className="text-lg font-semibold">{t("pension.values.title", { name: contract.name })}</h2>
+        <p className="mt-1 text-xs text-zinc-500">{t("pension.values.hint")}</p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">
+            <span className="text-zinc-500">{t("pension.values.date")}</span>
+            <input
+              className={inputCls}
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-zinc-500">{t("pension.values.value")}</span>
+            <input
+              className={inputCls}
+              inputMode="decimal"
+              value={value}
+              onChange={(e) => setValue(stripLeadingZero(e.target.value))}
+              data-private
+            />
+          </label>
+        </div>
+
+        {rows.length > 0 && (
+          <div className="mt-4">
+            <Table ariaLabel={t("pension.values.title", { name: contract.name })}>
+              <Thead>
+                <Th sort={sort.sort} sortKey="date" onSort={sort.toggle}>
+                  {t("pension.values.date")}
+                </Th>
+                <Th align="right" sort={sort.sort} sortKey="value" onSort={sort.toggle}>
+                  {t("pension.values.value")}
+                </Th>
+                <Th align="right" />
+              </Thead>
+              <Tbody>
+                {sorted.map((row) => (
+                  <Tr key={row.date}>
+                    <Td>{formatDate(row.date)}</Td>
+                    <Td align="right" data-private>
+                      {formatCurrency(row.value, currency)}
+                    </Td>
+                    <Td align="right">
+                      <RowActions>
+                        <DeleteAction
+                          label={t("common.delete")}
+                          onClick={() => setPendingDelete(row)}
+                        />
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </div>
+        )}
+
+        {/* The arithmetic behind the measured return, not just its result. */}
+        <p className="mt-3 text-xs text-zinc-500">
+          {measured
+            ? t("pension.values.measured", {
+                pct: measured.pct.toFixed(2),
+                from: formatDate(measured.from.date),
+                to: formatDate(measured.to.date),
+                start: formatCurrency(measured.from.value, currency),
+                end: formatCurrency(measured.to.value, currency),
+                paid: formatCurrency(measured.contributions, currency),
+              })
+            : t("pension.values.needSecond")}
+        </p>
+        {measured && contract.expectedReturnPct != null && (
+          <p className="mt-1 text-xs text-zinc-500">{t("pension.values.typedWins")}</p>
+        )}
+
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <Button variant="secondary" onClick={onClose}>
+            {t("common.close")}
+          </Button>
+          <Button onClick={add} disabled={value.trim() === "" || date === ""}>
+            {t("pension.values.add")}
+          </Button>
+        </div>
+
+        {pendingDelete && (
+          <ConfirmDialog
+            open
+            title={t("pension.values.deleteTitle")}
+            message={t("pension.values.deleteMessage", { date: formatDate(pendingDelete.date) })}
+            confirmLabel={t("common.delete")}
+            onConfirm={async () => {
+              const d = pendingDelete.date;
+              await write(
+                rows.filter((r) => r.date !== d),
+                () => setPendingDelete(null),
+              );
+            }}
+            onCancel={() => setPendingDelete(null)}
+          />
+        )}
+      </Card>
+    </Modal>
+  );
+}
+
+type ContractSortKey =
+  | "name"
+  | "kind"
+  | "expected"
+  | "contribution"
+  | "currentValue"
+  | "returnPct"
+  | "startsOn";
 
 function ContractsCard() {
   const { t } = useI18n();
@@ -839,6 +1019,7 @@ function ContractsCard() {
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PensionContract | null>(null);
+  const [valuesOf, setValuesOf] = useState<PensionContract | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PensionContract | null>(null);
 
   // The table prints what the projection counts, so a policy with a
@@ -851,9 +1032,22 @@ function ContractsCard() {
           settings.birthYear + (settings.retirementAge ?? standardRetirementAge(settings.birthYear)),
         )
       : null;
+  // The table prints what the projection counts, so it reads each policy the
+  // same way: newest recorded value as capital, measured return when none was
+  // typed.
+  const values = data.pensionContractValues;
   const payoutOf = useCallback(
-    (c: PensionContract) => projectContract(c, currentYear, retirementYear).monthly,
-    [currentYear, retirementYear],
+    (c: PensionContract) =>
+      projectContract(resolveContract(c, values), currentYear, retirementYear).monthly,
+    [currentYear, retirementYear, values],
+  );
+  const returnOf = useCallback(
+    (c: PensionContract) => resolveContract(c, values).expectedReturnPct,
+    [values],
+  );
+  const capitalOf = useCallback(
+    (c: PensionContract) => resolveContract(c, values).currentValue,
+    [values],
   );
 
   const sort = useSort<ContractSortKey>("name");
@@ -870,12 +1064,14 @@ function ContractsCard() {
           case "contribution":
             return c.monthlyContribution ?? 0;
           case "currentValue":
-            return c.currentValue ?? 0;
+            return capitalOf(c) ?? 0;
+          case "returnPct":
+            return returnOf(c) ?? 0;
           case "startsOn":
             return c.startsOn ?? "";
         }
       }),
-    [contracts, sort, payoutOf],
+    [contracts, sort, payoutOf, returnOf, capitalOf],
   );
   const pager = usePagination(rows);
 
@@ -912,6 +1108,9 @@ function ContractsCard() {
               <Th align="right" sort={sort.sort} sortKey="currentValue" onSort={sort.toggle}>
                 {t("pension.contracts.currentValue")}
               </Th>
+              <Th align="right" sort={sort.sort} sortKey="returnPct" onSort={sort.toggle}>
+                {t("pension.contracts.returnColumn")}
+              </Th>
               <Th sort={sort.sort} sortKey="startsOn" onSort={sort.toggle}>
                 {t("pension.contracts.startsOn")}
               </Th>
@@ -924,11 +1123,18 @@ function ContractsCard() {
                   <Td className="text-zinc-500">{t(`pension.kind.${c.kind}`)}</Td>
                   <Td align="right">{money(payoutOf(c) || null)}</Td>
                   <Td align="right">{money(c.monthlyContribution)}</Td>
-                  <Td align="right">{money(c.currentValue)}</Td>
+                  <Td align="right">{money(capitalOf(c))}</Td>
+                  <Td align="right">
+                    {returnOf(c) == null ? "—" : `${returnOf(c)!.toFixed(2)} %`}
+                  </Td>
                   <Td className="text-zinc-500">{c.startsOn ?? "—"}</Td>
                   <Td align="right">
                     <RowActions>
                       <EditAction label={t("pension.edit")} onClick={() => setEditing(c)} />
+                      <HistoryAction
+                        label={t("pension.values.open")}
+                        onClick={() => setValuesOf(c)}
+                      />
                       <DeleteAction label={t("common.delete")} onClick={() => setPendingDelete(c)} />
                     </RowActions>
                   </Td>
@@ -975,6 +1181,14 @@ function ContractsCard() {
         )}
       </Modal>
 
+      {valuesOf && (
+        <ContractValuesDialog
+          key={valuesOf.id}
+          contract={valuesOf}
+          onClose={() => setValuesOf(null)}
+        />
+      )}
+
       {pendingDelete && (
         <ConfirmDialog
           open
@@ -1007,6 +1221,7 @@ export function PensionView() {
         entries: data.pensionPoints,
         statements: data.pensionStatements,
         contracts: data.pensionContracts,
+        contractValues: data.pensionContractValues,
         reference,
         settings: data.profile.pensionSettings,
         currentYear,
@@ -1015,6 +1230,7 @@ export function PensionView() {
       data.pensionPoints,
       data.pensionStatements,
       data.pensionContracts,
+      data.pensionContractValues,
       data.profile.pensionSettings,
       reference,
       currentYear,

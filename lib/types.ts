@@ -243,6 +243,23 @@ export interface PensionStatement {
   note: string | null;
 }
 
+/**
+ * One dated reading of what a policy is worth (Vertragsstand), the figure the
+ * annual statement prints.
+ *
+ * Two readings and the premiums paid between them are what a policy's actual
+ * return can be MEASURED from -- the alternative was asking the user to type a
+ * percentage nobody's statement states, which then silently drove the whole
+ * projection.
+ */
+export interface PensionContractValue {
+  contractId: string;
+  /** YYYY-MM-DD the value was stated for. */
+  date: string;
+  /** Value/surrender value on that date, profile base currency. */
+  value: number;
+}
+
 /** What kind of retirement policy a {@link PensionContract} is. The German
  *  state-subsidised forms are told apart because their payout and taxation
  *  differ, and the user thinks of them by these names. */
@@ -898,6 +915,8 @@ export interface PortfolioData {
   pensionStatements: PensionStatement[];
   /** Private/company retirement policies (flag `pension`). */
   pensionContracts: PensionContract[];
+  /** Dated value readings per policy, what its return is measured from. */
+  pensionContractValues: PensionContractValue[];
   /** User-defined spending taxonomy (ROADMAP #2, flag `spending`). */
   spendingCategories: SpendingCategory[];
   /** Expense/income transactions against accounts (ROADMAP #2, flag `spending`). */
@@ -946,6 +965,7 @@ export function emptyPortfolio(): PortfolioData {
     pensionPoints: [],
     pensionStatements: [],
     pensionContracts: [],
+    pensionContractValues: [],
     spendingCategories: [],
     spendingTransactions: [],
     budgets: [],

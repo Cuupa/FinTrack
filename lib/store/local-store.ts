@@ -129,6 +129,8 @@ export class LocalStore implements DataStore {
         // Backfill blobs saved before the pension record existed.
         pensionPoints: parsed.pensionPoints ?? [],
         pensionStatements: parsed.pensionStatements ?? [],
+        // Backfill blobs saved before policy values were recorded.
+        pensionContractValues: parsed.pensionContractValues ?? [],
         // Backfill policies saved before the Rentenfaktor fields existed.
         pensionContracts: (parsed.pensionContracts ?? []).map((c) => ({
           ...c,
@@ -450,6 +452,19 @@ export class LocalStore implements DataStore {
     this.write(data);
   }
 
+  async setPensionContractValues(contractId: string, points: { date: string; value: number }[]) {
+    const data = this.read();
+    const byDate = new Map<string, { date: string; value: number }>();
+    for (const p of points) byDate.set(p.date, p);
+    data.pensionContractValues = [
+      ...data.pensionContractValues.filter((v) => v.contractId !== contractId),
+      ...[...byDate.values()]
+        .sort((a, b) => (a.date < b.date ? -1 : 1))
+        .map((p) => ({ contractId, date: p.date, value: p.value })),
+    ];
+    this.write(data);
+  }
+
   async addPensionContract(input: PensionContractInput, id?: string) {
     const data = this.read();
     const contract = { ...input, id: id ?? newId() };
@@ -469,6 +484,8 @@ export class LocalStore implements DataStore {
   async deletePensionContract(id: string) {
     const data = this.read();
     data.pensionContracts = data.pensionContracts.filter((c) => c.id !== id);
+    // Mirrors the DB's FK cascade: readings of a deleted policy are orphans.
+    data.pensionContractValues = data.pensionContractValues.filter((v) => v.contractId !== id);
     this.write(data);
   }
 

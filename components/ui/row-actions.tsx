@@ -112,6 +112,30 @@ export function RecurringAction({ label, onClick, disabled }: ActionProps) {
   );
 }
 
+/** Opens the dated record behind a row (a policy's values, a balance history)
+ *  -- a second pencil for it would read as a second way to edit the same row. */
+export function HistoryAction({ label, onClick, disabled }: ActionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={QUIET}
+      aria-label={label}
+      title={label}
+    >
+      <Icon>
+        <path d="M8 6h13" />
+        <path d="M8 12h13" />
+        <path d="M8 18h13" />
+        <path d="M3 6h.01" />
+        <path d="M3 12h.01" />
+        <path d="M3 18h.01" />
+      </Icon>
+    </button>
+  );
+}
+
 /** Pause when running, resume when paused -- one button, `paused` picks the
  *  glyph, the caller picks the word. */
 export function PauseAction({

@@ -120,6 +120,15 @@ export interface DataStore {
    * year exactly like `setPensionPoints` — idempotent and replay-safe.
    */
   setPensionStatements(entries: PensionStatement[]): Promise<void>;
+  /**
+   * Replace-set ONE policy's recorded values, keyed by date the way
+   * `setAccountBalances` is -- so replaying it twice cannot double the record,
+   * and editing one policy never touches another's readings.
+   */
+  setPensionContractValues(
+    contractId: string,
+    points: { date: string; value: number }[],
+  ): Promise<void>;
   /** Creates a retirement policy. `id` — see `addAsset`'s doc above. */
   addPensionContract(input: PensionContractInput, id?: string): Promise<PensionContract>;
   updatePensionContract(id: string, patch: Partial<PensionContractInput>): Promise<void>;
