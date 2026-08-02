@@ -279,6 +279,8 @@ interface SpendingTransactionRow {
   planned_id?: string | null;
   // Migration 0116, same reasoning.
   savings_plan_id?: string | null;
+  // Migration 0121, same reasoning.
+  pension_contract_id?: string | null;
 }
 
 function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
@@ -294,6 +296,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     transferAccountId: r.transfer_account_id ?? null,
     plannedId: r.planned_id ?? null,
     savingsPlanId: r.savings_plan_id ?? null,
+    pensionContractId: r.pension_contract_id ?? null,
   };
 }
 
@@ -322,6 +325,10 @@ interface PensionContractRow {
   rentenfaktor?: number | string | null;
   contribution_dynamic_pct?: number | string | null;
   expected_return_pct?: number | string | null;
+  // Migration 0121: the Verrechnungskonto and its schedule.
+  account_id?: string | null;
+  booking_start_date?: string | null;
+  last_booked_date?: string | null;
 }
 
 interface ContractRow {
@@ -601,7 +608,14 @@ export class SupabaseStore implements DataStore {
         ],
         // Migration 0119: a database without it still lists the policies, just
         // without the figures the payout is derived from.
-        ["rentenfaktor", "contribution_dynamic_pct", "expected_return_pct"],
+        [
+          "rentenfaktor",
+          "contribution_dynamic_pct",
+          "expected_return_pct",
+          "account_id",
+          "booking_start_date",
+          "last_booked_date",
+        ],
       ),
       this.supabase
         .from("pension_contract_values")
@@ -615,7 +629,7 @@ export class SupabaseStore implements DataStore {
         (cols) =>
           this.supabase.from("spending_transactions").select(cols).order("date", { ascending: false }),
         ["id", "account_id", "category_id", "date", "amount", "payee", "note", "recurring_id"],
-        ["transfer_account_id", "planned_id", "savings_plan_id"],
+        ["transfer_account_id", "planned_id", "savings_plan_id", "pension_contract_id"],
       ),
       this.supabase
         .from("budgets")
@@ -762,6 +776,7 @@ export class SupabaseStore implements DataStore {
     staleColumns(plansRes, "savingsPlans");
     staleColumns(accountsRes, "accounts");
     staleColumns(spendingTransactionsRes, "spendingTransactions");
+    staleColumns(pensionContractsRes, "pensionContracts");
     staleColumns(contractsRes, "contracts");
     staleColumns(plannedRes, "plannedCashflows");
     staleColumns(goalsRes, "goals");
@@ -929,6 +944,9 @@ export class SupabaseStore implements DataStore {
         r.contribution_dynamic_pct == null ? null : Number(r.contribution_dynamic_pct),
       expectedReturnPct: r.expected_return_pct == null ? null : Number(r.expected_return_pct),
       startsOn: r.starts_on ?? null,
+      accountId: r.account_id ?? null,
+      bookingStartDate: r.booking_start_date ?? null,
+      lastBookedDate: r.last_booked_date ?? null,
       note: r.note ?? null,
     }));
 
@@ -1538,6 +1556,9 @@ export class SupabaseStore implements DataStore {
         contribution_dynamic_pct: input.contributionDynamicPct ?? null,
         expected_return_pct: input.expectedReturnPct ?? null,
         starts_on: input.startsOn ?? null,
+        account_id: input.accountId ?? null,
+        booking_start_date: input.bookingStartDate ?? null,
+        last_booked_date: input.lastBookedDate ?? null,
         note: input.note ?? null,
       })
       .select("id")
@@ -1562,6 +1583,9 @@ export class SupabaseStore implements DataStore {
     if (patch.expectedReturnPct !== undefined)
       upd.expected_return_pct = patch.expectedReturnPct;
     if (patch.startsOn !== undefined) upd.starts_on = patch.startsOn;
+    if (patch.accountId !== undefined) upd.account_id = patch.accountId;
+    if (patch.bookingStartDate !== undefined) upd.booking_start_date = patch.bookingStartDate;
+    if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
     if (patch.note !== undefined) upd.note = patch.note;
     if (Object.keys(upd).length === 0) return;
     const { error } = await this.supabase.from("pension_contracts").update(upd).eq("id", id);
@@ -1631,6 +1655,7 @@ export class SupabaseStore implements DataStore {
         transfer_account_id: input.transferAccountId ?? null,
         planned_id: input.plannedId ?? null,
         savings_plan_id: input.savingsPlanId ?? null,
+        pension_contract_id: input.pensionContractId ?? null,
       })
       .select("id")
       .single();
@@ -1653,6 +1678,7 @@ export class SupabaseStore implements DataStore {
     if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
     if (patch.plannedId !== undefined) upd.planned_id = patch.plannedId;
     if (patch.savingsPlanId !== undefined) upd.savings_plan_id = patch.savingsPlanId;
+    if (patch.pensionContractId !== undefined) upd.pension_contract_id = patch.pensionContractId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase

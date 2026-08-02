@@ -10,10 +10,18 @@
 // is over, a stale price, a locked feature — none of those are a task the user
 // can close, and a number that never goes down is noise within a week.
 
-import type { Asset, Contract, PlannedCashflow, SavingsPlan, Transaction } from "../types";
+import type {
+  Asset,
+  Contract,
+  PensionContract,
+  PlannedCashflow,
+  SavingsPlan,
+  Transaction,
+} from "../types";
 import { dueOccurrences } from "../finance/savings-plans";
 import { dueBookings } from "../finance/contract-bookings";
 import { duePlannedDates } from "../finance/planned";
+import { duePremiums } from "../finance/pension-bookings";
 import { dueInterest } from "../finance/cash-interest";
 
 export type NotificationKind =
@@ -21,7 +29,8 @@ export type NotificationKind =
   | "savingsPlanDue"
   | "cashInterestDue"
   | "contractDue"
-  | "plannedDue";
+  | "plannedDue"
+  | "pensionPremiumDue";
 
 export const NOTIFICATION_KINDS: NotificationKind[] = [
   "householdInvite",
@@ -29,6 +38,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = [
   "cashInterestDue",
   "contractDue",
   "plannedDue",
+  "pensionPremiumDue",
 ];
 
 /**
@@ -42,6 +52,7 @@ export const NOTIFICATION_ROUTES: Record<NotificationKind, string> = {
   cashInterestDue: "/portfolio",
   contractDue: "/accounts",
   plannedDue: "/accounts",
+  pensionPremiumDue: "/retirement",
 };
 
 export interface NotificationItem {
@@ -58,6 +69,8 @@ export interface NotificationInput {
   savingsPlans: readonly SavingsPlan[];
   contracts: readonly Contract[];
   plannedCashflows: readonly PlannedCashflow[];
+  /** Retirement policies with a Verrechnungskonto (flag `pension`). */
+  pensionContracts: readonly PensionContract[];
   /** Pending invitations addressed to this user's own email. */
   householdInvites: number;
   /**
@@ -77,6 +90,7 @@ export function collectNotifications(input: NotificationInput): NotificationItem
     cashInterestDue: countCashInterestDue(input),
     contractDue: countContractDue(input),
     plannedDue: countPlannedDue(input),
+    pensionPremiumDue: countPensionPremiumDue(input),
   };
   return NOTIFICATION_KINDS.filter((kind) => input.available[kind] && counts[kind] > 0).map(
     (kind) => ({ kind, count: counts[kind] }),
@@ -124,6 +138,13 @@ function countContractDue(input: NotificationInput): number {
   if (!input.available.contractDue) return 0;
   let total = 0;
   for (const contract of input.contracts) total += dueBookings(contract, input.today).length;
+  return total;
+}
+
+function countPensionPremiumDue(input: NotificationInput): number {
+  if (!input.available.pensionPremiumDue) return 0;
+  let total = 0;
+  for (const c of input.pensionContracts) total += duePremiums(c, input.today).length;
   return total;
 }
 

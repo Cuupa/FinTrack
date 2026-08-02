@@ -86,6 +86,7 @@ function input(over: Partial<NotificationInput> = {}): NotificationInput {
     savingsPlans: [],
     contracts: [],
     plannedCashflows: [],
+    pensionContracts: [],
     householdInvites: 0,
     available: allAvailable(),
     ...over,

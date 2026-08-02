@@ -27,6 +27,7 @@ import {
   type PensionProjection,
 } from "@/lib/finance/pension";
 import { today } from "@/lib/finance/dates";
+import { pendingPremiums } from "@/lib/finance/pension-bookings";
 import { usePensionReference } from "@/lib/pension/use-pension-reference";
 import {
   PENSION_CONTRACT_KINDS,
@@ -631,6 +632,8 @@ function ContractForm({
     initial?.expectedReturnPct != null ? String(initial.expectedReturnPct) : "",
   );
   const [startsOn, setStartsOn] = useState(initial?.startsOn ?? "");
+  const [accountId, setAccountId] = useState(initial?.accountId ?? "");
+  const [bookingStartDate, setBookingStartDate] = useState(initial?.bookingStartDate ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [error, setError] = useState<string | null>(null);
 
@@ -639,6 +642,7 @@ function ContractForm({
   // function the projection runs on, never a second formula.
   const { data } = usePortfolio();
   const base = data.profile.currency;
+  const accounts = data.accounts;
   const settings = data.profile.pensionSettings;
   const currentYear = Number(today().slice(0, 4));
   const fallbackRetirementYear =
@@ -660,6 +664,9 @@ function ContractForm({
       contributionDynamicPct: optionalNumber(dynamicPct),
       expectedReturnPct: optionalNumber(returnPct),
       startsOn: optionalText(startsOn),
+      accountId: null,
+      bookingStartDate: null,
+      lastBookedDate: null,
       note: null,
     },
     currentYear,
@@ -681,6 +688,10 @@ function ContractForm({
         contributionDynamicPct: optionalNumber(dynamicPct),
         expectedReturnPct: optionalNumber(returnPct),
         startsOn: optionalText(startsOn),
+        accountId: optionalText(accountId),
+        bookingStartDate: optionalText(bookingStartDate),
+        // Never reset by an edit: it records what has already been booked.
+        lastBookedDate: initial?.lastBookedDate ?? null,
         note: optionalText(note),
       });
     } catch (err) {
@@ -799,6 +810,40 @@ function ContractForm({
             />
             <span className="mt-1 block text-xs text-zinc-500">
               {t("pension.contracts.expectedHint")}
+            </span>
+          </label>
+        )}
+        {/* The premium leaves an account like a savings plan's rate does. Due
+            premiums then collect for review; nothing is ever posted silently. */}
+        <label className="block text-sm">
+          <span className="text-zinc-500">{t("pension.contracts.account")}</span>
+          <div className="mt-1">
+            <SelectMenu
+              ariaLabel={t("pension.contracts.account")}
+              value={accountId}
+              onChange={setAccountId}
+              searchable={accounts.length > 8}
+              options={[
+                { value: "", label: t("pension.contracts.accountNone") },
+                ...accounts.map((a) => ({ value: a.id, label: a.name })),
+              ]}
+            />
+          </div>
+          <span className="mt-1 block text-xs text-zinc-500">
+            {t("pension.contracts.accountHint")}
+          </span>
+        </label>
+        {accountId !== "" && (
+          <label className="block text-sm">
+            <span className="text-zinc-500">{t("pension.contracts.bookingStart")}</span>
+            <input
+              className={inputCls}
+              type="date"
+              value={bookingStartDate}
+              onChange={(e) => setBookingStartDate(e.target.value)}
+            />
+            <span className="mt-1 block text-xs text-zinc-500">
+              {t("pension.contracts.bookingStartHint")}
             </span>
           </label>
         )}
@@ -1013,7 +1058,13 @@ type ContractSortKey =
 
 function ContractsCard() {
   const { t } = useI18n();
-  const { data, addPensionContract, updatePensionContract, deletePensionContract } = usePortfolio();
+  const {
+    data,
+    addPensionContract,
+    updatePensionContract,
+    deletePensionContract,
+    addSpendingTransaction,
+  } = usePortfolio();
   const currency = data.profile.currency;
   const contracts = data.pensionContracts;
 
@@ -1021,6 +1072,57 @@ function ContractsCard() {
   const [editing, setEditing] = useState<PensionContract | null>(null);
   const [valuesOf, setValuesOf] = useState<PensionContract | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PensionContract | null>(null);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [booking, setBooking] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+
+  // Due premiums collect here and are booked only on confirmation, exactly
+  // like a contract's charges or a savings plan's rate.
+  const todayIso = today();
+  const due = useMemo(() => pendingPremiums(contracts, todayIso), [contracts, todayIso]);
+  const selectedDue = due.filter((d) => !excluded.has(`${d.contractId}:${d.date}`));
+  const accountsById = useMemo(
+    () => new Map(data.accounts.map((a) => [a.id, a])),
+    [data.accounts],
+  );
+
+  /** Transactions first, the marker second: replaying a booking that already
+   *  exists would double-charge, while a failure in between only leaves the
+   *  premium looking due again. */
+  async function bookSelected() {
+    setBooking(true);
+    setBookError(null);
+    try {
+      const newest = new Map<string, string>();
+      for (const d of selectedDue) {
+        await addSpendingTransaction({
+          accountId: d.accountId,
+          categoryId: null,
+          date: d.date,
+          amount: d.amount,
+          payee: d.contractName,
+          note: null,
+          recurringId: null,
+          // A premium buys an entitlement: a transfer, never consumption.
+          pensionContractId: d.contractId,
+        });
+        const prev = newest.get(d.contractId);
+        if (!prev || d.date > prev) newest.set(d.contractId, d.date);
+      }
+      for (const [id, lastBookedDate] of newest) {
+        await updatePensionContract(id, { lastBookedDate });
+      }
+      setExcluded(new Set());
+    } catch (err) {
+      setBookError(
+        isStorageFullError(err)
+          ? t("common.storageFull")
+          : `${t("pension.saveFailed")} ${storeErrorReason(err)}`.trim(),
+      );
+    } finally {
+      setBooking(false);
+    }
+  }
 
   // The table prints what the projection counts, so a policy with a
   // Rentenfaktor shows the derived payout rather than an empty cell.
@@ -1143,6 +1245,65 @@ function ContractsCard() {
             </Tbody>
           </Table>
           <TablePagination pager={pager} />
+        </div>
+      )}
+
+      {due.length > 0 && (
+        <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <h3 className="text-sm font-semibold">
+            {t("pension.premiums.title", { n: String(due.length) })}
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {due.map((d) => {
+              const key = `${d.contractId}:${d.date}`;
+              const checked = !excluded.has(key);
+              const cur = accountsById.get(d.accountId)?.currency || currency;
+              return (
+                <li
+                  key={key}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                >
+                  <label className="flex flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setExcluded((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(key);
+                          else next.delete(key);
+                          return next;
+                        })
+                      }
+                      className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                    />
+                    <span className={checked ? "" : "text-zinc-400 line-through"} data-private>
+                      {d.contractName} <span className="text-zinc-500">{formatDate(d.date)}</span>
+                    </span>
+                  </label>
+                  <span
+                    className={`tabular-nums ${
+                      checked ? "text-red-600 dark:text-red-400" : "text-zinc-400 line-through"
+                    }`}
+                    data-private
+                  >
+                    {formatCurrency(d.amount, cur)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-xs text-zinc-500">{t("pension.premiums.transferNote")}</p>
+          {bookError && <p className="mt-2 text-sm text-red-600">{bookError}</p>}
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+            <Button
+              variant="primary"
+              disabled={booking || selectedDue.length === 0}
+              onClick={() => void bookSelected()}
+            >
+              {t("pension.premiums.book", { n: String(selectedDue.length) })}
+            </Button>
+          </div>
         </div>
       )}
 

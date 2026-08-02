@@ -323,6 +323,17 @@ export interface PensionContract {
   expectedReturnPct: number | null;
   /** YYYY-MM-DD the payout starts, or null if not fixed yet. */
   startsOn: string | null;
+  /**
+   * Account the premium is debited from (Verrechnungskonto), exactly like a
+   * savings plan's. Null = the policy is recorded but books nothing, which is
+   * how every policy behaved before this existed.
+   */
+  accountId: string | null;
+  /** First premium date. Without it nothing is ever due, even with an account:
+   *  the schedule is derived from this date, never stored per occurrence. */
+  bookingStartDate: string | null;
+  /** Newest premium already booked, advanced after a review confirms one. */
+  lastBookedDate: string | null;
   note: string | null;
 }
 
@@ -447,6 +458,15 @@ export interface SpendingTransaction {
    * reference three.
    */
   savingsPlanId?: string | null;
+  /**
+   * The {@link PensionContract} premium this booking paid; null for anything
+   * else. Like `savingsPlanId` it counts as a TRANSFER: a premium into a
+   * retirement policy buys an entitlement worth what left the account, so
+   * reporting it as consumption would overstate spending by the full premium
+   * every month. The receiving side is a policy, not an {@link Account}, so
+   * `transferAccountId` stays null.
+   */
+  pensionContractId?: string | null;
 }
 
 /**

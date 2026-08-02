@@ -25,6 +25,7 @@ const KIND_FLAG: Record<NotificationKind, FeatureFlag> = {
   cashInterestDue: "cashInterest",
   contractDue: "contracts",
   plannedDue: "plannedCashflow",
+  pensionPremiumDue: "pension",
 };
 
 export interface Notifications {
@@ -57,6 +58,7 @@ export function useNotifications(): Notifications {
       savingsPlans: data.savingsPlans,
       contracts: data.contracts,
       plannedCashflows: data.plannedCashflows,
+      pensionContracts: data.pensionContracts,
       householdInvites: receivedInvites.length,
       available,
     });
@@ -68,6 +70,7 @@ export function useNotifications(): Notifications {
     data.savingsPlans,
     data.contracts,
     data.plannedCashflows,
+    data.pensionContracts,
     receivedInvites.length,
     available,
   ]);

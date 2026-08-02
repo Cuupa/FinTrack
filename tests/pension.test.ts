@@ -49,6 +49,9 @@ function contract(over: Partial<PensionContract> = {}): PensionContract {
     contributionDynamicPct: null,
     expectedReturnPct: null,
     startsOn: null,
+    accountId: null,
+    bookingStartDate: null,
+    lastBookedDate: null,
     note: null,
     ...over,
   };

@@ -23,10 +23,12 @@ import type {
  * receiving side outside the account list: the money became fund units, which
  * the depot already counts. Such a booking carries `savingsPlanId` and no
  * `transferAccountId`, because a portfolio is not an {@link Account} — but
- * treating it as spending would report every Sparplan rate as consumed.
+ * treating it as spending would report every Sparplan rate as consumed. A
+ * pension policy's premium is the same case: it buys an entitlement, and the
+ * policy is not an {@link Account} either.
  */
 export function isTransfer(t: SpendingTransaction): boolean {
-  return t.transferAccountId != null || t.savingsPlanId != null;
+  return t.transferAccountId != null || t.savingsPlanId != null || t.pensionContractId != null;
 }
 
 /**

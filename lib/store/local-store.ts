@@ -137,6 +137,10 @@ export class LocalStore implements DataStore {
           rentenfaktor: c.rentenfaktor ?? null,
           contributionDynamicPct: c.contributionDynamicPct ?? null,
           expectedReturnPct: c.expectedReturnPct ?? null,
+          // Backfill policies saved before they could debit an account.
+          accountId: c.accountId ?? null,
+          bookingStartDate: c.bookingStartDate ?? null,
+          lastBookedDate: c.lastBookedDate ?? null,
         })),
         // Backfill blobs saved before the spending entity existed.
         spendingCategories: parsed.spendingCategories ?? [],
@@ -419,6 +423,10 @@ export class LocalStore implements DataStore {
     // (mirrors the column's on delete set null).
     data.savingsPlans = data.savingsPlans.map((p) =>
       p.accountId === id ? { ...p, accountId: null } : p,
+    );
+    // Same for a pension policy: it keeps its figures, it just stops debiting.
+    data.pensionContracts = data.pensionContracts.map((c) =>
+      c.accountId === id ? { ...c, accountId: null, bookingStartDate: null } : c,
     );
     this.write(data);
     this.pruneImportedSpendingFingerprints(removedTxIds);

@@ -617,6 +617,11 @@ create table if not exists public.pension_contracts (
   -- Assumed annual return on the capital until the payout starts, percent.
   expected_return_pct numeric,
   starts_on date,
+  -- Verrechnungskonto and its schedule (migration 0121): the premium leaves an
+  -- account like a savings plan's rate does, after a review confirms it.
+  account_id uuid references public.accounts (id) on delete set null,
+  booking_start_date date,
+  last_booked_date date,
   note text,
   created_at timestamptz not null default now()
 );
@@ -772,6 +777,14 @@ alter table public.spending_transactions
   add column if not exists savings_plan_id uuid references public.savings_plans (id) on delete set null;
 create index if not exists spending_transactions_savings_plan_id_idx
   on public.spending_transactions (savings_plan_id);
+-- The pension premium this booking paid (migration 0121). Same case: it buys an
+-- entitlement, so it is a transfer, and the receiving side is a policy rather
+-- than an account.
+alter table public.spending_transactions
+  add column if not exists pension_contract_id uuid
+    references public.pension_contracts (id) on delete set null;
+create index if not exists spending_transactions_pension_contract_id_idx
+  on public.spending_transactions (pension_contract_id);
 
 create index if not exists spending_transactions_account_id_idx on public.spending_transactions (account_id);
 create index if not exists spending_transactions_transfer_account_id_idx on public.spending_transactions (transfer_account_id);
