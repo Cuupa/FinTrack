@@ -29,6 +29,7 @@ import { currentAccountBalance } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -231,8 +232,7 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
       {LIABILITY_KINDS.includes(kind) && (
         <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
       )}
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-        {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <FormActions error={error}>
         <Button
           variant="primary"
           disabled={busy || !name.trim() || !openedOn}
@@ -240,7 +240,7 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
         >
           {t("accounts.form.add")}
         </Button>
-      </div>
+      </FormActions>
     </div>
   );
 }

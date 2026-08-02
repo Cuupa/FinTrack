@@ -20,6 +20,7 @@ import { providerList, getProvider } from "@/lib/llm";
 import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
 import type { LlmProviderId } from "@/lib/llm/types";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Tabs } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -228,16 +229,16 @@ export function SettingsView() {
                     />
                   </Field>
 
-                  <div className="flex items-center gap-3">
-                    <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
-                      {savingProfile ? "…" : t("settings.save")}
-                    </Button>
+                  <FormActions>
                     {savedProfile && (
                       <span className="text-sm text-emerald-600 dark:text-emerald-400">
                         {t("settings.saved")}
                       </span>
                     )}
-                  </div>
+                    <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
+                      {savingProfile ? "…" : t("settings.save")}
+                    </Button>
+                  </FormActions>
                 </div>
               </section>
 
@@ -287,7 +288,8 @@ export function SettingsView() {
                         className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
                       />
                     </Field>
-                    <div className="flex items-center gap-3">
+                    <FormActions>
+                      {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
                       <Button
                         variant="primary"
                         onClick={savePassword}
@@ -295,8 +297,7 @@ export function SettingsView() {
                       >
                         {savingPw ? "…" : t("settings.save")}
                       </Button>
-                      {pwStatus && <span className="text-sm text-zinc-500">{pwStatus}</span>}
-                    </div>
+                    </FormActions>
                   </div>
                 </section>
               )}
@@ -394,16 +395,16 @@ export function SettingsView() {
                   </span>
                 </label>
 
-                <div className="flex items-center gap-3">
-                  <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax}>
-                    {savingTax ? "…" : t("settings.save")}
-                  </Button>
+                <FormActions>
                   {savedTax && (
                     <span className="text-sm text-emerald-600 dark:text-emerald-400">
                       {t("settings.saved")}
                     </span>
                   )}
-                </div>
+                  <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax}>
+                    {savingTax ? "…" : t("settings.save")}
+                  </Button>
+                </FormActions>
               </div>
             </section>
 

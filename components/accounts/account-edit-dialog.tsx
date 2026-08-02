@@ -21,6 +21,7 @@ import {
 } from "@/lib/types";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -291,9 +292,7 @@ export function AccountEditDialog({
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
         )}
         {hasReadings && <p className="mt-2 text-sm text-zinc-500">{t("accounts.edit.hasReadings")}</p>}
-        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-        <div className="mt-4 flex justify-end gap-2">
+        <FormActions error={error}>
           <Button variant="secondary" onClick={onClose}>
             {t("tx.cancel")}
           </Button>
@@ -304,7 +303,7 @@ export function AccountEditDialog({
           >
             {t("accounts.edit.save")}
           </Button>
-        </div>
+        </FormActions>
       </Card>
     </Modal>
   );

@@ -15,6 +15,7 @@ import { today } from "@/lib/finance/dates";
 import type { Asset } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {
   Table,
@@ -137,6 +138,9 @@ export function ValuationSection({ asset }: { asset: Asset }) {
             data-private
           />
         </div>
+      </div>
+
+      <FormActions error={error}>
         <Button
           variant="primary"
           disabled={busy || !date || !value.trim()}
@@ -144,9 +148,7 @@ export function ValuationSection({ asset }: { asset: Asset }) {
         >
           {t("valuation.add")}
         </Button>
-      </div>
-
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      </FormActions>
 
       {points.length === 0 ? (
         <p className="mt-4 text-sm text-zinc-500">{t("valuation.empty")}</p>

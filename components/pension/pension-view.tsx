@@ -40,6 +40,7 @@ import {
 import type { PensionContractInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -321,12 +322,11 @@ function StatementsFields() {
           <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
       </div>
-      <div className="mt-3">
+      <FormActions error={error}>
         <Button onClick={add} disabled={year.trim() === "" || total.trim() === ""}>
           {t("pension.statements.add")}
         </Button>
-      </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </FormActions>
 
       {rows.length > 0 && (
         <div className="mt-4">
@@ -522,12 +522,11 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
           <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
       </div>
-      <div className="mt-3">
+      <FormActions error={error}>
         <Button onClick={add} disabled={year.trim() === "" || points.trim() === ""}>
           {t("pension.points.add")}
         </Button>
-      </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </FormActions>
 
       {entries.length > 0 && (
         <div className="mt-4">
@@ -869,10 +868,11 @@ function ContractForm({
               })}
         </p>
       )}
-      <Button onClick={submit} disabled={name.trim() === ""}>
-        {submitLabel}
-      </Button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <FormActions error={error}>
+        <Button variant="primary" onClick={submit} disabled={name.trim() === ""}>
+          {submitLabel}
+        </Button>
+      </FormActions>
     </div>
   );
 }
@@ -1015,16 +1015,14 @@ function ContractValuesDialog({
           <p className="mt-1 text-xs text-zinc-500">{t("pension.values.typedWins")}</p>
         )}
 
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <FormActions error={error}>
           <Button variant="secondary" onClick={onClose}>
             {t("common.close")}
           </Button>
-          <Button onClick={add} disabled={value.trim() === "" || date === ""}>
+          <Button variant="primary" onClick={add} disabled={value.trim() === "" || date === ""}>
             {t("pension.values.add")}
           </Button>
-        </div>
+        </FormActions>
 
         {pendingDelete && (
           <ConfirmDialog

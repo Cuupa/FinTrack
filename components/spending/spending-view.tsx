@@ -13,6 +13,7 @@ import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
   Table,
@@ -515,8 +516,7 @@ export function SpendingView({
                 />
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <FormActions error={error}>
               <Button
                 variant="primary"
                 disabled={busy || !accountId || !effectivePayee || !amount.trim() || !date}
@@ -524,7 +524,7 @@ export function SpendingView({
               >
                 {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}
               </Button>
-            </div>
+            </FormActions>
           </>
         )}
       </Card>

@@ -19,6 +19,7 @@ import { dateKey, nowDateTimeLocal } from "@/lib/finance/dates";
 import { isStorageFullError } from "@/lib/store/errors";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
@@ -663,21 +664,20 @@ export function AddAssetForm({
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           {formIncomplete && touched && (
             <p className="text-xs text-zinc-500">{tr("form.missingFields")}</p>
           )}
 
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={busy || formIncomplete}>
-              {busy ? tr("addAsset.adding") : tr("addAsset.title")}
-            </Button>
+          <FormActions error={error}>
             {onDone && (
               <Button type="button" variant="ghost" onClick={onDone} disabled={busy}>
                 {tr("tx.cancel")}
               </Button>
             )}
-          </div>
+            <Button type="submit" variant="primary" disabled={busy || formIncomplete}>
+              {busy ? tr("addAsset.adding") : tr("addAsset.title")}
+            </Button>
+          </FormActions>
         </form>
       )}
 

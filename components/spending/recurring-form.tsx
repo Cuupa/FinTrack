@@ -30,6 +30,7 @@ import type { ContractInput } from "@/lib/store/types";
 import { today } from "@/lib/finance/dates";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, SegmentedControl } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
@@ -344,7 +345,12 @@ export function RecurringForm({
           className={inputCls}
         />
       </div>
-      <div className="flex items-end gap-2">
+      <FormActions>
+        {onCancel && (
+          <Button variant="secondary" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+        )}
         <Button
           variant="primary"
           disabled={busy || !name.trim() || !amount.trim()}
@@ -352,12 +358,7 @@ export function RecurringForm({
         >
           {submitLabel}
         </Button>
-        {onCancel && (
-          <Button variant="secondary" onClick={onCancel}>
-            {t("common.cancel")}
-          </Button>
-        )}
-      </div>
+      </FormActions>
     </div>
   );
 }

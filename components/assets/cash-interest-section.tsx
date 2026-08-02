@@ -22,6 +22,7 @@ import {
 } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -196,16 +197,14 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
       </div>
 
       <p className="mt-2 text-xs text-zinc-500">{t("cashInterest.disable")}</p>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-      <div className="mt-3 flex items-center gap-3">
-        <Button variant="primary" size="sm" disabled={saving || !dirty} onClick={() => void save()}>
-          {t("cashInterest.save")}
-        </Button>
+      <FormActions error={error}>
         {saved && !dirty && (
           <span className="text-sm text-emerald-600 dark:text-emerald-400">{t("cashInterest.saved")}</span>
         )}
-      </div>
+        <Button variant="primary" size="sm" disabled={saving || !dirty} onClick={() => void save()}>
+          {t("cashInterest.save")}
+        </Button>
+      </FormActions>
 
       {due.length > 0 ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">

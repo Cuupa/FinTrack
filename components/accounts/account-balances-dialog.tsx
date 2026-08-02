@@ -12,6 +12,7 @@ import { today } from "@/lib/finance/dates";
 import type { Account } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {
@@ -147,12 +148,13 @@ export function AccountBalancesDialog({
               data-private
             />
           </div>
+        </div>
+
+        <FormActions error={error}>
           <Button variant="primary" disabled={busy || !date || !value.trim()} onClick={() => void add()}>
             {t("accounts.balances.add")}
           </Button>
-        </div>
-
-        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        </FormActions>
 
         {points.length === 0 ? (
           <p className="mt-4 text-sm text-zinc-500">{t("accounts.balances.empty")}</p>

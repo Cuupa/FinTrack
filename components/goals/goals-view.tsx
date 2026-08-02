@@ -33,6 +33,7 @@ import type { GoalInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -339,8 +340,7 @@ function GoalForm({
           </div>
         )}
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-        {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <FormActions error={error}>
         {onCancel && (
           <Button variant="secondary" disabled={busy} onClick={onCancel}>
             {t("common.cancel")}
@@ -353,7 +353,7 @@ function GoalForm({
         >
           {submitLabel}
         </Button>
-      </div>
+      </FormActions>
     </>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from "@/lib/types";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -414,12 +415,11 @@ export function PlanForm({
           </label>
         )}
       </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {formIncomplete && touched && (
         <p className="text-xs text-zinc-500">{t("form.missingFields")}</p>
       )}
       {blockedByLimit && <p className="text-sm text-zinc-500">{limitReached}</p>}
-      <div className="flex justify-end gap-2">
+      <FormActions error={error}>
         <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onDone}>
           {t("tx.cancel")}
         </Button>
@@ -431,7 +431,7 @@ export function PlanForm({
         >
           {busy ? t("sp.applying") : plan ? t("sp.save") : t("sp.create")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

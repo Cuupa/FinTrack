@@ -16,6 +16,7 @@ import { frontLoadSplit } from "@/lib/finance/front-load";
 import type { Asset } from "@/lib/types";
 import { formatCurrency, formatNumber, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 
@@ -101,17 +102,16 @@ export function FrontLoadSection({ asset }: { asset: Asset }) {
           </p>
         </div>
       </div>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      <div className="mt-3 flex items-center gap-3">
-        <Button size="sm" variant="primary" disabled={saving || !dirty || invalid} onClick={save}>
-          {saving ? t("asset.frontLoad.saving") : t("asset.frontLoad.save")}
-        </Button>
+      <FormActions error={error}>
         {saved && !dirty && (
           <span className="text-sm text-emerald-600 dark:text-emerald-400">
             {t("asset.frontLoad.saved")}
           </span>
         )}
-      </div>
+        <Button size="sm" variant="primary" disabled={saving || !dirty || invalid} onClick={save}>
+          {saving ? t("asset.frontLoad.saving") : t("asset.frontLoad.save")}
+        </Button>
+      </FormActions>
     </Card>
   );
 }

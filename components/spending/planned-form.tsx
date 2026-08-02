@@ -14,6 +14,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, SegmentedControl } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { missingFieldCls, missingLabelCls, useFormTouched } from "@/lib/forms/required";
@@ -271,13 +272,12 @@ export function PlannedForm({
           />
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <FormActions error={error}>
         {touched && (missingName || missingAmount) && (
           <p className="mr-auto text-sm text-amber-600 dark:text-amber-400">
             {t("form.missingFields")}
           </p>
         )}
-        {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
         {onCancel && (
           <Button variant="secondary" disabled={busy} onClick={onCancel}>
             {t("spending.planned.cancel")}
@@ -286,7 +286,7 @@ export function PlannedForm({
         <Button variant="primary" disabled={!canSubmit} onClick={() => void submit()}>
           {submitLabel}
         </Button>
-      </div>
+      </FormActions>
     </div>
   );
 }

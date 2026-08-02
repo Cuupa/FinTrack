@@ -19,6 +19,7 @@ import type { Account, SpendingCategory, SpendingTransaction } from "@/lib/types
 import type { SpendingTransactionInput } from "@/lib/store/types";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
+import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -246,16 +247,14 @@ function EditForm({
         </div>
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-      <div className="mt-4 flex gap-2">
-        <Button variant="primary" disabled={busy || !effectivePayee || !amount.trim()} onClick={save}>
-          {t("spending.edit.save")}
-        </Button>
+      <FormActions error={error}>
         <Button variant="secondary" onClick={onClose}>
           {t("common.cancel")}
         </Button>
-      </div>
+        <Button variant="primary" disabled={busy || !effectivePayee || !amount.trim()} onClick={save}>
+          {t("spending.edit.save")}
+        </Button>
+      </FormActions>
     </Card>
   );
 }
