@@ -21,6 +21,7 @@ fuehrt zur falschen Diagnose. Erst gegen die Live-DB pruefen, dann schliessen.
 | 0113 | `contracts`/`planned_cashflows` quittieren `month_end` mit 400 |
 | 0114 | Die Retry-Queue der Kurs-Cron bleibt aus (Sync laeuft normal weiter) |
 | 0115 | Nur die Flag-Beschreibung in `/admin/flags` bleibt alt |
+| 0116 | Sparplan-Verrechnungskonto und Ausgabeaufschlag quittieren 400 |
 
 0112 traegt oben eine reine Lese-Abfrage, mit der sich der Umfang vorher
 ansehen laesst.
@@ -97,3 +98,12 @@ ansehen laesst.
 | Admin feature usage | 0bd639f — /admin/usage, Migration 0108/0109 |
 | Cookie-Banner geprueft | 2c856b1 — keins noetig, alles technisch notwendig |
 | CLAUDE.md aufgeraeumt | 1025 → 682 Zeilen, MONETIZATION.md + DOCUMENTATION.md |
+
+### Runde 2026-08-02
+
+| Task | Commit / Umfang |
+| --- | --- |
+| Konto-Eintrag ans Sidebar-Ende | `Sidebar` bekommt einen eigenen Footer, Header behaelt das Avatar nur unter `md` |
+| Handlungsbedarf in der Navigation | `lib/notifications/` (rein + Hook), Zaehler auf Sidebar und MobileNav |
+| Sparplan mit Verrechnungskonto | Migration 0116, `savingsPlanId` zaehlt als Umbuchung, nicht als Ausgabe |
+| Ausgabeaufschlag bei managed Fonds | `lib/finance/front-load.ts`, Kauf zum Ausgabepreis, Aufschlag als Gebuehr |

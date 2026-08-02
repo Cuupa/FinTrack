@@ -61,6 +61,7 @@ import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { AssetRiskCard } from "@/components/assets/asset-risk-card";
 import { CashInterestSection } from "@/components/assets/cash-interest-section";
+import { FrontLoadSection } from "@/components/assets/front-load-section";
 import { ValuationSection } from "@/components/assets/valuation-section";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -802,6 +803,14 @@ export function AssetDetail({
             />
           </dl>
         </Card>
+
+        {/* Every tradable position can carry an Ausgabeaufschlag; only actively
+            managed funds actually do, and the section stays at 0 until told
+            otherwise. No flag of its own: it is one number on the asset, not a
+            feature to switch off. */}
+        {held && asset.type !== "CASH" && asset.type !== "OTHER" && (
+          <FrontLoadSection asset={asset} />
+        )}
 
         {held && asset.type === "CASH" && cashInterest.enabled && (
           <ProGate locked={cashInterest.locked} feature="cashInterest">

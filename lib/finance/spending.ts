@@ -18,9 +18,15 @@ import type {
  * expense: net worth is unchanged, only its composition shifts. Every
  * aggregation below drops these, so a 250 EUR Riester premium stops reading as
  * 250 EUR consumed each month.
+ *
+ * A savings-plan execution debited from the account is the same shape with the
+ * receiving side outside the account list: the money became fund units, which
+ * the depot already counts. Such a booking carries `savingsPlanId` and no
+ * `transferAccountId`, because a portfolio is not an {@link Account} — but
+ * treating it as spending would report every Sparplan rate as consumed.
  */
 export function isTransfer(t: SpendingTransaction): boolean {
-  return t.transferAccountId != null;
+  return t.transferAccountId != null || t.savingsPlanId != null;
 }
 
 /**

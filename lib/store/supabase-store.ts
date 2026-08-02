@@ -131,6 +131,8 @@ interface AssetRow {
   interest_rate: number | null;
   interest_frequency: Asset["interestFrequency"] | null;
   interest_post_day: Asset["interestPostDay"] | null;
+  // Optional: a DB that predates migration 0116 doesn't return this.
+  front_load?: number | string | null;
   instrument: InstrumentEmbed | InstrumentEmbed[] | null;
 }
 
@@ -146,6 +148,11 @@ interface TxRow {
   executed_at: string;
 }
 
+/** Selected in three places (initial load, insert echo); one list so an added
+ *  column cannot reach only some of them. */
+const SAVINGS_PLAN_COLUMNS =
+  "id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date, account_id, front_load";
+
 interface SavingsPlanRow {
   id: string;
   asset_id: string;
@@ -156,6 +163,9 @@ interface SavingsPlanRow {
   start_date: string;
   active: boolean;
   last_run_date: string | null;
+  // Optional: a DB that predates migration 0116 returns neither.
+  account_id?: string | null;
+  front_load?: number | string | null;
 }
 
 function planFromRow(r: SavingsPlanRow): SavingsPlan {
@@ -169,6 +179,8 @@ function planFromRow(r: SavingsPlanRow): SavingsPlan {
     startDate: r.start_date,
     active: r.active,
     lastRunDate: r.last_run_date,
+    accountId: r.account_id ?? null,
+    frontLoad: r.front_load != null ? Number(r.front_load) : null,
   };
 }
 
@@ -236,6 +248,8 @@ interface SpendingTransactionRow {
   transfer_account_id?: string | null;
   // Migration 0100, same reasoning.
   planned_id?: string | null;
+  // Migration 0116, same reasoning.
+  savings_plan_id?: string | null;
 }
 
 function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
@@ -250,6 +264,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     recurringId: r.recurring_id,
     transferAccountId: r.transfer_account_id ?? null,
     plannedId: r.planned_id ?? null,
+    savingsPlanId: r.savings_plan_id ?? null,
   };
 }
 
@@ -425,7 +440,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("assets")
         .select(
-          "id, notes, currency, interest_rate, interest_frequency, interest_post_day, instrument:instruments (isin, wkn, symbol, name, type, currency)",
+          "id, notes, currency, interest_rate, interest_frequency, interest_post_day, front_load, instrument:instruments (isin, wkn, symbol, name, type, currency)",
         ),
       // RLS scopes transactions to the user's (or a household peer's) assets
       // — no user_id column of its own.
@@ -438,7 +453,7 @@ export class SupabaseStore implements DataStore {
         .order("created_at", { ascending: true }),
       this.supabase
         .from("savings_plans")
-        .select("id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date")
+        .select(SAVINGS_PLAN_COLUMNS)
         .order("created_at", { ascending: true }),
       this.supabase
         .from("tag_groups")
@@ -478,7 +493,7 @@ export class SupabaseStore implements DataStore {
       this.supabase
         .from("spending_transactions")
         .select(
-          "id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id, planned_id",
+          "id, account_id, category_id, date, amount, payee, note, recurring_id, transfer_account_id, planned_id, savings_plan_id",
         )
         .order("date", { ascending: false }),
       this.supabase
@@ -622,6 +637,7 @@ export class SupabaseStore implements DataStore {
         interestRate: r.interest_rate,
         interestFrequency: r.interest_frequency,
         interestPostDay: r.interest_post_day,
+        frontLoad: r.front_load != null ? Number(r.front_load) : null,
       };
     });
 
@@ -857,6 +873,7 @@ export class SupabaseStore implements DataStore {
         interest_rate: input.interestRate ?? null,
         interest_frequency: input.interestFrequency ?? null,
         interest_post_day: input.interestPostDay ?? null,
+        front_load: input.frontLoad ?? null,
       })
       .select("id")
       .single();
@@ -872,6 +889,7 @@ export class SupabaseStore implements DataStore {
     if (patch.interestRate !== undefined) update.interest_rate = patch.interestRate;
     if (patch.interestFrequency !== undefined) update.interest_frequency = patch.interestFrequency;
     if (patch.interestPostDay !== undefined) update.interest_post_day = patch.interestPostDay;
+    if (patch.frontLoad !== undefined) update.front_load = patch.frontLoad;
     if (Object.keys(update).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's asset
     // too (migration 0093).
@@ -1008,8 +1026,10 @@ export class SupabaseStore implements DataStore {
         start_date: input.startDate,
         active: input.active,
         last_run_date: input.lastRunDate,
+        account_id: input.accountId ?? null,
+        front_load: input.frontLoad ?? null,
       })
-      .select("id, asset_id, portfolio_id, amount, frequency, booking_type, start_date, active, last_run_date")
+      .select(SAVINGS_PLAN_COLUMNS)
       .single();
     if (error) throw error;
     return planFromRow(data as SavingsPlanRow);
@@ -1025,6 +1045,8 @@ export class SupabaseStore implements DataStore {
     if (patch.startDate !== undefined) upd.start_date = patch.startDate;
     if (patch.active !== undefined) upd.active = patch.active;
     if (patch.lastRunDate !== undefined) upd.last_run_date = patch.lastRunDate;
+    if (patch.accountId !== undefined) upd.account_id = patch.accountId;
+    if (patch.frontLoad !== undefined) upd.front_load = patch.frontLoad;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's plan too.
     const { data, error } = await this.supabase
@@ -1354,6 +1376,7 @@ export class SupabaseStore implements DataStore {
         recurring_id: input.recurringId,
         transfer_account_id: input.transferAccountId ?? null,
         planned_id: input.plannedId ?? null,
+        savings_plan_id: input.savingsPlanId ?? null,
       })
       .select("id")
       .single();
@@ -1375,6 +1398,7 @@ export class SupabaseStore implements DataStore {
     if (patch.recurringId !== undefined) upd.recurring_id = patch.recurringId;
     if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
     if (patch.plannedId !== undefined) upd.planned_id = patch.plannedId;
+    if (patch.savingsPlanId !== undefined) upd.savings_plan_id = patch.savingsPlanId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase

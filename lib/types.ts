@@ -99,6 +99,18 @@ export interface Asset {
    *  legacy behaviour (the day-of-month of the asset's first transaction,
    *  clamped to shorter months). */
   interestPostDay?: InterestPostDay | null;
+  /**
+   * Ausgabeaufschlag (front-end load) in PERCENT, e.g. 5 for 5% — what an
+   * actively managed fund charges on top of a unit's net asset value. Null/
+   * undefined on everything an exchange prices directly, which is why this is a
+   * field and not a new `AssetType`: a managed fund is not a different kind of
+   * instrument, it is an ETF-shaped one that costs a surcharge to buy.
+   *
+   * It never changes the price. The NAV stays the price and the surcharge
+   * becomes the transaction's `fee` (`lib/finance/front-load.ts`), so the cost
+   * basis is right and the price chart keeps tracking the fund itself.
+   */
+  frontLoad?: number | null;
 }
 
 /**
@@ -207,6 +219,27 @@ export interface PensionPoint {
   year: number;
   /** Entgeltpunkte earned that year. */
   points: number;
+  note: string | null;
+}
+
+/**
+ * One Renteninformation, as the letter is actually written (flag `pension`).
+ *
+ * The letter states a CUMULATIVE total ("Sie haben bisher insgesamt 13,2739
+ * Entgeltpunkte erworben") and nothing per year -- the year-by-year split only
+ * exists in the Versicherungsverlauf, which most people never request. So the
+ * letters are the primary record: several of them, each a total at a date, and
+ * the annual rate is the DIFFERENCE between two of them divided by the years
+ * between them. Anything else asks the user for a figure they do not have.
+ *
+ * Keyed by year like {@link PensionPoint}: replace-set on every edit, so one
+ * year can never appear twice and a replayed write is idempotent.
+ */
+export interface PensionStatement {
+  /** Year the statement's total refers to (the letter's as-of year). */
+  year: number;
+  /** Entgeltpunkte accumulated in TOTAL up to that year. */
+  totalPoints: number;
   note: string | null;
 }
 
@@ -369,6 +402,19 @@ export interface SpendingTransaction {
    * `recurringId` rows -- the charge is already registered somewhere.
    */
   plannedId?: string | null;
+  /**
+   * The {@link SavingsPlan} execution this booking paid for; null for anything
+   * else. Money moving from the current account into the depot is NOT
+   * consumption — the units bought are worth what left the account — so
+   * `isTransfer` in `lib/finance/spending.ts` counts these rows as transfers
+   * even though the receiving side is a portfolio rather than an
+   * {@link Account} and `transferAccountId` therefore stays null.
+   *
+   * Its own field rather than reusing `recurringId`/`plannedId`: both are
+   * foreign keys into other tables, and a single nullable column cannot
+   * reference three.
+   */
+  savingsPlanId?: string | null;
 }
 
 /**
@@ -748,6 +794,23 @@ export interface SavingsPlan {
   active: boolean;
   /** Day of the last materialized occurrence (YYYY-MM-DD), or null. */
   lastRunDate: string | null;
+  /**
+   * Optional Verrechnungskonto: the {@link Account} the execution is debited
+   * from. Set it and booking a due occurrence writes the depot transaction AND
+   * a matching {@link SpendingTransaction} on this account, so the money is
+   * seen leaving the bank instead of units appearing from nowhere. Null (the
+   * default) keeps the plan purely on the investment side — the feature is
+   * opt-in per plan, not a mode the whole app switches into.
+   */
+  accountId?: string | null;
+  /**
+   * Ausgabeaufschlag for THIS plan in percent, overriding the asset's own
+   * {@link Asset.frontLoad}. Brokers routinely discount the surcharge on
+   * savings plans (often to half or nothing) while the fund's prospectus rate
+   * still applies to a manual purchase, so one number on the asset cannot say
+   * both. Null/undefined = inherit the asset's.
+   */
+  frontLoad?: number | null;
 }
 
 /**
@@ -808,6 +871,8 @@ export interface PortfolioData {
   degraded?: DegradedResource[];
   /** Statutory pension record, one entry per year (flag `pension`). */
   pensionPoints: PensionPoint[];
+  /** The Renteninformationen themselves, one total per letter (flag `pension`). */
+  pensionStatements: PensionStatement[];
   /** Private/company retirement policies (flag `pension`). */
   pensionContracts: PensionContract[];
   /** User-defined spending taxonomy (ROADMAP #2, flag `spending`). */
@@ -856,6 +921,7 @@ export function emptyPortfolio(): PortfolioData {
     accounts: [],
     accountBalances: [],
     pensionPoints: [],
+    pensionStatements: [],
     pensionContracts: [],
     spendingCategories: [],
     spendingTransactions: [],

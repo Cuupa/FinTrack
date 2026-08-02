@@ -259,6 +259,20 @@ replays. Savings plans never touch the finance core:
 dashboard card books them as ordinary BUY transactions only after an explicit
 review dialog, advancing `lastRunDate`.
 
+A plan optionally names a **Verrechnungskonto** (`SavingsPlan.accountId`):
+confirming a due occurrence then also writes a `SpendingTransaction` debiting
+that account. It carries `savingsPlanId` and no `transferAccountId` (the
+receiving side is a portfolio, not an `Account`), and `isTransfer` counts it as
+a transfer anyway — booking it as spending would report every Sparplan rate as
+consumed. A BOOKING-type plan never debits; deleting the account only clears the
+link. The **Ausgabeaufschlag** of an actively managed fund lives on
+`Asset.frontLoad` (percent), overridable per plan (an explicit `0` means "my
+broker waives it here", so the field is nullable rather than defaulted).
+`lib/finance/front-load.ts` is pure: the amount buys at the OFFER price
+(`NAV x (1 + rate)`) and the surcharge posts as part of the transaction's
+**fee** — never as a lower price, which would leave every chart comparing the
+fund's own series against a price no listing ever printed.
+
 Instrument resolution is shared: all three add surfaces (add-asset form,
 watchlist add, savings-plan inline new-asset) call `resolveInstrumentByQuery`
 (`lib/import/resolve-instrument.ts`, catalog -> `/api/lookup`); the add-asset
@@ -579,6 +593,17 @@ you here:
   (`site_config`) paints from a localStorage stale-while-revalidate mirror, so
   the amber `Placeholder` chips only appear once loading has settled with the
   value still missing — registered visitors never see a placeholder flash.
+
+**Navigation chrome**: the account entry is pinned to the BOTTOM of the
+`Sidebar` (its own non-scrolling footer, so the menu can open upward out of the
+rail) and only stays in `SiteNav` below `md`, where there is no sidebar.
+`useNotifications` (`lib/notifications/`, pure core + one hook) counts what
+actually waits for the user — household invitations, due savings-plan
+occurrences, due cash interest, due contract and planned bookings — and both
+nav renderers show the number on the entry that owns the task. Only ACTIONABLE
+things count, and a kind whose flag is off or whose feature is Pro-locked
+contributes nothing: a count pointing at a teaser is a promise the page cannot
+keep.
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
 client pages (see `app/assets/[id]/page.tsx`).

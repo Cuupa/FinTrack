@@ -467,6 +467,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         plannedCashflows: d.plannedCashflows
           .filter((p) => p.accountId !== id)
           .map((p) => (p.transferAccountId === id ? { ...p, transferAccountId: null } : p)),
+        // A savings plan only loses its Verrechnungskonto, never itself.
+        savingsPlans: d.savingsPlans.map((p) => (p.accountId === id ? { ...p, accountId: null } : p)),
       }));
     },
     [store],

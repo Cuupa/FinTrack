@@ -722,6 +722,29 @@ books them as **ordinary BUY transactions only after an explicit user review
 dialog**, advancing `lastRunDate`. This keeps the transaction log the single
 source of truth.
 
+Two optional halves ride on the same review, both off by default:
+
+- **Verrechnungskonto** (`SavingsPlan.accountId`). Set it and confirming a due
+  occurrence writes the depot transaction AND a matching `SpendingTransaction`
+  debiting that account, so the money is seen leaving the bank instead of units
+  appearing from nowhere. Such a booking carries `savingsPlanId` and no
+  `transferAccountId` — the receiving side is a portfolio, not an `Account` —
+  and `isTransfer` in `lib/finance/spending.ts` counts it as a transfer anyway.
+  Booking it as spending would report every Sparplan rate as consumed. A
+  BOOKING-type plan (employer-paid VL) never debits anything, and deleting the
+  account only clears the link, never the plan.
+- **Ausgabeaufschlag** (`Asset.frontLoad`, percent; `SavingsPlan.frontLoad`
+  overrides it, including an explicit `0` for a broker that waives it).
+  `lib/finance/front-load.ts` is pure: the amount buys at the OFFER price
+  (`NAV x (1 + rate)`), so the plan buys fewer units, and the surcharge is
+  posted as part of the transaction's **fee**. The price stays the fund's NAV
+  on purpose — lowering it to the offer price would leave every chart comparing
+  the fund's own series against a price no listing ever printed, and the
+  surcharge would vanish into "the fund is up". Because a buy's fee already
+  raises the cost basis, the basis is exactly the money spent. The transaction
+  form prefills the same surcharge on a manual buy (`frontLoadOnVolume`: fixed
+  size, so it sits on top of the volume rather than coming out of a budget).
+
 ### 9.6 Watchlist and the "first transaction creates the holding" flow
 
 Watchlist items share the asset's identity shape but carry no transactions.

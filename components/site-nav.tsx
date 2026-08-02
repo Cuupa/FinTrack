@@ -58,7 +58,11 @@ export function SiteNav() {
           <ThemeToggle dataTour="theme-toggle" />
           <PrivacyToggle dataTour="privacy-toggle" />
           {mode === "registered" ? (
-            <ProfileMenu />
+            // Desktop keeps the account at the bottom of the sidebar; below md
+            // there is no sidebar, so the avatar stays in the header there.
+            <div className="md:hidden">
+              <ProfileMenu />
+            </div>
           ) : (
             <>
               <Link href="/login">

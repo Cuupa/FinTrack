@@ -323,6 +323,11 @@ alter table public.assets add column if not exists interest_frequency text;
 -- Which calendar day interest posts on: 'first'|'last', null = the legacy
 -- day-of-month-of-first-transaction behaviour (lib/finance/cash-interest.ts).
 alter table public.assets add column if not exists interest_post_day text;
+-- Ausgabeaufschlag (migration 0116): what an actively managed fund charges on
+-- top of a unit's net asset value, in percent (5 = 5%). On the user's asset row
+-- and not the shared instruments catalog -- what you pay is a property of your
+-- purchase route, not of the fund.
+alter table public.assets add column if not exists front_load numeric;
 create index if not exists assets_user_id_idx on public.assets (user_id);
 create index if not exists assets_instrument_id_idx on public.assets (instrument_id);
 
@@ -421,6 +426,11 @@ create table if not exists public.savings_plans (
   created_at timestamptz not null default now()
 );
 alter table public.savings_plans add column if not exists booking_type text not null default 'BUY';
+-- Per-plan Ausgabeaufschlag in percent (migration 0116), overriding the fund's
+-- own rate: brokers routinely discount the surcharge on savings plans. Null =
+-- inherit assets.front_load. The plan's Verrechnungskonto is added further
+-- down, where public.accounts already exists.
+alter table public.savings_plans add column if not exists front_load numeric;
 create index if not exists savings_plans_user_id_idx on public.savings_plans (user_id);
 -- Cascade path from assets deletes.
 create index if not exists savings_plans_asset_id_idx on public.savings_plans (asset_id);
@@ -522,6 +532,15 @@ alter table public.accounts
     kind in ('checking', 'savings', 'credit', 'loan', 'mortgage', 'other_asset', 'other_liability')
   );
 create index if not exists accounts_user_id_idx on public.accounts (user_id);
+
+-- Verrechnungskonto of a savings plan (migration 0116): the account a due
+-- execution is debited from. Declared here rather than with savings_plans
+-- above, which is created before public.accounts exists. `on delete set null`
+-- -- losing the account must not delete the plan, the depot side is what the
+-- plan is for and the bank link only the optional half of it.
+alter table public.savings_plans
+  add column if not exists account_id uuid references public.accounts (id) on delete set null;
+create index if not exists savings_plans_account_id_idx on public.savings_plans (account_id);
 
 create table if not exists public.account_balances (
   id uuid primary key default gen_random_uuid(),
@@ -706,6 +725,12 @@ create table if not exists public.spending_transactions (
 -- not move them either.
 alter table public.spending_transactions
   add column if not exists transfer_account_id uuid references public.accounts (id) on delete set null;
+-- The savings-plan execution this booking paid for (migration 0116). Such a row
+-- is a transfer, not spending: the money became fund units the depot counts.
+alter table public.spending_transactions
+  add column if not exists savings_plan_id uuid references public.savings_plans (id) on delete set null;
+create index if not exists spending_transactions_savings_plan_id_idx
+  on public.spending_transactions (savings_plan_id);
 
 create index if not exists spending_transactions_account_id_idx on public.spending_transactions (account_id);
 create index if not exists spending_transactions_transfer_account_id_idx on public.spending_transactions (transfer_account_id);
@@ -1049,7 +1074,13 @@ insert into public.schema_migrations (version) values
   ('0107_pinned_quote_listings'),
   ('0108_admin_feature_usage'),
   ('0109_fix_admin_feature_usage'),
-  ('0110_drop_extra_repayments')
+  ('0110_drop_extra_repayments'),
+  ('0111_pension_max_points'),
+  ('0112_repair_promoted_transfer_targets'),
+  ('0113_month_end_schedule'),
+  ('0114_price_retry_queue'),
+  ('0115_split_flag_covers_manual_entry'),
+  ('0116_savings_plan_account_and_front_load')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------

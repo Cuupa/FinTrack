@@ -16,6 +16,8 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
 import { LockIcon } from "@/components/billing/pro-teaser";
+import { NotificationCount } from "@/components/ui/notification-count";
+import { useNotifications } from "@/lib/notifications/use-notifications";
 import { useFocusTrap } from "./ui/use-focus-trap";
 import {
   NAV_ROUTES,
@@ -51,6 +53,7 @@ export function MobileNav() {
   const pathname = usePathname();
   const { t } = useI18n();
   const { getFeature } = useFeatureFlags();
+  const { byRoute: pending } = useNotifications();
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +89,7 @@ export function MobileNav() {
   if (hidesNavigation(pathname)) return null;
 
   const inSheet = rest.some((r) => isActiveRoute(r.href, pathname));
+  const pendingInSheet = rest.reduce((sum, r) => sum + (pending[r.href] ?? 0), 0);
 
   const { ungrouped: restUngrouped, sections: restSections } = groupedRoutes(rest);
 
@@ -104,9 +108,10 @@ export function MobileNav() {
       >
         <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
         <span className="truncate">{t(route.key)}</span>
-        {featureState(route).locked && (
-          <LockIcon className="ml-auto h-4 w-4 shrink-0 text-zinc-400" />
-        )}
+        <span className="ml-auto flex items-center gap-1.5">
+          <NotificationCount count={pending[route.href] ?? 0} />
+          {featureState(route).locked && <LockIcon className="h-4 w-4 shrink-0 text-zinc-400" />}
+        </span>
       </Link>
     );
   };
@@ -181,7 +186,10 @@ export function MobileNav() {
                 aria-current={active ? "page" : undefined}
                 className={tabCls(active)}
               >
-                <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
+                <span className="relative flex items-center">
+                  <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
+                  <NotificationCount count={pending[route.href] ?? 0} overlay />
+                </span>
                 <span className="max-w-full truncate">{t(route.key)}</span>
               </Link>
             );
@@ -196,9 +204,14 @@ export function MobileNav() {
               aria-current={inSheet ? "page" : undefined}
               className={tabCls(sheetOpen || inSheet)}
             >
-              <NavIcon className="h-5 w-5 shrink-0">
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </NavIcon>
+              <span className="relative flex items-center">
+                <NavIcon className="h-5 w-5 shrink-0">
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                </NavIcon>
+                {/* Everything the sheet hides still has to be visible from the
+                    tab bar, or a household invite could sit unseen behind it. */}
+                <NotificationCount count={pendingInSheet} overlay />
+              </span>
               <span className="max-w-full truncate">{t("nav.more")}</span>
             </button>
           )}

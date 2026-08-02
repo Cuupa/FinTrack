@@ -8,6 +8,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { currentPrice } from "@/lib/finance/prices";
 import { orderFee } from "@/lib/finance/fees";
+import { frontLoadOnVolume, frontLoadPercent } from "@/lib/finance/front-load";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
@@ -138,7 +139,13 @@ export function TransactionForm({
   // The order fee only applies to real buy/sell executions (order volume =
   // shares × price, before fee/tax) — never bookings, interest or cash.
   const selectedPortfolio = portfolios.find((p) => p.id === portfolioId);
-  const autoFee = !isCash && (isBuy || type === "SELL") ? orderFee(selectedPortfolio, gross) : 0;
+  // An actively managed fund's Ausgabeaufschlag prefills into the same input as
+  // the order fee: both raise what the units cost, and the fee is the field the
+  // basis is built from. Buys only — the surcharge is charged on the way in.
+  const autoFrontLoad = isBuy && !isCash ? frontLoadOnVolume(gross, frontLoadPercent(asset)) : 0;
+  const autoFee =
+    (!isCash && (isBuy || type === "SELL") ? orderFee(selectedPortfolio, gross) : 0) +
+    autoFrontLoad;
   const fee = feeManual ?? String(round(autoFee));
   const feeNum = parseDecimal(fee) || 0;
   const total = isBuy
@@ -321,6 +328,14 @@ export function TransactionForm({
                 {cur}
               </span>
             </div>
+            {autoFrontLoad > 0 && feeManual === null && (
+              <p className="mt-1 text-xs text-zinc-500">
+                {t("tx.feeIncludesFrontLoad", {
+                  amount: formatCurrency(autoFrontLoad, cur),
+                  rate: String(frontLoadPercent(asset)),
+                })}
+              </p>
+            )}
           </Field>
         )}
         {showTax && (

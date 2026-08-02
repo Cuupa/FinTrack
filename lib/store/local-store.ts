@@ -400,6 +400,12 @@ export class LocalStore implements DataStore {
     data.plannedCashflows = data.plannedCashflows
       .filter((p) => p.accountId !== id)
       .map((p) => (p.transferAccountId === id ? { ...p, transferAccountId: null } : p));
+    // A savings plan survives losing its Verrechnungskonto: the depot side is
+    // what the plan is for, the account link only the optional half of it
+    // (mirrors the column's on delete set null).
+    data.savingsPlans = data.savingsPlans.map((p) =>
+      p.accountId === id ? { ...p, accountId: null } : p,
+    );
     this.write(data);
     this.pruneImportedSpendingFingerprints(removedTxIds);
   }
