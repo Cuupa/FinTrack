@@ -22,8 +22,10 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import {
   computeFirePlan,
+  shortfallRisk,
   FAT_FIRE_EXPENSE_RATIO,
   LEAN_FIRE_EXPENSE_RATIO,
+  RETIREMENT_YEARS,
 } from "@/lib/finance/fire";
 import { useFireInputs } from "@/lib/fire/use-fire-inputs";
 import { formatCurrency, formatPercentPlain } from "@/lib/format";
@@ -126,6 +128,32 @@ export function FireView() {
 
   // With the pension counted the target is NOT expenses/rate any more, so the
   // basis line would otherwise describe arithmetic the number does not follow.
+  // What the chosen rate costs in risk. Raising the rate lowers every target,
+  // which reads as nonsense until the failure rate it buys sits next to it.
+  const risk = useMemo(
+    () => ({
+      lean: shortfallRisk({
+        target: plan.lean,
+        expectedReturn: effectiveReturnPercent / 100,
+        volatility: fire.volatility,
+        withdrawalRate: withdrawalRatePercent / 100,
+      }),
+      regular: shortfallRisk({
+        target: plan.regular,
+        expectedReturn: effectiveReturnPercent / 100,
+        volatility: fire.volatility,
+        withdrawalRate: withdrawalRatePercent / 100,
+      }),
+      fat: shortfallRisk({
+        target: plan.fat,
+        expectedReturn: effectiveReturnPercent / 100,
+        volatility: fire.volatility,
+        withdrawalRate: withdrawalRatePercent / 100,
+      }),
+    }),
+    [plan.lean, plan.regular, plan.fat, effectiveReturnPercent, fire.volatility, withdrawalRatePercent],
+  );
+
   const pensionNote =
     appliedPension && fire.retirementYear != null
       ? t("fire.tile.pensionApplied", { year: String(fire.retirementYear) })
@@ -227,6 +255,7 @@ export function FireView() {
             pensionNote={pensionNote}
             amount={plan.lean}
             years={plan.yearsToLean}
+            risk={risk.lean}
             currency={currency}
             t={t}
           />
@@ -237,6 +266,7 @@ export function FireView() {
             pensionNote={pensionNote}
             amount={plan.regular}
             years={plan.yearsToRegular}
+            risk={risk.regular}
             currency={currency}
             t={t}
           />
@@ -247,6 +277,7 @@ export function FireView() {
             pensionNote={pensionNote}
             amount={plan.fat}
             years={plan.yearsToFat}
+            risk={risk.fat}
             currency={currency}
             t={t}
           />
@@ -281,6 +312,7 @@ function FireTile({
   pensionNote,
   amount,
   years,
+  risk,
   currency,
   t,
 }: {
@@ -293,6 +325,8 @@ function FireTile({
   pensionNote?: string;
   amount: number;
   years: number | null;
+  /** Share of simulated retirements that run out at this target and rate. */
+  risk: number | null;
   currency: string;
   t: T;
 }) {
@@ -309,6 +343,23 @@ function FireTile({
         <Private>{basis}</Private>
         {pensionNote && <span className="block">{pensionNote}</span>}
       </p>
+      {/* The price of the rate, on the same card as the target it shrank. */}
+      {risk !== null && (
+        <p
+          className={`mt-2 text-xs font-medium ${
+            risk >= 0.2
+              ? "text-red-600 dark:text-red-400"
+              : risk >= 0.1
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-emerald-700 dark:text-emerald-400"
+          }`}
+        >
+          {t("fire.tile.risk", {
+            risk: formatPercentPlain(risk, 0),
+            years: RETIREMENT_YEARS,
+          })}
+        </p>
+      )}
     </Card>
   );
 }

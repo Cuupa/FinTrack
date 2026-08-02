@@ -15,6 +15,7 @@
 import type { SpendingTransaction } from "../types";
 import { byCategoryAndMonth, incomeExpenseSplit } from "./spending";
 import { shiftMonth } from "./dates";
+import { runMonteCarlo } from "./monte-carlo";
 
 /** Trailing window size for the expense average, in calendar months -- same
  *  convention as `computeFinancialHealth` (lib/finance/health.ts). */
@@ -181,6 +182,60 @@ export function yearsToFire(
   }
   return null;
 }
+
+/**
+ * The other half of a withdrawal rate: how often it runs out.
+ *
+ * A higher rate LOWERS the target (expenses / rate), which reads as nonsense
+ * until the risk it buys is on screen next to it. So each target is retired
+ * into straight away and drawn down at that same rate, and the share of runs
+ * whose portfolio hits zero is reported beside the number.
+ *
+ * The same pure engine the simulator runs (`runMonteCarlo`), at a fraction of
+ * the paths and a fixed seed: this is a figure that has to appear instantly
+ * while a slider moves, and a risk that jitters on every render is a risk
+ * nobody trusts. The full run with strategies, stress and a chart stays on
+ * /simulation.
+ */
+const RISK_RUNS = 600;
+const RISK_SEED = 0x5f1e;
+
+export function shortfallRisk(input: {
+  /** Capital retired into: the target this tile prints. */
+  target: number;
+  /** Measured expected return, fraction. */
+  expectedReturn: number;
+  /** Measured volatility, fraction. */
+  volatility: number;
+  /** Annual withdrawal rate, fraction. */
+  withdrawalRate: number;
+  /** Retirement length to test, years. */
+  years?: number;
+}): number | null {
+  if (!Number.isFinite(input.target) || input.target <= 0) return null;
+  if (input.withdrawalRate <= 0) return null;
+  const result = runMonteCarlo({
+    initialCapital: input.target,
+    monthlyContribution: 0,
+    // The engine always accumulates at least one month; starting AT the target
+    // is what makes the risk comparable across the three tiles.
+    years: 0,
+    expectedReturn: input.expectedReturn,
+    volatility: input.volatility,
+    runs: RISK_RUNS,
+    seed: RISK_SEED,
+    withdrawalYears: input.years ?? RETIREMENT_YEARS,
+    withdrawalRate: input.withdrawalRate,
+    withdrawalStrategy: "fixed",
+  });
+  const finals = result.finalDistribution;
+  if (finals.length === 0) return null;
+  return finals.filter((v) => v <= 0).length / finals.length;
+}
+
+/** The retirement length the risk is measured over -- the span the "4% rule"
+    (Trinity study) was calibrated against. */
+export const RETIREMENT_YEARS = 30;
 
 export interface FirePlan {
   /** Regular FIRE number: annualExpenses / withdrawalRate. */
