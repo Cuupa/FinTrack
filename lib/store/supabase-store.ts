@@ -164,7 +164,14 @@ interface TxRow {
   fee: number;
   tax?: number;
   executed_at: string;
+  /** Optional: a database that has not run 0123 returns the row without it. */
+  savings_plan_id?: string | null;
 }
+
+/** Deliberately without `savings_plan_id`: naming it here would make every
+ *  insert fail on a database that has not run 0123, and the caller's own input
+ *  already knows the plan. */
+const TX_ECHO_COLUMNS = "id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at";
 
 /** Selected in three places (initial load, insert echo); one list so an added
  *  column cannot reach only some of them. */
@@ -461,6 +468,16 @@ export function isMissingColumnError(err: QueryError | null): boolean {
   return /column .* does not exist|could not find the .* column/i.test(err.message ?? "");
 }
 
+/** "You called a function this database does not have yet." 42883 is Postgres'
+ *  own undefined_function; PGRST202 is PostgREST answering the same thing out
+ *  of its schema cache. A lagging schema must narrow the app, never kill it,
+ *  so every RPC needs a path that works without it. */
+export function isMissingFunctionError(err: QueryError | null): boolean {
+  if (!err) return false;
+  if (err.code === "42883" || err.code === "PGRST202") return true;
+  return /function .* does not exist|could not find the function/i.test(err.message ?? "");
+}
+
 export async function selectTolerant<T>(
   run: (columns: string) => PromiseLike<{ data: unknown; error: QueryError | null }>,
   base: readonly string[],
@@ -544,7 +561,7 @@ export class SupabaseStore implements DataStore {
       selectTolerant<TxRow[]>(
         (cols) => this.supabase.from("transactions").select(cols),
         ["id", "asset_id", "portfolio_id", "type", "quantity", "price", "fee", "executed_at"],
-        ["tax"],
+        ["tax", "savings_plan_id"],
       ),
       selectTolerant<Pick<AssetRow, "id" | "currency" | "instrument">[]>(
         (cols) =>
@@ -858,6 +875,7 @@ export class SupabaseStore implements DataStore {
       fee: Number(r.fee),
       tax: Number(r.tax ?? 0),
       date: r.executed_at,
+      savingsPlanId: r.savings_plan_id ?? null,
     }));
 
     const watchlist: WatchlistItem[] = (
@@ -1135,23 +1153,45 @@ export class SupabaseStore implements DataStore {
   }
 
   async addTransaction(input: TransactionInput, id?: string): Promise<Transaction> {
-    const { data, error } = await this.supabase
-      .from("transactions")
-      .insert({
-        id, // see addAsset — undefined lets the DB default generate one
-        asset_id: input.assetId,
-        portfolio_id: input.portfolioId,
-        type: input.type,
-        quantity: input.quantity,
-        price: input.price,
-        fee: input.fee,
-        tax: input.tax,
-        executed_at: input.date,
-      })
-      .select("id, asset_id, portfolio_id, type, quantity, price, fee, tax, executed_at")
-      .single();
-    if (error) throw error;
-    const r = data as TxRow;
+    // A savings-plan occurrence must not buy the same units twice when the run
+    // that made it was interrupted before the plan's cursor advanced.
+    if (input.savingsPlanId) {
+      const existing = await this.findSavingsPlanBuy(input.savingsPlanId, input.date);
+      if (existing) {
+        await this.advancePlanRunDate(input.savingsPlanId, input.date.slice(0, 10));
+        return existing;
+      }
+    }
+    const row = {
+      id, // see addAsset — undefined lets the DB default generate one
+      asset_id: input.assetId,
+      portfolio_id: input.portfolioId,
+      type: input.type,
+      quantity: input.quantity,
+      price: input.price,
+      fee: input.fee,
+      tax: input.tax,
+      executed_at: input.date,
+    };
+    const insert = (values: Record<string, unknown>) =>
+      this.supabase.from("transactions").insert(values).select(TX_ECHO_COLUMNS).single();
+
+    let res = await insert(
+      input.savingsPlanId ? { ...row, savings_plan_id: input.savingsPlanId } : row,
+    );
+    // A database without 0123 stores the occurrence with no plan link: the
+    // booking is right, only recognising a repeat waits for the migration.
+    if (input.savingsPlanId && isMissingColumnError(res.error)) res = await insert(row);
+    if (res.error) throw res.error;
+
+    const tx = this.toTransaction(res.data as TxRow, input);
+    if (input.savingsPlanId) {
+      await this.advancePlanRunDate(input.savingsPlanId, input.date.slice(0, 10));
+    }
+    return tx;
+  }
+
+  private toTransaction(r: TxRow, input: TransactionInput): Transaction {
     return {
       id: r.id,
       assetId: r.asset_id,
@@ -1162,7 +1202,47 @@ export class SupabaseStore implements DataStore {
       fee: Number(r.fee),
       tax: Number(r.tax ?? 0),
       date: r.executed_at,
+      savingsPlanId: r.savings_plan_id ?? input.savingsPlanId ?? null,
     };
+  }
+
+  /** The BUY this plan already made on that day, if any. A database without
+   *  0123 cannot answer the question, which reads as "none" — the pre-0123
+   *  behaviour, not a failure. */
+  private async findSavingsPlanBuy(
+    planId: string,
+    date: string,
+  ): Promise<Transaction | null> {
+    const day = date.slice(0, 10);
+    const { data, error } = await this.supabase
+      .from("transactions")
+      .select(TX_ECHO_COLUMNS)
+      .eq("savings_plan_id", planId)
+      .gte("executed_at", `${day}T00:00:00`)
+      .lte("executed_at", `${day}T23:59:59.999`)
+      .limit(1);
+    if (error) {
+      if (isMissingColumnError(error)) return null;
+      throw error;
+    }
+    const rows = (data ?? []) as TxRow[];
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return this.toTransaction(r, {
+      portfolioId: r.portfolio_id ?? "",
+      savingsPlanId: planId,
+    } as TransactionInput);
+  }
+
+  /** Monotonic like the pension cursor: confirming an older occurrence must
+   *  not reopen the ones already booked after it. */
+  private async advancePlanRunDate(planId: string, day: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("savings_plans")
+      .update({ last_run_date: day })
+      .eq("id", planId)
+      .or(`last_run_date.is.null,last_run_date.lt.${day}`);
+    if (error) throw error;
   }
 
   async updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<void> {
@@ -1640,6 +1720,56 @@ export class SupabaseStore implements DataStore {
     input: SpendingTransactionInput,
     id?: string,
   ): Promise<SpendingTransaction> {
+    // Pension premiums insert their ledger row and advance the policy cursor
+    // in one database transaction. A retry after a lost response returns the
+    // existing row for that policy/date rather than charging it twice.
+    if (input.pensionContractId) {
+      const { data, error } = await this.supabase.rpc("book_pension_premium", {
+        p_account_id: input.accountId,
+        p_contract_id: input.pensionContractId,
+        p_date: input.date,
+        p_amount: input.amount,
+        p_payee: input.payee,
+        p_note: input.note,
+        p_category_id: input.categoryId,
+        p_recurring_id: input.recurringId,
+        p_transfer_account_id: input.transferAccountId ?? null,
+        p_planned_id: input.plannedId ?? null,
+        p_savings_plan_id: input.savingsPlanId ?? null,
+        p_transaction_id: id ?? null,
+      });
+      if (!error) {
+        if (!data) throw new Error("Pension premium booking returned no transaction id");
+        return { ...input, id: data as string };
+      }
+      // A database still on 0121 has no such function. Booking a premium there
+      // stays the two writes it has always been, rather than failing outright.
+      if (!isMissingFunctionError(error)) throw error;
+    }
+    // The savings plan's cursor rides its BUY in addTransaction; the debit only
+    // has to stay single when the same occurrence is confirmed again.
+    if (input.savingsPlanId) {
+      const { data, error } = await this.supabase
+        .from("spending_transactions")
+        .select("id")
+        .eq("savings_plan_id", input.savingsPlanId)
+        .eq("date", input.date)
+        .limit(1);
+      if (error && !isMissingColumnError(error)) throw error;
+      const existing = (data ?? []) as { id: string }[];
+      if (existing.length > 0) return { ...input, id: existing[0].id };
+    }
+    const transaction = await this.insertSpendingTransaction(input, id);
+    if (input.pensionContractId) {
+      await this.advanceContractBookedDate(input.pensionContractId, input.date);
+    }
+    return transaction;
+  }
+
+  private async insertSpendingTransaction(
+    input: SpendingTransactionInput,
+    id?: string,
+  ): Promise<SpendingTransaction> {
     const { data, error } = await this.supabase
       .from("spending_transactions")
       .insert({
@@ -1661,6 +1791,17 @@ export class SupabaseStore implements DataStore {
       .single();
     if (error) throw error;
     return { ...input, id: (data as { id: string }).id };
+  }
+
+  /** The cursor only ever moves forward, so booking an occurrence older than
+   *  the one already recorded cannot reopen the ones in between. */
+  private async advanceContractBookedDate(contractId: string, date: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("pension_contracts")
+      .update({ last_booked_date: date })
+      .eq("id", contractId)
+      .or(`last_booked_date.is.null,last_booked_date.lt.${date}`);
+    if (error) throw error;
   }
 
   async updateSpendingTransaction(

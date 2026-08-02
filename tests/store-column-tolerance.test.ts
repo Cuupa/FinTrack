@@ -3,7 +3,11 @@
 // because `assets.front_load` (migration 0116) sits in a CORE select and took
 // the depot down with it.
 import { describe, it, expect } from "vitest";
-import { isMissingColumnError, selectTolerant } from "@/lib/store/supabase-store";
+import {
+  isMissingColumnError,
+  isMissingFunctionError,
+  selectTolerant,
+} from "@/lib/store/supabase-store";
 
 describe("isMissingColumnError", () => {
   it("recognises Postgres undefined_column and PostgREST's schema-cache miss", () => {
@@ -25,6 +29,35 @@ describe("isMissingColumnError", () => {
     );
     expect(isMissingColumnError({ code: "42501", message: "permission denied" })).toBe(false);
     expect(isMissingColumnError(null)).toBe(false);
+  });
+});
+
+// The same rule for a missing FUNCTION: `book_pension_premium` (0122) makes a
+// premium atomic, but a database still on 0121 must keep booking premiums the
+// two-write way instead of answering every confirmation with an error.
+describe("isMissingFunctionError", () => {
+  it("recognises Postgres undefined_function and PostgREST's schema-cache miss", () => {
+    expect(isMissingFunctionError({ code: "42883" })).toBe(true);
+    expect(isMissingFunctionError({ code: "PGRST202" })).toBe(true);
+    expect(
+      isMissingFunctionError({
+        message: "Could not find the function public.book_pension_premium in the schema cache",
+      }),
+    ).toBe(true);
+    expect(
+      isMissingFunctionError({ message: "function public.book_pension_premium does not exist" }),
+    ).toBe(true);
+  });
+
+  it("does not swallow a real failure inside a function that exists", () => {
+    // Falling back after these would book the premium a second time on top of
+    // whatever the function already committed.
+    expect(isMissingFunctionError({ code: "42501", message: "permission denied" })).toBe(false);
+    expect(isMissingFunctionError({ code: "P0001", message: "pension contract x not found" })).toBe(
+      false,
+    );
+    expect(isMissingFunctionError({ code: "23503", message: "violates foreign key" })).toBe(false);
+    expect(isMissingFunctionError(null)).toBe(false);
   });
 });
 

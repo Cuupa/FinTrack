@@ -24,6 +24,8 @@ fuehrt zur falschen Diagnose. Erst gegen die Live-DB pruefen, dann schliessen.
 | 0116 | Sparplan-Verrechnungskonto und Ausgabeaufschlag quittieren 400 |
 | 0120 | Vertragsstände lassen sich nicht speichern (Rendite bleibt getippt) |
 | 0121 | Verrechnungskonto am Vertrag quittiert 400, Beiträge buchen nicht |
+| 0122 | Wiederholte Bestätigung einer Vertragsrate kann sie doppelt anlegen (die App bucht ohne 0122 weiter, nur eben in zwei Schritten) |
+| 0123 | Wiederholte Bestätigung einer Sparplan-Ausführung kauft dieselben Anteile ein zweites Mal (ohne 0123 fehlt der Ausführung nur die Kennung, gebucht wird weiter) |
 
 0112 traegt oben eine reine Lese-Abfrage, mit der sich der Umfang vorher
 ansehen laesst.
@@ -32,7 +34,7 @@ ansehen laesst.
 
 | Task | Prio | Status | Paths |
 | --- | --- | --- | --- |
-| Sichere Vertragsraten + Store-Parität | 1 | läuft | `components/pension/pension-view.tsx`, `lib/store/local-store.ts`, `lib/store/supabase-store.ts`, `supabase/migrations/0122_pension_premium_idempotency.sql`, `supabase/schema.sql`, `tests/local-store.test.ts` |
+| — | — | — | — |
 
 ## Offen (TODO.md)
 
@@ -47,6 +49,8 @@ ansehen laesst.
 | --- | --- |
 | Vertragsrendite wird gemessen | f505792 — `pension_contract_values` (0120) am vollen Store-Seam, `contractReturn` (XIRR, min. ein halbes Jahr Abstand), `resolveContract`; getippte Rendite gewinnt weiter |
 | Beitrag läuft vom Konto | b121b12 — Verrechnungskonto + Review-Liste am Vertrag, `pension_contract_id` (0121) zählt die Buchung als Umbuchung, Zähler in der Navigation |
+| Vertragsrate ist wiederholsicher | 0122 — bucht Zeile und Fortschrittsdatum atomar, jede Spalte der Buchung liegt am Funktionsaufruf an, `isMissingFunctionError` fällt auf die zwei Schreibvorgänge zurück solange 0122 fehlt, der Cursor zieht auch nach, wenn die Zeile schon steht; Guest- und Supabase-Store bleiben beim Löschen und beim Retry gleich |
+| Sparplan-Ausführung ist wiederholsicher | 0123 — `transactions.savings_plan_id` als reine Kennung, Store erkennt den schon gebuchten Kauf und zieht `lastRunDate` mit, Cursor läuft nie rückwärts; die Karte sammelt die Fortschrittsdaten nicht mehr bis zum Schleifenende |
 | Eine Fußzeile für Formulare | c8cc952 — `FormActions`, sieben handgeschriebene Kopien ersetzt, Abbrechen vor der Hauptaktion |
 | Langer Name im Dropdown | Voller Text als `title` an Trigger und Option |
 

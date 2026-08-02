@@ -1117,8 +1117,6 @@ function ContractsCard() {
           // A premium buys an entitlement: a transfer, never consumption.
           pensionContractId: d.contractId,
         });
-        // Keeps the in-memory data in step with the atomic store operation.
-        await updatePensionContract(d.contractId, { lastBookedDate: d.date });
       }
       setExcluded(new Set());
     } catch (err) {

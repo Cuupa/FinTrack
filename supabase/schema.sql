@@ -437,6 +437,19 @@ create index if not exists savings_plans_asset_id_idx on public.savings_plans (a
 -- Cascade path from portfolios deletes.
 create index if not exists savings_plans_portfolio_id_idx on public.savings_plans (portfolio_id);
 
+-- The savings-plan occurrence a BUY materialized (migration 0123), declared
+-- here because public.savings_plans has to exist first. An identity only: it is
+-- what lets a repeated confirmation recognise a booking it already made instead
+-- of buying the same units twice. The finance core keeps reading these as
+-- ordinary BUY transactions. Deliberately not unique on (plan, day) -- see the
+-- migration for why a database that already collected duplicates must still be
+-- able to run it.
+alter table public.transactions
+  add column if not exists savings_plan_id uuid
+    references public.savings_plans (id) on delete set null;
+create index if not exists transactions_savings_plan_id_idx
+  on public.transactions (savings_plan_id);
+
 -- Asset tags -----------------------------------------------------------------
 -- User-defined key-value tag groups + per-asset assignments (rides the same
 -- DataStore seam as watchlist/savings plans; Guest Mode keeps them in its
@@ -790,6 +803,71 @@ create index if not exists spending_transactions_account_id_idx on public.spendi
 create index if not exists spending_transactions_transfer_account_id_idx on public.spending_transactions (transfer_account_id);
 create index if not exists spending_transactions_category_id_idx on public.spending_transactions (category_id);
 create index if not exists spending_transactions_user_id_idx on public.spending_transactions (user_id);
+
+-- See migration 0122: keeping the insert and the booked-through cursor in one
+-- transaction makes a repeated premium confirmation safe after a lost reply.
+-- Every ledger column is a parameter, so this path stores exactly what the
+-- ordinary insert stores. The app falls back to that insert when this function
+-- is absent, so a database still on 0121 keeps booking premiums.
+drop function if exists public.book_pension_premium(uuid, uuid, date, numeric, text, text, uuid);
+
+create or replace function public.book_pension_premium(
+  p_account_id uuid,
+  p_contract_id uuid,
+  p_date date,
+  p_amount numeric,
+  p_payee text,
+  p_note text,
+  p_category_id uuid default null,
+  p_recurring_id uuid default null,
+  p_transfer_account_id uuid default null,
+  p_planned_id uuid default null,
+  p_savings_plan_id uuid default null,
+  p_transaction_id uuid default null
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  perform 1
+  from public.pension_contracts
+  where id = p_contract_id
+  for update;
+  if not found then
+    raise exception 'pension contract % not found', p_contract_id;
+  end if;
+
+  select id into v_id
+  from public.spending_transactions
+  where pension_contract_id = p_contract_id and date = p_date
+  order by created_at
+  limit 1;
+
+  if v_id is null then
+    insert into public.spending_transactions (
+      id, user_id, account_id, category_id, date, amount, payee, note,
+      recurring_id, transfer_account_id, planned_id, savings_plan_id, pension_contract_id
+    ) values (
+      coalesce(p_transaction_id, gen_random_uuid()), auth.uid(), p_account_id,
+      p_category_id, p_date, p_amount, p_payee, p_note,
+      p_recurring_id, p_transfer_account_id, p_planned_id, p_savings_plan_id, p_contract_id
+    )
+    returning id into v_id;
+  end if;
+
+  -- Unconditional: a row written before this was one operation can have left
+  -- the cursor behind, and only the retry can move it forward.
+  update public.pension_contracts
+  set last_booked_date = greatest(coalesce(last_booked_date, p_date), p_date)
+  where id = p_contract_id;
+
+  return v_id;
+end;
+$$;
 
 -- Budgets (ROADMAP #4, flag `budgets`): a monthly cap per category, in the
 -- profile's base currency (spending.ts already converts category totals to

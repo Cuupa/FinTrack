@@ -257,7 +257,10 @@ LocalStore backfills, OfflineStore mirrors + queues, `lib/offline/sync.ts`
 replays. Savings plans never touch the finance core:
 `lib/finance/savings-plans.ts` derives due occurrences (pure), and the
 dashboard card books them as ordinary BUY transactions only after an explicit
-review dialog, advancing `lastRunDate`.
+review dialog, advancing `lastRunDate`. The BUY carries `savingsPlanId`
+(migration 0123) purely as an IDENTITY — the finance core still reads it as an
+ordinary BUY — and that identity is what makes a repeated confirmation safe;
+see the booking rule under the everyday-money entities.
 
 A plan optionally names a **Verrechnungskonto** (`SavingsPlan.accountId`):
 confirming a due occurrence then also writes a `SpendingTransaction` debiting
@@ -546,8 +549,21 @@ They are not priced from a market, and the rules that bind all of them are:
 - Spending is a **flow, not a balance**: it deliberately does not fold into
   `netWorthSeries`.
 - Nothing is ever posted silently. Due savings-plan, contract and planned
-  occurrences collect until the user opens a review dialog; booking writes the
-  transactions first and advances the `last*Date` marker second.
+  occurrences collect until the user opens a review dialog.
+- **Booking an occurrence is ONE store operation, and repeating it is safe.**
+  Writing the row and advancing the `last*Date` marker used to be two calls
+  from the component, so a run that failed in between left the row written and
+  the cursor behind — the same occurrence surfaced as due again and confirming
+  it a second time booked it TWICE (a doubled premium, or worse, a second BUY
+  of the same units). Every occurrence therefore carries the id of what it
+  materializes (`pensionContractId` since 0121, `savingsPlanId` on the BUY
+  since 0123), and the STORE owns both halves: it recognises a row it already
+  wrote for that (plan/policy, day) and returns it, and it advances the cursor
+  **either way** — a cursor left behind by an older half-finished run is only
+  ever repairable on the retry. The cursor is monotonic, so confirming an
+  older occurrence never reopens the ones booked after it. Components must not
+  advance a `last*Date` themselves, and `PortfolioProvider` mirrors the same
+  advance in memory rather than issuing a second write.
 - Reference data (Basiszins, Rentenwert/Rentenniveau) is **DB-seeded and
   world-readable, never a constant in the finance layer**. With no reference
   row, report the raw unit (points) rather than inventing a currency figure.
@@ -710,7 +726,8 @@ client pages (see `app/assets/[id]/page.tsx`).
   PostgREST `PGRST204` ("Could not find the 'target_account_id' column of
   'contracts'") on every contract with a target account. Repaired idempotently
   by migration 0103.
-- **A lagging schema narrows the app, never kills it — columns included.**
+- **A lagging schema narrows the app, never kills it — columns and functions
+  included.**
   Round 27 made a missing TABLE survivable (`optional()` + `degraded`), but a
   missing COLUMN was still fatal: `assets.front_load` (migration 0116) sits in
   a CORE select, so a database that had not run 0116 failed the assets query,
@@ -726,6 +743,15 @@ client pages (see `app/assets/[id]/page.tsx`).
   compiler must force a `?? null` at the read. `portfolios` throws rather than
   degrades: an errored query read as "no portfolios" would create a phantom
   "Main" broker and reparent every orphaned transaction into it.
+  **The same holds for an RPC.** `book_pension_premium` (0122) makes a policy
+  premium atomic, but calling it unconditionally would have killed premium
+  booking outright on a database still on 0121 — a feature that worked before
+  the change meant to harden it. Every `.rpc()` therefore keeps the path that
+  works without it: `isMissingFunctionError` (exported + unit-tested, 42883 /
+  PGRST202) falls back, any OTHER error still throws, since retrying past a
+  real failure inside a function that DOES exist would book the row twice.
+  A function is `create or replace` in both files; changing its parameter list
+  OVERLOADS rather than replaces it, so drop the old signature by name first.
 - **A failed mutation must say why.** `storeErrorReason` (`lib/store/errors.ts`)
   extracts the PostgrestError's `message`/`details`/`code` and forms append it
   to their own "could not save" line (contracts, debt details) instead of

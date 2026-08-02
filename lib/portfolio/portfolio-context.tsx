@@ -274,7 +274,24 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const addTransaction = useCallback(
     async (input: TransactionInput) => {
       const tx = await store.addTransaction(input);
-      setData((d) => ({ ...d, transactions: [...d.transactions, tx] }));
+      const day = input.date.slice(0, 10);
+      setData((d) => ({
+        ...d,
+        // A repeat returns the BUY it already made: keep it once in memory too.
+        transactions: d.transactions.some((t) => t.id === tx.id)
+          ? d.transactions
+          : [...d.transactions, tx],
+        // Savings-plan occurrences advance this cursor in the same store
+        // operation. Keep the in-memory view in lockstep without a second,
+        // non-atomic write.
+        savingsPlans: input.savingsPlanId
+          ? d.savingsPlans.map((plan) =>
+              plan.id === input.savingsPlanId && (!plan.lastRunDate || day > plan.lastRunDate)
+                ? { ...plan, lastRunDate: day }
+                : plan,
+            )
+          : d.savingsPlans,
+      }));
       return tx;
     },
     [store],
@@ -566,6 +583,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setData((d) => ({
         ...d,
         pensionContracts: d.pensionContracts.filter((c) => c.id !== id),
+        spendingTransactions: d.spendingTransactions.map((transaction) =>
+          transaction.pensionContractId === id
+            ? { ...transaction, pensionContractId: null }
+            : transaction,
+        ),
       }));
     },
     [store],
@@ -616,7 +638,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const addSpendingTransaction = useCallback(
     async (input: SpendingTransactionInput) => {
       const transaction = await store.addSpendingTransaction(input);
-      setData((d) => ({ ...d, spendingTransactions: [...d.spendingTransactions, transaction] }));
+      setData((d) => ({
+        ...d,
+        spendingTransactions: d.spendingTransactions.some((t) => t.id === transaction.id)
+          ? d.spendingTransactions
+          : [...d.spendingTransactions, transaction],
+        // Pension-premium stores atomically advance this cursor too. Keep the
+        // in-memory view in lockstep without a second, non-atomic write.
+        pensionContracts: input.pensionContractId
+          ? d.pensionContracts.map((contract) =>
+              contract.id === input.pensionContractId &&
+              (!contract.lastBookedDate || input.date > contract.lastBookedDate)
+                ? { ...contract, lastBookedDate: input.date }
+                : contract,
+            )
+          : d.pensionContracts,
+      }));
       return transaction;
     },
     [store],

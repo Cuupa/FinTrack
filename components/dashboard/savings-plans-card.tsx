@@ -379,10 +379,10 @@ function SavingsPlansCardInner() {
     setBusy(true);
     setError(null);
     try {
-      // Sequential on purpose: each materialized BUY is an ordinary
-      // transaction; a mid-way failure leaves lastRunDate un-advanced for the
-      // affected plan, so the remaining occurrences simply surface again.
-      const lastByPlan = new Map<string, string>();
+      // Sequential on purpose, and each occurrence carries its plan id: the
+      // store makes the BUY and the plan's cursor one operation and recognises
+      // a BUY it already made, so a run that fails part way can be repeated.
+      // The occurrences after the failure simply surface again.
       for (const { row, derived } of rowsWithEdits) {
         const booking = row.plan.bookingType === "BOOKING";
         await addTransaction({
@@ -397,6 +397,7 @@ function SavingsPlansCardInner() {
           fee: round(derived.effectiveFee + derived.frontLoadCharge, 2),
           tax: 0,
           date: `${row.date}T00:00:00`,
+          savingsPlanId: row.plan.id,
         });
         // The optional other half: the money leaving the Verrechnungskonto.
         // Skipped for a BOOKING plan — an employer-paid Einbuchung never
@@ -416,10 +417,6 @@ function SavingsPlansCardInner() {
             savingsPlanId: row.plan.id,
           });
         }
-        lastByPlan.set(row.plan.id, row.date);
-      }
-      for (const [planId, lastRunDate] of lastByPlan) {
-        await updateSavingsPlan(planId, { lastRunDate });
       }
       closeReview();
     } catch (err) {

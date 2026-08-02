@@ -819,6 +819,13 @@ export interface Transaction {
   tax: number;
   /** ISO date (YYYY-MM-DD). */
   date: string;
+  /**
+   * The savings-plan occurrence this BUY materialized (migration 0123).
+   * Purely an identity: it is what lets a repeated confirmation recognise a
+   * booking it already made instead of buying the same units twice. It does
+   * NOT change how the finance core treats the transaction.
+   */
+  savingsPlanId?: string | null;
 }
 
 export type SavingsPlanInterval = "WEEKLY" | "MONTHLY" | "QUARTERLY";

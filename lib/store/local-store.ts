@@ -251,6 +251,26 @@ export class LocalStore implements DataStore {
 
   async addTransaction(input: TransactionInput, id?: string) {
     const data = this.read();
+    // A savings-plan occurrence is one logical operation: the BUY and the
+    // plan's cursor share this one write, and a repeat finds the BUY it already
+    // made rather than buying the same units twice. The cursor moves either
+    // way, so a run interrupted before it advanced can still be finished.
+    if (input.savingsPlanId) {
+      const planId = input.savingsPlanId;
+      const day = input.date.slice(0, 10);
+      data.savingsPlans = data.savingsPlans.map((plan) =>
+        plan.id === planId && (!plan.lastRunDate || day > plan.lastRunDate)
+          ? { ...plan, lastRunDate: day }
+          : plan,
+      );
+      const existing = data.transactions.find(
+        (t) => t.savingsPlanId === planId && t.date.slice(0, 10) === day,
+      );
+      if (existing) {
+        this.write(data);
+        return existing;
+      }
+    }
     const tx = { ...input, id: id ?? newId() };
     data.transactions.push(tx);
     this.write(data);
@@ -494,6 +514,11 @@ export class LocalStore implements DataStore {
     data.pensionContracts = data.pensionContracts.filter((c) => c.id !== id);
     // Mirrors the DB's FK cascade: readings of a deleted policy are orphans.
     data.pensionContractValues = data.pensionContractValues.filter((v) => v.contractId !== id);
+    // The booking survives, but no longer names a policy that no longer
+    // exists. Without this it would remain a transfer only in Guest Mode.
+    data.spendingTransactions = data.spendingTransactions.map((t) =>
+      t.pensionContractId === id ? { ...t, pensionContractId: null } : t,
+    );
     this.write(data);
   }
 
@@ -536,6 +561,37 @@ export class LocalStore implements DataStore {
 
   async addSpendingTransaction(input: SpendingTransactionInput, id?: string) {
     const data = this.read();
+    // A premium is one logical operation: recording it and advancing the
+    // policy's cursor share this one localStorage write. Replaying a queued
+    // premium finds the existing row instead of charging it twice.
+    // The cursor moves even when the row is already there. A booking made
+    // before these were one operation could leave the row written and the
+    // cursor behind, and skipping the advance on the retry would leave that
+    // occurrence due forever with no way to clear it.
+    if (input.pensionContractId) {
+      const contractId = input.pensionContractId;
+      data.pensionContracts = data.pensionContracts.map((contract) =>
+        contract.id === contractId &&
+        (!contract.lastBookedDate || input.date > contract.lastBookedDate)
+          ? { ...contract, lastBookedDate: input.date }
+          : contract,
+      );
+      const existing = data.spendingTransactions.find(
+        (t) => t.pensionContractId === contractId && t.date === input.date,
+      );
+      if (existing) {
+        this.write(data);
+        return existing;
+      }
+    }
+    // The savings plan's own cursor rides its BUY in addTransaction; here the
+    // debit only has to stay single.
+    if (input.savingsPlanId) {
+      const existing = data.spendingTransactions.find(
+        (t) => t.savingsPlanId === input.savingsPlanId && t.date === input.date,
+      );
+      if (existing) return existing;
+    }
     const transaction = { ...input, id: id ?? newId() };
     data.spendingTransactions.push(transaction);
     this.write(data);

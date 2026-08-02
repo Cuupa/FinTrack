@@ -243,3 +243,256 @@ describe("LocalStore llmConfig", () => {
     expect(data.llmConfig).toBeNull();
   });
 });
+
+describe("LocalStore pension premiums", () => {
+  it("records a premium and its cursor together, and makes a retry harmless", async () => {
+    const store = new LocalStore();
+    const policy = await store.addPensionContract({
+      name: "Allianz",
+      kind: "private",
+      provider: null,
+      monthlyContribution: 150,
+      currentValue: null,
+      expectedMonthlyPension: null,
+      rentenfaktor: null,
+      contributionDynamicPct: null,
+      expectedReturnPct: null,
+      startsOn: null,
+      accountId: "account-1",
+      bookingStartDate: "2026-01-15",
+      lastBookedDate: null,
+      note: null,
+    });
+    const premium = {
+      accountId: "account-1",
+      categoryId: null,
+      date: "2026-01-15",
+      amount: -150,
+      payee: "Allianz",
+      note: null,
+      recurringId: null,
+      pensionContractId: policy.id,
+    };
+
+    const first = await store.addSpendingTransaction(premium);
+    const retry = await store.addSpendingTransaction(premium);
+    const data = await store.load();
+
+    expect(retry.id).toBe(first.id);
+    expect(data.spendingTransactions).toHaveLength(1);
+    expect(data.pensionContracts[0]?.lastBookedDate).toBe("2026-01-15");
+  });
+
+  it("moves a cursor that a half-finished booking left behind", async () => {
+    // The state this whole change exists to prevent: the row was written but
+    // the cursor never advanced. Recognising the row and stopping there would
+    // leave that premium due forever, with no way left to clear it.
+    const store = new LocalStore();
+    const policy = await store.addPensionContract({
+      name: "Allianz",
+      kind: "private",
+      provider: null,
+      monthlyContribution: 150,
+      currentValue: null,
+      expectedMonthlyPension: null,
+      rentenfaktor: null,
+      contributionDynamicPct: null,
+      expectedReturnPct: null,
+      startsOn: null,
+      accountId: "account-1",
+      bookingStartDate: "2026-01-15",
+      lastBookedDate: null,
+      note: null,
+    });
+    const premium = {
+      accountId: "account-1",
+      categoryId: null,
+      date: "2026-01-15",
+      amount: -150,
+      payee: "Allianz",
+      note: null,
+      recurringId: null,
+      pensionContractId: policy.id,
+    };
+    await store.addSpendingTransaction(premium);
+    await store.updatePensionContract(policy.id, { lastBookedDate: null });
+
+    await store.addSpendingTransaction(premium);
+    const data = await store.load();
+
+    expect(data.spendingTransactions).toHaveLength(1);
+    expect(data.pensionContracts[0]?.lastBookedDate).toBe("2026-01-15");
+  });
+
+  it("never moves the cursor backwards onto an older occurrence", async () => {
+    const store = new LocalStore();
+    const policy = await store.addPensionContract({
+      name: "Allianz",
+      kind: "private",
+      provider: null,
+      monthlyContribution: 150,
+      currentValue: null,
+      expectedMonthlyPension: null,
+      rentenfaktor: null,
+      contributionDynamicPct: null,
+      expectedReturnPct: null,
+      startsOn: null,
+      accountId: "account-1",
+      bookingStartDate: "2026-01-15",
+      lastBookedDate: null,
+      note: null,
+    });
+    const premium = (date: string) => ({
+      accountId: "account-1",
+      categoryId: null,
+      date,
+      amount: -150,
+      payee: "Allianz",
+      note: null,
+      recurringId: null,
+      pensionContractId: policy.id,
+    });
+
+    await store.addSpendingTransaction(premium("2026-02-15"));
+    await store.addSpendingTransaction(premium("2026-01-15"));
+    const data = await store.load();
+
+    expect(data.spendingTransactions).toHaveLength(2);
+    expect(data.pensionContracts[0]?.lastBookedDate).toBe("2026-02-15");
+  });
+
+  it("keeps an old booking but removes its policy link when the policy is deleted", async () => {
+    const store = new LocalStore();
+    const policy = await store.addPensionContract({
+      name: "Allianz",
+      kind: "private",
+      provider: null,
+      monthlyContribution: 150,
+      currentValue: null,
+      expectedMonthlyPension: null,
+      rentenfaktor: null,
+      contributionDynamicPct: null,
+      expectedReturnPct: null,
+      startsOn: null,
+      accountId: "account-1",
+      bookingStartDate: "2026-01-15",
+      lastBookedDate: null,
+      note: null,
+    });
+    await store.addSpendingTransaction({
+      accountId: "account-1",
+      categoryId: null,
+      date: "2026-01-15",
+      amount: -150,
+      payee: "Allianz",
+      note: null,
+      recurringId: null,
+      pensionContractId: policy.id,
+    });
+
+    await store.deletePensionContract(policy.id);
+    const data = await store.load();
+    expect(data.spendingTransactions[0]?.pensionContractId).toBeNull();
+  });
+});
+
+// Same class of bug on the savings plan, with worse consequences: a repeated
+// confirmation used to buy the same units a second time, because `transactions`
+// had no link back to the plan to recognise the BUY by (migration 0123).
+describe("LocalStore savings-plan occurrences", () => {
+  const plan = (over: Partial<Parameters<LocalStore["addSavingsPlan"]>[0]> = {}) => ({
+    assetId: "asset-1",
+    portfolioId: "pf-1",
+    amount: 250,
+    interval: "MONTHLY" as const,
+    startDate: "2026-01-05",
+    active: true,
+    lastRunDate: null,
+    accountId: "acc-1",
+    ...over,
+  });
+  const buy = (planId: string, date: string) => ({
+    assetId: "asset-1",
+    portfolioId: "pf-1",
+    type: "BUY" as const,
+    quantity: 2,
+    price: 125,
+    fee: 0,
+    tax: 0,
+    date: `${date}T00:00:00`,
+    savingsPlanId: planId,
+  });
+
+  it("books the BUY and the plan's cursor together, and makes a retry harmless", async () => {
+    const store = new LocalStore();
+    const sp = await store.addSavingsPlan(plan());
+
+    const first = await store.addTransaction(buy(sp.id, "2026-02-05"));
+    const retry = await store.addTransaction(buy(sp.id, "2026-02-05"));
+    const data = await store.load();
+
+    expect(retry.id).toBe(first.id);
+    expect(data.transactions).toHaveLength(1);
+    expect(data.savingsPlans[0]?.lastRunDate).toBe("2026-02-05");
+  });
+
+  it("moves a cursor that a half-finished run left behind", async () => {
+    const store = new LocalStore();
+    const sp = await store.addSavingsPlan(plan());
+    await store.addTransaction(buy(sp.id, "2026-02-05"));
+    await store.updateSavingsPlan(sp.id, { lastRunDate: null });
+
+    await store.addTransaction(buy(sp.id, "2026-02-05"));
+    const data = await store.load();
+
+    expect(data.transactions).toHaveLength(1);
+    expect(data.savingsPlans[0]?.lastRunDate).toBe("2026-02-05");
+  });
+
+  it("still books a later occurrence of the same plan", async () => {
+    // The dedupe is per occurrence, not per plan: March must not be swallowed
+    // because February is already on the ledger.
+    const store = new LocalStore();
+    const sp = await store.addSavingsPlan(plan());
+
+    await store.addTransaction(buy(sp.id, "2026-02-05"));
+    await store.addTransaction(buy(sp.id, "2026-03-05"));
+    const data = await store.load();
+
+    expect(data.transactions).toHaveLength(2);
+    expect(data.savingsPlans[0]?.lastRunDate).toBe("2026-03-05");
+  });
+
+  it("leaves a manual purchase of the same asset on the same day alone", async () => {
+    const store = new LocalStore();
+    const sp = await store.addSavingsPlan(plan());
+    await store.addTransaction(buy(sp.id, "2026-02-05"));
+
+    await store.addTransaction({ ...buy(sp.id, "2026-02-05"), quantity: 9, savingsPlanId: null });
+    const data = await store.load();
+
+    expect(data.transactions).toHaveLength(2);
+  });
+
+  it("keeps the debit on the Verrechnungskonto single too", async () => {
+    const store = new LocalStore();
+    const sp = await store.addSavingsPlan(plan());
+    const debit = {
+      accountId: "acc-1",
+      categoryId: null,
+      date: "2026-02-05",
+      amount: -250,
+      payee: "MSCI World",
+      note: null,
+      recurringId: null,
+      savingsPlanId: sp.id,
+    };
+
+    const first = await store.addSpendingTransaction(debit);
+    const retry = await store.addSpendingTransaction(debit);
+    const data = await store.load();
+
+    expect(retry.id).toBe(first.id);
+    expect(data.spendingTransactions).toHaveLength(1);
+  });
+});
