@@ -14,7 +14,8 @@
 // what it means belongs to the caller (on /accounts it means every account),
 // which is why the empty label is a required prop rather than a hardcoded "—".
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export interface SelectOption {
@@ -65,15 +66,51 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  // Where the popover floats. It is rendered into the body rather than next to
+  // the trigger: inside a modal the trigger sits in an `overflow-y-auto` box,
+  // so an absolutely positioned list was clipped by it, pushed the dialog's own
+  // scrollbar around and scrolled away from the field it belongs to.
+  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
+
+  // Follow the trigger while the page or any scroll container moves under it,
+  // and close on nothing: a popover that silently detaches from its field is
+  // worse than one that stays put.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      const below = window.innerHeight - rect.bottom;
+      const height = popoverRef.current?.offsetHeight ?? 0;
+      // Flip above the trigger when the list would not fit under it.
+      const flip = height > 0 && below < height + 16 && rect.top > below;
+      setAnchor({
+        left: rect.left,
+        top: flip ? Math.max(8, rect.top - height - 8) : rect.bottom + 8,
+        width: rect.width,
+      });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, query, options.length]);
 
   const selectedValues = props.multiple ? props.value : [props.value];
   const isOn = (value: string) => selectedValues.includes(value);
@@ -148,12 +185,22 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
         <span className="text-[10px] text-zinc-400">▾</span>
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         // Wider than the trigger when the options need it: the button is
         // narrow by layout, but "Girokonto Hanseatic Bank Gemeinschaftskonto"
         // clipped to "Girokonto Hanseatic Bank Ge..." in the list is a name
-        // nobody can pick between two similar accounts by.
-        <div className="absolute left-0 z-30 mt-2 w-max min-w-full max-w-[min(36rem,90vw)] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        // nobody can pick between two similar accounts by. Above the modal
+        // layer (z-50), because that is exactly where it is opened from.
+        <div
+          ref={popoverRef}
+          style={{
+            position: "fixed",
+            left: anchor?.left ?? -9999,
+            top: anchor?.top ?? -9999,
+            minWidth: anchor?.width ?? undefined,
+            visibility: anchor ? "visible" : "hidden",
+          }}
+          className="z-[60] w-max max-w-[min(36rem,90vw)] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {searchable && (
             <div className="border-b border-zinc-100 p-1.5 dark:border-zinc-800">
               <input
@@ -267,7 +314,8 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
               {footer(() => setOpen(false))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
