@@ -20,9 +20,9 @@ test.describe("simulation (Guest Mode)", () => {
     await expect(page.getByText("Median outcome")).toBeVisible({ timeout: 30_000 });
   });
 
-  // There is exactly ONE Monte Carlo surface: the FIRE tab links into the
-  // simulator's Retirement mode instead of running its own.
-  test("the FIRE tab links into the retirement mode instead of simulating", async ({ page }) => {
+  // There is exactly ONE Monte Carlo surface: the FIRE tab hands its horizon
+  // to the simulator instead of running a simulation of its own.
+  test("the FIRE tab hands its horizon to the one simulation", async ({ page }) => {
     await openDashboard(page);
     await page.goto("/retirement?tab=fire");
     await dismissTour(page);
@@ -31,16 +31,22 @@ test.describe("simulation (Guest Mode)", () => {
     await expect(page.getByRole("button", { name: /Run simulation/i })).toHaveCount(0);
 
     await page.getByRole("link", { name: "Open the simulation" }).click();
-    await expect(page).toHaveURL(/\/simulation\?mode=retirement/);
+    await expect(page).toHaveURL(/\/simulation\?years=\d+&withdrawal=30/);
     await dismissTour(page);
 
-    // The deep link selects the tab, and the withdrawal phase is already part
-    // of the seeded plan.
-    await expect(page.getByRole("tab", { name: "Retirement" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await expect(page.getByText("Years until retirement")).toBeVisible();
-    await expect(page.getByText("Measured assumptions")).toBeVisible();
+    // The horizon arrives as the investment horizon, and the drawdown phase is
+    // switched on with it.
+    await expect(page.getByText(/Horizon taken from your FIRE plan/)).toBeVisible();
+    await expect(page.getByText("Annual withdrawal rate")).toBeVisible();
+    await expect(page.getByText("Withdrawal strategy")).toBeVisible();
+  });
+
+  // A forced bad sequence is a market assumption, so it applies to a run that
+  // never draws anything down too.
+  test("the stress scenario is offered without a withdrawal phase", async ({ page }) => {
+    await openDashboard(page);
+    await page.goto("/simulation");
+    await dismissTour(page);
+    await expect(page.getByText("Stress scenario")).toBeVisible();
   });
 });

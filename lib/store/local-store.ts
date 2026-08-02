@@ -129,7 +129,13 @@ export class LocalStore implements DataStore {
         // Backfill blobs saved before the pension record existed.
         pensionPoints: parsed.pensionPoints ?? [],
         pensionStatements: parsed.pensionStatements ?? [],
-        pensionContracts: parsed.pensionContracts ?? [],
+        // Backfill policies saved before the Rentenfaktor fields existed.
+        pensionContracts: (parsed.pensionContracts ?? []).map((c) => ({
+          ...c,
+          rentenfaktor: c.rentenfaktor ?? null,
+          contributionDynamicPct: c.contributionDynamicPct ?? null,
+          expectedReturnPct: c.expectedReturnPct ?? null,
+        })),
         // Backfill blobs saved before the spending entity existed.
         spendingCategories: parsed.spendingCategories ?? [],
         spendingTransactions: parsed.spendingTransactions ?? [],

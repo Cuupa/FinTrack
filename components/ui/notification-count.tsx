@@ -31,7 +31,7 @@ export function NotificationCount({
     <span
       role="status"
       aria-label={t("notif.pending", { count })}
-      className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-emerald-600 px-1 text-[11px] font-semibold leading-none text-emerald-600 tabular-nums dark:border-emerald-400 dark:text-emerald-400 ${
+      className={`inline-flex h-5 items-center justify-center rounded-full border border-emerald-600 px-2 text-[11px] font-semibold leading-none text-emerald-600 tabular-nums dark:border-emerald-400 dark:text-emerald-400 ${
         overlay ? "absolute -top-2.5 -right-2.5" : ""
       }`}
     >

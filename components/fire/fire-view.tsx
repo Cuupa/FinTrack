@@ -253,17 +253,17 @@ export function FireView() {
         </div>
       </div>
 
-      {/* The simulation itself lives on /simulation, in its Ruhestand mode.
-          This page had grown a second one -- its own run button, its own two
-          tiles, its own strategy panel and chart -- so the app asked the same
-          question twice with two sets of controls. One surface, seeded from
-          exactly the plan above. */}
+      {/* The simulation itself lives on /simulation. This page had grown a
+          second one -- its own run button, tiles, strategy panel and chart --
+          so the app asked the same question twice with two sets of controls.
+          Years-to-FI is simply the investment horizon, so the link hands it
+          over as exactly that, with the drawdown phase switched on. */}
       <Card data-tour="fire-simulation">
         <h2 className="text-lg font-semibold">{t("fire.simulation.title")}</h2>
         <p className="mt-1 text-sm text-zinc-500">{t("fire.simulation.movedHint")}</p>
         <div className="mt-4">
           <Link
-            href="/simulation?mode=retirement"
+            href={`/simulation?years=${Math.max(1, Math.min(80, Math.ceil(plan.yearsToRegular ?? 30)))}&withdrawal=30`}
             className="inline-flex items-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {t("fire.simulation.open")}

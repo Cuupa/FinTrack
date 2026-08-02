@@ -306,6 +306,23 @@ function budgetFromRow(r: BudgetRow): Budget {
   return { id: r.id, categoryId: r.category_id, amount: Number(r.amount) };
 }
 
+/** `pension_contracts` as selected, with the migration-0119 columns optional:
+    a database that has not run it returns the row without those keys. */
+interface PensionContractRow {
+  id: string;
+  name: string;
+  kind: string;
+  provider: string | null;
+  monthly_contribution: number | string | null;
+  current_value: number | string | null;
+  expected_monthly_pension: number | string | null;
+  starts_on: string | null;
+  note: string | null;
+  rentenfaktor?: number | string | null;
+  contribution_dynamic_pct?: number | string | null;
+  expected_return_pct?: number | string | null;
+}
+
 interface ContractRow {
   id: string;
   name: string;
@@ -566,12 +583,24 @@ export class SupabaseStore implements DataStore {
         .from("pension_statements")
         .select("year, total_points, note")
         .order("year", { ascending: true }),
-      this.supabase
-        .from("pension_contracts")
-        .select(
-          "id, name, kind, provider, monthly_contribution, current_value, expected_monthly_pension, starts_on, note",
-        )
-        .order("created_at", { ascending: true }),
+      selectTolerant<PensionContractRow[]>(
+        (cols) =>
+          this.supabase.from("pension_contracts").select(cols).order("created_at", { ascending: true }),
+        [
+          "id",
+          "name",
+          "kind",
+          "provider",
+          "monthly_contribution",
+          "current_value",
+          "expected_monthly_pension",
+          "starts_on",
+          "note",
+        ],
+        // Migration 0119: a database without it still lists the policies, just
+        // without the figures the payout is derived from.
+        ["rentenfaktor", "contribution_dynamic_pct", "expected_return_pct"],
+      ),
       this.supabase
         .from("spending_categories")
         .select("id, group_name, name, tax_deductible")
@@ -870,17 +899,7 @@ export class SupabaseStore implements DataStore {
     ).map((r) => ({ year: r.year, totalPoints: Number(r.total_points), note: r.note ?? null }));
 
     const pensionContracts: PensionContract[] = (
-      (pensionContractsRes.data ?? []) as {
-        id: string;
-        name: string;
-        kind: string;
-        provider: string | null;
-        monthly_contribution: number | string | null;
-        current_value: number | string | null;
-        expected_monthly_pension: number | string | null;
-        starts_on: string | null;
-        note: string | null;
-      }[]
+      (pensionContractsRes.data ?? []) as PensionContractRow[]
     ).map((r) => ({
       id: r.id,
       name: r.name,
@@ -890,6 +909,10 @@ export class SupabaseStore implements DataStore {
       currentValue: r.current_value == null ? null : Number(r.current_value),
       expectedMonthlyPension:
         r.expected_monthly_pension == null ? null : Number(r.expected_monthly_pension),
+      rentenfaktor: r.rentenfaktor == null ? null : Number(r.rentenfaktor),
+      contributionDynamicPct:
+        r.contribution_dynamic_pct == null ? null : Number(r.contribution_dynamic_pct),
+      expectedReturnPct: r.expected_return_pct == null ? null : Number(r.expected_return_pct),
       startsOn: r.starts_on ?? null,
       note: r.note ?? null,
     }));
@@ -1472,6 +1495,9 @@ export class SupabaseStore implements DataStore {
         monthly_contribution: input.monthlyContribution ?? null,
         current_value: input.currentValue ?? null,
         expected_monthly_pension: input.expectedMonthlyPension ?? null,
+        rentenfaktor: input.rentenfaktor ?? null,
+        contribution_dynamic_pct: input.contributionDynamicPct ?? null,
+        expected_return_pct: input.expectedReturnPct ?? null,
         starts_on: input.startsOn ?? null,
         note: input.note ?? null,
       })
@@ -1491,6 +1517,11 @@ export class SupabaseStore implements DataStore {
     if (patch.currentValue !== undefined) upd.current_value = patch.currentValue;
     if (patch.expectedMonthlyPension !== undefined)
       upd.expected_monthly_pension = patch.expectedMonthlyPension;
+    if (patch.rentenfaktor !== undefined) upd.rentenfaktor = patch.rentenfaktor;
+    if (patch.contributionDynamicPct !== undefined)
+      upd.contribution_dynamic_pct = patch.contributionDynamicPct;
+    if (patch.expectedReturnPct !== undefined)
+      upd.expected_return_pct = patch.expectedReturnPct;
     if (patch.startsOn !== undefined) upd.starts_on = patch.startsOn;
     if (patch.note !== undefined) upd.note = patch.note;
     if (Object.keys(upd).length === 0) return;

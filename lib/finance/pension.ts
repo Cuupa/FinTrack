@@ -268,6 +268,82 @@ export function looksLikeStatements(
   return sorted[sorted.length - 1].points > cap;
 }
 
+/** The capital a Rentenfaktor is quoted against: monthly pension per 10.000 of
+ *  capital, the convention every German policy prints. */
+export const RENTENFAKTOR_BASE = 10000;
+
+/** What a private policy is worth, and how it got there -- so the page can show
+ *  the arithmetic instead of one derived number nobody can check. */
+export interface ContractProjection {
+  /** Capital at the start of the payout, in today's money. */
+  capital: number;
+  /** Monthly pension: `capital / 10.000 x Rentenfaktor`, or the typed figure
+   *  when the policy states no Rentenfaktor. */
+  monthly: number;
+  /** True when `monthly` follows from the Rentenfaktor rather than being typed. */
+  derived: boolean;
+  /** Premiums still to be paid, summed with the Dynamik applied. */
+  contributionsToCome: number;
+  /** Years of premiums left before the payout starts. */
+  yearsToPayout: number;
+}
+
+/**
+ * What a private Rentenversicherung will pay, from how it actually works.
+ *
+ * A policy does not state a monthly pension: it states a RENTENFAKTOR -- so
+ * much monthly pension per 10.000 of capital at the start of the payout. The
+ * payout is therefore the end of a chain: today's value, plus the premiums
+ * still to come (raised every year by the Beitragsdynamik if the policy has
+ * one), grown at the assumed return, times the factor. Asking the user for the
+ * monthly figure instead asks them to do that arithmetic in their head, and to
+ * redo it whenever they change a premium.
+ *
+ * Premiums count as paid mid-year (the half-year convention), which is what a
+ * monthly premium averages out to and avoids crediting a full year of growth to
+ * money that arrives in December. Everything is in today's money, like the rest
+ * of this module: no inflation, no wage growth.
+ *
+ * With no Rentenfaktor the typed `expectedMonthlyPension` is returned unchanged
+ * -- a policy whose factor the user does not have still belongs in the total.
+ */
+export function projectContract(
+  contract: PensionContract,
+  currentYear: number,
+  /** Year the payout starts when the policy names no date of its own. */
+  fallbackRetirementYear: number | null,
+): ContractProjection {
+  const startYear = contract.startsOn
+    ? Number(contract.startsOn.slice(0, 4))
+    : fallbackRetirementYear;
+  const yearsToPayout =
+    startYear != null && Number.isFinite(startYear) ? Math.max(0, startYear - currentYear) : 0;
+
+  const rate = (contract.expectedReturnPct ?? 0) / 100;
+  const dynamic = (contract.contributionDynamicPct ?? 0) / 100;
+
+  let capital = contract.currentValue ?? 0;
+  let annualPremium = (contract.monthlyContribution ?? 0) * 12;
+  let contributionsToCome = 0;
+  for (let i = 0; i < yearsToPayout; i++) {
+    capital = capital * (1 + rate) + annualPremium * (1 + rate / 2);
+    contributionsToCome += annualPremium;
+    annualPremium *= 1 + dynamic;
+  }
+
+  const factor = contract.rentenfaktor;
+  const derived = factor != null && Number.isFinite(factor) && factor > 0;
+  return {
+    capital,
+    monthly: derived
+      ? (capital / RENTENFAKTOR_BASE) * factor
+      : (contract.expectedMonthlyPension ?? 0),
+    derived,
+    contributionsToCome,
+    yearsToPayout,
+  };
+}
+
 /** A straight line through the recorded years: what a year earns now, and how
  *  fast that is moving. */
 export interface PointsTrend {
@@ -597,7 +673,12 @@ export function projectPension(input: {
     retirementAge != null && standardAge != null ? accessFactor(retirementAge, standardAge) : 1;
 
   const monthlyStatutory = pensionValue != null ? totalPoints * pensionValue * factor : null;
-  const monthlyPrivate = contracts.reduce((s, c) => s + (c.expectedMonthlyPension ?? 0), 0);
+  // A policy with a Rentenfaktor is projected from its capital; one without
+  // contributes the payout the user typed.
+  const monthlyPrivate = contracts.reduce(
+    (s, c) => s + projectContract(c, currentYear, retirementYear).monthly,
+    0,
+  );
   const monthlyTotal = monthlyStatutory != null ? monthlyStatutory + monthlyPrivate : null;
 
   const target = settings.targetMonthly;

@@ -21,14 +21,24 @@
 // the random draw to produce it.
 
 /** How the annual withdrawal is decided each year of retirement. */
-export type WithdrawalStrategyId = "fixed" | "percentOfPortfolio" | "guardrails" | "floorCeiling";
+export type WithdrawalStrategyId =
+  | "fixed"
+  | "percentOfPortfolio"
+  | "guardrails"
+  | "floorCeiling"
+  | "vpw";
 
 export const WITHDRAWAL_STRATEGIES: WithdrawalStrategyId[] = [
   "fixed",
   "percentOfPortfolio",
   "guardrails",
   "floorCeiling",
+  "vpw",
 ];
+
+/** Inflation assumed when the caller states none. Withdrawals that never rise
+    are not a plan: 30 years at 2% halves what the same amount buys. */
+export const DEFAULT_INFLATION = 0.02;
 
 /** The classic Guyton-Klinger band: adjust once the current rate has drifted
     this far from the target, in either direction. */
@@ -51,6 +61,13 @@ export interface WithdrawalPlan {
   /** `floorCeiling`: bounds relative to the first year's income. */
   floor?: number;
   ceiling?: number;
+  /** Annual inflation as a fraction. Every strategy that carries an amount
+      forward raises it by this, because the 4% rule is an INFLATION-ADJUSTED
+      rule: holding the first year's euros flat for 30 years quietly cuts the
+      real income in half and calls the plan a success. */
+  inflation?: number;
+  /** `vpw`: the return assumption its annuity factor is computed at. */
+  expectedReturn?: number;
 }
 
 export interface WithdrawalContext {
@@ -63,6 +80,9 @@ export interface WithdrawalContext {
   previousWithdrawal: number;
   /** 0 for the first retirement year. */
   yearsIntoRetirement: number;
+  /** Retirement years still to fund, including this one. `vpw` spreads the
+      portfolio over exactly these. */
+  yearsRemaining: number;
 }
 
 /**
@@ -74,13 +94,17 @@ export interface WithdrawalContext {
  */
 export function annualWithdrawal(plan: WithdrawalPlan, ctx: WithdrawalContext): number {
   if (ctx.portfolioValue <= 0) return 0;
+  const inflation = plan.inflation ?? DEFAULT_INFLATION;
+  // What the first year's income has to become to buy the same basket now.
+  const indexed = (amount: number) =>
+    amount * Math.pow(1 + inflation, ctx.yearsIntoRetirement);
   // The first year is the target rate under every strategy -- they differ in
   // what happens NEXT, not in where they start.
   if (ctx.yearsIntoRetirement === 0) return Math.max(0, ctx.initialWithdrawal);
 
   switch (plan.strategy) {
     case "fixed":
-      return Math.max(0, ctx.initialWithdrawal);
+      return Math.max(0, indexed(ctx.initialWithdrawal));
 
     // Always the same slice of what is actually there. Mathematically it can
     // never deplete the portfolio; the price is that the income follows the
@@ -93,8 +117,8 @@ export function annualWithdrawal(plan: WithdrawalPlan, ctx: WithdrawalContext): 
     // first year's. Depletion becomes possible again, because the floor keeps
     // paying out of a shrinking pot -- that is the trade, stated plainly.
     case "floorCeiling": {
-      const floor = (plan.floor ?? DEFAULT_FLOOR) * ctx.initialWithdrawal;
-      const ceiling = (plan.ceiling ?? DEFAULT_CEILING) * ctx.initialWithdrawal;
+      const floor = (plan.floor ?? DEFAULT_FLOOR) * indexed(ctx.initialWithdrawal);
+      const ceiling = (plan.ceiling ?? DEFAULT_CEILING) * indexed(ctx.initialWithdrawal);
       const target = plan.rate * ctx.portfolioValue;
       return Math.max(0, Math.min(ceiling, Math.max(floor, target)));
     }
@@ -106,34 +130,68 @@ export function annualWithdrawal(plan: WithdrawalPlan, ctx: WithdrawalContext): 
     case "guardrails": {
       const band = plan.band ?? DEFAULT_GUARDRAIL_BAND;
       const adjust = plan.adjust ?? DEFAULT_GUARDRAIL_ADJUST;
-      const previous = Math.max(0, ctx.previousWithdrawal);
+      // Guyton-Klinger raises last year's income with inflation FIRST, then
+      // asks whether the guardrails were breached.
+      const previous = Math.max(0, ctx.previousWithdrawal) * (1 + inflation);
       const currentRate = previous / ctx.portfolioValue;
       if (currentRate > plan.rate * (1 + band)) return previous * (1 - adjust);
       if (currentRate < plan.rate * (1 - band)) return previous * (1 + adjust);
       return previous;
+    }
+
+    // Variable percentage withdrawal: spread what is actually there over the
+    // years actually left, as an annuity at the expected return. The rate
+    // therefore RISES with age (a 90-year-old funding five years may draw far
+    // more than 4%), which is the honest answer to "how much can I take" and
+    // the reason a flat rate leaves so many people dying rich. It cannot
+    // deplete the portfolio; the price is an income that moves with the market.
+    case "vpw": {
+      const n = Math.max(1, Math.round(ctx.yearsRemaining));
+      const r = plan.expectedReturn ?? 0;
+      const factor = r <= 0 ? 1 / n : r / (1 - Math.pow(1 + r, -n));
+      return Math.max(0, ctx.portfolioValue * factor);
     }
   }
 }
 
 // --- Sequence-of-returns stress ---------------------------------------------
 
-/** A forced bad ordering of returns, applied at the START of retirement. */
-export type StressScenario = "none" | "earlyCrash" | "lostDecade";
+/**
+ * A forced bad ordering of returns, applied from the run's ANCHOR month.
+ *
+ * The anchor is the first month of decumulation when the run has one, because
+ * that is where the ordering of returns stops being cosmetic and starts
+ * destroying capital. A run that only accumulates has no such month, and the
+ * scenarios used to do nothing at all there -- so the anchor falls back to
+ * month zero and a crash right after you invest is simulated too, which is the
+ * risk anyone still saving actually carries.
+ */
+export type StressScenario = "none" | "earlyCrash" | "lostDecade" | "highInflation";
 
-export const STRESS_SCENARIOS: StressScenario[] = ["none", "earlyCrash", "lostDecade"];
+export const STRESS_SCENARIOS: StressScenario[] = [
+  "none",
+  "earlyCrash",
+  "lostDecade",
+  "highInflation",
+];
 
-/** A crash of this size in the first month of retirement. */
+/** A crash of this size in the anchor month. */
 export const EARLY_CRASH_DROP = 0.35;
 /** How long the "lost decade" suppresses the drift. */
 export const LOST_DECADE_YEARS = 10;
+/** Percentage points of extra inflation the inflation shock assumes -- taken
+    off the real return AND added to what the withdrawals have to rise by. */
+export const HIGH_INFLATION_EXTRA = 0.03;
+
+/** Extra annual inflation the scenario forces on the withdrawals. */
+export function stressInflation(scenario: StressScenario): number {
+  return scenario === "highInflation" ? HIGH_INFLATION_EXTRA : 0;
+}
 
 /**
  * Adjusts one month's return for the chosen scenario.
  *
- * `monthsIntoRetirement` is 0 for the first month of decumulation and negative
- * while still accumulating -- the stress deliberately only bites once
- * withdrawals start, because that is precisely when the ordering of returns
- * stops being cosmetic and starts destroying capital.
+ * `monthsFromAnchor` is 0 in the anchor month and negative before it.
  *
  * `monthlyDrift` is the simulation's geometric monthly mean, subtracted out for
  * the lost decade so those years have no expected growth at all rather than an
@@ -142,14 +200,19 @@ export const LOST_DECADE_YEARS = 10;
 export function stressedReturn(
   scenario: StressScenario,
   monthReturn: number,
-  monthsIntoRetirement: number,
+  monthsFromAnchor: number,
   monthlyDrift: number,
 ): number {
-  if (scenario === "none" || monthsIntoRetirement < 0) return monthReturn;
+  if (scenario === "none" || monthsFromAnchor < 0) return monthReturn;
   if (scenario === "earlyCrash") {
-    return monthsIntoRetirement === 0 ? monthReturn - EARLY_CRASH_DROP : monthReturn;
+    return monthsFromAnchor === 0 ? monthReturn - EARLY_CRASH_DROP : monthReturn;
   }
-  return monthsIntoRetirement < LOST_DECADE_YEARS * 12 ? monthReturn - monthlyDrift : monthReturn;
+  if (scenario === "highInflation") {
+    // Inflation eats the real return for the rest of the run, not for a window:
+    // a price level does not come back down.
+    return monthReturn - HIGH_INFLATION_EXTRA / 12;
+  }
+  return monthsFromAnchor < LOST_DECADE_YEARS * 12 ? monthReturn - monthlyDrift : monthReturn;
 }
 
 // --- Comparing strategies ----------------------------------------------------

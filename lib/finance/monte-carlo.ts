@@ -17,6 +17,8 @@ import {
   WITHDRAWAL_STRATEGIES,
   type StrategyOutcome,
   type StrategyRunTally,
+  stressInflation,
+  DEFAULT_INFLATION,
   type StressScenario,
   type WithdrawalPlan,
   type WithdrawalStrategyId,
@@ -33,6 +35,9 @@ export interface WithdrawalOptions {
   ceiling?: number;
   /** Forced sequence-of-returns stress. Absent = "none". */
   stress?: StressScenario;
+  /** Annual inflation the withdrawals are indexed to (fraction). Absent uses
+      `DEFAULT_INFLATION`: an unindexed withdrawal is not a plan. */
+  inflation?: number;
   /** Run EVERY strategy over the same market paths and report the comparison.
       Same seed, same draws, so the rows differ only by the strategy. */
   compareStrategies?: boolean;
@@ -98,7 +103,11 @@ export interface MonteCarloResult {
 }
 
 /** Reads the strategy knobs off the params, defaulting to today's behaviour. */
-function planOf(params: WithdrawalOptions & { withdrawalRate?: number }): WithdrawalPlan {
+function planOf(
+  params: WithdrawalOptions & { withdrawalRate?: number },
+  /** Return assumption for `vpw`'s annuity factor. */
+  expectedReturn: number,
+): WithdrawalPlan {
   return {
     strategy: params.withdrawalStrategy ?? "fixed",
     rate: Math.max(0, params.withdrawalRate ?? 0),
@@ -106,6 +115,10 @@ function planOf(params: WithdrawalOptions & { withdrawalRate?: number }): Withdr
     adjust: params.guardrailAdjust,
     floor: params.floor,
     ceiling: params.ceiling,
+    // The inflation shock raises what the same basket costs, so it lands on
+    // the withdrawals as well as on the returns.
+    inflation: (params.inflation ?? DEFAULT_INFLATION) + stressInflation(params.stress ?? "none"),
+    expectedReturn,
   };
 }
 
@@ -157,6 +170,24 @@ interface WalkOptions {
   usesRate: boolean;
   stress: StressScenario;
   monthlyDrift: number;
+  /** Retirement years the run funds, for `vpw`'s remaining-horizon rate. */
+  withdrawalYears: number;
+}
+
+/**
+ * Where the stress starts biting: the first month of decumulation, or month
+ * zero when the run never draws down. A crash while you are still buying is a
+ * different risk, but it is a risk -- leaving accumulation-only runs
+ * unstressed meant the scenarios silently did nothing on the main simulation.
+ */
+function stressAnchor(monthsIntoRetirement: number, month: number, usesWithdrawal: boolean): number {
+  return usesWithdrawal ? monthsIntoRetirement : month - 1;
+}
+
+/** The portfolio's expected annual return, weighted -- what `vpw` annuitises. */
+function blendedAnnualReturn(assets: readonly { weight: number; mean: number }[]): number {
+  const total = assets.reduce((s, a) => s + a.weight, 0) || 1;
+  return assets.reduce((s, a) => s + a.weight * a.mean, 0) / total;
 }
 
 /**
@@ -190,6 +221,7 @@ function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
             portfolioValue: value,
             previousWithdrawal: previousAnnual,
             yearsIntoRetirement,
+            yearsRemaining: Math.max(1, o.withdrawalYears - yearsIntoRetirement),
           })
         : o.flatWithdrawal * 12;
       annualIncomes.push(annual);
@@ -200,7 +232,7 @@ function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
     const monthReturn = stressedReturn(
       o.stress,
       path[m - 1],
-      monthsIntoRetirement,
+      stressAnchor(monthsIntoRetirement, m, o.months > o.accMonths),
       o.monthlyDrift,
     );
     // Accumulate, then draw down (never below 0 — a depleted portfolio simply
@@ -238,7 +270,7 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     Math.pow(1 + expectedReturn, 1 / 12) - 1; // geometric monthly drift
   const monthlyVol = volatility / Math.sqrt(12);
   const rng = mulberry32(params.seed >>> 0);
-  const plan = planOf(params);
+  const plan = planOf(params, expectedReturn);
   const stress = params.stress ?? "none";
   const walkOptions: Omit<WalkOptions, "plan"> = {
     initialCapital,
@@ -249,6 +281,7 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     usesRate,
     stress,
     monthlyDrift: monthlyMean,
+    withdrawalYears: wYears,
   };
 
   // yearValues[y] collects every run's value at the end of year y.
@@ -435,7 +468,7 @@ export function runPortfolioMonteCarlo(
       Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
     );
 
-  const plan = planOf(params);
+  const plan = planOf(params, blendedAnnualReturn(assets));
   const stress = params.stress ?? "none";
   // Weighted drift, so the lost-decade scenario removes the PORTFOLIO's
   // expected growth rather than one asset's.
@@ -479,6 +512,7 @@ export function runPortfolioMonteCarlo(
               portfolioValue: portValue,
               previousWithdrawal: previousAnnual,
               yearsIntoRetirement,
+              yearsRemaining: Math.max(1, wYears - yearsIntoRetirement),
             })
           : flatWithdrawal * 12;
         annualIncomes.push(annual);
@@ -487,7 +521,12 @@ export function runPortfolioMonteCarlo(
       }
 
       for (let i = 0; i < n; i++) {
-        const ret = stressedReturn(stress, rets[i][m - 1], monthsIntoRetirement, blendedDrift);
+        const ret = stressedReturn(
+          stress,
+          rets[i][m - 1],
+          stressAnchor(monthsIntoRetirement, m, months > accMonths),
+          blendedDrift,
+        );
         const cash = accumulating
           ? monthlyContribution * weights[i]
           : -monthlyWithdrawal * (portValue > 0 ? values[i] / portValue : weights[i]);

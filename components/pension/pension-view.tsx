@@ -12,17 +12,19 @@
 // lib/finance/pension.ts. The page says so out loud rather than letting a
 // figure look more precise than it is.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import {
   allStatements,
   looksLikeStatements,
   pensionLevelOn,
+  projectContract,
   projectPension,
   standardRetirementAge,
   statementAnnualPoints,
   type PensionProjection,
 } from "@/lib/finance/pension";
+import { today } from "@/lib/finance/dates";
 import { usePensionReference } from "@/lib/pension/use-pension-reference";
 import {
   PENSION_CONTRACT_KINDS,
@@ -616,9 +618,51 @@ function ContractForm({
   const [expected, setExpected] = useState(
     initial?.expectedMonthlyPension != null ? String(initial.expectedMonthlyPension) : "",
   );
+  const [rentenfaktor, setRentenfaktor] = useState(
+    initial?.rentenfaktor != null ? String(initial.rentenfaktor) : "",
+  );
+  const [dynamicPct, setDynamicPct] = useState(
+    initial?.contributionDynamicPct != null ? String(initial.contributionDynamicPct) : "",
+  );
+  const [returnPct, setReturnPct] = useState(
+    initial?.expectedReturnPct != null ? String(initial.expectedReturnPct) : "",
+  );
   const [startsOn, setStartsOn] = useState(initial?.startsOn ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  // The payout follows from the capital as soon as the policy's Rentenfaktor
+  // is known, so the preview recomputes with every keystroke — the same pure
+  // function the projection runs on, never a second formula.
+  const { data } = usePortfolio();
+  const base = data.profile.currency;
+  const settings = data.profile.pensionSettings;
+  const currentYear = Number(today().slice(0, 4));
+  const fallbackRetirementYear =
+    settings.birthYear != null
+      ? Math.round(
+          settings.birthYear + (settings.retirementAge ?? standardRetirementAge(settings.birthYear)),
+        )
+      : null;
+  const preview = projectContract(
+    {
+      id: initial?.id ?? "preview",
+      name,
+      kind,
+      provider: null,
+      monthlyContribution: optionalNumber(contribution),
+      currentValue: optionalNumber(value),
+      expectedMonthlyPension: optionalNumber(expected),
+      rentenfaktor: optionalNumber(rentenfaktor),
+      contributionDynamicPct: optionalNumber(dynamicPct),
+      expectedReturnPct: optionalNumber(returnPct),
+      startsOn: optionalText(startsOn),
+      note: null,
+    },
+    currentYear,
+    fallbackRetirementYear,
+  );
+  const derivesPayout = preview.derived;
 
   async function submit() {
     setError(null);
@@ -630,6 +674,9 @@ function ContractForm({
         monthlyContribution: optionalNumber(contribution),
         currentValue: optionalNumber(value),
         expectedMonthlyPension: optionalNumber(expected),
+        rentenfaktor: optionalNumber(rentenfaktor),
+        contributionDynamicPct: optionalNumber(dynamicPct),
+        expectedReturnPct: optionalNumber(returnPct),
         startsOn: optionalText(startsOn),
         note: optionalText(note),
       });
@@ -671,14 +718,30 @@ function ContractForm({
           />
         </label>
         <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.contracts.expected")}</span>
+          <span className="text-zinc-500">{t("pension.contracts.rentenfaktor")}</span>
           <input
             className={inputCls}
             inputMode="decimal"
-            value={expected}
-            onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
+            value={rentenfaktor}
+            onChange={(e) => setRentenfaktor(stripLeadingZero(e.target.value))}
           />
+          <span className="mt-1 block text-xs text-zinc-500">
+            {t("pension.contracts.rentenfaktorHint")}
+          </span>
         </label>
+        {/* A policy with a Rentenfaktor computes its payout, so the typed
+            figure would only contradict it. Without one it is all we have. */}
+        {!derivesPayout && (
+          <label className="block text-sm">
+            <span className="text-zinc-500">{t("pension.contracts.expected")}</span>
+            <input
+              className={inputCls}
+              inputMode="decimal"
+              value={expected}
+              onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
+            />
+          </label>
+        )}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.contribution")}</span>
           <input
@@ -698,6 +761,30 @@ function ContractForm({
           />
         </label>
         <label className="block text-sm">
+          <span className="text-zinc-500">{t("pension.contracts.dynamic")}</span>
+          <input
+            className={inputCls}
+            inputMode="decimal"
+            value={dynamicPct}
+            onChange={(e) => setDynamicPct(stripLeadingZero(e.target.value))}
+          />
+          <span className="mt-1 block text-xs text-zinc-500">
+            {t("pension.contracts.dynamicHint")}
+          </span>
+        </label>
+        <label className="block text-sm">
+          <span className="text-zinc-500">{t("pension.contracts.returnPct")}</span>
+          <input
+            className={inputCls}
+            inputMode="decimal"
+            value={returnPct}
+            onChange={(e) => setReturnPct(stripLeadingZero(e.target.value))}
+          />
+          <span className="mt-1 block text-xs text-zinc-500">
+            {t("pension.contracts.returnHint")}
+          </span>
+        </label>
+        <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.startsOn")}</span>
           <input
             className={inputCls}
@@ -711,6 +798,23 @@ function ContractForm({
           <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
       </div>
+      {/* The page shows its own arithmetic: the capital first, then the factor
+          applied to it. One derived number nobody can check is worth less than
+          the two lines it came from. */}
+      {derivesPayout && (
+        <p className="rounded-md border border-indigo-200 bg-indigo-50 p-3 text-xs text-zinc-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-zinc-300">
+          {preview.yearsToPayout > 0
+            ? t("pension.contracts.derivedNote", {
+                capital: formatCurrency(preview.capital, base),
+                years: preview.yearsToPayout,
+                monthly: formatCurrency(preview.monthly, base),
+              })
+            : t("pension.contracts.derivedNoteNow", {
+                capital: formatCurrency(preview.capital, base),
+                monthly: formatCurrency(preview.monthly, base),
+              })}
+        </p>
+      )}
       <Button onClick={submit} disabled={name.trim() === ""}>
         {submitLabel}
       </Button>
@@ -731,6 +835,21 @@ function ContractsCard() {
   const [editing, setEditing] = useState<PensionContract | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PensionContract | null>(null);
 
+  // The table prints what the projection counts, so a policy with a
+  // Rentenfaktor shows the derived payout rather than an empty cell.
+  const settings = data.profile.pensionSettings;
+  const currentYear = Number(today().slice(0, 4));
+  const retirementYear =
+    settings.birthYear != null
+      ? Math.round(
+          settings.birthYear + (settings.retirementAge ?? standardRetirementAge(settings.birthYear)),
+        )
+      : null;
+  const payoutOf = useCallback(
+    (c: PensionContract) => projectContract(c, currentYear, retirementYear).monthly,
+    [currentYear, retirementYear],
+  );
+
   const sort = useSort<ContractSortKey>("name");
   const rows = useMemo(
     () =>
@@ -741,7 +860,7 @@ function ContractsCard() {
           case "kind":
             return c.kind;
           case "expected":
-            return c.expectedMonthlyPension ?? 0;
+            return payoutOf(c);
           case "contribution":
             return c.monthlyContribution ?? 0;
           case "currentValue":
@@ -750,7 +869,7 @@ function ContractsCard() {
             return c.startsOn ?? "";
         }
       }),
-    [contracts, sort],
+    [contracts, sort, payoutOf],
   );
   const pager = usePagination(rows);
 
@@ -797,7 +916,7 @@ function ContractsCard() {
                 <Tr key={c.id}>
                   <Td>{c.name}</Td>
                   <Td className="text-zinc-500">{t(`pension.kind.${c.kind}`)}</Td>
-                  <Td align="right">{money(c.expectedMonthlyPension)}</Td>
+                  <Td align="right">{money(payoutOf(c) || null)}</Td>
                   <Td align="right">{money(c.monthlyContribution)}</Td>
                   <Td align="right">{money(c.currentValue)}</Td>
                   <Td className="text-zinc-500">{c.startsOn ?? "—"}</Td>

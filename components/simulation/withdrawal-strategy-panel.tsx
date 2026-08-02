@@ -43,55 +43,69 @@ function useStrategyLabel() {
   return (id: WithdrawalStrategyId) => t(`withdrawal.strategy.${id}` as MessageKey);
 }
 
-/** The pickers and the steps: what the run is configured to do. Belongs with
-    the other parameters. */
-export function WithdrawalStrategyPanel({
-  strategy,
-  onStrategy,
+/**
+ * The stress scenario, on its own.
+ *
+ * It used to sit inside the withdrawal block, which meant a run without a
+ * drawdown phase could not be stressed at all -- the main simulation offered
+ * no way to ask "what if it crashes right after I invest". A forced bad
+ * sequence is a property of the MARKET, not of how you draw the money out, so
+ * it belongs with the model parameters and applies to every run.
+ */
+export function StressPicker({
   stress,
   onStress,
 }: {
-  strategy: WithdrawalStrategyId;
-  onStrategy: (value: WithdrawalStrategyId) => void;
   stress: StressScenario;
   onStress: (value: StressScenario) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div data-tour="stress-scenario">
+      <label className="text-sm font-medium">{t("withdrawal.stressLabel")}</label>
+      <SelectMenu
+        className="mt-1"
+        ariaLabel={t("withdrawal.stressLabel")}
+        value={stress}
+        onChange={(value) => onStress(value as StressScenario)}
+        options={STRESS_SCENARIOS.map((id) => ({
+          value: id,
+          label: t(`withdrawal.stress.${id}` as MessageKey),
+        }))}
+      />
+      <p className="mt-1 text-xs text-zinc-500">
+        {t(`withdrawal.stress.${stress}.desc` as MessageKey)}
+      </p>
+    </div>
+  );
+}
+
+/** The strategy and the steps: what the run does with the money once it draws
+    it down. Belongs with the other withdrawal parameters. */
+export function WithdrawalStrategyPanel({
+  strategy,
+  onStrategy,
+}: {
+  strategy: WithdrawalStrategyId;
+  onStrategy: (value: WithdrawalStrategyId) => void;
 }) {
   const { t } = useI18n();
   const strategyLabel = useStrategyLabel();
 
   return (
     <div className="space-y-4" data-tour="withdrawal-strategy">
-      <div className="space-y-4">
-        <div>
-          <label className="text-sm font-medium">{t("withdrawal.strategyLabel")}</label>
-          <SelectMenu
-            className="mt-1"
-            ariaLabel={t("withdrawal.strategyLabel")}
-            value={strategy}
-            onChange={(value) => onStrategy(value as WithdrawalStrategyId)}
-            options={WITHDRAWAL_STRATEGIES.map((id) => ({ value: id, label: strategyLabel(id) }))}
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            {t(`withdrawal.strategy.${strategy}.desc` as MessageKey)}
-          </p>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">{t("withdrawal.stressLabel")}</label>
-          <SelectMenu
-            className="mt-1"
-            ariaLabel={t("withdrawal.stressLabel")}
-            value={stress}
-            onChange={(value) => onStress(value as StressScenario)}
-            options={STRESS_SCENARIOS.map((id) => ({
-              value: id,
-              label: t(`withdrawal.stress.${id}` as MessageKey),
-            }))}
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            {t(`withdrawal.stress.${stress}.desc` as MessageKey)}
-          </p>
-        </div>
+      <div>
+        <label className="text-sm font-medium">{t("withdrawal.strategyLabel")}</label>
+        <SelectMenu
+          className="mt-1"
+          ariaLabel={t("withdrawal.strategyLabel")}
+          value={strategy}
+          onChange={(value) => onStrategy(value as WithdrawalStrategyId)}
+          options={WITHDRAWAL_STRATEGIES.map((id) => ({ value: id, label: strategyLabel(id) }))}
+        />
+        <p className="mt-1 text-xs text-zinc-500">
+          {t(`withdrawal.strategy.${strategy}.desc` as MessageKey)}
+        </p>
       </div>
 
       <div>

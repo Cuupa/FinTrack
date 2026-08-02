@@ -286,9 +286,24 @@ export interface PensionContract {
   monthlyContribution: number | null;
   /** Value/surrender value accrued so far, profile base currency. */
   currentValue: number | null;
-  /** Expected or guaranteed monthly payout, profile base currency. This is
-   *  what feeds the projection; null means "not known yet", never zero. */
+  /** Expected or guaranteed monthly payout, profile base currency. Used when
+   *  the policy states no Rentenfaktor; null means "not known yet", never
+   *  zero. A Rentenfaktor wins over it, because the payout then FOLLOWS from
+   *  the capital and a typed figure would silently contradict it. */
   expectedMonthlyPension: number | null;
+  /**
+   * Rentenfaktor: monthly pension per 10.000 units of capital at the start of
+   * the payout, the figure the insurer quotes on the policy. This is how a
+   * Rentenversicherung actually works -- what is paid out is the capital
+   * accumulated by then multiplied by this factor -- so with it the payout is
+   * derived rather than guessed.
+   */
+  rentenfaktor: number | null;
+  /** Beitragsdynamik: annual increase of the premium in percent. Null = none. */
+  contributionDynamicPct: number | null;
+  /** Assumed annual return on the capital until the payout starts, in percent.
+   *  Null assumes no growth: the honest floor when the policy states none. */
+  expectedReturnPct: number | null;
   /** YYYY-MM-DD the payout starts, or null if not fixed yet. */
   startsOn: string | null;
   note: string | null;
