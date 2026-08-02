@@ -1359,7 +1359,7 @@ export const en = {
   "fire.withdrawalRate.label": "Withdrawal rate",
   "fire.withdrawalRate.hint": "The classic \"4% rule\" assumes a portfolio withdrawn at this rate lasts through retirement.",
   "fire.pension.count": "Count my pension",
-  "fire.pension.hint": "{amount} a month from {year}, from the Pension tab.",
+  "fire.pension.hint": "{amount} a month from {year}.",
   "fire.pension.saves":
     "Your pension takes the target from {without} down to {with}: the portfolio only has to carry everything for the {years} years before it starts, and after that just the shortfall.",
   "fire.pension.missing":
@@ -3707,7 +3707,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.withdrawalRate.label": "Entnahmerate",
   "fire.withdrawalRate.hint": "Die klassische \"4%-Regel\" geht davon aus, dass ein Portfolio bei dieser Entnahmerate die ganze Rentenzeit über reicht.",
   "fire.pension.count": "Rente einrechnen",
-  "fire.pension.hint": "{amount} pro Monat ab {year}, aus dem Reiter Rente.",
+  "fire.pension.hint": "{amount} pro Monat ab {year}.",
   "fire.pension.saves":
     "Deine Rente senkt das Ziel von {without} auf {with}: das Depot muss nur die {years} Jahre bis zum Rentenbeginn komplett tragen, danach nur noch die Lücke.",
   "fire.pension.missing":
@@ -6061,7 +6061,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.withdrawalRate.label": "Tasa de retiro",
   "fire.withdrawalRate.hint": "La clásica \"regla del 4%\" asume que un patrimonio retirado a esta tasa dura toda la jubilación.",
   "fire.pension.count": "Contar mi pensión",
-  "fire.pension.hint": "{amount} al mes desde {year}, de la pestaña Pensión.",
+  "fire.pension.hint": "{amount} al mes desde {year}.",
   "fire.pension.saves":
     "Tu pensión baja el objetivo de {without} a {with}: la cartera solo tiene que cubrirlo todo durante los {years} años previos, y después únicamente la diferencia.",
   "fire.pension.missing":
