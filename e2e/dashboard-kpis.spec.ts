@@ -64,6 +64,43 @@ test("the overview leads with everyday money, the portfolio page with the depot"
   await expect(depotHero).not.toContainText("Savings rate");
 });
 
+// The accounts card used to rank every account by ABSOLUTE balance, so a single
+// mortgage outranked every current account and the card listed nothing but
+// debt, under a headline that just repeated the hero's net worth. Only the
+// wiring can show the ordering: the pure totals were right all along.
+test("the accounts card leads with money held, not with the mortgage", async ({ page }) => {
+  await page.goto("/accounts");
+  await dismissTour(page);
+
+  await openAddAccountModal(page);
+  await page.getByRole("dialog").locator("#account-name").fill("Current account");
+  await page.getByRole("dialog").locator("#account-opening").fill("4000");
+  await submitAddAccountModal(page);
+
+  await openAddAccountModal(page);
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#account-name").fill("House");
+  await dialog.getByRole("button", { name: "Type" }).click();
+  await page.getByRole("option", { name: "Mortgage", exact: true }).click();
+  await dialog.locator("#account-opening").fill("200000");
+  await submitAddAccountModal(page);
+
+  await page.goto("/");
+  await dismissTour(page);
+  const card = page.locator('[data-tour="area-accounts"]');
+
+  // The headline is what is held, not net worth: 4,000, never -196,000.
+  await expect(card).toContainText("4,000");
+  await expect(card).not.toContainText("196,000");
+
+  // The current account survives the mortgage in the list, and the debt is
+  // still on the card as its own summed line.
+  await expect(card).toContainText("Current account");
+  await expect(card).toContainText("Liabilities");
+  await expect(card).toContainText("-€200,000");
+  await expect(card).not.toContainText("House");
+});
+
 // Return mode plots the depot's TWROR while the currency line plots net worth,
 // so on the overview the two modes answer different questions. Only the wiring
 // can show that the line renames itself and the note appears there and nowhere

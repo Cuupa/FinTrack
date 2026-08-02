@@ -82,26 +82,33 @@ function AccountsCard() {
     [data.accounts, data.accountBalances, currency, valuation.fx, movements],
   );
 
-  // Largest first: on a summary card the big balances are what you check.
-  const rows = useMemo(
-    () =>
-      [...data.accounts]
-        .map((a) => ({
-          account: a,
-          balance: currentAccountBalance(a, data.accountBalances, movements),
-        }))
-        .sort((x, y) => Math.abs(y.balance) - Math.abs(x.balance))
-        .slice(0, 3),
-    [data.accounts, data.accountBalances, movements],
-  );
+  // Largest first, but only among the accounts that hold money: sorting every
+  // account by absolute balance let one mortgage outrank every current account
+  // there is, so the card listed three debts and nothing else. Liabilities get
+  // their own summed line below instead. With no credit account at all they are
+  // the only thing to list, so they take the list over.
+  const rows = useMemo(() => {
+    const withBalance = data.accounts.map((a) => ({
+      account: a,
+      balance: currentAccountBalance(a, data.accountBalances, movements),
+    }));
+    const assets = withBalance.filter((r) => !r.account.isLiability);
+    const source = assets.length > 0 ? assets : withBalance;
+    return [...source].sort((x, y) => y.balance - x.balance).slice(0, 3);
+  }, [data.accounts, data.accountBalances, movements]);
+
+  const hasAssetAccount = data.accounts.some((a) => !a.isLiability);
+  // The headline answers "how much money do I have"; net worth is the hero's
+  // job, one card up, and repeating it here only ever showed the mortgage.
+  const headline = hasAssetAccount ? totals.assets : -totals.liabilities;
 
   return (
-    <Card>
+    <Card data-tour="area-accounts">
       <AreaHead
         href="/accounts"
         label={t("nav.accounts")}
-        value={data.accounts.length > 0 ? formatCurrency(totals.net, currency) : undefined}
-        valueClassName={totals.net < 0 ? "text-red-600 dark:text-red-400" : ""}
+        value={data.accounts.length > 0 ? formatCurrency(headline, currency) : undefined}
+        valueClassName={headline < 0 ? "text-red-600 dark:text-red-400" : ""}
       />
       {data.accounts.length === 0 ? (
         <EmptyState
@@ -134,6 +141,14 @@ function AccountsCard() {
               </span>
             </li>
           ))}
+          {hasAssetAccount && totals.liabilities !== 0 && (
+            <li className="flex items-baseline justify-between gap-3 border-t border-zinc-200 pt-1.5 text-sm dark:border-zinc-800">
+              <span className="text-zinc-500">{t("dash.area.liabilities")}</span>
+              <span className="shrink-0 tabular-nums text-red-600 dark:text-red-400" data-private="">
+                {formatCurrency(-totals.liabilities, currency)}
+              </span>
+            </li>
+          )}
         </ul>
       )}
     </Card>
