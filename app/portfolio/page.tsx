@@ -25,6 +25,7 @@ import { ExportMenu } from "@/components/dashboard/export-menu";
 import { ShareMenu } from "@/components/dashboard/share-menu";
 import { WatchlistCard } from "@/components/dashboard/watchlist-card";
 import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
+import { CashInterestDueCard } from "@/components/dashboard/cash-interest-due";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Button, PAGE_STACK, PageHeader } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
@@ -111,6 +112,9 @@ export default function PortfolioPage() {
         <>
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} investmentsOnly />
           <AssetTable timeframe={timeframe} />
+          {/* The nav's Depot count includes these, so the task has to be
+              reachable from here and not only from the asset's own page. */}
+          <CashInterestDueCard />
           <SavingsPlansCard />
           <WatchlistCard />
         </>

@@ -149,6 +149,11 @@ interface PortfolioContextValue {
   /** Ids of the portfolios currently included in `data`. */
   selectedPortfolioIds: string[];
   setSelectedPortfolios(ids: string[]): void;
+  /** Accounts the /accounts page is scoped to; empty means every account.
+   *  Held here rather than on the page because the picker for it sits in the
+   *  header, exactly where the depot's picker sits. */
+  selectedAccountIds: string[];
+  setSelectedAccounts(ids: string[]): void;
   createPortfolio(name: string): Promise<Portfolio>;
   renamePortfolio(id: string, name: string): Promise<void>;
   updatePortfolio(id: string, patch: PortfolioPatch): Promise<void>;
@@ -164,6 +169,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [loadError, setLoadError] = useState(false);
   // null = all portfolios selected; otherwise the explicit selection.
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
+  const [selectedAccountIds, setSelectedAccounts] = useState<string[]>([]);
 
   // `createStore` is plain (called outside React) and can't read DB-backed
   // flags itself, so the `offline` flag is resolved here via the normal
@@ -939,6 +945,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     allTransactions: data.transactions,
     selectedPortfolioIds: activeIds,
     setSelectedPortfolios: setSelectedIds,
+    selectedAccountIds,
+    setSelectedAccounts,
     createPortfolio,
     renamePortfolio,
     updatePortfolio,

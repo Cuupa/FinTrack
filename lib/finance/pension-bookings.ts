@@ -1,13 +1,6 @@
-// Materialising a retirement policy's premium into spending transactions --
-// pure, no React, no lib/server imports.
-//
-// The same shape `contract-bookings.ts` gives a recurring charge, and it reuses
-// that module's occurrence arithmetic rather than restating it: a policy premium
-// is monthly by definition here (`monthlyContribution`), so there is no interval
-// to schedule, only a start date to count months from.
-//
-// Nothing is ever posted silently: this only says what is DUE. The review
-// dialog writes the transactions and advances `lastBookedDate` afterwards.
+// A retirement policy's premium as spending transactions -- pure, reusing
+// `contract-bookings.ts`'s occurrence arithmetic since a premium is monthly by
+// definition. This only says what is DUE; the review writes the rows.
 
 import type { PensionContract } from "../types";
 import { bookingOccurrenceAt, MAX_DUE_BOOKINGS } from "./contract-bookings";

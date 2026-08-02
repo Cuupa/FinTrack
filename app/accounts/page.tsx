@@ -38,15 +38,16 @@ import { ACCOUNTS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 
 export default function AccountsPage() {
   const { t } = useI18n();
-  const { loading, loadError, reload } = usePortfolio();
+  const { loading, loadError, reload, selectedAccountIds } = usePortfolio();
   const { enabled, locked } = useFeature("accounts");
   // The ledger keeps its own flag: merging the two surfaces must not hand a
   // user the bookings half that their plan or the flag never granted them.
   const spendingEnabled = useFeatureFlag("spending");
 
-  // Empty = every account. The picker is a multi-select, so the page's filter
-  // is a list all the way down rather than an id plus a sentinel.
-  const [accountIds, setAccountIds] = useState<string[]>([]);
+  // Empty = every account. The picker itself lives in the header next to the
+  // depot's, so the selection comes from the portfolio context rather than
+  // from this page's own state.
+  const accountIds = selectedAccountIds;
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [adding, setAdding] = useState(false);
@@ -90,7 +91,6 @@ export default function AccountsPage() {
         <>
           <AccountsHero
             accountIds={accountIds}
-            onAccounts={setAccountIds}
             timeframe={timeframe}
             onTimeframe={setTimeframe}
             scale={scale}

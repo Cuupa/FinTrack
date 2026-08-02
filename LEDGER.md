@@ -32,7 +32,7 @@ ansehen laesst.
 
 | Task | Prio | Status | Paths |
 | --- | --- | --- | --- |
-| — | — | — | — |
+| Sichere Vertragsraten + Store-Parität | 1 | läuft | `components/pension/pension-view.tsx`, `lib/store/local-store.ts`, `lib/store/supabase-store.ts`, `supabase/migrations/0122_pension_premium_idempotency.sql`, `supabase/schema.sql`, `tests/local-store.test.ts` |
 
 ## Offen (TODO.md)
 

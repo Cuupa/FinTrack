@@ -1345,8 +1345,12 @@ Moved out of CLAUDE.md, which keeps the route table and the binding rules.
   what recurs, and the sortable booking table with its category manager.
   `/spending` redirects here. The forecast and the planned income/expenses
   (flag `plannedCashflow`) live on `/cashflow`.
-  The hero's account picker is a **multi-select** and is the whole page's
-  filter: it scopes the figure, the curve, the highlighted rows and the ledger
+  The account picker is a **multi-select** and is the whole page's filter. It
+  sits in the HEADER, in the same slot the depot's `PortfolioPicker` occupies
+  on /portfolio (owner rule: the same job may not sit in the header on one page
+  and inside a card on the next), which is why the selection lives on
+  `PortfolioProvider` (`selectedAccountIds`) rather than in the page's state. It
+  scopes: it scopes the figure, the curve, the highlighted rows and the ledger
   together. An **empty selection means every account** — there is no "all"
   option in the list, because a sentinel would tick and untick like a real
   account while meaning the opposite of one. A transfer belongs to both

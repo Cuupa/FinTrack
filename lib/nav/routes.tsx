@@ -265,3 +265,10 @@ const PORTFOLIO_SCOPED = [
 export function scopesToPortfolio(pathname: string): boolean {
   return PORTFOLIO_SCOPED.some((prefix) => pathname.startsWith(prefix));
 }
+
+/** Where the header's account picker scopes something. Its slot is the depot
+ *  picker's slot: the same filter must not sit in the header on one page and
+ *  inside a card on the next. */
+export function scopesToAccounts(pathname: string): boolean {
+  return pathname.startsWith("/accounts");
+}

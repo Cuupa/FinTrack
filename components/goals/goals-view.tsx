@@ -278,14 +278,20 @@ function GoalForm({
                 { value: MANUAL_TRACKING, label: t("goals.form.manualTracking") },
                 // The depot has no account to link to (its value is derived
                 // from the transaction log), so it gets its own entries.
-                { value: DEPOT_ALL, label: t("goals.form.wholeDepot") },
+                {
+                  value: DEPOT_ALL,
+                  label: t("goals.form.wholeDepot"),
+                  group: t("goals.form.groupDepots"),
+                },
                 ...portfolios.map((p) => ({
                   value: `${DEPOT_PREFIX}${p.id}`,
-                  label: t("goals.form.brokerDepot", { name: p.name }),
+                  label: p.name,
+                  group: t("goals.form.groupDepots"),
                 })),
                 ...assets.map((a) => ({
                   value: `${ASSET_PREFIX}${a.id}`,
-                  label: t("goals.form.position", { name: a.name }),
+                  label: a.name,
+                  group: t("goals.form.groupPositions"),
                 })),
                 // Liabilities are marked, because linking one flips what the
                 // goal means: progress becomes what has been repaid, not the
@@ -293,6 +299,7 @@ function GoalForm({
                 ...accounts.map((a) => ({
                   value: a.id,
                   label: a.isLiability ? `${a.name} — ${t("goals.form.payOff")}` : a.name,
+                  group: t("goals.form.groupAccounts"),
                 })),
               ]}
             />

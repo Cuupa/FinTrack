@@ -9,7 +9,8 @@ import { PrivacyToggle } from "./privacy-toggle";
 import { ThemeToggle } from "./theme-toggle";
 import { ProfileMenu } from "./profile-menu";
 import { PortfolioPicker } from "./portfolio-picker";
-import { hidesNavigation, scopesToPortfolio } from "@/lib/nav/routes";
+import { AccountPicker } from "./account-picker";
+import { hidesNavigation, scopesToAccounts, scopesToPortfolio } from "@/lib/nav/routes";
 
 export function SiteNav() {
   const pathname = usePathname();
@@ -55,6 +56,8 @@ export function SiteNav() {
               /spending, /goals and friends it filtered nothing while implying
               the whole app lived inside a portfolio. */}
           {scopesToPortfolio(pathname) && <PortfolioPicker />}
+          {/* Same slot as the depot's picker, because it is the same job. */}
+          {scopesToAccounts(pathname) && <AccountPicker />}
           <ThemeToggle dataTour="theme-toggle" />
           <PrivacyToggle dataTour="privacy-toggle" />
           {mode === "registered" ? (

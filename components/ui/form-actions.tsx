@@ -1,19 +1,8 @@
 "use client";
 
-// The one place a form's buttons sit (owner rule): UNDER the fields, right
-// aligned, always the same distance from them.
-//
-// Before this they sat wherever each form had grown them -- inside the field
-// grid as a fake column, above the fields, left aligned in one dialog and right
-// aligned in the next. Every one of those buttons changes stored data, so
-// hunting for it in a different corner of each form is the one place a UI may
-// not surprise anyone.
-//
-// The error line rides along on the left: a form that failed to save must say
-// so next to the button that failed, not somewhere further up the page.
-//
-// Order inside: secondary/cancel first, the primary action last, so the action
-// that commits is nearest the edge the eye ends on.
+// The one place a form's buttons sit (owner rule): under the fields, right
+// aligned, cancel before the action that commits. The error line rides on the
+// left, so a failed save says so next to the button that failed.
 
 import type { ReactNode } from "react";
 

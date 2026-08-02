@@ -29,22 +29,19 @@ import { accountsTotals, accountsValueSeries } from "@/lib/finance/accounts";
 import { dateRange, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
-import { SelectMenu } from "@/components/ui/select-menu";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { canLogScale, PerformanceChart, type ChartScale } from "@/components/charts/performance-chart";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function AccountsHero({
   accountIds,
-  onAccounts,
   timeframe,
   onTimeframe,
   scale,
   onScale,
 }: {
-  /** Empty means every account. */
+  /** Empty means every account. The picker for it lives in the header. */
   accountIds: string[];
-  onAccounts: (ids: string[]) => void;
   timeframe: Timeframe;
   onTimeframe: (tf: Timeframe) => void;
   scale: ChartScale;
@@ -87,10 +84,6 @@ export function AccountsHero({
 
   const change = series.length < 2 ? 0 : series[series.length - 1].value - series[0].value;
 
-  const options = useMemo(
-    () => data.accounts.map((a) => ({ value: a.id, label: a.name })),
-    [data.accounts],
-  );
 
   // "One account" is what turns the page into that account's statement, and it
   // is the selection length that decides it -- not whether a filter is set.
@@ -122,18 +115,6 @@ export function AccountsHero({
             {formatCurrency(totals.net, base)}
           </p>
         </div>
-        {/* The page's filter lives with the figure it scopes, exactly like the
-            depot's picker sits on its own hero. */}
-        <SelectMenu
-          multiple
-          className="w-full sm:w-64"
-          ariaLabel={t("accounts.hero.pick")}
-          value={accountIds}
-          onChange={onAccounts}
-          emptyLabel={t("accounts.hero.all")}
-          searchable={data.accounts.length > 8}
-          options={options}
-        />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">

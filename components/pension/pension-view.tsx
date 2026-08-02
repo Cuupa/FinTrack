@@ -1084,14 +1084,27 @@ function ContractsCard() {
     [data.accounts],
   );
 
-  /** Transactions first, the marker second: replaying a booking that already
-   *  exists would double-charge, while a failure in between only leaves the
-   *  premium looking due again. */
+  // A booked-through date can only represent a continuous run. Toggling one
+  // date therefore also toggles the later/earlier dates of that same policy.
+  function togglePremium(contractId: string, date: string, checked: boolean) {
+    const dates = due.filter((d) => d.contractId === contractId).map((d) => d.date);
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        for (const dueDate of dates) if (dueDate >= date) next.add(`${contractId}:${dueDate}`);
+      } else {
+        for (const dueDate of dates) if (dueDate <= date) next.delete(`${contractId}:${dueDate}`);
+      }
+      return next;
+    });
+  }
+
+  /** Each store makes the row and its booked-through cursor one operation, so
+   *  an interrupted review can be retried without duplicating a premium. */
   async function bookSelected() {
     setBooking(true);
     setBookError(null);
     try {
-      const newest = new Map<string, string>();
       for (const d of selectedDue) {
         await addSpendingTransaction({
           accountId: d.accountId,
@@ -1104,11 +1117,8 @@ function ContractsCard() {
           // A premium buys an entitlement: a transfer, never consumption.
           pensionContractId: d.contractId,
         });
-        const prev = newest.get(d.contractId);
-        if (!prev || d.date > prev) newest.set(d.contractId, d.date);
-      }
-      for (const [id, lastBookedDate] of newest) {
-        await updatePensionContract(id, { lastBookedDate });
+        // Keeps the in-memory data in step with the atomic store operation.
+        await updatePensionContract(d.contractId, { lastBookedDate: d.date });
       }
       setExcluded(new Set());
     } catch (err) {
@@ -1265,14 +1275,7 @@ function ContractsCard() {
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() =>
-                        setExcluded((prev) => {
-                          const next = new Set(prev);
-                          if (checked) next.add(key);
-                          else next.delete(key);
-                          return next;
-                        })
-                      }
+                      onChange={() => togglePremium(d.contractId, d.date, checked)}
                       className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
                     />
                     <span className={checked ? "" : "text-zinc-400 line-through"} data-private>
