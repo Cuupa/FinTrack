@@ -796,6 +796,10 @@ alter table public.contracts
   add column if not exists account_id uuid references public.accounts (id) on delete set null;
 alter table public.contracts
   add column if not exists booking_start_date date;
+-- Pause (migration 0118): a suspended contract books nothing, like a paused
+-- savings plan -- deleting it was the only way to stop it before.
+alter table public.contracts
+  add column if not exists active boolean not null default true;
 -- Month-end schedule (migration 0113): pins every booking to the last day of
 -- its month, which the day-of-month clamp cannot express. Stored rather than
 -- read off the start date -- "the 30th" and "the last day" are different
@@ -855,6 +859,9 @@ create table if not exists public.planned_cashflows (
 -- Month-end schedule (migration 0113); see the note on contracts.month_end.
 alter table public.planned_cashflows
   add column if not exists month_end boolean not null default false;
+-- Pause (migration 0118): a suspended plan accrues no new occurrences.
+alter table public.planned_cashflows
+  add column if not exists active boolean not null default true;
 alter table public.planned_cashflows
   drop constraint if exists planned_cashflows_interval_check;
 alter table public.planned_cashflows

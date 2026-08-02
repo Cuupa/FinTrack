@@ -84,6 +84,7 @@ export function plannedOccurrences(
  * anything.
  */
 export function nextPlannedOccurrence(plan: PlannedCashflow, today: string): string | null {
+  if (plan.active === false) return null;
   const floor = plan.lastBookedDate && plan.lastBookedDate > today ? plan.lastBookedDate : today;
   for (let k = 0; k < 1000; k++) {
     const date = plannedOccurrenceAt(plan, k);
@@ -124,6 +125,7 @@ export interface PendingPlannedBooking {
  * `startDate` when it has never booked), up to and including `today`.
  */
 export function duePlannedDates(plan: PlannedCashflow, today: string): string[] {
+  if (plan.active === false) return [];
   const out: string[] = [];
   for (let k = 0; out.length < MAX_DUE_PLANNED; k++) {
     const date = plannedOccurrenceAt(plan, k);

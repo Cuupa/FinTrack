@@ -54,7 +54,12 @@ export function bookingOccurrenceAt(
 }
 
 /** Whether this contract posts bookings at all. */
-export function booksSpending(contract: Pick<Contract, "accountId" | "bookingStartDate">): boolean {
+export function booksSpending(
+  contract: Pick<Contract, "accountId" | "bookingStartDate" | "active">,
+): boolean {
+  // `active === false` is the only pause: a row stored before the field
+  // existed carries no value and keeps booking.
+  if (contract.active === false) return false;
   return Boolean(contract.accountId && contract.bookingStartDate);
 }
 

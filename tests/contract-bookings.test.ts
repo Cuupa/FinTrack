@@ -184,3 +184,26 @@ describe("pendingBookings", () => {
     expect(pendingBookings([contract({ accountId: null })], "2024-06-01")).toEqual([]);
   });
 });
+
+describe("pausing a contract", () => {
+  it("stops due bookings and the next date, without touching what was booked", () => {
+    const paused = contract({ active: false, lastBookedDate: "2024-02-15" });
+    expect(booksSpending(paused)).toBe(false);
+    expect(dueBookings(paused, "2024-06-01")).toEqual([]);
+    expect(nextBooking(paused, "2024-06-01")).toBeNull();
+    expect(pendingBookings([paused], "2024-06-01")).toEqual([]);
+  });
+
+  it("keeps booking a row stored before pausing existed", () => {
+    // `active` is absent, not false: every contract written before migration
+    // 0118 has to keep running.
+    const legacy = contract();
+    expect(booksSpending(legacy)).toBe(true);
+    expect(dueBookings(legacy, "2024-03-01")).toEqual(["2024-01-15", "2024-02-15"]);
+  });
+
+  it("resumes from today, not from the whole paused stretch", () => {
+    const resumed = contract({ active: true, lastBookedDate: "2024-02-15" });
+    expect(nextBooking(resumed, "2024-06-01")).toBe("2024-06-15");
+  });
+});

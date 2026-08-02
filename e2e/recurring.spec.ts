@@ -135,3 +135,29 @@ test("the retired /contracts route is gone", async ({ page }) => {
   const res = await page.goto("/contracts");
   expect(res?.status()).toBe(404);
 });
+
+test("pausing a recurring entry stops its due bookings until it is resumed", async ({ page }) => {
+  await seedAccount(page);
+  await page.goto("/spending");
+  await dismissTour(page);
+  const card = page.locator('[data-tour="recurring-card"]');
+
+  // Backdated, so it is already due and the review list has something in it.
+  await addRecurring(page, "Gym", "30", "2024-01-15");
+  const row = card.locator("tbody tr").filter({ hasText: "Gym" }).first();
+  await expect(card.getByRole("heading", { name: /^Due/ })).toBeVisible();
+
+  await row.getByRole("button", { name: "Pause" }).click({ force: true });
+  await expect(row).toContainText("paused");
+  await expect(card.getByRole("heading", { name: /^Due/ })).toHaveCount(0);
+
+  // Survives a reload: the pause is stored, not just view state.
+  await page.reload();
+  await dismissTour(page);
+  const after = page.locator('[data-tour="recurring-card"] tbody tr').filter({ hasText: "Gym" }).first();
+  await expect(after).toContainText("paused");
+
+  await after.getByRole("button", { name: "Resume" }).click({ force: true });
+  await expect(after).not.toContainText("paused");
+  await expect(page.locator('[data-tour="recurring-card"]').getByRole("heading", { name: /^Due/ })).toBeVisible();
+});

@@ -46,7 +46,7 @@ import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
-import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
+import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "name" | "amount" | "target" | "interval" | "next";
 
@@ -62,6 +62,9 @@ interface RecurringRow {
   /** Next due date, or null when it never books (a register-only contract). */
   next: string | null;
   accountName: string | null;
+  /** Paused rows accrue no occurrences; the list mutes them and says so where
+   *  the next date would be. */
+  active: boolean;
   /**
    * Where the money ends up: the name of the user's own account it is moved
    * to, or null when it is simply consumed (an expense) or credited (income).
@@ -138,6 +141,7 @@ export function RecurringCard() {
         currency: base,
         intervalLabel: intervalLabel(c.interval),
         next: nextContractBooking(c, todayIso),
+        active: c.active !== false,
         accountName: c.accountId ? (accountsById.get(c.accountId)?.name ?? null) : null,
         targetName: c.targetAccountId
           ? (accountsById.get(c.targetAccountId)?.name ?? null)
@@ -153,6 +157,7 @@ export function RecurringCard() {
         currency: accountsById.get(p.accountId)?.currency || base,
         intervalLabel: intervalLabel(p.interval),
         next: nextPlannedOccurrence(p, todayIso),
+        active: p.active !== false,
         accountName: accountsById.get(p.accountId)?.name ?? null,
         targetName: p.transferAccountId
           ? (accountsById.get(p.transferAccountId)?.name ?? null)
@@ -269,6 +274,18 @@ export function RecurringCard() {
         c.transactionIds.map((id) => updateSpendingTransaction(id, { recurringId: contract.id })),
       );
       setDismissed((d) => new Set(d).add(candidateKey(c)));
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    }
+  }
+
+  /** Pause/resume. Same act on both entities, so the row does not have to say
+   *  which table it came from -- the whole point of merging the two lists. */
+  async function togglePaused(row: RecurringRow) {
+    setError(null);
+    try {
+      if (row.kind === "contract") await updateContract(row.id, { active: !row.active });
+      else await updatePlannedCashflow(row.id, { active: !row.active });
     } catch (err) {
       setError(saveFailed(err, t("contracts.form.error")));
     }
@@ -439,7 +456,10 @@ export function RecurringCard() {
             <Tbody>
               {pager.rows.map((r) => (
                 <Tr key={`${r.kind}:${r.id}`}>
-                  <Td className="font-medium" data-private>
+                  <Td
+                    className={`font-medium ${r.active ? "" : "text-zinc-400 dark:text-zinc-500"}`}
+                    data-private
+                  >
                     {/* Click through to the entry's own page: what it is plus
                         every booking it has produced. */}
                     <Link href={`/recurring/${r.kind}/${r.id}`} className="hover:underline">
@@ -466,13 +486,22 @@ export function RecurringCard() {
                   </Td>
                   <Td className="text-zinc-500">{r.intervalLabel}</Td>
                   <Td className="text-zinc-500">
-                    {r.next ? formatDate(r.next) : t("recurring.noNext")}
+                    {!r.active
+                      ? t("sp.paused")
+                      : r.next
+                        ? formatDate(r.next)
+                        : t("recurring.noNext")}
                   </Td>
                   {/* Edit opens the row's own page straight in its editor, so
                       the change-scope question sits next to the bookings it
                       would rewrite instead of being asked twice in two places. */}
                   <Td>
                     <RowActions>
+                      <PauseAction
+                        label={r.active ? t("sp.pause") : t("sp.resume")}
+                        paused={!r.active}
+                        onClick={() => void togglePaused(r)}
+                      />
                       <EditAction
                         label={t("contracts.list.edit")}
                         onClick={() => router.push(`/recurring/${r.kind}/${r.id}?edit=1`)}

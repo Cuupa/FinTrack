@@ -323,6 +323,7 @@ interface ContractRow {
   month_end?: boolean | null;
   last_booked_date?: string | null;
   target_account_id?: string | null;
+  active?: boolean | null;
 }
 
 function contractFromRow(r: ContractRow): Contract {
@@ -341,6 +342,7 @@ function contractFromRow(r: ContractRow): Contract {
     monthEnd: r.month_end ?? false,
     lastBookedDate: r.last_booked_date ?? null,
     targetAccountId: r.target_account_id ?? null,
+    active: r.active ?? true,
   };
 }
 
@@ -357,6 +359,7 @@ interface PlannedCashflowRow {
   last_booked_date: string | null;
   transfer_account_id: string | null;
   note: string | null;
+  active?: boolean | null;
 }
 
 function plannedCashflowFromRow(r: PlannedCashflowRow): PlannedCashflow {
@@ -373,6 +376,7 @@ function plannedCashflowFromRow(r: PlannedCashflowRow): PlannedCashflow {
     lastBookedDate: r.last_booked_date,
     transferAccountId: r.transfer_account_id,
     note: r.note,
+    active: r.active ?? true,
   };
 }
 
@@ -604,7 +608,7 @@ export class SupabaseStore implements DataStore {
           "booking_start_date",
           "last_booked_date",
         ],
-        ["month_end", "target_account_id"],
+        ["month_end", "target_account_id", "active"],
       ),
       selectTolerant<PlannedCashflowRow[]>(
         (cols) =>
@@ -622,7 +626,7 @@ export class SupabaseStore implements DataStore {
           "transfer_account_id",
           "note",
         ],
-        ["month_end"],
+        ["month_end", "active"],
       ),
       selectTolerant<GoalRow[]>(
         (cols) => this.supabase.from("goals").select(cols).order("created_at", { ascending: true }),
@@ -1653,6 +1657,7 @@ export class SupabaseStore implements DataStore {
         month_end: input.monthEnd ?? false,
         last_booked_date: input.lastBookedDate ?? null,
         target_account_id: input.targetAccountId ?? null,
+        active: input.active ?? true,
       })
       .select("id")
       .single();
@@ -1677,6 +1682,7 @@ export class SupabaseStore implements DataStore {
     if (patch.monthEnd !== undefined) upd.month_end = patch.monthEnd;
     if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
     if (patch.targetAccountId !== undefined) upd.target_account_id = patch.targetAccountId;
+    if (patch.active !== undefined) upd.active = patch.active;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's contract too.
     const { data, error } = await this.supabase
@@ -1714,6 +1720,7 @@ export class SupabaseStore implements DataStore {
         last_booked_date: input.lastBookedDate,
         transfer_account_id: input.transferAccountId,
         note: input.note,
+        active: input.active ?? true,
       })
       .select("id")
       .single();
@@ -1737,6 +1744,7 @@ export class SupabaseStore implements DataStore {
     if (patch.lastBookedDate !== undefined) upd.last_booked_date = patch.lastBookedDate;
     if (patch.transferAccountId !== undefined) upd.transfer_account_id = patch.transferAccountId;
     if (patch.note !== undefined) upd.note = patch.note;
+    if (patch.active !== undefined) upd.active = patch.active;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's row too.
     const { data, error } = await this.supabase

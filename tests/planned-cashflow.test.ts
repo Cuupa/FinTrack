@@ -365,3 +365,18 @@ describe("plannedMonthlyTotals", () => {
     expect(totals.income).toBeCloseTo(900, 6);
   });
 });
+
+describe("pausing a planned cashflow", () => {
+  it("stops due dates and the next occurrence", () => {
+    const paused = plan({ active: false, startDate: "2024-01-31", lastBookedDate: null });
+    expect(duePlannedDates(paused, "2024-06-01")).toEqual([]);
+    expect(nextPlannedOccurrence(paused, "2024-06-01")).toBeNull();
+    expect(duePlannedBookings([paused], "2024-06-01")).toEqual([]);
+  });
+
+  it("keeps running for a row stored before pausing existed", () => {
+    // `active` absent, not false: rows written before migration 0118 keep going.
+    const legacy = plan({ startDate: "2024-01-31", lastBookedDate: null });
+    expect(duePlannedDates(legacy, "2024-03-01").length).toBeGreaterThan(0);
+  });
+});

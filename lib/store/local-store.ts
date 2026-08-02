@@ -136,9 +136,13 @@ export class LocalStore implements DataStore {
         // Backfill blobs saved before budgets existed.
         budgets: parsed.budgets ?? [],
         // Backfill blobs saved before contracts existed.
-        contracts: parsed.contracts ?? [],
+        // Backfill entries stored before they could be paused.
+        contracts: (parsed.contracts ?? []).map((c) => ({ ...c, active: c.active ?? true })),
         // Backfill blobs saved before planned cashflows existed.
-        plannedCashflows: parsed.plannedCashflows ?? [],
+        plannedCashflows: (parsed.plannedCashflows ?? []).map((p) => ({
+          ...p,
+          active: p.active ?? true,
+        })),
         // Backfill blobs saved before goals existed; the per-goal backfill
         // covers blobs written before goals could track the depot or carry
         // sub-goals.

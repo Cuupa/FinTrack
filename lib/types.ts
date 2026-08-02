@@ -512,6 +512,10 @@ export interface Contract {
   /** Pins every booking to the last day of its month; see
    *  `PlannedCashflow.monthEnd` for why this is stored rather than inferred. */
   monthEnd?: boolean;
+  /** Paused entries accrue no new occurrences, exactly like a paused
+   *  {@link SavingsPlan}. Optional: rows stored before pausing existed carry
+   *  no value and read as active. */
+  active?: boolean;
   /** Last date a booking was actually posted, or null if none yet. Advanced
    *  only after the user confirms the due bookings, mirroring
    *  `SavingsPlan.lastRunDate`. */
@@ -612,6 +616,10 @@ export interface PlannedCashflow {
   /** YYYY-MM-DD of the last occurrence (inclusive), or null for open-ended.
    *  Fixed-term income like parental allowance ends after twelve payments. */
   endDate: string | null;
+  /** Paused plans accrue no new occurrences, like `Contract.active` and
+   *  {@link SavingsPlan.active}. Optional: rows stored before pausing existed
+   *  carry no value and read as active. */
+  active?: boolean;
   /** Last date actually booked into the ledger, or null if none yet. Advanced
    *  only after the user confirms the due bookings, like `Contract.lastBookedDate`. */
   lastBookedDate: string | null;
