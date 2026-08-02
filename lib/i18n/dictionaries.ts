@@ -901,7 +901,6 @@ export const en = {
   "accounts.totals.assets": "Total assets",
   "accounts.totals.liabilities": "Total liabilities",
   "accounts.totals.net": "Net",
-  "accounts.totals.partOfNetWorth": "This net figure counts toward your",
   "accounts.hero.all": "All accounts",
   "accounts.hero.allScope": "Net across all accounts",
   "accounts.hero.someScope": "Net across the selected accounts",
@@ -1457,6 +1456,17 @@ export const en = {
   "pension.contracts.kind": "Type",
   "pension.contracts.provider": "Provider",
   "pension.contracts.expected": "Expected / month",
+  "pension.contracts.rentenfaktor": "Rentenfaktor (per 10,000)",
+  "pension.contracts.rentenfaktorHint":
+    "Monthly pension per 10,000 of capital, as stated on your policy. With it the payout is calculated instead of guessed.",
+  "pension.contracts.dynamic": "Contribution increase (% p.a.)",
+  "pension.contracts.dynamicHint": "Dynamik: how much the premium rises every year.",
+  "pension.contracts.returnPct": "Assumed return (% p.a.)",
+  "pension.contracts.returnHint": "Growth of the capital until the payout starts. Blank assumes none.",
+  "pension.contracts.derivedNote":
+    "In {years} years the policy holds about {capital}, which at this Rentenfaktor pays {monthly} per month.",
+  "pension.contracts.derivedNoteNow":
+    "The policy holds {capital} today, which at this Rentenfaktor pays {monthly} per month. Set a payout date or your birth year to project it forward.",
   "pension.contracts.contribution": "Contribution / month",
   "pension.contracts.currentValue": "Current value",
   "pension.contracts.startsOn": "Payout starts",
@@ -3208,9 +3218,6 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.totals.assets": "Vermögen gesamt",
   "accounts.totals.liabilities": "Verbindlichkeiten gesamt",
   "accounts.totals.net": "Netto",
-  // Phrased with a dative so the linked term stays the plain "Nettovermögen"
-  // ("Teil deines Nettovermögen" would need a genitive -s on the link text).
-  "accounts.totals.partOfNetWorth": "Dieser Netto-Wert zählt zu deinem",
   "accounts.hero.all": "Alle Konten",
   "accounts.hero.allScope": "Netto über alle Konten",
   "accounts.hero.someScope": "Netto über die ausgewählten Konten",
@@ -3772,6 +3779,17 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.contracts.kind": "Art",
   "pension.contracts.provider": "Anbieter",
   "pension.contracts.expected": "Erwartet / Monat",
+  "pension.contracts.rentenfaktor": "Rentenfaktor (je 10.000)",
+  "pension.contracts.rentenfaktorHint":
+    "Monatliche Rente je 10.000 Kapital, wie sie in deinem Vertrag steht. Damit wird die Rente gerechnet statt geschätzt.",
+  "pension.contracts.dynamic": "Beitragsdynamik (% p. a.)",
+  "pension.contracts.dynamicHint": "Um wie viel dein Beitrag jedes Jahr steigt.",
+  "pension.contracts.returnPct": "Angenommene Rendite (% p. a.)",
+  "pension.contracts.returnHint": "Wachstum des Kapitals bis zum Rentenbeginn. Leer heißt: kein Wachstum.",
+  "pension.contracts.derivedNote":
+    "In {years} Jahren stehen rund {capital} im Vertrag, das ergibt mit diesem Rentenfaktor {monthly} pro Monat.",
+  "pension.contracts.derivedNoteNow":
+    "Heute stehen {capital} im Vertrag, das ergibt mit diesem Rentenfaktor {monthly} pro Monat. Trag ein Auszahlungsdatum oder dein Geburtsjahr ein, dann rechnen wir hoch.",
   "pension.contracts.contribution": "Beitrag / Monat",
   "pension.contracts.currentValue": "Aktueller Wert",
   "pension.contracts.startsOn": "Auszahlung ab",
@@ -5522,7 +5540,6 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.totals.assets": "Activos totales",
   "accounts.totals.liabilities": "Pasivos totales",
   "accounts.totals.net": "Neto",
-  "accounts.totals.partOfNetWorth": "Esta cifra neta cuenta para tu",
   "accounts.hero.all": "Todas las cuentas",
   "accounts.hero.allScope": "Neto de todas las cuentas",
   "accounts.hero.someScope": "Neto de las cuentas seleccionadas",
@@ -6082,6 +6099,17 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.contracts.kind": "Tipo",
   "pension.contracts.provider": "Proveedor",
   "pension.contracts.expected": "Esperado / mes",
+  "pension.contracts.rentenfaktor": "Factor de renta (por 10.000)",
+  "pension.contracts.rentenfaktorHint":
+    "Renta mensual por cada 10.000 de capital, tal como figura en tu póliza. Con él la renta se calcula en vez de estimarse.",
+  "pension.contracts.dynamic": "Incremento de la prima (% anual)",
+  "pension.contracts.dynamicHint": "Cuánto sube tu prima cada año.",
+  "pension.contracts.returnPct": "Rentabilidad supuesta (% anual)",
+  "pension.contracts.returnHint": "Crecimiento del capital hasta el inicio del cobro. En blanco: sin crecimiento.",
+  "pension.contracts.derivedNote":
+    "En {years} años la póliza acumula unos {capital}, lo que con este factor de renta paga {monthly} al mes.",
+  "pension.contracts.derivedNoteNow":
+    "Hoy la póliza acumula {capital}, lo que con este factor de renta paga {monthly} al mes. Indica una fecha de cobro o tu año de nacimiento para proyectarla.",
   "pension.contracts.contribution": "Aportación / mes",
   "pension.contracts.currentValue": "Valor actual",
   "pension.contracts.startsOn": "Inicio del pago",
