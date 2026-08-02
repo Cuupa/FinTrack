@@ -253,7 +253,8 @@ export function RecurringForm({
             { value: "", label: t("contracts.list.noCategory") },
             ...categories.map((c) => ({
               value: c.id,
-              label: `${c.groupName} · ${c.name}`,
+              label: c.name,
+              group: c.groupName,
             })),
           ]}
         />

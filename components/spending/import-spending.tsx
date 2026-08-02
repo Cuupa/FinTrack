@@ -310,7 +310,8 @@ export function ImportSpending({ onDone }: { onDone?: () => void }) {
                           { value: "", label: t("spending.form.categoryNone") },
                           ...data.spendingCategories.map((c) => ({
                             value: c.id,
-                            label: `${c.groupName} · ${c.name}`,
+                            label: c.name,
+              group: c.groupName,
                           })),
                         ]}
                       />

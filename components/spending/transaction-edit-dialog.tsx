@@ -203,7 +203,7 @@ function EditForm({
             searchable
             options={[
               { value: "", label: t("spending.form.categoryNone") },
-              ...categories.map((c) => ({ value: c.id, label: `${c.groupName} · ${c.name}` })),
+              ...categories.map((c) => ({ value: c.id, label: c.name, group: c.groupName })),
             ]}
           />
         </div>

@@ -201,7 +201,8 @@ export function PlannedForm({
               { value: "", label: t("spending.planned.categoryNone") },
               ...data.spendingCategories.map((c) => ({
                 value: c.id,
-                label: `${c.groupName} · ${c.name}`,
+                label: c.name,
+              group: c.groupName,
               })),
             ]}
           />

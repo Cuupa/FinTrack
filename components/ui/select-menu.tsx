@@ -20,15 +20,27 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 export interface SelectOption {
   value: string;
   label: string;
+  /**
+   * Heading this option belongs under. Options carrying one render in labelled
+   * sections instead of a flat list of "Group - Name" rows, which repeats the
+   * group on every line and still leaves the eye to find where one ends.
+   */
+  group?: string;
   /** Hidden search terms (e.g. ISIN/WKN/symbol) matched by `searchable` filtering, never rendered. */
   keywords?: string[];
 }
+
+/** Above this many options a select offers a search box on its own. Below it a
+ *  filter over three rows is noise. */
+const SEARCH_THRESHOLD = 7;
 
 type SelectMenuBase = {
   options: SelectOption[];
   className?: string;
   ariaLabel?: string;
   footer?: (close: () => void) => ReactNode;
+  /** Forces the search box on below {@link SEARCH_THRESHOLD} options; above it
+   *  the box appears on its own, so every long list is searchable. */
   searchable?: boolean;
 };
 
@@ -47,7 +59,8 @@ type MultiSelectProps = SelectMenuBase & {
 };
 
 export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
-  const { options, className = "", ariaLabel, footer, searchable = false } = props;
+  const { options, className = "", ariaLabel, footer } = props;
+  const searchable = props.searchable || options.length > SEARCH_THRESHOLD;
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -99,6 +112,20 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
         })
       : options;
 
+  /** The filtered options in render order, split into the sections their
+   *  `group` declares. Ungrouped options keep a null heading and render flat,
+   *  so a list that never sets `group` looks exactly as it did. */
+  const sections = (() => {
+    const out: { group: string | null; options: SelectOption[] }[] = [];
+    for (const o of filtered) {
+      const group = o.group ?? null;
+      const last = out[out.length - 1];
+      if (last && last.group === group) last.options.push(o);
+      else out.push({ group, options: [o] });
+    }
+    return out;
+  })();
+
   function toggleOpen() {
     setOpen((v) => {
       const next = !v;
@@ -122,7 +149,11 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 z-30 mt-2 w-full min-w-[10rem] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        // Wider than the trigger when the options need it: the button is
+        // narrow by layout, but "Girokonto Hanseatic Bank Gemeinschaftskonto"
+        // clipped to "Girokonto Hanseatic Bank Ge..." in the list is a name
+        // nobody can pick between two similar accounts by.
+        <div className="absolute left-0 z-30 mt-2 w-max min-w-full max-w-[min(36rem,90vw)] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {searchable && (
             <div className="border-b border-zinc-100 p-1.5 dark:border-zinc-800">
               <input
@@ -167,34 +198,68 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
             {filtered.length === 0 ? (
               <li className="px-3 py-1.5 text-sm text-zinc-400">{t("select.noResults")}</li>
             ) : (
-              filtered.map((o) => {
-                const on = isOn(o.value);
-                return (
-                  <li key={o.value}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={on}
-                      onClick={() => pick(o.value)}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              sections.map((section, si) => (
+                <li key={section.group ?? `_${si}`}>
+                  {section.group && (
+                    // presentation: a listbox may only contain options, and a
+                    // heading is not one -- it cannot be selected.
+                    <div
+                      role="presentation"
+                      className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500"
                     >
-                      {/* Decorative: the tick renders for every option and is
-                          merely turned transparent when unselected, so without
-                          this it would read into EVERY option's accessible
-                          name. `aria-selected` above carries the real state. */}
-                      <span
-                        aria-hidden="true"
-                        className={`flex h-4 w-4 shrink-0 items-center justify-center text-[10px] ${
-                          on ? "text-emerald-500" : "text-transparent"
-                        }`}
-                      >
-                        ✓
-                      </span>
-                      <span className="truncate">{o.label}</span>
-                    </button>
-                  </li>
-                );
-              })
+                      {section.group}
+                    </div>
+                  )}
+                  <ul>
+                    {section.options.map((o) => {
+                      const on = isOn(o.value);
+                      return (
+                        <li key={o.value}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={on}
+                            onClick={() => pick(o.value)}
+                            className={`flex w-full items-center gap-2 py-1.5 pr-3 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                              section.group ? "pl-5" : "pl-3"
+                            }`}
+                          >
+                            {/* Decorative: the mark renders for every option and
+                                is merely emptied when unselected, so without it
+                                the tick would read into EVERY option's
+                                accessible name -- `aria-selected` carries the
+                                real state. Multi mode draws the same square as
+                                the header portfolio picker; the two controls
+                                used to differ on this alone. */}
+                            {props.multiple ? (
+                              <span
+                                aria-hidden="true"
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                                  on
+                                    ? "border-emerald-500 bg-emerald-500 text-white"
+                                    : "border-zinc-300 dark:border-zinc-600"
+                                }`}
+                              >
+                                {on ? "✓" : ""}
+                              </span>
+                            ) : (
+                              <span
+                                aria-hidden="true"
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center text-[10px] ${
+                                  on ? "text-emerald-500" : "text-transparent"
+                                }`}
+                              >
+                                ✓
+                              </span>
+                            )}
+                            <span className="truncate">{o.label}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))
             )}
           </ul>
           {footer && (

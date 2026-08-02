@@ -26,6 +26,7 @@ export function PortfolioPicker() {
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
+  const [query, setQuery] = useState("");
   // Deleting cascades to the portfolio's transactions + solely-held assets,
   // so it always goes through a confirmation dialog first.
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
@@ -47,6 +48,7 @@ export function PortfolioPicker() {
         setOpen(false);
         setAdding(false);
         setRenaming(null);
+        setQuery("");
       }
     };
     document.addEventListener("mousedown", onClick);
@@ -54,6 +56,9 @@ export function PortfolioPicker() {
   }, [open]);
 
   if (portfolios.length === 0) return null;
+
+  const q = query.trim().toLowerCase();
+  const visible = q ? portfolios.filter((p) => p.name.toLowerCase().includes(q)) : portfolios;
 
   const allSelected = selectedPortfolioIds.length === portfolios.length;
   const summary = allSelected
@@ -113,8 +118,29 @@ export function PortfolioPicker() {
             </button>
           </div>
 
+          {/* Same search box as every other select in the app: `SelectMenu`
+              offers one above seven options, and this list is the one place a
+              second dropdown implementation still exists (it carries per-row
+              rename/delete, which an option list has no room for). */}
+          {portfolios.length > 7 && (
+            <div className="border-b border-zinc-100 p-1.5 dark:border-zinc-800">
+              <input
+                type="text"
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setOpen(false);
+                }}
+                placeholder={t("select.search")}
+                aria-label={t("select.search")}
+                className="w-full rounded-sm border border-zinc-300 px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          )}
+
           <ul className="max-h-72 overflow-y-auto py-1">
-            {portfolios.map((p) => {
+            {visible.map((p) => {
               const on = selectedPortfolioIds.includes(p.id);
               return (
                 <li key={p.id} className="group flex items-center gap-2 px-2 py-1">

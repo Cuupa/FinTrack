@@ -222,7 +222,8 @@ function BudgetsCardInner() {
                 searchable
                 options={availableCategories.map((c) => ({
                   value: c.id,
-                  label: `${c.groupName} · ${c.name}`,
+                  label: c.name,
+              group: c.groupName,
                 }))}
               />
             </div>
