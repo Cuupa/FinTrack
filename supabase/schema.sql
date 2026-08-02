@@ -607,7 +607,15 @@ create table if not exists public.pension_contracts (
   provider text,
   monthly_contribution numeric,
   current_value numeric,
+  -- Used when the policy states no Rentenfaktor; otherwise the payout is
+  -- derived from the capital (migration 0119).
   expected_monthly_pension numeric,
+  -- Monthly pension per 10.000 of capital at the start of the payout.
+  rentenfaktor numeric,
+  -- Beitragsdynamik: annual premium increase, percent.
+  contribution_dynamic_pct numeric,
+  -- Assumed annual return on the capital until the payout starts, percent.
+  expected_return_pct numeric,
   starts_on date,
   note text,
   created_at timestamptz not null default now()

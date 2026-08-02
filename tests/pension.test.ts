@@ -8,6 +8,7 @@ import {
   pensionLevelOn,
   pointsTrend,
   pensionValueOn,
+  projectContract,
   projectPension,
   standardRetirementAge,
   totalPensionPoints,
@@ -37,6 +38,9 @@ function contract(over: Partial<PensionContract> = {}): PensionContract {
     monthlyContribution: null,
     currentValue: null,
     expectedMonthlyPension: null,
+    rentenfaktor: null,
+    contributionDynamicPct: null,
+    expectedReturnPct: null,
     startsOn: null,
     note: null,
     ...over,
@@ -162,6 +166,61 @@ describe("accessFactor", () => {
 
   it("never goes negative", () => {
     expect(accessFactor(20, 67)).toBe(0);
+  });
+});
+
+describe("projectContract", () => {
+  it("derives the payout from the capital and the Rentenfaktor", () => {
+    // No premiums, no growth: 100.000 at a factor of 30 is 300 a month.
+    const p = projectContract(
+      contract({ currentValue: 100000, rentenfaktor: 30, startsOn: "2040-01-01" }),
+      2026,
+      null,
+    );
+    expect(p.derived).toBe(true);
+    expect(p.capital).toBeCloseTo(100000, 6);
+    expect(p.monthly).toBeCloseTo(300, 6);
+  });
+
+  it("keeps the typed payout when the policy states no Rentenfaktor", () => {
+    const p = projectContract(
+      contract({ expectedMonthlyPension: 200, currentValue: 50000 }),
+      2026,
+      2040,
+    );
+    expect(p.derived).toBe(false);
+    expect(p.monthly).toBe(200);
+  });
+
+  it("raises the premium every year by the Dynamik", () => {
+    // Two years of premiums at 3% dynamic: 1200 + 1236.
+    const p = projectContract(
+      contract({ monthlyContribution: 100, contributionDynamicPct: 3 }),
+      2026,
+      2028,
+    );
+    expect(p.yearsToPayout).toBe(2);
+    expect(p.contributionsToCome).toBeCloseTo(1200 + 1236, 6);
+    expect(p.capital).toBeCloseTo(2436, 6);
+  });
+
+  it("grows the capital at the assumed return, premiums at half a year", () => {
+    const p = projectContract(
+      contract({ currentValue: 1000, monthlyContribution: 100, expectedReturnPct: 5 }),
+      2026,
+      2027,
+    );
+    // 1000 x 1.05 + 1200 x 1.025
+    expect(p.capital).toBeCloseTo(1050 + 1230, 6);
+  });
+
+  it("without a payout date falls back to the retirement year, and to no growth", () => {
+    const dated = projectContract(contract({ startsOn: "2036-06-01" }), 2026, 2040);
+    expect(dated.yearsToPayout).toBe(10);
+    const undated = projectContract(contract(), 2026, 2040);
+    expect(undated.yearsToPayout).toBe(14);
+    const unknown = projectContract(contract(), 2026, null);
+    expect(unknown.yearsToPayout).toBe(0);
   });
 });
 

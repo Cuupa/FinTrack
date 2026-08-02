@@ -1468,6 +1468,7 @@ export const en = {
   "pension.contracts.kind": "Type",
   "pension.contracts.provider": "Provider",
   "pension.contracts.expected": "Expected / month",
+  "pension.contracts.expectedHint": "Only needed without a Rentenfaktor. With one, the payout is calculated from your premium, the Dynamik and the return.",
   "pension.contracts.rentenfaktor": "Rentenfaktor (per 10,000)",
   "pension.contracts.rentenfaktorHint":
     "Monthly pension per 10,000 of capital, as stated on your policy. With it the payout is calculated instead of guessed.",
@@ -3784,6 +3785,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.contracts.kind": "Art",
   "pension.contracts.provider": "Anbieter",
   "pension.contracts.expected": "Erwartet / Monat",
+  "pension.contracts.expectedHint": "Nur nötig, wenn du keinen Rentenfaktor hast. Mit ihm wird die Rente aus Beitrag, Dynamik und Rendite gerechnet.",
   "pension.contracts.rentenfaktor": "Rentenfaktor (je 10.000)",
   "pension.contracts.rentenfaktorHint":
     "Monatliche Rente je 10.000 Kapital, wie sie in deinem Vertrag steht. Damit wird die Rente gerechnet statt geschätzt.",
@@ -6105,6 +6107,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.contracts.kind": "Tipo",
   "pension.contracts.provider": "Proveedor",
   "pension.contracts.expected": "Esperado / mes",
+  "pension.contracts.expectedHint": "Solo hace falta sin factor de renta. Con él, la renta se calcula a partir de tu prima, el incremento y la rentabilidad.",
   "pension.contracts.rentenfaktor": "Factor de renta (por 10.000)",
   "pension.contracts.rentenfaktorHint":
     "Renta mensual por cada 10.000 de capital, tal como figura en tu póliza. Con él la renta se calcula en vez de estimarse.",

@@ -30,10 +30,10 @@ async function seedMortgage(page: Page): Promise<void> {
   await page
     .locator('[data-tour="debt-list"] tbody tr')
     .filter({ hasText: MORTGAGE })
-    .getByRole("button", { name: /Rate & payment/i })
+    .getByRole("button", { name: /^Edit$/i })
     .click();
-  await page.locator("#debt-rate").fill("4");
-  await page.locator("#debt-min-payment").fill("1200");
+  await page.locator("#account-edit-interest").fill("4");
+  await page.locator("#account-edit-min-payment").fill("1200");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.locator('[data-tour="debt-plan"]')).toBeVisible();
 }
@@ -66,10 +66,10 @@ test("a balance is read as repayment against the original loan sum", async ({ pa
   await page
     .locator('[data-tour="debt-list"] tbody tr')
     .filter({ hasText: "Old mortgage" })
-    .getByRole("button", { name: /Rate & payment/i })
+    .getByRole("button", { name: /^Edit$/i })
     .click();
-  await page.locator("#debt-rate").fill("3.5");
-  await page.locator("#debt-min-payment").fill("1400");
+  await page.locator("#account-edit-interest").fill("3.5");
+  await page.locator("#account-edit-min-payment").fill("1400");
   await page.getByRole("button", { name: "Save", exact: true }).click();
 
   // And the chart reaches back to when the debt started, on the depot's own
@@ -103,16 +103,16 @@ test("a planned one-off repayment shortens the payoff plan", async ({ page }) =>
   await expect(plan.getByText(/saved versus minimum payments only/i)).toBeVisible();
 });
 
-test("the conditions dialog no longer offers repayments", async ({ page }) => {
+test("the account form carries the terms and offers no repayments", async ({ page }) => {
   await seedMortgage(page);
 
   await page
     .locator('[data-tour="debt-list"] tbody tr')
     .filter({ hasText: MORTGAGE })
-    .getByRole("button", { name: /Rate & payment/i })
+    .getByRole("button", { name: /^Edit$/i })
     .click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.locator("#debt-rate")).toBeVisible();
+  await expect(dialog.locator("#account-edit-interest")).toBeVisible();
   await expect(dialog.locator("#debt-repay-amount")).toHaveCount(0);
 });
 

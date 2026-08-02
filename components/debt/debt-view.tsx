@@ -2,7 +2,7 @@
 
 // Debt payoff planner (ROADMAP #9, flag `debtPayoff`): liability accounts
 // (ROADMAP #1) gain amortisation. Interest rate, fixed-rate period and minimum
-// payment are entered per account via `DebtDetailsDialog`; this view turns them
+// payment are part of the ACCOUNT (AccountEditDialog); this view turns them
 // into a per-debt schedule, an avalanche/snowball extra-payment simulator and
 // the charts that make the decades-long shape of a mortgage legible
 // (lib/finance/debt.ts). Everything rides the store seam via usePortfolio();
@@ -51,7 +51,7 @@ import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { DebtDetailsDialog } from "./debt-details-dialog";
+import { AccountEditDialog } from "@/components/accounts/account-edit-dialog";
 import { DebtRepaymentsPlanner, type PlannedRepayment } from "./debt-repayments";
 import { DebtBalanceChart, DebtSplitChart, debtColor } from "./debt-chart";
 import { EditAction, RowActions } from "@/components/ui/row-actions";
@@ -521,7 +521,7 @@ export function DebtView() {
                     <Td align="right">
                       <RowActions>
                         <EditAction
-                          label={t("debt.list.editDetails")}
+                          label={t("accounts.list.edit")}
                           onClick={() => setDetailsFor(account)}
                         />
                       </RowActions>
@@ -541,8 +541,10 @@ export function DebtView() {
         </Card>
       )}
 
+      {/* The terms live on the account itself, so editing them opens the very
+          form the account was created with -- this page visualises them. */}
       {detailsFor && (
-        <DebtDetailsDialog
+        <AccountEditDialog
           account={detailsFor}
           open={detailsFor !== null}
           onClose={() => setDetailsFor(null)}

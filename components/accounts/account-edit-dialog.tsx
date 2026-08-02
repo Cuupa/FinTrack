@@ -47,12 +47,23 @@ export function AccountEditDialog({
   const [currency, setCurrency] = useState(account.currency || base);
   const [opening, setOpening] = useState(String(account.openingBalance));
   const [openedOn, setOpenedOn] = useState(account.openedOn);
-  // Credit interest, asset accounts only (a liability's rate lives on /debt).
+  // One rate field for both sides of the ledger: credit interest on an asset
+  // account, the borrowing rate on a liability. What it MEANS follows from the
+  // kind, which is picked right above it -- the debt terms used to live on
+  // /debt behind a second dialog, which asked the user to set up an account in
+  // one place and finish it in another.
   const [interestRate, setInterestRate] = useState(
     account.interestRate != null ? String(account.interestRate) : "",
   );
   const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>(
     account.interestFrequency ?? "MONTHLY",
+  );
+  const [minPayment, setMinPayment] = useState(
+    account.minPayment != null ? String(account.minPayment) : "",
+  );
+  const [rateFixedUntil, setRateFixedUntil] = useState(account.rateFixedUntil ?? "");
+  const [followUpRate, setFollowUpRate] = useState(
+    account.followUpRate != null ? String(account.followUpRate) : "",
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,8 +88,14 @@ export function AccountEditDialog({
     try {
       const cur = currency.trim().toUpperCase();
       const isLiability = LIABILITY_KINDS.includes(kind);
-      const rate = !isLiability && interestRate.trim() ? parseDecimal(interestRate) : null;
-      if (rate !== null && !Number.isFinite(rate)) {
+      const rate = interestRate.trim() ? parseDecimal(interestRate) : null;
+      const payment = minPayment.trim() ? parseDecimal(minPayment) : null;
+      const followUp = followUpRate.trim() ? parseDecimal(followUpRate) : null;
+      if (
+        (rate !== null && !Number.isFinite(rate)) ||
+        (payment !== null && !Number.isFinite(payment)) ||
+        (followUp !== null && !Number.isFinite(followUp))
+      ) {
         setError(t("common.invalidAmount"));
         setBusy(false);
         return;
@@ -91,8 +108,18 @@ export function AccountEditDialog({
         isLiability,
         openingBalance: openingVal,
         openedOn,
-        // Never clear a debt rate this dialog never showed.
-        ...(isLiability ? {} : { interestRate: rate, interestFrequency: rate ? interestFrequency : null }),
+        interestRate: rate,
+        // The instalment and the follow-up rate only mean something on a debt.
+        ...(isLiability
+          ? {
+              interestFrequency: null,
+              minPayment: payment,
+              // A follow-up rate with no end date (or the other way round)
+              // would silently do nothing, so an incomplete pair is no pair.
+              rateFixedUntil: rateFixedUntil && followUp != null ? rateFixedUntil : null,
+              followUpRate: rateFixedUntil && followUp != null ? followUp : null,
+            }
+          : { interestFrequency: rate ? interestFrequency : null }),
       });
       onClose();
     } catch (err) {
@@ -175,24 +202,69 @@ export function AccountEditDialog({
               className={inputCls}
             />
           </div>
-          {!LIABILITY_KINDS.includes(kind) && (
+          <div>
+            <label className="text-sm font-medium" htmlFor="account-edit-interest">
+              {LIABILITY_KINDS.includes(kind)
+                ? t("debt.details.rateLabel")
+                : t("accounts.form.interestLabel")}
+            </label>
+            <input
+              id="account-edit-interest"
+              inputMode="decimal"
+              value={interestRate}
+              onChange={(e) => setInterestRate(stripLeadingZero(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void save();
+              }}
+              placeholder="0"
+              className={inputCls}
+            />
+          </div>
+          {LIABILITY_KINDS.includes(kind) && (
             <>
               <div>
-                <label className="text-sm font-medium" htmlFor="account-edit-interest">
-                  {t("accounts.form.interestLabel")}
+                <label className="text-sm font-medium" htmlFor="account-edit-min-payment">
+                  {t("debt.details.minPaymentLabel", { currency: currency || base })}
                 </label>
                 <input
-                  id="account-edit-interest"
+                  id="account-edit-min-payment"
                   inputMode="decimal"
-                  value={interestRate}
-                  onChange={(e) => setInterestRate(stripLeadingZero(e.target.value))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void save();
-                  }}
+                  value={minPayment}
+                  onChange={(e) => setMinPayment(stripLeadingZero(e.target.value))}
+                  placeholder="0"
+                  className={inputCls}
+                  data-private
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium" htmlFor="account-edit-rate-until">
+                  {t("debt.details.rateFixedUntilLabel")}
+                </label>
+                <input
+                  id="account-edit-rate-until"
+                  type="date"
+                  value={rateFixedUntil}
+                  onChange={(e) => setRateFixedUntil(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium" htmlFor="account-edit-follow-up">
+                  {t("debt.details.followUpRateLabel")}
+                </label>
+                <input
+                  id="account-edit-follow-up"
+                  inputMode="decimal"
+                  value={followUpRate}
+                  onChange={(e) => setFollowUpRate(stripLeadingZero(e.target.value))}
                   placeholder="0"
                   className={inputCls}
                 />
               </div>
+            </>
+          )}
+          {!LIABILITY_KINDS.includes(kind) && (
+            <>
               <div>
                 <label className="text-sm font-medium">
                   {t("accounts.form.interestFrequencyLabel")}

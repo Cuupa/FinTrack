@@ -4,6 +4,9 @@ import {
   DEFAULT_FLOOR,
   EARLY_CRASH_DROP,
   LOST_DECADE_YEARS,
+  DEFAULT_INFLATION,
+  HIGH_INFLATION_EXTRA,
+  WITHDRAWAL_STRATEGIES,
   annualWithdrawal,
   stressedReturn,
   summarizeStrategy,
@@ -14,6 +17,9 @@ import { runMonteCarlo, type MonteCarloParams } from "../lib/finance/monte-carlo
 const plan = (over: Partial<WithdrawalPlan> = {}): WithdrawalPlan => ({
   strategy: "fixed",
   rate: 0.04,
+  // Off by default so these cases pin the STRATEGY shape; indexing has its own
+  // cases below.
+  inflation: 0,
   ...over,
 });
 
@@ -27,6 +33,7 @@ describe("annualWithdrawal", () => {
         portfolioValue: 1_000_000,
         previousWithdrawal: 0,
         yearsIntoRetirement: 0,
+        yearsRemaining: 30,
       });
       expect(income).toBe(40000);
     }
@@ -39,28 +46,28 @@ describe("annualWithdrawal", () => {
           initialWithdrawal: 40000,
           portfolioValue: 0,
           previousWithdrawal: 40000,
-          yearsIntoRetirement: 5,
+          yearsIntoRetirement: 5, yearsRemaining: 30,
         }),
       ).toBe(0);
     }
   });
 
   it("fixed ignores what the portfolio did", () => {
-    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3 };
+    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3, yearsRemaining: 30 };
     expect(annualWithdrawal(plan(), { ...ctx, portfolioValue: 300_000 })).toBe(40000);
     expect(annualWithdrawal(plan(), { ...ctx, portfolioValue: 2_000_000 })).toBe(40000);
   });
 
   it("percentOfPortfolio follows the portfolio in both directions", () => {
     const p = plan({ strategy: "percentOfPortfolio" });
-    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3 };
+    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3, yearsRemaining: 30 };
     expect(annualWithdrawal(p, { ...ctx, portfolioValue: 500_000 })).toBeCloseTo(20000, 6);
     expect(annualWithdrawal(p, { ...ctx, portfolioValue: 2_000_000 })).toBeCloseTo(80000, 6);
   });
 
   it("floorCeiling clips the swing to the configured bounds", () => {
     const p = plan({ strategy: "floorCeiling" });
-    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3 };
+    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3, yearsRemaining: 30 };
     // A halved portfolio would pay 20k; the floor holds it up.
     expect(annualWithdrawal(p, { ...ctx, portfolioValue: 500_000 })).toBeCloseTo(
       DEFAULT_FLOOR * 40000,
@@ -77,7 +84,7 @@ describe("annualWithdrawal", () => {
 
   it("guardrails hold the income steady inside the band and step it outside", () => {
     const p = plan({ strategy: "guardrails" });
-    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3 };
+    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsIntoRetirement: 3, yearsRemaining: 30 };
 
     // Current rate 4.0% — dead on target, so nothing moves.
     expect(annualWithdrawal(p, { ...ctx, portfolioValue: 1_000_000 })).toBe(40000);
@@ -172,7 +179,7 @@ describe("runMonteCarlo with withdrawal strategies", () => {
 
   it("compares every strategy over the same market, so the rows are commensurable", () => {
     const compared = runMonteCarlo({ ...base, compareStrategies: true });
-    expect(compared.strategyComparison).toHaveLength(4);
+    expect(compared.strategyComparison).toHaveLength(WITHDRAWAL_STRATEGIES.length);
     for (const row of compared.strategyComparison!) {
       expect(row.medianIncome).toBeGreaterThan(0);
       expect(row.medianTotalIncome).toBeGreaterThan(0);
@@ -204,5 +211,89 @@ describe("runMonteCarlo with withdrawal strategies", () => {
     const a = runMonteCarlo({ ...base, withdrawalStrategy: "guardrails" });
     const b = runMonteCarlo({ ...base, withdrawalStrategy: "guardrails" });
     expect(a.finalDistribution).toEqual(b.finalDistribution);
+  });
+});
+
+describe("inflation indexing", () => {
+  it("raises the fixed income every year, because the 4% rule is a real rule", () => {
+    const p = plan({ inflation: 0.02 });
+    const ctx = { portfolioValue: 1_000_000, initialWithdrawal: 40000, previousWithdrawal: 40000 };
+    expect(
+      annualWithdrawal(p, { ...ctx, yearsIntoRetirement: 1, yearsRemaining: 29 }),
+    ).toBeCloseTo(40000 * 1.02, 6);
+    expect(
+      annualWithdrawal(p, { ...ctx, yearsIntoRetirement: 10, yearsRemaining: 20 }),
+    ).toBeCloseTo(40000 * Math.pow(1.02, 10), 6);
+  });
+
+  it("defaults to an indexed withdrawal rather than a nominal one", () => {
+    const income = annualWithdrawal(
+      { strategy: "fixed", rate: 0.04 },
+      {
+        portfolioValue: 1_000_000,
+        initialWithdrawal: 40000,
+        previousWithdrawal: 40000,
+        yearsIntoRetirement: 1,
+        yearsRemaining: 29,
+      },
+    );
+    expect(income).toBeCloseTo(40000 * (1 + DEFAULT_INFLATION), 6);
+  });
+
+  it("moves the floor and the ceiling with it", () => {
+    const p = plan({ strategy: "floorCeiling", inflation: 0.02 });
+    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, yearsRemaining: 25 };
+    expect(
+      annualWithdrawal(p, { ...ctx, portfolioValue: 500_000, yearsIntoRetirement: 5 }),
+    ).toBeCloseTo(DEFAULT_FLOOR * 40000 * Math.pow(1.02, 5), 6);
+  });
+});
+
+describe("vpw", () => {
+  it("spreads the portfolio over the years actually left", () => {
+    const p = plan({ strategy: "vpw", expectedReturn: 0 });
+    const ctx = { initialWithdrawal: 40000, previousWithdrawal: 40000, portfolioValue: 200_000 };
+    expect(annualWithdrawal(p, { ...ctx, yearsIntoRetirement: 10, yearsRemaining: 20 })).toBeCloseTo(
+      10000,
+      6,
+    );
+    // Same portfolio, fewer years left: the rate rises, which is the point.
+    expect(annualWithdrawal(p, { ...ctx, yearsIntoRetirement: 25, yearsRemaining: 5 })).toBeCloseTo(
+      40000,
+      6,
+    );
+  });
+
+  it("cannot deplete the portfolio", () => {
+    const p = plan({ strategy: "vpw", expectedReturn: 0.05 });
+    const income = annualWithdrawal(p, {
+      initialWithdrawal: 40000,
+      previousWithdrawal: 40000,
+      portfolioValue: 100_000,
+      yearsIntoRetirement: 5,
+      yearsRemaining: 25,
+    });
+    expect(income).toBeGreaterThan(0);
+    expect(income).toBeLessThan(100_000);
+  });
+});
+
+describe("stress without a withdrawal phase", () => {
+  it("bites from month zero when the run only accumulates", () => {
+    // monthsFromAnchor 0 is the crash month whether that anchor is retirement
+    // or the very first month of the run.
+    expect(stressedReturn("earlyCrash", 0.01, 0, 0.005)).toBeCloseTo(0.01 - EARLY_CRASH_DROP, 6);
+    expect(stressedReturn("earlyCrash", 0.01, 5, 0.005)).toBeCloseTo(0.01, 6);
+  });
+
+  it("the inflation shock takes the same bite every month, and never gives it back", () => {
+    expect(stressedReturn("highInflation", 0.01, 0, 0.005)).toBeCloseTo(
+      0.01 - HIGH_INFLATION_EXTRA / 12,
+      6,
+    );
+    expect(stressedReturn("highInflation", 0.01, LOST_DECADE_YEARS * 12 + 1, 0.005)).toBeCloseTo(
+      0.01 - HIGH_INFLATION_EXTRA / 12,
+      6,
+    );
   });
 });

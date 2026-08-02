@@ -729,19 +729,7 @@ function ContractForm({
             {t("pension.contracts.rentenfaktorHint")}
           </span>
         </label>
-        {/* A policy with a Rentenfaktor computes its payout, so the typed
-            figure would only contradict it. Without one it is all we have. */}
-        {!derivesPayout && (
-          <label className="block text-sm">
-            <span className="text-zinc-500">{t("pension.contracts.expected")}</span>
-            <input
-              className={inputCls}
-              inputMode="decimal"
-              value={expected}
-              onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
-            />
-          </label>
-        )}
+
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.contribution")}</span>
           <input
@@ -793,6 +781,24 @@ function ContractForm({
             onChange={(e) => setStartsOn(e.target.value)}
           />
         </label>
+        {/* A policy with a Rentenfaktor computes its payout from the premium,
+            the Dynamik and the return, so a typed monthly figure would only
+            contradict it. It exists for the policy whose factor the user does
+            not have, and says so. */}
+        {!derivesPayout && (
+          <label className="block text-sm">
+            <span className="text-zinc-500">{t("pension.contracts.expected")}</span>
+            <input
+              className={inputCls}
+              inputMode="decimal"
+              value={expected}
+              onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
+            />
+            <span className="mt-1 block text-xs text-zinc-500">
+              {t("pension.contracts.expectedHint")}
+            </span>
+          </label>
+        )}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.note")}</span>
           <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
