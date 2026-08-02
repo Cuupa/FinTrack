@@ -31,7 +31,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ChartControls } from "@/components/charts/chart-controls";
-import { PerformanceChart, type ChartScale } from "@/components/charts/performance-chart";
+import { canLogScale, PerformanceChart, type ChartScale } from "@/components/charts/performance-chart";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export function AccountsHero({
@@ -173,6 +173,7 @@ export function AccountsHero({
           mode="currency"
           onMode={() => {}}
           showMode={false}
+          scaleAvailable={canLogScale(series)}
         />
       </div>
 

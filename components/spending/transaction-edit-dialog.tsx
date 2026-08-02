@@ -31,6 +31,9 @@ export interface TransactionEditDialogProps {
   transaction: SpendingTransaction | null;
   accounts: Account[];
   categories: SpendingCategory[];
+  /** Profile base currency. An account's own `currency` is null when it simply
+   *  uses the base, so without this the amount label read "Betrag ()". */
+  baseCurrency: string;
   busy?: boolean;
   error?: string | null;
   onSave: (id: string, patch: Partial<SpendingTransactionInput>) => void | Promise<void>;
@@ -41,6 +44,7 @@ export function TransactionEditDialog({
   transaction,
   accounts,
   categories,
+  baseCurrency,
   busy,
   error,
   onSave,
@@ -57,6 +61,7 @@ export function TransactionEditDialog({
           transaction={transaction}
           accounts={accounts}
           categories={categories}
+          baseCurrency={baseCurrency}
           busy={busy}
           error={error}
           onSave={onSave}
@@ -71,6 +76,7 @@ function EditForm({
   transaction,
   accounts,
   categories,
+  baseCurrency,
   busy,
   error,
   onSave,
@@ -92,20 +98,27 @@ function EditForm({
 
   // Amounts are in the ACCOUNT's native currency, so the label follows the
   // account picker rather than the profile base.
-  const currency = accounts.find((a) => a.id === accountId)?.currency ?? "";
+  const currency = accounts.find((a) => a.id === accountId)?.currency || baseCurrency;
+
+  // A transfer already names where the money went, so the payee is optional
+  // there and falls back to the target account: demanding a recipient for
+  // "Umbuchung auf Hundekonto" asked a question the picker had answered.
+  const transfer =
+    transferAccountId && transferAccountId !== accountId ? transferAccountId : null;
+  const transferName = accounts.find((a) => a.id === transfer)?.name ?? "";
+  const effectivePayee = payee.trim() || transferName;
 
   function save() {
     const value = parseDecimal(amount);
-    if (!payee.trim() || !Number.isFinite(value) || value <= 0 || !accountId) return;
+    if (!effectivePayee || !Number.isFinite(value) || value <= 0 || !accountId) return;
     void onSave(transaction.id, {
       accountId,
       categoryId: categoryId || null,
       date,
       amount: isIncome ? Math.abs(value) : -Math.abs(value),
-      payee: payee.trim(),
+      payee: effectivePayee,
       note: note.trim() || null,
-      transferAccountId:
-        transferAccountId && transferAccountId !== accountId ? transferAccountId : null,
+      transferAccountId: transfer,
     });
   }
 
@@ -236,7 +249,7 @@ function EditForm({
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="mt-4 flex gap-2">
-        <Button variant="primary" disabled={busy || !payee.trim() || !amount.trim()} onClick={save}>
+        <Button variant="primary" disabled={busy || !effectivePayee || !amount.trim()} onClick={save}>
           {t("spending.edit.save")}
         </Button>
         <Button variant="secondary" onClick={onClose}>

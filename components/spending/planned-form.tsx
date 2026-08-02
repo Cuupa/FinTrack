@@ -269,21 +269,23 @@ export function PlannedForm({
             className={inputCls}
           />
         </div>
-        <div className="flex items-end gap-2">
-          <Button variant="primary" disabled={!canSubmit} onClick={() => void submit()}>
-            {submitLabel}
-          </Button>
-          {onCancel && (
-            <Button variant="secondary" disabled={busy} onClick={onCancel}>
-              {t("spending.planned.cancel")}
-            </Button>
-          )}
-        </div>
       </div>
-      {touched && (missingName || missingAmount) && (
-        <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">{t("form.missingFields")}</p>
-      )}
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        {touched && (missingName || missingAmount) && (
+          <p className="mr-auto text-sm text-amber-600 dark:text-amber-400">
+            {t("form.missingFields")}
+          </p>
+        )}
+        {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {onCancel && (
+          <Button variant="secondary" disabled={busy} onClick={onCancel}>
+            {t("spending.planned.cancel")}
+          </Button>
+        )}
+        <Button variant="primary" disabled={!canSubmit} onClick={() => void submit()}>
+          {submitLabel}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -246,22 +246,29 @@ export function SpendingView({
     if (suggestion) setCategoryId(suggestion);
   }
 
+  // A transfer onto the very account being booked is not a transfer.
+  const transfer =
+    transferAccountId && transferAccountId !== accountId ? transferAccountId : null;
+  // The transfer picker already names where the money went, so the payee is
+  // optional there and falls back to the target account. Demanding a recipient
+  // for "Umbuchung auf Hundekonto" asked a question the picker had answered.
+  const effectivePayee =
+    payee.trim() || (transfer ? (accountsById.get(transfer)?.name ?? "") : "");
+
   async function submit() {
     const magnitude = parseDecimal(amount);
-    if (!accountId || !payee.trim() || !date || !Number.isFinite(magnitude) || magnitude <= 0) return;
+    if (!accountId || !effectivePayee || !date || !Number.isFinite(magnitude) || magnitude <= 0)
+      return;
     setBusy(true);
     setError(null);
     try {
       const signed = txType === "income" ? magnitude : -magnitude;
-      // A transfer onto the very account being booked is not a transfer.
-      const transfer =
-        transferAccountId && transferAccountId !== accountId ? transferAccountId : null;
       if (recurring) {
         // Same inputs, different meaning: the date becomes the first
         // occurrence and the entry starts producing bookings from there,
         // which the review list on this page then offers for confirmation.
         await addPlannedCashflow({
-          name: payee.trim(),
+          name: effectivePayee,
           accountId,
           categoryId: categoryId || null,
           amount: signed,
@@ -281,7 +288,7 @@ export function SpendingView({
           categoryId: categoryId || null,
           date,
           amount: signed,
-          payee: payee.trim(),
+          payee: effectivePayee,
           note: note.trim() || null,
           recurringId: null,
           transferAccountId: transfer,
@@ -511,7 +518,7 @@ export function SpendingView({
               {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
               <Button
                 variant="primary"
-                disabled={busy || !accountId || !payee.trim() || !amount.trim() || !date}
+                disabled={busy || !accountId || !effectivePayee || !amount.trim() || !date}
                 onClick={() => void submit()}
               >
                 {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}
@@ -625,6 +632,7 @@ export function SpendingView({
         transaction={editingTx}
         accounts={data.accounts}
         categories={data.spendingCategories}
+        baseCurrency={base}
         busy={editBusy}
         error={editError}
         onSave={async (id, patch) => {

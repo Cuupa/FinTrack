@@ -24,6 +24,13 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { axisCurrencyFormatter, yAxisWidth } from "./axis";
 
 export type ChartScale = "linear" | "log";
+
+/** Whether a log y-axis is meaningful for these points: log is undefined at and
+ *  below zero, so one non-positive value (any liability) rules it out. */
+export function canLogScale(points: readonly SeriesPoint[]): boolean {
+  return points.length > 0 && points.every((p) => p.value > 0);
+}
+
 export type ChartMode = "currency" | "percent";
 
 export interface ChartMarker {
@@ -207,12 +214,17 @@ export function PerformanceChart({
     return row;
   });
 
-  const useLog = scale === "log" && !pctMode;
-  const positives = data
+  // Log is undefined at and below zero, and an accounts curve is regularly
+  // negative all the way across (a mortgage). With no positive value the domain
+  // collapsed to [1, 1] and `allowDataOverflow` drew a flat line on the 1 EUR
+  // gridline, so a series that cannot be log-scaled stays linear instead.
+  const plotted = data
     .map((d) => d.value)
-    .filter((v): v is number => typeof v === "number" && v > 0);
-  const logLo = positives.length ? Math.min(...positives) : 1;
-  const logHi = positives.length ? Math.max(...positives) : 1;
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const logPlottable = plotted.length > 0 && plotted.every((v) => v > 0);
+  const useLog = scale === "log" && !pctMode && logPlottable;
+  const logLo = logPlottable ? Math.min(...plotted) : 1;
+  const logHi = logPlottable ? Math.max(...plotted) : 1;
 
   const seriesDates = series.map((p) => p.date);
   // The y-value of the plotted line at each date, so markers can sit ON the line.

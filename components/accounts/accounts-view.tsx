@@ -224,15 +224,6 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
             </div>
           </>
         )}
-        <div className="flex items-end">
-          <Button
-            variant="primary"
-            disabled={busy || !name.trim() || !openedOn}
-            onClick={() => void submit()}
-          >
-            {t("accounts.form.add")}
-          </Button>
-        </div>
       </div>
       {!LIABILITY_KINDS.includes(kind) && interestRate.trim() !== "" && (
         <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.interestHint")}</p>
@@ -240,7 +231,16 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
       {LIABILITY_KINDS.includes(kind) && (
         <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
       )}
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <Button
+          variant="primary"
+          disabled={busy || !name.trim() || !openedOn}
+          onClick={() => void submit()}
+        >
+          {t("accounts.form.add")}
+        </Button>
+      </div>
     </div>
   );
 }

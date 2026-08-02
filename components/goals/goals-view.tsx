@@ -338,22 +338,22 @@ function GoalForm({
             <p className="mt-1 text-sm text-zinc-500">{t("goals.form.manualCurrentHint")}</p>
           </div>
         )}
-        <div className="flex items-end gap-2">
-          <Button
-            variant="primary"
-            disabled={busy || !name.trim() || (!composite && !targetAmount.trim())}
-            onClick={() => void submit()}
-          >
-            {submitLabel}
-          </Button>
-          {onCancel && (
-            <Button variant="secondary" disabled={busy} onClick={onCancel}>
-              {t("common.cancel")}
-            </Button>
-          )}
-        </div>
       </div>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        {error && <p className="mr-auto text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {onCancel && (
+          <Button variant="secondary" disabled={busy} onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+        )}
+        <Button
+          variant="primary"
+          disabled={busy || !name.trim() || (!composite && !targetAmount.trim())}
+          onClick={() => void submit()}
+        >
+          {submitLabel}
+        </Button>
+      </div>
     </>
   );
 }

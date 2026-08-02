@@ -17,6 +17,9 @@ interface Props {
   onMode: (m: ChartMode) => void;
   /** Show the Currency/Percent toggle (hidden on the asset detail chart). */
   showMode?: boolean;
+  /** False hides the Linear/Log toggle: a series with a non-positive value
+   *  cannot be log-scaled, and a switch that changes nothing reads as broken. */
+  scaleAvailable?: boolean;
 }
 
 export function ChartControls({
@@ -27,6 +30,7 @@ export function ChartControls({
   mode,
   onMode,
   showMode = true,
+  scaleAvailable = true,
 }: Props) {
   const { t } = useI18n();
   return (
@@ -38,9 +42,9 @@ export function ChartControls({
         options={TIMEFRAMES.map((tf) => ({ label: tf, value: tf }))}
       />
       <div className="ml-auto flex flex-wrap gap-2 md:gap-3">
-        {/* Log scale is undefined for percentages, so the toggle is hidden in
-            percent mode. */}
-        {mode === "currency" && (
+        {/* Log scale is undefined for percentages and for any series touching
+            zero, so the toggle is hidden rather than left inert. */}
+        {mode === "currency" && scaleAvailable && (
           <SegmentedControl<ChartScale>
             size="sm"
             value={scale}

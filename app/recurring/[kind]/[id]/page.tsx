@@ -394,6 +394,7 @@ export default function RecurringDetailPage({
         transaction={editingTx}
         accounts={data.accounts}
         categories={data.spendingCategories}
+        baseCurrency={base}
         busy={txBusy}
         error={txError}
         onSave={async (txId, patch) => {
