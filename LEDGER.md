@@ -39,6 +39,20 @@ ansehen laesst.
 
 ## Erledigt
 
+### Runde 2026-08-02 (zweiter Teil)
+
+| Task | Commit / Umfang |
+| --- | --- |
+| Eine Simulation statt zwei | f0a1696 + 4a9561b — erst ein Ruhestand-Modus, dann auf Ansage ganz weg: Jahre bis FIRE gehen als ANLAGEHORIZONT in die bestehende Simulation (`?years=&withdrawal=`), FIRE verlinkt nur noch |
+| Entnahme und Stress ernst gemeint | Entnahmen inflationsindexiert (die 4%-Regel ist real, nicht nominal), Stress ab Lauf-Anker also auch ohne Entnahmephase, Inflationsschock, VPW als fünfte Strategie, `tests/withdrawal.test.ts` erweitert |
+| Rentenfaktor + Dynamik | 7b498e8 — Migration 0119, `projectContract` (Kapital -> Rente), Beitragsdynamik, angenommene Rendite; getippte Monatsrente nur noch als Fallback |
+| Verbindlichkeiten am Konto | 7b498e8 — Zins/Rate/Zinsbindung/Folgezins in `AccountEditDialog`, `DebtDetailsDialog` gelöscht, /debt visualisiert nur |
+| Dropdown im Modal | f7d1cc8 — Popover per Portal an den Body, fest positioniert über der Modal-Ebene |
+| Zähler in Pillenform | f7d1cc8 — Rand statt Füllung, Pille statt Kreis |
+
+**Offen aus derselben Runde** (in TODO.md notiert): Vertragsrendite aus mehreren
+Ständen (XIRR), Vertragsbeiträge als Buchung von einem Konto.
+
 ### Runde 2026-08-02
 
 | Task | Commit / Umfang |
