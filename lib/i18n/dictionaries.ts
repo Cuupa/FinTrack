@@ -1176,7 +1176,7 @@ export const en = {
   "recurring.detail.noAccount": "No booking account, kept as a register entry.",
   "recurring.detail.notFoundTitle": "Not found",
   "recurring.detail.notFound": "This recurring entry no longer exists.",
-  "recurring.detail.back": "Back to income & spending",
+  "recurring.detail.back": "Accounts & Bookings",
   "recurring.scope.title": "Which payments does the change apply to?",
   "recurring.scope.message":
     "This entry has already booked {n} payments. Future ones always use the new figures; the booked ones only change if you say so.",
@@ -3532,7 +3532,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "recurring.detail.noAccount": "Kein Buchungskonto, nur ein Eintrag im Register.",
   "recurring.detail.notFoundTitle": "Nicht gefunden",
   "recurring.detail.notFound": "Diesen wiederkehrenden Eintrag gibt es nicht mehr.",
-  "recurring.detail.back": "Zurück zu Ein- & Ausgaben",
+  "recurring.detail.back": "Konten & Buchungen",
   "recurring.scope.title": "Für welche Zahlungen gilt die Änderung?",
   "recurring.scope.message":
     "Dieser Eintrag hat schon {n} Zahlungen gebucht. Künftige nutzen immer die neuen Werte, die gebuchten nur, wenn du es willst.",
@@ -5882,7 +5882,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "recurring.detail.noAccount": "Sin cuenta de cargo, solo una entrada del registro.",
   "recurring.detail.notFoundTitle": "No encontrado",
   "recurring.detail.notFound": "Esta entrada recurrente ya no existe.",
-  "recurring.detail.back": "Volver a ingresos y gastos",
+  "recurring.detail.back": "Cuentas y movimientos",
   "recurring.scope.title": "¿A qué pagos se aplica el cambio?",
   "recurring.scope.message":
     "Esta entrada ya ha registrado {n} pagos. Los futuros usan siempre los valores nuevos; los registrados solo cambian si tú lo dices.",
