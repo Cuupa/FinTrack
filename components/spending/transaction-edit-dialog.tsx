@@ -147,6 +147,18 @@ function EditForm({
           </div>
         </div>
         <div>
+          <label className="text-sm font-medium" htmlFor="edit-tx-date">
+            {t("spending.form.dateLabel")}
+          </label>
+          <input
+            id="edit-tx-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div>
           {/* An income's counterparty is the SENDER: the selected account is
               already the recipient, so asking for one is the wrong question. */}
           <label className="text-sm font-medium" htmlFor="edit-tx-payee">
@@ -172,18 +184,6 @@ function EditForm({
             placeholder="0"
             className={inputCls}
             data-private
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="edit-tx-date">
-            {t("spending.form.dateLabel")}
-          </label>
-          <input
-            id="edit-tx-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputCls}
           />
         </div>
         <div>
