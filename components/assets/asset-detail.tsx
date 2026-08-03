@@ -527,8 +527,8 @@ export function AssetDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href="/" className="text-sm text-zinc-500 hover:underline">
-            ← {t("nav.dashboard")}
+          <Link href="/portfolio" className="text-sm text-zinc-500 hover:underline">
+            ← {t("nav.portfolio")}
           </Link>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold tracking-tight">
             {asset.name}
