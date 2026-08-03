@@ -44,7 +44,7 @@ import { DeleteAction, EditAction, RecurringAction, RowActions } from "@/compone
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
-type SortKey = "date" | "payee" | "category" | "account" | "amount";
+type SortKey = "date" | "payee" | "payer" | "category" | "account" | "amount";
 
 /** Oldest booking date, the anchor a MAX timeframe resolves against. */
 function earliestBookingDate(txs: readonly { date: string }[]): string | null {
@@ -53,6 +53,14 @@ function earliestBookingDate(txs: readonly { date: string }[]): string | null {
   return min;
 }
 type TxType = "expense" | "income";
+
+/** Which of the two counterparty columns a booking belongs in. The sign is the
+ *  only thing that says it: a negative amount left the account, so the
+ *  counterparty received it. A zero booking has no direction and files with the
+ *  income side, where the amount column does not paint it red either. */
+function isMoneyOut(tx: { amount: number }): boolean {
+  return tx.amount < 0;
+}
 
 export function SpendingView({
   accountIds: scopeAccountIds = [],
@@ -230,7 +238,11 @@ export function SpendingView({
     () =>
       applySort(scoped, (tx, key) => {
         if (key === "date") return tx.date;
-        if (key === "payee") return tx.payee;
+        // Each direction sorts by its OWN column only; the rows that have
+        // nothing in it are `null`, which the sort core files last in both
+        // directions rather than interleaving blanks with names.
+        if (key === "payee") return isMoneyOut(tx) ? tx.payee : null;
+        if (key === "payer") return isMoneyOut(tx) ? null : tx.payee;
         if (key === "category") return categoryLabel(tx.categoryId);
         if (key === "account") return accountsById.get(tx.accountId)?.name ?? "";
         return tx.amount;
@@ -558,8 +570,15 @@ export function SpendingView({
               <Th sort={sort} sortKey="date" onSort={toggleSort}>
                 {t("spending.list.date")}
               </Th>
+              {/* Two columns, not one header with a slash in it: an expense has
+                  a recipient and an income has a payer, and asking the reader
+                  to infer which one a name is from the sign of the amount three
+                  columns over is not a column heading. */}
               <Th sort={sort} sortKey="payee" onSort={toggleSort}>
                 {t("spending.list.payee")}
+              </Th>
+              <Th sort={sort} sortKey="payer" onSort={toggleSort}>
+                {t("spending.list.payer")}
               </Th>
               <Th sort={sort} sortKey="category" onSort={toggleSort}>
                 {t("spending.list.category")}
@@ -576,11 +595,15 @@ export function SpendingView({
               {pager.rows.map((tx) => {
                 const account = accountsById.get(tx.accountId);
                 const currency = account?.currency || base;
+                const out = isMoneyOut(tx);
                 return (
                   <Tr key={tx.id}>
                     <Td className="text-zinc-500">{formatDate(tx.date)}</Td>
                     <Td className="font-medium" data-private>
-                      {tx.payee}
+                      {out ? tx.payee : <span className="text-zinc-400 dark:text-zinc-600">—</span>}
+                    </Td>
+                    <Td className="font-medium" data-private>
+                      {out ? <span className="text-zinc-400 dark:text-zinc-600">—</span> : tx.payee}
                     </Td>
                     <Td className="text-zinc-500">{categoryLabel(tx.categoryId)}</Td>
                     <Td className="text-zinc-500" data-private>
