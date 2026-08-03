@@ -161,8 +161,10 @@ function EditForm({
           />
         </div>
         <div>
+          {/* An income's counterparty is the SENDER: the selected account is
+              already the recipient, so asking for one is the wrong question. */}
           <label className="text-sm font-medium" htmlFor="edit-tx-payee">
-            {t("spending.form.payeeLabel")}
+            {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
           </label>
           <input
             id="edit-tx-payee"

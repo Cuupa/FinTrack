@@ -26,7 +26,7 @@ import { today } from "@/lib/finance/dates";
 import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finance/contract-bookings";
 import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned";
 import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -49,6 +49,11 @@ import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "name" | "amount" | "target" | "interval" | "next";
+
+/** Inline edit boxes in the due list: quiet until focused, so the review list
+ *  still reads as a list and not as a form. */
+const dueInputCls =
+  "rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900";
 
 /** One row of the merged list, whichever entity produced it. */
 interface RecurringRow {
@@ -115,6 +120,10 @@ export function RecurringCard() {
   const [error, setError] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<RecurringRow | null>(null);
+  // A due occurrence is a PROPOSAL, not a receipt: the rate rose, the salary
+  // carried a bonus, the charge landed two days late. Date and amount are
+  // therefore editable per row before anything is posted, keyed by occurrence.
+  const [edits, setEdits] = useState<Record<string, { date?: string; amount?: string }>>({});
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const sort = useSort<SortKey>("next");
 
@@ -228,6 +237,22 @@ export function RecurringCard() {
 
   const selected = due.filter((d) => !excluded.has(d.key));
 
+  /** The date the row will post on: the occurrence's own day unless edited. */
+  const dueDateOf = (d: DueRow) => edits[d.key]?.date ?? d.date;
+  /** Always the magnitude — the sign belongs to the entry, not to this box. */
+  const dueAmountText = (d: DueRow) => edits[d.key]?.amount ?? String(Math.abs(d.amount));
+  const dueAmountOf = (d: DueRow) => {
+    const value = parseDecimal(dueAmountText(d));
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return d.amount < 0 ? -value : value;
+  };
+  const editRow = (key: string, patch: { date?: string; amount?: string }) =>
+    setEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  // Booking with a typo'd amount would post a row that has to be corrected
+  // afterwards, so an invalid edit blocks the whole run rather than reverting
+  // silently to the planned figure.
+  const editsValid = selected.every((d) => dueAmountOf(d) !== null && dueDateOf(d));
+
   function saveFailed(err: unknown, fallback: string): string {
     if (isStorageFullError(err)) return t("common.storageFull");
     const reason = storeErrorReason(err);
@@ -316,15 +341,22 @@ export function RecurringCard() {
       for (const d of selected) {
         const recurringId = d.kind === "contract" ? d.sourceId : null;
         const plannedId = d.kind === "planned" ? d.sourceId : null;
+        const amount = dueAmountOf(d);
+        if (amount === null) continue;
+        // The row posts on the edited day, but the source's cursor always
+        // advances by the OCCURRENCE's own date: booking the first of the month
+        // with today's date must not swallow the days in between.
+        const date = dueDateOf(d);
         // A loan instalment posts as TWO rows: the interest is consumed and
         // must reach the expense figures, the principal is a transfer that
         // shrinks the debt. One row could only ever be one of the two.
-        if (d.interestAmount > 0) {
+        const interest = Math.min(d.interestAmount, Math.abs(amount));
+        if (interest > 0 && interest < Math.abs(amount)) {
           await addSpendingTransaction({
             accountId: d.accountId,
             categoryId: d.categoryId,
-            date: d.date,
-            amount: -d.interestAmount,
+            date,
+            amount: -interest,
             payee: `${d.name} (${t("recurring.split.interest")})`,
             note: null,
             recurringId,
@@ -335,8 +367,8 @@ export function RecurringCard() {
           await addSpendingTransaction({
             accountId: d.accountId,
             categoryId: d.categoryId,
-            date: d.date,
-            amount: d.amount + d.interestAmount, // both negative: the remainder
+            date,
+            amount: amount + interest, // both negative: the remainder
             payee: `${d.name} (${t("recurring.split.principal")})`,
             note: null,
             recurringId,
@@ -351,8 +383,8 @@ export function RecurringCard() {
         await addSpendingTransaction({
           accountId: d.accountId,
           categoryId: d.categoryId,
-          date: d.date,
-          amount: d.amount,
+          date,
+          amount,
           payee: d.name,
           note: null,
           recurringId,
@@ -370,6 +402,7 @@ export function RecurringCard() {
         await updatePlannedCashflow(id, { lastBookedDate });
       }
       setExcluded(new Set());
+      setEdits({});
     } catch (err) {
       setError(saveFailed(err, t("recurring.bookError")));
     } finally {
@@ -530,54 +563,84 @@ export function RecurringCard() {
             {due.map((d) => {
               const checked = !excluded.has(d.key);
               const currency = accountsById.get(d.accountId)?.currency || base;
+              const amount = dueAmountOf(d);
+              const date = dueDateOf(d);
+              const interest = amount === null ? 0 : Math.min(d.interestAmount, Math.abs(amount));
+              const muted = checked ? "" : "text-zinc-400 line-through";
               return (
                 <li
                   key={d.key}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
                 >
-                  <label className="flex flex-1 cursor-pointer items-center gap-3">
+                  {/* The label covers the name only: a date or amount box inside
+                      it would toggle the checkbox on every click. */}
+                  <div className="flex flex-1 items-center gap-3">
+                    <label className="flex flex-1 cursor-pointer items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          setExcluded((prev) => {
+                            const next = new Set(prev);
+                            if (checked) next.add(d.key);
+                            else next.delete(d.key);
+                            return next;
+                          })
+                        }
+                        className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                      />
+                      <span className={muted} data-private>
+                        {d.name}
+                        {/* Say up front that this posts two rows, so the ledger
+                            does not surprise anyone afterwards. */}
+                        {interest > 0 && amount !== null && Math.abs(amount) > interest && (
+                          <span className="block text-xs text-zinc-500">
+                            {t("recurring.split.hint", {
+                              interest: formatCurrency(interest, currency),
+                              principal: formatCurrency(Math.abs(amount) - interest, currency),
+                            })}
+                          </span>
+                        )}
+                      </span>
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        setExcluded((prev) => {
-                          const next = new Set(prev);
-                          if (checked) next.add(d.key);
-                          else next.delete(d.key);
-                          return next;
-                        })
-                      }
-                      className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                      type="date"
+                      value={date}
+                      onChange={(e) => editRow(d.key, { date: e.target.value })}
+                      aria-label={t("recurring.due.dateLabel")}
+                      className={dueInputCls + " w-[9.5rem]"}
                     />
-                    <span className={checked ? "" : "text-zinc-400 line-through"} data-private>
-                      {d.name} <span className="text-zinc-500">{formatDate(d.date)}</span>
-                      {/* Say up front that this posts two rows, so the ledger
-                          does not surprise anyone afterwards. */}
-                      {d.interestAmount > 0 && (
-                        <span className="block text-xs text-zinc-500">
-                          {t("recurring.split.hint", {
-                            interest: formatCurrency(d.interestAmount, currency),
-                            principal: formatCurrency(
-                              Math.abs(d.amount) - d.interestAmount,
-                              currency,
-                            ),
-                          })}
-                        </span>
-                      )}
-                    </span>
-                  </label>
-                  <span
-                    className={`tabular-nums ${
-                      !checked
-                        ? "text-zinc-400 line-through"
-                        : d.amount < 0
-                          ? "text-red-600 dark:text-red-400"
-                          : ""
-                    }`}
-                    data-private
-                  >
-                    {formatCurrency(d.amount, currency)}
-                  </span>
+                    {/* The proposal ran on the plan's day; taking it over today
+                        is one click rather than a re-typed date. */}
+                    {date !== todayIso && (
+                      <button
+                        type="button"
+                        onClick={() => editRow(d.key, { date: todayIso })}
+                        className="text-xs text-zinc-500 underline-offset-2 hover:underline"
+                      >
+                        {t("recurring.due.today")}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      inputMode="decimal"
+                      value={dueAmountText(d)}
+                      onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
+                      aria-label={t("recurring.due.amountLabel")}
+                      className={`${dueInputCls} w-28 text-right tabular-nums ${
+                        amount === null ? "border-red-500 dark:border-red-500" : ""
+                      } ${
+                        !checked
+                          ? "text-zinc-400 line-through"
+                          : d.amount < 0
+                            ? "text-red-600 dark:text-red-400"
+                            : ""
+                      }`}
+                      data-private
+                    />
+                    <span className={`text-zinc-500 ${muted}`}>{currency}</span>
+                  </div>
                 </li>
               );
             })}
@@ -585,7 +648,7 @@ export function RecurringCard() {
           <Button
             className="mt-4"
             variant="primary"
-            disabled={busy || selected.length === 0}
+            disabled={busy || selected.length === 0 || !editsValid}
             onClick={() => void bookSelected()}
           >
             {t("recurring.due.book", { n: selected.length })}

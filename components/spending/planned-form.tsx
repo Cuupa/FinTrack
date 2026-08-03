@@ -109,7 +109,7 @@ export function PlannedForm({
               exactly that box when a booking is switched to recurring, so it
               must not be renamed on the way to the detail view. */}
           <label className="text-sm font-medium" htmlFor="planned-name">
-            {t("spending.form.payeeLabel")}
+            {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
           </label>
           <input
             id="planned-name"
