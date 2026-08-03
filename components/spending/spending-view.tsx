@@ -44,7 +44,11 @@ import { DeleteAction, EditAction, RecurringAction, RowActions } from "@/compone
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
-type SortKey = "date" | "payee" | "payer" | "category" | "account" | "amount";
+type SortKey = "date" | "payee" | "payer" | "category" | "amount";
+
+/** The two counterparty columns shrink to their content instead of taking an
+ *  equal share of the row's width. */
+const counterpartyCls = "w-0 whitespace-nowrap";
 
 /** Oldest booking date, the anchor a MAX timeframe resolves against. */
 function earliestBookingDate(txs: readonly { date: string }[]): string | null {
@@ -238,13 +242,12 @@ export function SpendingView({
     () =>
       applySort(scoped, (tx, key) => {
         if (key === "date") return tx.date;
-        // Each direction sorts by its OWN column only; the rows that have
-        // nothing in it are `null`, which the sort core files last in both
-        // directions rather than interleaving blanks with names.
-        if (key === "payee") return isMoneyOut(tx) ? tx.payee : null;
-        if (key === "payer") return isMoneyOut(tx) ? null : tx.payee;
+        // Each column sorts by the name actually standing in it, which is the
+        // counterparty on one side and the booking's own account on the other.
+        const ownName = accountsById.get(tx.accountId)?.name ?? "";
+        if (key === "payee") return isMoneyOut(tx) ? tx.payee : ownName;
+        if (key === "payer") return isMoneyOut(tx) ? ownName : tx.payee;
         if (key === "category") return categoryLabel(tx.categoryId);
-        if (key === "account") return accountsById.get(tx.accountId)?.name ?? "";
         return tx.amount;
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -570,21 +573,20 @@ export function SpendingView({
               <Th sort={sort} sortKey="date" onSort={toggleSort}>
                 {t("spending.list.date")}
               </Th>
-              {/* Two columns, not one header with a slash in it: an expense has
-                  a recipient and an income has a payer, and asking the reader
-                  to infer which one a name is from the sign of the amount three
-                  columns over is not a column heading. */}
-              <Th sort={sort} sortKey="payee" onSort={toggleSort}>
+              {/* Both sides of a booking always exist, so both columns are
+                  always filled: moving money from the Stadtsparkasse to the
+                  solar loan makes the Stadtsparkasse the PAYER, not a blank.
+                  The account the booking sits on is one of the two parties --
+                  which is why there is no separate account column any more, it
+                  repeated one of these two names in every single row. */}
+              <Th className={counterpartyCls} sort={sort} sortKey="payee" onSort={toggleSort}>
                 {t("spending.list.payee")}
               </Th>
-              <Th sort={sort} sortKey="payer" onSort={toggleSort}>
+              <Th className={counterpartyCls} sort={sort} sortKey="payer" onSort={toggleSort}>
                 {t("spending.list.payer")}
               </Th>
               <Th sort={sort} sortKey="category" onSort={toggleSort}>
                 {t("spending.list.category")}
-              </Th>
-              <Th sort={sort} sortKey="account" onSort={toggleSort}>
-                {t("spending.list.account")}
               </Th>
               <Th align="right" sort={sort} sortKey="amount" onSort={toggleSort}>
                 {t("spending.list.amount")}
@@ -596,19 +598,22 @@ export function SpendingView({
                 const account = accountsById.get(tx.accountId);
                 const currency = account?.currency || base;
                 const out = isMoneyOut(tx);
+                // Muted like the old account column: your own account keeps the
+                // weight it had there, so the bold name in the row is still the
+                // party outside your books.
+                const own = (
+                  <span className="font-normal text-zinc-500">{account?.name ?? "—"}</span>
+                );
                 return (
                   <Tr key={tx.id}>
                     <Td className="text-zinc-500">{formatDate(tx.date)}</Td>
-                    <Td className="font-medium" data-private>
-                      {out ? tx.payee : <span className="text-zinc-400 dark:text-zinc-600">—</span>}
+                    <Td className={`font-medium ${counterpartyCls}`} data-private>
+                      {out ? tx.payee : own}
                     </Td>
-                    <Td className="font-medium" data-private>
-                      {out ? <span className="text-zinc-400 dark:text-zinc-600">—</span> : tx.payee}
+                    <Td className={`font-medium ${counterpartyCls}`} data-private>
+                      {out ? own : tx.payee}
                     </Td>
                     <Td className="text-zinc-500">{categoryLabel(tx.categoryId)}</Td>
-                    <Td className="text-zinc-500" data-private>
-                      {account?.name ?? "—"}
-                    </Td>
                     <Td
                       align="right"
                       className={`tabular-nums ${tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""}`}
