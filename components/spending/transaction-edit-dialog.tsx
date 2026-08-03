@@ -173,6 +173,16 @@ function EditForm({
           />
         </div>
         <div>
+          <label className="text-sm font-medium">{t("spending.form.accountLabel")}</label>
+          <SelectMenu
+            className="mt-1 w-full"
+            ariaLabel={t("spending.form.accountLabel")}
+            value={accountId}
+            onChange={setAccountId}
+            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+          />
+        </div>
+        <div>
           <label className="text-sm font-medium" htmlFor="edit-tx-amount">
             {t("spending.form.amountLabel", { currency })}
           </label>
@@ -184,16 +194,6 @@ function EditForm({
             placeholder="0"
             className={inputCls}
             data-private
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("spending.form.accountLabel")}</label>
-          <SelectMenu
-            className="mt-1 w-full"
-            ariaLabel={t("spending.form.accountLabel")}
-            value={accountId}
-            onChange={setAccountId}
-            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
           />
         </div>
         <div>
