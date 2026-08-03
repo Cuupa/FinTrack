@@ -24,7 +24,7 @@
 // modelled for a balance the user simply typed in).
 
 import type { Account, AccountBalance, InterestFrequency } from "../types";
-import { addMonthsToDate, today } from "./dates";
+import { addDays, addMonthsToDate, today } from "./dates";
 import { accountRateSteps, rateOnDate } from "./debt";
 import { isLedgerDriven, type AccountMovements } from "./account-ledger";
 
@@ -85,19 +85,32 @@ export function balanceSeries(
   movements?: AccountMovements,
   through?: string,
 ): Point[] {
+  const moves = movements?.get(account.id) ?? [];
+  // An account whose opening balance is 0 and whose first movement predates
+  // `openedOn` was opened before the user says it was: the transfer that
+  // funded it is dated earlier than the date they typed. Nothing is being
+  // discarded there, so the chain starts at the ledger instead. The anchor
+  // sits the day BEFORE that movement, not on it: an anchor wins outright on
+  // its own date, so a 0 sharing the movement's date would swallow the very
+  // money that established the account.
+  const firstMoveDate = moves[0]?.date;
+  const effectiveOpenedOn =
+    account.openingBalance === 0 && firstMoveDate && firstMoveDate < account.openedOn
+      ? addDays(firstMoveDate, -1)
+      : account.openedOn;
+
   const anchors = new Map<string, number>();
-  anchors.set(account.openedOn, account.openingBalance);
+  anchors.set(effectiveOpenedOn, account.openingBalance);
   for (const b of balances) {
     if (b.accountId !== account.id) continue;
     if (!Number.isFinite(b.balance)) continue;
     anchors.set(b.date, b.balance);
   }
 
-  const moves = movements?.get(account.id) ?? [];
   // Movements dated before the account existed have nothing to attach to.
   const deltas = new Map<string, number>();
   for (const m of moves) {
-    if (m.date < account.openedOn) continue;
+    if (m.date < effectiveOpenedOn) continue;
     deltas.set(m.date, (deltas.get(m.date) ?? 0) + m.delta);
   }
 

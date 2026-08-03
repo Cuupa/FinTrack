@@ -136,6 +136,24 @@ describe("balanceSeries with movements (anchor + carry-forward)", () => {
     const moves = accountMovements([tx({ date: "2023-06-01" })], [a]);
     expect(balanceSeries(a, [], moves)).toEqual([{ date: "2024-01-01", balance: 1000 }]);
   });
+
+  it("uses a zero-balance account's first movement as its effective start", () => {
+    const sparkasse = account({ id: "sparkasse", openingBalance: 500 });
+    const c24 = account({ id: "c24", openingBalance: 0, openedOn: "2024-08-03" });
+    const moves = accountMovements(
+      [
+        tx({
+          accountId: "sparkasse",
+          amount: -200,
+          date: "2024-07-31",
+          transferAccountId: "c24",
+        }),
+      ],
+      [sparkasse, c24],
+    );
+
+    expect(currentAccountBalance(c24, [], moves, "2024-08-03")).toBe(200);
+  });
 });
 
 describe("interest accrual on a ledger-driven liability", () => {
