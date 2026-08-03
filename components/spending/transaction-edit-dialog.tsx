@@ -147,20 +147,6 @@ function EditForm({
           </div>
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="edit-tx-amount">
-            {t("spending.form.amountLabel", { currency })}
-          </label>
-          <input
-            id="edit-tx-amount"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
-            placeholder="0"
-            className={inputCls}
-            data-private
-          />
-        </div>
-        <div>
           {/* An income's counterparty is the SENDER: the selected account is
               already the recipient, so asking for one is the wrong question. */}
           <label className="text-sm font-medium" htmlFor="edit-tx-payee">
@@ -170,6 +156,20 @@ function EditForm({
             id="edit-tx-payee"
             value={payee}
             onChange={(e) => setPayee(e.target.value)}
+            className={inputCls}
+            data-private
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor="edit-tx-amount">
+            {t("spending.form.amountLabel", { currency })}
+          </label>
+          <input
+            id="edit-tx-amount"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
+            placeholder="0"
             className={inputCls}
             data-private
           />
