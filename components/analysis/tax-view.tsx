@@ -33,7 +33,7 @@ import { useBasiszins } from "@/lib/tax/use-basiszins";
 import { useFeature, useFeatureFlag } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { assetPriceKey } from "@/lib/types";
-import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor } from "@/lib/format";
 import { isStorageFullError } from "@/lib/store/errors";
 import { Button, Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -449,7 +449,7 @@ function EditableAmountRow({
   onCommit: (raw: number | null) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const seedText = () => (initial !== undefined ? String(initial) : "");
+  const seedText = () => (initial !== undefined ? formatInputDecimal(initial) : "");
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(seedText);
   const [error, setError] = useState<string | null>(null);
@@ -469,7 +469,7 @@ function EditableAmountRow({
   const commit = async () => {
     const parsed = parseDecimal(text);
     const next = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    setText(next !== null ? String(next) : "");
+    setText(next !== null ? formatInputDecimal(next) : "");
     try {
       await onCommit(next);
       setError(null);
@@ -488,7 +488,7 @@ function EditableAmountRow({
           {editing ? (
             <>
               <input
-                type="number"
+                type="text"
                 inputMode="decimal"
                 min={0}
                 step="any"

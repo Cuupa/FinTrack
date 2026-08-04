@@ -14,7 +14,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import type { Slice } from "@/lib/finance/allocation";
-import { formatCurrency, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, parseDecimal, plColor } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
@@ -75,6 +75,7 @@ export function RebalancingView() {
   const [pctEdits, setPctEdits] = useState<Record<string, number>>(() => ({
     ...initialPlan.weights,
   }));
+  const [pctInputs, setPctInputs] = useState<Record<string, string>>({});
   const [customRows, setCustomRows] = useState<{ id: string; name: string }[]>(() =>
     initialPlan.custom.map((c) => ({ ...c })),
   );
@@ -220,6 +221,7 @@ export function RebalancingView() {
   }
 
   const setPct = (id: string, raw: string) => {
+    setPctInputs((e) => ({ ...e, [id]: raw }));
     const v = parseDecimal(raw);
     setPctEdits((e) => ({ ...e, [id]: Number.isFinite(v) ? Math.max(0, v) : 0 }));
   };
@@ -241,12 +243,23 @@ export function RebalancingView() {
       delete next[id];
       return next;
     });
+    setPctInputs((e) => {
+      const next = { ...e };
+      delete next[id];
+      return next;
+    });
   };
 
   const normalize = () => {
     if (targetSum <= 0) return;
     const factor = 100 / targetSum;
-    setPctEdits(() => Object.fromEntries(rows.map((r) => [r.id, Math.round(r.pct * factor * 10) / 10])));
+    const normalized = Object.fromEntries(
+      rows.map((r) => [r.id, Math.round(r.pct * factor * 10) / 10]),
+    );
+    setPctEdits(normalized);
+    setPctInputs(Object.fromEntries(
+      Object.entries(normalized).map(([id, value]) => [id, formatInputDecimal(value, 1)]),
+    ));
   };
 
   return (
@@ -379,11 +392,9 @@ export function RebalancingView() {
                   </Td>
                   <Td align="right">
                     <input
-                      type="number"
+                      type="text"
                       inputMode="decimal"
-                      step="0.1"
-                      min={0}
-                      value={r.pct}
+                      value={pctInputs[r.id] ?? formatInputDecimal(r.pct)}
                       onChange={(e) => setPct(r.id, e.target.value)}
                       className="w-20 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                     />
