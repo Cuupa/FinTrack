@@ -141,9 +141,10 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             value={birthYear}
             onChange={(e) => setBirthYear(stripLeadingZero(e.target.value))}
             placeholder="1990"
+            data-private={birthYear !== "" ? "" : undefined}
           />
           {standardAge != null && (
-            <span className="mt-1 block text-xs text-zinc-500">
+            <span className="mt-1 block text-xs text-zinc-500" data-private>
               {t("pension.standardAge", { age: standardAge.toFixed(1) })}
             </span>
           )}
@@ -156,6 +157,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             value={retirementAge}
             onChange={(e) => setRetirementAge(stripLeadingZero(e.target.value))}
             placeholder={standardAge != null ? standardAge.toFixed(1) : "67"}
+            data-private={retirementAge !== "" ? "" : undefined}
           />
         </label>
         <label className="block text-sm">
@@ -166,8 +168,9 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             value={annualPoints}
             onChange={(e) => setAnnualPoints(stripLeadingZero(e.target.value))}
             placeholder={projection.annualPoints.toFixed(2)}
+            data-private={annualPoints !== "" ? "" : undefined}
           />
-          <span className="mt-1 block text-xs text-zinc-500">
+          <span className="mt-1 block text-xs text-zinc-500" data-private>
             {projection.maxAnnualPoints != null
               ? t("pension.annualPointsHintMax", {
                   points: projection.annualPoints.toFixed(2),
@@ -183,6 +186,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             inputMode="decimal"
             value={targetMonthly}
             onChange={(e) => setTargetMonthly(stripLeadingZero(e.target.value))}
+            data-private={targetMonthly !== "" ? "" : undefined}
           />
         </label>
       </div>
@@ -316,11 +320,17 @@ function StatementsFields() {
             value={total}
             onChange={(e) => setTotal(stripLeadingZero(e.target.value))}
             placeholder="13,2739"
+            data-private={total !== "" ? "" : undefined}
           />
         </label>
         <label className="block text-sm sm:col-span-2">
           <span className="text-zinc-500">{t("pension.statements.note")}</span>
-          <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input
+            className={inputCls}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            data-private={note !== "" ? "" : undefined}
+          />
         </label>
       </div>
       <FormActions error={error}>
@@ -347,9 +357,11 @@ function StatementsFields() {
             <Tbody>
               {sorted.map((row) => (
                 <Tr key={row.year}>
-                  <Td>{row.year}</Td>
-                  <Td align="right">{row.totalPoints.toFixed(4)}</Td>
-                  <Td className="text-zinc-500">{row.note ?? ""}</Td>
+                  <Td data-private>{row.year}</Td>
+                  <Td align="right" data-private>{row.totalPoints.toFixed(4)}</Td>
+                  <Td className="text-zinc-500" data-private={row.note ? "" : undefined}>
+                    {row.note ?? ""}
+                  </Td>
                   <Td align="right">
                     <RowActions>
                       <DeleteAction
@@ -366,7 +378,7 @@ function StatementsFields() {
       )}
 
       {/* The subtraction the whole projection rests on, spelled out. */}
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 text-xs text-zinc-500" data-private>
         {rate
           ? t("pension.statements.rate", {
               points: rate.points.toFixed(4),
@@ -511,6 +523,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
             inputMode="decimal"
             value={points}
             onChange={(e) => setPoints(stripLeadingZero(e.target.value))}
+            data-private={points !== "" ? "" : undefined}
           />
           {overMax && (
             <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
@@ -520,7 +533,12 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
         </label>
         <label className="block text-sm sm:col-span-2">
           <span className="text-zinc-500">{t("pension.points.note")}</span>
-          <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input
+            className={inputCls}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            data-private={note !== "" ? "" : undefined}
+          />
         </label>
       </div>
       <FormActions error={error}>
@@ -547,9 +565,11 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
             <Tbody>
               {pager.rows.map((row) => (
                 <Tr key={row.year}>
-                  <Td>{row.year}</Td>
-                  <Td align="right">{row.points.toFixed(4)}</Td>
-                  <Td className="text-zinc-500">{row.note ?? ""}</Td>
+                  <Td data-private>{row.year}</Td>
+                  <Td align="right" data-private>{row.points.toFixed(4)}</Td>
+                  <Td className="text-zinc-500" data-private={row.note ? "" : undefined}>
+                    {row.note ?? ""}
+                  </Td>
                   <Td align="right">
                     <RowActions>
                       <DeleteAction
@@ -708,7 +728,12 @@ function ContractForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.name")}</span>
-          <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className={inputCls}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            data-private={name !== "" ? "" : undefined}
+          />
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.kind")}</span>
@@ -729,6 +754,7 @@ function ContractForm({
             className={inputCls}
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
+            data-private={provider !== "" ? "" : undefined}
           />
         </label>
         <label className="block text-sm">
@@ -738,6 +764,7 @@ function ContractForm({
             inputMode="decimal"
             value={rentenfaktor}
             onChange={(e) => setRentenfaktor(stripLeadingZero(e.target.value))}
+            data-private={rentenfaktor !== "" ? "" : undefined}
           />
           <span className="mt-1 block text-xs text-zinc-500">
             {t("pension.contracts.rentenfaktorHint")}
@@ -751,6 +778,7 @@ function ContractForm({
             inputMode="decimal"
             value={contribution}
             onChange={(e) => setContribution(stripLeadingZero(e.target.value))}
+            data-private={contribution !== "" ? "" : undefined}
           />
         </label>
         <label className="block text-sm">
@@ -760,6 +788,7 @@ function ContractForm({
             inputMode="decimal"
             value={value}
             onChange={(e) => setValue(stripLeadingZero(e.target.value))}
+            data-private={value !== "" ? "" : undefined}
           />
         </label>
         <label className="block text-sm">
@@ -769,6 +798,7 @@ function ContractForm({
             inputMode="decimal"
             value={dynamicPct}
             onChange={(e) => setDynamicPct(stripLeadingZero(e.target.value))}
+            data-private={dynamicPct !== "" ? "" : undefined}
           />
           <span className="mt-1 block text-xs text-zinc-500">
             {t("pension.contracts.dynamicHint")}
@@ -781,6 +811,7 @@ function ContractForm({
             inputMode="decimal"
             value={returnPct}
             onChange={(e) => setReturnPct(stripLeadingZero(e.target.value))}
+            data-private={returnPct !== "" ? "" : undefined}
           />
           <span className="mt-1 block text-xs text-zinc-500">
             {t("pension.contracts.returnHint")}
@@ -793,6 +824,7 @@ function ContractForm({
             type="date"
             value={startsOn}
             onChange={(e) => setStartsOn(e.target.value)}
+            data-private={startsOn !== "" ? "" : undefined}
           />
         </label>
         {/* A policy with a Rentenfaktor computes its payout from the premium,
@@ -807,6 +839,7 @@ function ContractForm({
               inputMode="decimal"
               value={expected}
               onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
+              data-private={expected !== "" ? "" : undefined}
             />
             <span className="mt-1 block text-xs text-zinc-500">
               {t("pension.contracts.expectedHint")}
@@ -817,7 +850,7 @@ function ContractForm({
             premiums then collect for review; nothing is ever posted silently. */}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.account")}</span>
-          <div className="mt-1">
+          <div className="mt-1" data-private={accountId !== "" ? "" : undefined}>
             <SelectMenu
               ariaLabel={t("pension.contracts.account")}
               value={accountId}
@@ -841,6 +874,7 @@ function ContractForm({
               type="date"
               value={bookingStartDate}
               onChange={(e) => setBookingStartDate(e.target.value)}
+              data-private={bookingStartDate !== "" ? "" : undefined}
             />
             <span className="mt-1 block text-xs text-zinc-500">
               {t("pension.contracts.bookingStartHint")}
@@ -849,7 +883,12 @@ function ContractForm({
         )}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.note")}</span>
-          <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
+          <input
+            className={inputCls}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            data-private={note !== "" ? "" : undefined}
+          />
         </label>
       </div>
       {/* The page shows its own arithmetic: the capital first, then the factor
@@ -982,7 +1021,7 @@ function ContractValuesDialog({
               <Tbody>
                 {sorted.map((row) => (
                   <Tr key={row.date}>
-                    <Td>{formatDate(row.date)}</Td>
+                    <Td data-private>{formatDate(row.date)}</Td>
                     <Td align="right" data-private>
                       {formatCurrency(row.value, currency)}
                     </Td>
@@ -1232,15 +1271,17 @@ function ContractsCard() {
             <Tbody>
               {pager.rows.map((c) => (
                 <Tr key={c.id}>
-                  <Td>{c.name}</Td>
+                  <Td data-private>{c.name}</Td>
                   <Td className="text-zinc-500">{t(`pension.kind.${c.kind}`)}</Td>
-                  <Td align="right">{money(payoutOf(c) || null)}</Td>
-                  <Td align="right">{money(c.monthlyContribution)}</Td>
-                  <Td align="right">{money(capitalOf(c))}</Td>
-                  <Td align="right">
+                  <Td align="right" data-private>{money(payoutOf(c) || null)}</Td>
+                  <Td align="right" data-private>{money(c.monthlyContribution)}</Td>
+                  <Td align="right" data-private>{money(capitalOf(c))}</Td>
+                  <Td align="right" data-private>
                     {returnOf(c) == null ? "—" : `${returnOf(c)!.toFixed(2)} %`}
                   </Td>
-                  <Td className="text-zinc-500">{c.startsOn ?? "—"}</Td>
+                  <Td className="text-zinc-500" data-private={c.startsOn ? "" : undefined}>
+                    {c.startsOn ?? "—"}
+                  </Td>
                   <Td align="right">
                     <RowActions>
                       <EditAction label={t("pension.edit")} onClick={() => setEditing(c)} />
@@ -1411,7 +1452,7 @@ export function PensionView() {
     <div className="space-y-6">
       <Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="pension-summary">
-          <Stat label={t("pension.stat.points")} value={projection.totalPoints.toFixed(2)} />
+          <Stat label={t("pension.stat.points")} value={projection.totalPoints.toFixed(2)} isPrivate />
           <Stat label={t("pension.stat.statutory")} value={money(projection.monthlyStatutory)} isPrivate />
           <Stat label={t("pension.stat.private")} value={money(projection.monthlyPrivate)} isPrivate />
           <Stat label={t("pension.stat.total")} value={money(projection.monthlyTotal)} isPrivate />
@@ -1421,17 +1462,19 @@ export function PensionView() {
           <Stat
             label={t("pension.stat.retirementYear")}
             value={projection.retirementYear != null ? String(projection.retirementYear) : "—"}
+            isPrivate
           />
-          <Stat label={t("pension.stat.accessFactor")} value={projection.accessFactor.toFixed(3)} />
+          <Stat label={t("pension.stat.accessFactor")} value={projection.accessFactor.toFixed(3)} isPrivate />
           <Stat
             label={t("pension.stat.level")}
             value={level != null ? `${level.toFixed(1)} %` : "—"}
+            isPrivate
           />
         </div>
         {/* The projection's own arithmetic, in full. A single number cannot be
             argued with when it disagrees with the Renteninformation; these two
             lines say which input is responsible. */}
-        <p className="mt-4 text-xs text-zinc-500">
+        <p className="mt-4 text-xs text-zinc-500" data-private>
           {t("pension.calc.points", {
             current: projection.currentPoints.toFixed(2),
             annual: projection.annualPoints.toFixed(2),
@@ -1457,7 +1500,7 @@ export function PensionView() {
           )}
         </p>
         {projection.annualPointsSlope !== 0 && (
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-500" data-private>
             {t("pension.calc.trend", {
               start: projection.annualPointsStart.toFixed(2),
               end: projection.annualPointsEnd.toFixed(2),
@@ -1466,7 +1509,7 @@ export function PensionView() {
           </p>
         )}
         {projection.outlierYear && (
-          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400" data-private>
             {t("pension.outlierNotice", {
               year: String(projection.outlierYear.year),
               points: projection.outlierYear.points.toFixed(2),
@@ -1474,7 +1517,7 @@ export function PensionView() {
           </p>
         )}
         {projection.annualPointsCapped && projection.maxAnnualPoints != null && (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
+          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400" data-private>
             {t("pension.cappedNotice", {
               raw: projection.rawAnnualPoints.toFixed(2),
               max: projection.maxAnnualPoints.toFixed(2),
