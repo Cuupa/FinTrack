@@ -772,23 +772,33 @@ export function RecurringCard() {
                           }`}
                           data-private
                         />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => cancelAmountEdit(d.key)}
-                          aria-label={t("recurring.due.cancelAmount")}
-                        >
-                          {t("common.cancel")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={amount === null}
-                          onClick={() => confirmAmountEdit(d.key)}
-                          aria-label={t("recurring.due.confirmAmount")}
-                        >
-                          {t("recurring.due.confirmAmount")}
-                        </Button>
+                        <RowActions>
+                          <DeleteAction
+                            label={t("recurring.due.cancelAmount")}
+                            onClick={() => cancelAmountEdit(d.key)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => confirmAmountEdit(d.key)}
+                            disabled={amount === null}
+                            className="rounded px-1.5 py-1 text-zinc-400 transition-colors hover:text-zinc-700 disabled:opacity-40 dark:hover:text-zinc-200"
+                            aria-label={t("recurring.due.confirmAmount")}
+                            title={t("recurring.due.confirmAmount")}
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
+                              className="inline h-3.5 w-3.5"
+                            >
+                              <path d="m5 12 4 4L19 6" />
+                            </svg>
+                          </button>
+                        </RowActions>
                       </>
                     ) : (
                       <span
