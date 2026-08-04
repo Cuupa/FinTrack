@@ -119,6 +119,16 @@ export function AssetTags({ assetId }: { assetId: string }) {
                 </button>
               )}
             />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setAddingGroup(true)}
+              aria-label={t("tags.newGroup")}
+              title={t("tags.newGroup")}
+            >
+              +
+            </Button>
             <input
               list={datalistId}
               value={value}
