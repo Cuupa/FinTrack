@@ -20,10 +20,11 @@ import type { FeatureFlag, FeatureState } from "@/lib/flags/flags-context";
 
 /** The areas of the product. The dashboard belongs to none of them: it is the
     home that summarises all three, so it sits above the first group header. */
-export type NavGroup = "everyday" | "invest" | "plan";
+export type NavGroup = "everyday" | "household" | "invest" | "plan";
 
 export const NAV_GROUPS: { id: NavGroup; key: MessageKey }[] = [
   { id: "everyday", key: "nav.group.everyday" },
+  { id: "household", key: "nav.group.household" },
   { id: "invest", key: "nav.group.invest" },
   { id: "plan", key: "nav.group.plan" },
 ];
@@ -56,7 +57,8 @@ export const NAV_ROUTES: NavRoute[] = [
   },
 
   // Everyday money: the balances you hold, what flows out of them, and what
-  // you owe. Household sits here because it shares exactly this.
+  // you owe. Household has its own cross-functional area because it controls
+  // access to every shared financial surface.
   {
     href: "/accounts",
     key: "nav.accounts",
@@ -94,7 +96,7 @@ export const NAV_ROUTES: NavRoute[] = [
     // Two-person glyph: shared/collaborative access.
     icon: <path d="M9 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 12v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M17 5a3 3 0 0 1 0 6M21 20v-2a5 5 0 0 0-3.5-4.8" />,
     flags: ["household"],
-    group: "everyday",
+    group: "household",
   },
 
   // Investments: everything that reads the transaction log rather than a

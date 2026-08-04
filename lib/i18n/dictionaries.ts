@@ -42,6 +42,7 @@ export const en = {
   "nav.collapse": "Collapse",
   "nav.more": "More",
   "nav.group.everyday": "Everyday",
+  "nav.group.household": "Household",
   "nav.group.invest": "Investments",
   "nav.group.plan": "Planning",
 
@@ -1816,7 +1817,7 @@ export const en = {
   "household.decline": "Decline",
   "household.sharingPaused":
     "Sharing is paused: nobody in this household is on Pro right now, so everyone only sees their own data. Nothing was deleted, sharing resumes as soon as one member subscribes.",
-  "household.limitHint": "Your plan includes up to {n} people per household (pending invitations count).",
+  "household.limitHint": "Up to {n} people are included. Additional members cost €1.99 each (pending invitations count).",
 
   // X-Ray
   "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
@@ -2381,6 +2382,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.collapse": "Einklappen",
   "nav.more": "Mehr",
   "nav.group.everyday": "Alltag",
+  "nav.group.household": "Haushalt",
   "nav.group.invest": "Anlagen",
   "nav.group.plan": "Planung",
 
@@ -4152,7 +4154,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "household.decline": "Ablehnen",
   "household.sharingPaused":
     "Das Teilen ist pausiert: niemand in diesem Haushalt hat gerade Pro, deshalb sieht jede Person nur die eigenen Daten. Es wurde nichts gelöscht, das Teilen läuft weiter, sobald ein Mitglied ein Abo hat.",
-  "household.limitHint": "Dein Plan umfasst bis zu {n} Personen pro Haushalt (offene Einladungen zählen mit).",
+  "household.limitHint": "Bis zu {n} Personen sind enthalten. Weitere Mitglieder kosten jeweils 1,99 € (offene Einladungen zählen mit).",
 
   // X-Ray
   "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
@@ -4716,6 +4718,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.collapse": "Contraer",
   "nav.more": "Más",
   "nav.group.everyday": "Día a día",
+  "nav.group.household": "Hogar",
   "nav.group.invest": "Inversiones",
   "nav.group.plan": "Planificación",
 
@@ -6491,7 +6494,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "household.decline": "Rechazar",
   "household.sharingPaused":
     "El uso compartido está en pausa: ahora mismo nadie de este hogar tiene Pro, así que cada persona solo ve sus propios datos. No se ha borrado nada y volverá a funcionar en cuanto un miembro se suscriba.",
-  "household.limitHint": "Tu plan incluye hasta {n} personas por hogar (las invitaciones pendientes cuentan).",
+  "household.limitHint": "Se incluyen hasta {n} personas. Cada miembro adicional cuesta 1,99 € (las invitaciones pendientes cuentan).",
 
   // X-Ray
   "xray.subtitle": "Tu exposición real a acciones individuales, mirando a través de tus fondos.",

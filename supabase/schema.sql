@@ -1219,7 +1219,8 @@ insert into public.schema_migrations (version) values
   ('0113_month_end_schedule'),
   ('0114_price_retry_queue'),
   ('0115_split_flag_covers_manual_entry'),
-  ('0116_savings_plan_account_and_front_load')
+  ('0116_savings_plan_account_and_front_load'),
+  ('0124_household_all_financial_data')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1353,21 +1354,24 @@ create policy "own account balances" on public.account_balances
   for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
   with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
--- Pension rows are self-only, deliberately WITHOUT household_peer_ids(): a
--- statutory entitlement is personal, and the Renteninformation it is copied
--- from is one of the more sensitive documents a user owns.
+-- Pension is financial data too, so household members need it for a complete
+-- shared retirement plan. Credentials and personal settings remain self-only.
 drop policy if exists "own pension points" on public.pension_points;
 create policy "own pension points" on public.pension_points
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 drop policy if exists "own pension statements" on public.pension_statements;
 create policy "own pension statements" on public.pension_statements
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 drop policy if exists "own pension contracts" on public.pension_contracts;
 create policy "own pension contracts" on public.pension_contracts
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 drop policy if exists "own pension contract values" on public.pension_contract_values;
 create policy "own pension contract values" on public.pension_contract_values
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all using (auth.uid() = user_id or user_id in (select public.household_peer_ids()))
+  with check (auth.uid() = user_id or user_id in (select public.household_peer_ids()));
 
 alter table public.households enable row level security;
 alter table public.household_members enable row level security;
@@ -1742,7 +1746,7 @@ insert into public.plan_limits (limit_key, free_value, pro_value) values
   ('savingsPlans', null, null),
   ('portfolios', null, null),
   -- People in a household, including yourself (migration 0101).
-  ('householdMembers', null, null)
+  ('householdMembers', 2, null)
 on conflict (limit_key) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the

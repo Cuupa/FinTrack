@@ -142,10 +142,10 @@ create policy "member creates invite" on public.household_invites
 
 -- Household size as an ordinary plan limit (people, including yourself), so
 -- the cap rides the existing resolveLimit/atLimit machinery instead of a
--- second bespoke rule. Seeded unlimited on both plans like every other key:
--- nothing changes until the owner sets a number on /admin/site.
+-- second bespoke rule. Two people are included on the free tier; Pro can add
+-- more members, with the household add-on priced at 1.99 EUR per seat.
 insert into public.plan_limits (limit_key, free_value, pro_value) values
-  ('householdMembers', null, null)
+  ('householdMembers', 2, null)
 on conflict (limit_key) do nothing;
 
 insert into public.schema_migrations (version) values ('0101_household_pro')

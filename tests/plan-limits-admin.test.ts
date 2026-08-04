@@ -11,10 +11,11 @@ vi.mock("server-only", () => ({}));
 const { isLimitKey, parsePlanLimitBody } = await import("../lib/server/plan-limits-admin");
 
 describe("isLimitKey", () => {
-  it("accepts the three seeded limit keys", () => {
+  it("accepts all seeded limit keys", () => {
     expect(isLimitKey("watchlistItems")).toBe(true);
     expect(isLimitKey("savingsPlans")).toBe(true);
     expect(isLimitKey("portfolios")).toBe(true);
+    expect(isLimitKey("householdMembers")).toBe(true);
   });
 
   it("rejects anything else", () => {
