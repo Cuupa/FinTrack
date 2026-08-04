@@ -16,6 +16,9 @@ import { useEffect, useState } from "react";
 import type { PensionReference } from "../finance/pension";
 import { reportError } from "../errors/report";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
+import { readOfflineSnapshot, writeOfflineSnapshot } from "../offline/snapshot";
+
+const CACHE_KEY = "fintrack:reference:pension:v1";
 
 interface PensionReferenceRow {
   year: number;
@@ -28,6 +31,10 @@ export function usePensionReference(): PensionReference[] {
   const [rows, setRows] = useState<PensionReference[]>([]);
 
   useEffect(() => {
+    void Promise.resolve().then(() => {
+      const cached = readOfflineSnapshot<PensionReference[]>(CACHE_KEY);
+      if (cached?.value) setRows(cached.value);
+    });
     if (!isSupabaseConfigured) return;
     const supabase = getSupabaseClient();
     if (!supabase) return;
@@ -66,6 +73,7 @@ export function usePensionReference(): PensionReference[] {
         }
         out.sort((a, b) => a.year - b.year);
         setRows(out);
+        writeOfflineSnapshot(CACHE_KEY, out);
       });
     return () => {
       active = false;

@@ -60,6 +60,7 @@ import { useAuth } from "../auth/auth-context";
 import { usePlan } from "../billing/use-plan";
 import { resolveLimit, type LimitKey, type PlanLimitRow } from "../billing/limits";
 import { resolveFeature, type FeatureState } from "./resolve";
+import { readOfflineSnapshot, writeOfflineSnapshot } from "../offline/snapshot";
 
 export type { FeatureState };
 
@@ -130,6 +131,8 @@ interface FeatureFlagsValue {
 
 const OPEN_FEATURE: FeatureState = { enabled: true, locked: false };
 const CLOSED_FEATURE: FeatureState = { enabled: false, locked: false };
+const GLOBALS_CACHE_KEY = "fintrack:flags:globals:v1";
+const LIMITS_CACHE_KEY = "fintrack:flags:limits:v1";
 
 const FeatureFlagsContext = createContext<FeatureFlagsValue>({
   ready: !isSupabaseConfigured,
@@ -154,6 +157,10 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
   const [limitRows, setLimitRows] = useState<PlanLimitRow[] | null>(null);
 
   useEffect(() => {
+    void Promise.resolve().then(() => {
+      const cached = readOfflineSnapshot<GlobalMap>(GLOBALS_CACHE_KEY);
+      if (cached?.value) setGlobals(cached.value);
+    });
     const supabase = getSupabaseClient();
     if (!supabase) return;
     let active = true;
@@ -175,6 +182,7 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           };
         }
         setGlobals(map);
+        writeOfflineSnapshot(GLOBALS_CACHE_KEY, map);
       });
     return () => {
       active = false;
@@ -182,6 +190,10 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    void Promise.resolve().then(() => {
+      const cached = readOfflineSnapshot<PlanLimitRow[]>(LIMITS_CACHE_KEY);
+      if (cached?.value) setLimitRows(cached.value);
+    });
     const supabase = getSupabaseClient();
     if (!supabase) return;
     let active = true;
@@ -196,6 +208,7 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           proValue: row.pro_value,
         }));
         setLimitRows(rows);
+        writeOfflineSnapshot(LIMITS_CACHE_KEY, rows);
       });
     return () => {
       active = false;
@@ -204,6 +217,11 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
 
   const userId = user?.id ?? null;
   useEffect(() => {
+    void Promise.resolve().then(() => {
+      if (!userId) return;
+      const cached = readOfflineSnapshot<OverrideMap>(`fintrack:flags:overrides:${userId}:v1`);
+      if (cached?.value) setOverrides({ userId, flags: cached.value });
+    });
     const supabase = getSupabaseClient();
     if (!supabase || !userId) return;
     let active = true;
@@ -218,6 +236,7 @@ export function FeatureFlagsProvider({ children }: { children: ReactNode }) {
           map[row.flag] = row.enabled;
         }
         setOverrides({ userId, flags: map });
+        writeOfflineSnapshot(`fintrack:flags:overrides:${userId}:v1`, map);
       });
     return () => {
       active = false;

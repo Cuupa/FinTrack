@@ -33,6 +33,7 @@ import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
 import { useAuth } from "../auth/auth-context";
 import { resolvePlan, type Plan, type PlanGrant } from "./plan";
 import type { SubscriptionRow } from "./subscription-view";
+import { readOfflineSnapshot, writeOfflineSnapshot } from "../offline/snapshot";
 
 // Stable reference so the no-grants case doesn't create a new array (and
 // thus a new useMemo dependency) on every render.
@@ -120,20 +121,29 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId || !isSupabaseConfigured) return;
     let active = true;
+    const cacheKey = `fintrack:billing:${userId}:v1`;
+    void Promise.resolve().then(() => {
+      const cached = readOfflineSnapshot<Omit<LoadedState, "userId">>(cacheKey);
+      if (active && cached?.value) setLoaded({ userId, ...cached.value });
+    });
     Promise.all([fetchSubscription(userId), fetchGrants(userId)]).then(([subscription, grants]) => {
       if (!active) return;
       setLoaded({ userId, subscription, grants });
+      writeOfflineSnapshot(cacheKey, { subscription, grants });
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
       if (params.get("billing") !== "success") return;
       // Stripe's webhook can lag the Checkout redirect by a moment; give it
       // a beat, then re-fetch once more so the settings card doesn't need a
       // manual reload to show the new plan.
-      window.setTimeout(() => {
-        if (!active) return;
-        Promise.all([fetchSubscription(userId), fetchGrants(userId)]).then(
-          ([retriedSubscription, retriedGrants]) => {
-            if (active) setLoaded({ userId, subscription: retriedSubscription, grants: retriedGrants });
+        window.setTimeout(() => {
+          if (!active) return;
+          Promise.all([fetchSubscription(userId), fetchGrants(userId)]).then(
+            ([retriedSubscription, retriedGrants]) => {
+            if (active) {
+              setLoaded({ userId, subscription: retriedSubscription, grants: retriedGrants });
+              writeOfflineSnapshot(cacheKey, { subscription: retriedSubscription, grants: retriedGrants });
+            }
           },
         );
       }, 1500);
@@ -147,6 +157,7 @@ export function BillingProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     const [subscription, grants] = await Promise.all([fetchSubscription(userId), fetchGrants(userId)]);
     setLoaded({ userId, subscription, grants });
+    writeOfflineSnapshot(`fintrack:billing:${userId}:v1`, { subscription, grants });
   }, [userId]);
 
   const subscription = loaded?.userId === userId ? loaded.subscription : null;

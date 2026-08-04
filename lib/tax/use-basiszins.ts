@@ -10,6 +10,9 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseClient, isSupabaseConfigured } from "../supabase/client";
+import { readOfflineSnapshot, writeOfflineSnapshot } from "../offline/snapshot";
+
+const CACHE_KEY = "fintrack:reference:basiszins:v1";
 
 interface BasiszinsRow {
   year: number;
@@ -22,6 +25,10 @@ export function useBasiszins(): Record<string, number> {
   const [rates, setRates] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    void Promise.resolve().then(() => {
+      const cached = readOfflineSnapshot<Record<string, number>>(CACHE_KEY);
+      if (cached?.value) setRates(cached.value);
+    });
     if (!isSupabaseConfigured) return;
     const supabase = getSupabaseClient();
     if (!supabase) return;
@@ -38,6 +45,7 @@ export function useBasiszins(): Record<string, number> {
           }
         }
         setRates(out);
+        writeOfflineSnapshot(CACHE_KEY, out);
       });
     return () => {
       active = false;
