@@ -50,6 +50,7 @@ ansehen laesst.
 | LLM-Chat laesst Seitenscrollen beim Oeffnen zu | `components/llm/chat-panel.tsx`, `tests/llm-chat-panel.test.ts` |
 | Monte-Carlo beruecksichtigt die PensionBridge | `lib/finance/monte-carlo.ts`, `lib/simulation/use-monte-carlo.ts`, Simulation/FIRE-Link, `tests/withdrawal.test.ts` |
 | Buchung hinzufuegen oeffnet ein Modal | `components/spending/spending-view.tsx` |
+| Monatsende als Toggle | `components/spending/spending-view.tsx`, `components/spending/planned-form.tsx`, `components/spending/recurring-form.tsx` |
 
 ### Runde 2026-08-02 (dritter Teil)
 

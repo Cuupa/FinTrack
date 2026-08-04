@@ -445,15 +445,13 @@ export function SpendingView({
                       the month" is not a weekly cadence, and a one-off is a
                       date the user already picked outright. */}
                   {monthEndApplies && (
-                    <label className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
-                      <input
-                        type="checkbox"
+                    <div className="mt-2">
+                      <Toggle
                         checked={monthEnd}
-                        onChange={(e) => setMonthEnd(e.target.checked)}
-                        className="h-4 w-4"
+                        onChange={setMonthEnd}
+                        label={t("recurring.monthEnd")}
                       />
-                      {t("recurring.monthEnd")}
-                    </label>
+                    </div>
                   )}
                 </div>
               )}

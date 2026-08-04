@@ -29,7 +29,7 @@ import type {
 import type { ContractInput } from "@/lib/store/types";
 import { today } from "@/lib/finance/dates";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, SegmentedControl } from "@/components/ui/primitives";
+import { Button, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -206,15 +206,13 @@ export function RecurringForm({
           <p className="mt-1 text-sm text-zinc-500">{t("contracts.form.startHint")}</p>
           {/* A contract only ever runs monthly, quarterly or annually, so
               month-end always applies once it books. */}
-          <label className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
-            <input
-              type="checkbox"
+          <div className="mt-2">
+            <Toggle
               checked={monthEnd}
-              onChange={(e) => setMonthEnd(e.target.checked)}
-              className="h-4 w-4"
+              onChange={setMonthEnd}
+              label={t("recurring.monthEnd")}
             />
-            {t("recurring.monthEnd")}
-          </label>
+          </div>
         </div>
       )}
       {/* Only meaningful once the contract books: it says the money is not

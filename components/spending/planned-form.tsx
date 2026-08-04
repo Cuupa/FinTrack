@@ -13,7 +13,7 @@ import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, SegmentedControl } from "@/components/ui/primitives";
+import { Button, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -179,15 +179,13 @@ export function PlannedForm({
             }))}
           />
           {monthEndApplies && (
-            <label className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
-              <input
-                type="checkbox"
+            <div className="mt-2">
+              <Toggle
                 checked={monthEnd}
-                onChange={(e) => setMonthEnd(e.target.checked)}
-                className="h-4 w-4"
+                onChange={setMonthEnd}
+                label={t("recurring.monthEnd")}
               />
-              {t("recurring.monthEnd")}
-            </label>
+            </div>
           )}
         </div>
         <div>
