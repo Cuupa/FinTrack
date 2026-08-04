@@ -54,6 +54,7 @@ ansehen laesst.
 | Tag-Gruppen-Anlage hinter Plus | `components/assets/tag-groups-manager.tsx` |
 | Dezimaltrennzeichen in FIRE/Simulation | `components/fire/fire-view.tsx`, `components/simulation/monte-carlo-panel.tsx` verwenden String-Inputs mit `parseDecimal` |
 | Wiederkehrende Buchungen: Datum/Betrag ergonomischer | `components/spending/recurring-card.tsx`, i18n-Keys fuer Datum/Betrag |
+| Ausgabeaufschlag klar als Prozent beschriftet | `lib/i18n/dictionaries.ts` (EN/DE/ES) |
 
 ### Runde 2026-08-02 (dritter Teil)
 

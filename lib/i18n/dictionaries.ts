@@ -132,7 +132,7 @@ export const en = {
   "asset.frontLoad.title": "Front-end load",
   "asset.frontLoad.intro":
     "Actively managed funds charge a surcharge on top of the unit's net asset value. It is booked as a fee, so the price stays the fund's own and the cost basis is the money you actually spent.",
-  "asset.frontLoad.rate": "Rate",
+  "asset.frontLoad.rate": "Percentage",
   "asset.frontLoad.sampleLabel": "On an order of {amount}",
   "asset.frontLoad.sample": "{charge} surcharge, {units} units",
   "asset.frontLoad.sampleNone": "No surcharge.",
@@ -142,7 +142,7 @@ export const en = {
   "asset.frontLoad.saved": "Saved",
   "asset.frontLoad.saveError": "Could not save the front-end load.",
   "sp.frontLoad": "Front-end load",
-  "sp.frontLoadPlanHint": "Empty inherits the fund's own rate. Enter 0 if your broker waives it on this plan.",
+  "sp.frontLoadPlanHint": "Empty inherits the fund's own percentage. Enter 0 if your broker waives it on this plan.",
   "sp.frontLoadHint":
     "The front-end load is booked as part of the transaction fee, so the price stays the fund's net asset value.",
   "sp.debitAccount": "Debited from",
@@ -2489,7 +2489,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "asset.frontLoad.title": "Ausgabeaufschlag",
   "asset.frontLoad.intro":
     "Aktiv gemanagte Fonds verlangen einen Aufschlag auf den Anteilswert. Er wird als Gebühr gebucht, damit der Kurs der des Fonds bleibt und die Anschaffungskosten dem entsprechen, was du wirklich bezahlt hast.",
-  "asset.frontLoad.rate": "Satz",
+  "asset.frontLoad.rate": "Prozentsatz",
   "asset.frontLoad.sampleLabel": "Bei einer Order über {amount}",
   "asset.frontLoad.sample": "{charge} Aufschlag, {units} Anteile",
   "asset.frontLoad.sampleNone": "Kein Aufschlag.",
@@ -2500,7 +2500,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "asset.frontLoad.saveError": "Der Ausgabeaufschlag konnte nicht gespeichert werden.",
   "sp.frontLoad": "Ausgabeaufschlag",
   "sp.frontLoadPlanHint":
-    "Leer übernimmt den Satz des Fonds. Trag 0 ein, wenn dein Broker ihn bei diesem Sparplan erlässt.",
+    "Leer übernimmt den Prozentsatz des Fonds. Trag 0 ein, wenn dein Broker ihn bei diesem Sparplan erlässt.",
   "sp.frontLoadHint":
     "Der Ausgabeaufschlag wird als Teil der Gebühr gebucht, damit der Kurs der Anteilswert des Fonds bleibt.",
   "sp.debitAccount": "Abgebucht von",
@@ -4843,7 +4843,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "asset.frontLoad.title": "Comisión de suscripción",
   "asset.frontLoad.intro":
     "Los fondos de gestión activa cobran un recargo sobre el valor liquidativo. Se contabiliza como comisión, así el precio sigue siendo el del fondo y el coste de adquisición es lo que realmente pagaste.",
-  "asset.frontLoad.rate": "Tasa",
+  "asset.frontLoad.rate": "Porcentaje",
   "asset.frontLoad.sampleLabel": "En una orden de {amount}",
   "asset.frontLoad.sample": "{charge} de recargo, {units} participaciones",
   "asset.frontLoad.sampleNone": "Sin recargo.",
@@ -4854,7 +4854,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "asset.frontLoad.saveError": "No se pudo guardar la comisión de suscripción.",
   "sp.frontLoad": "Comisión de suscripción",
   "sp.frontLoadPlanHint":
-    "Vacío hereda la tasa del fondo. Pon 0 si tu bróker la exime en este plan.",
+    "Vacío hereda el porcentaje del fondo. Pon 0 si tu bróker la exime en este plan.",
   "sp.frontLoadHint":
     "La comisión se contabiliza como parte de la comisión de la operación, así el precio sigue siendo el valor liquidativo del fondo.",
   "sp.debitAccount": "Cargado en",
