@@ -128,9 +128,9 @@ export function TransactionForm({
 
   const qtyNum = parseDecimal(quantity);
   const pxNum = isCash ? 1 : isSplit ? 0 : parseDecimal(price);
-  // Tax only applies to real trades (Abgeltungsteuer on sells, transaction
-  // tax on some buys) — never to cash deposits/withdrawals or creditings.
-  const showTax = !isCash && (isBuy || type === "SELL");
+  // Tax is entered for sales only; purchases do not create a tax liability in
+  // this transaction model, and cash deposits/withdrawals never show it.
+  const showTax = !isCash && type === "SELL";
   const taxNum = showTax ? parseDecimal(tax) || 0 : 0;
   // Cash leaving (buy) / arriving (sell); a BOOKING/INTEREST costs nothing, so
   // its "total" is the market value / interest received.

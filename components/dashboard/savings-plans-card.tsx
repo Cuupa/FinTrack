@@ -22,9 +22,14 @@ import { priceOn, quoteItemFor } from "@/lib/finance/prices";
 import { priceAtWithHeadTolerance } from "@/lib/history/history";
 import { useHistory } from "@/lib/history/use-history";
 import { assetPriceKey, type Asset, type SavingsPlan } from "@/lib/types";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatInputDecimal,
+  parseDecimal,
+  stripLeadingZero,
+} from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
-import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -106,7 +111,7 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
   const qtyEdited = edit?.qty !== undefined;
   const feeEdited = edit?.fee !== undefined;
 
-  const priceInput = priceEdited ? edit.price! : String(defaultPrice);
+  const priceInput = priceEdited ? edit.price! : formatInputDecimal(defaultPrice, 2);
   const effectivePrice = priceEdited ? parseDecimal(edit.price!) : defaultPrice;
 
   let qtyInput: string;
@@ -117,11 +122,11 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
   } else {
     const priceForQty = priceEdited ? effectivePrice : defaultPrice;
     const qtyValue = priceForQty > 0 ? round(row.plan.amount / priceForQty, 3) : NaN;
-    qtyInput = Number.isFinite(qtyValue) ? String(qtyValue) : "";
+    qtyInput = Number.isFinite(qtyValue) ? formatInputDecimal(qtyValue, 3) : "";
     effectiveQty = qtyValue;
   }
 
-  const feeInput = feeEdited ? edit.fee! : String(round(row.feeDefault, 2));
+  const feeInput = feeEdited ? edit.fee! : formatInputDecimal(round(row.feeDefault, 2), 2);
   const effectiveFeeParsed = feeEdited ? parseDecimal(edit.fee!) : row.feeDefault;
   const effectiveFee = Number.isFinite(effectiveFeeParsed) ? effectiveFeeParsed : 0;
 
@@ -185,7 +190,7 @@ function SavingsPlansCardInner() {
   const [deleting, setDeleting] = useState<SavingsPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Per-row user overrides for price/qty in the review dialog, keyed by
+  // Per-row user overrides for price/qty in the inline review, keyed by
   // `${plan.id}:${date}`. Reset on open/close (never via effect — see
   // react-hooks/set-state-in-effect in CLAUDE.md).
   const [rowEdits, setRowEdits] = useState<Map<string, { price?: string; qty?: string }>>(
@@ -548,14 +553,10 @@ function SavingsPlansCardInner() {
         </div>
       )}
 
-      {/* Review dialog: due executions with the price each would post at. */}
-      <Modal
-        open={reviewing}
-        onClose={() => {
-          if (!busy) closeReview();
-        }}
-      >
-        <div className="space-y-4">
+      {/* Inline review: due executions with editable booking values. */}
+      {reviewing && (
+        <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="space-y-4">
           <h3 className="text-lg font-semibold">{t("sp.reviewTitle")}</h3>
           <p className="text-sm text-zinc-500">{t("sp.reviewHint")}</p>
           <Table>
@@ -647,8 +648,9 @@ function SavingsPlansCardInner() {
               {busy ? t("sp.applying") : t("sp.confirm", { count: dueRows.length })}
             </Button>
           </div>
+          </div>
         </div>
-      </Modal>
+      )}
 
       <ConfirmDialog
         open={deleting !== null}

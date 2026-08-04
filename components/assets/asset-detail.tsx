@@ -33,7 +33,14 @@ import {
   plColor,
   stripLeadingZero,
 } from "@/lib/format";
-import { assetPriceKey, type Asset, type Portfolio, type Transaction, type TransactionType } from "@/lib/types";
+import {
+  assetPriceKey,
+  type Asset,
+  type Portfolio,
+  type SavingsPlan,
+  type Transaction,
+  type TransactionType,
+} from "@/lib/types";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { constituentsFor, lookupInstrument } from "@/lib/catalog/catalog";
@@ -89,7 +96,7 @@ import {
   usePagination,
 } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
-import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
+import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
 // Read-only savings-plan list on the asset page is scoped to a single asset,
@@ -118,6 +125,8 @@ export function AssetDetail({
     portfolios,
     addAsset,
     addSavingsPlan,
+    updateSavingsPlan,
+    deleteSavingsPlan,
     addTransaction,
   } = usePortfolio();
   const { valuation } = useLivePrices();
@@ -137,6 +146,7 @@ export function AssetDetail({
   const { t } = useI18n();
   const currency = data.profile.currency;
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<SavingsPlan | null>(null);
   const planSort = useSort<AssetPlanSortKey>("next");
   const [reviewingSplits, setReviewingSplits] = useState(false);
   const [splitBusy, setSplitBusy] = useState(false);
@@ -906,6 +916,7 @@ export function AssetDetail({
                 <Th sort={planSort.sort} sortKey="next" onSort={planSort.toggle}>
                   {t("sp.nextHeader")}
                 </Th>
+                <Th />
               </Thead>
               <Tbody>
                 {assetPlans.map(({ plan, next }) => {
@@ -928,6 +939,32 @@ export function AssetDetail({
                       </Td>
                       <Td className={`whitespace-nowrap ${muted}`}>
                         {plan.active ? formatDate(next) : t("sp.paused")}
+                      </Td>
+                      <Td>
+                        <RowActions>
+                          <EditAction
+                            label={t("sp.edit")}
+                            onClick={() => setEditingPlan(plan)}
+                          />
+                          <PauseAction
+                            label={plan.active ? t("sp.pause") : t("sp.resume")}
+                            paused={!plan.active}
+                            onClick={() =>
+                              void updateSavingsPlan(plan.id, { active: !plan.active })
+                            }
+                          />
+                          <DeleteAction
+                            label={t("sp.deleteTitle")}
+                            onClick={() =>
+                              setPending({
+                                title: t("sp.deleteTitle"),
+                                message: t("sp.deleteMsg", { name: asset.name }),
+                                confirmLabel: t("sp.deleteTitle"),
+                                action: () => void deleteSavingsPlan(plan.id),
+                              })
+                            }
+                          />
+                        </RowActions>
                       </Td>
                     </Tr>
                   );
@@ -976,6 +1013,23 @@ export function AssetDetail({
               }}
               onDone={() => setPlanModalOpen(false)}
               limitReached={savingsPlansLimitHint}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {editingPlan && (
+        <Modal open onClose={() => setEditingPlan(null)}>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{t("sp.edit")}</h3>
+            <PlanForm
+              key={editingPlan.id}
+              plan={editingPlan}
+              onSubmit={async (values) => {
+                await updateSavingsPlan(editingPlan.id, values);
+                setEditingPlan(null);
+              }}
+              onDone={() => setEditingPlan(null)}
             />
           </div>
         </Modal>
