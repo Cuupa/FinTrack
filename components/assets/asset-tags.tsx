@@ -22,6 +22,7 @@ export function AssetTags({ assetId }: { assetId: string }) {
 
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [value, setValue] = useState("");
+  const [showTagControls, setShowTagControls] = useState(false);
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [managing, setManaging] = useState(false);
@@ -98,7 +99,19 @@ export function AssetTags({ assetId }: { assetId: string }) {
       )}
 
       <div data-tour="asset-tags-add" className="flex flex-wrap items-center gap-2">
-        {groups.length > 0 && (
+        {!showTagControls && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowTagControls(true)}
+            aria-label={t("tags.addTag")}
+            title={t("tags.addTag")}
+          >
+            +
+          </Button>
+        )}
+        {showTagControls && groups.length > 0 && (
           <>
             <SelectMenu
               value={groupId}
@@ -119,16 +132,6 @@ export function AssetTags({ assetId }: { assetId: string }) {
                 </button>
               )}
             />
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => setAddingGroup(true)}
-              aria-label={t("tags.newGroup")}
-              title={t("tags.newGroup")}
-            >
-              +
-            </Button>
             <input
               list={datalistId}
               value={value}
