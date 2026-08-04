@@ -673,81 +673,38 @@ export function RecurringCard() {
               const checked = !excluded.has(d.key);
               const currency = accountsById.get(d.accountId)?.currency || base;
               const amount = dueAmountOf(d);
-              const date = dueDateOf(d);
               const interest = amount === null ? 0 : Math.min(d.interestAmount, Math.abs(amount));
-              const muted = checked ? "" : "text-zinc-400 line-through";
               return (
                 <li
                   key={d.key}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
                 >
-                  {/* The label covers the name only: a date or amount box inside
-                      it would toggle the checkbox on every click. */}
-                  <div className="flex min-w-0 flex-wrap items-center gap-3">
-                    <label className="flex flex-1 cursor-pointer items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() =>
-                          setExcluded((prev) => {
-                            const next = new Set(prev);
-                            if (checked) next.add(d.key);
-                            else next.delete(d.key);
-                            return next;
-                          })
-                        }
-                        className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
-                      />
-                      <span className={muted} data-private>
-                        {d.name}
-                        {/* Say up front that this posts two rows, so the ledger
-                            does not surprise anyone afterwards. */}
-                        {interest > 0 && amount !== null && Math.abs(amount) > interest && (
-                          <span className="block text-xs text-zinc-500">
-                            {t("recurring.split.hint", {
-                              interest: formatCurrency(interest, currency),
-                              principal: formatCurrency(Math.abs(amount) - interest, currency),
-                            })}
-                          </span>
-                        )}
-                      </span>
-                    </label>
-                    {/* Booking date is a deliberate per-occurrence choice. The
-                        source cursor still advances by `d.date` in
-                        `bookSelected`, whichever option is active here. */}
-                    <div
-                      role="group"
-                      aria-label={t("recurring.due.dateLabel")}
-                      className="inline-flex shrink-0 rounded-md border border-zinc-300 p-0.5 dark:border-zinc-700"
-                    >
-                      <button
-                        type="button"
-                        aria-pressed={date === d.date}
-                        onClick={() => editRow(d.key, { date: d.date })}
-                        className={`rounded px-2 py-1 text-xs tabular-nums transition-colors ${
-                          date === d.date
-                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                            : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                        }`}
-                      >
-                        {t("recurring.due.occurrence", { date: formatDate(d.date) })}
-                      </button>
-                      {d.date !== todayIso && (
-                        <button
-                          type="button"
-                          aria-pressed={date === todayIso}
-                          onClick={() => editRow(d.key, { date: todayIso })}
-                          className={`rounded px-2 py-1 text-xs transition-colors ${
-                            date === todayIso
-                              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                              : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                          }`}
-                        >
-                          {t("recurring.due.today")}
-                        </button>
+                  <label className="flex flex-1 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setExcluded((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(d.key);
+                          else next.delete(d.key);
+                          return next;
+                        })
+                      }
+                      className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                    />
+                    <span className={checked ? "" : "text-zinc-400 line-through"} data-private>
+                      {d.name} <span className="text-zinc-500">{formatDate(d.date)}</span>
+                      {interest > 0 && amount !== null && Math.abs(amount) > interest && (
+                        <span className="block text-xs text-zinc-500">
+                          {t("recurring.split.hint", {
+                            interest: formatCurrency(interest, currency),
+                            principal: formatCurrency(Math.abs(amount) - interest, currency),
+                          })}
+                        </span>
                       )}
-                    </div>
-                  </div>
+                    </span>
+                  </label>
                   <div className="flex min-w-0 items-center justify-end gap-2 sm:justify-start">
                     {editingAmounts.has(d.key) ? (
                       <>

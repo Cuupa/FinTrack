@@ -76,19 +76,11 @@ describe("RecurringCard due-entry review", () => {
 
   afterEach(cleanup);
 
-  it("chooses occurrence or today per row and only exposes amount editing through the pencil", async () => {
+  it("uses the planned-booking row design and only exposes amount editing through the pencil", async () => {
     render(createElement(RecurringCard));
 
     expect(screen.queryByRole("textbox", { name: "recurring.due.amountLabel" })).toBeNull();
-    const dateGroup = screen.getByRole("group", { name: "recurring.due.dateLabel" });
-    expect(dateGroup.querySelector('button[aria-pressed="true"]')?.textContent).toContain(
-      "recurring.due.occurrence",
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "recurring.due.today" }));
-    expect(
-      screen.getByRole("button", { name: "recurring.due.today" }).getAttribute("aria-pressed"),
-    ).toBe("true");
+    expect(screen.getByRole("checkbox", { name: /Rent 08\/01\/2026/ })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "recurring.due.editAmount" }));
     const amount = screen.getByRole("textbox", { name: "recurring.due.amountLabel" });
@@ -98,11 +90,12 @@ describe("RecurringCard due-entry review", () => {
     ).toBe(true);
 
     fireEvent.change(amount, { target: { value: "75" } });
+    fireEvent.click(screen.getByRole("button", { name: "recurring.due.confirmAmount" }));
     fireEvent.click(screen.getByRole("button", { name: "recurring.due.book" }));
 
     await waitFor(() => expect(mocks.addSpendingTransaction).toHaveBeenCalledTimes(1));
     expect(mocks.addSpendingTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ date: "2026-08-04", amount: -75 }),
+      expect.objectContaining({ date: "2026-08-01", amount: -75 }),
     );
     await waitFor(() =>
       expect(mocks.updatePlannedCashflow).toHaveBeenCalledWith("plan-1", {
