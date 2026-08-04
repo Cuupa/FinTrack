@@ -341,7 +341,7 @@ export function ReturnsView() {
             </div>
           </div>
         </div>
-        <div className="mt-3" role="img" aria-label={perfMapAriaLabel} data-private>
+        <div className="mt-3" role="img" aria-label={perfMapAriaLabel}>
           <ResponsiveContainer width="100%" height={320}>
             <Treemap data={tree} dataKey="size" stroke="#fff" isAnimationActive={false} content={<PerfCell />}>
               <Tooltip content={<MapTooltip currency={base} />} />

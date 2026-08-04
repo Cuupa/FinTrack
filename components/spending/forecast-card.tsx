@@ -161,7 +161,7 @@ function ForecastCardInner() {
             className="mt-4 h-72 w-full"
             role="img"
             aria-label={t("spending.forecast.aria", { n: String(MONTHS) })}
-            data-private
+            data-private-axis
           >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>

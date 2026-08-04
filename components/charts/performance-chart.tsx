@@ -293,7 +293,7 @@ export function PerformanceChart({
       <div
         role="img"
         aria-label={ariaLabel ?? fallbackAriaLabel}
-        data-private={pctMode ? undefined : ""}
+        data-private-axis={pctMode ? undefined : ""}
       >
         <ResponsiveContainer width="100%" height={height}>
           <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 0 }}>

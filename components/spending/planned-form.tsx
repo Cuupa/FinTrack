@@ -120,7 +120,7 @@ export function PlannedForm({
             }}
             placeholder={t("spending.planned.namePlaceholder")}
             className={inputCls + missingFieldCls(missingName, touched)}
-            data-private
+            data-private={name !== "" ? "" : undefined}
           />
         </div>
         <div>
@@ -163,7 +163,7 @@ export function PlannedForm({
             }}
             placeholder="0"
             className={inputCls + missingFieldCls(missingAmount, touched)}
-            data-private
+            data-private={amount !== "" ? "" : undefined}
           />
         </div>
         <div>

@@ -962,7 +962,7 @@ function ContractValuesDialog({
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(stripLeadingZero(e.target.value))}
-              data-private
+              data-private={value !== "" ? "" : undefined}
             />
           </label>
         </div>

@@ -408,6 +408,7 @@ function NumberField({
           value={dirty ? draft : formatInputDecimal(value)}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={() => setDirty(false)}
+          data-private={Number.isFinite(value) ? "" : undefined}
           className={`w-full rounded-md border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
             suffix ? "pr-12" : "pr-3"
           }`}

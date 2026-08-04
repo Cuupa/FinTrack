@@ -30,18 +30,33 @@ body {
 }
 
 /* Incognito mode: blur absolute financial figures marked with [data-private].
-   PrivacyProvider toggles the `.incognito` class on <html>. The blur is
-   non-interactive and unselectable so masked values can't be read or copied. */
+   PrivacyProvider toggles the `.incognito` class on <html>. Masking must not
+   change hit testing: tables, buttons, inputs and charts still need their
+   normal hover/focus behavior while their contents are obscured. */
 .incognito [data-private] {
   filter: blur(0.5rem);
   user-select: none;
-  pointer-events: none;
   transition: filter 0.15s ease;
 }
 
 .incognito [data-private]::selection {
   background: transparent;
   color: transparent;
+}
+
+/* A chart remains useful in privacy mode. Only an absolute-currency Y axis
+   is sensitive; the plotted geometry and categorical/date X axis are not. */
+.incognito [data-private-axis] .recharts-yAxis {
+  filter: blur(0.5rem);
+  user-select: none;
+}
+
+/* Recharts renders tooltip content in a floating wrapper. It is easy to
+   forget to mark one custom tooltip as private, so privacy mode suppresses
+   every chart popup at the rendering boundary. */
+.incognito .recharts-tooltip-wrapper {
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Modern range slider (components/ui/slider.tsx). The filled portion is driven

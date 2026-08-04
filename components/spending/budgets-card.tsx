@@ -171,7 +171,7 @@ function BudgetsCardInner() {
                               if (e.key === "Escape") setEditingId(null);
                             }}
                             className="w-24 rounded-sm border border-zinc-300 bg-transparent px-2 py-0.5 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-                            data-private
+                            data-private={editAmount !== "" ? "" : undefined}
                           />
                         ) : (
                           <button
@@ -238,7 +238,7 @@ function BudgetsCardInner() {
                 onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
                 placeholder="0"
                 className={inputCls}
-                data-private
+                data-private={amount !== "" ? "" : undefined}
               />
             </div>
             <div className="sm:col-span-3">

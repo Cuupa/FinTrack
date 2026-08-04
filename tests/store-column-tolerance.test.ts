@@ -1,7 +1,7 @@
 // A database that lags its migrations must narrow the app, not kill it.
 // Round 27 made a missing TABLE survivable; a missing COLUMN was still fatal,
-// because `assets.front_load` (migration 0116) sits in a CORE select and took
-// the depot down with it.
+// because newly added asset columns sit in a CORE select and can take the depot
+// down with them.
 import { describe, it, expect } from "vitest";
 import {
   isMissingColumnError,
@@ -15,10 +15,12 @@ describe("isMissingColumnError", () => {
     expect(isMissingColumnError({ code: "PGRST204" })).toBe(true);
     expect(
       isMissingColumnError({
-        message: "Could not find the 'front_load' column of 'assets' in the schema cache",
+        message: "Could not find the 'interest_post_day' column of 'assets' in the schema cache",
       }),
     ).toBe(true);
-    expect(isMissingColumnError({ message: "column assets.front_load does not exist" })).toBe(true);
+    expect(isMissingColumnError({ message: "column assets.interest_post_day does not exist" })).toBe(
+      true,
+    );
   });
 
   it("does not mistake a missing table or a permission error for a missing column", () => {
@@ -63,7 +65,7 @@ describe("isMissingFunctionError", () => {
 
 describe("selectTolerant", () => {
   const base = ["id", "name"];
-  const added = ["front_load"];
+  const added = ["interest_post_day"];
 
   /** Stands in for PostgREST: knows which columns the database actually has. */
   const db = (present: string[]) => {
@@ -83,12 +85,12 @@ describe("selectTolerant", () => {
   };
 
   it("asks for every column and stops there when the database has them", async () => {
-    const { run, seen } = db(["id", "name", "front_load"]);
+    const { run, seen } = db(["id", "name", "interest_post_day"]);
     const res = await selectTolerant<{ id: string }[]>(run, base, added);
 
     expect(res.error).toBeNull();
     expect(res.missingColumns).toEqual([]);
-    expect(seen).toEqual(["id, name, front_load"]);
+    expect(seen).toEqual(["id, name, interest_post_day"]);
   });
 
   it("retries without the new columns and reports which ones it dropped", async () => {
@@ -97,8 +99,8 @@ describe("selectTolerant", () => {
 
     expect(res.error).toBeNull();
     expect(res.data).toEqual([{ id: "a", name: "Depot" }]);
-    expect(res.missingColumns).toEqual(["front_load"]);
-    expect(seen).toEqual(["id, name, front_load", "id, name"]);
+    expect(res.missingColumns).toEqual(["interest_post_day"]);
+    expect(seen).toEqual(["id, name, interest_post_day", "id, name"]);
   });
 
   it("names no columns when the retry failed too", async () => {
@@ -106,7 +108,7 @@ describe("selectTolerant", () => {
     // user after the wrong migration.
     const run = async () => ({
       data: null,
-      error: { code: "42703", message: "column front_load does not exist" },
+      error: { code: "42703", message: "column interest_post_day does not exist" },
     });
     const res = await selectTolerant<unknown[]>(run, base, added);
 

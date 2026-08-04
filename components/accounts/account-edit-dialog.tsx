@@ -148,7 +148,7 @@ export function AccountEditDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={inputCls}
-              data-private
+            data-private={name !== "" ? "" : undefined}
             />
           </div>
           <div>
@@ -187,7 +187,7 @@ export function AccountEditDialog({
               }}
               placeholder="0"
               className={inputCls}
-              data-private
+            data-private={opening !== "" ? "" : undefined}
             />
           </div>
           <div>
@@ -234,7 +234,7 @@ export function AccountEditDialog({
                   onChange={(e) => setMinPayment(stripLeadingZero(e.target.value))}
                   placeholder="0"
                   className={inputCls}
-                  data-private
+                  data-private={minPayment !== "" ? "" : undefined}
                 />
               </div>
               <div>

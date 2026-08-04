@@ -135,7 +135,7 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
             onChange={(e) => setName(e.target.value)}
             placeholder={t("accounts.form.namePlaceholder")}
             className={inputCls}
-            data-private
+            data-private={name !== "" ? "" : undefined}
           />
         </div>
         <div>
@@ -174,7 +174,7 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
             }}
             placeholder="0"
             className={inputCls}
-            data-private
+            data-private={opening !== "" ? "" : undefined}
           />
         </div>
         <div>

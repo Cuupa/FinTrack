@@ -227,7 +227,7 @@ function GoalForm({
             onChange={(e) => setName(e.target.value)}
             placeholder={t("goals.form.namePlaceholder")}
             className={inputCls}
-            data-private
+            data-private={name !== "" ? "" : undefined}
           />
         </div>
         {!composite && (
@@ -242,7 +242,7 @@ function GoalForm({
               onChange={(e) => setTargetAmount(stripLeadingZero(e.target.value))}
               placeholder="0"
               className={inputCls}
-              data-private
+            data-private={targetAmount !== "" ? "" : undefined}
             />
           </div>
         )}
@@ -341,7 +341,7 @@ function GoalForm({
               }}
               placeholder="0"
               className={inputCls}
-              data-private
+              data-private={manualCurrentAmount !== "" ? "" : undefined}
             />
             <p className="mt-1 text-sm text-zinc-500">{t("goals.form.manualCurrentHint")}</p>
           </div>

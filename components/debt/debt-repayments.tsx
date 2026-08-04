@@ -140,7 +140,7 @@ export function DebtRepaymentsPlanner({
             }}
             placeholder="0"
             className={inputCls}
-            data-private
+            data-private={amount !== "" ? "" : undefined}
           />
         </div>
         <Button variant="secondary" disabled={!date || !amount.trim()} onClick={add}>

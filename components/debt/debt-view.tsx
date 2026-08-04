@@ -370,7 +370,7 @@ export function DebtView() {
                 onChange={(e) => setExtra(stripLeadingZero(e.target.value))}
                 placeholder="0"
                 className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-                data-private
+                data-private={extra !== "" ? "" : undefined}
               />
             </div>
             {planDebts.length > 1 && (

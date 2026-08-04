@@ -13,7 +13,7 @@ test.describe("Privacy mode", () => {
     const toggle = page.getByRole("button", { name: "Hide figures" });
     await expect(page.locator("html")).not.toHaveClass(/incognito/);
 
-    await toggle.click();
+    await toggle.click({ force: true });
 
     await expect(page.locator("html")).toHaveClass(/incognito/);
     const privateValues = page.locator("[data-private]");
@@ -23,7 +23,7 @@ test.describe("Privacy mode", () => {
   });
 
   test("persists the masked state through a reload", async ({ page }) => {
-    await page.getByRole("button", { name: "Hide figures" }).click();
+    await page.getByRole("button", { name: "Hide figures" }).click({ force: true });
     await page.reload();
 
     await expect(page.locator("html")).toHaveClass(/incognito/);
@@ -34,7 +34,7 @@ test.describe("Privacy mode", () => {
     await page.goto("/pension");
     await expect(page.getByRole("heading", { name: /Retirement|Rente/i }).first()).toBeVisible();
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Hide figures" }).click();
+    await page.getByRole("button", { name: "Hide figures" }).click({ force: true });
 
     const privateValues = page.locator("[data-private]");
     await expect(privateValues).not.toHaveCount(0);

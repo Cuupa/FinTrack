@@ -586,7 +586,11 @@ function SavingsPlansCardInner() {
                   <Tr key={key}>
                     <Td className="whitespace-nowrap">{formatDate(row.date)}</Td>
                     <Td className="max-w-[16rem] truncate">{row.asset.name}</Td>
-                    <Td align="right" className="tabular-nums" data-private>
+                    <Td
+                      align="right"
+                      className="tabular-nums"
+                      data-private={derived.feeInput !== "" ? "" : undefined}
+                    >
                       {formatCurrency(derived.amount, cur)}
                     </Td>
                     <Td align="right" className="tabular-nums">
@@ -603,7 +607,11 @@ function SavingsPlansCardInner() {
                         {row.synthetic && !historyLoading && <EstimatedBadge compact />}
                       </span>
                     </Td>
-                    <Td align="right" className="tabular-nums" data-private>
+                    <Td
+                      align="right"
+                      className="tabular-nums"
+                      data-private={derived.qtyInput !== "" ? "" : undefined}
+                    >
                       <input
                         inputMode="decimal"
                         aria-label={t("tx.fee")}

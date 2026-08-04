@@ -163,6 +163,14 @@ describe("deriveRow fee default (savings-plans-card dueRows CASH branch)", () =>
     };
   }
 
+  it("derives quantity directly from plan amount and price", () => {
+    const derived = deriveRow(dueRow({ price: 8, feeDefault: 2.5 }), undefined);
+
+    expect(derived.qtyInput).toBe("12.5");
+    expect(derived.amount).toBe(100);
+    expect(derived.effectiveFee).toBe(2.5);
+  });
+
   it("defaults a CASH row's fee to 0 (no broker execution fee)", () => {
     const row = dueRow({ asset: asset({ type: "CASH" }), price: 1, feeDefault: 0 });
     const derived = deriveRow(row, undefined);

@@ -169,7 +169,7 @@ function EditForm({
             value={payee}
             onChange={(e) => setPayee(e.target.value)}
             className={inputCls}
-            data-private
+            data-private={payee !== "" ? "" : undefined}
           />
         </div>
         <div>
@@ -193,7 +193,7 @@ function EditForm({
             onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
             placeholder="0"
             className={inputCls}
-            data-private
+            data-private={amount !== "" ? "" : undefined}
           />
         </div>
         <div>
@@ -244,7 +244,7 @@ function EditForm({
               if (e.key === "Enter") save();
             }}
             className={inputCls}
-            data-private
+            data-private={note !== "" ? "" : undefined}
           />
         </div>
       </div>

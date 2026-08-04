@@ -234,7 +234,7 @@ export function TradesView() {
         {barData.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("trades.noSells")}</p>
         ) : (
-          <div className="mt-3" data-private role="img" aria-label={realizedAriaLabel}>
+          <div className="mt-3" data-private-axis role="img" aria-label={realizedAriaLabel}>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />

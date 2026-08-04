@@ -409,7 +409,7 @@ export function SpendingView({
                   onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
                   placeholder="0"
                   className={inputCls}
-                  data-private
+                  data-private={amount !== "" ? "" : undefined}
                 />
               </div>
               <div>
@@ -470,7 +470,7 @@ export function SpendingView({
                     isIncome ? "spending.form.payerPlaceholder" : "spending.form.payeePlaceholder",
                   )}
                   className={inputCls}
-                  data-private
+                  data-private={payee !== "" ? "" : undefined}
                 />
               </div>
               <div>

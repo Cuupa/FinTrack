@@ -145,7 +145,7 @@ export function AccountBalancesDialog({
               }}
               placeholder="0"
               className={inputCls}
-              data-private
+              data-private={value !== "" ? "" : undefined}
             />
           </div>
         </div>

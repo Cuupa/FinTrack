@@ -144,7 +144,7 @@ export function DistributionChart({
   const yWidth = yAxisWidth(axisNums.map(formatYTick));
 
   return (
-    <div data-private={mode === "currency" ? "" : undefined}>
+    <div data-private-axis={mode === "currency" ? "" : undefined}>
       <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
