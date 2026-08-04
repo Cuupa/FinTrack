@@ -61,7 +61,6 @@ import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { AssetRiskCard } from "@/components/assets/asset-risk-card";
 import { CashInterestSection } from "@/components/assets/cash-interest-section";
-import { FrontLoadSection } from "@/components/assets/front-load-section";
 import { ValuationSection } from "@/components/assets/valuation-section";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -936,8 +935,6 @@ export function AssetDetail({
             </Table>
           </div>
         )}
-
-        {held && asset.type !== "CASH" && <FrontLoadSection asset={asset} />}
 
         <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
