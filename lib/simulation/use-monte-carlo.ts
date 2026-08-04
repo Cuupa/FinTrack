@@ -65,6 +65,9 @@ export function hashSimParams(message: SimulationMessage): string {
     ceiling: p.ceiling ?? null,
     stress: p.stress ?? "none",
     compareStrategies: p.compareStrategies === true,
+    annualPensionIncome: r(p.annualPensionIncome ?? 0),
+    pensionYearsUntilStart:
+      p.pensionYearsUntilStart == null ? null : r(p.pensionYearsUntilStart),
   };
   const canon =
     message.kind === "portfolio"

@@ -41,6 +41,10 @@ export interface WithdrawalOptions {
   /** Run EVERY strategy over the same market paths and report the comparison.
       Same seed, same draws, so the rows differ only by the strategy. */
   compareStrategies?: boolean;
+  /** Annual guaranteed pension income, in today's nominal base currency. */
+  annualPensionIncome?: number;
+  /** Years from the start of accumulation until the pension begins. */
+  pensionYearsUntilStart?: number;
 }
 
 export interface MonteCarloParams extends WithdrawalOptions {
@@ -160,7 +164,8 @@ interface PathWalk {
   depleted: boolean;
 }
 
-interface WalkOptions {
+interface WalkOptions
+  extends Pick<WithdrawalOptions, "annualPensionIncome" | "pensionYearsUntilStart"> {
   initialCapital: number;
   monthlyContribution: number;
   accMonths: number;
@@ -191,6 +196,29 @@ function blendedAnnualReturn(assets: readonly { weight: number; mean: number }[]
 }
 
 /**
+ * The strategy sets the retiree's gross annual income. Once the guaranteed
+ * pension is flowing, only the remainder has to come from the portfolio.
+ * Pension income is already stated in today's nominal amount, so it is not
+ * inflation-indexed a second time here.
+ */
+function portfolioWithdrawalAfterPension(
+  grossAnnual: number,
+  yearsIntoRetirement: number,
+  accumulationYears: number,
+  options: WithdrawalOptions,
+): number {
+  const annualPension = Math.max(0, options.annualPensionIncome ?? 0);
+  const yearsUntilStart = options.pensionYearsUntilStart;
+  if (annualPension <= 0 || yearsUntilStart == null || !Number.isFinite(yearsUntilStart)) {
+    return grossAnnual;
+  }
+  const pensionStartInRetirement = Math.max(0, yearsUntilStart - accumulationYears);
+  return yearsIntoRetirement >= pensionStartInRetirement
+    ? Math.max(0, grossAnnual - annualPension)
+    : grossAnnual;
+}
+
+/**
  * Walk one already-drawn return path. Split out from the draw so that the
  * strategy comparison can replay the SAME market on every strategy: comparing
  * strategies across different random paths would measure the draw, not the
@@ -215,7 +243,7 @@ function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
     if (monthsIntoRetirement >= 0 && monthsIntoRetirement % 12 === 0) {
       const yearsIntoRetirement = monthsIntoRetirement / 12;
       if (yearsIntoRetirement === 0) initialWithdrawal = o.plan.rate * value;
-      const annual = o.usesRate
+      const grossAnnual = o.usesRate
         ? annualWithdrawal(o.plan, {
             initialWithdrawal,
             portfolioValue: value,
@@ -224,9 +252,15 @@ function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
             yearsRemaining: Math.max(1, o.withdrawalYears - yearsIntoRetirement),
           })
         : o.flatWithdrawal * 12;
-      annualIncomes.push(annual);
-      previousAnnual = annual;
-      monthlyWithdrawal = annual / 12;
+      annualIncomes.push(grossAnnual);
+      previousAnnual = grossAnnual;
+      monthlyWithdrawal =
+        portfolioWithdrawalAfterPension(
+          grossAnnual,
+          yearsIntoRetirement,
+          o.accMonths / 12,
+          o,
+        ) / 12;
     }
 
     const monthReturn = stressedReturn(
@@ -282,6 +316,8 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     stress,
     monthlyDrift: monthlyMean,
     withdrawalYears: wYears,
+    annualPensionIncome: params.annualPensionIncome,
+    pensionYearsUntilStart: params.pensionYearsUntilStart,
   };
 
   // yearValues[y] collects every run's value at the end of year y.
@@ -506,7 +542,7 @@ export function runPortfolioMonteCarlo(
       if (monthsIntoRetirement >= 0 && monthsIntoRetirement % 12 === 0) {
         const yearsIntoRetirement = monthsIntoRetirement / 12;
         if (yearsIntoRetirement === 0) initialWithdrawal = p.rate * portValue;
-        const annual = usesRate
+        const grossAnnual = usesRate
           ? annualWithdrawal(p, {
               initialWithdrawal,
               portfolioValue: portValue,
@@ -515,9 +551,15 @@ export function runPortfolioMonteCarlo(
               yearsRemaining: Math.max(1, wYears - yearsIntoRetirement),
             })
           : flatWithdrawal * 12;
-        annualIncomes.push(annual);
-        previousAnnual = annual;
-        monthlyWithdrawal = annual / 12;
+        annualIncomes.push(grossAnnual);
+        previousAnnual = grossAnnual;
+        monthlyWithdrawal =
+          portfolioWithdrawalAfterPension(
+            grossAnnual,
+            yearsIntoRetirement,
+            accMonths / 12,
+            params,
+          ) / 12;
       }
 
       for (let i = 0; i < n; i++) {
@@ -595,6 +637,8 @@ export function runPortfolioMonteCarlo(
     withdrawalStrategy: params.withdrawalStrategy,
     stress: params.stress,
     compareStrategies: params.compareStrategies,
+    annualPensionIncome: params.annualPensionIncome,
+    pensionYearsUntilStart: params.pensionYearsUntilStart,
   };
   const result = reduceRuns(
     equivParams,

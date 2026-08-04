@@ -2,9 +2,9 @@
 
 // The chat panel: desktop a ~420px fixed panel bottom-right, mobile a
 // full-screen sheet. Follows Modal's a11y conventions (role="dialog",
-// focus-trapped via the shared use-focus-trap hook, Escape closes, background
-// scroll locked) without reusing Modal itself — Modal is a centered overlay,
-// this is anchored bottom-right on desktop, which needs its own layout.
+// focus-trapped via the shared use-focus-trap hook, Escape closes) without
+// reusing Modal itself. Unlike a modal overlay, the desktop panel deliberately
+// leaves page scrolling available while it is open.
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -28,11 +28,8 @@ export function ChatPanel({ chat, onClose }: { chat: PortfolioChat; onClose: () 
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
     };
   }, [onClose]);
 

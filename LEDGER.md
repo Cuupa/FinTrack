@@ -43,6 +43,13 @@ ansehen laesst.
 
 ## Erledigt
 
+### Runde 2026-08-04
+
+| Task | Commit / Umfang |
+| --- | --- |
+| LLM-Chat laesst Seitenscrollen beim Oeffnen zu | `components/llm/chat-panel.tsx`, `tests/llm-chat-panel.test.ts` |
+| Monte-Carlo beruecksichtigt die PensionBridge | `lib/finance/monte-carlo.ts`, `lib/simulation/use-monte-carlo.ts`, Simulation/FIRE-Link, `tests/withdrawal.test.ts` |
+
 ### Runde 2026-08-02 (dritter Teil)
 
 | Task | Commit / Umfang |

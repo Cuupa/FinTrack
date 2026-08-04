@@ -99,6 +99,8 @@ export function MonteCarloPanel() {
   const params = useSearchParams();
   const seededYears = Number(params.get("years"));
   const seededWithdrawal = Number(params.get("withdrawal"));
+  const seededPensionAnnual = Number(params.get("pensionAnnual"));
+  const seededPensionStart = Number(params.get("pensionStart"));
   const [mode, setMode] = useState<SimMode>("portfolio");
 
   // Every scalar is an OVERRIDE: null means "whatever the mode or the link
@@ -212,6 +214,16 @@ export function MonteCarloPanel() {
     Number.isFinite(seededWithdrawal) && seededWithdrawal > 0
       ? Math.max(1, Math.min(60, Math.round(seededWithdrawal)))
       : null;
+  const linkedPension =
+    Number.isFinite(seededPensionAnnual) &&
+    seededPensionAnnual > 0 &&
+    Number.isFinite(seededPensionStart) &&
+    seededPensionStart >= 0
+      ? {
+          annualPensionIncome: seededPensionAnnual,
+          pensionYearsUntilStart: seededPensionStart,
+        }
+      : null;
 
   const years = form.years ?? linkedYears ?? DEFAULT_ACCUMULATION_YEARS;
   const withdrawalYears = form.withdrawalYears ?? linkedWithdrawal ?? 0;
@@ -312,6 +324,7 @@ export function MonteCarloPanel() {
               // The comparison is what says what the strategy choice costs, so
               // it is computed alongside rather than behind a second button.
               compareStrategies: drawYears > 0,
+              ...(linkedPension ?? {}),
             } satisfies PortfolioMonteCarloParams,
           }
         : {
@@ -330,6 +343,7 @@ export function MonteCarloPanel() {
               stress,
               inflation: Math.max(0, inflation) / 100,
               compareStrategies: drawYears > 0,
+              ...(linkedPension ?? {}),
             } satisfies MonteCarloParams,
           };
 

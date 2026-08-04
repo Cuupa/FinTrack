@@ -12,7 +12,12 @@ import {
   summarizeStrategy,
   type WithdrawalPlan,
 } from "../lib/finance/withdrawal";
-import { runMonteCarlo, type MonteCarloParams } from "../lib/finance/monte-carlo";
+import {
+  runMonteCarlo,
+  runPortfolioMonteCarlo,
+  type MonteCarloParams,
+  type PortfolioMonteCarloParams,
+} from "../lib/finance/monte-carlo";
 
 const plan = (over: Partial<WithdrawalPlan> = {}): WithdrawalPlan => ({
   strategy: "fixed",
@@ -211,6 +216,68 @@ describe("runMonteCarlo with withdrawal strategies", () => {
     const a = runMonteCarlo({ ...base, withdrawalStrategy: "guardrails" });
     const b = runMonteCarlo({ ...base, withdrawalStrategy: "guardrails" });
     expect(a.finalDistribution).toEqual(b.finalDistribution);
+  });
+});
+
+describe("pension bridge during Monte Carlo withdrawals", () => {
+  const scalar: MonteCarloParams = {
+    initialCapital: 100_000,
+    monthlyContribution: 0,
+    years: 2,
+    expectedReturn: 0,
+    volatility: 0,
+    runs: 1,
+    seed: 42,
+    withdrawalYears: 3,
+    withdrawalRate: 0.12,
+    withdrawalStrategy: "fixed",
+    inflation: 0,
+  };
+  const portfolio: PortfolioMonteCarloParams = {
+    initialCapital: scalar.initialCapital,
+    monthlyContribution: scalar.monthlyContribution,
+    years: scalar.years,
+    runs: scalar.runs,
+    seed: scalar.seed,
+    assets: [{ weight: 1, mean: 0, vol: 0 }],
+    corr: [[1]],
+    withdrawalYears: scalar.withdrawalYears,
+    withdrawalRate: scalar.withdrawalRate,
+    withdrawalStrategy: scalar.withdrawalStrategy,
+    inflation: 0,
+  };
+
+  function finalWith(
+    pension: Pick<MonteCarloParams, "annualPensionIncome" | "pensionYearsUntilStart"> = {},
+  ) {
+    return {
+      scalar: runMonteCarlo({ ...scalar, ...pension }).finalDistribution[0],
+      portfolio: runPortfolioMonteCarlo({ ...portfolio, ...pension }).finalDistribution[0],
+    };
+  }
+
+  it("keeps the full withdrawal until a pension that starts after FIRE", () => {
+    // FIRE is after 2 years; pension starts after 3, so year one draws 12k
+    // and the next two years draw only the 6k shortfall.
+    expect(finalWith({ annualPensionIncome: 6_000, pensionYearsUntilStart: 3 })).toEqual({
+      scalar: 76_000,
+      portfolio: 76_000,
+    });
+  });
+
+  it("reduces withdrawals immediately when FIRE starts after the pension", () => {
+    expect(finalWith({ annualPensionIncome: 6_000, pensionYearsUntilStart: 1 })).toEqual({
+      scalar: 82_000,
+      portfolio: 82_000,
+    });
+  });
+
+  it("does not change pension-free runs and never makes a withdrawal negative", () => {
+    expect(finalWith()).toEqual({ scalar: 64_000, portfolio: 64_000 });
+    expect(finalWith({ annualPensionIncome: 20_000, pensionYearsUntilStart: 0 })).toEqual({
+      scalar: 100_000,
+      portfolio: 100_000,
+    });
   });
 });
 

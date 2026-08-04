@@ -159,6 +159,15 @@ export function FireView() {
       ? t("fire.tile.pensionApplied", { year: String(fire.retirementYear) })
       : undefined;
 
+  const simulationParams = new URLSearchParams({
+    years: String(Math.max(1, Math.min(80, Math.ceil(plan.yearsToRegular ?? 30)))),
+    withdrawal: "30",
+  });
+  if (appliedPension) {
+    simulationParams.set("pensionAnnual", String(appliedPension.annualIncome));
+    simulationParams.set("pensionStart", String(appliedPension.yearsUntilStart));
+  }
+
   return (
     <div className="space-y-6">
       <Card data-tour="fire-inputs">
@@ -294,7 +303,7 @@ export function FireView() {
         <p className="mt-1 text-sm text-zinc-500">{t("fire.simulation.movedHint")}</p>
         <div className="mt-4">
           <Link
-            href={`/simulation?years=${Math.max(1, Math.min(80, Math.ceil(plan.yearsToRegular ?? 30)))}&withdrawal=30`}
+            href={`/simulation?${simulationParams.toString()}`}
             className="inline-flex items-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {t("fire.simulation.open")}
