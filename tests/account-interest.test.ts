@@ -43,6 +43,12 @@ describe("account interest recurring bookings", () => {
     ]);
   });
 
+  it("does not backfill every old anniversary on first use", () => {
+    expect(dueAccountInterest(account(), [], [], new Map(), "2026-08-04")).toEqual([
+      { accountId: "a1", date: "2026-08-01", amount: 10 },
+    ]);
+  });
+
   it("books liability interest as a negative expense", () => {
     const loan = account({ id: "l1", isLiability: true, kind: "loan" });
     const payment = tx({ accountId: "a1", amount: -100, transferAccountId: "l1", date: "2024-01-15" });

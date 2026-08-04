@@ -46,15 +46,18 @@ export function dueAccountInterest(
   const lastBooked = transactions
     .filter((tx) => tx.interestAccountId === account.id)
     .reduce<string | null>((last, tx) => (!last || tx.date > last ? tx.date : last), null);
-  const out: DueAccountInterest[] = [];
-  for (let occurrence = 1; out.length < MAX_ACCOUNT_INTEREST_DUE; occurrence++) {
+  let candidate: string | null = null;
+  for (let occurrence = 1; occurrence <= MAX_ACCOUNT_INTEREST_DUE; occurrence++) {
     const date = accountInterestDate(account, occurrence);
+    // Interest is a newly introduced automatic recurring entry. Do not
+    // backfill every anniversary since the account was opened; that would
+    // turn one recurring row into dozens of unexpected bookings on first use.
     if (date > asOf) break;
-    if (lastBooked && date <= lastBooked) continue;
-    const amount = accountInterestAmount(account, date, balances, movements);
-    if (amount !== 0) out.push({ accountId: account.id, date, amount });
+    if (!lastBooked || date > lastBooked) candidate = date;
   }
-  return out;
+  if (!candidate) return [];
+  const amount = accountInterestAmount(account, candidate, balances, movements);
+  return amount === 0 ? [] : [{ accountId: account.id, date: candidate, amount }];
 }
 
 export function nextAccountInterestDate(
