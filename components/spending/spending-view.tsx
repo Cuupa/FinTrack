@@ -132,6 +132,7 @@ export function SpendingView({
   const [monthEnd, setMonthEnd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [managingCategories, setManagingCategories] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -316,6 +317,7 @@ export function SpendingView({
       setNote("");
       setTransferAccountId("");
       setDate(today());
+      setAdding(false);
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("spending.form.error"));
     } finally {
@@ -332,7 +334,27 @@ export function SpendingView({
 
   return (
     <div className="space-y-6">
-      <Card data-tour="spending-form">
+      <div className="flex justify-end" data-tour="spending-form">
+        <Button
+          variant="primary"
+          onClick={() => {
+            setError(null);
+            setAdding(true);
+          }}
+        >
+          {t("spending.form.title")}
+        </Button>
+      </div>
+
+      <Modal
+        open={adding}
+        onClose={() => {
+          setAdding(false);
+          setError(null);
+        }}
+        maxWidthClass="max-w-4xl"
+      >
+      <Card>
         <h2 className="text-lg font-semibold">{t("spending.form.title")}</h2>
         {data.accounts.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-500">{t("spending.form.noAccounts")}</p>
@@ -543,6 +565,7 @@ export function SpendingView({
           </>
         )}
       </Card>
+      </Modal>
 
       {/* Everything that repeats, contracts and planned entries in ONE list:
           whether they live in different tables is the data model's business,
