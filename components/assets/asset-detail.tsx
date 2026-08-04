@@ -1003,8 +1003,8 @@ export function AssetDetail({
 
       {held && savingsPlansEnabled && (
         <Modal open={planModalOpen} onClose={() => setPlanModalOpen(false)}>
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">{t("sp.newFromAsset")}</h3>
+          <Card>
+            <h2 className="text-lg font-semibold">{t("sp.newFromAsset")}</h2>
             <PlanForm
               fixedAsset={asset}
               onSubmit={async (values) => {
@@ -1014,14 +1014,14 @@ export function AssetDetail({
               onDone={() => setPlanModalOpen(false)}
               limitReached={savingsPlansLimitHint}
             />
-          </div>
+          </Card>
         </Modal>
       )}
 
       {editingPlan && (
         <Modal open onClose={() => setEditingPlan(null)}>
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">{t("sp.edit")}</h3>
+          <Card>
+            <h2 className="text-lg font-semibold">{t("sp.edit")}</h2>
             <PlanForm
               key={editingPlan.id}
               plan={editingPlan}
@@ -1031,7 +1031,7 @@ export function AssetDetail({
               }}
               onDone={() => setEditingPlan(null)}
             />
-          </div>
+          </Card>
         </Modal>
       )}
 
