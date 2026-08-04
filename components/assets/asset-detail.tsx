@@ -1162,7 +1162,7 @@ function TransactionsTable({
   // Aliased to `tr` — the row map below binds `t` to the transaction.
   const { t: tr } = useI18n();
   const sort = useSort<TxSortKey>("date", "desc");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Transaction | null>(null);
 
   const portfolioNameById = useMemo(() => {
     const map = new Map(portfolios.map((p) => [p.id, p.name]));
@@ -1212,21 +1212,7 @@ function TransactionsTable({
           <Th />
         </Thead>
         <Tbody>
-          {pager.rows.map((t) =>
-            editingId === t.id ? (
-              <TransactionEditRow
-                key={t.id}
-                tx={t}
-                portfolios={portfolios}
-                multiPortfolio={multiPortfolio}
-                isCash={isCash}
-                onSave={(patch) => {
-                  onUpdate(t.id, patch);
-                  setEditingId(null);
-                }}
-                onCancel={() => setEditingId(null)}
-              />
-            ) : (
+          {pager.rows.map((t) => (
               <Tr key={t.id}>
                 <Td className="whitespace-nowrap">{formatDateTime(t.date)}</Td>
                 <Td>
@@ -1293,16 +1279,34 @@ function TransactionsTable({
                 </Td>
                 <Td align="right">
                   <RowActions>
-                    <EditAction label={tr("tx.edit")} onClick={() => setEditingId(t.id)} />
+                    <EditAction label={tr("tx.edit")} onClick={() => setEditing(t)} />
                     <DeleteAction label={tr("tx.deleteTitle")} onClick={() => onDelete(t)} />
                   </RowActions>
                 </Td>
               </Tr>
-            ),
-          )}
+          ))}
         </Tbody>
       </Table>
       <TablePagination pager={pager} />
+      {editing && (
+        <Modal open onClose={() => setEditing(null)}>
+          <Card>
+            <h2 className="text-lg font-semibold">{tr("tx.edit")}</h2>
+            <TransactionEditRow
+              key={editing.id}
+              tx={editing}
+              portfolios={portfolios}
+              multiPortfolio={multiPortfolio}
+              isCash={isCash}
+              onSave={(patch) => {
+                onUpdate(editing.id, patch);
+                setEditing(null);
+              }}
+              onCancel={() => setEditing(null)}
+            />
+          </Card>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1348,8 +1352,10 @@ function TransactionEditRow({
   };
 
   return (
-    <Tr selected>
-      <td className="py-1.5 pr-2">
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm">
+          <span className="mb-1 block text-zinc-500">{tr("tx.date")}</span>
         <input
           type="datetime-local"
           value={date}
@@ -1357,8 +1363,9 @@ function TransactionEditRow({
           onChange={(e) => setDate(e.target.value)}
           className={cell}
         />
-      </td>
-      <td className="py-1.5 pr-2">
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-zinc-500">{tr("tx.type")}</span>
         <SelectMenu
           value={type}
           onChange={(v) => setType(v as TransactionType)}
@@ -1373,9 +1380,10 @@ function TransactionEditRow({
             ...(!isCash ? [{ value: "SPLIT", label: "SPLIT" }] : []),
           ]}
         />
-      </td>
-      {multiPortfolio && (
-        <td className="py-1.5 pr-2">
+        </label>
+        {multiPortfolio && (
+          <label className="block text-sm">
+            <span className="mb-1 block text-zinc-500">{tr("tx.portfolio")}</span>
           <SelectMenu
             value={portfolioId}
             onChange={setPortfolioId}
@@ -1383,32 +1391,36 @@ function TransactionEditRow({
             ariaLabel={tr("tx.portfolio")}
             options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
           />
-        </td>
-      )}
-      <td className="py-1.5 pr-2">
-        <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-      </td>
-      <td className="py-1.5 pr-2">
-        <input inputMode="decimal" value={price} onChange={(e) => setPrice(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-      </td>
-      <td className="py-1.5 pr-2">
-        <input inputMode="decimal" value={fee} onChange={(e) => setFee(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-      </td>
-      {!isCash && (
-        <td className="py-1.5 pr-2">
-          <input inputMode="decimal" value={tax} onChange={(e) => setTax(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
-        </td>
-      )}
-      <td className="py-1.5 pr-2 text-right text-xs text-zinc-400">—</td>
-      <td className="py-1.5 text-right whitespace-nowrap">
-        <button onClick={save} className="px-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400" aria-label={tr("tx.save")} title={tr("tx.save")}>
-          ✓
+          </label>
+        )}
+        <label className="block text-sm">
+          <span className="mb-1 block text-zinc-500">{tr("tx.qty")}</span>
+          <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-zinc-500">{tr("tx.price")}</span>
+          <input inputMode="decimal" value={price} onChange={(e) => setPrice(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-zinc-500">{tr("tx.fee")}</span>
+          <input inputMode="decimal" value={fee} onChange={(e) => setFee(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+        </label>
+        {!isCash && (
+          <label className="block text-sm">
+            <span className="mb-1 block text-zinc-500">{tr("tx.tax")}</span>
+            <input inputMode="decimal" value={tax} onChange={(e) => setTax(stripLeadingZero(e.target.value))} className={`${cell} text-right`} />
+          </label>
+        )}
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="rounded-md px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" aria-label={tr("tx.cancel")}>
+          {tr("tx.cancel")}
         </button>
-        <button onClick={onCancel} className="px-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" aria-label={tr("tx.cancel")} title={tr("tx.cancel")}>
-          ✕
+        <button type="button" onClick={save} className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700" aria-label={tr("tx.save")}>
+          {tr("tx.save")}
         </button>
-      </td>
-    </Tr>
+      </div>
+    </div>
   );
 }
 
