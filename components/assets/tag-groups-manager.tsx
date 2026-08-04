@@ -107,8 +107,14 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") commitNew();
-                  if (e.key === "Escape") setAdding(false);
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }
+                  if (e.key === "Escape") {
+                    setNewName("");
+                    setAdding(false);
+                  }
                 }}
                 onBlur={commitNew}
                 placeholder={t("tags.groupNamePlaceholder")}
@@ -119,9 +125,11 @@ export function TagGroupsManager({ open, onClose }: { open: boolean; onClose: ()
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
+                aria-label={t("tags.newGroup")}
+                title={t("tags.newGroup")}
+                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-500 hover:border-zinc-500 hover:text-zinc-800 dark:border-zinc-700 dark:hover:text-zinc-200"
               >
-                {t("tags.newGroup")}
+                <span aria-hidden="true">+</span>
               </button>
             )}
           </div>

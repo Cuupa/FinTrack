@@ -51,6 +51,7 @@ ansehen laesst.
 | Monte-Carlo beruecksichtigt die PensionBridge | `lib/finance/monte-carlo.ts`, `lib/simulation/use-monte-carlo.ts`, Simulation/FIRE-Link, `tests/withdrawal.test.ts` |
 | Buchung hinzufuegen oeffnet ein Modal | `components/spending/spending-view.tsx` |
 | Monatsende als Toggle | `components/spending/spending-view.tsx`, `components/spending/planned-form.tsx`, `components/spending/recurring-form.tsx` |
+| Tag-Gruppen-Anlage hinter Plus | `components/assets/tag-groups-manager.tsx` |
 
 ### Runde 2026-08-02 (dritter Teil)
 
