@@ -1369,7 +1369,7 @@ function TransactionEditRow({
         <SelectMenu
           value={type}
           onChange={(v) => setType(v as TransactionType)}
-          className={cell}
+          className="w-full"
           ariaLabel={tr("tx.type")}
           options={[
             { value: "BUY", label: isCash ? txTypeLabel(tr, "BUY", true) : "BUY" },
@@ -1387,7 +1387,7 @@ function TransactionEditRow({
           <SelectMenu
             value={portfolioId}
             onChange={setPortfolioId}
-            className={cell}
+            className="w-full"
             ariaLabel={tr("tx.portfolio")}
             options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
           />
