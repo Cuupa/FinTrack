@@ -20,7 +20,7 @@ import {
   type InterestPostDay,
   type Transaction,
 } from "@/lib/types";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
@@ -44,7 +44,7 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
 
   // Config form state, seeded from the asset. A blank/zero rate turns interest
   // off (dueInterest ignores a null/<=0 rate).
-  const [rate, setRate] = useState(asset.interestRate != null ? String(asset.interestRate) : "");
+  const [rate, setRate] = useState(asset.interestRate != null ? formatInputDecimal(asset.interestRate) : "");
   const [freq, setFreq] = useState<InterestFrequency>(asset.interestFrequency ?? "MONTHLY");
   // Defaults to "last" (the common banking convention) for an asset that has
   // never had this set before.

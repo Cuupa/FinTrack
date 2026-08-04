@@ -28,7 +28,7 @@ import type {
 } from "@/lib/types";
 import type { ContractInput } from "@/lib/store/types";
 import { today } from "@/lib/finance/dates";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -66,7 +66,7 @@ export function RecurringForm({
   const { t } = useI18n();
 
   const [name, setName] = useState(initial?.name ?? "");
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [amount, setAmount] = useState(initial ? formatInputDecimal(initial.amount) : "");
   const [interval, setInterval] = useState<ContractInterval>(initial?.interval ?? "MONTHLY");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [renewalDate, setRenewalDate] = useState(initial?.renewalDate ?? "");

@@ -11,7 +11,7 @@ import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { currentPrice } from "@/lib/finance/prices";
 import { cashAssetInPortfolio } from "@/lib/finance/portfolio";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 import { orderFee } from "@/lib/finance/fees";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
@@ -115,7 +115,7 @@ export function AddAssetForm({
     setFetchingPrice(true);
     try {
       const p = await fetchLivePrice(query, currency);
-      if (p != null) setPrice(String(round(p)));
+      if (p != null) setPrice(formatInputDecimal(round(p)));
     } finally {
       setFetchingPrice(false);
     }
@@ -208,7 +208,7 @@ export function AddAssetForm({
     if (next === "COMMODITY") {
       if (!symbol.trim()) setSymbol("XAU");
       if (!name.trim()) setName("Gold");
-      if (!price.trim()) setPrice(String(round(currentPrice("XAU", "COMMODITY"))));
+      if (!price.trim()) setPrice(formatInputDecimal(round(currentPrice("XAU", "COMMODITY"))));
     }
     // A manual-valuation holding is normally a single unit (a property, a
     // painting) — prefill quantity 1 so the entered value IS the total.

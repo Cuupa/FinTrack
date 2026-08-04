@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -44,7 +44,7 @@ export function PlannedForm({
   const [name, setName] = useState(initial?.name ?? "");
   const [accountId, setAccountId] = useState(initial?.accountId ?? data.accounts[0]?.id ?? "");
   const [isIncome, setIsIncome] = useState(initial ? initial.amount >= 0 : true);
-  const [amount, setAmount] = useState(initial ? String(Math.abs(initial.amount)) : "");
+  const [amount, setAmount] = useState(initial ? formatInputDecimal(Math.abs(initial.amount)) : "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [interval, setInterval] = useState<PlannedInterval>(initial?.interval ?? "MONTHLY");
   const [startDate, setStartDate] = useState(initial?.startDate ?? today());

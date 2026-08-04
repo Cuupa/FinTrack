@@ -8,7 +8,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { currentPrice } from "@/lib/finance/prices";
 import { orderFee } from "@/lib/finance/fees";
-import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -74,8 +74,8 @@ export function TransactionForm({
   const initialPrice = isCash
     ? "1"
     : cachedLive != null
-      ? String(round(cachedLive))
-      : String(round(currentPrice(assetPriceKey(asset), asset.type)));
+      ? formatInputDecimal(round(cachedLive))
+      : formatInputDecimal(round(currentPrice(assetPriceKey(asset), asset.type)));
 
   const [type, setType] = useState<TransactionType>("BUY");
   const [portfolioId, setPortfolioId] = useState(
@@ -107,7 +107,7 @@ export function TransactionForm({
     let cancelled = false;
     (async () => {
       const p = await fetchLivePrice(q, cur, asset.name);
-      if (!cancelled && p != null && !priceDirtyRef.current) setPrice(String(round(p)));
+      if (!cancelled && p != null && !priceDirtyRef.current) setPrice(formatInputDecimal(round(p)));
     })();
     return () => {
       cancelled = true;
@@ -139,7 +139,7 @@ export function TransactionForm({
   // shares × price, before fee/tax) — never bookings, interest or cash.
   const selectedPortfolio = portfolios.find((p) => p.id === portfolioId);
   const autoFee = !isCash && (isBuy || type === "SELL") ? orderFee(selectedPortfolio, gross) : 0;
-  const fee = feeManual ?? String(round(autoFee));
+  const fee = feeManual ?? formatInputDecimal(round(autoFee));
   const feeNum = parseDecimal(fee) || 0;
   const total = isBuy
     ? gross + feeNum + taxNum

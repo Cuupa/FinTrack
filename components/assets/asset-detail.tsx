@@ -24,6 +24,7 @@ import { useSplits } from "@/lib/history/use-splits";
 import { isStorageFullError } from "@/lib/store/errors";
 import {
   formatCurrency,
+  formatInputDecimal,
   formatDate,
   formatDateTime,
   formatNumber,
@@ -1000,7 +1001,7 @@ export function AssetDetail({
                     {t("splits.ratio")}
                     <input
                       inputMode="decimal"
-                      value={splitRowEdits.get(event.date) ?? String(event.ratio)}
+                      value={splitRowEdits.get(event.date) ?? formatInputDecimal(event.ratio)}
                       onChange={(e) =>
                         setSplitRowEdit(event.date, stripLeadingZero(e.target.value))
                       }
@@ -1268,10 +1269,10 @@ function TransactionEditRow({
   onCancel: () => void;
 }) {
   const [type, setType] = useState(tx.type);
-  const [quantity, setQuantity] = useState(String(tx.quantity));
-  const [price, setPrice] = useState(String(tx.price));
-  const [fee, setFee] = useState(String(tx.fee));
-  const [tax, setTax] = useState(String(tx.tax));
+  const [quantity, setQuantity] = useState(formatInputDecimal(tx.quantity));
+  const [price, setPrice] = useState(formatInputDecimal(tx.price));
+  const [fee, setFee] = useState(formatInputDecimal(tx.fee));
+  const [tax, setTax] = useState(formatInputDecimal(tx.tax));
   const [date, setDate] = useState(tx.date.slice(0, 16));
   const [portfolioId, setPortfolioId] = useState(tx.portfolioId);
 

@@ -16,7 +16,7 @@ import {
   type SavingsPlan,
   type SavingsPlanInterval,
 } from "@/lib/types";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -85,7 +85,7 @@ export function PlanForm({
   const [portfolioId, setPortfolioId] = useState(
     plan?.portfolioId ?? selectedPortfolioIds[0] ?? portfolios[0]?.id ?? "",
   );
-  const [amount, setAmount] = useState(plan ? String(plan.amount) : "");
+  const [amount, setAmount] = useState(plan ? formatInputDecimal(plan.amount) : "");
   const [frequency, setFrequency] = useState<SavingsPlanInterval>(plan?.interval ?? "MONTHLY");
   // BUY = own money (cost basis as usual); BOOKING = free external inflow
   // (Einbuchung, e.g. employer-paid VL) credited at zero cost.

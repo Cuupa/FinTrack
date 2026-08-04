@@ -30,7 +30,7 @@ import {
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import type { Account, Asset, Goal, Portfolio } from "@/lib/types";
 import type { GoalInput } from "@/lib/store/types";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
 import { Button, Card } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
@@ -123,7 +123,7 @@ function GoalForm({
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
-  const [targetAmount, setTargetAmount] = useState(initial ? String(initial.targetAmount) : "");
+  const [targetAmount, setTargetAmount] = useState(initial ? formatInputDecimal(initial.targetAmount) : "");
   const [targetDate, setTargetDate] = useState(initial?.targetDate ?? "");
   const [tracking, setTracking] = useState(initial ? trackingOf(initial) : MANUAL_TRACKING);
   const [manualCurrentAmount, setManualCurrentAmount] = useState(

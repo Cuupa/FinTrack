@@ -19,7 +19,7 @@ import {
   type AccountKind,
   type InterestFrequency,
 } from "@/lib/types";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
@@ -46,7 +46,7 @@ export function AccountEditDialog({
   const [name, setName] = useState(account.name);
   const [kind, setKind] = useState<AccountKind>(account.kind);
   const [currency, setCurrency] = useState(account.currency || base);
-  const [opening, setOpening] = useState(String(account.openingBalance));
+  const [opening, setOpening] = useState(formatInputDecimal(account.openingBalance));
   const [openedOn, setOpenedOn] = useState(account.openedOn);
   // One rate field for both sides of the ledger: credit interest on an asset
   // account, the borrowing rate on a liability. What it MEANS follows from the

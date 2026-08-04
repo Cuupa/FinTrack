@@ -17,7 +17,7 @@ import { useState } from "react";
 
 import type { Account, SpendingCategory, SpendingTransaction } from "@/lib/types";
 import type { SpendingTransactionInput } from "@/lib/store/types";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -89,7 +89,7 @@ function EditForm({
   // the amount field, exactly like the quick-add form: `amount` is signed in
   // storage, but "-50" is not how anyone writes down a 50 euro expense.
   const [isIncome, setIsIncome] = useState(transaction.amount >= 0);
-  const [amount, setAmount] = useState(String(Math.abs(transaction.amount)));
+  const [amount, setAmount] = useState(formatInputDecimal(Math.abs(transaction.amount)));
   const [payee, setPayee] = useState(transaction.payee);
   const [date, setDate] = useState(transaction.date);
   const [accountId, setAccountId] = useState(transaction.accountId);
