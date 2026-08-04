@@ -41,7 +41,11 @@ test.describe("Privacy mode", () => {
     await expect(privateValues.first()).toHaveCSS("filter", /blur/);
     const unmaskedFilledInputs = await page.locator("input").evaluateAll((inputs) =>
       inputs
-        .filter((input) => input.value.trim() !== "" && input.getAttribute("data-private") === null)
+        .filter(
+          (input) =>
+            (input.value.trim() !== "" || (input.getAttribute("placeholder") ?? "").trim() !== "") &&
+            input.getAttribute("data-private") === null,
+        )
         .map((input) => input.outerHTML),
     );
     expect(unmaskedFilledInputs).toEqual([]);

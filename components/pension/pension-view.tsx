@@ -141,7 +141,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             value={birthYear}
             onChange={(e) => setBirthYear(stripLeadingZero(e.target.value))}
             placeholder="1990"
-            data-private={birthYear !== "" ? "" : undefined}
+            data-private
           />
           {standardAge != null && (
             <span className="mt-1 block text-xs text-zinc-500" data-private>
@@ -157,7 +157,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             value={retirementAge}
             onChange={(e) => setRetirementAge(stripLeadingZero(e.target.value))}
             placeholder={standardAge != null ? standardAge.toFixed(1) : "67"}
-            data-private={retirementAge !== "" ? "" : undefined}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -168,7 +168,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             value={annualPoints}
             onChange={(e) => setAnnualPoints(stripLeadingZero(e.target.value))}
             placeholder={projection.annualPoints.toFixed(2)}
-            data-private={annualPoints !== "" ? "" : undefined}
+            data-private
           />
           <span className="mt-1 block text-xs text-zinc-500" data-private>
             {projection.maxAnnualPoints != null
@@ -186,7 +186,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
             inputMode="decimal"
             value={targetMonthly}
             onChange={(e) => setTargetMonthly(stripLeadingZero(e.target.value))}
-            data-private={targetMonthly !== "" ? "" : undefined}
+            data-private
           />
         </label>
       </div>
@@ -310,6 +310,7 @@ function StatementsFields() {
             value={year}
             onChange={(e) => setYear(stripLeadingZero(e.target.value))}
             placeholder={String(new Date().getFullYear())}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -320,7 +321,7 @@ function StatementsFields() {
             value={total}
             onChange={(e) => setTotal(stripLeadingZero(e.target.value))}
             placeholder="13,2739"
-            data-private={total !== "" ? "" : undefined}
+            data-private
           />
         </label>
         <label className="block text-sm sm:col-span-2">
@@ -329,7 +330,7 @@ function StatementsFields() {
             className={inputCls}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            data-private={note !== "" ? "" : undefined}
+            data-private
           />
         </label>
       </div>
@@ -359,7 +360,7 @@ function StatementsFields() {
                 <Tr key={row.year}>
                   <Td data-private>{row.year}</Td>
                   <Td align="right" data-private>{row.totalPoints.toFixed(4)}</Td>
-                  <Td className="text-zinc-500" data-private={row.note ? "" : undefined}>
+                  <Td className="text-zinc-500" data-private>
                     {row.note ?? ""}
                   </Td>
                   <Td align="right">
@@ -514,6 +515,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
             inputMode="numeric"
             value={year}
             onChange={(e) => setYear(stripLeadingZero(e.target.value))}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -523,7 +525,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
             inputMode="decimal"
             value={points}
             onChange={(e) => setPoints(stripLeadingZero(e.target.value))}
-            data-private={points !== "" ? "" : undefined}
+            data-private
           />
           {overMax && (
             <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
@@ -537,7 +539,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
             className={inputCls}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            data-private={note !== "" ? "" : undefined}
+            data-private
           />
         </label>
       </div>
@@ -567,7 +569,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
                 <Tr key={row.year}>
                   <Td data-private>{row.year}</Td>
                   <Td align="right" data-private>{row.points.toFixed(4)}</Td>
-                  <Td className="text-zinc-500" data-private={row.note ? "" : undefined}>
+                  <Td className="text-zinc-500" data-private>
                     {row.note ?? ""}
                   </Td>
                   <Td align="right">
@@ -732,7 +734,7 @@ function ContractForm({
             className={inputCls}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            data-private={name !== "" ? "" : undefined}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -754,7 +756,7 @@ function ContractForm({
             className={inputCls}
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
-            data-private={provider !== "" ? "" : undefined}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -764,7 +766,7 @@ function ContractForm({
             inputMode="decimal"
             value={rentenfaktor}
             onChange={(e) => setRentenfaktor(stripLeadingZero(e.target.value))}
-            data-private={rentenfaktor !== "" ? "" : undefined}
+            data-private
           />
           <span className="mt-1 block text-xs text-zinc-500">
             {t("pension.contracts.rentenfaktorHint")}
@@ -778,7 +780,7 @@ function ContractForm({
             inputMode="decimal"
             value={contribution}
             onChange={(e) => setContribution(stripLeadingZero(e.target.value))}
-            data-private={contribution !== "" ? "" : undefined}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -788,7 +790,7 @@ function ContractForm({
             inputMode="decimal"
             value={value}
             onChange={(e) => setValue(stripLeadingZero(e.target.value))}
-            data-private={value !== "" ? "" : undefined}
+            data-private
           />
         </label>
         <label className="block text-sm">
@@ -798,7 +800,7 @@ function ContractForm({
             inputMode="decimal"
             value={dynamicPct}
             onChange={(e) => setDynamicPct(stripLeadingZero(e.target.value))}
-            data-private={dynamicPct !== "" ? "" : undefined}
+            data-private
           />
           <span className="mt-1 block text-xs text-zinc-500">
             {t("pension.contracts.dynamicHint")}
@@ -811,7 +813,7 @@ function ContractForm({
             inputMode="decimal"
             value={returnPct}
             onChange={(e) => setReturnPct(stripLeadingZero(e.target.value))}
-            data-private={returnPct !== "" ? "" : undefined}
+            data-private
           />
           <span className="mt-1 block text-xs text-zinc-500">
             {t("pension.contracts.returnHint")}
@@ -824,7 +826,7 @@ function ContractForm({
             type="date"
             value={startsOn}
             onChange={(e) => setStartsOn(e.target.value)}
-            data-private={startsOn !== "" ? "" : undefined}
+            data-private
           />
         </label>
         {/* A policy with a Rentenfaktor computes its payout from the premium,
@@ -839,7 +841,7 @@ function ContractForm({
               inputMode="decimal"
               value={expected}
               onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
-              data-private={expected !== "" ? "" : undefined}
+              data-private
             />
             <span className="mt-1 block text-xs text-zinc-500">
               {t("pension.contracts.expectedHint")}
@@ -850,7 +852,7 @@ function ContractForm({
             premiums then collect for review; nothing is ever posted silently. */}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.account")}</span>
-          <div className="mt-1" data-private={accountId !== "" ? "" : undefined}>
+          <div className="mt-1" data-private>
             <SelectMenu
               ariaLabel={t("pension.contracts.account")}
               value={accountId}
@@ -874,7 +876,7 @@ function ContractForm({
               type="date"
               value={bookingStartDate}
               onChange={(e) => setBookingStartDate(e.target.value)}
-              data-private={bookingStartDate !== "" ? "" : undefined}
+            data-private
             />
             <span className="mt-1 block text-xs text-zinc-500">
               {t("pension.contracts.bookingStartHint")}
@@ -887,7 +889,7 @@ function ContractForm({
             className={inputCls}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            data-private={note !== "" ? "" : undefined}
+            data-private
           />
         </label>
       </div>
@@ -1001,7 +1003,7 @@ function ContractValuesDialog({
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(stripLeadingZero(e.target.value))}
-              data-private={value !== "" ? "" : undefined}
+            data-private
             />
           </label>
         </div>
@@ -1279,7 +1281,7 @@ function ContractsCard() {
                   <Td align="right" data-private>
                     {returnOf(c) == null ? "—" : `${returnOf(c)!.toFixed(2)} %`}
                   </Td>
-                  <Td className="text-zinc-500" data-private={c.startsOn ? "" : undefined}>
+                  <Td className="text-zinc-500" data-private>
                     {c.startsOn ?? "—"}
                   </Td>
                   <Td align="right">

@@ -209,9 +209,10 @@ export function FireView() {
                     amount: formatCurrency(fire.pensionMonthly, currency),
                     year: String(fire.retirementYear),
                   })}
+                  hintPrivate
                 />
                 {countPension && plan.regularWithoutPension > plan.regular && (
-                  <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
+                  <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400" data-private>
                     {t("fire.pension.saves", {
                       without: formatCurrency(plan.regularWithoutPension, currency),
                       with: formatCurrency(plan.regular, currency),

@@ -233,6 +233,7 @@ export function Toggle({
   onChange,
   label,
   hint,
+  hintPrivate = false,
   disabled = false,
   id,
 }: {
@@ -240,6 +241,7 @@ export function Toggle({
   onChange: (checked: boolean) => void;
   label: string;
   hint?: string;
+  hintPrivate?: boolean;
   disabled?: boolean;
   id?: string;
 }) {
@@ -269,7 +271,7 @@ export function Toggle({
       </span>
       <span>
         <span className="text-sm font-medium">{label}</span>
-        {hint && <span className="block text-xs text-zinc-500">{hint}</span>}
+        {hint && <span className="block text-xs text-zinc-500" {...(hintPrivate ? { "data-private": "" } : {})}>{hint}</span>}
       </span>
     </button>
   );
