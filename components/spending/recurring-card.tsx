@@ -296,6 +296,30 @@ export function RecurringCard() {
   };
   const editRow = (key: string, patch: { date?: string; amount?: string }) =>
     setEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  function cancelAmountEdit(key: string) {
+    setEdits((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        next[key] = { ...next[key] };
+        delete next[key].amount;
+        if (Object.keys(next[key]!).length === 0) delete next[key];
+      }
+      return next;
+    });
+    setEditingAmounts((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  function confirmAmountEdit(key: string) {
+    setEditingAmounts((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
   // Booking with a typo'd amount would post a row that has to be corrected
   // afterwards, so an invalid edit blocks the whole run rather than reverting
   // silently to the planned figure.
@@ -726,23 +750,46 @@ export function RecurringCard() {
                   </div>
                   <div className="flex min-w-0 items-center justify-end gap-2 sm:justify-start">
                     {editingAmounts.has(d.key) ? (
-                      <input
-                        autoFocus
-                        inputMode="decimal"
-                        value={dueAmountText(d)}
-                        onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
-                        aria-label={t("recurring.due.amountLabel")}
-                        className={`${dueInputCls} w-full min-w-0 text-right tabular-nums sm:w-28 ${
-                          amount === null ? "border-red-500 dark:border-red-500" : ""
-                        } ${
-                          !checked
-                            ? "text-zinc-400 line-through"
-                            : d.amount < 0
-                              ? "text-red-600 dark:text-red-400"
-                              : ""
-                        }`}
-                        data-private
-                      />
+                      <>
+                        <input
+                          autoFocus
+                          inputMode="decimal"
+                          value={dueAmountText(d)}
+                          onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && amount !== null) confirmAmountEdit(d.key);
+                            if (e.key === "Escape") cancelAmountEdit(d.key);
+                          }}
+                          aria-label={t("recurring.due.amountLabel")}
+                          className={`${dueInputCls} w-full min-w-0 text-right tabular-nums sm:w-28 ${
+                            amount === null ? "border-red-500 dark:border-red-500" : ""
+                          } ${
+                            !checked
+                              ? "text-zinc-400 line-through"
+                              : d.amount < 0
+                                ? "text-red-600 dark:text-red-400"
+                                : ""
+                          }`}
+                          data-private
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => cancelAmountEdit(d.key)}
+                          aria-label={t("recurring.due.cancelAmount")}
+                        >
+                          {t("common.cancel")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={amount === null}
+                          onClick={() => confirmAmountEdit(d.key)}
+                          aria-label={t("recurring.due.confirmAmount")}
+                        >
+                          {t("recurring.due.confirmAmount")}
+                        </Button>
+                      </>
                     ) : (
                       <span
                         className={`min-w-28 text-right tabular-nums ${
