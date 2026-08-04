@@ -61,6 +61,7 @@ import { atLimit } from "@/lib/billing/limits";
 import { ChartControls } from "@/components/charts/chart-controls";
 import { AssetRiskCard } from "@/components/assets/asset-risk-card";
 import { CashInterestSection } from "@/components/assets/cash-interest-section";
+import { FrontLoadSection } from "@/components/assets/front-load-section";
 import { ValuationSection } from "@/components/assets/valuation-section";
 import { BenchmarkPicker } from "@/components/charts/benchmark-picker";
 import { useBenchmarkCompare } from "@/components/charts/use-benchmark-compare";
@@ -856,6 +857,8 @@ export function AssetDetail({
           <AssetRiskCard asset={asset} histories={histories} />
         </ProGate>
       )}
+
+      {held && asset.type !== "CASH" && <FrontLoadSection asset={asset} />}
 
       {/* Transactions — full width, add form above the table. Booking the
           first transaction on a not-(yet-)held instrument is what turns it

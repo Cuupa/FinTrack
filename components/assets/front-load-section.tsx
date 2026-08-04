@@ -15,7 +15,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { frontLoadSplit } from "@/lib/finance/front-load";
 import type { Asset } from "@/lib/types";
 import { formatCurrency, formatNumber, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
@@ -65,13 +65,21 @@ export function FrontLoadSection({ asset }: { asset: Asset }) {
   }
 
   return (
-    <Card>
-      <h2 className="text-lg font-semibold">{t("asset.frontLoad.title")}</h2>
-      <p className="mt-1 text-sm text-zinc-500">{t("asset.frontLoad.intro")}</p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-xs font-medium text-zinc-500">{t("asset.frontLoad.rate")}</span>
-          <div className="relative">
+    <section className="border-y border-zinc-200 py-5 dark:border-zinc-800">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <h2 className="text-lg font-semibold">{t("asset.frontLoad.title")}</h2>
+          <p className="mt-1 text-sm leading-6 text-zinc-500">{t("asset.frontLoad.intro")}</p>
+        </div>
+        <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          {t("asset.frontLoad.rate")}
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(14rem,0.7fr)_minmax(0,1.3fr)]">
+        <label className="block max-w-sm">
+          <span className="text-sm font-medium">{t("asset.frontLoad.rate")}</span>
+          <div className="relative mt-1">
             <input
               type="text"
               inputMode="decimal"
@@ -81,25 +89,37 @@ export function FrontLoadSection({ asset }: { asset: Asset }) {
                 setSaved(false);
                 setRate(stripLeadingZero(e.target.value));
               }}
-              className={`${inputCls} pr-8`}
+              className={`${inputCls} pr-10 text-right tabular-nums`}
+              aria-label={t("asset.frontLoad.rate")}
             />
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-zinc-400">
               %
             </span>
           </div>
         </label>
-        <div className="text-sm">
-          <span className="text-xs font-medium text-zinc-500">
+
+        <div className="rounded-md border border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
             {t("asset.frontLoad.sampleLabel", { amount: formatCurrency(SAMPLE_ORDER, cur) })}
-          </span>
-          <p className="mt-1 tabular-nums">
-            {next
-              ? t("asset.frontLoad.sample", {
-                  charge: formatCurrency(sample.charge, cur),
-                  units: formatNumber(sample.quantity, 3),
-                })
-              : t("asset.frontLoad.sampleNone")}
           </p>
+          {next ? (
+            <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-zinc-500">{t("asset.frontLoad.sampleCharge")}</p>
+                <p className="mt-1 font-semibold tabular-nums">{formatCurrency(sample.charge, cur)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">{t("asset.frontLoad.sampleUnits")}</p>
+                <p className="mt-1 font-semibold tabular-nums">{formatNumber(sample.quantity, 3)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">{t("asset.frontLoad.sampleOffer")}</p>
+                <p className="mt-1 font-semibold tabular-nums">{formatCurrency(sample.offerPrice, cur)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-zinc-500">{t("asset.frontLoad.sampleNone")}</p>
+          )}
         </div>
       </div>
       <FormActions error={error}>
@@ -112,6 +132,6 @@ export function FrontLoadSection({ asset }: { asset: Asset }) {
           {saving ? t("asset.frontLoad.saving") : t("asset.frontLoad.save")}
         </Button>
       </FormActions>
-    </Card>
+    </section>
   );
 }
