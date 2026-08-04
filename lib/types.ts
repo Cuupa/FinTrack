@@ -457,6 +457,8 @@ export interface SpendingTransaction {
    * `transferAccountId` stays null.
    */
   pensionContractId?: string | null;
+  /** Marks an automatically generated account-interest booking. */
+  interestAccountId?: string | null;
 }
 
 /**

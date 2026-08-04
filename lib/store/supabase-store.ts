@@ -285,6 +285,7 @@ interface SpendingTransactionRow {
   savings_plan_id?: string | null;
   // Migration 0121, same reasoning.
   pension_contract_id?: string | null;
+  interest_account_id?: string | null;
 }
 
 function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransaction {
@@ -302,6 +303,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     plannedId: r.planned_id ?? null,
     savingsPlanId: r.savings_plan_id ?? null,
     pensionContractId: r.pension_contract_id ?? null,
+    interestAccountId: r.interest_account_id ?? null,
   };
 }
 
@@ -644,7 +646,7 @@ export class SupabaseStore implements DataStore {
         (cols) =>
           this.supabase.from("spending_transactions").select(cols).order("date", { ascending: false }),
         ["id", "account_id", "category_id", "date", "amount", "payee", "note", "recurring_id"],
-        ["transfer_account_id", "planned_id", "savings_plan_id", "pension_contract_id", "booked_at"],
+        ["transfer_account_id", "planned_id", "savings_plan_id", "pension_contract_id", "booked_at", "interest_account_id"],
       ),
       this.supabase
         .from("budgets")
@@ -1780,6 +1782,7 @@ export class SupabaseStore implements DataStore {
         planned_id: input.plannedId ?? null,
         savings_plan_id: input.savingsPlanId ?? null,
         pension_contract_id: input.pensionContractId ?? null,
+        interest_account_id: input.interestAccountId ?? null,
       })
       .select("id")
       .single();
@@ -1815,6 +1818,7 @@ export class SupabaseStore implements DataStore {
     if (patch.plannedId !== undefined) upd.planned_id = patch.plannedId;
     if (patch.savingsPlanId !== undefined) upd.savings_plan_id = patch.savingsPlanId;
     if (patch.pensionContractId !== undefined) upd.pension_contract_id = patch.pensionContractId;
+    if (patch.interestAccountId !== undefined) upd.interest_account_id = patch.interestAccountId;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's transaction too.
     const { data, error } = await this.supabase

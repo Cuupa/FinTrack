@@ -777,6 +777,8 @@ create table if not exists public.spending_transactions (
   recurring_id uuid,
   created_at timestamptz not null default now()
 );
+alter table public.spending_transactions
+  add column if not exists interest_account_id uuid references public.accounts (id) on delete set null;
 -- Transfer marker (migration 0096): set when the booking moved money to
 -- another account of the user's own (loan instalment, wealth-building premium)
 -- rather than spending it. Every aggregation in lib/finance/spending.ts skips
