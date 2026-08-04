@@ -23,10 +23,9 @@
 // (like `summarizeHolding` — the base is per-user and dated FX drift is not
 // modelled for a balance the user simply typed in).
 
-import type { Account, AccountBalance, InterestFrequency } from "../types";
-import { addDays, addMonthsToDate, today } from "./dates";
-import { accountRateSteps, rateOnDate } from "./debt";
-import { isLedgerDriven, type AccountMovements } from "./account-ledger";
+import type { Account, AccountBalance } from "../types";
+import { addDays, today } from "./dates";
+import type { AccountMovements } from "./account-ledger";
 
 /** Spot FX + base currency for converting native account balances. */
 export interface AccountValuation {
@@ -42,29 +41,6 @@ interface Point {
 
 /** Safety cap on generated interest periods (50 years), mirroring
  *  `MAX_MONTHS` in debt.ts: a pathological `through` date must not spin. */
-const MAX_ACCRUAL_MONTHS = 600;
-
-const PERIOD_MONTHS: Record<InterestFrequency, number> = {
-  MONTHLY: 1,
-  QUARTERLY: 3,
-  ANNUAL: 12,
-};
-
-function interestPeriodMonths(account: Account): number {
-  return PERIOD_MONTHS[account.interestFrequency ?? "MONTHLY"] ?? 1;
-}
-
-/**
- * A liability accrues only once the ledger moves it (its rate may exist purely
- * for the payoff planner); an asset account accrues as soon as it has a rate,
- * since that is the rate's only purpose there.
- */
-function accruesInterest(account: Account, movements?: AccountMovements): boolean {
-  const rate = account.interestRate;
-  if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) return false;
-  return account.isLiability ? isLedgerDriven(account.id, movements) : true;
-}
-
 /**
  * The account's full balance series in ascending date order, native-currency
  * magnitudes (unsigned).
@@ -73,11 +49,10 @@ function accruesInterest(account: Account, movements?: AccountMovements): boolea
  * at `openedOn` plus every reading, a reading on `openedOn` overriding the
  * opening value.
  *
- * With movements it additionally carries the balance forward between readings,
- * and on an interest-bearing liability accrues a month's interest on each
- * monthly anniversary of the account's start. `through` extends that accrual
- * past the last known event (callers asking for a balance in the future); it
- * defaults to the last event date, so a plain call never invents data.
+ * With movements it additionally carries the balance forward between readings.
+ * Interest is deliberately absent here: it must enter through a separate
+ * spending booking, otherwise the displayed balance changes without a journal
+ * entry and liability interest can be counted twice when a payment is split.
  */
 export function balanceSeries(
   account: Account,
@@ -85,6 +60,7 @@ export function balanceSeries(
   movements?: AccountMovements,
   through?: string,
 ): Point[] {
+  void through; // retained for API compatibility; booked movements define the horizon now
   const moves = movements?.get(account.id) ?? [];
   // An account whose opening balance is 0 and whose first movement predates
   // `openedOn` was opened before the user says it was: the transfer that
@@ -114,9 +90,7 @@ export function balanceSeries(
     deltas.set(m.date, (deltas.get(m.date) ?? 0) + m.delta);
   }
 
-  const accrues = accruesInterest(account, movements);
-
-  if (deltas.size === 0 && !accrues) {
+  if (deltas.size === 0) {
     // Nothing to carry forward and nothing to accrue: the historical step
     // series, unchanged.
     return [...anchors.entries()]
@@ -124,25 +98,7 @@ export function balanceSeries(
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
 
-  const lastEvent = [...anchors.keys(), ...deltas.keys()].reduce((a, b) => (a > b ? a : b));
-  const horizon = through && through > lastEvent ? through : lastEvent;
-
-  // Interest falls due on anniversaries of the account's start, charged on the
-  // balance standing at that moment, which is what makes a loan instalment
-  // retire only its principal share.
-  const interestDates: string[] = [];
-  if (accrues) {
-    const months = interestPeriodMonths(account);
-    for (let k = 1; k * months <= MAX_ACCRUAL_MONTHS; k++) {
-      const date = addMonthsToDate(account.openedOn, k * months);
-      if (date > horizon) break;
-      interestDates.push(date);
-    }
-  }
-  const rateSteps = accountRateSteps(account);
-
-  const dates = [...new Set([...anchors.keys(), ...deltas.keys(), ...interestDates])].sort();
-  const interestOn = new Set(interestDates);
+  const dates = [...new Set([...anchors.keys(), ...deltas.keys()])].sort();
 
   const out: Point[] = [];
   let balance = 0;
@@ -153,10 +109,6 @@ export function balanceSeries(
       // already includes that day's bookings and interest.
       balance = anchor;
     } else {
-      if (interestOn.has(date)) {
-        const annual = rateOnDate(account.interestRate ?? 0, rateSteps, date);
-        balance += balance * ((annual / 100) * (interestPeriodMonths(account) / 12));
-      }
       balance += deltas.get(date) ?? 0;
     }
     out.push({ date, balance });
@@ -190,9 +142,7 @@ export function accountBalanceOn(
 
 /**
  * The balance as it stands now: the latest reading carried forward by every
- * movement since, plus interest accrued up to `asOf` (default today -- interest
- * is the one thing that happens without anybody booking anything). The horizon
- * only extends accrual; a rateless account is unaffected.
+ * journal movement since. Interest is only reflected after it is booked.
  */
 export function currentAccountBalance(
   account: Account,

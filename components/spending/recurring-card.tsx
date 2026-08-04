@@ -461,7 +461,7 @@ export function RecurringCard() {
               {visibleCandidates.map((c) => (
                 <li
                   key={candidateKey(c)}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+                  className="grid min-w-0 gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center dark:hover:bg-zinc-800/40"
                 >
                   <span data-private>
                     <span className="font-medium">{c.payee}</span>{" "}
@@ -596,7 +596,7 @@ export function RecurringCard() {
                 >
                   {/* The label covers the name only: a date or amount box inside
                       it would toggle the checkbox on every click. */}
-                  <div className="flex flex-1 items-center gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
                     <label className="flex flex-1 cursor-pointer items-center gap-3">
                       <input
                         type="checkbox"
@@ -661,7 +661,7 @@ export function RecurringCard() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center justify-end gap-2 sm:justify-start">
                     {editingAmounts.has(d.key) ? (
                       <input
                         autoFocus
@@ -669,7 +669,7 @@ export function RecurringCard() {
                         value={dueAmountText(d)}
                         onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
                         aria-label={t("recurring.due.amountLabel")}
-                        className={`${dueInputCls} w-28 text-right tabular-nums ${
+                        className={`${dueInputCls} w-full min-w-0 text-right tabular-nums sm:w-28 ${
                           amount === null ? "border-red-500 dark:border-red-500" : ""
                         } ${
                           !checked

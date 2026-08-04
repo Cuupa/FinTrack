@@ -167,7 +167,7 @@ describe("interest accrual on a ledger-driven liability", () => {
       interestRate: 12, // 1 % per month, keeps the arithmetic checkable by hand
     });
 
-  it("charges interest so an instalment only retires its principal share", () => {
+  it("does not accrue interest without a separate booking", () => {
     const l = loan();
     const moves = accountMovements(
       [tx({ id: "p1", accountId: "x", amount: -1000, date: "2024-02-01", transferAccountId: "l1" })],
@@ -175,9 +175,7 @@ describe("interest accrual on a ledger-driven liability", () => {
     );
     const series = balanceSeries(l, [], moves);
     const feb = series.find((p) => p.date === "2024-02-01");
-    // 10,000 + 1 % interest = 10,100, minus the 1,000 payment = 9,100.
-    // Without accrual it would read a flat 9,000, overstating the repayment.
-    expect(feb?.balance).toBeCloseTo(9100, 6);
+    expect(feb?.balance).toBeCloseTo(9000, 6);
   });
 
   it("leaves a liability with a rate but no bookings on the old behaviour", () => {
@@ -187,16 +185,12 @@ describe("interest accrual on a ledger-driven liability", () => {
     expect(balanceSeries(l, [])).toEqual([{ date: "2024-01-01", balance: 10_000 }]);
   });
 
-  // An asset account's rate is credit interest the bank PAYS (migration
-  // 0104), so it grows the balance where a liability's rate grows the debt.
-  it("credits interest on an asset account, on top of its bookings", () => {
+  it("leaves asset interest out until it is booked", () => {
     const a = account({ interestRate: 12 });
     const moves = accountMovements([tx({ amount: -50, date: "2024-02-01" })], [a]);
     const series = balanceSeries(a, [], moves, "2024-02-01");
     const feb = series.find((p) => p.date === "2024-02-01");
-    // 1,000 + 1 % interest = 1,010, minus the 50 spent = 960 (the old
-    // behaviour read a flat 950, ignoring the rate entirely).
-    expect(feb?.balance).toBeCloseTo(960, 6);
+    expect(feb?.balance).toBeCloseTo(950, 6);
   });
 
   it("leaves an asset account with no rate on the plain carry-forward", () => {

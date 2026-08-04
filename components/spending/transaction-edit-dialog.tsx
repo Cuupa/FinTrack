@@ -23,6 +23,7 @@ import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { nowDateTimeLocal } from "@/lib/finance/dates";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900";
@@ -91,8 +92,9 @@ function EditForm({
   const [isIncome, setIsIncome] = useState(transaction.amount >= 0);
   const [amount, setAmount] = useState(formatInputDecimal(Math.abs(transaction.amount)));
   const [payee, setPayee] = useState(transaction.payee);
-  const [date, setDate] = useState(transaction.date);
-  const [time, setTime] = useState(transaction.bookedAt?.slice(11, 16) ?? "12:00");
+  const [dateTime, setDateTime] = useState(
+    transaction.bookedAt?.slice(0, 16) ?? `${transaction.date}T12:00`,
+  );
   const [accountId, setAccountId] = useState(transaction.accountId);
   const [categoryId, setCategoryId] = useState(transaction.categoryId ?? "");
   const [transferAccountId, setTransferAccountId] = useState(transaction.transferAccountId ?? "");
@@ -116,8 +118,8 @@ function EditForm({
     void onSave(transaction.id, {
       accountId,
       categoryId: categoryId || null,
-      date,
-      bookedAt: `${date}T${time}`,
+      date: dateTime.slice(0, 10),
+      bookedAt: dateTime,
       amount: isIncome ? Math.abs(value) : -Math.abs(value),
       payee: effectivePayee,
       note: note.trim() || null,
@@ -149,43 +151,39 @@ function EditForm({
           </div>
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="edit-tx-time">
-            {t("spending.form.timeLabel")}
-          </label>
-          <input
-            id="edit-tx-time"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className={inputCls}
-          />
-        </div>
-        <div>
           <label className="text-sm font-medium" htmlFor="edit-tx-date">
             {t("spending.form.dateLabel")}
           </label>
           <input
             id="edit-tx-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+            type="datetime-local"
+            value={dateTime}
+            max={nowDateTimeLocal()}
+            onChange={(e) => setDateTime(e.target.value)}
             className={inputCls}
           />
         </div>
-        <div>
-          {/* An income's counterparty is the SENDER: the selected account is
-              already the recipient, so asking for one is the wrong question. */}
-          <label className="text-sm font-medium" htmlFor="edit-tx-payee">
-            {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
-          </label>
-          <input
-            id="edit-tx-payee"
-            value={payee}
-            onChange={(e) => setPayee(e.target.value)}
-            className={inputCls}
-            data-private={payee !== "" ? "" : undefined}
-          />
-        </div>
+        {!transfer ? (
+          <div>
+            {/* An income's counterparty is the SENDER: the selected account is
+                already the recipient, so asking for one is the wrong question. */}
+            <label className="text-sm font-medium" htmlFor="edit-tx-payee">
+              {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
+            </label>
+            <input
+              id="edit-tx-payee"
+              value={payee}
+              onChange={(e) => setPayee(e.target.value)}
+              className={inputCls}
+              data-private={payee !== "" ? "" : undefined}
+            />
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">
+            <span className="font-medium">{t("spending.edit.transferLabel")}</span>
+            <p className="mt-1 text-zinc-500" data-private>{transferName}</p>
+          </div>
+        )}
         <div>
           <label className="text-sm font-medium">{t("spending.form.accountLabel")}</label>
           <SelectMenu

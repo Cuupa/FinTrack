@@ -118,8 +118,7 @@ export function SpendingView({
   const [amount, setAmount] = useState("");
   const [payee, setPayee] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [date, setDate] = useState(today());
-  const [time, setTime] = useState(() => nowDateTimeLocal().slice(11));
+  const [dateTime, setDateTime] = useState(nowDateTimeLocal);
   const [note, setNote] = useState("");
   // Where the money lands when it is not consumed: another account of the
   // user's own, a liability included. Booking a rate onto a credit is the
@@ -277,7 +276,8 @@ export function SpendingView({
 
   async function submit() {
     const magnitude = parseDecimal(amount);
-    if (!accountId || !effectivePayee || !date || !Number.isFinite(magnitude) || magnitude <= 0)
+    const date = dateTime.slice(0, 10);
+    if (!accountId || !effectivePayee || !dateTime || !Number.isFinite(magnitude) || magnitude <= 0)
       return;
     setBusy(true);
     setError(null);
@@ -307,7 +307,7 @@ export function SpendingView({
           accountId,
           categoryId: categoryId || null,
           date,
-          bookedAt: `${date}T${time}`,
+          bookedAt: dateTime,
           amount: signed,
           payee: effectivePayee,
           note: note.trim() || null,
@@ -320,8 +320,7 @@ export function SpendingView({
       setCategoryId("");
       setNote("");
       setTransferAccountId("");
-      setDate(today());
-      setTime(nowDateTimeLocal().slice(11));
+      setDateTime(nowDateTimeLocal());
       setAdding(false);
       showToast(t("spending.form.saved"));
     } catch (err) {
@@ -418,33 +417,19 @@ export function SpendingView({
                   data-private={amount !== "" ? "" : undefined}
                 />
               </div>
-              {!recurring && (
-                <div>
-                  <label className="text-sm font-medium" htmlFor="spending-time">
-                    {t("spending.form.timeLabel")}
-                  </label>
-                  <input
-                    id="spending-time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
-              )}
               <div>
                 <label className="text-sm font-medium" htmlFor="spending-date">
                   {recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
                 </label>
                 <input
                   id="spending-date"
-                  type="date"
+                  type="datetime-local"
                   // Future dates are allowed on purpose: a standing order or a
                   // rate already scheduled is a booking the user knows about
                   // today. The edit dialog never capped the date either, so
                   // capping it here only meant "save it wrong, then correct it".
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  value={dateTime}
+                  onChange={(e) => setDateTime(e.target.value)}
                   className={inputCls}
                 />
               </div>
@@ -477,22 +462,31 @@ export function SpendingView({
               )}
               {/* Money out has a recipient, money in has a source. One field,
                   but calling a salary's employer the "payee" was backwards. */}
-              <div>
-                <label className="text-sm font-medium" htmlFor="spending-payee">
-                  {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
-                </label>
-                <input
-                  id="spending-payee"
-                  value={payee}
-                  onChange={(e) => setPayee(e.target.value)}
-                  onBlur={onPayeeBlur}
-                  placeholder={t(
-                    isIncome ? "spending.form.payerPlaceholder" : "spending.form.payeePlaceholder",
-                  )}
-                  className={inputCls}
-                  data-private={payee !== "" ? "" : undefined}
-                />
-              </div>
+              {!transfer ? (
+                <div>
+                  <label className="text-sm font-medium" htmlFor="spending-payee">
+                    {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
+                  </label>
+                  <input
+                    id="spending-payee"
+                    value={payee}
+                    onChange={(e) => setPayee(e.target.value)}
+                    onBlur={onPayeeBlur}
+                    placeholder={t(
+                      isIncome ? "spending.form.payerPlaceholder" : "spending.form.payeePlaceholder",
+                    )}
+                    className={inputCls}
+                    data-private={payee !== "" ? "" : undefined}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">
+                  <span className="font-medium">{t("spending.edit.transferLabel")}</span>
+                  <p className="mt-1 text-zinc-500" data-private>
+                    {accountsById.get(transfer)?.name}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium">{t("spending.form.categoryLabel")}</label>
                 <SelectMenu
@@ -574,7 +568,7 @@ export function SpendingView({
             <FormActions error={error}>
               <Button
                 variant="primary"
-                disabled={busy || !accountId || !effectivePayee || !amount.trim() || !date}
+                disabled={busy || !accountId || !effectivePayee || !amount.trim() || !dateTime}
                 onClick={() => void submit()}
               >
                 {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}

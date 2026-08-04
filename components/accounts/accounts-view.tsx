@@ -14,7 +14,6 @@
 // under it was the duplication this restructure exists to remove.
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import {
@@ -334,7 +333,7 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
                         {/* Its own affordance, not an edit: a dated balance
                             series is a second entity behind this row. */}
                         <Button size="sm" variant="ghost" onClick={() => setBalancesFor(account)}>
-                          {t("accounts.list.editBalances")}
+                          {t("accounts.list.viewBalances")}
                         </Button>
                         <DeleteAction
                           label={t("accounts.list.delete")}

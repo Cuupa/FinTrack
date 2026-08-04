@@ -67,41 +67,15 @@ describe("balanceSeries + carry-forward", () => {
   });
 });
 
-// Credit interest on an ASSET account (Tagesgeld/Sparkonto). Unlike a
-// liability's rate, it needs no ledger movement to take effect: a savings
-// account whose balance was typed in once is exactly the case that has to
-// work.
-describe("credit interest on asset accounts", () => {
+// Interest rates are planning metadata. They never mutate a balance by
+// themselves; the resulting credit must be entered as a booking.
+describe("interest requires a booking", () => {
   const savings = (overrides: Partial<Account> = {}) =>
     account({ kind: "savings", openingBalance: 1000, interestRate: 12, ...overrides });
 
-  it("compounds monthly onto a balance nobody ever moved", () => {
+  it("does not change a balance without a booking", () => {
     const a = savings();
-    // 1 % a month, credited on each anniversary of 1 Jan: eleven postings by
-    // 31 Dec (1 Feb ... 1 Dec).
-    expect(accountBalanceOn(a, [], "2024-12-31")).toBeCloseTo(1000 * 1.01 ** 11, 6);
-  });
-
-  it("charges a quarter's worth per posting when credited quarterly", () => {
-    const a = savings({ interestFrequency: "QUARTERLY" });
-    // Two postings in six months, 3 % each.
-    expect(accountBalanceOn(a, [], "2024-07-01")).toBeCloseTo(1000 * 1.03 ** 2, 6);
-    // ...and none before the first one falls due.
-    expect(accountBalanceOn(a, [], "2024-03-31")).toBe(1000);
-  });
-
-  it("credits annually on the account's anniversary", () => {
-    const a = savings({ interestFrequency: "ANNUAL" });
     expect(accountBalanceOn(a, [], "2024-12-31")).toBe(1000);
-    expect(accountBalanceOn(a, [], "2025-01-01")).toBeCloseTo(1120, 6);
-  });
-
-  it("a dated reading re-anchors and interest continues from it", () => {
-    const a = savings();
-    const balances: AccountBalance[] = [{ accountId: "a1", date: "2024-06-01", balance: 5000 }];
-    // The statement is the truth: everything accrued before it is discarded.
-    expect(accountBalanceOn(a, balances, "2024-06-01")).toBe(5000);
-    expect(accountBalanceOn(a, balances, "2024-07-01")).toBeCloseTo(5050, 6);
   });
 
   it("does nothing without a rate, or with a zero rate", () => {
@@ -116,13 +90,10 @@ describe("credit interest on asset accounts", () => {
     expect(accountBalanceOn(loan, [], "2025-01-01")).toBe(1000);
   });
 
-  // The one that made the whole feature necessary: without a horizon of
-  // "today" the rate would silently do nothing until some unrelated event
-  // moved the account.
-  it("current balance accrues up to today with no events at all", () => {
+  it("current balance stays unchanged with no events", () => {
     const a = savings({ openedOn: "2020-01-01" });
-    expect(currentAccountBalance(a, [])).toBeGreaterThan(1000);
-    expect(accountsTotals([a], []).assets).toBeGreaterThan(1000);
+    expect(currentAccountBalance(a, [])).toBe(1000);
+    expect(accountsTotals([a], []).assets).toBe(1000);
   });
 });
 

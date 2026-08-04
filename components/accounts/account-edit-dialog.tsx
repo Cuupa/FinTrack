@@ -19,7 +19,7 @@ import {
   type AccountKind,
   type InterestFrequency,
 } from "@/lib/types";
-import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
@@ -46,7 +46,6 @@ export function AccountEditDialog({
   const [name, setName] = useState(account.name);
   const [kind, setKind] = useState<AccountKind>(account.kind);
   const [currency, setCurrency] = useState(account.currency || base);
-  const [opening, setOpening] = useState(formatInputDecimal(account.openingBalance));
   const [openedOn, setOpenedOn] = useState(account.openedOn);
   // One rate field for both sides of the ledger: credit interest on an asset
   // account, the borrowing rate on a liability. What it MEANS follows from the
@@ -71,19 +70,9 @@ export function AccountEditDialog({
 
   const kindLabel = (k: AccountKind) => t(`accounts.kind.${k}` as Parameters<typeof t>[0]);
 
-  // A dated reading always wins over the opening balance (balanceSeries in
-  // lib/finance/accounts.ts), so correcting the opening figure alone would look
-  // like it did nothing on an account that already has readings. Say so.
-  const hasReadings = data.accountBalances.some((b) => b.accountId === account.id);
-
   async function save() {
     const trimmed = name.trim();
-    const openingVal = parseDecimal(opening);
     if (!trimmed || !openedOn) return;
-    if (!Number.isFinite(openingVal)) {
-      setError(t("common.invalidAmount"));
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -107,7 +96,6 @@ export function AccountEditDialog({
         currency: !cur || cur === base ? null : cur,
         // Kind and liability-ness are one decision, exactly as in the add form.
         isLiability,
-        openingBalance: openingVal,
         openedOn,
         interestRate: rate,
         // The instalment and the follow-up rate only mean something on a debt.
@@ -171,23 +159,6 @@ export function AccountEditDialog({
               onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
               placeholder={base}
               className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-edit-opening">
-              {t("accounts.form.openingLabel", { currency: currency.trim() || base })}
-            </label>
-            <input
-              id="account-edit-opening"
-              inputMode="decimal"
-              value={opening}
-              onChange={(e) => setOpening(stripLeadingZero(e.target.value))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void save();
-              }}
-              placeholder="0"
-              className={inputCls}
-            data-private={opening !== "" ? "" : undefined}
             />
           </div>
           <div>
@@ -291,7 +262,6 @@ export function AccountEditDialog({
         {LIABILITY_KINDS.includes(kind) && (
           <p className="mt-3 text-sm text-zinc-500">{t("accounts.form.liabilityHint")}</p>
         )}
-        {hasReadings && <p className="mt-2 text-sm text-zinc-500">{t("accounts.edit.hasReadings")}</p>}
         <FormActions error={error}>
           <Button variant="secondary" onClick={onClose}>
             {t("tx.cancel")}
