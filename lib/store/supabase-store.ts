@@ -149,8 +149,6 @@ interface AssetRow {
   interest_rate?: number | null;
   interest_frequency?: Asset["interestFrequency"] | null;
   interest_post_day?: Asset["interestPostDay"] | null;
-  // Optional: a DB that predates migration 0116 doesn't return this.
-  front_load?: number | string | null;
   instrument: InstrumentEmbed | InstrumentEmbed[] | null;
 }
 
@@ -186,7 +184,7 @@ const SAVINGS_PLAN_BASE_COLUMNS = [
   "active",
   "last_run_date",
 ];
-const SAVINGS_PLAN_NEW_COLUMNS = ["account_id", "front_load"];
+const SAVINGS_PLAN_NEW_COLUMNS = ["account_id"];
 const SAVINGS_PLAN_COLUMNS = [...SAVINGS_PLAN_BASE_COLUMNS, ...SAVINGS_PLAN_NEW_COLUMNS].join(", ");
 
 interface SavingsPlanRow {
@@ -199,9 +197,8 @@ interface SavingsPlanRow {
   start_date: string;
   active: boolean;
   last_run_date: string | null;
-  // Optional: a DB that predates migration 0116 returns neither.
+  // Optional: a DB that predates migration 0116 does not return this.
   account_id?: string | null;
-  front_load?: number | string | null;
 }
 
 function planFromRow(r: SavingsPlanRow): SavingsPlan {
@@ -216,7 +213,6 @@ function planFromRow(r: SavingsPlanRow): SavingsPlan {
     active: r.active,
     lastRunDate: r.last_run_date,
     accountId: r.account_id ?? null,
-    frontLoad: r.front_load != null ? Number(r.front_load) : null,
   };
 }
 
@@ -554,7 +550,7 @@ export class SupabaseStore implements DataStore {
       selectTolerant<AssetRow[]>(
         (cols) => this.supabase.from("assets").select(cols),
         ["id", "notes", "currency", "instrument:instruments (isin, wkn, symbol, name, type, currency)"],
-        ["interest_rate", "interest_frequency", "interest_post_day", "front_load"],
+        ["interest_rate", "interest_frequency", "interest_post_day"],
       ),
       // RLS scopes transactions to the user's (or a household peer's) assets
       // — no user_id column of its own.
@@ -861,7 +857,6 @@ export class SupabaseStore implements DataStore {
         interestRate: r.interest_rate ?? null,
         interestFrequency: r.interest_frequency ?? null,
         interestPostDay: r.interest_post_day ?? null,
-        frontLoad: r.front_load != null ? Number(r.front_load) : null,
       };
     });
 
@@ -1113,7 +1108,6 @@ export class SupabaseStore implements DataStore {
         interest_rate: input.interestRate ?? null,
         interest_frequency: input.interestFrequency ?? null,
         interest_post_day: input.interestPostDay ?? null,
-        front_load: input.frontLoad ?? null,
       })
       .select("id")
       .single();
@@ -1129,7 +1123,6 @@ export class SupabaseStore implements DataStore {
     if (patch.interestRate !== undefined) update.interest_rate = patch.interestRate;
     if (patch.interestFrequency !== undefined) update.interest_frequency = patch.interestFrequency;
     if (patch.interestPostDay !== undefined) update.interest_post_day = patch.interestPostDay;
-    if (patch.frontLoad !== undefined) update.front_load = patch.frontLoad;
     if (Object.keys(update).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's asset
     // too (migration 0093).
@@ -1329,7 +1322,6 @@ export class SupabaseStore implements DataStore {
         active: input.active,
         last_run_date: input.lastRunDate,
         account_id: input.accountId ?? null,
-        front_load: input.frontLoad ?? null,
       })
       .select(SAVINGS_PLAN_COLUMNS)
       .single();
@@ -1348,7 +1340,6 @@ export class SupabaseStore implements DataStore {
     if (patch.active !== undefined) upd.active = patch.active;
     if (patch.lastRunDate !== undefined) upd.last_run_date = patch.lastRunDate;
     if (patch.accountId !== undefined) upd.account_id = patch.accountId;
-    if (patch.frontLoad !== undefined) upd.front_load = patch.frontLoad;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's plan too.
     const { data, error } = await this.supabase

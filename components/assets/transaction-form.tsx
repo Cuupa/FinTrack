@@ -8,8 +8,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { currentPrice } from "@/lib/finance/prices";
 import { orderFee } from "@/lib/finance/fees";
-import { frontLoadOnVolume, frontLoadPercent } from "@/lib/finance/front-load";
-import { formatCurrency, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -40,7 +39,7 @@ export function TransactionForm({
    * transaction on a watchlist/catalog instrument into a holding. */
   ensureAsset?: () => Promise<Asset>;
 }) {
-  const { addTransaction, updateAsset, createPortfolio, portfolios, selectedPortfolioIds } = usePortfolio();
+  const { addTransaction, createPortfolio, portfolios, selectedPortfolioIds } = usePortfolio();
   const { t } = useI18n();
   const billingEnabled = useFeatureFlag("billing");
   const { limit: portfoliosLimit } = usePlanLimit("portfolios");
@@ -89,9 +88,6 @@ export function TransactionForm({
   // manual value wins permanently for this form instance.
   const [feeManual, setFeeManual] = useState<string | null>(null);
   const [tax, setTax] = useState("0");
-  const [frontLoadDraft, setFrontLoadDraft] = useState(
-    asset.frontLoad != null ? formatInputDecimal(asset.frontLoad) : "",
-  );
   const [addingPortfolio, setAddingPortfolio] = useState(false);
   const [newPortfolio, setNewPortfolio] = useState("");
   const [executedAt, setExecutedAt] = useState(nowDateTimeLocal());
@@ -142,13 +138,7 @@ export function TransactionForm({
   // The order fee only applies to real buy/sell executions (order volume =
   // shares × price, before fee/tax) — never bookings, interest or cash.
   const selectedPortfolio = portfolios.find((p) => p.id === portfolioId);
-  // An actively managed fund's Ausgabeaufschlag prefills into the same input as
-  // the order fee: both raise what the units cost, and the fee is the field the
-  // basis is built from. Buys only — the surcharge is charged on the way in.
-  const autoFrontLoad = isBuy && !isCash ? frontLoadOnVolume(gross, frontLoadPercent(asset)) : 0;
-  const autoFee =
-    (!isCash && (isBuy || type === "SELL") ? orderFee(selectedPortfolio, gross) : 0) +
-    autoFrontLoad;
+  const autoFee = !isCash && (isBuy || type === "SELL") ? orderFee(selectedPortfolio, gross) : 0;
   const fee = feeManual ?? String(round(autoFee));
   const feeNum = parseDecimal(fee) || 0;
   const total = isBuy
@@ -156,13 +146,6 @@ export function TransactionForm({
     : isBooking || isInterest
       ? gross
       : gross - feeNum - taxNum;
-
-  async function saveFrontLoad() {
-    const value = frontLoadDraft.trim() === "" ? null : parseDecimal(frontLoadDraft);
-    if (value !== null && (!Number.isFinite(value) || value < 0)) return;
-    await updateAsset(asset.id, { frontLoad: value });
-    if (value !== null) setFrontLoadDraft(formatInputDecimal(value));
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -338,30 +321,6 @@ export function TransactionForm({
                 {cur}
               </span>
             </div>
-          </Field>
-        )}
-        {!isCash && !isSplit && isBuy && (
-          <Field label={t("asset.frontLoad.rate")}>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={frontLoadDraft}
-                onChange={(e) => setFrontLoadDraft(stripLeadingZero(e.target.value))}
-                onBlur={() => void saveFrontLoad()}
-                aria-label={t("asset.frontLoad.rate")}
-                className={`${inputCls} pr-8`}
-              />
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">%</span>
-            </div>
-            {autoFrontLoad > 0 && (
-              <p className="mt-1 text-xs text-zinc-500">
-                {t("tx.feeIncludesFrontLoad", {
-                  amount: formatCurrency(autoFrontLoad, cur),
-                  rate: formatInputDecimal(frontLoadPercent(asset)),
-                })}
-              </p>
-            )}
           </Field>
         )}
         {showTax && (

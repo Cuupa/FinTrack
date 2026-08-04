@@ -23,7 +23,6 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
-import { frontLoadPercent } from "@/lib/finance/front-load";
 import { useFormTouched, missingFieldCls, missingLabelCls } from "@/lib/forms/required";
 import { isStorageFullError } from "@/lib/store/errors";
 
@@ -46,7 +45,6 @@ export type PlanFormValues = Pick<
   | "bookingType"
   | "startDate"
   | "accountId"
-  | "frontLoad"
 >;
 
 export function PlanForm({
@@ -94,11 +92,6 @@ export function PlanForm({
   const [bookingType, setBookingType] = useState<"BUY" | "BOOKING">(plan?.bookingType ?? "BUY");
   const [startDate, setStartDate] = useState(plan?.startDate ?? today());
   const [accountId, setAccountId] = useState(plan?.accountId ?? "");
-  // Empty = inherit the fund's own rate; "0" is a real answer ("my broker
-  // waives it here"), so it is stored rather than read as unset.
-  const [frontLoad, setFrontLoad] = useState(
-    plan?.frontLoad != null ? String(plan.frontLoad) : "",
-  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -188,11 +181,6 @@ export function PlanForm({
       setError(t("sp.errAmount"));
       return;
     }
-    const fl = frontLoad.trim() === "" ? null : parseDecimal(frontLoad);
-    if (fl !== null && (!Number.isFinite(fl) || fl < 0)) {
-      setError(t("sp.errFrontLoad"));
-      return;
-    }
     setBusy(true);
     try {
       await onSubmit({
@@ -203,7 +191,6 @@ export function PlanForm({
         bookingType,
         startDate,
         accountId: accountId || null,
-        frontLoad: fl,
       });
     } catch (err) {
       setError(
@@ -363,29 +350,6 @@ export function PlanForm({
             {t(bookingType === "BOOKING" ? "sp.bookingTypeBookingHint" : "sp.bookingTypeBuyHint")}
           </p>
         </div>
-        {/* Ausgabeaufschlag: only actively managed funds charge one, so the
-            field stays empty and inherits the fund's own rate by default. */}
-        {asset && asset.type !== "CASH" && (
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-zinc-500">
-              {t("sp.frontLoad")}
-            </span>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder={String(frontLoadPercent(asset))}
-                value={frontLoad}
-                onChange={(e) => setFrontLoad(stripLeadingZero(e.target.value))}
-                className={`${inputCls} pr-8`}
-              />
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
-                %
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-zinc-500">{t("sp.frontLoadPlanHint")}</p>
-          </label>
-        )}
         {accounts.length > 0 && bookingType === "BUY" && (
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-zinc-500">

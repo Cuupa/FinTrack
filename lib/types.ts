@@ -99,18 +99,6 @@ export interface Asset {
    *  legacy behaviour (the day-of-month of the asset's first transaction,
    *  clamped to shorter months). */
   interestPostDay?: InterestPostDay | null;
-  /**
-   * Ausgabeaufschlag (front-end load) in PERCENT, e.g. 5 for 5% — what an
-   * actively managed fund charges on top of a unit's net asset value. Null/
-   * undefined on everything an exchange prices directly, which is why this is a
-   * field and not a new `AssetType`: a managed fund is not a different kind of
-   * instrument, it is an ETF-shaped one that costs a surcharge to buy.
-   *
-   * It never changes the price. The NAV stays the price and the surcharge
-   * becomes the transaction's `fee` (`lib/finance/front-load.ts`), so the cost
-   * basis is right and the price chart keeps tracking the fund itself.
-   */
-  frontLoad?: number | null;
 }
 
 /**
@@ -870,14 +858,6 @@ export interface SavingsPlan {
    * opt-in per plan, not a mode the whole app switches into.
    */
   accountId?: string | null;
-  /**
-   * Ausgabeaufschlag for THIS plan in percent, overriding the asset's own
-   * {@link Asset.frontLoad}. Brokers routinely discount the surcharge on
-   * savings plans (often to half or nothing) while the fund's prospectus rate
-   * still applies to a manual purchase, so one number on the asset cannot say
-   * both. Null/undefined = inherit the asset's.
-   */
-  frontLoad?: number | null;
 }
 
 /**

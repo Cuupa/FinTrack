@@ -17,7 +17,6 @@ import { ProTeaser } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
 import { savingsPlanFee } from "@/lib/finance/fees";
-import { frontLoadOnVolume, frontLoadPercent, frontLoadSplit } from "@/lib/finance/front-load";
 import { today } from "@/lib/finance/dates";
 import { priceOn, quoteItemFor } from "@/lib/finance/prices";
 import { priceAtWithHeadTolerance } from "@/lib/history/history";
@@ -61,14 +60,11 @@ export interface DueRow {
   plan: SavingsPlan;
   asset: Asset;
   date: string;
-  /** The fund's NAV — never the Ausgabepreis. See lib/finance/front-load.ts. */
+  /** The price used to book the due execution. */
   price: number;
   synthetic: boolean;
   /** The plan's portfolio fee, prefilled into the fee input below. */
   feeDefault: number;
-  /** Ausgabeaufschlag in percent, plan override before the asset's own rate.
-   *  Absent/0 on everything an exchange prices directly. */
-  frontLoad?: number;
 }
 
 /** A user override for a single due row's price, quantity and/or fee input. */
@@ -91,9 +87,6 @@ interface EffectiveRow {
   effectiveQty: number;
   /** Parsed fee used for booking (falls back to 0 when unparseable). */
   effectiveFee: number;
-  /** The Ausgabeaufschlag this execution pays, in currency. Booked ON TOP of
-   *  `effectiveFee` — both are costs that raise the position's basis. */
-  frontLoadCharge: number;
   /** Value shown in the "value at buy" column. */
   amount: number;
   /** Whether the user touched any field. */
@@ -116,20 +109,14 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
   const priceInput = priceEdited ? edit.price! : String(defaultPrice);
   const effectivePrice = priceEdited ? parseDecimal(edit.price!) : defaultPrice;
 
-  const frontLoad = row.frontLoad ?? 0;
-
   let qtyInput: string;
   let effectiveQty: number;
   if (qtyEdited) {
     qtyInput = edit.qty!;
     effectiveQty = parseDecimal(edit.qty!);
   } else {
-    // The plan's amount buys at the OFFER price (NAV + Ausgabeaufschlag), so a
-    // fund with a surcharge buys fewer units for the same money. Without a
-    // surcharge this is the plain amount / price it always was.
     const priceForQty = priceEdited ? effectivePrice : defaultPrice;
-    const split = frontLoadSplit(row.plan.amount, priceForQty, frontLoad);
-    const qtyValue = Number.isFinite(split.quantity) ? round(split.quantity, 3) : NaN;
+    const qtyValue = priceForQty > 0 ? round(row.plan.amount / priceForQty, 3) : NaN;
     qtyInput = Number.isFinite(qtyValue) ? String(qtyValue) : "";
     effectiveQty = qtyValue;
   }
@@ -139,17 +126,13 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
   const effectiveFee = Number.isFinite(effectiveFeeParsed) ? effectiveFeeParsed : 0;
 
   const edited = priceEdited || qtyEdited || feeEdited;
-  // The surcharge is a percentage of what the units are WORTH at NAV, so it
-  // follows any edit to price or quantity instead of staying at the amount the
-  // plan was written for.
   const volume =
     Number.isFinite(effectiveQty) && Number.isFinite(effectivePrice)
       ? effectiveQty * effectivePrice
       : NaN;
-  const frontLoadCharge = round(frontLoadOnVolume(volume, frontLoad), 2);
   const amount =
     (priceEdited || qtyEdited) && Number.isFinite(volume)
-      ? round(volume + frontLoadCharge, 2)
+      ? round(volume, 2)
       : row.plan.amount;
 
   return {
@@ -159,7 +142,6 @@ export function deriveRow(row: DueRow, edit: RowEdit | undefined): EffectiveRow 
     effectivePrice,
     effectiveQty,
     effectiveFee,
-    frontLoadCharge,
     amount,
     edited,
   };
@@ -333,7 +315,6 @@ function SavingsPlansCardInner() {
           price: real != null ? real : priceOn(key, asset.type, date),
           synthetic: real == null,
           feeDefault: savingsPlanFee(portfolioById.get(plan.portfolioId)),
-          frontLoad: frontLoadPercent(asset, plan),
         };
       }),
     [due, histories, portfolioById],
@@ -353,9 +334,6 @@ function SavingsPlansCardInner() {
       ),
     [dueRows, rowEdits, dueSort],
   );
-  // The two optional columns only appear when a row actually uses them: a
-  // depot of plain ETFs should not grow an empty "Ausgabeaufschlag" column.
-  const showFrontLoad = rowsWithEdits.some(({ derived }) => derived.frontLoadCharge > 0);
   const showDebit = rowsWithEdits.some(
     ({ row }) => row.plan.bookingType !== "BOOKING" && row.plan.accountId != null,
   );
@@ -390,11 +368,8 @@ function SavingsPlansCardInner() {
           portfolioId: row.plan.portfolioId,
           type: booking ? "BOOKING" : "BUY",
           quantity: round(derived.effectiveQty, 3),
-          // The price stays the NAV; the Ausgabeaufschlag rides in the fee, so
-          // the basis is the money spent while the chart keeps the fund's own
-          // series (lib/finance/front-load.ts).
           price: derived.effectivePrice,
-          fee: round(derived.effectiveFee + derived.frontLoadCharge, 2),
+          fee: round(derived.effectiveFee, 2),
           tax: 0,
           date: `${row.date}T00:00:00`,
           savingsPlanId: row.plan.id,
@@ -599,7 +574,6 @@ function SavingsPlansCardInner() {
                   one of these cells would move the field out from under them. */}
               <Th align="right">{t("tx.price")}</Th>
               <Th align="right">{t("tx.fee")}</Th>
-              {showFrontLoad && <Th align="right">{t("sp.frontLoad")}</Th>}
               <Th align="right">{t("tx.qty")}</Th>
               {showDebit && <Th>{t("sp.debitAccount")}</Th>}
             </Thead>
@@ -637,13 +611,6 @@ function SavingsPlansCardInner() {
                         className={rowInputCls}
                       />
                     </Td>
-                    {showFrontLoad && (
-                      <Td align="right" className="tabular-nums" data-private>
-                        {derived.frontLoadCharge > 0
-                          ? formatCurrency(derived.frontLoadCharge, cur)
-                          : "—"}
-                      </Td>
-                    )}
                     <Td align="right" className="tabular-nums" data-private>
                       <input
                         inputMode="decimal"
@@ -665,7 +632,6 @@ function SavingsPlansCardInner() {
               })}
             </Tbody>
           </Table>
-          {showFrontLoad && <p className="text-xs text-zinc-500">{t("sp.frontLoadHint")}</p>}
           {showDebit && <p className="text-xs text-zinc-500">{t("sp.debitAccountHint")}</p>}
           {historyLoading && <p className="text-xs text-zinc-400">{t("sp.loadingPrices")}</p>}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
