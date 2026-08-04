@@ -748,7 +748,7 @@ export const en = {
   "asset.topHoldings": "Top 10 holdings",
   "asset.risk.title": "Risk profile",
   "asset.risk.intro":
-    "Measured from this instrument's own price history in your base currency, the same way the risk tab measures your portfolio.",
+    "Measured from this instrument's own price history in your base currency.",
   "asset.risk.synthetic":
     "No real market history for this instrument yet, so these figures come from the estimated price series.",
   "asset.transactions": "Transactions",
@@ -3085,7 +3085,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "asset.topHoldings": "Top-10-Positionen",
   "asset.risk.title": "Risikoprofil",
   "asset.risk.intro":
-    "Gemessen an der eigenen Kurshistorie dieses Papiers in deiner Basiswährung, genau wie der Risiko-Tab dein Portfolio misst.",
+    "Gemessen an der eigenen Kurshistorie dieses Papiers in deiner Basiswährung.",
   "asset.risk.synthetic":
     "Für dieses Papier gibt es noch keine echte Kurshistorie, die Werte stammen daher aus der geschätzten Kursreihe.",
   "asset.transactions": "Transaktionen",
@@ -5420,7 +5420,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "asset.topHoldings": "10 principales posiciones",
   "asset.risk.title": "Perfil de riesgo",
   "asset.risk.intro":
-    "Medido sobre el propio historial de precios de este instrumento en tu moneda base, igual que la pestaña de riesgo mide tu cartera.",
+    "Medido sobre el propio historial de precios de este instrumento en tu moneda base.",
   "asset.risk.synthetic":
     "Todavía no hay historial de mercado real para este instrumento, así que estas cifras vienen de la serie de precios estimada.",
   "asset.transactions": "Transacciones",
