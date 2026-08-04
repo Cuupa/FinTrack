@@ -34,7 +34,7 @@ ansehen laesst.
 
 | Task | Prio | Status | Paths |
 | --- | --- | --- | --- |
-| Wiederkehrende Buchungen: Datum/Betrag ergonomischer | Hoch | In Arbeit | `components/spending/recurring-card.tsx` |
+| — | — | — | — |
 
 ## Offen (TODO.md)
 
@@ -53,6 +53,7 @@ ansehen laesst.
 | Monatsende als Toggle | `components/spending/spending-view.tsx`, `components/spending/planned-form.tsx`, `components/spending/recurring-form.tsx` |
 | Tag-Gruppen-Anlage hinter Plus | `components/assets/tag-groups-manager.tsx` |
 | Dezimaltrennzeichen in FIRE/Simulation | `components/fire/fire-view.tsx`, `components/simulation/monte-carlo-panel.tsx` verwenden String-Inputs mit `parseDecimal` |
+| Wiederkehrende Buchungen: Datum/Betrag ergonomischer | `components/spending/recurring-card.tsx`, i18n-Keys fuer Datum/Betrag |
 
 ### Runde 2026-08-02 (dritter Teil)
 

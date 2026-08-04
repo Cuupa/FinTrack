@@ -124,6 +124,7 @@ export function RecurringCard() {
   // carried a bonus, the charge landed two days late. Date and amount are
   // therefore editable per row before anything is posted, keyed by occurrence.
   const [edits, setEdits] = useState<Record<string, { date?: string; amount?: string }>>({});
+  const [editingAmounts, setEditingAmounts] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const sort = useSort<SortKey>("next");
 
@@ -403,6 +404,7 @@ export function RecurringCard() {
       }
       setExcluded(new Set());
       setEdits({});
+      setEditingAmounts(new Set());
     } catch (err) {
       setError(saveFailed(err, t("recurring.bookError")));
     } finally {
@@ -603,43 +605,85 @@ export function RecurringCard() {
                         )}
                       </span>
                     </label>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => editRow(d.key, { date: e.target.value })}
+                    {/* Booking date is a deliberate per-occurrence choice. The
+                        source cursor still advances by `d.date` in
+                        `bookSelected`, whichever option is active here. */}
+                    <div
+                      role="group"
                       aria-label={t("recurring.due.dateLabel")}
-                      className={dueInputCls + " w-[9.5rem]"}
-                    />
-                    {/* The proposal ran on the plan's day; taking it over today
-                        is one click rather than a re-typed date. */}
-                    {date !== todayIso && (
+                      className="inline-flex shrink-0 rounded-md border border-zinc-300 p-0.5 dark:border-zinc-700"
+                    >
                       <button
                         type="button"
-                        onClick={() => editRow(d.key, { date: todayIso })}
-                        className="text-xs text-zinc-500 underline-offset-2 hover:underline"
+                        aria-pressed={date === d.date}
+                        onClick={() => editRow(d.key, { date: d.date })}
+                        className={`rounded px-2 py-1 text-xs tabular-nums transition-colors ${
+                          date === d.date
+                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                            : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                        }`}
                       >
-                        {t("recurring.due.today")}
+                        {t("recurring.due.occurrence", { date: formatDate(d.date) })}
                       </button>
-                    )}
+                      {d.date !== todayIso && (
+                        <button
+                          type="button"
+                          aria-pressed={date === todayIso}
+                          onClick={() => editRow(d.key, { date: todayIso })}
+                          className={`rounded px-2 py-1 text-xs transition-colors ${
+                            date === todayIso
+                              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                              : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          {t("recurring.due.today")}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      inputMode="decimal"
-                      value={dueAmountText(d)}
-                      onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
-                      aria-label={t("recurring.due.amountLabel")}
-                      className={`${dueInputCls} w-28 text-right tabular-nums ${
-                        amount === null ? "border-red-500 dark:border-red-500" : ""
-                      } ${
-                        !checked
-                          ? "text-zinc-400 line-through"
-                          : d.amount < 0
-                            ? "text-red-600 dark:text-red-400"
-                            : ""
-                      }`}
-                      data-private
-                    />
-                    <span className={`text-zinc-500 ${muted}`}>{currency}</span>
+                    {editingAmounts.has(d.key) ? (
+                      <input
+                        autoFocus
+                        inputMode="decimal"
+                        value={dueAmountText(d)}
+                        onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
+                        aria-label={t("recurring.due.amountLabel")}
+                        className={`${dueInputCls} w-28 text-right tabular-nums ${
+                          amount === null ? "border-red-500 dark:border-red-500" : ""
+                        } ${
+                          !checked
+                            ? "text-zinc-400 line-through"
+                            : d.amount < 0
+                              ? "text-red-600 dark:text-red-400"
+                              : ""
+                        }`}
+                        data-private
+                      />
+                    ) : (
+                      <span
+                        className={`min-w-28 text-right tabular-nums ${
+                          !checked
+                            ? "text-zinc-400 line-through"
+                            : d.amount < 0
+                              ? "text-red-600 dark:text-red-400"
+                              : ""
+                        }`}
+                        data-private
+                      >
+                        {formatCurrency(amount ?? d.amount, currency)}
+                      </span>
+                    )}
+                    {!editingAmounts.has(d.key) && (
+                      <RowActions>
+                        <EditAction
+                          label={t("recurring.due.editAmount")}
+                          onClick={() =>
+                            setEditingAmounts((prev) => new Set(prev).add(d.key))
+                          }
+                        />
+                      </RowActions>
+                    )}
                   </div>
                 </li>
               );
