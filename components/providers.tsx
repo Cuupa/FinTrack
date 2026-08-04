@@ -17,11 +17,13 @@ import { ThemeProvider } from "@/lib/theme/theme-context";
 import { LocaleSync } from "@/components/locale-sync";
 import { ThemeSync } from "@/components/theme-sync";
 import { ErrorReporter } from "@/components/error-reporter";
+import { ToastProvider } from "@/lib/notifications/toast-context";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider>
-      <I18nProvider>
+    <ToastProvider>
+      <ThemeProvider>
+        <I18nProvider>
         <AuthProvider>
           {/* Above FeatureFlagsProvider: plan-gated flag resolution
               (lib/flags/resolve.ts) consumes usePlan(), which reads this
@@ -60,7 +62,8 @@ export function Providers({ children }: { children: ReactNode }) {
             </HouseholdProvider>
           </BillingProvider>
         </AuthProvider>
-      </I18nProvider>
-    </ThemeProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </ToastProvider>
   );
 }

@@ -770,6 +770,7 @@ create table if not exists public.spending_transactions (
   account_id uuid not null references public.accounts (id) on delete cascade,
   category_id uuid references public.spending_categories (id) on delete set null,
   date date not null,
+  booked_at timestamp,
   amount numeric not null,
   payee text not null,
   note text,

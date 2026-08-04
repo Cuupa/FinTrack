@@ -272,6 +272,7 @@ interface SpendingTransactionRow {
   account_id: string;
   category_id: string | null;
   date: string;
+  booked_at?: string | null;
   amount: number | string;
   payee: string;
   note: string | null;
@@ -292,6 +293,7 @@ function spendingTransactionFromRow(r: SpendingTransactionRow): SpendingTransact
     accountId: r.account_id,
     categoryId: r.category_id,
     date: r.date,
+    bookedAt: r.booked_at ?? null,
     amount: Number(r.amount),
     payee: r.payee,
     note: r.note,
@@ -642,7 +644,7 @@ export class SupabaseStore implements DataStore {
         (cols) =>
           this.supabase.from("spending_transactions").select(cols).order("date", { ascending: false }),
         ["id", "account_id", "category_id", "date", "amount", "payee", "note", "recurring_id"],
-        ["transfer_account_id", "planned_id", "savings_plan_id", "pension_contract_id"],
+        ["transfer_account_id", "planned_id", "savings_plan_id", "pension_contract_id", "booked_at"],
       ),
       this.supabase
         .from("budgets")
@@ -1769,6 +1771,7 @@ export class SupabaseStore implements DataStore {
         account_id: input.accountId,
         category_id: input.categoryId,
         date: input.date,
+        booked_at: input.bookedAt ?? null,
         amount: input.amount,
         payee: input.payee,
         note: input.note,
@@ -1803,6 +1806,7 @@ export class SupabaseStore implements DataStore {
     if (patch.accountId !== undefined) upd.account_id = patch.accountId;
     if (patch.categoryId !== undefined) upd.category_id = patch.categoryId;
     if (patch.date !== undefined) upd.date = patch.date;
+    if (patch.bookedAt !== undefined) upd.booked_at = patch.bookedAt;
     if (patch.amount !== undefined) upd.amount = patch.amount;
     if (patch.payee !== undefined) upd.payee = patch.payee;
     if (patch.note !== undefined) upd.note = patch.note;

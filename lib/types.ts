@@ -396,6 +396,8 @@ export interface SpendingTransaction {
   categoryId: string | null;
   /** YYYY-MM-DD. */
   date: string;
+  /** Optional wall-clock time of the booking; old rows have no time. */
+  bookedAt?: string | null;
   /** Signed, native currency: income positive, expense negative. */
   amount: number;
   payee: string;

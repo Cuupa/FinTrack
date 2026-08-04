@@ -92,6 +92,7 @@ function EditForm({
   const [amount, setAmount] = useState(formatInputDecimal(Math.abs(transaction.amount)));
   const [payee, setPayee] = useState(transaction.payee);
   const [date, setDate] = useState(transaction.date);
+  const [time, setTime] = useState(transaction.bookedAt?.slice(11, 16) ?? "12:00");
   const [accountId, setAccountId] = useState(transaction.accountId);
   const [categoryId, setCategoryId] = useState(transaction.categoryId ?? "");
   const [transferAccountId, setTransferAccountId] = useState(transaction.transferAccountId ?? "");
@@ -116,6 +117,7 @@ function EditForm({
       accountId,
       categoryId: categoryId || null,
       date,
+      bookedAt: `${date}T${time}`,
       amount: isIncome ? Math.abs(value) : -Math.abs(value),
       payee: effectivePayee,
       note: note.trim() || null,
@@ -145,6 +147,18 @@ function EditForm({
               onChange={(v) => setIsIncome(v === "income")}
             />
           </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium" htmlFor="edit-tx-time">
+            {t("spending.form.timeLabel")}
+          </label>
+          <input
+            id="edit-tx-time"
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className={inputCls}
+          />
         </div>
         <div>
           <label className="text-sm font-medium" htmlFor="edit-tx-date">

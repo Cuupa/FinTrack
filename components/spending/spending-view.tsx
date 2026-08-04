@@ -9,9 +9,9 @@
 
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
+import { nowDateTimeLocal, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDateTime, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -40,6 +40,7 @@ import { ImportSpending } from "./import-spending";
 import { RecurringCard } from "./recurring-card";
 import { PLANNED_INTERVALS, type PlannedInterval, type SpendingTransaction } from "@/lib/types";
 import { DeleteAction, EditAction, RecurringAction, RowActions } from "@/components/ui/row-actions";
+import { useToast } from "@/lib/notifications/toast-context";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -90,6 +91,7 @@ export function SpendingView({
   const contractsEnabled = useFeatureFlag("contracts");
   const todayIso = today();
   const base = data.profile.currency;
+  const { showToast } = useToast();
 
   const accountsById = useMemo(
     () => new Map(data.accounts.map((a) => [a.id, a])),
@@ -117,6 +119,7 @@ export function SpendingView({
   const [payee, setPayee] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(today());
+  const [time, setTime] = useState(() => nowDateTimeLocal().slice(11));
   const [note, setNote] = useState("");
   // Where the money lands when it is not consumed: another account of the
   // user's own, a liability included. Booking a rate onto a credit is the
@@ -304,6 +307,7 @@ export function SpendingView({
           accountId,
           categoryId: categoryId || null,
           date,
+          bookedAt: `${date}T${time}`,
           amount: signed,
           payee: effectivePayee,
           note: note.trim() || null,
@@ -317,7 +321,9 @@ export function SpendingView({
       setNote("");
       setTransferAccountId("");
       setDate(today());
+      setTime(nowDateTimeLocal().slice(11));
       setAdding(false);
+      showToast(t("spending.form.saved"));
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("spending.form.error"));
     } finally {
@@ -412,6 +418,20 @@ export function SpendingView({
                   data-private={amount !== "" ? "" : undefined}
                 />
               </div>
+              {!recurring && (
+                <div>
+                  <label className="text-sm font-medium" htmlFor="spending-time">
+                    {t("spending.form.timeLabel")}
+                  </label>
+                  <input
+                    id="spending-time"
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium" htmlFor="spending-date">
                   {recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
@@ -627,7 +647,9 @@ export function SpendingView({
                 );
                 return (
                   <Tr key={tx.id}>
-                    <Td className="text-zinc-500">{formatDate(tx.date)}</Td>
+                    <Td className="whitespace-nowrap text-zinc-500">
+                      {formatDateTime(tx.bookedAt ?? tx.date)}
+                    </Td>
                     <Td className={`font-medium ${counterpartyCls}`} data-private>
                       {out ? tx.payee : own}
                     </Td>
@@ -691,6 +713,7 @@ export function SpendingView({
           try {
             await updateSpendingTransaction(id, patch);
             setEditingTx(null);
+            showToast(t("spending.form.saved"));
           } catch (err) {
             // A failed write must say WHY: the store surfaces the database's
             // own message (missing column, check constraint, RLS refusal).

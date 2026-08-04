@@ -22,6 +22,7 @@ import Link from "next/link";
 
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
+import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finance/contract-bookings";
 import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned";
 import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
@@ -47,6 +48,7 @@ import {
 import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
+import { useToast } from "@/lib/notifications/toast-context";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 
@@ -111,6 +113,7 @@ export function RecurringCard() {
     deletePlannedCashflow,
   } = usePortfolio();
   const { t } = useI18n();
+  const { showToast } = useToast();
   // The flag decides visibility, the plan decides unlocked: a locked entry
   // surface stays on screen behind a teaser rather than vanishing.
   const contracts = useFeature("contracts");
@@ -373,6 +376,7 @@ export function RecurringCard() {
             accountId: d.accountId,
             categoryId: d.categoryId,
             date,
+            bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
             amount: -interest,
             payee: `${d.name} (${t("recurring.split.interest")})`,
             note: null,
@@ -385,6 +389,7 @@ export function RecurringCard() {
             accountId: d.accountId,
             categoryId: d.categoryId,
             date,
+            bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
             amount: amount + interest, // both negative: the remainder
             payee: `${d.name} (${t("recurring.split.principal")})`,
             note: null,
@@ -401,6 +406,7 @@ export function RecurringCard() {
           accountId: d.accountId,
           categoryId: d.categoryId,
           date,
+          bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
           amount,
           payee: d.name,
           note: null,
@@ -421,6 +427,7 @@ export function RecurringCard() {
       setExcluded(new Set());
       setEdits({});
       setEditingAmounts(new Set());
+      showToast(t("spending.form.saved"));
     } catch (err) {
       setError(saveFailed(err, t("recurring.bookError")));
     } finally {
