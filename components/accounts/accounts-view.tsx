@@ -44,7 +44,6 @@ import {
 } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError } from "@/lib/store/errors";
-import { AccountBalancesDialog } from "./account-balances-dialog";
 import { AccountEditDialog } from "./account-edit-dialog";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
 
@@ -254,7 +253,6 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
   const movements = useAccountMovements();
 
   const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("name");
-  const [balancesFor, setBalancesFor] = useState<Account | null>(null);
   const [editing, setEditing] = useState<Account | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
 
@@ -332,9 +330,6 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
                         />
                         {/* Its own affordance, not an edit: a dated balance
                             series is a second entity behind this row. */}
-                        <Button size="sm" variant="ghost" onClick={() => setBalancesFor(account)}>
-                          {t("accounts.list.viewBalances")}
-                        </Button>
                         <DeleteAction
                           label={t("accounts.list.delete")}
                           onClick={() => setConfirmDelete(account)}
@@ -348,14 +343,6 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
           </Table>
           <TablePagination pager={pager} />
         </>
-      )}
-
-      {balancesFor && (
-        <AccountBalancesDialog
-          account={balancesFor}
-          open={balancesFor !== null}
-          onClose={() => setBalancesFor(null)}
-        />
       )}
 
       {editing && (

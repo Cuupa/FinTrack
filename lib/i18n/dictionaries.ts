@@ -917,7 +917,6 @@ export const en = {
   "accounts.list.balance": "Balance",
   "accounts.list.interest": "{rate}% p.a., credited: {frequency}",
   "accounts.list.edit": "Edit",
-  "accounts.list.viewBalances": "Balance history",
   "accounts.edit.title": "Edit {name}",
   "accounts.edit.intro":
     "Correct the account's own details. The opening balance is the figure on the opening date, not today's balance.",
@@ -3265,7 +3264,6 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.list.balance": "Saldo",
   "accounts.list.interest": "{rate} % p.a., Gutschrift: {frequency}",
   "accounts.list.edit": "Bearbeiten",
-  "accounts.list.viewBalances": "Saldo-Verlauf",
   "accounts.edit.title": "{name} bearbeiten",
   "accounts.edit.intro":
     "Korrigiere die Stammdaten des Kontos. Der Anfangssaldo ist der Stand am Eröffnungsdatum, nicht der heutige.",
@@ -5609,7 +5607,6 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.list.balance": "Saldo",
   "accounts.list.interest": "{rate} % anual, abono: {frequency}",
   "accounts.list.edit": "Editar",
-  "accounts.list.viewBalances": "Historial de saldos",
   "accounts.edit.title": "Editar {name}",
   "accounts.edit.intro":
     "Corrige los datos de la cuenta. El saldo inicial es el importe en la fecha de apertura, no el de hoy.",
