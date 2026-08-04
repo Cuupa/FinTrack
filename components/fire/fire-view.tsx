@@ -28,7 +28,7 @@ import {
   RETIREMENT_YEARS,
 } from "@/lib/finance/fire";
 import { useFireInputs } from "@/lib/fire/use-fire-inputs";
-import { formatCurrency, formatPercentPlain } from "@/lib/format";
+import { formatCurrency, formatPercentPlain, parseDecimal } from "@/lib/format";
 import { Card, Stat, Toggle } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { Slider } from "@/components/ui/slider";
@@ -386,16 +386,27 @@ function NumberField({
   suffix?: string;
   step?: number;
 }) {
+  const [draft, setDraft] = useState(() => String(value));
+  const [dirty, setDirty] = useState(false);
+
+  function handleChange(raw: string) {
+    setDraft(raw);
+    setDirty(true);
+    const parsed = parseDecimal(raw);
+    if (Number.isFinite(parsed)) onChange(parsed);
+  }
+
   return (
     <label className="block">
       <span className="text-sm font-medium">{label}</span>
       <div className="group relative mt-1">
         <input
-          type="number"
+          type="text"
           inputMode="decimal"
           step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          value={dirty ? draft : String(value)}
+          onChange={(e) => handleChange(e.target.value)}
+          onBlur={() => setDirty(false)}
           className={`w-full rounded-md border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
             suffix ? "pr-12" : "pr-3"
           }`}

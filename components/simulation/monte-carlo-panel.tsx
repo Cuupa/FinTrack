@@ -18,7 +18,7 @@ import type {
   MonteCarloParams,
   PortfolioMonteCarloParams,
 } from "@/lib/finance/monte-carlo";
-import { formatCurrency, formatPercent, plColor } from "@/lib/format";
+import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "@/components/ui/tabs";
@@ -932,15 +932,26 @@ function OverrideInput({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const [draft, setDraft] = useState(() => String(value));
+  const [dirty, setDirty] = useState(false);
+
+  function handleChange(raw: string) {
+    setDraft(raw);
+    setDirty(true);
+    const parsed = parseDecimal(raw);
+    if (Number.isFinite(parsed)) onChange(parsed);
+  }
+
   return (
     <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
       <span className="shrink-0">{label}</span>
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
         step="0.1"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        value={dirty ? draft : String(value)}
+        onChange={(e) => handleChange(e.target.value)}
+        onBlur={() => setDirty(false)}
         className="w-full min-w-0 rounded-sm border border-zinc-300 bg-white/60 px-2 py-1 text-right text-xs tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
       />
     </label>
@@ -1077,7 +1088,16 @@ function SliderField({
 }) {
   const { t } = useI18n();
   const [manual, setManual] = useState(false);
+  const [draft, setDraft] = useState(() => String(value));
+  const [dirty, setDirty] = useState(false);
   const display = digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
+
+  function handleManualChange(raw: string) {
+    setDraft(raw);
+    setDirty(true);
+    const parsed = parseDecimal(raw);
+    if (Number.isFinite(parsed)) onChange(parsed);
+  }
 
   const lockBtn = lockable ? (
     <button
@@ -1127,13 +1147,14 @@ function SliderField({
       {manual ? (
         <div className="group relative mt-1">
           <input
-            type="number"
+            type="text"
             inputMode="decimal"
             step={step}
             min={min}
             max={max}
-            value={value}
-            onChange={(e) => onChange(Number(e.target.value))}
+            value={dirty ? draft : String(value)}
+            onChange={(e) => handleManualChange(e.target.value)}
+            onBlur={() => setDirty(false)}
             className={`w-full rounded-md border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
               suffix ? "pr-12" : "pr-3"
             }`}
