@@ -20,7 +20,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-import { useRouter } from "next/navigation";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finance/contract-bookings";
@@ -29,6 +28,9 @@ import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/financ
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
+import { RecurringForm } from "@/components/spending/recurring-form";
+import { PlannedForm } from "@/components/spending/planned-form";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
@@ -109,7 +111,6 @@ export function RecurringCard() {
     deletePlannedCashflow,
   } = usePortfolio();
   const { t } = useI18n();
-  const router = useRouter();
   // The flag decides visibility, the plan decides unlocked: a locked entry
   // surface stays on screen behind a teaser rather than vanishing.
   const contracts = useFeature("contracts");
@@ -120,6 +121,8 @@ export function RecurringCard() {
   const [error, setError] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<RecurringRow | null>(null);
+  const [editingRow, setEditingRow] = useState<RecurringRow | null>(null);
+  const [editingBusy, setEditingBusy] = useState(false);
   // A due occurrence is a PROPOSAL, not a receipt: the rate rose, the salary
   // carried a bonus, the charge landed two days late. Date and amount are
   // therefore editable per row before anything is posted, keyed by occurrence.
@@ -327,6 +330,19 @@ export function RecurringCard() {
     }
   }
 
+  async function saveEditedRow(row: RecurringRow, input: Parameters<typeof updateContract>[1]) {
+    setEditingBusy(true);
+    setError(null);
+    try {
+      await updateContract(row.id, input);
+      setEditingRow(null);
+    } catch (err) {
+      setError(saveFailed(err, t("contracts.form.error")));
+    } finally {
+      setEditingBusy(false);
+    }
+  }
+
   /**
    * Posts the selected occurrences, then advances each source's
    * `lastBookedDate`. Transactions first, source second: replaying a booking
@@ -527,9 +543,6 @@ export function RecurringCard() {
                         ? formatDate(r.next)
                         : t("recurring.noNext")}
                   </Td>
-                  {/* Edit opens the row's own page straight in its editor, so
-                      the change-scope question sits next to the bookings it
-                      would rewrite instead of being asked twice in two places. */}
                   <Td>
                     <RowActions>
                       <PauseAction
@@ -539,7 +552,7 @@ export function RecurringCard() {
                       />
                       <EditAction
                         label={t("contracts.list.edit")}
-                        onClick={() => router.push(`/recurring/${r.kind}/${r.id}?edit=1`)}
+                        onClick={() => setEditingRow(r)}
                       />
                       <DeleteAction
                         label={t("contracts.list.delete")}
@@ -701,6 +714,59 @@ export function RecurringCard() {
       )}
 
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {editingRow?.kind === "contract" && (
+        <Modal open onClose={() => setEditingRow(null)} maxWidthClass="max-w-5xl">
+          <Card>
+            <h2 className="text-lg font-semibold">{t("contracts.edit.title")}</h2>
+            <RecurringForm
+              key={editingRow.id}
+              accounts={data.accounts}
+              categories={data.spendingCategories}
+              base={base}
+              insuranceEnabled={contracts.enabled && !contracts.locked}
+              initial={data.contracts.find((c) => c.id === editingRow.id)}
+              submitLabel={t("contracts.edit.save")}
+              busy={editingBusy}
+              onSubmit={(input) => void saveEditedRow(editingRow, input)}
+              onCancel={() => setEditingRow(null)}
+            />
+          </Card>
+        </Modal>
+      )}
+
+      {editingRow?.kind === "planned" && (
+        <Modal open onClose={() => setEditingRow(null)} maxWidthClass="max-w-3xl">
+          <Card>
+            <h2 className="text-lg font-semibold">{t("spending.planned.editTitle")}</h2>
+            <div className="mt-4">
+              {(() => {
+                const plan = data.plannedCashflows.find((p) => p.id === editingRow.id);
+                return plan ? (
+                  <PlannedForm
+                    key={plan.id}
+                    initial={plan}
+                    submitLabel={t("spending.planned.save")}
+                    onSubmit={async (input) => {
+                      setEditingBusy(true);
+                      setError(null);
+                      try {
+                        await updatePlannedCashflow(plan.id, input);
+                        setEditingRow(null);
+                      } catch (err) {
+                        setError(saveFailed(err, t("spending.form.error")));
+                      } finally {
+                        setEditingBusy(false);
+                      }
+                    }}
+                    onCancel={() => setEditingRow(null)}
+                  />
+                ) : null;
+              })()}
+            </div>
+          </Card>
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={confirmDelete !== null}
