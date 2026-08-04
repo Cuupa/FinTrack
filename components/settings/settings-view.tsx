@@ -26,7 +26,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { isStorageFullError } from "@/lib/store/errors";
-import { parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import type { Portfolio } from "@/lib/types";
 import type { PortfolioPatch } from "@/lib/store/types";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -73,7 +73,7 @@ export function SettingsView() {
   const [savedProfile, setSavedProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const [taxAllowance, setTaxAllowance] = useState(String(data.profile.taxAllowance));
+  const [taxAllowance, setTaxAllowance] = useState(formatInputDecimal(data.profile.taxAllowance, 0));
   const [churchTaxRate, setChurchTaxRate] = useState(data.profile.churchTaxRate);
   const [teilfreistellung, setTeilfreistellung] = useState(data.profile.taxTeilfreistellung);
   const [savedTax, setSavedTax] = useState(false);
@@ -483,13 +483,13 @@ function PortfolioFeeRow({
   onSave: (id: string, patch: PortfolioPatch) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [flat, setFlat] = useState(String(portfolio.feeOrderFlat ?? 0));
+  const [flat, setFlat] = useState(formatInputDecimal(portfolio.feeOrderFlat ?? 0));
   const [freeFrom, setFreeFrom] = useState(
-    portfolio.feeOrderFreeFrom != null ? String(portfolio.feeOrderFreeFrom) : "",
+    portfolio.feeOrderFreeFrom != null ? formatInputDecimal(portfolio.feeOrderFreeFrom) : "",
   );
-  const [savingsPlan, setSavingsPlan] = useState(String(portfolio.feeSavingsPlan ?? 0));
+  const [savingsPlan, setSavingsPlan] = useState(formatInputDecimal(portfolio.feeSavingsPlan ?? 0));
   const [taxAllowance, setTaxAllowance] = useState(
-    portfolio.taxAllowance != null ? String(portfolio.taxAllowance) : "",
+    portfolio.taxAllowance != null ? formatInputDecimal(portfolio.taxAllowance, 0) : "",
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

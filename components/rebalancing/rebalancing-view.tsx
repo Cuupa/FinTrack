@@ -14,7 +14,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import type { Slice } from "@/lib/finance/allocation";
-import { formatCurrency, formatInputDecimal, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
@@ -395,7 +395,7 @@ export function RebalancingView() {
                       type="text"
                       inputMode="decimal"
                       value={pctInputs[r.id] ?? formatInputDecimal(r.pct)}
-                      onChange={(e) => setPct(r.id, e.target.value)}
+                      onChange={(e) => setPct(r.id, stripLeadingZero(e.target.value))}
                       className="w-20 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </Td>

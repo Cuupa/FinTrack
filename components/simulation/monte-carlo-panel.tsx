@@ -18,7 +18,7 @@ import type {
   MonteCarloParams,
   PortfolioMonteCarloParams,
 } from "@/lib/finance/monte-carlo";
-import { formatCurrency, formatPercent, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "@/components/ui/tabs";
@@ -631,6 +631,7 @@ export function MonteCarloPanel() {
                   value={formatCurrency(final.median, currency)}
                   sub={`${result.params.years} ${t("sim.years")}`}
                   info={t("sim.tipMedian")}
+                  isPrivate
                 />
               </Card>
               <Card>
@@ -639,6 +640,7 @@ export function MonteCarloPanel() {
                   value={formatCurrency(final.p90, currency)}
                   valueClassName={plColor(1)}
                   info={t("sim.tipOptimistic")}
+                  isPrivate
                 />
               </Card>
               <Card>
@@ -647,6 +649,7 @@ export function MonteCarloPanel() {
                   value={formatCurrency(final.p10, currency)}
                   valueClassName={plColor(-1)}
                   info={t("sim.tipPessimistic")}
+                  isPrivate
                 />
               </Card>
             </div>
@@ -932,13 +935,14 @@ function OverrideInput({
   value: number;
   onChange: (v: number) => void;
 }) {
-  const [draft, setDraft] = useState(() => String(value));
+  const [draft, setDraft] = useState(() => formatInputDecimal(value));
   const [dirty, setDirty] = useState(false);
 
   function handleChange(raw: string) {
-    setDraft(raw);
+    const localized = stripLeadingZero(raw);
+    setDraft(localized);
     setDirty(true);
-    const parsed = parseDecimal(raw);
+    const parsed = parseDecimal(localized);
     if (Number.isFinite(parsed)) onChange(parsed);
   }
 
@@ -949,7 +953,7 @@ function OverrideInput({
         type="text"
         inputMode="decimal"
         step="0.1"
-        value={dirty ? draft : String(value)}
+        value={dirty ? draft : formatInputDecimal(value)}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={() => setDirty(false)}
         className="w-full min-w-0 rounded-sm border border-zinc-300 bg-white/60 px-2 py-1 text-right text-xs tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
@@ -1011,11 +1015,11 @@ function WithdrawalStat({
   return (
     <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <div className="text-sm text-zinc-500">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`}>
+      <div className={`mt-1 text-2xl font-semibold tabular-nums ${valueClassName}`} data-private>
         {formatCurrency(annual, currency)}
         <span className="ml-1 text-sm font-normal text-zinc-400">/{t("sim.perYear")}</span>
       </div>
-      <div className="mt-0.5 text-sm tabular-nums text-zinc-500">
+      <div className="mt-0.5 text-sm tabular-nums text-zinc-500" data-private>
         {formatCurrency(annual / 12, currency)}/{t("sim.perMonth")}
       </div>
     </div>
@@ -1037,11 +1041,11 @@ function SummaryRow({
     <div className="mt-4 grid grid-cols-3 gap-4 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
       <div>
         <div className="text-zinc-500">{t("sim.contributed")}</div>
-        <div className="font-medium tabular-nums">{formatCurrency(contributed, currency)}</div>
+        <div className="font-medium tabular-nums" data-private>{formatCurrency(contributed, currency)}</div>
       </div>
       <div>
         <div className="text-zinc-500">{t("sim.growth")}</div>
-        <div className={`font-medium tabular-nums ${plColor(growth)}`}>
+        <div className={`font-medium tabular-nums ${plColor(growth)}`} data-private>
           {formatCurrency(growth, currency)}
         </div>
       </div>
@@ -1088,14 +1092,15 @@ function SliderField({
 }) {
   const { t } = useI18n();
   const [manual, setManual] = useState(false);
-  const [draft, setDraft] = useState(() => String(value));
+  const [draft, setDraft] = useState(() => formatInputDecimal(value, digits));
   const [dirty, setDirty] = useState(false);
-  const display = digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString();
+  const display = formatInputDecimal(value, digits);
 
   function handleManualChange(raw: string) {
-    setDraft(raw);
+    const localized = stripLeadingZero(raw);
+    setDraft(localized);
     setDirty(true);
-    const parsed = parseDecimal(raw);
+    const parsed = parseDecimal(localized);
     if (Number.isFinite(parsed)) onChange(parsed);
   }
 
@@ -1152,7 +1157,7 @@ function SliderField({
             step={step}
             min={min}
             max={max}
-            value={dirty ? draft : String(value)}
+            value={dirty ? draft : display}
             onChange={(e) => handleManualChange(e.target.value)}
             onBlur={() => setDirty(false)}
             className={`w-full rounded-md border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${

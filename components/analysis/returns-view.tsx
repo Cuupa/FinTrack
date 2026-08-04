@@ -341,7 +341,7 @@ export function ReturnsView() {
             </div>
           </div>
         </div>
-        <div className="mt-3" role="img" aria-label={perfMapAriaLabel}>
+        <div className="mt-3" role="img" aria-label={perfMapAriaLabel} data-private>
           <ResponsiveContainer width="100%" height={320}>
             <Treemap data={tree} dataKey="size" stroke="#fff" isAnimationActive={false} content={<PerfCell />}>
               <Tooltip content={<MapTooltip currency={base} />} />
@@ -410,7 +410,7 @@ function MapTooltip({ currency, active, payload }: MapTooltipProps) {
   const p: TreeNode = payload[0].payload ?? payload[0];
   if (!p || p.name == null) return null;
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-2.5 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="rounded-md border border-zinc-200 bg-white p-2.5 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900" data-private>
       <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.name}</div>
       <div className="mt-0.5 text-zinc-500">
         {formatCurrency(p.size ?? 0, currency)} · {formatPercent(p.ret ?? 0)}

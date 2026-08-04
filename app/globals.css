@@ -39,6 +39,11 @@ body {
   transition: filter 0.15s ease;
 }
 
+.incognito [data-private]::selection {
+  background: transparent;
+  color: transparent;
+}
+
 /* Modern range slider (components/ui/slider.tsx). The filled portion is driven
    by the --fill custom property; pseudo-elements can't be styled via Tailwind. */
 .fin-slider {

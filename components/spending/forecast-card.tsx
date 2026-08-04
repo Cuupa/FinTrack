@@ -152,8 +152,8 @@ function ForecastCardInner() {
             <Stat
               label={t("spending.forecast.monthlyNet")}
               value={formatCurrency(monthly.net, base)}
-              valueClassName={monthly.net < 0 ? "text-red-600 dark:text-red-400" : ""}
               isPrivate
+              valueClassName={monthly.net < 0 ? "text-red-600 dark:text-red-400" : ""}
             />
           </div>
 
@@ -161,6 +161,7 @@ function ForecastCardInner() {
             className="mt-4 h-72 w-full"
             role="img"
             aria-label={t("spending.forecast.aria", { n: String(MONTHS) })}
+            data-private
           >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>

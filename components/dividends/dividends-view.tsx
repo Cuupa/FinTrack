@@ -312,16 +312,16 @@ export function DividendsView() {
               <Stat
                 label={t("div.received12m")}
                 value={formatCurrency(stats.t12m, currency)}
-                info={t("div.received12mTip")}
                 isPrivate
+                info={t("div.received12mTip")}
               />
             </Card>
             <Card>
               <Stat
                 label={t("div.receivedTotal")}
                 value={formatCurrency(stats.allTime, currency)}
-                info={t("div.receivedTotalTip")}
                 isPrivate
+                info={t("div.receivedTotalTip")}
               />
             </Card>
             <Card>

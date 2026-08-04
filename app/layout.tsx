@@ -67,6 +67,12 @@ export default function RootLayout({
               "try{var t=localStorage.getItem('fintrack-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}",
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('fintrack-incognito')==='1')document.documentElement.classList.add('incognito')}catch(e){}",
+          }}
+        />
       </head>
       {/* Two rules keep the fixed bottom nav pinned on a phone.
           1. No overflow clipping on <body>: on iOS Safari that breaks the

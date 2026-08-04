@@ -40,6 +40,7 @@ import {
 import type { PensionContractInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
+import { Private } from "@/components/ui/private";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -856,16 +857,18 @@ function ContractForm({
           the two lines it came from. */}
       {derivesPayout && (
         <p className="rounded-md border border-indigo-200 bg-indigo-50 p-3 text-xs text-zinc-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-zinc-300">
-          {preview.yearsToPayout > 0
-            ? t("pension.contracts.derivedNote", {
-                capital: formatCurrency(preview.capital, base),
-                years: preview.yearsToPayout,
-                monthly: formatCurrency(preview.monthly, base),
-              })
-            : t("pension.contracts.derivedNoteNow", {
-                capital: formatCurrency(preview.capital, base),
-                monthly: formatCurrency(preview.monthly, base),
-              })}
+          <Private>
+            {preview.yearsToPayout > 0
+              ? t("pension.contracts.derivedNote", {
+                  capital: formatCurrency(preview.capital, base),
+                  years: preview.yearsToPayout,
+                  monthly: formatCurrency(preview.monthly, base),
+                })
+              : t("pension.contracts.derivedNoteNow", {
+                  capital: formatCurrency(preview.capital, base),
+                  monthly: formatCurrency(preview.monthly, base),
+                })}
+          </Private>
         </p>
       )}
       <FormActions error={error}>
@@ -1000,16 +1003,18 @@ function ContractValuesDialog({
 
         {/* The arithmetic behind the measured return, not just its result. */}
         <p className="mt-3 text-xs text-zinc-500">
-          {measured
-            ? t("pension.values.measured", {
-                pct: measured.pct.toFixed(2),
-                from: formatDate(measured.from.date),
-                to: formatDate(measured.to.date),
-                start: formatCurrency(measured.from.value, currency),
-                end: formatCurrency(measured.to.value, currency),
-                paid: formatCurrency(measured.contributions, currency),
-              })
-            : t("pension.values.needSecond")}
+          <Private>
+            {measured
+              ? t("pension.values.measured", {
+                  pct: measured.pct.toFixed(2),
+                  from: formatDate(measured.from.date),
+                  to: formatDate(measured.to.date),
+                  start: formatCurrency(measured.from.value, currency),
+                  end: formatCurrency(measured.to.value, currency),
+                  paid: formatCurrency(measured.contributions, currency),
+                })
+              : t("pension.values.needSecond")}
+          </Private>
         </p>
         {measured && contract.expectedReturnPct != null && (
           <p className="mt-1 text-xs text-zinc-500">{t("pension.values.typedWins")}</p>
@@ -1407,12 +1412,12 @@ export function PensionView() {
       <Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="pension-summary">
           <Stat label={t("pension.stat.points")} value={projection.totalPoints.toFixed(2)} />
-          <Stat label={t("pension.stat.statutory")} value={money(projection.monthlyStatutory)} />
-          <Stat label={t("pension.stat.private")} value={money(projection.monthlyPrivate)} />
-          <Stat label={t("pension.stat.total")} value={money(projection.monthlyTotal)} />
+          <Stat label={t("pension.stat.statutory")} value={money(projection.monthlyStatutory)} isPrivate />
+          <Stat label={t("pension.stat.private")} value={money(projection.monthlyPrivate)} isPrivate />
+          <Stat label={t("pension.stat.total")} value={money(projection.monthlyTotal)} isPrivate />
         </div>
         <div className="mt-4 grid gap-4 border-t border-zinc-100 pt-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-zinc-800">
-          <Stat label={t("pension.stat.earned")} value={money(projection.monthlyEarned)} />
+          <Stat label={t("pension.stat.earned")} value={money(projection.monthlyEarned)} isPrivate />
           <Stat
             label={t("pension.stat.retirementYear")}
             value={projection.retirementYear != null ? String(projection.retirementYear) : "—"}
@@ -1440,12 +1445,14 @@ export function PensionView() {
           {projection.pensionValue != null && (
             <>
               {" "}
-              {t("pension.calc.money", {
-                total: projection.totalPoints.toFixed(2),
-                value: formatCurrency(projection.pensionValue, currency),
-                factor: projection.accessFactor.toFixed(3),
-                monthly: money(projection.monthlyStatutory),
-              })}
+              <Private>
+                {t("pension.calc.money", {
+                  total: projection.totalPoints.toFixed(2),
+                  value: formatCurrency(projection.pensionValue, currency),
+                  factor: projection.accessFactor.toFixed(3),
+                  monthly: money(projection.monthlyStatutory),
+                })}
+              </Private>
             </>
           )}
         </p>
@@ -1476,7 +1483,7 @@ export function PensionView() {
         )}
         {projection.gap > 0 && (
           <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
-            {t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}
+            <Private>{t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}</Private>
           </p>
         )}
         <p className="mt-4 text-xs text-zinc-500">{t("pension.todaysMoney")}</p>

@@ -140,7 +140,7 @@ export function DebtBalanceChart({
   const hasBaseline = Boolean(baseline?.length);
 
   return (
-    <div className="mt-4 h-72" role="img" aria-label={t("debt.chart.aria")}>
+    <div className="mt-4 h-72" role="img" aria-label={t("debt.chart.aria")} data-private>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid
@@ -217,7 +217,7 @@ export function DebtSplitChart({ years, base }: { years: DebtYear[]; base: strin
   const axisWidth = yAxisWidth(tickValues.map((v) => tickFormatter(v)));
 
   return (
-    <div className="mt-4 h-60" role="img" aria-label={t("debt.chart.splitAria")}>
+    <div className="mt-4 h-60" role="img" aria-label={t("debt.chart.splitAria")} data-private>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={years} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid

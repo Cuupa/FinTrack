@@ -13,6 +13,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -38,6 +39,7 @@ export function PrivacyProvider({
   locked?: boolean;
 }) {
   const [incognito, setIncognito] = useState(locked);
+  const hydrated = useRef(locked);
 
   // Hydrate from localStorage once (skipped when locked — always on). Deferred
   // into a microtask so it's an async continuation, not a synchronous setState
@@ -47,6 +49,7 @@ export function PrivacyProvider({
     if (locked) return;
     void Promise.resolve().then(() => {
       try {
+        hydrated.current = true;
         if (localStorage.getItem(STORAGE_KEY) === "1") setIncognito(true);
       } catch {
         /* ignore */
@@ -58,8 +61,14 @@ export function PrivacyProvider({
   // persist the user's choice.
   useEffect(() => {
     const on = locked || incognito;
-    document.documentElement.classList.toggle("incognito", on);
-    if (locked) return;
+    let bootstrapped = false;
+    try {
+      bootstrapped = !hydrated.current && localStorage.getItem(STORAGE_KEY) === "1";
+    } catch {
+      /* ignore unavailable storage */
+    }
+    document.documentElement.classList.toggle("incognito", on || bootstrapped);
+    if (locked || !hydrated.current) return;
     try {
       localStorage.setItem(STORAGE_KEY, incognito ? "1" : "0");
     } catch {

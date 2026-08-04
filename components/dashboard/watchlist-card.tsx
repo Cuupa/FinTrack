@@ -253,7 +253,7 @@ function WatchlistCardInner() {
                 </span>
               </Link>
               <span className="flex shrink-0 items-center gap-2">
-                <span className="text-sm tabular-nums">
+                <span className="text-sm tabular-nums" data-private>
                   {pendingKeys.has(key) ? (
                     <Skeleton className="h-4 w-14" />
                   ) : price != null ? (

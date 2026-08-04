@@ -200,28 +200,28 @@ export function TradesView() {
           <Stat
             label={t("stat.unrealized")}
             value={formatCurrency(totals.unrealizedPL, currency)}
+            isPrivate
             sub={formatPercent(totals.totalPLPercent)}
             valueClassName={plColor(totals.unrealizedPL)}
             info={t("tip.unrealized")}
-            isPrivate
           />
         </Card>
         <Card>
           <Stat
             label={t("stat.realized")}
             value={formatCurrency(totals.realizedPL, currency)}
+            isPrivate
             valueClassName={plColor(totals.realizedPL)}
             info={t("tip.realized")}
-            isPrivate
           />
         </Card>
         <Card>
           <Stat
             label={t("stat.dividends")}
             value={formatCurrency(dividendsReceived, currency)}
+            isPrivate
             valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
             info={t("tip.dividends")}
-            isPrivate
           />
         </Card>
       </div>

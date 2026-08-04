@@ -101,7 +101,7 @@ export function SpendingSankeyCard() {
       {graph.nodes.length === 0 ? (
         <p className="py-16 text-center text-sm text-zinc-500">{t("common.noData")}</p>
       ) : (
-        <div role="img" aria-label={ariaLabel} className="mt-4">
+        <div role="img" aria-label={ariaLabel} className="mt-4" data-private>
           <ResponsiveContainer width="100%" height={380}>
             <Sankey
               data={graph}

@@ -33,7 +33,7 @@ import { useBasiszins } from "@/lib/tax/use-basiszins";
 import { useFeature, useFeatureFlag } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { assetPriceKey } from "@/lib/types";
-import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { isStorageFullError } from "@/lib/store/errors";
 import { Button, Card } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -496,7 +496,7 @@ function EditableAmountRow({
                 value={text}
                 placeholder={placeholder}
                 aria-label={ariaLabel}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => setText(stripLeadingZero(e.target.value))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void commit();
                   if (e.key === "Escape") discard();

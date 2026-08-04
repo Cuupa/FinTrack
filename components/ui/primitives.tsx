@@ -64,7 +64,10 @@ export function Stat({
         <span>
           {label}
           {info && (
-            <span className="ml-1 inline-flex translate-y-0.5 align-text-bottom">
+            <span
+              className="ml-1 inline-flex translate-y-0.5 align-text-bottom"
+              {...(isPrivate ? { "data-private": "" } : {})}
+            >
               <InfoTip text={info} />
             </span>
           )}
@@ -76,7 +79,14 @@ export function Stat({
       >
         {value}
       </div>
-      {sub && <div className={`mt-0.5 ${subTextSize} text-zinc-500 tabular-nums`}>{sub}</div>}
+      {sub && (
+        <div
+          className={`mt-0.5 ${subTextSize} text-zinc-500 tabular-nums`}
+          {...(isPrivate ? { "data-private": "" } : {})}
+        >
+          {sub}
+        </div>
+      )}
     </div>
   );
 }

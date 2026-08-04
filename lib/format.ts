@@ -82,7 +82,12 @@ export function formatInputDecimal(value: number, digits = 6): string {
  * decimals like "0.5" / "0,5" intact.
  */
 export function stripLeadingZero(s: string): string {
-  return s.replace(/^0+(?=\d)/, "");
+  const locale = getActiveLocale();
+  const localized =
+    locale === "en"
+      ? s
+      : s.replace(/(\d)\.(\d{1,2})(?!\d)/g, "$1,$2");
+  return localized.replace(/^0+(?=\d)/, "");
 }
 
 export function formatCurrency(value: number, currency = "EUR", digits?: number): string {

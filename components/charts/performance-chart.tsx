@@ -290,7 +290,11 @@ export function PerformanceChart({
 
   return (
     <div>
-      <div role="img" aria-label={ariaLabel ?? fallbackAriaLabel}>
+      <div
+        role="img"
+        aria-label={ariaLabel ?? fallbackAriaLabel}
+        data-private={pctMode ? undefined : ""}
+      >
         <ResponsiveContainer width="100%" height={height}>
           <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />

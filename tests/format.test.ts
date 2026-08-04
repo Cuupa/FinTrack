@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { parseDecimal, formatInputDecimal, formatPercent, formatCompactCurrency } from "../lib/format";
+import {
+  parseDecimal,
+  formatInputDecimal,
+  formatPercent,
+  formatCompactCurrency,
+  stripLeadingZero,
+} from "../lib/format";
 import { setActiveLocale } from "../lib/i18n/locale";
 
 describe("parseDecimal", () => {
@@ -75,6 +81,22 @@ describe("formatInputDecimal", () => {
     expect(formatInputDecimal(2.5)).toBe("2,5");
     setActiveLocale("en");
     expect(formatInputDecimal(2.5)).toBe("2.5");
+  });
+});
+
+describe("stripLeadingZero", () => {
+  afterEach(() => setActiveLocale("en"));
+
+  it("normalizes typed decimal points to commas in German and Spanish", () => {
+    setActiveLocale("de");
+    expect(stripLeadingZero("2.5")).toBe("2,5");
+    setActiveLocale("es");
+    expect(stripLeadingZero("0.25")).toBe("0,25");
+  });
+
+  it("keeps German thousands dots intact", () => {
+    setActiveLocale("de");
+    expect(stripLeadingZero("250.000")).toBe("250.000");
   });
 });
 

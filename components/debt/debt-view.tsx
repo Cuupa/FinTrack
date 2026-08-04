@@ -306,6 +306,7 @@ export function DebtView() {
           <Stat
             label={t("debt.totals.debt")}
             value={formatCurrency(totalDebt, base)}
+            isPrivate
             sub={
               totalOriginal > 0
                 ? t("debt.totals.repaidOf", {
@@ -315,7 +316,6 @@ export function DebtView() {
                   })
                 : undefined
             }
-            isPrivate
           />
           <Stat
             label={t("debt.totals.minPayment")}
