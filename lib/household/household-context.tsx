@@ -84,6 +84,8 @@ interface HouseholdState {
    * True for anyone not in a household, and on a DB predating the migration.
    */
   sharingActive: boolean;
+  extraSeats: number;
+  seatPriceDisplay: string | null;
 }
 
 interface HouseholdContextValue extends Omit<HouseholdState, "userId"> {
@@ -97,6 +99,7 @@ interface HouseholdContextValue extends Omit<HouseholdState, "userId"> {
   removeMember(memberId: string): Promise<void>;
   leaveHousehold(): Promise<void>;
   refresh(): Promise<void>;
+  addSeat(): Promise<void>;
 }
 
 const EMPTY_STATE: Omit<HouseholdState, "userId"> = {
@@ -106,6 +109,8 @@ const EMPTY_STATE: Omit<HouseholdState, "userId"> = {
   sentInvites: [],
   receivedInvites: [],
   sharingActive: true,
+  extraSeats: 0,
+  seatPriceDisplay: null,
 };
 
 const HouseholdContext = createContext<HouseholdContextValue>({
@@ -120,13 +125,14 @@ const HouseholdContext = createContext<HouseholdContextValue>({
   removeMember: async () => {},
   leaveHousehold: async () => {},
   refresh: async () => {},
+  addSeat: async () => {},
 });
 
 async function loadState(userId: string, email: string | null): Promise<Omit<HouseholdState, "userId">> {
   const supabase = getSupabaseClient();
   if (!supabase) return EMPTY_STATE;
 
-  const [membersRes, emailsRes, receivedRes] = await Promise.all([
+  const [membersRes, emailsRes, receivedRes, seatRes, configRes] = await Promise.all([
     supabase
       .from("household_members")
       .select("id, household_id, user_id, role, joined_at")
@@ -140,6 +146,8 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
       .ilike("email", email ?? "")
       .eq("status", "pending")
       .returns<InviteRow[]>(),
+    supabase.from("household_seat_addons").select("quantity, status").maybeSingle<{ quantity: number; status: string }>(),
+    supabase.from("billing_config").select("household_member_price_display").eq("id", 1).maybeSingle<{ household_member_price_display: string | null }>(),
   ]);
 
   const members = (membersRes.data ?? []).map(memberFromRow);
@@ -149,7 +157,7 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
   const receivedInvites = (receivedRes.data ?? []).map(inviteFromRow);
 
   const own = members.find((m) => m.userId === userId);
-  if (!own) return { ...EMPTY_STATE, receivedInvites };
+  if (!own) return { ...EMPTY_STATE, receivedInvites, seatPriceDisplay: configRes.data?.household_member_price_display ?? null };
 
   const [householdRes, sentInvitesRes, sharingRes] = await Promise.all([
     supabase.from("households").select("id, name, created_by, created_at").eq("id", own.householdId).maybeSingle<HouseholdRow>(),
@@ -172,6 +180,8 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
     // predates migration 0101 has no such function and errors) — the same
     // fail-open direction the flag and limit resolution take.
     sharingActive: sharingRes.data !== false,
+    extraSeats: seatRes.data?.status === "active" || seatRes.data?.status === "trialing" ? seatRes.data.quantity : 0,
+    seatPriceDisplay: configRes.data?.household_member_price_display ?? null,
   };
 }
 
@@ -312,6 +322,21 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     await load();
   }, [userId, load]);
 
+  const addSeat = useCallback(async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("not authenticated");
+    const response = await fetch("/api/billing/household-seat", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: "{}",
+    });
+    if (!response.ok) throw new Error("seat purchase failed");
+    await load();
+  }, [load]);
+
   const state = loaded?.userId === userId ? loaded : null;
   const loading = userId != null && isSupabaseConfigured && loaded?.userId !== userId;
 
@@ -323,6 +348,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       sentInvites: state?.sentInvites ?? [],
       receivedInvites: state?.receivedInvites ?? [],
       sharingActive: state?.sharingActive ?? true,
+      extraSeats: state?.extraSeats ?? 0,
+      seatPriceDisplay: state?.seatPriceDisplay ?? null,
       loading,
       createHousehold,
       renameHousehold,
@@ -333,6 +360,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       removeMember,
       leaveHousehold,
       refresh: load,
+      addSeat,
     }),
     [
       state,
@@ -345,6 +373,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       declineInvite,
       removeMember,
       leaveHousehold,
+      addSeat,
       load,
     ],
   );

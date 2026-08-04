@@ -55,6 +55,44 @@ async function upsertCustomerMapping(
   return !error;
 }
 
+async function syncHouseholdSeatAddon(
+  supabase: SupabaseClient,
+  userId: string,
+  sub: StripeSubscription,
+): Promise<boolean> {
+  const [{ data: config }, { data: memberships }] = await Promise.all([
+    supabase.from("billing_config").select("household_member_price").eq("id", 1).maybeSingle<{ household_member_price: string | null }>(),
+    supabase.from("household_members").select("household_id").eq("user_id", userId).returns<{ household_id: string }[]>(),
+  ]);
+  const householdId = memberships?.[0]?.household_id;
+  if (!householdId || !config?.household_member_price) return true;
+  const item = sub.items?.data?.find((candidate) => candidate.price?.id === config.household_member_price);
+  if (!item?.price?.id) {
+    const { data: existing } = await supabase
+      .from("household_seat_addons")
+      .select("stripe_subscription_item_id")
+      .eq("household_id", householdId)
+      .maybeSingle<{ stripe_subscription_item_id: string }>();
+    if (!existing) return true;
+    const { error } = await supabase
+      .from("household_seat_addons")
+      .update({ quantity: 0, status: sub.status, updated_at: new Date().toISOString() })
+      .eq("household_id", householdId);
+    return !error;
+  }
+  const { error } = await supabase.from("household_seat_addons").upsert(
+    {
+      household_id: householdId,
+      stripe_subscription_item_id: (item as { id?: string }).id,
+      quantity: sub.status === "active" || sub.status === "trialing" ? item.quantity ?? 0 : 0,
+      status: sub.status,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "household_id" },
+  );
+  return !error;
+}
+
 async function userForCustomer(
   supabase: SupabaseClient,
   customerId: string,
@@ -166,7 +204,8 @@ async function applyEvent(
     if (!sub) return false;
 
     if (!(await upsertCustomerMapping(supabase, plan.userId, plan.customerId))) return false;
-    return upsertSubscriptionRow(supabase, plan.userId, subscriptionRowFrom(sub));
+    if (!(await upsertSubscriptionRow(supabase, plan.userId, subscriptionRowFrom(sub)))) return false;
+    return syncHouseholdSeatAddon(supabase, plan.userId, sub);
   }
 
   // subscription created / updated / deleted: resolve the user via the
@@ -180,7 +219,8 @@ async function applyEvent(
 
   const row = subscriptionRowFrom(plan.subscription);
   if (plan.forceCanceled) row.status = "canceled";
-  return upsertSubscriptionRow(supabase, userId, row);
+  if (!(await upsertSubscriptionRow(supabase, userId, row))) return false;
+  return syncHouseholdSeatAddon(supabase, userId, plan.subscription);
 }
 
 function stripeCustomerId(sub: StripeSubscription): string | null {

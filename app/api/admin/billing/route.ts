@@ -12,7 +12,8 @@
 //
 // POST body is one of:
 //   { kind: "config", priceMonthly, priceYearly, priceMonthlyDisplay,
-//     priceYearlyDisplay, enabled }
+//     priceYearlyDisplay, householdMemberPrice, householdMemberPriceDisplay,
+//     enabled }
 //     upsert billing_config id=1. `priceMonthlyDisplay`/`priceYearlyDisplay`
 //     (migration 0070) are the owner-typed strings shown on /pricing (e.g.
 //     "4,99 EUR"), distinct from the Stripe price ids. Price ids and display
@@ -43,6 +44,8 @@ interface BillingConfigRow {
   price_yearly: string | null;
   price_monthly_display: string | null;
   price_yearly_display: string | null;
+  household_member_price: string | null;
+  household_member_price_display: string | null;
   enabled: boolean;
 }
 
@@ -65,7 +68,7 @@ export async function GET(req: Request): Promise<Response> {
   const [configRes, keysRes] = await Promise.all([
     admin
       .from("billing_config")
-      .select("price_monthly, price_yearly, price_monthly_display, price_yearly_display, enabled")
+      .select("price_monthly, price_yearly, price_monthly_display, price_yearly_display, household_member_price, household_member_price_display, enabled")
       .eq("id", 1)
       .maybeSingle<BillingConfigRow>(),
     admin
@@ -82,6 +85,8 @@ export async function GET(req: Request): Promise<Response> {
     priceYearly: configRes.data?.price_yearly ?? null,
     priceMonthlyDisplay: configRes.data?.price_monthly_display ?? null,
     priceYearlyDisplay: configRes.data?.price_yearly_display ?? null,
+    householdMemberPrice: configRes.data?.household_member_price ?? null,
+    householdMemberPriceDisplay: configRes.data?.household_member_price_display ?? null,
     enabled: configRes.data?.enabled === true,
     secretKeySet: isSet(keysRes.data?.stripe_secret_key),
     webhookSecretSet: isSet(keysRes.data?.stripe_webhook_secret),
@@ -113,7 +118,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const { data: before } = await admin
       .from("billing_config")
-      .select("price_monthly, price_yearly, price_monthly_display, price_yearly_display, enabled")
+      .select("price_monthly, price_yearly, price_monthly_display, price_yearly_display, household_member_price, household_member_price_display, enabled")
       .eq("id", 1)
       .maybeSingle<BillingConfigRow>();
 
@@ -124,6 +129,8 @@ export async function POST(req: Request): Promise<Response> {
         price_yearly: parsed.priceYearly,
         price_monthly_display: parsed.priceMonthlyDisplay,
         price_yearly_display: parsed.priceYearlyDisplay,
+        household_member_price: parsed.householdMemberPrice,
+        household_member_price_display: parsed.householdMemberPriceDisplay,
         enabled: parsed.enabled,
         updated_at: new Date().toISOString(),
       },
@@ -141,6 +148,8 @@ export async function POST(req: Request): Promise<Response> {
             priceYearly: before.price_yearly,
             priceMonthlyDisplay: before.price_monthly_display,
             priceYearlyDisplay: before.price_yearly_display,
+            householdMemberPrice: before.household_member_price,
+            householdMemberPriceDisplay: before.household_member_price_display,
             enabled: before.enabled,
           }
         : null,

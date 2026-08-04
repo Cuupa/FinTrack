@@ -1817,7 +1817,8 @@ export const en = {
   "household.decline": "Decline",
   "household.sharingPaused":
     "Sharing is paused: nobody in this household is on Pro right now, so everyone only sees their own data. Nothing was deleted, sharing resumes as soon as one member subscribes.",
-  "household.limitHint": "Up to {n} people are included. Additional members cost €1.99 each (pending invitations count).",
+  "household.limitHint": "Up to {n} people are included. Additional members cost {price} each (pending invitations count).",
+  "household.addSeat": "Add a seat for {price}",
 
   // X-Ray
   "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
@@ -2155,6 +2156,8 @@ export const en = {
   "admin.billing.priceIdPlaceholder": "price_...",
   "admin.billing.priceMonthlyDisplayLabel": "Monthly display price",
   "admin.billing.priceYearlyDisplayLabel": "Yearly display price",
+  "admin.billing.householdMemberPriceLabel": "Household extra member Stripe price",
+  "admin.billing.householdMemberPriceDisplayLabel": "Household extra member display price",
   "admin.billing.priceDisplayPlaceholder": "e.g. 4.99 EUR",
   "admin.billing.enabledLabel": "Selling enabled",
   "admin.billing.grantsTitle": "Premium grants",
@@ -4154,7 +4157,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "household.decline": "Ablehnen",
   "household.sharingPaused":
     "Das Teilen ist pausiert: niemand in diesem Haushalt hat gerade Pro, deshalb sieht jede Person nur die eigenen Daten. Es wurde nichts gelöscht, das Teilen läuft weiter, sobald ein Mitglied ein Abo hat.",
-  "household.limitHint": "Bis zu {n} Personen sind enthalten. Weitere Mitglieder kosten jeweils 1,99 € (offene Einladungen zählen mit).",
+  "household.limitHint": "Bis zu {n} Personen sind enthalten. Weitere Mitglieder kosten jeweils {price} (offene Einladungen zählen mit).",
+  "household.addSeat": "Sitzplatz für {price} hinzufügen",
 
   // X-Ray
   "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
@@ -4492,6 +4496,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.billing.priceIdPlaceholder": "price_...",
   "admin.billing.priceMonthlyDisplayLabel": "Angezeigter Monatspreis",
   "admin.billing.priceYearlyDisplayLabel": "Angezeigter Jahrespreis",
+  "admin.billing.householdMemberPriceLabel": "Stripe-Preis für zusätzliches Haushaltsmitglied",
+  "admin.billing.householdMemberPriceDisplayLabel": "Anzeigenpreis für zusätzliches Haushaltsmitglied",
   "admin.billing.priceDisplayPlaceholder": "z. B. 4,99 EUR",
   "admin.billing.enabledLabel": "Verkauf aktiviert",
   "admin.billing.grantsTitle": "Premium-Freischaltungen",
@@ -6494,7 +6500,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "household.decline": "Rechazar",
   "household.sharingPaused":
     "El uso compartido está en pausa: ahora mismo nadie de este hogar tiene Pro, así que cada persona solo ve sus propios datos. No se ha borrado nada y volverá a funcionar en cuanto un miembro se suscriba.",
-  "household.limitHint": "Se incluyen hasta {n} personas. Cada miembro adicional cuesta 1,99 € (las invitaciones pendientes cuentan).",
+  "household.limitHint": "Se incluyen hasta {n} personas. Cada miembro adicional cuesta {price} (las invitaciones pendientes cuentan).",
+  "household.addSeat": "Añadir un asiento por {price}",
 
   // X-Ray
   "xray.subtitle": "Tu exposición real a acciones individuales, mirando a través de tus fondos.",
@@ -6832,6 +6839,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.billing.priceIdPlaceholder": "price_...",
   "admin.billing.priceMonthlyDisplayLabel": "Precio mensual mostrado",
   "admin.billing.priceYearlyDisplayLabel": "Precio anual mostrado",
+  "admin.billing.householdMemberPriceLabel": "Precio Stripe de miembro adicional del hogar",
+  "admin.billing.householdMemberPriceDisplayLabel": "Precio mostrado de miembro adicional del hogar",
   "admin.billing.priceDisplayPlaceholder": "p. ej. 4,99 EUR",
   "admin.billing.enabledLabel": "Venta activada",
   "admin.billing.grantsTitle": "Concesiones premium",

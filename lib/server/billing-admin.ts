@@ -22,6 +22,8 @@ export interface BillingConfigInput {
    *  computed with, just displayed verbatim (migration 0070). */
   priceMonthlyDisplay: string | null;
   priceYearlyDisplay: string | null;
+  householdMemberPrice: string | null;
+  householdMemberPriceDisplay: string | null;
   enabled: boolean;
 }
 
@@ -48,7 +50,7 @@ function normalizeOrNull(value: string | null): string | null {
  * Returns null when the body doesn't match.
  */
 export function parseBillingConfigBody(body: Record<string, unknown>): BillingConfigInput | null {
-  const { priceMonthly, priceYearly, priceMonthlyDisplay, priceYearlyDisplay, enabled } = body;
+  const { priceMonthly, priceYearly, priceMonthlyDisplay, priceYearlyDisplay, householdMemberPrice, householdMemberPriceDisplay, enabled } = body;
   if (
     (priceMonthly !== null && priceMonthly !== undefined && typeof priceMonthly !== "string") ||
     (priceYearly !== null && priceYearly !== undefined && typeof priceYearly !== "string") ||
@@ -58,6 +60,8 @@ export function parseBillingConfigBody(body: Record<string, unknown>): BillingCo
     (priceYearlyDisplay !== null &&
       priceYearlyDisplay !== undefined &&
       typeof priceYearlyDisplay !== "string") ||
+    (householdMemberPrice !== null && householdMemberPrice !== undefined && typeof householdMemberPrice !== "string") ||
+    (householdMemberPriceDisplay !== null && householdMemberPriceDisplay !== undefined && typeof householdMemberPriceDisplay !== "string") ||
     typeof enabled !== "boolean"
   ) {
     return null;
@@ -67,6 +71,8 @@ export function parseBillingConfigBody(body: Record<string, unknown>): BillingCo
     priceYearly: normalizeOrNull(priceYearly ?? null),
     priceMonthlyDisplay: normalizeOrNull(priceMonthlyDisplay ?? null),
     priceYearlyDisplay: normalizeOrNull(priceYearlyDisplay ?? null),
+    householdMemberPrice: normalizeOrNull(householdMemberPrice ?? null),
+    householdMemberPriceDisplay: normalizeOrNull(householdMemberPriceDisplay ?? null),
     enabled,
   };
 }

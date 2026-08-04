@@ -32,6 +32,8 @@ interface BillingAdminData {
   priceYearly: string | null;
   priceMonthlyDisplay: string | null;
   priceYearlyDisplay: string | null;
+  householdMemberPrice: string | null;
+  householdMemberPriceDisplay: string | null;
   enabled: boolean;
   secretKeySet: boolean;
   webhookSecretSet: boolean;
@@ -106,6 +108,8 @@ export default function AdminBillingPage() {
   const [priceYearlyDraft, setPriceYearlyDraft] = useState<string | null>(null);
   const [priceMonthlyDisplayDraft, setPriceMonthlyDisplayDraft] = useState<string | null>(null);
   const [priceYearlyDisplayDraft, setPriceYearlyDisplayDraft] = useState<string | null>(null);
+  const [householdMemberPriceDraft, setHouseholdMemberPriceDraft] = useState<string | null>(null);
+  const [householdMemberPriceDisplayDraft, setHouseholdMemberPriceDisplayDraft] = useState<string | null>(null);
   const [enabledDraft, setEnabledDraft] = useState<boolean | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
 
@@ -302,6 +306,8 @@ export default function AdminBillingPage() {
   const priceYearlyValue = priceYearlyDraft ?? data?.priceYearly ?? "";
   const priceMonthlyDisplayValue = priceMonthlyDisplayDraft ?? data?.priceMonthlyDisplay ?? "";
   const priceYearlyDisplayValue = priceYearlyDisplayDraft ?? data?.priceYearlyDisplay ?? "";
+  const householdMemberPriceValue = householdMemberPriceDraft ?? data?.householdMemberPrice ?? "";
+  const householdMemberPriceDisplayValue = householdMemberPriceDisplayDraft ?? data?.householdMemberPriceDisplay ?? "";
   const enabledValue = enabledDraft ?? data?.enabled ?? false;
 
   const saveConfig = async () => {
@@ -320,6 +326,8 @@ export default function AdminBillingPage() {
             priceMonthlyDisplayValue.trim() === "" ? null : priceMonthlyDisplayValue.trim(),
           priceYearlyDisplay:
             priceYearlyDisplayValue.trim() === "" ? null : priceYearlyDisplayValue.trim(),
+          householdMemberPrice: householdMemberPriceValue.trim() === "" ? null : householdMemberPriceValue.trim(),
+          householdMemberPriceDisplay: householdMemberPriceDisplayValue.trim() === "" ? null : householdMemberPriceDisplayValue.trim(),
           enabled: enabledValue,
         },
         token,
@@ -502,6 +510,16 @@ export default function AdminBillingPage() {
                 placeholder={t("admin.billing.priceDisplayPlaceholder")}
                 className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
               />
+            </div>
+
+            <div className="min-w-[220px] max-w-md">
+              <label className="block text-xs text-zinc-500">{t("admin.billing.householdMemberPriceLabel")}</label>
+              <input value={householdMemberPriceValue} onChange={(e) => setHouseholdMemberPriceDraft(e.target.value)} placeholder={t("admin.billing.priceIdPlaceholder")} className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700" />
+            </div>
+
+            <div className="min-w-[220px] max-w-md">
+              <label className="block text-xs text-zinc-500">{t("admin.billing.householdMemberPriceDisplayLabel")}</label>
+              <input value={householdMemberPriceDisplayValue} onChange={(e) => setHouseholdMemberPriceDisplayDraft(e.target.value)} placeholder="1.99 EUR / month" className="mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700" />
             </div>
 
             <div className="flex items-center gap-3">

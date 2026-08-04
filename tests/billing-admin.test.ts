@@ -24,6 +24,8 @@ describe("parseBillingConfigBody", () => {
         priceYearly: "price_b",
         priceMonthlyDisplay: "4,99 EUR",
         priceYearlyDisplay: "39 EUR",
+        householdMemberPrice: "price_seat",
+        householdMemberPriceDisplay: "1,99 EUR / Monat",
         enabled: true,
       }),
     ).toEqual({
@@ -31,6 +33,8 @@ describe("parseBillingConfigBody", () => {
       priceYearly: "price_b",
       priceMonthlyDisplay: "4,99 EUR",
       priceYearlyDisplay: "39 EUR",
+      householdMemberPrice: "price_seat",
+      householdMemberPriceDisplay: "1,99 EUR / Monat",
       enabled: true,
     });
   });
@@ -49,6 +53,8 @@ describe("parseBillingConfigBody", () => {
       priceYearly: null,
       priceMonthlyDisplay: null,
       priceYearlyDisplay: null,
+      householdMemberPrice: null,
+      householdMemberPriceDisplay: null,
       enabled: false,
     });
   });
@@ -61,6 +67,8 @@ describe("parseBillingConfigBody", () => {
       priceYearly: "price_b",
       priceMonthlyDisplay: null,
       priceYearlyDisplay: null,
+      householdMemberPrice: null,
+      householdMemberPriceDisplay: null,
       enabled: true,
     });
   });
@@ -72,6 +80,8 @@ describe("parseBillingConfigBody", () => {
         priceYearly: "   ",
         priceMonthlyDisplay: "  4,99 EUR  ",
         priceYearlyDisplay: "   ",
+        householdMemberPrice: " price_seat ",
+        householdMemberPriceDisplay: " 1,99 EUR / Monat ",
         enabled: true,
       }),
     ).toEqual({
@@ -79,6 +89,8 @@ describe("parseBillingConfigBody", () => {
       priceYearly: null,
       priceMonthlyDisplay: "4,99 EUR",
       priceYearlyDisplay: null,
+      householdMemberPrice: "price_seat",
+      householdMemberPriceDisplay: "1,99 EUR / Monat",
       enabled: true,
     });
   });

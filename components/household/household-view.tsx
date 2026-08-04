@@ -47,12 +47,15 @@ export function HouseholdView() {
     removeMember,
     leaveHousehold,
     sharingActive,
+    extraSeats,
+    seatPriceDisplay,
+    addSeat,
   } = useHousehold();
   const { t } = useI18n();
   // `locked` = the flag is visible but this user's plan doesn't unlock it.
   const { locked } = useFeature("household");
   const billingEnabled = useFeatureFlag("billing");
-  const { limit: memberLimit } = usePlanLimit("householdMembers");
+  const { limit: planMemberLimit } = usePlanLimit("householdMembers");
 
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -64,6 +67,7 @@ export function HouseholdView() {
   const isOwner = members.some((m) => m.userId === user?.id && m.role === "owner");
   // A pending invitation already reserves its seat, otherwise the cap could be
   // walked past by sending several at once.
+  const memberLimit = (planMemberLimit ?? 2) + extraSeats;
   const seatsCapped = atLimit(memberLimit, members.length + sentInvites.length);
 
   async function run(action: () => Promise<void>) {
@@ -237,8 +241,8 @@ export function HouseholdView() {
               </Button>
             </div>
             {seatsCapped && (
-              <p className="mt-2 text-sm text-zinc-500">
-                {t("household.limitHint", { n: String(memberLimit) })}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+                {t("household.limitHint", { n: String(memberLimit), price: seatPriceDisplay ?? "1,99 €" })}
                 {billingEnabled && (
                   <>
                     {" "}
@@ -250,7 +254,12 @@ export function HouseholdView() {
                     </Link>
                   </>
                 )}
-              </p>
+                {isOwner && billingEnabled && (
+                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(addSeat)}>
+                    {t("household.addSeat", { price: seatPriceDisplay ?? "1,99 €" })}
+                  </Button>
+                )}
+              </div>
             )}
             {sentInvites.length > 0 && (
               <ul className="mt-4 space-y-2">

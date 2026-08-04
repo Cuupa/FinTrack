@@ -29,7 +29,9 @@ const SIGNATURE_TOLERANCE_SEC = 300;
 // ---------------------------------------------------------------------------
 
 export interface StripeSubscriptionItem {
+  id?: string;
   price?: { id?: string } | null;
+  quantity?: number | null;
   /** Newer API versions carry the period end on the item, older ones on the sub. */
   current_period_end?: number | null;
 }
