@@ -52,6 +52,7 @@ ansehen laesst.
 | Buchung hinzufuegen oeffnet ein Modal | `components/spending/spending-view.tsx` |
 | Monatsende als Toggle | `components/spending/spending-view.tsx`, `components/spending/planned-form.tsx`, `components/spending/recurring-form.tsx` |
 | Tag-Gruppen-Anlage hinter Plus | `components/assets/tag-groups-manager.tsx` |
+| Dezimaltrennzeichen in FIRE/Simulation geprueft | Bereits `parseDecimal` in den freien Eingabefeldern; kein Code-Change noetig |
 
 ### Runde 2026-08-02 (dritter Teil)
 
