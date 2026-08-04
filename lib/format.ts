@@ -67,6 +67,15 @@ export function parseDecimal(s: string): number {
   return normalized === "" ? NaN : Number(normalized);
 }
 
+/** Locale-aware decimal text for form fields; grouping is intentionally off. */
+export function formatInputDecimal(value: number, digits = 6): string {
+  if (!Number.isFinite(value)) return "";
+  return new Intl.NumberFormat(intlLocale(), {
+    useGrouping: false,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
 /**
  * Drop a leading zero a user typed in front of a real number, so a field
  * pre-filled with "0" doesn't turn "300" into "0300". Keeps a lone "0" and

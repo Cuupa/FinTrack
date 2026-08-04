@@ -14,7 +14,13 @@ import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { frontLoadSplit } from "@/lib/finance/front-load";
 import type { Asset } from "@/lib/types";
-import { formatCurrency, formatNumber, parseDecimal, stripLeadingZero } from "@/lib/format";
+import {
+  formatCurrency,
+  formatInputDecimal,
+  formatNumber,
+  parseDecimal,
+  stripLeadingZero,
+} from "@/lib/format";
 import { Button } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -34,7 +40,9 @@ export function FrontLoadSection({ asset }: { asset: Asset }) {
   const { t } = useI18n();
   const cur = asset.currency || data.profile.currency;
 
-  const [rate, setRate] = useState(asset.frontLoad != null ? String(asset.frontLoad) : "");
+  const [rate, setRate] = useState(
+    asset.frontLoad != null ? formatInputDecimal(asset.frontLoad) : "",
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +96,10 @@ export function FrontLoadSection({ asset }: { asset: Asset }) {
               onChange={(e) => {
                 setSaved(false);
                 setRate(stripLeadingZero(e.target.value));
+              }}
+              onBlur={() => {
+                const parsedRate = parseDecimal(rate);
+                if (Number.isFinite(parsedRate)) setRate(formatInputDecimal(parsedRate));
               }}
               className={`${inputCls} pr-10 text-right tabular-nums`}
               aria-label={t("asset.frontLoad.rate")}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { parseDecimal, formatPercent, formatCompactCurrency } from "../lib/format";
+import { parseDecimal, formatInputDecimal, formatPercent, formatCompactCurrency } from "../lib/format";
 import { setActiveLocale } from "../lib/i18n/locale";
 
 describe("parseDecimal", () => {
@@ -64,6 +64,17 @@ describe("formatPercent", () => {
     expect(up.startsWith("+")).toBe(true);
     expect(up.includes("%")).toBe(true);
     expect(formatPercent(-0.05).startsWith("-")).toBe(true);
+  });
+});
+
+describe("formatInputDecimal", () => {
+  afterEach(() => setActiveLocale("en"));
+
+  it("uses the active locale decimal separator without grouping", () => {
+    setActiveLocale("de");
+    expect(formatInputDecimal(2.5)).toBe("2,5");
+    setActiveLocale("en");
+    expect(formatInputDecimal(2.5)).toBe("2.5");
   });
 });
 

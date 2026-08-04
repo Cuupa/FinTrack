@@ -858,8 +858,6 @@ export function AssetDetail({
         </ProGate>
       )}
 
-      {held && asset.type !== "CASH" && <FrontLoadSection asset={asset} />}
-
       {/* Transactions — full width, add form above the table. Booking the
           first transaction on a not-(yet-)held instrument is what turns it
           into a holding (see ensureHeldAsset above). */}
@@ -938,6 +936,8 @@ export function AssetDetail({
             </Table>
           </div>
         )}
+
+        {held && asset.type !== "CASH" && <FrontLoadSection asset={asset} />}
 
         <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>

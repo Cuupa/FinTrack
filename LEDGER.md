@@ -56,6 +56,7 @@ ansehen laesst.
 | Wiederkehrende Buchungen: Datum/Betrag ergonomischer | `components/spending/recurring-card.tsx`, i18n-Keys fuer Datum/Betrag |
 | Ausgabeaufschlag klar als Prozent beschriftet | `lib/i18n/dictionaries.ts` (EN/DE/ES) |
 | Ausgabeaufschlag-UI neu gestaltet und in Asset-Detail eingebunden | `components/assets/front-load-section.tsx`, `components/assets/asset-detail.tsx`, i18n |
+| Ausgabeaufschlag-Formular zeigt Locale-Dezimaltrennzeichen | `lib/format.ts`, `components/assets/front-load-section.tsx`, `tests/format.test.ts`; Abschnitt sitzt beim Transaktionsbereich |
 
 ### Runde 2026-08-02 (dritter Teil)
 
