@@ -50,6 +50,11 @@ import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { reportError } from "@/lib/errors/report";
 import { useToast } from "@/lib/notifications/toast-context";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
+import {
+  accountInterestAmount,
+  dueAccountInterest,
+  nextAccountInterestDate,
+} from "@/lib/finance/account-interest";
 import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 
 type SortKey = "name" | "amount" | "target" | "interval" | "next";
@@ -62,7 +67,7 @@ const dueInputCls =
 /** One row of the merged list, whichever entity produced it. */
 interface RecurringRow {
   id: string;
-  kind: "contract" | "planned";
+  kind: "contract" | "planned" | "interest";
   name: string;
   /** Signed: income positive. A contract is always money out. */
   amount: number;
@@ -89,7 +94,7 @@ interface RecurringRow {
 interface DueRow {
   key: string;
   sourceId: string;
-  kind: "contract" | "planned";
+  kind: "contract" | "planned" | "interest";
   name: string;
   date: string;
   amount: number;
@@ -99,6 +104,7 @@ interface DueRow {
   /** Positive magnitude of the interest share, 0 when the charge does not
    *  split. See `interestShare` in lib/finance/contract-bookings.ts. */
   interestAmount: number;
+  interestAccountId: string | null;
 }
 
 export function RecurringCard() {
@@ -180,6 +186,22 @@ export function RecurringCard() {
           : null,
       });
     }
+    for (const account of data.accounts) {
+      if (!account.interestRate || account.interestRate <= 0) continue;
+      const next = nextAccountInterestDate(account, data.spendingTransactions, todayIso);
+      out.push({
+        id: account.id,
+        kind: "interest",
+        name: t("recurring.interestName", { name: account.name }),
+        amount: accountInterestAmount(account, next ?? todayIso, data.accountBalances, movements),
+        currency: account.currency || base,
+        intervalLabel: intervalLabel(account.interestFrequency ?? "MONTHLY"),
+        next,
+        active: true,
+        accountName: account.name,
+        targetName: "",
+      });
+    }
     // A never-due row has `next === null`, and sortRows files missing values
     // last in BOTH directions -- "no next date" is not a date, and floating
     // those to the top would bury the actionable rows.
@@ -198,7 +220,7 @@ export function RecurringCard() {
       return r.next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.contracts, data.plannedCashflows, accountsById, base, sort, todayIso, t]);
+  }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, data.spendingTransactions, accountsById, base, sort, todayIso, t, movements]);
 
   const due = useMemo<DueRow[]>(() => {
     const out: DueRow[] = [];
@@ -222,6 +244,7 @@ export function RecurringCard() {
         categoryId: b.categoryId,
         transferAccountId: b.transferAccountId,
         interestAmount: b.interestAmount,
+        interestAccountId: null,
       });
     }
     for (const b of duePlannedBookings(data.plannedCashflows, todayIso)) {
@@ -237,10 +260,28 @@ export function RecurringCard() {
         transferAccountId: b.transferAccountId,
         // A plan carries no rate schedule of its own, so it never splits.
         interestAmount: 0,
+        interestAccountId: null,
       });
     }
+    for (const account of data.accounts) {
+      for (const b of dueAccountInterest(account, data.spendingTransactions, data.accountBalances, movements, todayIso)) {
+        out.push({
+          key: `i|${b.accountId}|${b.date}`,
+          sourceId: b.accountId,
+          kind: "interest",
+          name: t("recurring.interestName", { name: account.name }),
+          date: b.date,
+          amount: b.amount,
+          accountId: b.accountId,
+          categoryId: null,
+          transferAccountId: null,
+          interestAmount: 0,
+          interestAccountId: b.accountId,
+        });
+      }
+    }
     return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, movements, todayIso]);
+  }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, data.spendingTransactions, movements, todayIso, t]);
 
   const selected = due.filter((d) => !excluded.has(d.key));
 
@@ -391,6 +432,22 @@ export function RecurringCard() {
         // advances by the OCCURRENCE's own date: booking the first of the month
         // with today's date must not swallow the days in between.
         const date = dueDateOf(d);
+        if (d.kind === "interest") {
+          await addSpendingTransaction({
+            accountId: d.accountId,
+            categoryId: null,
+            date,
+            bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
+            amount,
+            payee: d.name,
+            note: null,
+            recurringId: null,
+            plannedId: null,
+            transferAccountId: null,
+            interestAccountId: d.interestAccountId,
+          });
+          continue;
+        }
         // A loan instalment posts as TWO rows: the interest is consumed and
         // must reach the expense figures, the principal is a transfer that
         // shrinks the debt. One row could only ever be one of the two.
@@ -544,9 +601,13 @@ export function RecurringCard() {
                   >
                     {/* Click through to the entry's own page: what it is plus
                         every booking it has produced. */}
-                    <Link href={`/recurring/${r.kind}/${r.id}`} className="hover:underline">
-                      {r.name}
-                    </Link>
+                    {r.kind === "interest" ? (
+                      <span>{r.name}</span>
+                    ) : (
+                      <Link href={`/recurring/${r.kind}/${r.id}`} className="hover:underline">
+                        {r.name}
+                      </Link>
+                    )}
                     {r.accountName && (
                       <div className="text-xs font-normal text-zinc-500">{r.accountName}</div>
                     )}
@@ -575,7 +636,7 @@ export function RecurringCard() {
                         : t("recurring.noNext")}
                   </Td>
                   <Td>
-                    <RowActions>
+                    {r.kind !== "interest" && <RowActions>
                       <PauseAction
                         label={r.active ? t("sp.pause") : t("sp.resume")}
                         paused={!r.active}
@@ -589,7 +650,7 @@ export function RecurringCard() {
                         label={t("contracts.list.delete")}
                         onClick={() => setConfirmDelete(r)}
                       />
-                    </RowActions>
+                    </RowActions>}
                   </Td>
                 </Tr>
               ))}
