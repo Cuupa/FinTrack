@@ -68,7 +68,7 @@ export function Modal({
             of scrolling away with tall content. min-h-0 lets this flex child
             shrink to make room for the scrollbar instead of growing past
             max-h-[...] on the dialog. */}
-        <div className="min-h-0 overflow-y-auto">{children}</div>
+        <div className="ft-modal-surface min-h-0 overflow-y-auto">{children}</div>
       </div>
     </div>
   );

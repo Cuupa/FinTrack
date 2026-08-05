@@ -70,7 +70,7 @@ export default function RootLayout({
             <Sidebar />
             {/* Window-wide content. pb leaves room for the fixed mobile tab bar. */}
             <main className="min-w-0 flex-1 overflow-x-clip px-4 py-7 pb-24 sm:px-8 md:pb-10 lg:px-10">
-              {children}
+              <div className="ft-page-frame mx-auto max-w-[1480px]">{children}</div>
               <LegalFooter />
             </main>
           </div>

@@ -50,7 +50,7 @@ export function Table({
 export function Thead({ children }: { children: ReactNode }) {
   return (
     <thead>
-      <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800">
+      <tr className="border-b border-zinc-200 bg-zinc-50/60 text-left text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/30">
         {children}
       </tr>
     </thead>
