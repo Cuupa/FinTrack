@@ -188,7 +188,7 @@ export function NetWorthHero({
   );
 
   return (
-    <Card data-tour="net-worth" className="relative overflow-hidden before:absolute before:right-[-4rem] before:top-[-5rem] before:h-44 before:w-44 before:rounded-full before:bg-[color:var(--lime)]/20 before:blur-2xl">
+    <Card data-tour="net-worth">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
           <Stat

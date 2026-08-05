@@ -22,8 +22,8 @@ export function SiteNav() {
     return (
       <header className="ft-header sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
         <nav className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3">
-          <span className="text-lg font-semibold tracking-[-0.06em]">
-            FIN<span className="ft-lime">/TRACK</span>
+          <span className="text-lg font-semibold tracking-[-0.04em]">
+            Fin<span className="ft-lime">Track</span>
           </span>
           <span className="hidden items-center gap-1.5 text-sm text-zinc-500 sm:flex">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
@@ -46,8 +46,8 @@ export function SiteNav() {
   return (
     <header className="ft-header sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
       <nav className="flex items-center gap-2 px-4 py-2.5 sm:gap-4">
-        <Link href="/" className="shrink-0 text-lg font-semibold tracking-[-0.06em]">
-          FIN<span className="ft-lime">/TRACK</span>
+        <Link href="/" className="shrink-0 text-lg font-semibold tracking-[-0.04em]">
+          Fin<span className="ft-lime">Track</span>
         </Link>
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
