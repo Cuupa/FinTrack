@@ -104,7 +104,13 @@ export function Sidebar() {
         collapsed ? "w-16" : "w-56"
       } transition-[width] duration-150`}
     >
-      <nav data-tour="nav" className="flex h-full flex-col overflow-y-auto p-2">
+      <nav data-tour="nav" className="flex h-full flex-col overflow-y-auto p-3">
+        {!collapsed && (
+          <div className="mb-5 border-b border-[color:var(--line)] px-3 pb-4">
+            <div className="ft-kicker">Your money, clearly</div>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">A considered view of what you have and where it is going.</p>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           {ungrouped.map(renderLink)}
         </div>

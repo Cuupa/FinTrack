@@ -154,7 +154,7 @@ export function PageHeader({
         <div className="flex items-center gap-1">
           <div>
             <div className="ft-kicker mb-1">FinTrack / workspace</div>
-            <h1 className="text-3xl font-semibold tracking-[-0.06em] sm:text-4xl">{title}</h1>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{title}</h1>
           </div>
           {titleAdornment}
         </div>

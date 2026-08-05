@@ -77,7 +77,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={PAGE_STACK}>
+    <div className={`${PAGE_STACK} mx-auto max-w-[1480px]`}>
       <PageHeader
         title={t("dashboard.title")}
         subtitle={t("dashboard.subtitle")}
@@ -120,7 +120,7 @@ export default function DashboardPage() {
               home screen used to be the holdings table with a net-worth chart
               on top, so accounts and spending were only ever a sidebar click
               away and the product read as a portfolio tracker with extras. */}
-          <div data-tour="areas">
+          <div data-tour="areas" className="border-y border-[color:var(--line)] py-6">
             <AreaCards />
           </div>
 
@@ -128,9 +128,15 @@ export default function DashboardPage() {
               of it — hence the heading, which the page never had. */}
           <div className={SECTION_STACK}>
             <SectionTitle>{t("nav.group.invest")}</SectionTitle>
-            <AssetTable timeframe={timeframe} />
-            <SavingsPlansCard />
-            <WatchlistCard />
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,.55fr)]">
+              <div className="min-w-0">
+                <AssetTable timeframe={timeframe} />
+              </div>
+              <div className="space-y-5">
+                <SavingsPlansCard />
+                <WatchlistCard />
+              </div>
+            </div>
           </div>
 
           <GuidedTour restartToken={tourRestart} />
