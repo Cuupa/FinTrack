@@ -45,10 +45,18 @@ export function SiteNav() {
 
   return (
     <header className="ft-header sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
-      <nav className="flex items-center gap-2 px-4 py-2.5 sm:gap-4">
-        <Link href="/" className="shrink-0 text-lg font-semibold tracking-[-0.04em]">
-          Fin<span className="ft-lime">Track</span>
+      <nav className="mx-auto flex min-h-[4.75rem] items-center gap-5 px-5 sm:px-8 lg:px-10">
+        <Link href="/" className="group flex shrink-0 items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--line)] text-xs font-semibold tracking-[-0.08em] transition-colors group-hover:bg-[color:var(--paper-muted)]">FT</span>
+          <span className="hidden text-lg font-semibold tracking-[-0.04em] sm:block">
+            Fin<span className="ft-lime">Track</span>
+          </span>
         </Link>
+        <div className="hidden h-7 w-px bg-[color:var(--line)] lg:block" />
+        <div className="hidden items-baseline gap-3 lg:flex">
+          <span className="text-sm font-medium">Personal wealth</span>
+          <span className="text-xs text-zinc-400">Private workspace</span>
+        </div>
         {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
           {/* Only where a portfolio actually scopes the content. On /accounts,

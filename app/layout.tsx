@@ -66,7 +66,7 @@ export default function RootLayout({
               Providers — SW registration below stays unconditional. */}
           <OfflineBanner />
           <SiteNav />
-          <div className="flex w-full">
+          <div className="ft-app-shell flex w-full">
             <Sidebar />
             {/* Window-wide content. pb leaves room for the fixed mobile tab bar. */}
             <main className="min-w-0 flex-1 overflow-x-clip px-4 py-7 pb-24 sm:px-8 md:pb-10 lg:px-10">

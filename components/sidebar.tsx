@@ -100,8 +100,8 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 border-r border-[color:var(--line)] bg-[color:var(--paper)]/35 md:block dark:border-zinc-800 ${
-        collapsed ? "w-16" : "w-56"
+      className={`ft-sidebar sticky top-4 m-4 hidden h-[calc(100dvh-2rem)] shrink-0 rounded-2xl border border-[color:var(--line)] bg-[color:var(--paper)] shadow-[0_8px_30px_rgba(32,39,34,.04)] md:block dark:border-zinc-800 ${
+        collapsed ? "w-16" : "w-60"
       } transition-[width] duration-150`}
     >
       <nav data-tour="nav" className="flex h-full flex-col overflow-y-auto p-3">

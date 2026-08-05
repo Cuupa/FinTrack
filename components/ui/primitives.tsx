@@ -149,20 +149,26 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[color:var(--line)] pb-5">
-      <div className="min-w-0">
-        <div className="flex items-center gap-1">
-          <div>
-            <div className="ft-kicker mb-1">FinTrack / workspace</div>
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{title}</h1>
-          </div>
-          {titleAdornment}
-        </div>
-        {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
-        {children}
+    <header className="ft-page-header border-b border-[color:var(--line)] pb-7">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="ft-page-index">FinTrack / workspace</span>
+        <span className="h-px w-10 bg-[color:var(--line)]" />
+        <span className="text-xs text-zinc-400">{new Date().getFullYear()}</span>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-    </div>
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <div>
+              <h1 className="text-4xl leading-none tracking-[-0.045em] sm:text-5xl">{title}</h1>
+            </div>
+            {titleAdornment}
+          </div>
+          {subtitle && <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500">{subtitle}</p>}
+          {children}
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      </div>
+    </header>
   );
 }
 

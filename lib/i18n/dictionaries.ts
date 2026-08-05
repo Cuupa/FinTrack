@@ -40,6 +40,9 @@ export const en = {
   "nav.group.everyday": "Everyday",
   "nav.group.invest": "Investments",
   "nav.group.plan": "Planning",
+  "nav.group.money": "Money",
+  "nav.group.portfolio": "Portfolio",
+  "nav.group.planning": "Planning",
 
   "theme.toggleToDark": "Switch to dark mode",
   "theme.toggleToLight": "Switch to light mode",
@@ -1886,6 +1889,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "nav.group.everyday": "Alltag",
   "nav.group.invest": "Anlagen",
   "nav.group.plan": "Planung",
+  "nav.group.money": "Geld",
+  "nav.group.portfolio": "Portfolio",
+  "nav.group.planning": "Planung",
 
   "theme.toggleToDark": "Zum dunklen Modus wechseln",
   "theme.toggleToLight": "Zum hellen Modus wechseln",
@@ -3733,6 +3739,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "nav.group.everyday": "Día a día",
   "nav.group.invest": "Inversiones",
   "nav.group.plan": "Planificación",
+  "nav.group.money": "Dinero",
+  "nav.group.portfolio": "Cartera",
+  "nav.group.planning": "Planificación",
 
   "theme.toggleToDark": "Cambiar a modo oscuro",
   "theme.toggleToLight": "Cambiar a modo claro",

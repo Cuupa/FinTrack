@@ -43,12 +43,16 @@ body {
 .ft-card { border: 1px solid var(--line) !important; border-radius: .65rem !important; background: var(--paper) !important; box-shadow: 0 5px 18px rgba(32, 39, 34, 0.035) !important; }
 .dark .ft-card { box-shadow: 0 8px 24px rgba(0, 0, 0, .14) !important; }
 .ft-kicker { font-size: .66rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #7c867e; }
+.ft-page-index { font-size: .66rem; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--sage); }
 .dark .ft-kicker { color: #a5afa8; }
 .ft-lime { color: var(--sage); }
 .ft-sidebar-link { border-radius: .4rem !important; }
 .ft-sidebar-link[data-active="true"] { background: var(--paper-muted) !important; color: var(--ink) !important; box-shadow: inset 3px 0 0 var(--sage); }
 .dark .ft-sidebar-link[data-active="true"] { color: var(--foreground) !important; }
-.ft-header { background: color-mix(in srgb, var(--background) 82%, transparent) !important; border-color: var(--line) !important; }
+.ft-header { background: color-mix(in srgb, var(--background) 88%, transparent) !important; border-color: var(--line) !important; }
+.ft-app-shell { align-items: flex-start; }
+.ft-sidebar { position: sticky; }
+.ft-sidebar nav { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .ft-button-primary { background: var(--ink) !important; color: var(--background) !important; border-radius: .4rem !important; box-shadow: none !important; }
 .dark .ft-button-primary { background: #e7e9e1 !important; color: #202722 !important; }
 .ft-button-secondary { border-color: var(--line) !important; border-radius: .4rem !important; background: transparent; }
