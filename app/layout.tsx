@@ -80,7 +80,7 @@ export default function RootLayout({
           <div className="flex w-full">
             <Sidebar />
             {/* Window-wide content. pb leaves room for the fixed mobile tab bar. */}
-            <main className="min-w-0 flex-1 overflow-x-clip px-4 py-5 pb-24 sm:px-6 md:pb-8 lg:px-8">
+            <main className="min-w-0 flex-1 overflow-x-clip px-4 py-7 pb-24 sm:px-8 md:pb-10 lg:px-10">
               {children}
               <LegalFooter />
             </main>

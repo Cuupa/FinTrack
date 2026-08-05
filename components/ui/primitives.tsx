@@ -19,7 +19,7 @@ export function Card({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
+      className={`ft-card rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
       {...rest}
     >
       {children}
@@ -85,9 +85,9 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
+    "ft-button-primary bg-zinc-900 text-white hover:brightness-110 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:brightness-110",
   secondary:
-    "border border-zinc-300 text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800",
+    "ft-button-secondary border border-zinc-300 text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800",
   ghost: "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800",
   danger:
     "border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950",
@@ -149,10 +149,13 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[color:var(--line)] pb-5">
       <div className="min-w-0">
         <div className="flex items-center gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <div>
+            <div className="ft-kicker mb-1">FinTrack / workspace</div>
+            <h1 className="text-3xl font-semibold tracking-[-0.06em] sm:text-4xl">{title}</h1>
+          </div>
           {titleAdornment}
         </div>
         {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}

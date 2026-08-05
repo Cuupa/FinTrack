@@ -7,8 +7,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f1ea;
+  --foreground: #16211d;
+  --ink: #14201c;
+  --paper: #fbfaf6;
+  --paper-muted: #eeece5;
+  --line: rgba(20, 32, 28, 0.12);
+  --lime: #c8f169;
 }
 
 @theme inline {
@@ -19,15 +24,36 @@
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0e1714;
+  --foreground: #f3f1e9;
+  --ink: #f3f1e9;
+  --paper: #15221e;
+  --paper-muted: #1b2b25;
+  --line: rgba(243, 241, 233, 0.13);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background-image: linear-gradient(rgba(20,32,28,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(20,32,28,.035) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
+
+.dark body { background-image: linear-gradient(rgba(243,241,233,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(243,241,233,.025) 1px, transparent 1px); }
+.ft-card { border: 1px solid var(--line) !important; border-radius: 1.25rem !important; background: color-mix(in srgb, var(--paper) 94%, transparent) !important; box-shadow: 0 12px 36px rgba(20, 32, 28, 0.055) !important; }
+.dark .ft-card { box-shadow: 0 16px 40px rgba(0, 0, 0, .18) !important; }
+.ft-kicker { font-size: .68rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #758078; }
+.dark .ft-kicker { color: #9aa99f; }
+.ft-lime { color: #678a14; }
+.dark .ft-lime { color: var(--lime); }
+.ft-sidebar-link { border-radius: .85rem !important; }
+.ft-sidebar-link[data-active="true"] { background: var(--lime) !important; color: var(--ink) !important; box-shadow: 0 5px 0 rgba(20,32,28,.12); }
+.dark .ft-sidebar-link[data-active="true"] { color: #14201c !important; }
+.ft-header { background: color-mix(in srgb, var(--background) 82%, transparent) !important; border-color: var(--line) !important; }
+.ft-button-primary { background: var(--ink) !important; color: var(--background) !important; border-radius: .8rem !important; box-shadow: 0 4px 0 color-mix(in srgb, var(--ink) 72%, transparent); }
+.dark .ft-button-primary { background: var(--lime) !important; color: #14201c !important; }
+.ft-button-secondary { border-color: var(--line) !important; border-radius: .8rem !important; background: color-mix(in srgb, var(--paper) 75%, transparent); }
 
 /* Incognito mode: blur absolute financial figures marked with [data-private].
    PrivacyProvider toggles the `.incognito` class on <html>. The blur is

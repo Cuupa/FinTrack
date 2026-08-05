@@ -53,13 +53,14 @@ export function Sidebar() {
         title={collapsed ? t(l.key) : undefined}
         aria-label={collapsed ? t(l.key) : undefined}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:focus-visible:outline-emerald-400 ${
+        className={`ft-sidebar-link flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:focus-visible:outline-emerald-400 ${
           collapsed ? "justify-center" : ""
         } ${
           active
             ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
             : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
         }`}
+        data-active={active}
       >
         <svg
           viewBox="0 0 24 24"
@@ -99,7 +100,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 border-r border-zinc-200 md:block dark:border-zinc-800 ${
+      className={`sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 border-r border-[color:var(--line)] bg-[color:var(--paper)]/35 md:block dark:border-zinc-800 ${
         collapsed ? "w-16" : "w-56"
       } transition-[width] duration-150`}
     >
