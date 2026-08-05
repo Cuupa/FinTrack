@@ -268,13 +268,7 @@ that account. It carries `savingsPlanId` and no `transferAccountId` (the
 receiving side is a portfolio, not an `Account`), and `isTransfer` counts it as
 a transfer anyway — booking it as spending would report every Sparplan rate as
 consumed. A BOOKING-type plan never debits; deleting the account only clears the
-link. The **Ausgabeaufschlag** of an actively managed fund lives on
-`Asset.frontLoad` (percent), overridable per plan (an explicit `0` means "my
-broker waives it here", so the field is nullable rather than defaulted).
-`lib/finance/front-load.ts` is pure: the amount buys at the OFFER price
-(`NAV x (1 + rate)`) and the surcharge posts as part of the transaction's
-**fee** — never as a lower price, which would leave every chart comparing the
-fund's own series against a price no listing ever printed.
+link.
 
 Instrument resolution is shared: all three add surfaces (add-asset form,
 watchlist add, savings-plan inline new-asset) call `resolveInstrumentByQuery`
@@ -729,11 +723,10 @@ client pages (see `app/assets/[id]/page.tsx`).
 - **A lagging schema narrows the app, never kills it — columns and functions
   included.**
   Round 27 made a missing TABLE survivable (`optional()` + `degraded`), but a
-  missing COLUMN was still fatal: `assets.front_load` (migration 0116) sits in
-  a CORE select, so a database that had not run 0116 failed the assets query,
+  missing COLUMN was still fatal: newly added asset fields sit in a CORE select,
+  so a database missing one of them failed the assets query,
   threw out of the `Promise.all`, and took the WHOLE app down — the depot
-  included, which has nothing to do with the savings plan that column was added
-  for. Every `select` in `SupabaseStore.load` naming a recently added column
+  included. Every `select` in `SupabaseStore.load` naming a recently added column
   therefore goes through `selectTolerant` (`lib/store/supabase-store.ts`,
   exported + unit-tested): base and added columns are separate lists, a
   42703/PGRST204 retries once without the added ones, and what was dropped is
