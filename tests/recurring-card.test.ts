@@ -29,6 +29,7 @@ vi.mock("@/lib/portfolio/portfolio-context", () => ({
     deleteContract: vi.fn(),
     updatePlannedCashflow: mocks.updatePlannedCashflow,
     deletePlannedCashflow: vi.fn(),
+    updateAccount: vi.fn(),
   }),
 }));
 
@@ -76,13 +77,15 @@ describe("RecurringCard due-entry review", () => {
 
   afterEach(cleanup);
 
-  it("uses the planned-booking row design and only exposes amount editing through the pencil", async () => {
+  it("reviews a due booking behind the notice, then books the edited row", async () => {
     render(createElement(RecurringCard));
 
+    // The list is not on screen until the notice is acted on.
     expect(screen.queryByRole("textbox", { name: "recurring.due.amountLabel" })).toBeNull();
-    expect(screen.getByRole("checkbox", { name: /Rent 08\/01\/2026/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "recurring.due.review" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "recurring.due.editAmount" }));
+    const date = screen.getByLabelText("recurring.due.dateLabel") as HTMLInputElement;
+    expect(date.value).toBe("2026-08-01");
     const amount = screen.getByRole("textbox", { name: "recurring.due.amountLabel" });
     fireEvent.change(amount, { target: { value: "0" } });
     expect(
@@ -90,7 +93,6 @@ describe("RecurringCard due-entry review", () => {
     ).toBe(true);
 
     fireEvent.change(amount, { target: { value: "75" } });
-    fireEvent.click(screen.getByRole("button", { name: "recurring.due.confirmAmount" }));
     fireEvent.click(screen.getByRole("button", { name: "recurring.due.book" }));
 
     await waitFor(() => expect(mocks.addSpendingTransaction).toHaveBeenCalledTimes(1));
@@ -102,5 +104,24 @@ describe("RecurringCard due-entry review", () => {
         lastBookedDate: "2026-08-01",
       }),
     );
+  });
+
+  // Skipping settles the occurrence by moving the source's cursor past it —
+  // nothing is posted, and it is never offered again.
+  it("skips a due booking without posting it", async () => {
+    render(createElement(RecurringCard));
+    fireEvent.click(screen.getByRole("button", { name: "recurring.due.review" }));
+    fireEvent.click(screen.getByRole("button", { name: "recurring.due.skip" }));
+    // The row action and the dialog's confirm carry the same word; the dialog
+    // renders last.
+    const confirms = screen.getAllByRole("button", { name: "recurring.due.skip" });
+    fireEvent.click(confirms[confirms.length - 1]!);
+
+    await waitFor(() =>
+      expect(mocks.updatePlannedCashflow).toHaveBeenCalledWith("plan-1", {
+        lastBookedDate: "2026-08-01",
+      }),
+    );
+    expect(mocks.addSpendingTransaction).not.toHaveBeenCalled();
   });
 });

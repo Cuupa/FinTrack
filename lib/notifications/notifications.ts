@@ -11,11 +11,14 @@
 // can close, and a number that never goes down is noise within a week.
 
 import type {
+  Account,
+  AccountBalance,
   Asset,
   Contract,
   PensionContract,
   PlannedCashflow,
   SavingsPlan,
+  SpendingTransaction,
   Transaction,
 } from "../types";
 import { dueOccurrences } from "../finance/savings-plans";
@@ -23,11 +26,14 @@ import { dueBookings } from "../finance/contract-bookings";
 import { duePlannedDates } from "../finance/planned";
 import { duePremiums } from "../finance/pension-bookings";
 import { dueInterest } from "../finance/cash-interest";
+import { dueAccountInterest } from "../finance/account-interest";
+import type { AccountMovements } from "../finance/account-ledger";
 
 export type NotificationKind =
   | "householdInvite"
   | "savingsPlanDue"
   | "cashInterestDue"
+  | "accountInterestDue"
   | "contractDue"
   | "plannedDue"
   | "pensionPremiumDue";
@@ -36,6 +42,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = [
   "householdInvite",
   "savingsPlanDue",
   "cashInterestDue",
+  "accountInterestDue",
   "contractDue",
   "plannedDue",
   "pensionPremiumDue",
@@ -50,6 +57,7 @@ export const NOTIFICATION_ROUTES: Record<NotificationKind, string> = {
   householdInvite: "/household",
   savingsPlanDue: "/portfolio",
   cashInterestDue: "/portfolio",
+  accountInterestDue: "/accounts",
   contractDue: "/accounts",
   plannedDue: "/accounts",
   pensionPremiumDue: "/retirement",
@@ -69,6 +77,13 @@ export interface NotificationInput {
   savingsPlans: readonly SavingsPlan[];
   contracts: readonly Contract[];
   plannedCashflows: readonly PlannedCashflow[];
+  /** Balance accounts, for the interest they accrue or pay (flag `accounts`). */
+  accounts: readonly Account[];
+  accountBalances: readonly AccountBalance[];
+  spendingTransactions: readonly SpendingTransaction[];
+  /** Ledger movements, so the interest is computed off the same carried-forward
+   *  balance the review list shows. */
+  accountMovements?: AccountMovements;
   /** Retirement policies with a Verrechnungskonto (flag `pension`). */
   pensionContracts: readonly PensionContract[];
   /** Pending invitations addressed to this user's own email. */
@@ -88,6 +103,7 @@ export function collectNotifications(input: NotificationInput): NotificationItem
     householdInvite: input.householdInvites,
     savingsPlanDue: countSavingsPlanDue(input),
     cashInterestDue: countCashInterestDue(input),
+    accountInterestDue: countAccountInterestDue(input),
     contractDue: countContractDue(input),
     plannedDue: countPlannedDue(input),
     pensionPremiumDue: countPensionPremiumDue(input),
@@ -130,6 +146,22 @@ function countCashInterestDue(input: NotificationInput): number {
   for (const asset of input.assets) {
     if (asset.type !== "CASH") continue;
     total += dueInterest(asset, txs, input.today).length;
+  }
+  return total;
+}
+
+function countAccountInterestDue(input: NotificationInput): number {
+  if (!input.available.accountInterestDue) return 0;
+  const balances = input.accountBalances as AccountBalance[];
+  let total = 0;
+  for (const account of input.accounts) {
+    total += dueAccountInterest(
+      account,
+      input.spendingTransactions,
+      balances,
+      input.accountMovements,
+      input.today,
+    ).length;
   }
   return total;
 }

@@ -542,8 +542,20 @@ They are not priced from a market, and the rules that bind all of them are:
   lets net worth go **negative**.
 - Spending is a **flow, not a balance**: it deliberately does not fold into
   `netWorthSeries`.
-- Nothing is ever posted silently. Due savings-plan, contract and planned
-  occurrences collect until the user opens a review dialog.
+- Nothing is ever posted silently, and **every due-review surface is built the
+  same way**: an amber "N due" notice under the card's header with a "Prüfen"
+  button, and the review itself directly beneath it — notice and review must
+  never be separated by the card's own table. The review is a sortable table of
+  editable proposals (date and amount/price always-on inputs, sorted by the
+  OCCURRENCE's immutable values so a row never moves while it is being typed
+  in), footed by cancel + "book N". `SavingsPlansCard` and `RecurringCard` both
+  render it.
+- **A due occurrence can be SKIPPED, not only booked or postponed.** Skipping
+  advances the source's cursor past that date without writing a row, so it is
+  never offered again — a `ConfirmDialog` first, because it also settles
+  anything of that source still pending before it (a cursor is one date, not a
+  set). Interest an account accrues leaves no row behind when skipped and so
+  carries its own cursor, `Account.interestSkippedUntil` (migration 0129).
 - **Booking an occurrence is ONE store operation, and repeating it is safe.**
   Writing the row and advancing the `last*Date` marker used to be two calls
   from the component, so a run that failed in between left the row written and
@@ -643,11 +655,13 @@ you here:
 rail) and only stays in `SiteNav` below `md`, where there is no sidebar.
 `useNotifications` (`lib/notifications/`, pure core + one hook) counts what
 actually waits for the user — household invitations, due savings-plan
-occurrences, due cash interest, due contract and planned bookings — and both
-nav renderers show the number on the entry that owns the task. Only ACTIONABLE
-things count, and a kind whose flag is off or whose feature is Pro-locked
-contributes nothing: a count pointing at a teaser is a promise the page cannot
-keep.
+occurrences, due cash interest, due ACCOUNT interest, due contract and planned
+bookings — and both nav renderers show the number on the entry that owns the
+task. Only ACTIONABLE things count, and a kind whose flags are off or whose
+feature is Pro-locked contributes nothing: a count pointing at a teaser is a
+promise the page cannot keep. A kind carries every flag its surface needs
+(`KIND_FLAGS`), not just one — account interest is reviewed in the recurring
+card, which `/accounts` only renders through the spending view.
 
 Note Next 16: dynamic `params` is a `Promise` — unwrap with `use(params)` in
 client pages (see `app/assets/[id]/page.tsx`).

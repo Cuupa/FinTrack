@@ -35,6 +35,20 @@ describe("account interest recurring bookings", () => {
     ]);
   });
 
+  // A skipped occurrence leaves no transaction behind, so the cursor lives on
+  // the account itself — without it the same row came back every reload.
+  it("does not offer a skipped occurrence again", () => {
+    const skipped = account({ interestSkippedUntil: "2024-02-01" });
+    expect(dueAccountInterest(skipped, [], [], new Map(), "2024-02-01")).toEqual([]);
+    expect(nextAccountInterestDate(skipped, [], "2024-02-01")).toBe("2024-03-01");
+  });
+
+  it("resumes after whichever cursor is later, booked or skipped", () => {
+    const booked = tx({ interestAccountId: "a1", date: "2024-03-01" });
+    const acc = account({ interestSkippedUntil: "2024-02-01" });
+    expect(nextAccountInterestDate(acc, [booked], "2024-03-01")).toBe("2024-04-01");
+  });
+
   it("does not offer an already booked occurrence twice", () => {
     const booked = tx({ interestAccountId: "a1", date: "2024-02-01" });
     expect(nextAccountInterestDate(account(), [booked], "2024-02-01")).toBe("2024-03-01");

@@ -177,6 +177,10 @@ export interface Account {
   /** Assumed annual rate (percent) after `rateFixedUntil`. Null = keep
    *  `interestRate` for the whole term. */
   followUpRate?: number | null;
+  /** Newest interest occurrence the user declined, YYYY-MM-DD. Booked postings
+   *  are their own cursor (`SpendingTransaction.interestAccountId`); a skipped
+   *  one leaves no row, so it is remembered here or it stays due forever. */
+  interestSkippedUntil?: string | null;
 }
 
 /**

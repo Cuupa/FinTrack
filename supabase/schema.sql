@@ -538,6 +538,10 @@ alter table public.accounts
     interest_frequency is null
     or interest_frequency in ('MONTHLY', 'QUARTERLY', 'ANNUAL')
   );
+-- Skipped interest postings (migration 0129): the booked rows only record what
+-- WAS posted, so a declined occurrence needs its own cursor or it stays due.
+alter table public.accounts
+  add column if not exists interest_skipped_until date;
 alter table public.accounts
   drop constraint if exists accounts_kind_check;
 alter table public.accounts

@@ -447,7 +447,7 @@ function SavingsPlansCardInner() {
       </div>
       {error && !reviewing && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      {due.length > 0 && (
+      {due.length > 0 && !reviewing && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
           <span className="text-sm text-amber-800 dark:text-amber-300">
             {t("sp.due", { count: due.length })}
@@ -458,104 +458,12 @@ function SavingsPlansCardInner() {
         </div>
       )}
 
-      {creating && (
-        <PlanForm
-          onDone={() => setCreating(false)}
-          onSubmit={async (values) => {
-            await addSavingsPlan({ ...values, active: true, lastRunDate: null });
-            setCreating(false);
-          }}
-          limitReached={limitHint}
-        />
-      )}
-
-      {editing && (
-        <PlanForm
-          key={editing.id}
-          plan={editing}
-          onDone={() => setEditing(null)}
-          onSubmit={async (values) => {
-            await updateSavingsPlan(editing.id, values);
-            setEditing(null);
-          }}
-        />
-      )}
-
-      {plans.length === 0 && !creating ? (
-        <p className="mt-3 text-sm text-zinc-500">{t("sp.empty")}</p>
-      ) : (
-        <div className="mt-3">
-          <Table>
-            <Thead>
-              <Th sort={planSort.sort} sortKey="asset" onSort={planSort.toggle}>
-                {t("sp.asset")}
-              </Th>
-              <Th sort={planSort.sort} sortKey="portfolio" onSort={planSort.toggle}>
-                {t("sp.portfolio")}
-              </Th>
-              <Th sort={planSort.sort} sortKey="type" onSort={planSort.toggle}>
-                {t("sp.bookingType")}
-              </Th>
-              <Th align="right" sort={planSort.sort} sortKey="amount" onSort={planSort.toggle}>
-                {t("sp.amount")}
-              </Th>
-              <Th sort={planSort.sort} sortKey="interval" onSort={planSort.toggle}>
-                {t("sp.interval")}
-              </Th>
-              <Th sort={planSort.sort} sortKey="next" onSort={planSort.toggle}>
-                {t("sp.nextHeader")}
-              </Th>
-              <Th />
-            </Thead>
-            <Tbody>
-              {pager.rows.map(({ plan, asset }) => {
-                const cur = asset.currency || base;
-                const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
-                return (
-                  <Tr key={plan.id}>
-                    <Td className={`max-w-[12rem] truncate font-medium ${muted}`}>{asset.name}</Td>
-                    <Td className={`max-w-[10rem] truncate ${muted}`}>
-                      {portfolioById.get(plan.portfolioId)?.name ?? "—"}
-                    </Td>
-                    <Td className={`whitespace-nowrap ${muted}`}>
-                      {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
-                    </Td>
-                    <Td align="right" className={`tabular-nums ${muted}`} data-private>
-                      {formatCurrency(plan.amount, cur)}
-                    </Td>
-                    <Td className={`whitespace-nowrap ${muted}`}>{t(INTERVAL_KEY[plan.interval])}</Td>
-                    <Td className={`whitespace-nowrap ${muted}`}>
-                      {plan.active ? formatDate(nextOccurrence(plan, todayISO)) : t("sp.paused")}
-                    </Td>
-                    <Td>
-                      <RowActions>
-                        <EditAction
-                          label={t("sp.edit")}
-                          onClick={() => {
-                            setCreating(false);
-                            setEditing((cur) => (cur?.id === plan.id ? null : plan));
-                          }}
-                        />
-                        <PauseAction
-                          label={plan.active ? t("sp.pause") : t("sp.resume")}
-                          paused={!plan.active}
-                          onClick={() => handleToggleActive(plan)}
-                        />
-                        <DeleteAction label={t("sp.deleteTitle")} onClick={() => setDeleting(plan)} />
-                      </RowActions>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-          <TablePagination pager={pager} />
-        </div>
-      )}
-
-      {/* Inline review: due executions with editable booking values. */}
+      {/* Inline review: due executions with editable booking values. It sits
+          directly under the notice that announces it — parking it at the foot
+          of the card put the plan table between "something is waiting" and the
+          thing that was waiting. */}
       {reviewing && (
-        <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mt-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
           <div className="space-y-4">
           <h3 className="text-lg font-semibold">{t("sp.reviewTitle")}</h3>
           <p className="text-sm text-zinc-500">{t("sp.reviewHint")}</p>
@@ -657,6 +565,101 @@ function SavingsPlansCardInner() {
             </Button>
           </div>
           </div>
+        </div>
+      )}
+
+      {creating && (
+        <PlanForm
+          onDone={() => setCreating(false)}
+          onSubmit={async (values) => {
+            await addSavingsPlan({ ...values, active: true, lastRunDate: null });
+            setCreating(false);
+          }}
+          limitReached={limitHint}
+        />
+      )}
+
+      {editing && (
+        <PlanForm
+          key={editing.id}
+          plan={editing}
+          onDone={() => setEditing(null)}
+          onSubmit={async (values) => {
+            await updateSavingsPlan(editing.id, values);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      {plans.length === 0 && !creating ? (
+        <p className="mt-3 text-sm text-zinc-500">{t("sp.empty")}</p>
+      ) : (
+        <div className="mt-3">
+          <Table>
+            <Thead>
+              <Th sort={planSort.sort} sortKey="asset" onSort={planSort.toggle}>
+                {t("sp.asset")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="portfolio" onSort={planSort.toggle}>
+                {t("sp.portfolio")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="type" onSort={planSort.toggle}>
+                {t("sp.bookingType")}
+              </Th>
+              <Th align="right" sort={planSort.sort} sortKey="amount" onSort={planSort.toggle}>
+                {t("sp.amount")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="interval" onSort={planSort.toggle}>
+                {t("sp.interval")}
+              </Th>
+              <Th sort={planSort.sort} sortKey="next" onSort={planSort.toggle}>
+                {t("sp.nextHeader")}
+              </Th>
+              <Th />
+            </Thead>
+            <Tbody>
+              {pager.rows.map(({ plan, asset }) => {
+                const cur = asset.currency || base;
+                const muted = plan.active ? "" : "text-zinc-400 dark:text-zinc-500";
+                return (
+                  <Tr key={plan.id}>
+                    <Td className={`max-w-[12rem] truncate font-medium ${muted}`}>{asset.name}</Td>
+                    <Td className={`max-w-[10rem] truncate ${muted}`}>
+                      {portfolioById.get(plan.portfolioId)?.name ?? "—"}
+                    </Td>
+                    <Td className={`whitespace-nowrap ${muted}`}>
+                      {t((plan.bookingType ?? "BUY") === "BOOKING" ? "tx.booking" : "tx.buy")}
+                    </Td>
+                    <Td align="right" className={`tabular-nums ${muted}`} data-private>
+                      {formatCurrency(plan.amount, cur)}
+                    </Td>
+                    <Td className={`whitespace-nowrap ${muted}`}>{t(INTERVAL_KEY[plan.interval])}</Td>
+                    <Td className={`whitespace-nowrap ${muted}`}>
+                      {plan.active ? formatDate(nextOccurrence(plan, todayISO)) : t("sp.paused")}
+                    </Td>
+                    <Td>
+                      <RowActions>
+                        <EditAction
+                          label={t("sp.edit")}
+                          onClick={() => {
+                            setCreating(false);
+                            setEditing((cur) => (cur?.id === plan.id ? null : plan));
+                          }}
+                        />
+                        <PauseAction
+                          label={plan.active ? t("sp.pause") : t("sp.resume")}
+                          paused={!plan.active}
+                          onClick={() => handleToggleActive(plan)}
+                        />
+                        <DeleteAction label={t("sp.deleteTitle")} onClick={() => setDeleting(plan)} />
+                      </RowActions>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
+          <TablePagination pager={pager} />
         </div>
       )}
 

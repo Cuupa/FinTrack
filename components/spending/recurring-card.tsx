@@ -26,7 +26,13 @@ import { nowDateTimeLocal } from "@/lib/finance/dates";
 import { nextBooking as nextContractBooking, pendingBookings } from "@/lib/finance/contract-bookings";
 import { duePlannedBookings, nextPlannedOccurrence } from "@/lib/finance/planned";
 import { detectRecurringCandidates, type RecurringCandidate } from "@/lib/finance/recurring";
-import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatInputDecimal,
+  parseDecimal,
+  stripLeadingZero,
+} from "@/lib/format";
 import { Button, Card } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
@@ -55,14 +61,20 @@ import {
   dueAccountInterest,
   nextAccountInterestDate,
 } from "@/lib/finance/account-interest";
-import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
+import {
+  DeleteAction,
+  EditAction,
+  PauseAction,
+  RowActions,
+  SkipAction,
+} from "@/components/ui/row-actions";
 
 type SortKey = "name" | "amount" | "target" | "interval" | "next";
 
-/** Inline edit boxes in the due list: quiet until focused, so the review list
- *  still reads as a list and not as a form. */
+/** Review-row inputs, same weight as the savings-plan review's: the two
+ *  surfaces do the same job and used to look nothing alike. */
 const dueInputCls =
-  "rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900";
+  "w-28 rounded-sm border border-zinc-300 bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 /** One row of the merged list, whichever entity produced it. */
 interface RecurringRow {
@@ -117,6 +129,7 @@ export function RecurringCard() {
     deleteContract,
     updatePlannedCashflow,
     deletePlannedCashflow,
+    updateAccount,
   } = usePortfolio();
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -128,17 +141,21 @@ export function RecurringCard() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [reviewing, setReviewing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<RecurringRow | null>(null);
+  const [confirmSkip, setConfirmSkip] = useState<DueRow | null>(null);
   const [editingRow, setEditingRow] = useState<RecurringRow | null>(null);
   const [editingBusy, setEditingBusy] = useState(false);
   // A due occurrence is a PROPOSAL, not a receipt: the rate rose, the salary
   // carried a bonus, the charge landed two days late. Date and amount are
   // therefore editable per row before anything is posted, keyed by occurrence.
   const [edits, setEdits] = useState<Record<string, { date?: string; amount?: string }>>({});
-  const [editingAmounts, setEditingAmounts] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const sort = useSort<SortKey>("next");
+  // Sorted by the OCCURRENCE's own date and planned amount, never by the
+  // editable ones: reordering the list while the user types in a cell would
+  // move the field out from under them (same rule as the savings-plan review).
+  const dueSort = useSort<"date" | "name" | "amount">("date");
 
   const accountsById = useMemo(
     () => new Map(data.accounts.map((a) => [a.id, a])),
@@ -280,15 +297,16 @@ export function RecurringCard() {
         });
       }
     }
-    return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, data.spendingTransactions, movements, todayIso, t]);
-
-  const selected = due.filter((d) => !excluded.has(d.key));
+    return dueSort.apply(out, (d, key) =>
+      key === "name" ? d.name : key === "amount" ? d.amount : d.date,
+    );
+  }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, data.spendingTransactions, movements, todayIso, t, dueSort]);
 
   /** The date the row will post on: the occurrence's own day unless edited. */
   const dueDateOf = (d: DueRow) => edits[d.key]?.date ?? d.date;
   /** Always the magnitude — the sign belongs to the entry, not to this box. */
-  const dueAmountText = (d: DueRow) => edits[d.key]?.amount ?? String(Math.abs(d.amount));
+  const dueAmountText = (d: DueRow) =>
+    edits[d.key]?.amount ?? formatInputDecimal(Math.abs(d.amount), 2);
   const dueAmountOf = (d: DueRow) => {
     const value = parseDecimal(dueAmountText(d));
     if (!Number.isFinite(value) || value <= 0) return null;
@@ -296,34 +314,21 @@ export function RecurringCard() {
   };
   const editRow = (key: string, patch: { date?: string; amount?: string }) =>
     setEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
-  function cancelAmountEdit(key: string) {
-    setEdits((prev) => {
-      const next = { ...prev };
-      if (next[key]) {
-        next[key] = { ...next[key] };
-        delete next[key].amount;
-        if (Object.keys(next[key]!).length === 0) delete next[key];
-      }
-      return next;
-    });
-    setEditingAmounts((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  }
-
-  function confirmAmountEdit(key: string) {
-    setEditingAmounts((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  }
   // Booking with a typo'd amount would post a row that has to be corrected
   // afterwards, so an invalid edit blocks the whole run rather than reverting
   // silently to the planned figure.
-  const editsValid = selected.every((d) => dueAmountOf(d) !== null && dueDateOf(d));
+  const editsValid = due.every((d) => dueAmountOf(d) !== null && dueDateOf(d));
+
+  function openReview() {
+    setError(null);
+    setEdits({});
+    setReviewing(true);
+  }
+
+  function closeReview() {
+    setReviewing(false);
+    setEdits({});
+  }
 
   function saveFailed(err: unknown, fallback: string): string {
     if (isStorageFullError(err)) return t("common.storageFull");
@@ -412,7 +417,30 @@ export function RecurringCard() {
   }
 
   /**
-   * Posts the selected occurrences, then advances each source's
+   * Settles an occurrence WITHOUT posting it: the source's cursor moves past
+   * its date, so it is never offered again. Everything still pending before
+   * that date is settled with it — the cursor is one date, not a set — which
+   * is what the confirmation says out loud.
+   */
+  async function skipRow(d: DueRow) {
+    setBusy(true);
+    setError(null);
+    try {
+      if (d.kind === "contract") await updateContract(d.sourceId, { lastBookedDate: d.date });
+      else if (d.kind === "planned")
+        await updatePlannedCashflow(d.sourceId, { lastBookedDate: d.date });
+      // Interest leaves no row behind when skipped, so it carries its own
+      // cursor on the account (migration 0129).
+      else await updateAccount(d.sourceId, { interestSkippedUntil: d.date });
+    } catch (err) {
+      setError(saveFailed(err, t("recurring.due.skipError")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Posts the reviewed occurrences, then advances each source's
    * `lastBookedDate`. Transactions first, source second: replaying a booking
    * that already exists would double-charge, while a failure between the two
    * only leaves the row looking due again, which the next run resolves.
@@ -423,7 +451,7 @@ export function RecurringCard() {
     try {
       const newestContract = new Map<string, string>();
       const newestPlanned = new Map<string, string>();
-      for (const d of selected) {
+      for (const d of due) {
         const recurringId = d.kind === "contract" ? d.sourceId : null;
         const plannedId = d.kind === "planned" ? d.sourceId : null;
         const amount = dueAmountOf(d);
@@ -505,9 +533,7 @@ export function RecurringCard() {
       for (const [id, lastBookedDate] of newestPlanned) {
         await updatePlannedCashflow(id, { lastBookedDate });
       }
-      setExcluded(new Set());
-      setEdits({});
-      setEditingAmounts(new Set());
+      closeReview();
       showToast(t("spending.form.saved"));
     } catch (err) {
       setError(saveFailed(err, t("recurring.bookError")));
@@ -529,6 +555,117 @@ export function RecurringCard() {
             the switch. A row's renewal date, notice period and insurance fields
             are edited from the row itself. */}
       </div>
+      {error && !reviewing && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {/* Nothing is ever posted silently. The notice and the review it opens sit
+          together at the top of the card: the due list used to hang below the
+          table, so "there is something waiting" and the thing waiting were
+          separated by everything else the card holds. */}
+      {due.length > 0 && !reviewing && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
+          <span className="text-sm text-amber-800 dark:text-amber-300">
+            {t("recurring.due.banner", { n: due.length })}
+          </span>
+          <Button size="sm" variant="primary" onClick={openReview}>
+            {t("recurring.due.review")}
+          </Button>
+        </div>
+      )}
+
+      {reviewing && due.length > 0 && (
+        <div className="mt-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{t("recurring.due.reviewTitle")}</h3>
+            <p className="text-sm text-zinc-500">{t("recurring.due.reviewHint")}</p>
+            <Table>
+              <Thead>
+                <Th sort={dueSort.sort} sortKey="date" onSort={dueSort.toggle}>
+                  {t("recurring.due.dateLabel")}
+                </Th>
+                <Th sort={dueSort.sort} sortKey="name" onSort={dueSort.toggle}>
+                  {t("recurring.col.name")}
+                </Th>
+                <Th align="right" sort={dueSort.sort} sortKey="amount" onSort={dueSort.toggle}>
+                  {t("recurring.due.amountLabel")}
+                </Th>
+                <Th />
+              </Thead>
+              <Tbody>
+                {due.map((d) => {
+                  const currency = accountsById.get(d.accountId)?.currency || base;
+                  const amount = dueAmountOf(d);
+                  const interest =
+                    amount === null ? 0 : Math.min(d.interestAmount, Math.abs(amount));
+                  return (
+                    <Tr key={d.key}>
+                      <Td>
+                        <input
+                          type="date"
+                          value={dueDateOf(d)}
+                          onChange={(e) => editRow(d.key, { date: e.target.value })}
+                          aria-label={t("recurring.due.dateLabel")}
+                          className={`${dueInputCls} w-36 text-left`}
+                        />
+                      </Td>
+                      <Td className="font-medium" data-private>
+                        {d.name}
+                        {interest > 0 && amount !== null && Math.abs(amount) > interest && (
+                          <div className="text-xs font-normal text-zinc-500">
+                            {t("recurring.split.hint", {
+                              interest: formatCurrency(interest, currency),
+                              principal: formatCurrency(Math.abs(amount) - interest, currency),
+                            })}
+                          </div>
+                        )}
+                      </Td>
+                      <Td align="right" className="tabular-nums">
+                        <input
+                          inputMode="decimal"
+                          value={dueAmountText(d)}
+                          onChange={(e) =>
+                            editRow(d.key, { amount: stripLeadingZero(e.target.value) })
+                          }
+                          aria-label={t("recurring.due.amountLabel")}
+                          className={`${dueInputCls} ${
+                            amount === null
+                              ? "border-red-500 dark:border-red-500"
+                              : d.amount < 0
+                                ? "text-red-600 dark:text-red-400"
+                                : ""
+                          }`}
+                          data-private
+                        />
+                      </Td>
+                      <Td>
+                        <RowActions>
+                          <SkipAction
+                            label={t("recurring.due.skip")}
+                            disabled={busy}
+                            onClick={() => setConfirmSkip(d)}
+                          />
+                        </RowActions>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" disabled={busy} onClick={closeReview}>
+                {t("tx.cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={busy || !editsValid}
+                onClick={() => void bookSelected()}
+              >
+                {t("recurring.due.book", { n: due.length })}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Charges that look recurring but are not tracked as such yet. Accepting
           one turns it into an entry and back-links the transactions it was
@@ -660,143 +797,6 @@ export function RecurringCard() {
         </div>
       )}
 
-      {/* Nothing is ever posted silently: due occurrences collect here and each
-          one is deselectable, since a past-dated start can catch up a year of
-          charges and not all of them are necessarily real. */}
-      {due.length > 0 && (
-        <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-          <h3 className="text-sm font-semibold">{t("recurring.due.title", { n: due.length })}</h3>
-          <ul className="mt-3 space-y-2">
-            {due.map((d) => {
-              const checked = !excluded.has(d.key);
-              const currency = accountsById.get(d.accountId)?.currency || base;
-              const amount = dueAmountOf(d);
-              const interest = amount === null ? 0 : Math.min(d.interestAmount, Math.abs(amount));
-              return (
-                <li
-                  key={d.key}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
-                >
-                  <label className="flex flex-1 cursor-pointer items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        setExcluded((prev) => {
-                          const next = new Set(prev);
-                          if (checked) next.add(d.key);
-                          else next.delete(d.key);
-                          return next;
-                        })
-                      }
-                      className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
-                    />
-                    <span className={checked ? "" : "text-zinc-400 line-through"} data-private>
-                      {d.name} <span className="text-zinc-500">{formatDate(d.date)}</span>
-                      {interest > 0 && amount !== null && Math.abs(amount) > interest && (
-                        <span className="block text-xs text-zinc-500">
-                          {t("recurring.split.hint", {
-                            interest: formatCurrency(interest, currency),
-                            principal: formatCurrency(Math.abs(amount) - interest, currency),
-                          })}
-                        </span>
-                      )}
-                    </span>
-                  </label>
-                  <div className="flex min-w-0 items-center justify-end gap-2 sm:justify-start">
-                    {editingAmounts.has(d.key) ? (
-                      <>
-                        <input
-                          autoFocus
-                          inputMode="decimal"
-                          value={dueAmountText(d)}
-                          onChange={(e) => editRow(d.key, { amount: stripLeadingZero(e.target.value) })}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && amount !== null) confirmAmountEdit(d.key);
-                            if (e.key === "Escape") cancelAmountEdit(d.key);
-                          }}
-                          aria-label={t("recurring.due.amountLabel")}
-                          className={`${dueInputCls} w-full min-w-0 text-right tabular-nums sm:w-28 ${
-                            amount === null ? "border-red-500 dark:border-red-500" : ""
-                          } ${
-                            !checked
-                              ? "text-zinc-400 line-through"
-                              : d.amount < 0
-                                ? "text-red-600 dark:text-red-400"
-                                : ""
-                          }`}
-                          data-private
-                        />
-                        <RowActions>
-                          <DeleteAction
-                            label={t("recurring.due.cancelAmount")}
-                            onClick={() => cancelAmountEdit(d.key)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => confirmAmountEdit(d.key)}
-                            disabled={amount === null}
-                            className="rounded px-1.5 py-1 text-zinc-400 transition-colors hover:text-zinc-700 disabled:opacity-40 dark:hover:text-zinc-200"
-                            aria-label={t("recurring.due.confirmAmount")}
-                            title={t("recurring.due.confirmAmount")}
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              aria-hidden
-                              className="inline h-3.5 w-3.5"
-                            >
-                              <path d="m5 12 4 4L19 6" />
-                            </svg>
-                          </button>
-                        </RowActions>
-                      </>
-                    ) : (
-                      <span
-                        className={`min-w-28 text-right tabular-nums ${
-                          !checked
-                            ? "text-zinc-400 line-through"
-                            : d.amount < 0
-                              ? "text-red-600 dark:text-red-400"
-                              : ""
-                        }`}
-                        data-private
-                      >
-                        {formatCurrency(amount ?? d.amount, currency)}
-                      </span>
-                    )}
-                    {!editingAmounts.has(d.key) && (
-                      <RowActions>
-                        <EditAction
-                          label={t("recurring.due.editAmount")}
-                          onClick={() =>
-                            setEditingAmounts((prev) => new Set(prev).add(d.key))
-                          }
-                        />
-                      </RowActions>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <Button
-            className="mt-4"
-            variant="primary"
-            disabled={busy || selected.length === 0 || !editsValid}
-            onClick={() => void bookSelected()}
-          >
-            {t("recurring.due.book", { n: selected.length })}
-          </Button>
-        </div>
-      )}
-
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-
       {editingRow?.kind === "contract" && (
         <Modal open onClose={() => setEditingRow(null)} maxWidthClass="max-w-5xl">
           <Card>
@@ -863,6 +863,26 @@ export function RecurringCard() {
           if (target) void removeRow(target);
         }}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmSkip !== null}
+        title={t("recurring.due.skipTitle")}
+        message={
+          confirmSkip
+            ? t("recurring.due.skipMessage", {
+                name: confirmSkip.name,
+                date: formatDate(confirmSkip.date),
+              })
+            : undefined
+        }
+        confirmLabel={t("recurring.due.skip")}
+        onConfirm={() => {
+          const target = confirmSkip;
+          setConfirmSkip(null);
+          if (target) void skipRow(target);
+        }}
+        onCancel={() => setConfirmSkip(null)}
       />
     </Card>
   );

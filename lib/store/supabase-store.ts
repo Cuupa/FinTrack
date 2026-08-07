@@ -230,6 +230,8 @@ interface AccountRow {
   follow_up_rate?: number | string | null;
   // Optional: a DB that predates migration 0104 doesn't return this.
   interest_frequency?: Account["interestFrequency"] | null;
+  // Optional: a DB that predates migration 0129 doesn't return this.
+  interest_skipped_until?: string | null;
 }
 
 function accountFromRow(r: AccountRow): Account {
@@ -248,6 +250,7 @@ function accountFromRow(r: AccountRow): Account {
     minPayment: r.min_payment != null ? Number(r.min_payment) : null,
     rateFixedUntil: r.rate_fixed_until ?? null,
     followUpRate: r.follow_up_rate != null ? Number(r.follow_up_rate) : null,
+    interestSkippedUntil: r.interest_skipped_until ?? null,
   };
 }
 
@@ -595,6 +598,7 @@ export class SupabaseStore implements DataStore {
           "min_payment",
           "rate_fixed_until",
           "follow_up_rate",
+          "interest_skipped_until",
         ],
       ),
       this.supabase
@@ -1475,6 +1479,7 @@ export class SupabaseStore implements DataStore {
         min_payment: input.minPayment ?? null,
         rate_fixed_until: input.rateFixedUntil ?? null,
         follow_up_rate: input.followUpRate ?? null,
+        interest_skipped_until: input.interestSkippedUntil ?? null,
       })
       .select("id")
       .single();
@@ -1495,6 +1500,8 @@ export class SupabaseStore implements DataStore {
     if (patch.minPayment !== undefined) upd.min_payment = patch.minPayment;
     if (patch.rateFixedUntil !== undefined) upd.rate_fixed_until = patch.rateFixedUntil;
     if (patch.followUpRate !== undefined) upd.follow_up_rate = patch.followUpRate;
+    if (patch.interestSkippedUntil !== undefined)
+      upd.interest_skipped_until = patch.interestSkippedUntil;
     if (Object.keys(upd).length === 0) return;
     // No .eq("user_id", ...): RLS permits editing a household peer's account
     // (migration 0092) too, and the row's user_id is left unchanged either

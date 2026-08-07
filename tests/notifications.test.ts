@@ -7,7 +7,7 @@ import {
   type NotificationInput,
   type NotificationKind,
 } from "../lib/notifications/notifications";
-import type { Asset, Contract, PlannedCashflow, SavingsPlan } from "../lib/types";
+import type { Account, Asset, Contract, PlannedCashflow, SavingsPlan } from "../lib/types";
 
 const TODAY = "2026-08-02";
 
@@ -87,6 +87,9 @@ function input(over: Partial<NotificationInput> = {}): NotificationInput {
     contracts: [],
     plannedCashflows: [],
     pensionContracts: [],
+    accounts: [],
+    accountBalances: [],
+    spendingTransactions: [],
     householdInvites: 0,
     available: allAvailable(),
     ...over,
@@ -132,6 +135,28 @@ describe("collectNotifications", () => {
       { kind: "contractDue", count: 3 },
       { kind: "plannedDue", count: 2 },
     ]);
+  });
+
+  // Interest an account accrues is a due booking like any other, and used to
+  // reach the review list without ever reaching the nav.
+  it("counts due account interest", () => {
+    const acc: Account = {
+      id: "acc1",
+      name: "Savings",
+      kind: "savings",
+      currency: null,
+      isLiability: false,
+      openingBalance: 1000,
+      openedOn: "2026-07-02",
+      interestRate: 12,
+      interestFrequency: "MONTHLY",
+    };
+    expect(collectNotifications(input({ accounts: [acc] }))).toEqual([
+      { kind: "accountInterestDue", count: 1 },
+    ]);
+    expect(
+      collectNotifications(input({ accounts: [{ ...acc, interestSkippedUntil: "2026-08-02" }] })),
+    ).toEqual([]);
   });
 
   // A flag that is off has no surface to act on, and a Pro-locked feature shows

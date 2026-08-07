@@ -41,6 +41,21 @@ export function accountInterestAmount(
   return account.isLiability ? -amount : amount;
 }
 
+/** Newest occurrence already settled: booked or explicitly skipped. Both close
+ *  an occurrence, so the search resumes after whichever is later. */
+function interestCursor(
+  account: Account,
+  transactions: readonly SpendingTransaction[],
+): string | null {
+  const lastBooked = transactions
+    .filter((tx) => tx.interestAccountId === account.id)
+    .reduce<string | null>((last, tx) => (!last || tx.date > last ? tx.date : last), null);
+  const skipped = account.interestSkippedUntil ?? null;
+  if (!lastBooked) return skipped;
+  if (!skipped) return lastBooked;
+  return lastBooked > skipped ? lastBooked : skipped;
+}
+
 export function dueAccountInterest(
   account: Account,
   transactions: readonly SpendingTransaction[],
@@ -49,9 +64,7 @@ export function dueAccountInterest(
   asOf = todayDate(),
 ): DueAccountInterest[] {
   if (!account.interestRate || account.interestRate <= 0) return [];
-  const lastBooked = transactions
-    .filter((tx) => tx.interestAccountId === account.id)
-    .reduce<string | null>((last, tx) => (!last || tx.date > last ? tx.date : last), null);
+  const lastBooked = interestCursor(account, transactions);
   let candidate: string | null = null;
   for (let occurrence = 1; occurrence <= MAX_PERIODS; occurrence++) {
     const date = accountInterestDate(account, occurrence);
@@ -72,9 +85,7 @@ export function nextAccountInterestDate(
   asOf = todayDate(),
 ): string | null {
   if (!account.interestRate || account.interestRate <= 0) return null;
-  const lastBooked = transactions
-    .filter((tx) => tx.interestAccountId === account.id)
-    .reduce<string | null>((last, tx) => (!last || tx.date > last ? tx.date : last), null);
+  const lastBooked = interestCursor(account, transactions);
   for (let occurrence = 1; occurrence <= MAX_PERIODS; occurrence++) {
     const date = accountInterestDate(account, occurrence);
     if (date >= asOf && (!lastBooked || date > lastBooked)) return date;

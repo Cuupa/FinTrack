@@ -7,6 +7,7 @@
 import { useMemo } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useHousehold } from "@/lib/household/household-context";
+import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { useFeatureFlags, type FeatureFlag } from "@/lib/flags/flags-context";
 import { today } from "@/lib/finance/dates";
 import {
@@ -18,14 +19,18 @@ import {
   type NotificationKind,
 } from "./notifications";
 
-/** The flag each kind's surface lives behind. */
-const KIND_FLAG: Record<NotificationKind, FeatureFlag> = {
-  householdInvite: "household",
-  savingsPlanDue: "savingsPlans",
-  cashInterestDue: "cashInterest",
-  contractDue: "contracts",
-  plannedDue: "plannedCashflow",
-  pensionPremiumDue: "pension",
+/** The flags each kind's surface lives behind — all of them must be on, since
+ *  a review list nested in another feature's page needs both to be reachable. */
+const KIND_FLAGS: Record<NotificationKind, FeatureFlag[]> = {
+  householdInvite: ["household"],
+  savingsPlanDue: ["savingsPlans"],
+  cashInterestDue: ["cashInterest"],
+  // Reviewed in the recurring card, which /accounts renders through the
+  // spending view.
+  accountInterestDue: ["accounts", "spending"],
+  contractDue: ["contracts"],
+  plannedDue: ["plannedCashflow"],
+  pensionPremiumDue: ["pension"],
 };
 
 export interface Notifications {
@@ -39,13 +44,16 @@ export function useNotifications(): Notifications {
   const { data } = usePortfolio();
   const { receivedInvites } = useHousehold();
   const { getFeature } = useFeatureFlags();
+  const movements = useAccountMovements();
   const todayIso = today();
 
   const available = useMemo(() => {
     const out = {} as Record<NotificationKind, boolean>;
     for (const kind of NOTIFICATION_KINDS) {
-      const { enabled, locked } = getFeature(KIND_FLAG[kind]);
-      out[kind] = enabled && !locked;
+      out[kind] = KIND_FLAGS[kind].every((flag) => {
+        const { enabled, locked } = getFeature(flag);
+        return enabled && !locked;
+      });
     }
     return out;
   }, [getFeature]);
@@ -59,6 +67,10 @@ export function useNotifications(): Notifications {
       contracts: data.contracts,
       plannedCashflows: data.plannedCashflows,
       pensionContracts: data.pensionContracts,
+      accounts: data.accounts,
+      accountBalances: data.accountBalances,
+      spendingTransactions: data.spendingTransactions,
+      accountMovements: movements,
       householdInvites: receivedInvites.length,
       available,
     });
@@ -71,6 +83,10 @@ export function useNotifications(): Notifications {
     data.contracts,
     data.plannedCashflows,
     data.pensionContracts,
+    data.accounts,
+    data.accountBalances,
+    data.spendingTransactions,
+    movements,
     receivedInvites.length,
     available,
   ]);

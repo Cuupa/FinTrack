@@ -339,18 +339,6 @@ export function SpendingView({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end" data-tour="spending-form">
-        <Button
-          variant="primary"
-          onClick={() => {
-            setError(null);
-            setAdding(true);
-          }}
-        >
-          {t("spending.form.title")}
-        </Button>
-      </div>
-
       <Modal
         open={adding}
         onClose={() => {
@@ -585,9 +573,11 @@ export function SpendingView({
       <RecurringCard />
 
       <Card data-tour="spending-table">
-        <div className="flex items-center justify-between">
+        {/* Every button that acts on this list lives in this list's header
+            (owner rule) -- "add booking" used to float above the card it fills. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">{t("spending.list.title")}</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2" data-tour="spending-form">
             <Button size="sm" variant="secondary" onClick={() => setImporting(true)}>
               {t("spending.import.button")}
             </Button>
@@ -596,6 +586,16 @@ export function SpendingView({
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setManagingCategories(true)}>
               {t("spending.categories.manage")}
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setError(null);
+                setAdding(true);
+              }}
+            >
+              {t("spending.form.title")}
             </Button>
           </div>
         </div>

@@ -136,6 +136,29 @@ export function HistoryAction({ label, onClick, disabled }: ActionProps) {
   );
 }
 
+/**
+ * Passes over a due occurrence for good: it is neither booked nor left waiting.
+ * The skip-forward glyph, because an x here would read as "delete the entry"
+ * and the entry itself survives — only this one occurrence is closed.
+ */
+export function SkipAction({ label, onClick, disabled }: ActionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={QUIET}
+      aria-label={label}
+      title={label}
+    >
+      <Icon>
+        <path d="M5 4l10 8-10 8V4z" fill="currentColor" stroke="none" />
+        <path d="M19 5v14" />
+      </Icon>
+    </button>
+  );
+}
+
 /** Pause when running, resume when paused -- one button, `paused` picks the
  *  glyph, the caller picks the word. */
 export function PauseAction({
