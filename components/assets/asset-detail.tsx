@@ -54,7 +54,7 @@ import { assetAnnualStats } from "@/lib/finance/stats";
 import { nextOccurrence } from "@/lib/finance/savings-plans";
 import { useHistory } from "@/lib/history/use-history";
 import { fetchLivePrice } from "@/lib/live/fetch-price";
-import { Button, Card, Stat } from "@/components/ui/primitives";
+import { Button, Card, Stat, StatRow } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CopyValue } from "@/components/ui/copy-value";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
@@ -703,51 +703,41 @@ export function AssetDetail({
       {/* Advanced metrics — directly under the chart. Zero/empty for a
           not-(yet-)held instrument (no transactions), same as any freshly
           added holding. */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <Stat
-            label={t("common.marketValue")}
-            value={formatCurrency(summary.marketValue, currency)}
-            info={t("tip.marketValue")}
-            isPrivate
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("stat.unrealized")}
-            value={formatCurrency(summary.unrealizedPL, currency)}
-            sub={formatPercent(summary.unrealizedPLPercent)}
-            valueClassName={plColor(summary.unrealizedPL)}
-            info={t("tip.unrealized")}
-            isPrivate
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("stat.realized")}
-            value={formatCurrency(summary.realizedPL, currency)}
-            valueClassName={plColor(summary.realizedPL)}
-            info={t("tip.realized")}
-            isPrivate
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("asset.metric.irr")}
-            value={irr === null ? "—" : formatPercent(irr)}
-            valueClassName={irr === null ? "" : plColor(irr)}
-            info={t("asset.metric.irrTip")}
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("asset.metric.sharpe")}
-            value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
-            valueClassName={annual?.sharpe != null ? plColor(annual.sharpe) : ""}
-            info={t("asset.metric.sharpeTip")}
-          />
-        </Card>
-      </div>
+      <StatRow cols={5}>
+        <Stat
+          label={t("common.marketValue")}
+          value={formatCurrency(summary.marketValue, currency)}
+          info={t("tip.marketValue")}
+          isPrivate
+        />
+        <Stat
+          label={t("stat.unrealized")}
+          value={formatCurrency(summary.unrealizedPL, currency)}
+          sub={formatPercent(summary.unrealizedPLPercent)}
+          valueClassName={plColor(summary.unrealizedPL)}
+          info={t("tip.unrealized")}
+          isPrivate
+        />
+        <Stat
+          label={t("stat.realized")}
+          value={formatCurrency(summary.realizedPL, currency)}
+          valueClassName={plColor(summary.realizedPL)}
+          info={t("tip.realized")}
+          isPrivate
+        />
+        <Stat
+          label={t("asset.metric.irr")}
+          value={irr === null ? "—" : formatPercent(irr)}
+          valueClassName={irr === null ? "" : plColor(irr)}
+          info={t("asset.metric.irrTip")}
+        />
+        <Stat
+          label={t("asset.metric.sharpe")}
+          value={annual?.sharpe != null ? formatNumber(annual.sharpe, 2) : "—"}
+          valueClassName={annual?.sharpe != null ? plColor(annual.sharpe) : ""}
+          info={t("asset.metric.sharpeTip")}
+        />
+      </StatRow>
 
       {/* Details + Top 10 holdings (ETF look-through) share one row, Details
           twice as wide (2:1). */}

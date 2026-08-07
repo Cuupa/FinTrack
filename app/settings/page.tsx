@@ -3,7 +3,7 @@
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { SettingsView } from "@/components/settings/settings-view";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
-import { Card } from "@/components/ui/primitives";
+import { Card, PageHeader } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsPage() {
@@ -15,10 +15,7 @@ export default function SettingsPage() {
   const { loading } = usePortfolio();
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("settings.title")}</h1>
-        <p className="text-sm text-zinc-500">{t("settings.subtitle")}</p>
-      </div>
+      <PageHeader title={t("settings.title")} subtitle={t("settings.subtitle")} />
       {loading ? (
         <Card>
           <Skeleton className="h-96 w-full" />

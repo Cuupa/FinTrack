@@ -168,6 +168,7 @@ export const en = {
 
   "settings.title": "Settings",
   "settings.subtitle": "Your profile, language, and security.",
+  "settings.profileSection": "Profile",
   "settings.tabGeneral": "General",
   "settings.tabFees": "Fees & taxes",
   "settings.tabAi": "AI assistant",
@@ -2524,6 +2525,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "settings.title": "Einstellungen",
   "settings.subtitle": "Dein Profil, deine Sprache und Sicherheit.",
+  "settings.profileSection": "Profil",
   "settings.tabGeneral": "Allgemein",
   "settings.tabFees": "Gebühren und Steuern",
   "settings.tabAi": "KI-Assistent",
@@ -4885,6 +4887,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "settings.title": "Ajustes",
   "settings.subtitle": "Tu perfil, idioma y seguridad.",
+  "settings.profileSection": "Perfil",
   "settings.tabGeneral": "General",
   "settings.tabFees": "Comisiones e impuestos",
   "settings.tabAi": "Asistente de IA",

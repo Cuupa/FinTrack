@@ -2,6 +2,25 @@
 
 ## Done
 
+- **2026-08-07 — TODO "Design v2" (first pass)** — session `429a4517`, one
+  Sonnet subworker for the call-site conversions (verified by diff). The app
+  rendered a KPI row two ways: nine surfaces grouped the figures in one card,
+  five gave every figure its own, and the two shapes sat two tabs apart on
+  /analysis. `StatRow` (`components/ui/primitives.tsx`) is now the only way to
+  build one; /dividends, /analysis Trades, /simulation results and the asset
+  detail's metrics moved onto it, dividends' skeleton included so the loading
+  state matches the loaded one. /settings dropped its hairline-divided single
+  card for one card per section (matching the two cards already above it), uses
+  `PageHeader` + `SectionTitle`, pairs its short fields, and widened to
+  `max-w-3xl`; its first card no longer repeats the page title
+  (`settings.profileSection`). A lone tag group on Analysis "Eigene" now fills
+  the card instead of sitting in the left half of a fixed 2-column grid.
+  Deliberately NOT done: converting the 75 bare `<h2 class="text-lg
+  font-semibold">` to `SectionTitle` (identical output, pure churn) and
+  unifying chart-timeframe placement (the two hero cards put it with the chart
+  it drives, which is defensible). Verified in Guest Mode at 1920x1080 with a
+  seeded Alphabet position; no console errors.
+
 - **2026-08-07 — TODO "Offen" (the Monte Carlo counts the pension)** — session
   `80fa00a4`, no subworker. The engine already subtracted a pension bridge, but
   only a FIRE link could hand it one. `usePensionBridge` (`lib/pension/`) is now

@@ -19,7 +19,7 @@ import type {
   PortfolioMonteCarloParams,
 } from "@/lib/finance/monte-carlo";
 import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { Button, Card, Stat, StatRow, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "@/components/ui/tabs";
 import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
@@ -643,35 +643,29 @@ export function MonteCarloPanel() {
       <div className="space-y-6 lg:col-span-2">
         {result && final ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Card>
-                <Stat
-                  label={t("sim.median")}
-                  value={formatCurrency(final.median, currency)}
-                  sub={`${result.params.years} ${t("sim.years")}`}
-                  info={t("sim.tipMedian")}
-                  isPrivate
-                />
-              </Card>
-              <Card>
-                <Stat
-                  label={t("sim.optimistic")}
-                  value={formatCurrency(final.p90, currency)}
-                  valueClassName={plColor(1)}
-                  info={t("sim.tipOptimistic")}
-                  isPrivate
-                />
-              </Card>
-              <Card>
-                <Stat
-                  label={t("sim.pessimistic")}
-                  value={formatCurrency(final.p10, currency)}
-                  valueClassName={plColor(-1)}
-                  info={t("sim.tipPessimistic")}
-                  isPrivate
-                />
-              </Card>
-            </div>
+            <StatRow cols={3}>
+              <Stat
+                label={t("sim.median")}
+                value={formatCurrency(final.median, currency)}
+                sub={`${result.params.years} ${t("sim.years")}`}
+                info={t("sim.tipMedian")}
+                isPrivate
+              />
+              <Stat
+                label={t("sim.optimistic")}
+                value={formatCurrency(final.p90, currency)}
+                valueClassName={plColor(1)}
+                info={t("sim.tipOptimistic")}
+                isPrivate
+              />
+              <Stat
+                label={t("sim.pessimistic")}
+                value={formatCurrency(final.p10, currency)}
+                valueClassName={plColor(-1)}
+                info={t("sim.tipPessimistic")}
+                isPrivate
+              />
+            </StatRow>
 
             {/* Decumulation: how much this plan lets you draw each year/month. */}
             {result.withdrawal && (

@@ -180,7 +180,14 @@ export function AllocationView() {
             {customGroupCharts.length === 0 ? (
               <p className="py-12 text-center text-sm text-zinc-500">{t("alloc.noTags")}</p>
             ) : (
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+              // One group gets the full card, like every other breakdown: a
+              // fixed two-column grid left a lone donut in the left half with
+              // the other half empty.
+              <div
+                className={`grid grid-cols-1 gap-8 ${
+                  customGroupCharts.length > 1 ? "lg:grid-cols-2" : ""
+                }`}
+              >
                 {customGroupCharts.map(({ group, slices, colors }) => (
                   <div key={group.id}>
                     <h3 className="text-sm font-semibold">{group.name}</h3>

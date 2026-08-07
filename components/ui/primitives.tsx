@@ -91,6 +91,41 @@ export function Stat({
   );
 }
 
+/**
+ * A row of KPIs as ONE card, never one card per figure.
+ *
+ * Both shapes had grown side by side: nine surfaces grouped their figures in a
+ * single card, five gave every figure a card of its own. The split form reads
+ * as unrelated facts rather than one readout, and the two shapes sat two tabs
+ * apart on /analysis. Grouped wins; this is the only way to build the row.
+ */
+export function StatRow({
+  cols = 4,
+  children,
+  className = "",
+  ...rest
+}: {
+  /** Widest column count; narrower breakpoints step down from it. */
+  cols?: 2 | 3 | 4 | 5;
+  children: ReactNode;
+  className?: string;
+} & HTMLAttributes<HTMLDivElement>) {
+  return (
+    <Card className={className} {...rest}>
+      <div className={`grid gap-4 ${STAT_COLS[cols]}`}>{children}</div>
+    </Card>
+  );
+}
+
+// Spelled out rather than interpolated: Tailwind only emits classes it can
+// find as complete strings in the source.
+const STAT_COLS: Record<2 | 3 | 4 | 5, string> = {
+  2: "grid-cols-1 sm:grid-cols-2",
+  3: "grid-cols-1 sm:grid-cols-3",
+  4: "grid-cols-2 lg:grid-cols-4",
+  5: "grid-cols-2 md:grid-cols-3 lg:grid-cols-5",
+};
+
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANTS: Record<Variant, string> = {

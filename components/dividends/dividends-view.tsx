@@ -37,10 +37,10 @@ import {
 import { addDays, today } from "@/lib/finance/dates";
 import { assetPriceKey, type Asset } from "@/lib/types";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
-import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
+import { Card, SegmentedControl, Stat, StatRow } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatCardSkeleton, ListRowSkeleton } from "@/components/dividends/dividends-skeleton";
+import { StatSkeleton, ListRowSkeleton } from "@/components/dividends/dividends-skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
@@ -303,44 +303,36 @@ export function DividendsView() {
       aria-busy={showSkeleton || undefined}
       aria-label={showSkeleton ? t("common.loading") : undefined}
     >
-      <div data-tour="dividends-kpis" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatRow cols={4} data-tour="dividends-kpis">
         {showSkeleton ? (
-          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
         ) : (
           <>
-            <Card>
-              <Stat
-                label={t("div.received12m")}
-                value={formatCurrency(stats.t12m, currency)}
-                isPrivate
-                info={t("div.received12mTip")}
-              />
-            </Card>
-            <Card>
-              <Stat
-                label={t("div.receivedTotal")}
-                value={formatCurrency(stats.allTime, currency)}
-                isPrivate
-                info={t("div.receivedTotalTip")}
-              />
-            </Card>
-            <Card>
-              <Stat
-                label={t("div.yield")}
-                value={formatPercent(stats.yield)}
-                info={t("div.yieldTip")}
-              />
-            </Card>
-            <Card>
-              <Stat
-                label={t("div.yieldOnCost")}
-                value={formatPercent(stats.yieldOnCost)}
-                info={t("div.yieldOnCostTip")}
-              />
-            </Card>
+            <Stat
+              label={t("div.received12m")}
+              value={formatCurrency(stats.t12m, currency)}
+              isPrivate
+              info={t("div.received12mTip")}
+            />
+            <Stat
+              label={t("div.receivedTotal")}
+              value={formatCurrency(stats.allTime, currency)}
+              isPrivate
+              info={t("div.receivedTotalTip")}
+            />
+            <Stat
+              label={t("div.yield")}
+              value={formatPercent(stats.yield)}
+              info={t("div.yieldTip")}
+            />
+            <Stat
+              label={t("div.yieldOnCost")}
+              value={formatPercent(stats.yieldOnCost)}
+              info={t("div.yieldOnCostTip")}
+            />
           </>
         )}
-      </div>
+      </StatRow>
 
       <Card data-tour="dividends-income">
         <div className="flex flex-wrap items-center justify-between gap-3">

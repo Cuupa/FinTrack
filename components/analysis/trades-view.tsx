@@ -37,7 +37,7 @@ import {
 import { type Timeframe } from "@/lib/finance/dates";
 import { assetPriceKey, type Transaction } from "@/lib/types";
 import { formatCurrency, formatPercent, plColor } from "@/lib/format";
-import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
+import { Card, SegmentedControl, Stat, StatRow } from "@/components/ui/primitives";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { yAxisWidth } from "@/components/charts/axis";
@@ -195,36 +195,30 @@ export function TradesView() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <Stat
-            label={t("stat.unrealized")}
-            value={formatCurrency(totals.unrealizedPL, currency)}
-            isPrivate
-            sub={formatPercent(totals.totalPLPercent)}
-            valueClassName={plColor(totals.unrealizedPL)}
-            info={t("tip.unrealized")}
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("stat.realized")}
-            value={formatCurrency(totals.realizedPL, currency)}
-            isPrivate
-            valueClassName={plColor(totals.realizedPL)}
-            info={t("tip.realized")}
-          />
-        </Card>
-        <Card>
-          <Stat
-            label={t("stat.dividends")}
-            value={formatCurrency(dividendsReceived, currency)}
-            isPrivate
-            valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
-            info={t("tip.dividends")}
-          />
-        </Card>
-      </div>
+      <StatRow cols={3}>
+        <Stat
+          label={t("stat.unrealized")}
+          value={formatCurrency(totals.unrealizedPL, currency)}
+          isPrivate
+          sub={formatPercent(totals.totalPLPercent)}
+          valueClassName={plColor(totals.unrealizedPL)}
+          info={t("tip.unrealized")}
+        />
+        <Stat
+          label={t("stat.realized")}
+          value={formatCurrency(totals.realizedPL, currency)}
+          isPrivate
+          valueClassName={plColor(totals.realizedPL)}
+          info={t("tip.realized")}
+        />
+        <Stat
+          label={t("stat.dividends")}
+          value={formatCurrency(dividendsReceived, currency)}
+          isPrivate
+          valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
+          info={t("tip.dividends")}
+        />
+      </StatRow>
 
       <Card>
         <h2 className="flex items-center gap-1.5 text-lg font-semibold">
