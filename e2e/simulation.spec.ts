@@ -41,6 +41,39 @@ test.describe("simulation (Guest Mode)", () => {
     await expect(page.getByText("Withdrawal strategy")).toBeVisible();
   });
 
+  // The drawdown is not a bare rate on the depot: guaranteed income pays part
+  // of it. Only a browser proves the projection reaches the run, since the
+  // figures come from the Pension tab's own store data, not from the link.
+  test("the drawdown counts the pension from the user's own projection", async ({ page }) => {
+    await openDashboard(page);
+
+    // A policy plus a birth year is the smallest input that yields a bridge:
+    // locally there is no Rentenwert, so only the private half can be valued.
+    await page.goto("/retirement?tab=pension");
+    await dismissTour(page);
+    await page
+      .locator('[data-tour="pension-contracts"]')
+      .getByRole("button", { name: "Add policy", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Name").fill("Riester");
+    await dialog.getByLabel("Expected / month").fill("250");
+    await dialog.getByRole("button", { name: "Add policy", exact: true }).click();
+    const assumptions = page.locator('[data-tour="pension-assumptions"]');
+    await assumptions.getByLabel("Year of birth").fill("1990");
+    await assumptions.getByRole("button", { name: "Save", exact: true }).click();
+
+    // A FIRE plan that does NOT count the pension hands that choice over.
+    await page.goto("/simulation?years=20&withdrawal=30");
+    await dismissTour(page);
+    const toggle = page.getByRole("switch").filter({ hasText: "Count my pension" });
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+
+    await toggle.click();
+    await page.getByRole("button", { name: "Run simulation" }).click();
+    await expect(page.getByText(/a year of pension from/)).toBeVisible({ timeout: 30_000 });
+  });
+
   // A forced bad sequence is a market assumption, so it applies to a run that
   // never draws anything down too.
   test("the stress scenario is offered without a withdrawal phase", async ({ page }) => {

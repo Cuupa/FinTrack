@@ -2,6 +2,16 @@
 
 ## Done
 
+- **2026-08-07 — TODO "Offen" (the Monte Carlo counts the pension)** — session
+  `80fa00a4`, no subworker. The engine already subtracted a pension bridge, but
+  only a FIRE link could hand it one. `usePensionBridge` (`lib/pension/`) is now
+  the single derivation `useFireInputs` and the simulator both read, the
+  withdrawal phase carries the same "Rente einrechnen" toggle, and the result
+  names what the pension pays. Drive-by: `inflation` was missing from
+  `hashSimParams` (a changed rate replayed the stale run), and `de` was never
+  pinned against `en` — five `vpw` keys rendered in English, now translated and
+  guarded by `tests/dictionaries-de.test.ts`.
+
 - **2026-08-07 — TODO "Fällige Zahlungen" (automatic liability interest)** —
   session `bdb631a2`, no subworker. A liability's due interest now posts by
   itself (`interestIsAutomatic` + headless `AutoInterestBooker` in the provider

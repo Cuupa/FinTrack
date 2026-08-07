@@ -19,10 +19,11 @@ import type {
   PortfolioMonteCarloParams,
 } from "@/lib/finance/monte-carlo";
 import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat, SegmentedControl } from "@/components/ui/primitives";
+import { Button, Card, Stat, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "@/components/ui/tabs";
 import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
+import { usePensionBridge } from "@/lib/pension/use-pension-bridge";
 import {
   DEFAULT_INFLATION,
   type StressScenario,
@@ -99,8 +100,6 @@ export function MonteCarloPanel() {
   const params = useSearchParams();
   const seededYears = Number(params.get("years"));
   const seededWithdrawal = Number(params.get("withdrawal"));
-  const seededPensionAnnual = Number(params.get("pensionAnnual"));
-  const seededPensionStart = Number(params.get("pensionStart"));
   const [mode, setMode] = useState<SimMode>("portfolio");
 
   // Every scalar is an OVERRIDE: null means "whatever the mode or the link
@@ -214,14 +213,20 @@ export function MonteCarloPanel() {
     Number.isFinite(seededWithdrawal) && seededWithdrawal > 0
       ? Math.max(1, Math.min(60, Math.round(seededWithdrawal)))
       : null;
-  const linkedPension =
-    Number.isFinite(seededPensionAnnual) &&
-    seededPensionAnnual > 0 &&
-    Number.isFinite(seededPensionStart) &&
-    seededPensionStart >= 0
+  // The pension is an input to the drawdown, not a neighbouring feature: a
+  // retiree draws only what the guaranteed income fails to cover. The FIGURES
+  // always come from the same projection the Pension tab renders, so a run can
+  // never simulate a pension the user cannot find on screen; a FIRE link only
+  // carries whether that plan counted it.
+  const pension = usePensionBridge();
+  const [countPensionOverride, setCountPensionOverride] = useState<boolean | null>(null);
+  const countPension =
+    countPensionOverride ?? (linkedYears == null || params.has("pensionAnnual"));
+  const appliedPension =
+    countPension && pension.bridge
       ? {
-          annualPensionIncome: seededPensionAnnual,
-          pensionYearsUntilStart: seededPensionStart,
+          annualPensionIncome: pension.bridge.annualIncome,
+          pensionYearsUntilStart: pension.bridge.yearsUntilStart,
         }
       : null;
 
@@ -324,7 +329,7 @@ export function MonteCarloPanel() {
               // The comparison is what says what the strategy choice costs, so
               // it is computed alongside rather than behind a second button.
               compareStrategies: drawYears > 0,
-              ...(linkedPension ?? {}),
+              ...(drawYears > 0 ? (appliedPension ?? {}) : {}),
             } satisfies PortfolioMonteCarloParams,
           }
         : {
@@ -343,7 +348,7 @@ export function MonteCarloPanel() {
               stress,
               inflation: Math.max(0, inflation) / 100,
               compareStrategies: drawYears > 0,
-              ...(linkedPension ?? {}),
+              ...(drawYears > 0 ? (appliedPension ?? {}) : {}),
             } satisfies MonteCarloParams,
           };
 
@@ -504,6 +509,20 @@ export function MonteCarloPanel() {
                       />
                       <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
                     </div>
+                  )}
+                  {/* Guaranteed income shrinks what the portfolio has to pay,
+                      so it belongs with the rate that decides the income. */}
+                  {withdrawalYears > 0 && pension.bridge && (
+                    <Toggle
+                      checked={countPension}
+                      onChange={setCountPensionOverride}
+                      label={t("fire.pension.count")}
+                      hint={t("fire.pension.hint", {
+                        amount: formatCurrency(pension.monthly, currency),
+                        year: String(pension.retirementYear),
+                      })}
+                      hintPrivate
+                    />
                   )}
                   {/* The rate says how much; the strategy says how that amount
                       is decided again each year, and the stress says what it is
@@ -680,6 +699,18 @@ export function MonteCarloPanel() {
                     valueClassName={plColor(1)}
                   />
                 </div>
+                {/* The figures above are the whole income the plan pays. Once
+                    the pension starts, part of it is not the portfolio's job. */}
+                {(result.params.annualPensionIncome ?? 0) > 0 && (
+                  <p className="mt-3 text-xs text-zinc-500" data-private>
+                    {t("sim.withdrawalPensionNote", {
+                      amount: formatCurrency(result.params.annualPensionIncome ?? 0, currency),
+                      year: String(
+                        new Date().getFullYear() + Math.round(result.params.pensionYearsUntilStart ?? 0),
+                      ),
+                    })}
+                  </p>
+                )}
               </Card>
             )}
 

@@ -1899,6 +1899,8 @@ export const en = {
   "sim.withdrawalTitle": "Withdrawal income",
   "sim.withdrawalMetricsTip":
     "How much this plan lets you draw during the withdrawal phase, from the pessimistic (10th pct) to optimistic (90th pct) outcomes.",
+  "sim.withdrawalPensionNote":
+    "Includes {amount} a year of pension from {year} on. Only the rest comes out of the portfolio.",
   "sim.perYear": "yr",
   "sim.useSafeRate": "Use safe rate",
   "sim.perMonth": "mo",
@@ -3671,6 +3673,15 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Vergleich das mit deiner Unter- und Obergrenze, beide vom Einkommen des ersten Jahres abgeleitet.",
   "withdrawal.steps.floorCeiling.3":
     "Entnimm den Wert dazwischen. Setz die Untergrenze auf das, was du wirklich brauchst, nicht auf das, was du gern hättest.",
+  "withdrawal.strategy.vpw": "Auf die Restjahre verteilt",
+  "withdrawal.strategy.vpw.desc":
+    "Du teilst jedes Jahr das vorhandene Kapital auf die Jahre auf, die du noch finanzieren musst. Die Rate steigt mit dem Alter, deshalb bleibt nichts liegen und nichts geht aus.",
+  "withdrawal.steps.vpw.1":
+    "Notier einmal im Jahr den Depotwert und die Jahre, die noch zu finanzieren sind.",
+  "withdrawal.steps.vpw.2":
+    "Entnimm den Rentenanteil davon: jedes Jahr mehr vom Topf, weil weniger Jahre übrig sind.",
+  "withdrawal.steps.vpw.3":
+    "Rechne damit, dass dein Einkommen mit dem Markt schwankt. Diese Regel läuft nie leer, verspricht aber auch keinen festen Betrag.",
   "withdrawal.stressLabel": "Stressszenario",
   "withdrawal.stress.none": "Ohne Stress",
   "withdrawal.stress.none.desc":
@@ -4250,6 +4261,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.withdrawalTitle": "Entnahme-Einkommen",
   "sim.withdrawalMetricsTip":
     "Wie viel dieser Plan in der Entnahmephase ausschüttet: vom pessimistischen (10. Perzentil) bis zum optimistischen (90. Perzentil) Verlauf.",
+  "sim.withdrawalPensionNote":
+    "Enthält {amount} Rente pro Jahr ab {year}. Nur der Rest kommt aus dem Depot.",
   "sim.perYear": "Jahr",
   "sim.useSafeRate": "Sichere Rate verwenden",
   "sim.perMonth": "Mon.",
@@ -6604,6 +6617,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.withdrawalTitle": "Ingresos en la retirada",
   "sim.withdrawalMetricsTip":
     "Cuánto permite retirar este plan durante la fase de retirada, desde el resultado pesimista (percentil 10) hasta el optimista (percentil 90).",
+  "sim.withdrawalPensionNote":
+    "Incluye {amount} de pensión al año desde {year}. Solo el resto sale de la cartera.",
   "sim.perYear": "año",
   "sim.useSafeRate": "Usar tasa segura",
   "sim.perMonth": "mes",

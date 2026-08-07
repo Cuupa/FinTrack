@@ -17,13 +17,11 @@ import { useMemo } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
-import { usePensionReference } from "@/lib/pension/use-pension-reference";
-import { useFeatureFlag } from "@/lib/flags/flags-context";
+import { usePensionBridge } from "@/lib/pension/use-pension-bridge";
 import { accountsValueOn } from "@/lib/finance/accounts";
 import { portfolioTotals, summarizeAll } from "@/lib/finance/portfolio";
 import { portfolioOrBenchmarkStats } from "@/lib/finance/stats";
 import { monthlyContributionOf } from "@/lib/finance/savings-plans";
-import { projectPension } from "@/lib/finance/pension";
 import { trailingAnnualExpenses, type PensionBridge } from "@/lib/finance/fire";
 import { today } from "@/lib/finance/dates";
 import type { Asset } from "@/lib/types";
@@ -67,8 +65,7 @@ export function useFireInputs(histories: HistoryMap): FireInputs {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const movements = useAccountMovements();
-  const pensionReference = usePensionReference();
-  const pensionEnabled = useFeatureFlag("pension");
+  const pension = usePensionBridge();
   const todayIso = today();
 
   const holdings = useMemo(
@@ -118,40 +115,7 @@ export function useFireInputs(histories: HistoryMap): FireInputs {
 
   // The pension is not a neighbouring feature, it is an input to this one:
   // guaranteed income from a fixed year is capital never to be accumulated.
-  const projection = useMemo(
-    () =>
-      projectPension({
-        entries: data.pensionPoints,
-        statements: data.pensionStatements,
-        contracts: data.pensionContracts,
-        contractValues: data.pensionContractValues,
-        reference: pensionReference,
-        settings: data.profile.pensionSettings,
-        currentYear: Number(todayIso.slice(0, 4)),
-      }),
-    [
-      data.pensionPoints,
-      data.pensionStatements,
-      data.pensionContracts,
-      data.pensionContractValues,
-      data.profile.pensionSettings,
-      pensionReference,
-      todayIso,
-    ],
-  );
-
-  // Without a Rentenwert the statutory half cannot be valued, so only the
-  // private policies count -- the same "report what is known, invent nothing"
-  // rule the Pension tab follows.
-  const pensionMonthly = projection.monthlyTotal ?? projection.monthlyPrivate;
-  const pensionBridge: PensionBridge | undefined =
-    pensionEnabled && projection.retirementYear != null && pensionMonthly > 0
-      ? {
-          annualIncome: pensionMonthly * 12,
-          yearsUntilStart: Math.max(0, projection.retirementYear - Number(todayIso.slice(0, 4))),
-        }
-      : undefined;
-
+  // `usePensionBridge` is the one derivation, shared with the simulator.
   return {
     netWorth,
     annualExpenses,
@@ -160,9 +124,9 @@ export function useFireInputs(histories: HistoryMap): FireInputs {
     expectedReturn: stats.expectedReturn,
     volatility: stats.volatility,
     holdings,
-    pensionEnabled,
-    pensionBridge,
-    pensionMonthly,
-    retirementYear: projection.retirementYear,
+    pensionEnabled: pension.enabled,
+    pensionBridge: pension.bridge,
+    pensionMonthly: pension.monthly,
+    retirementYear: pension.retirementYear,
   };
 }

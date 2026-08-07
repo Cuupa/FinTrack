@@ -458,9 +458,16 @@ FX-convert) always beats a wrong instrument in the right currency.
   until the pension starts, and only the shortfall in perpetuity after that
   (`fireNumberWithPension`). Target and retirement date are solved as a fixed
   point — each depends on the other. No pension (or the flag off) reproduces
-  the old numbers exactly. **Known gap**: only the DETERMINISTIC targets fold
-  the pension in; the Monte Carlo run still frames decumulation purely as a
-  withdrawal rate on the portfolio.
+  the old numbers exactly. The **Monte Carlo counts it too**: the strategy still
+  sets the gross annual income, but `portfolioWithdrawalAfterPension`
+  (`monte-carlo.ts`) draws only the shortfall once the pension is flowing, so a
+  run cannot claim a depletion the guaranteed income would have prevented. The
+  bridge itself is derived ONCE, by `usePensionBridge` (`lib/pension/`), which
+  both `useFireInputs` and the simulator read — the figures always come from the
+  same `projectPension` the Pension tab renders, never from the link, so the run
+  can never simulate a pension the user cannot find on screen. A FIRE link only
+  carries WHETHER that plan counted it (`?pensionAnnual=…` present); the
+  simulator's own withdrawal phase offers the same toggle.
 - **The Renteninformation states a TOTAL, never a per-year figure** (owner
   rule, round 30, reported furiously: "da steht nur drauf wie viel Punkte man
   GESAMT hat"). So the letters are the primary record — `pensionStatements`
@@ -686,8 +693,11 @@ client pages (see `app/assets/[id]/page.tsx`).
   only acceptable as a genuine third-person pronoun at sentence start. No
   em-dashes in any user-facing copy.
 - **Locales are en/de/es** (round 21). Spanish uses the informal tú-register.
-  `tests/dictionaries-es.test.ts` pins en/es key AND `{placeholder}` parity —
-  every new dictionary key must land in `es` (and `de`) or the suite fails.
+  `tests/dictionaries-es.test.ts` and `tests/dictionaries-de.test.ts` pin key
+  AND `{placeholder}` parity against `en` — every new dictionary key must land
+  in `es` AND `de` or the suite fails. Only `es` was pinned at first, and five
+  `vpw` withdrawal keys silently rendered in ENGLISH inside the German strategy
+  table for as long as that held.
   Legal pages deliberately stay EN+DE (es falls back to the English block).
 - **Portfolios are brokers** (round 21, user rule): the user-given portfolio
   name IS the broker identity — never hardcode broker names or presets in the

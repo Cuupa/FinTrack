@@ -64,6 +64,7 @@ export function hashSimParams(message: SimulationMessage): string {
     floor: p.floor ?? null,
     ceiling: p.ceiling ?? null,
     stress: p.stress ?? "none",
+    inflation: p.inflation == null ? null : r(p.inflation),
     compareStrategies: p.compareStrategies === true,
     annualPensionIncome: r(p.annualPensionIncome ?? 0),
     pensionYearsUntilStart:
