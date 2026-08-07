@@ -21,6 +21,17 @@ export interface DueAccountInterest {
   amount: number;
 }
 
+/**
+ * Whether the account's interest posts on its own instead of waiting for a
+ * review (owner rule): a liability's interest is charged BY the lender, so
+ * there is nothing to decline — declining it would only make the app disagree
+ * with the statement. Credit interest on an asset account keeps its review,
+ * because that one the user reconciles against what the bank actually paid.
+ */
+export function interestIsAutomatic(account: Account): boolean {
+  return account.isLiability;
+}
+
 export function accountInterestDate(account: Account, occurrence: number): string {
   return addMonthsToDate(account.openedOn, PERIOD_MONTHS[account.interestFrequency ?? "MONTHLY"] * occurrence);
 }

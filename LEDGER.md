@@ -2,6 +2,14 @@
 
 ## Done
 
+- **2026-08-07 — TODO "Fällige Zahlungen" (automatic liability interest)** —
+  session `bdb631a2`, no subworker. A liability's due interest now posts by
+  itself (`interestIsAutomatic` + headless `AutoInterestBooker` in the provider
+  tree); the recurring review, the skip action and the nav count all drop it,
+  the list row says so, and credit interest on an asset account keeps its
+  review. E2E `e2e/auto-interest.spec.ts` pins both halves. Drive-by: a stale
+  4th argument in `tests/account-ledger.test.ts` had `tsc` red on HEAD.
+
 - **2026-08-07 — TODO "Design - Prio Medium" (due-execution surfaces)** — session
   `51abceb2`, no subworker. Unified the recurring card's due list with the
   savings-plan review (notice + inline review directly under it, sortable table

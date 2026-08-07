@@ -26,7 +26,7 @@ import { dueBookings } from "../finance/contract-bookings";
 import { duePlannedDates } from "../finance/planned";
 import { duePremiums } from "../finance/pension-bookings";
 import { dueInterest } from "../finance/cash-interest";
-import { dueAccountInterest } from "../finance/account-interest";
+import { dueAccountInterest, interestIsAutomatic } from "../finance/account-interest";
 import type { AccountMovements } from "../finance/account-ledger";
 
 export type NotificationKind =
@@ -155,6 +155,9 @@ function countAccountInterestDue(input: NotificationInput): number {
   const balances = input.accountBalances as AccountBalance[];
   let total = 0;
   for (const account of input.accounts) {
+    // Automatic interest never waits for the user, so counting it would point
+    // at a review list that does not hold it.
+    if (interestIsAutomatic(account)) continue;
     total += dueAccountInterest(
       account,
       input.spendingTransactions,

@@ -550,6 +550,18 @@ They are not priced from a market, and the rules that bind all of them are:
   OCCURRENCE's immutable values so a row never moves while it is being typed
   in), footed by cancel + "book N". `SavingsPlansCard` and `RecurringCard` both
   render it.
+- **The one exception is a LIABILITY's interest, which posts by itself**
+  (owner rule: "da hab ich keine Möglichkeit die Zinsen wirklich zu
+  kontrollieren"). A review exists so a figure can be corrected before it
+  lands; on a debt there is nothing to correct, since the lender charges it
+  whatever the app thinks — the review would only be a button that has to be
+  pressed for the ledger to stay true. `interestIsAutomatic`
+  (`lib/finance/account-interest.ts`) is the one predicate: `AutoInterestBooker`
+  (mounted in `providers.tsx`, headless — interest that only posts when
+  /spending happens to be open is not automatic) books what it selects, the
+  recurring card's review and `countAccountInterestDue` skip it, and the list
+  row says "Wird automatisch gebucht". CREDIT interest on an asset account
+  keeps its review: that one the user reconciles against the statement.
 - **A due occurrence can be SKIPPED, not only booked or postponed.** Skipping
   advances the source's cursor past that date without writing a row, so it is
   never offered again — a `ConfirmDialog` first, because it also settles

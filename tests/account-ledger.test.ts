@@ -188,7 +188,7 @@ describe("interest accrual on a ledger-driven liability", () => {
   it("leaves asset interest out until it is booked", () => {
     const a = account({ interestRate: 12 });
     const moves = accountMovements([tx({ amount: -50, date: "2024-02-01" })], [a]);
-    const series = balanceSeries(a, [], moves, "2024-02-01");
+    const series = balanceSeries(a, [], moves);
     const feb = series.find((p) => p.date === "2024-02-01");
     expect(feb?.balance).toBeCloseTo(950, 6);
   });

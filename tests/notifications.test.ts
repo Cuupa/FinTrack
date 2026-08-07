@@ -159,6 +159,23 @@ describe("collectNotifications", () => {
     ).toEqual([]);
   });
 
+  // A liability's interest books itself, so a count would point at a review
+  // list that does not hold it.
+  it("does not count interest that books automatically", () => {
+    const loan: Account = {
+      id: "acc2",
+      name: "Loan",
+      kind: "loan",
+      currency: null,
+      isLiability: true,
+      openingBalance: 1000,
+      openedOn: "2026-07-02",
+      interestRate: 12,
+      interestFrequency: "MONTHLY",
+    };
+    expect(collectNotifications(input({ accounts: [loan] }))).toEqual([]);
+  });
+
   // A flag that is off has no surface to act on, and a Pro-locked feature shows
   // a teaser rather than the review dialog: either way the promised task is not
   // on the page the count would send the user to.

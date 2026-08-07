@@ -17,6 +17,7 @@ import { ThemeProvider } from "@/lib/theme/theme-context";
 import { LocaleSync } from "@/components/locale-sync";
 import { ThemeSync } from "@/components/theme-sync";
 import { ErrorReporter } from "@/components/error-reporter";
+import { AutoInterestBooker } from "@/components/accounts/auto-interest";
 import { ToastProvider } from "@/lib/notifications/toast-context";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -50,6 +51,10 @@ export function Providers({ children }: { children: ReactNode }) {
                               <LocaleSync />
                               <ThemeSync />
                               <ErrorReporter />
+                              {/* Global, not page-local: interest that only
+                                  posts when /spending happens to be open is
+                                  not automatic. */}
+                              <AutoInterestBooker />
                               {children}
                             </LlmConfigProvider>
                           </TagsProvider>

@@ -59,6 +59,7 @@ import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import {
   accountInterestAmount,
   dueAccountInterest,
+  interestIsAutomatic,
   nextAccountInterestDate,
 } from "@/lib/finance/account-interest";
 import {
@@ -91,6 +92,9 @@ interface RecurringRow {
   /** Paused rows accrue no occurrences; the list mutes them and says so where
    *  the next date would be. */
   active: boolean;
+  /** Posts without a review (a liability's interest), so the row says so
+   *  rather than leaving the user waiting for a notice that never comes. */
+  automatic?: boolean;
   /**
    * Where the money ends up: the name of the user's own account it is moved
    * to, or null when it is simply consumed (an expense) or credited (income).
@@ -215,6 +219,7 @@ export function RecurringCard() {
         intervalLabel: intervalLabel(account.interestFrequency ?? "MONTHLY"),
         next,
         active: true,
+        automatic: interestIsAutomatic(account),
         accountName: account.name,
         targetName: "",
       });
@@ -281,6 +286,9 @@ export function RecurringCard() {
       });
     }
     for (const account of data.accounts) {
+      // A liability's interest posts on its own (AutoInterestBooker); only the
+      // interest the user can reconcile against a statement is reviewed here.
+      if (interestIsAutomatic(account)) continue;
       for (const b of dueAccountInterest(account, data.spendingTransactions, data.accountBalances, movements, todayIso)) {
         out.push({
           key: `i|${b.accountId}|${b.date}`,
@@ -747,6 +755,11 @@ export function RecurringCard() {
                     )}
                     {r.accountName && (
                       <div className="text-xs font-normal text-zinc-500">{r.accountName}</div>
+                    )}
+                    {r.automatic && (
+                      <div className="text-xs font-normal text-zinc-500">
+                        {t("recurring.interestAuto")}
+                      </div>
                     )}
                   </Td>
                   <Td

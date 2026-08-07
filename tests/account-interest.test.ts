@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { dueAccountInterest, nextAccountInterestDate } from "@/lib/finance/account-interest";
+import {
+  dueAccountInterest,
+  interestIsAutomatic,
+  nextAccountInterestDate,
+} from "@/lib/finance/account-interest";
 import { accountMovements } from "@/lib/finance/account-ledger";
 import type { Account, SpendingTransaction } from "@/lib/types";
 
@@ -79,6 +83,13 @@ describe("account interest recurring bookings", () => {
     expect(dueAccountInterest(stepped, [], [], new Map(), "2024-03-01")).toEqual([
       { accountId: "a1", date: "2024-03-01", amount: 20 },
     ]);
+  });
+
+  // The lender charges it whatever the app thinks, so there is nothing to
+  // review — see interestIsAutomatic.
+  it("marks only a liability's interest as automatic", () => {
+    expect(interestIsAutomatic(account())).toBe(false);
+    expect(interestIsAutomatic(account({ isLiability: true, kind: "loan" }))).toBe(true);
   });
 
   it("books liability interest as a negative expense", () => {
