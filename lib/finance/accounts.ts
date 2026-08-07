@@ -24,7 +24,7 @@
 // modelled for a balance the user simply typed in).
 
 import type { Account, AccountBalance } from "../types";
-import { addDays, today } from "./dates";
+import { addDays } from "./dates";
 import type { AccountMovements } from "./account-ledger";
 
 /** Spot FX + base currency for converting native account balances. */
@@ -39,8 +39,6 @@ interface Point {
   balance: number;
 }
 
-/** Safety cap on generated interest periods (50 years), mirroring
- *  `MAX_MONTHS` in debt.ts: a pathological `through` date must not spin. */
 /**
  * The account's full balance series in ascending date order, native-currency
  * magnitudes (unsigned).
@@ -58,9 +56,7 @@ export function balanceSeries(
   account: Account,
   balances: AccountBalance[],
   movements?: AccountMovements,
-  through?: string,
 ): Point[] {
-  void through; // retained for API compatibility; booked movements define the horizon now
   const moves = movements?.get(account.id) ?? [];
   // An account whose opening balance is 0 and whose first movement predates
   // `openedOn` was opened before the user says it was: the transfer that
@@ -137,7 +133,7 @@ export function accountBalanceOn(
   movements?: AccountMovements,
 ): number {
   if (isoDate < account.openedOn) return 0;
-  return balanceAt(balanceSeries(account, balances, movements, isoDate), isoDate);
+  return balanceAt(balanceSeries(account, balances, movements), isoDate);
 }
 
 /**
@@ -150,7 +146,7 @@ export function currentAccountBalance(
   movements?: AccountMovements,
   asOf?: string,
 ): number {
-  const series = balanceSeries(account, balances, movements, asOf ?? today());
+  const series = balanceSeries(account, balances, movements);
   if (!series.length) return account.openingBalance;
   if (asOf) return balanceAt(series, asOf);
   return series[series.length - 1].balance;
@@ -223,10 +219,9 @@ export function accountsValueSeries(
 ): number[] {
   const out = new Array<number>(dates.length).fill(0);
   if (!dates.length) return out;
-  const last = dates[dates.length - 1];
 
   for (const account of accounts) {
-    const series = balanceSeries(account, balances, movements, last);
+    const series = balanceSeries(account, balances, movements);
     const sign = account.isLiability ? -1 : 1;
     const fx = rateFor(account, v);
     // Both lists ascend, so one shared cursor walks them together.

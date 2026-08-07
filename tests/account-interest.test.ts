@@ -49,6 +49,24 @@ describe("account interest recurring bookings", () => {
     ]);
   });
 
+  it("reaches today on an account older than the period cap", () => {
+    const old = account({ openedOn: "2015-01-01" });
+    expect(dueAccountInterest(old, [], [], new Map(), "2026-08-04")).toEqual([
+      { accountId: "a1", date: "2026-08-01", amount: 10 },
+    ]);
+    expect(nextAccountInterestDate(old, [], "2026-08-04")).toBe("2026-09-01");
+  });
+
+  it("charges the follow-up rate once the fixed period ended", () => {
+    const stepped = account({ rateFixedUntil: "2024-02-29", followUpRate: 24 });
+    expect(dueAccountInterest(stepped, [], [], new Map(), "2024-02-01")).toEqual([
+      { accountId: "a1", date: "2024-02-01", amount: 10 },
+    ]);
+    expect(dueAccountInterest(stepped, [], [], new Map(), "2024-03-01")).toEqual([
+      { accountId: "a1", date: "2024-03-01", amount: 20 },
+    ]);
+  });
+
   it("books liability interest as a negative expense", () => {
     const loan = account({ id: "l1", isLiability: true, kind: "loan" });
     const payment = tx({ accountId: "a1", amount: -100, transferAccountId: "l1", date: "2024-01-15" });

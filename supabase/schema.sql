@@ -1224,7 +1224,10 @@ insert into public.schema_migrations (version) values
   ('0115_split_flag_covers_manual_entry'),
   ('0116_savings_plan_account_and_front_load'),
   ('0124_household_all_financial_data'),
-  ('0125_household_stripe_seats')
+  ('0125_household_stripe_seats'),
+  ('0126_spending_booking_time'),
+  ('0127_account_interest_bookings'),
+  ('0128_fix_household_member_limit')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1750,7 +1753,8 @@ insert into public.plan_limits (limit_key, free_value, pro_value) values
   ('savingsPlans', null, null),
   ('portfolios', null, null),
   -- People in a household, including yourself (migration 0101).
-  ('householdMembers', 2, null)
+  -- Same base on both plans: an extra member is a bought seat, not a Pro perk.
+  ('householdMembers', 2, 2)
 on conflict (limit_key) do nothing;
 
 -- Site-wide public config, starting with the operator identity shown on the
@@ -1862,15 +1866,26 @@ drop policy if exists "household members view seat addon" on public.household_se
 create policy "household members view seat addon" on public.household_seat_addons
   for select using (household_id = public.my_household_id());
 
+-- The base of two people is `plan_limits.householdMembers` so the number lives
+-- in one place; extra seats come from the Stripe add-on. Each `select ... into`
+-- needs its own variable: with no matching row the target becomes NULL, and a
+-- cap of NULL compares away to "no limit at all" (migration 0128).
 create or replace function public.enforce_household_member_limit()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  max_members integer := 2;
+  base_members integer;
+  extra_seats integer;
 begin
-  select 2 + coalesce(quantity, 0) into max_members
+  select free_value into base_members
+  from public.plan_limits
+  where limit_key = 'householdMembers';
+
+  select quantity into extra_seats
   from public.household_seat_addons
   where household_id = new.household_id and status in ('active', 'trialing');
-  if (select count(*) from public.household_members where household_id = new.household_id) >= max_members then
+
+  if (select count(*) from public.household_members where household_id = new.household_id)
+     >= coalesce(base_members, 2) + coalesce(extra_seats, 0) then
     raise exception 'household member limit reached';
   end if;
   return new;

@@ -1,9 +1,13 @@
 import type { Account, AccountBalance, InterestFrequency, SpendingTransaction } from "../types";
 import { addMonthsToDate, today as todayDate } from "./dates";
 import { accountBalanceOn } from "./accounts";
+import { accountRateSteps, rateOnDate } from "./debt";
 import type { AccountMovements } from "./account-ledger";
 
-export const MAX_ACCOUNT_INTEREST_DUE = 60;
+/** Spin guard only (100 years of monthly periods). The real bound is `asOf`:
+ *  a fixed occurrence cap would stop the search short of today on an old
+ *  account and date the booking years into the past. */
+const MAX_PERIODS = 1200;
 
 const PERIOD_MONTHS: Record<InterestFrequency, number> = {
   MONTHLY: 1,
@@ -27,7 +31,9 @@ export function accountInterestAmount(
   balances: AccountBalance[],
   movements?: AccountMovements,
 ): number {
-  const rate = account.interestRate ?? 0;
+  // The rate in force on the booking date, not today's: a fixed-rate period
+  // that has run out charges the agreed follow-up rate (owner rule).
+  const rate = rateOnDate(account.interestRate ?? 0, accountRateSteps(account), date);
   const periods = PERIOD_MONTHS[account.interestFrequency ?? "MONTHLY"];
   const balance = accountBalanceOn(account, balances, date, movements);
   if (!Number.isFinite(rate) || rate <= 0 || balance <= 0) return 0;
@@ -47,7 +53,7 @@ export function dueAccountInterest(
     .filter((tx) => tx.interestAccountId === account.id)
     .reduce<string | null>((last, tx) => (!last || tx.date > last ? tx.date : last), null);
   let candidate: string | null = null;
-  for (let occurrence = 1; occurrence <= MAX_ACCOUNT_INTEREST_DUE; occurrence++) {
+  for (let occurrence = 1; occurrence <= MAX_PERIODS; occurrence++) {
     const date = accountInterestDate(account, occurrence);
     // Interest is a newly introduced automatic recurring entry. Do not
     // backfill every anniversary since the account was opened; that would
@@ -69,7 +75,7 @@ export function nextAccountInterestDate(
   const lastBooked = transactions
     .filter((tx) => tx.interestAccountId === account.id)
     .reduce<string | null>((last, tx) => (!last || tx.date > last ? tx.date : last), null);
-  for (let occurrence = 1; occurrence < 1000; occurrence++) {
+  for (let occurrence = 1; occurrence <= MAX_PERIODS; occurrence++) {
     const date = accountInterestDate(account, occurrence);
     if (date >= asOf && (!lastBooked || date > lastBooked)) return date;
   }

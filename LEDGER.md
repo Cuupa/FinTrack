@@ -26,6 +26,11 @@ fuehrt zur falschen Diagnose. Erst gegen die Live-DB pruefen, dann schliessen.
 | 0121 | Verrechnungskonto am Vertrag quittiert 400, Beiträge buchen nicht |
 | 0122 | Wiederholte Bestätigung einer Vertragsrate kann sie doppelt anlegen (die App bucht ohne 0122 weiter, nur eben in zwei Schritten) |
 | 0123 | Wiederholte Bestätigung einer Sparplan-Ausführung kauft dieselben Anteile ein zweites Mal (ohne 0123 fehlt der Ausführung nur die Kennung, gebucht wird weiter) |
+| 0124 | Haushaltsmitglieder sehen die Rentendaten des Partners nicht |
+| 0125 | `/api/billing/household-seat` quittiert 500, Sitzplatzkauf faellt aus |
+| 0126 | Buchungen quittieren die Uhrzeit mit 400 |
+| 0127 | Zinsbuchungen quittieren 400 und tauchen immer wieder als faellig auf |
+| 0128 | Die Haushaltsgrenze greift gar nicht: ohne Sitz-Zeile ist der Vergleichswert NULL |
 
 0112 traegt oben eine reine Lese-Abfrage, mit der sich der Umfang vorher
 ansehen laesst.
@@ -42,6 +47,12 @@ ansehen laesst.
 | --- | --- | --- |
 
 ## Erledigt
+
+### Runde 2026-08-07
+
+| Task | Commit / Umfang |
+| --- | --- |
+| Fremde Runde (04.-05.08.) nachgeprueft: Zinsbuchung, Haushaltssitze, tote Parameter | `lib/finance/account-interest.ts`, `lib/finance/accounts.ts`, `components/debt/debt-view.tsx`, `supabase/migrations/0128_fix_household_member_limit.sql`, `supabase/schema.sql`, `MONETIZATION.md` (wiederhergestellt), `tests/account-interest.test.ts` |
 
 ### Runde 2026-08-04
 

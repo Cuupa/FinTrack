@@ -181,7 +181,7 @@ export function DebtView() {
   // sums, so the savings line below covers everything the user plans to pay on
   // top, not just the monthly figure.
   const baseline = useMemo(
-    () => planPayoff(planDebts.map(({ lumpSums: _drop, ...d }) => d), strategy, 0, todayIso),
+    () => planPayoff(planDebts.map((d) => ({ ...d, lumpSums: undefined })), strategy, 0, todayIso),
     [planDebts, strategy, todayIso],
   );
   const totalLumpSums = rows.reduce((s, r) => s + r.plannedLumpSums, 0);
