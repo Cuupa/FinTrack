@@ -24,8 +24,6 @@ This file holds the **invariants**: the rules that bind any change you make.
 The long-form design notes live next to it, and every reference below resolves
 (three previously-cited docs had been deleted).
 
-- **MONETIZATION.md** — plan gating, `<ProTeaser>`/`<ProGate>`, plan limits,
-  Stripe billing, the pricing page. All dark-launched.
 - **DOCUMENTATION.md** — per-feature design notes: the everyday-money
   entities (accounts, spending, budgets, planned cashflow, pension), the LLM
   assistant, and route-specific rules.
@@ -118,7 +116,9 @@ Both are toggled by the owner via SQL/dashboard only. `FeatureFlagsProvider`
 by seeding a row (migration + schema.sql) — never with env vars or the Vercel
 Flags SDK (explicitly rejected).
 
-**Plan gating, paywalls, plan limits and billing live in MONETIZATION.md.**
+**Plan gating, paywalls, plan limits and billing have no separate design doc:
+the rules below are the whole record** (MONETIZATION.md was deleted on the
+owner's instruction and must never be restored — code comments still cite it).
 All of it is dark-launched (every flag seeded `required_plan='free'`, every
 limit unlimited, the `billing` flag off), so nothing locks until the owner
 re-tiers a row at runtime. The rules that bind every feature you write:
@@ -610,7 +610,7 @@ flag is off, so the entry must not vanish with either half.
 | `/retirement` | `firePlanner` + `pension` | two tabs: FIRE numbers/years-to-FI/withdrawal Monte Carlo, and pension points + policies -> monthly retirement income. `/fire` and `/pension` redirect onto their tab |
 | `/health` | `finHealth` | financial-health gauges |
 | `/simulation` | `simulation` | Monte Carlo |
-| `/pricing` | `billing` | Free-vs-Pro comparison (MONETIZATION.md) |
+| `/pricing` | `billing` | Free-vs-Pro comparison |
 | `/login` | — | Supabase email/password + Google/GitHub OAuth |
 | `/impressum`, `/datenschutz`, `/terms` | — | legal pages (EN+DE) |
 

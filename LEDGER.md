@@ -52,7 +52,7 @@ ansehen laesst.
 
 | Task | Commit / Umfang |
 | --- | --- |
-| Fremde Runde (04.-05.08.) nachgeprueft: Zinsbuchung, Haushaltssitze, tote Parameter | `lib/finance/account-interest.ts`, `lib/finance/accounts.ts`, `components/debt/debt-view.tsx`, `supabase/migrations/0128_fix_household_member_limit.sql`, `supabase/schema.sql`, `MONETIZATION.md` (wiederhergestellt), `tests/account-interest.test.ts` |
+| Fremde Runde (04.-05.08.) nachgeprueft: Zinsbuchung, Haushaltssitze, tote Parameter | `lib/finance/account-interest.ts`, `lib/finance/accounts.ts`, `components/debt/debt-view.tsx`, `supabase/migrations/0128_fix_household_member_limit.sql`, `supabase/schema.sql`, `tests/account-interest.test.ts`; MONETIZATION.md auf Owner-Anweisung geloescht, nie wiederherstellen |
 
 ### Runde 2026-08-04
 
