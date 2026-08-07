@@ -84,8 +84,12 @@ describe("RecurringCard due-entry review", () => {
     expect(screen.queryByRole("textbox", { name: "recurring.due.amountLabel" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "recurring.due.review" }));
 
+    // The occurrence proposes its own day; the time of day is editable too, so
+    // the input carries a full local datetime.
     const date = screen.getByLabelText("recurring.due.dateLabel") as HTMLInputElement;
-    expect(date.value).toBe("2026-08-01");
+    expect(date.value).toMatch(/^2026-08-01T\d{2}:\d{2}$/);
+    fireEvent.change(date, { target: { value: "2026-08-03T09:30" } });
+
     const amount = screen.getByRole("textbox", { name: "recurring.due.amountLabel" });
     fireEvent.change(amount, { target: { value: "0" } });
     expect(
@@ -96,8 +100,9 @@ describe("RecurringCard due-entry review", () => {
     fireEvent.click(screen.getByRole("button", { name: "recurring.due.book" }));
 
     await waitFor(() => expect(mocks.addSpendingTransaction).toHaveBeenCalledTimes(1));
+    // The row posts on the edited moment, keeping the chosen time.
     expect(mocks.addSpendingTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ date: "2026-08-01", amount: -75 }),
+      expect.objectContaining({ date: "2026-08-03", bookedAt: "2026-08-03T09:30", amount: -75 }),
     );
     await waitFor(() =>
       expect(mocks.updatePlannedCashflow).toHaveBeenCalledWith("plan-1", {

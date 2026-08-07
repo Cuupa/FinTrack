@@ -17,7 +17,7 @@ import { ProTeaser } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
 import { dueOccurrences, nextOccurrence } from "@/lib/finance/savings-plans";
 import { savingsPlanFee } from "@/lib/finance/fees";
-import { today } from "@/lib/finance/dates";
+import { nowDateTimeLocal, today } from "@/lib/finance/dates";
 import { priceOn, quoteItemFor } from "@/lib/finance/prices";
 import { priceAtWithHeadTolerance } from "@/lib/history/history";
 import { useHistory } from "@/lib/history/use-history";
@@ -72,8 +72,11 @@ export interface DueRow {
   feeDefault: number;
 }
 
-/** A user override for a single due row's price, quantity and/or fee input. */
+/** A user override for a single due row's date, price, quantity and/or fee. */
 interface RowEdit {
+  /** Local `YYYY-MM-DDTHH:MM`. A due occurrence is a proposal, so the moment
+   *  it posts is the user's to correct, same as the recurring review. */
+  dateTime?: string;
   price?: string;
   qty?: string;
   fee?: string;
@@ -193,12 +196,12 @@ function SavingsPlansCardInner() {
   // Per-row user overrides for price/qty in the inline review, keyed by
   // `${plan.id}:${date}`. Reset on open/close (never via effect — see
   // react-hooks/set-state-in-effect in CLAUDE.md).
-  const [rowEdits, setRowEdits] = useState<Map<string, { price?: string; qty?: string }>>(
-    new Map(),
-  );
+  const [rowEdits, setRowEdits] = useState<Map<string, RowEdit>>(new Map());
+  const [openedAtTime, setOpenedAtTime] = useState(() => nowDateTimeLocal().slice(11));
 
   function openReview() {
     setRowEdits(new Map());
+    setOpenedAtTime(nowDateTimeLocal().slice(11));
     setReviewing(true);
   }
 
@@ -350,6 +353,11 @@ function SavingsPlansCardInner() {
       derived.effectiveQty <= 0,
   );
 
+  /** When the occurrence will post. The occurrence's own day at the time the
+   *  review was opened, unless the user moved it. */
+  const dateTimeOf = (row: DueRow) =>
+    rowEdits.get(rowKey(row.plan.id, row.date))?.dateTime ?? `${row.date}T${openedAtTime}`;
+
   function setRowEdit(key: string, patch: RowEdit) {
     setRowEdits((prev) => {
       const next = new Map(prev);
@@ -368,6 +376,7 @@ function SavingsPlansCardInner() {
       // The occurrences after the failure simply surface again.
       for (const { row, derived } of rowsWithEdits) {
         const booking = row.plan.bookingType === "BOOKING";
+        const dateTime = dateTimeOf(row);
         await addTransaction({
           assetId: row.asset.id,
           portfolioId: row.plan.portfolioId,
@@ -376,7 +385,7 @@ function SavingsPlansCardInner() {
           price: derived.effectivePrice,
           fee: round(derived.effectiveFee, 2),
           tax: 0,
-          date: `${row.date}T00:00:00`,
+          date: `${dateTime}:00`,
           savingsPlanId: row.plan.id,
         });
         // The optional other half: the money leaving the Verrechnungskonto.
@@ -387,7 +396,8 @@ function SavingsPlansCardInner() {
           await addSpendingTransaction({
             accountId: account.id,
             categoryId: null,
-            date: row.date,
+            date: dateTime.slice(0, 10),
+            bookedAt: dateTime,
             amount: -round(derived.amount + derived.effectiveFee, 2),
             payee: row.asset.name,
             note: null,
@@ -463,13 +473,18 @@ function SavingsPlansCardInner() {
           of the card put the plan table between "something is waiting" and the
           thing that was waiting. */}
       {reviewing && (
-        <div className="mt-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="mt-3 max-w-5xl rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
           <div className="space-y-4">
           <h3 className="text-lg font-semibold">{t("sp.reviewTitle")}</h3>
           <p className="text-sm text-zinc-500">{t("sp.reviewHint")}</p>
           <Table>
             <Thead>
-              <Th sort={dueSort.sort} sortKey="date" onSort={dueSort.toggle}>
+              <Th
+                className="w-px whitespace-nowrap"
+                sort={dueSort.sort}
+                sortKey="date"
+                onSort={dueSort.toggle}
+              >
                 {t("tx.date")}
               </Th>
               <Th sort={dueSort.sort} sortKey="asset" onSort={dueSort.toggle}>
@@ -492,7 +507,15 @@ function SavingsPlansCardInner() {
                 const key = rowKey(row.plan.id, row.date);
                 return (
                   <Tr key={key}>
-                    <Td className="whitespace-nowrap">{formatDate(row.date)}</Td>
+                    <Td className="w-px whitespace-nowrap">
+                      <input
+                        type="datetime-local"
+                        value={dateTimeOf(row)}
+                        onChange={(e) => setRowEdit(key, { dateTime: e.target.value })}
+                        aria-label={t("tx.date")}
+                        className={`${rowInputCls} w-52 text-left`}
+                      />
+                    </Td>
                     <Td className="max-w-[16rem] truncate">{row.asset.name}</Td>
                     <Td
                       align="right"

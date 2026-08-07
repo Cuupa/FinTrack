@@ -154,6 +154,7 @@ export function RecurringCard() {
   // carried a bonus, the charge landed two days late. Date and amount are
   // therefore editable per row before anything is posted, keyed by occurrence.
   const [edits, setEdits] = useState<Record<string, { date?: string; amount?: string }>>({});
+  const [openedAtTime, setOpenedAtTime] = useState(() => nowDateTimeLocal().slice(11));
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const sort = useSort<SortKey>("next");
   // Sorted by the OCCURRENCE's own date and planned amount, never by the
@@ -310,8 +311,11 @@ export function RecurringCard() {
     );
   }, [data.contracts, data.plannedCashflows, data.accounts, data.accountBalances, data.spendingTransactions, movements, todayIso, t, dueSort]);
 
-  /** The date the row will post on: the occurrence's own day unless edited. */
-  const dueDateOf = (d: DueRow) => edits[d.key]?.date ?? d.date;
+  /** When the row will post: the occurrence's own day unless edited, at the
+   *  time the review was opened. The default time is frozen at open rather
+   *  than read per render, or every keystroke would nudge it forward. */
+  const dueDateTimeOf = (d: DueRow) => edits[d.key]?.date ?? `${d.date}T${openedAtTime}`;
+  const dueDateOf = (d: DueRow) => dueDateTimeOf(d).slice(0, 10);
   /** Always the magnitude — the sign belongs to the entry, not to this box. */
   const dueAmountText = (d: DueRow) =>
     edits[d.key]?.amount ?? formatInputDecimal(Math.abs(d.amount), 2);
@@ -330,6 +334,7 @@ export function RecurringCard() {
   function openReview() {
     setError(null);
     setEdits({});
+    setOpenedAtTime(nowDateTimeLocal().slice(11));
     setReviewing(true);
   }
 
@@ -467,13 +472,14 @@ export function RecurringCard() {
         // The row posts on the edited day, but the source's cursor always
         // advances by the OCCURRENCE's own date: booking the first of the month
         // with today's date must not swallow the days in between.
-        const date = dueDateOf(d);
+        const dateTime = dueDateTimeOf(d);
+        const date = dateTime.slice(0, 10);
         if (d.kind === "interest") {
           await addSpendingTransaction({
             accountId: d.accountId,
             categoryId: null,
             date,
-            bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
+            bookedAt: dateTime,
             amount,
             payee: d.name,
             note: null,
@@ -493,7 +499,7 @@ export function RecurringCard() {
             accountId: d.accountId,
             categoryId: d.categoryId,
             date,
-            bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
+            bookedAt: dateTime,
             amount: -interest,
             payee: `${d.name} (${t("recurring.split.interest")})`,
             note: null,
@@ -506,7 +512,7 @@ export function RecurringCard() {
             accountId: d.accountId,
             categoryId: d.categoryId,
             date,
-            bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
+            bookedAt: dateTime,
             amount: amount + interest, // both negative: the remainder
             payee: `${d.name} (${t("recurring.split.principal")})`,
             note: null,
@@ -523,7 +529,7 @@ export function RecurringCard() {
           accountId: d.accountId,
           categoryId: d.categoryId,
           date,
-          bookedAt: `${date}T${nowDateTimeLocal().slice(11)}`,
+          bookedAt: dateTime,
           amount,
           payee: d.name,
           note: null,
@@ -581,22 +587,39 @@ export function RecurringCard() {
       )}
 
       {reviewing && due.length > 0 && (
-        <div className="mt-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        // Capped: a review is a form, not a ledger. At full width the few
+        // columns spread across the viewport and the amount input ended up a
+        // thousand pixels from the row it belongs to.
+        <div className="mt-3 max-w-5xl rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">{t("recurring.due.reviewTitle")}</h3>
             <p className="text-sm text-zinc-500">{t("recurring.due.reviewHint")}</p>
             <Table>
+              {/* Only the name column takes the slack. Left to itself the
+                  table split the width evenly and pushed the amount input a
+                  thousand pixels away from the row it belongs to. */}
               <Thead>
-                <Th sort={dueSort.sort} sortKey="date" onSort={dueSort.toggle}>
+                <Th
+                  className="w-px whitespace-nowrap"
+                  sort={dueSort.sort}
+                  sortKey="date"
+                  onSort={dueSort.toggle}
+                >
                   {t("recurring.due.dateLabel")}
                 </Th>
                 <Th sort={dueSort.sort} sortKey="name" onSort={dueSort.toggle}>
                   {t("recurring.col.name")}
                 </Th>
-                <Th align="right" sort={dueSort.sort} sortKey="amount" onSort={dueSort.toggle}>
+                <Th
+                  align="right"
+                  className="w-px whitespace-nowrap"
+                  sort={dueSort.sort}
+                  sortKey="amount"
+                  onSort={dueSort.toggle}
+                >
                   {t("recurring.due.amountLabel")}
                 </Th>
-                <Th />
+                <Th className="w-px" />
               </Thead>
               <Tbody>
                 {due.map((d) => {
@@ -606,13 +629,13 @@ export function RecurringCard() {
                     amount === null ? 0 : Math.min(d.interestAmount, Math.abs(amount));
                   return (
                     <Tr key={d.key}>
-                      <Td>
+                      <Td className="w-px whitespace-nowrap">
                         <input
-                          type="date"
-                          value={dueDateOf(d)}
+                          type="datetime-local"
+                          value={dueDateTimeOf(d)}
                           onChange={(e) => editRow(d.key, { date: e.target.value })}
                           aria-label={t("recurring.due.dateLabel")}
-                          className={`${dueInputCls} w-36 text-left`}
+                          className={`${dueInputCls} w-52 text-left`}
                         />
                       </Td>
                       <Td className="font-medium" data-private>
@@ -626,7 +649,7 @@ export function RecurringCard() {
                           </div>
                         )}
                       </Td>
-                      <Td align="right" className="tabular-nums">
+                      <Td align="right" className="w-px whitespace-nowrap tabular-nums">
                         <input
                           inputMode="decimal"
                           value={dueAmountText(d)}
@@ -644,7 +667,7 @@ export function RecurringCard() {
                           data-private
                         />
                       </Td>
-                      <Td>
+                      <Td className="w-px">
                         <RowActions>
                           <SkipAction
                             label={t("recurring.due.skip")}

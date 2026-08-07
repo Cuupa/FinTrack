@@ -741,7 +741,9 @@ export function AssetDetail({
 
       {/* Details + Top 10 holdings (ETF look-through) share one row, Details
           twice as wide (2:1). */}
-      <div className={`grid gap-4 ${constituents.length > 0 ? "lg:grid-cols-3" : ""}`}>
+      {/* `items-start`: grid children stretch to the tallest by default, which
+          left the shorter Details card padded out with a block of empty card. */}
+      <div className={`grid items-start gap-4 ${constituents.length > 0 ? "lg:grid-cols-3" : ""}`}>
         <Card className={constituents.length > 0 ? "lg:col-span-2" : ""}>
           <h2 className="text-lg font-semibold">{t("asset.details")}</h2>
           <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">

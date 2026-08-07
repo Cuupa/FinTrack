@@ -1,13 +1,8 @@
 "use client";
 
-// Round avatar (initials) for the signed-in user. Clicking it opens a menu with
-// Settings and Logout. Replaces the email + standalone sign-out button.
-//
-// Two placements, one menu: `header` is the round avatar the top bar keeps
-// below md (where there is no sidebar), `sidebar` is the full-width row pinned
-// to the bottom of the desktop sidebar. The sidebar variant opens UPWARD —
-// there is no room below it — which is why placement is a prop rather than a
-// second component wrapping this one.
+// Round avatar (initials) for the signed-in user, rightmost in the top bar at
+// every breakpoint. Clicking it opens a menu with Settings and Logout,
+// opening downward under the bar.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -29,14 +24,7 @@ function initials(name: string | null, email: string | null): string {
   return src[0]!.toUpperCase();
 }
 
-export function ProfileMenu({
-  variant = "header",
-  collapsed = false,
-}: {
-  variant?: "header" | "sidebar";
-  /** Sidebar variant only: the rail is 64px wide, so the row is icon-only. */
-  collapsed?: boolean;
-} = {}) {
+export function ProfileMenu() {
   const { user, signOut } = useAuth();
   const { data } = usePortfolio();
   const { t } = useI18n();
@@ -62,63 +50,24 @@ export function ProfileMenu({
   const email = user?.email ?? null;
   const exportDisabled = !hasExportableData(data);
 
-  const inSidebar = variant === "sidebar";
-  const avatar = (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white dark:bg-emerald-500">
-      {initials(name, email)}
-    </span>
-  );
-
   return (
     <div className="relative" ref={ref}>
-      {inSidebar ? (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          title={collapsed ? (name ?? email ?? t("nav.account")) : undefined}
-          aria-label={t("nav.account")}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 dark:focus-visible:outline-emerald-400 ${
-            collapsed ? "justify-center" : ""
-          }`}
-        >
-          {avatar}
-          {!collapsed && (
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block truncate">{name ?? email ?? t("nav.account")}</span>
-              {name && email && (
-                <span className="block truncate text-xs text-zinc-400">{email}</span>
-              )}
-            </span>
-          )}
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-label={t("nav.account")}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-emerald-500"
-        >
-          {initials(name, email)}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={t("nav.account")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-emerald-500"
+      >
+        {initials(name, email)}
+      </button>
       {open && (
-        <div
-          className={`absolute z-30 w-56 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900 ${
-            inSidebar ? "bottom-full left-0 mb-2" : "right-0 mt-2"
-          }`}
-        >
-          {/* The expanded sidebar row already carries name + email; repeating
-              them directly above it would be the same line twice. */}
-          {!(inSidebar && !collapsed) && (
-            <div className="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
-              {name && <div className="truncate text-sm font-medium">{name}</div>}
-              <div className="truncate text-xs text-zinc-500">{email}</div>
-            </div>
-          )}
+        <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+            {name && <div className="truncate text-sm font-medium">{name}</div>}
+            <div className="truncate text-xs text-zinc-500">{email}</div>
+          </div>
           <Link
             href="/settings"
             onClick={() => setOpen(false)}

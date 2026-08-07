@@ -16,10 +16,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
-import { useAuth } from "@/lib/auth/auth-context";
 import { useFeatureFlags } from "@/lib/flags/flags-context";
 import { LockIcon } from "@/components/billing/pro-teaser";
-import { ProfileMenu } from "@/components/profile-menu";
 import { NotificationCount } from "@/components/ui/notification-count";
 import { useNotifications } from "@/lib/notifications/use-notifications";
 import {
@@ -36,7 +34,6 @@ const STORAGE_KEY = "fintrack:sidebar-collapsed";
 export function Sidebar() {
   const pathname = usePathname();
   const { t } = useI18n();
-  const { mode } = useAuth();
   const { getFeature } = useFeatureFlags();
   const { byRoute: pending } = useNotifications();
   const [collapsed, setCollapsed] = useState(false);
@@ -123,9 +120,6 @@ export function Sidebar() {
         collapsed ? "w-16" : "w-64"
       } transition-[width] duration-150`}
     >
-      {/* Only the link list scrolls. The account row below sits outside it on
-          purpose: its menu opens upward and out of the rail, which an
-          `overflow-y-auto` ancestor would clip. */}
       <nav data-tour="nav" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-2">
         <div className="flex flex-col gap-1">
           {ungrouped.map(renderLink)}
@@ -153,36 +147,7 @@ export function Sidebar() {
 
       </nav>
 
-      {/* Pinned to the bottom edge of the rail, not merely the last list item:
-          the account is where you leave the app from, not another destination
-          in it. */}
       <div className="shrink-0 border-t border-zinc-200 p-2 dark:border-zinc-800">
-        {mode === "registered" ? (
-          <ProfileMenu variant="sidebar" collapsed={collapsed} />
-        ) : (
-          <Link
-            href="/login"
-            title={collapsed ? t("nav.login") : undefined}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 dark:focus-visible:outline-emerald-400 ${
-              collapsed ? "justify-center" : ""
-            }`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5 shrink-0"
-              aria-hidden="true"
-            >
-              <path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
-            </svg>
-            {!collapsed && <span className="truncate">{t("nav.login")}</span>}
-          </Link>
-        )}
-
         <button
           type="button"
           onClick={toggle}

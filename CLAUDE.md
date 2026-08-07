@@ -553,10 +553,18 @@ They are not priced from a market, and the rules that bind all of them are:
   same way**: an amber "N due" notice under the card's header with a "Prüfen"
   button, and the review itself directly beneath it — notice and review must
   never be separated by the card's own table. The review is a sortable table of
-  editable proposals (date and amount/price always-on inputs, sorted by the
-  OCCURRENCE's immutable values so a row never moves while it is being typed
+  editable proposals (**datetime** and amount/price always-on inputs, sorted by
+  the OCCURRENCE's immutable values so a row never moves while it is being typed
   in), footed by cancel + "book N". `SavingsPlansCard` and `RecurringCard` both
-  render it.
+  render it. The moment is a `datetime-local`, not a date (owner rule, round
+  31): a due occurrence proposes a day, but the wall-clock time is the user's
+  to set on BOTH surfaces, so nothing posts at "whenever you happened to click"
+  (the recurring card) or at a hardcoded midnight (the savings card, which
+  rendered the date as static text and had no picker at all). The default time
+  is frozen when the review OPENS, never read per render, or it would tick
+  forward under the user mid-edit. The panel is capped (`max-w-5xl`): a review
+  is a form, and at full width its few columns spread across the viewport until
+  the amount input sat a thousand pixels from the row it belonged to.
 - **The one exception is a LIABILITY's interest, which posts by itself**
   (owner rule: "da hab ich keine Möglichkeit die Zinsen wirklich zu
   kontrollieren"). A review exists so a figure can be corrected before it
@@ -669,9 +677,9 @@ you here:
   the amber `Placeholder` chips only appear once loading has settled with the
   value still missing — registered visitors never see a placeholder flash.
 
-**Navigation chrome**: the account entry is pinned to the BOTTOM of the
-`Sidebar` (its own non-scrolling footer, so the menu can open upward out of the
-rail) and only stays in `SiteNav` below `md`, where there is no sidebar.
+**Navigation chrome**: the account entry is the rightmost item in `SiteNav`'s
+top bar at every breakpoint (`ProfileMenu`, opening downward); the `Sidebar`
+carries no account row.
 `useNotifications` (`lib/notifications/`, pure core + one hook) counts what
 actually waits for the user — household invitations, due savings-plan
 occurrences, due cash interest, due ACCOUNT interest, due contract and planned
