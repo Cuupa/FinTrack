@@ -20,6 +20,7 @@ import { incomeExpenseSplit, spendingSankeyData, toBaseCurrency, type SankeyGrap
 import { colorForLabel } from "@/lib/colors";
 import { formatCurrency } from "@/lib/format";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
+import { inMonth } from "@/components/ui/month-picker";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 const PERIODS: Timeframe[] = ["1M", "3M", "YTD", "1Y", "MAX"];
@@ -37,7 +38,7 @@ function colorForNode(node: SankeyNode, labels: { total: string; savings: string
   return colorForLabel(node.name);
 }
 
-export function SpendingSankeyCard() {
+export function SpendingSankeyCard({ month = null }: { month?: string | null }) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
@@ -53,10 +54,13 @@ export function SpendingSankeyCard() {
     [data.spendingTransactions],
   );
 
+  // A chosen month wins over the rolling window: the two answer the same
+  // question and the page-level filter is the one the user just set.
   const windowed = useMemo(() => {
+    if (month) return data.spendingTransactions.filter((tx) => inMonth(tx.date, month));
     const start = timeframeStart(timeframe, today(), earliest);
     return data.spendingTransactions.filter((tx) => tx.date >= start);
-  }, [data.spendingTransactions, timeframe, earliest]);
+  }, [data.spendingTransactions, timeframe, earliest, month]);
 
   const converted = useMemo(
     () => toBaseCurrency(windowed, data.accounts, base, valuation.fx),
@@ -91,12 +95,15 @@ export function SpendingSankeyCard() {
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("spending.sankey.title")}</h2>
-        <SegmentedControl
-          size="sm"
-          value={timeframe}
-          onChange={setTimeframe}
-          options={PERIODS.map((tf) => ({ label: tf, value: tf }))}
-        />
+        {/* A window control means nothing inside a single month. */}
+        {!month && (
+          <SegmentedControl
+            size="sm"
+            value={timeframe}
+            onChange={setTimeframe}
+            options={PERIODS.map((tf) => ({ label: tf, value: tf }))}
+          />
+        )}
       </div>
       {graph.nodes.length === 0 ? (
         <p className="py-16 text-center text-sm text-zinc-500">{t("common.noData")}</p>

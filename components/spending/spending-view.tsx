@@ -13,6 +13,7 @@ import { nowDateTimeLocal, timeframeStart, today, type Timeframe } from "@/lib/f
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, formatDateTime, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { inMonth } from "@/components/ui/month-picker";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
@@ -70,6 +71,7 @@ function isMoneyOut(tx: { amount: number }): boolean {
 export function SpendingView({
   accountIds: scopeAccountIds = [],
   timeframe,
+  month = null,
 }: {
   /** Narrows the ledger to the selected accounts and prefills the entry mask
    *  with the first of them. Empty means every account, which is how this view
@@ -78,6 +80,10 @@ export function SpendingView({
   /** Narrows the ledger to the window the accounts chart is showing, so the
    *  bookings under it are the ones that produced that curve. */
   timeframe?: Timeframe;
+  /** `YYYY-MM` from the page header, or null. A chosen month wins over the
+   *  chart's rolling window: both answer "which bookings", and the month is
+   *  the one the user just set. */
+  month?: string | null;
 } = {}) {
   const {
     data,
@@ -228,10 +234,12 @@ export function SpendingView({
   // picked a transfer between two of them is one booking, not two: it is the
   // same row matching on either side.
   const scoped = useMemo(() => {
-    const from = timeframe
-      ? timeframeStart(timeframe, todayIso, earliestBookingDate(data.spendingTransactions))
-      : null;
+    const from =
+      !month && timeframe
+        ? timeframeStart(timeframe, todayIso, earliestBookingDate(data.spendingTransactions))
+        : null;
     return data.spendingTransactions.filter((tx) => {
+      if (!inMonth(tx.date, month)) return false;
       if (from && tx.date < from) return false;
       if (scopeAccountIds.length === 0) return true;
       return (
@@ -239,7 +247,7 @@ export function SpendingView({
         (tx.transferAccountId != null && scopeAccountIds.includes(tx.transferAccountId))
       );
     });
-  }, [data.spendingTransactions, scopeAccountIds, timeframe, todayIso]);
+  }, [data.spendingTransactions, scopeAccountIds, timeframe, todayIso, month]);
 
   const rows = useMemo(
     () =>

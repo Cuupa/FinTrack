@@ -26,7 +26,13 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { accountsTotals, accountsValueSeries } from "@/lib/finance/accounts";
-import { dateRange, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
+import {
+  dateRange,
+  lastDayOfMonth,
+  timeframeStart,
+  today,
+  type Timeframe,
+} from "@/lib/finance/dates";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, Stat } from "@/components/ui/primitives";
 import { ChartControls } from "@/components/charts/chart-controls";
@@ -39,6 +45,7 @@ export function AccountsHero({
   onTimeframe,
   scale,
   onScale,
+  month = null,
 }: {
   /** Empty means every account. The picker for it lives in the header. */
   accountIds: string[];
@@ -46,10 +53,13 @@ export function AccountsHero({
   onTimeframe: (tf: Timeframe) => void;
   scale: ChartScale;
   onScale: (s: ChartScale) => void;
+  /** `YYYY-MM` from the page header, or null for every month. A month covers
+   *  the curve as well, so the timeframe strip stands down while one is set. */
+  month?: string | null;
 }) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const base = data.profile.currency;
   const movements = useAccountMovements();
 
@@ -73,16 +83,26 @@ export function AccountsHero({
   // earliest point that has nothing to do with it.
   const series = useMemo(() => {
     if (selected.length === 0) return [];
-    const end = today();
+    const todayIso = today();
     let earliest = selected[0].openedOn;
     for (const a of selected) if (a.openedOn < earliest) earliest = a.openedOn;
-    const start = timeframeStart(timeframe, end, earliest);
+    // A chosen month bounds both ends; without one the window runs to today.
+    const monthEnd = month ? lastDayOfMonth(`${month}-01`) : null;
+    const end = monthEnd && monthEnd < todayIso ? monthEnd : todayIso;
+    const start = month ? `${month}-01` : timeframeStart(timeframe, end, earliest);
+    if (end < earliest) return [];
     const dates = dateRange(start < earliest ? earliest : start, end);
     const values = accountsValueSeries(selected, data.accountBalances, dates, valuation, movements);
     return dates.map((date, i) => ({ date, value: values[i] }));
-  }, [selected, data.accountBalances, timeframe, valuation, movements]);
+  }, [selected, data.accountBalances, timeframe, valuation, movements, month]);
 
   const change = series.length < 2 ? 0 : series[series.length - 1].value - series[0].value;
+  // The window the change is measured over, named the way the user chose it.
+  const changeScope = month
+    ? new Intl.DateTimeFormat(locale, { year: "numeric", month: "long" }).format(
+        new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1)),
+      )
+    : timeframe;
 
 
   // "One account" is what turns the page into that account's statement, and it
@@ -119,7 +139,7 @@ export function AccountsHero({
 
       <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat
-          label={t("accounts.hero.change", { timeframe })}
+          label={t("accounts.hero.change", { timeframe: changeScope })}
           value={formatCurrency(change, base)}
           valueClassName={change < 0 ? "text-red-600 dark:text-red-400" : ""}
           isPrivate
@@ -145,18 +165,22 @@ export function AccountsHero({
         />
       </div>
 
-      <div className="mt-4">
-        <ChartControls
-          timeframe={timeframe}
-          onTimeframe={onTimeframe}
-          scale={scale}
-          onScale={onScale}
-          mode="currency"
-          onMode={() => {}}
-          showMode={false}
-          scaleAvailable={canLogScale(series)}
-        />
-      </div>
+      {/* A timeframe strip means nothing inside a single month: the header's
+          month picker already bounds the curve at both ends. */}
+      {!month && (
+        <div className="mt-4">
+          <ChartControls
+            timeframe={timeframe}
+            onTimeframe={onTimeframe}
+            scale={scale}
+            onScale={onScale}
+            mode="currency"
+            onMode={() => {}}
+            showMode={false}
+            scaleAvailable={canLogScale(series)}
+          />
+        </div>
+      )}
 
       <div className="mt-3">
         {series.length < 2 ? (

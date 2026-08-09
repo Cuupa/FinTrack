@@ -541,6 +541,7 @@ export const en = {
   "common.portfolioWide": "Portfolio wide",
   "common.total": "Total",
   "common.noData": "No data",
+  "common.allMonths": "All months",
 
   "common.selectAll": "Select all",
   "common.holdingValue": "Holding value",
@@ -2897,6 +2898,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "common.portfolioWide": "Gesamtes Portfolio",
   "common.total": "Gesamt",
   "common.noData": "Keine Daten",
+  "common.allMonths": "Alle Monate",
   "common.marketValue": "Marktwert",
 
   "common.selectAll": "Alles auswählen",
@@ -5258,6 +5260,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "common.portfolioWide": "Toda la cartera",
   "common.total": "Total",
   "common.noData": "Sin datos",
+  "common.allMonths": "Todos los meses",
 
   "common.selectAll": "Seleccionar todo",
   "common.holdingValue": "Valor de la posición",

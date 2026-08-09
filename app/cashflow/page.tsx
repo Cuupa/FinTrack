@@ -21,14 +21,15 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Card, PageHeader, Stat } from "@/components/ui/primitives";
+import { MonthPicker, inMonth } from "@/components/ui/month-picker";
 import { incomeExpenseSplit, toBaseCurrency } from "@/lib/finance/spending";
 import { formatCurrency } from "@/lib/format";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 /** Income / expense / net over the whole ledger, base currency. Moved here
  *  with the rest of the analysis: it answers "does it add up", which is this
  *  page's question, not /spending's "what did I book". */
-function Totals() {
+function Totals({ month }: { month: string | null }) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
@@ -36,9 +37,14 @@ function Totals() {
   const totals = useMemo(
     () =>
       incomeExpenseSplit(
-        toBaseCurrency(data.spendingTransactions, data.accounts, base, valuation.fx),
+        toBaseCurrency(
+          data.spendingTransactions.filter((tx) => inMonth(tx.date, month)),
+          data.accounts,
+          base,
+          valuation.fx,
+        ),
       ),
-    [data.spendingTransactions, data.accounts, base, valuation.fx],
+    [data.spendingTransactions, data.accounts, base, valuation.fx, month],
   );
   return (
     <Card>
@@ -64,13 +70,15 @@ function Totals() {
   );
 }
 
-function CashflowView() {
+function CashflowView({ month }: { month: string | null }) {
   return (
     <div className="space-y-6">
-      <Totals />
-      <SpendingSankeyCard />
+      <Totals month={month} />
+      <SpendingSankeyCard month={month} />
+      {/* The forecast looks forward, so the month filter has no meaning for it
+          and deliberately does not reach it (owner rule). */}
       <ForecastCard />
-      <BudgetsCard />
+      <BudgetsCard month={month} />
     </div>
   );
 }
@@ -79,9 +87,14 @@ export default function CashflowPage() {
   const { t } = useI18n();
   const { loading, loadError, reload } = usePortfolio();
   const { enabled, locked } = useFeature("spending");
+  const [month, setMonth] = useState<string | null>(null);
   return (
     <div className="space-y-6">
-      <PageHeader title={t("cashflow.title")} subtitle={t("cashflow.subtitle")} />
+      <PageHeader
+        title={t("cashflow.title")}
+        subtitle={t("cashflow.subtitle")}
+        actions={enabled && !locked ? <MonthPicker value={month} onChange={setMonth} /> : undefined}
+      />
       {!enabled ? (
         <FeatureUnavailable />
       ) : loading ? (
@@ -90,10 +103,10 @@ export default function CashflowPage() {
         <LoadError onRetry={reload} />
       ) : locked ? (
         <ProTeaser feature="spending">
-          <CashflowView />
+          <CashflowView month={month} />
         </ProTeaser>
       ) : (
-        <CashflowView />
+        <CashflowView month={month} />
       )}
     </div>
   );

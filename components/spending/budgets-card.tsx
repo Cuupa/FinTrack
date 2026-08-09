@@ -11,7 +11,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProTeaser } from "@/components/billing/pro-teaser";
-import { today, shiftMonth } from "@/lib/finance/dates";
+import { today } from "@/lib/finance/dates";
 import { budgetProgress, toBaseCurrency } from "@/lib/finance/spending";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
@@ -30,25 +30,25 @@ const inputCls =
  * on but the feature requires Pro on a free plan — rendered blurred and inert
  * behind the paywall message instead of disappearing (MONETIZATION.md Phase 3).
  */
-export function BudgetsCard() {
+export function BudgetsCard({ month = null }: { month?: string | null }) {
   const { enabled, locked } = useFeature("budgets");
   if (!enabled) return null;
   if (locked)
     return (
       <ProTeaser feature="budgets">
-        <BudgetsCardInner />
+        <BudgetsCardInner month={month} />
       </ProTeaser>
     );
-  return <BudgetsCardInner />;
+  return <BudgetsCardInner month={month} />;
 }
 
-function BudgetsCardInner() {
+function BudgetsCardInner({ month: selected }: { month: string | null }) {
   const { data, addBudget, updateBudget, deleteBudget } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t, locale } = useI18n();
   const base = data.profile.currency;
 
-  const [month, setMonth] = useState(() => today().slice(0, 7));
+  const month = selected ?? today().slice(0, 7);
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -129,15 +129,9 @@ function BudgetsCardInner() {
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("spending.budgets.title")}</h2>
-        <div className="flex items-center gap-2 text-sm">
-          <Button size="sm" variant="secondary" onClick={() => setMonth((m) => shiftMonth(m, -1))}>
-            ‹
-          </Button>
-          <span className="min-w-[8rem] text-center font-medium">{monthLabel}</span>
-          <Button size="sm" variant="secondary" onClick={() => setMonth((m) => shiftMonth(m, 1))}>
-            ›
-          </Button>
-        </div>
+        {/* The month comes from the page header now, but a cap is always read
+            against one, so name the month these bars measure. */}
+        <span className="text-sm font-medium text-zinc-500">{monthLabel}</span>
       </div>
 
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}

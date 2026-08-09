@@ -549,6 +549,21 @@ They are not priced from a market, and the rules that bind all of them are:
   lets net worth go **negative**.
 - Spending is a **flow, not a balance**: it deliberately does not fold into
   `netWorthSeries`.
+- **/accounts and /cashflow carry ONE month filter, in the page header**
+  (owner rule, round 31). `MonthPicker` (`components/ui/month-picker.tsx`) holds
+  `string | null`, where **null means every month** and is reachable from any
+  state via a "×" — a filter that cannot be cleared hides the totals the pages
+  exist to show. Every surface that reads as a month's flow follows it: the
+  cashflow totals, the Sankey, the budgets card and the accounts hero's curve
+  plus the bookings ledger. Two of those owned a competing window control
+  (`SegmentedControl` on the Sankey, `ChartControls` on the hero); a chosen
+  month **wins over it and hides it**, because a rolling window means nothing
+  inside a single month. `null` must reproduce the old behaviour exactly,
+  control included. **The forecast is deliberately exempt** (owner rule: "prognose
+  sollte aber weiter so bleiben ohne einfluss") — it looks forward, so a past
+  month cannot scope it. The budgets card no longer owns a picker; with no
+  month it falls back to the current one, since a cap is always read against
+  one.
 - Nothing is ever posted silently, and **every due-review surface is built the
   same way**: an amber "N due" notice under the card's header with a "Prüfen"
   button, and the review itself directly beneath it — notice and review must

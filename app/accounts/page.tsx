@@ -27,6 +27,7 @@ import { FeatureUnavailable } from "@/components/feature-unavailable";
 import { ProTeaser } from "@/components/billing/pro-teaser";
 import { LoadError } from "@/components/ui/load-error";
 import { Button, Card } from "@/components/ui/primitives";
+import { MonthPicker } from "@/components/ui/month-picker";
 import { Modal } from "@/components/ui/modal";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useFeature, useFeatureFlag } from "@/lib/flags/flags-context";
@@ -51,6 +52,7 @@ export default function AccountsPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [scale, setScale] = useState<ChartScale>("linear");
   const [adding, setAdding] = useState(false);
+  const [month, setMonth] = useState<string | null>(null);
 
   const ready = enabled && !locked && !loading && !loadError;
 
@@ -64,6 +66,8 @@ export default function AccountsPage() {
         ready={ready}
         actions={
           ready ? (
+            <>
+            <MonthPicker value={month} onChange={setMonth} />
             <Button
               variant="primary"
               size="sm"
@@ -73,6 +77,7 @@ export default function AccountsPage() {
             >
               {t("accounts.form.add")}
             </Button>
+            </>
           ) : undefined
         }
       />
@@ -95,9 +100,12 @@ export default function AccountsPage() {
             onTimeframe={setTimeframe}
             scale={scale}
             onScale={setScale}
+            month={month}
           />
           <AccountsTable selectedIds={accountIds} />
-          {spendingEnabled && <SpendingView accountIds={accountIds} timeframe={timeframe} />}
+          {spendingEnabled && (
+            <SpendingView accountIds={accountIds} timeframe={timeframe} month={month} />
+          )}
         </>
       )}
 
