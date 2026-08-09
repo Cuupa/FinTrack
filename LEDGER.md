@@ -2,6 +2,28 @@
 
 ## Done
 
+- **2026-08-09 — Design v2 follow-ups** — session `429a4517`, two Sonnet
+  subworkers (one for the nav move, verified by diff; a second for the month
+  filter died on a session limit after only adding the three dictionary keys,
+  so that feature was written here). Commits `ae1a638` + `effbbc0`.
+  Due occurrences now carry an editable **datetime** on both surfaces: the
+  recurring review posted at "whenever you clicked" and the savings-plan review
+  rendered its date as static text with a hardcoded midnight and no picker at
+  all, though CLAUDE.md already required one. Both review panels are capped
+  (`max-w-5xl`) because at full width their few columns spread until the amount
+  input sat a thousand pixels from its row. The account entry moved out of the
+  sidebar footer into the top bar's rightmost slot (owner override of the
+  round-28 rule; `ProfileMenu`'s `sidebar` variant is gone and the popover now
+  opens downward). `MonthPicker` gives /accounts and /cashflow one page-level
+  month filter with a clearable "all months"; the Sankey and the accounts hero
+  hide their own window controls while a month is set, and the forecast is
+  exempt by owner rule. Drive-by: the asset detail's Details card no longer
+  stretches to its taller neighbour (`items-start`).
+  Verified in Guest Mode at 1920x1080. **Not verified in-browser**: the account
+  avatar's new top-bar position renders only for REGISTERED users, which local
+  dev cannot be (no Supabase keys) — code-reviewed only, and the sidebar's
+  account row is confirmed gone.
+
 - **2026-08-07 — TODO "Design v2" (first pass)** — session `429a4517`, one
   Sonnet subworker for the call-site conversions (verified by diff). The app
   rendered a KPI row two ways: nine surfaces grouped the figures in one card,
