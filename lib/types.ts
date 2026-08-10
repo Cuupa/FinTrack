@@ -99,6 +99,10 @@ export interface Asset {
    *  legacy behaviour (the day-of-month of the asset's first transaction,
    *  clamped to shorter months). */
   interestPostDay?: InterestPostDay | null;
+  /** The household member who owns this asset (the DB `user_id`). Only set in
+   *  Registered Mode; null/undefined in Guest Mode. Read-only: derived from the
+   *  row, never written through the input types. */
+  ownerId?: string | null;
 }
 
 /**
@@ -181,6 +185,10 @@ export interface Account {
    *  are their own cursor (`SpendingTransaction.interestAccountId`); a skipped
    *  one leaves no row, so it is remembered here or it stays due forever. */
   interestSkippedUntil?: string | null;
+  /** The household member who owns this account (the DB `user_id`). Only set in
+   *  Registered Mode; null/undefined in Guest Mode. Read-only: derived from the
+   *  row, never written through the input types. */
+  ownerId?: string | null;
 }
 
 /**
@@ -789,6 +797,10 @@ export interface Portfolio {
    *  = none registered here; the global `Profile.taxAllowance` is the fallback
    *  used until at least one portfolio has this set (see `lib/finance/tax.ts`). */
   taxAllowance?: number | null;
+  /** The household member who owns this broker (the DB `user_id`). Only set in
+   *  Registered Mode; null/undefined in Guest Mode. Read-only: derived from the
+   *  row, never written. */
+  ownerId?: string | null;
 }
 
 export const MAX_PORTFOLIOS = 20;

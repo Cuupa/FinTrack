@@ -26,11 +26,11 @@ import type {
   WatchlistItem,
 } from "../types";
 
-export type AssetInput = Omit<Asset, "id">;
+export type AssetInput = Omit<Asset, "id" | "ownerId">;
 export type TransactionInput = Omit<Transaction, "id">;
 export type WatchlistInput = Omit<WatchlistItem, "id">;
 export type SavingsPlanInput = Omit<SavingsPlan, "id">;
-export type AccountInput = Omit<Account, "id">;
+export type AccountInput = Omit<Account, "id" | "ownerId">;
 export type SpendingCategoryInput = Omit<SpendingCategory, "id">;
 export type SpendingTransactionInput = Omit<SpendingTransaction, "id">;
 export type BudgetInput = Omit<Budget, "id">;

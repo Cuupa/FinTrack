@@ -11,6 +11,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useOwnerLabel } from "@/lib/household/use-owner-label";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { SubscriptionCard } from "@/components/settings/subscription-card";
@@ -54,6 +55,7 @@ export function SettingsView() {
   const { data, updateProfile, portfolios, updatePortfolio } = usePortfolio();
   const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
+  const { shared, label: ownerLabel } = useOwnerLabel();
   const router = useRouter();
   // The AI tab is visible whenever the flag is on — including when it is
   // Pro-locked, in which case the panel below renders behind <ProGate> rather
@@ -418,7 +420,10 @@ export function SettingsView() {
                   value={feePortfolioId}
                   onChange={setFeePortfolioId}
                   ariaLabel={t("settings.fees.broker")}
-                  options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+                  options={portfolios.map((p) => {
+                    const owner = shared ? ownerLabel(p.ownerId) : null;
+                    return { value: p.id, label: owner ? `${p.name} · ${owner}` : p.name };
+                  })}
                 />
               </Field>
             </div>

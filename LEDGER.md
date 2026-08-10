@@ -2,6 +2,24 @@
 
 ## Done
 
+- **2026-08-10 — TODO "Haushalt" (who owns what in a shared household)** —
+  session `476e2bb1`, no subworker. Portfolios, accounts and assets all already
+  carry a DB `user_id`; it was never surfaced. Added a read-only `ownerId` to
+  the `Portfolio`/`Account`/`Asset` domain types (excluded from the `*Input`
+  writes), mapped from `user_id` in `SupabaseStore` (base-column selects, so no
+  migration risk), and a pure owner-name resolver + `useOwnerLabel` hook
+  (`lib/household/owner.ts` + `use-owner-label.ts`, unit-tested). An **Owner**
+  column now appears on the holdings table, the accounts list and the spending
+  ledger, and the settings broker picker appends the owner — but only when the
+  household is actively sharing across more than one member (`ownershipVisible`),
+  so a solo user sees no change. Self reads as "du", a peer as their email
+  (mirrors the members list). No badges; sortable columns; owner UUID kept out
+  of the LLM context and exports (both pick fields explicitly).
+  **Not verified in-browser**: renders only for REGISTERED household users,
+  which local dev cannot be (guest-only, no Supabase keys). Guest-mode path
+  confirmed unchanged (column hidden, /portfolio + /accounts + /spending 200,
+  no compile errors); unit suite green (1272 passing), tsc + lint clean.
+
 - **2026-08-09 — Design v2 follow-ups** — session `429a4517`, two Sonnet
   subworkers (one for the nav move, verified by diff; a second for the month
   filter died on a session limit after only adding the three dictionary keys,

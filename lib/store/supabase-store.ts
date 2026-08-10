@@ -100,6 +100,7 @@ import type {
 interface PortfolioRow {
   id: string;
   name: string;
+  user_id?: string | null;
   fee_order_flat?: number | string | null;
   fee_order_free_from?: number | string | null;
   fee_savings_plan?: number | string | null;
@@ -130,6 +131,7 @@ function portfolioFromRow(r: PortfolioRow): Portfolio {
     feeOrderFreeFrom: r.fee_order_free_from != null ? Number(r.fee_order_free_from) : null,
     feeSavingsPlan: r.fee_savings_plan != null ? Number(r.fee_savings_plan) : 0,
     taxAllowance: r.tax_allowance != null ? Number(r.tax_allowance) : null,
+    ownerId: r.user_id ?? null,
   };
 }
 
@@ -146,6 +148,7 @@ interface AssetRow {
   id: string;
   notes: string | null;
   currency: string | null;
+  user_id?: string | null;
   interest_rate?: number | null;
   interest_frequency?: Asset["interestFrequency"] | null;
   interest_post_day?: Asset["interestPostDay"] | null;
@@ -224,6 +227,7 @@ interface AccountRow {
   is_liability: boolean;
   opening_balance: number | string | null;
   opened_on: string;
+  user_id?: string | null;
   interest_rate?: number | string | null;
   min_payment?: number | string | null;
   rate_fixed_until?: string | null;
@@ -251,6 +255,7 @@ function accountFromRow(r: AccountRow): Account {
     rateFixedUntil: r.rate_fixed_until ?? null,
     followUpRate: r.follow_up_rate != null ? Number(r.follow_up_rate) : null,
     interestSkippedUntil: r.interest_skipped_until ?? null,
+    ownerId: r.user_id ?? null,
   };
 }
 
@@ -551,12 +556,12 @@ export class SupabaseStore implements DataStore {
 
       selectTolerant<PortfolioRow[]>(
         (cols) => this.supabase.from("portfolios").select(cols).order("created_at", { ascending: true }),
-        ["id", "name"],
+        ["id", "name", "user_id"],
         ["fee_order_flat", "fee_order_free_from", "fee_savings_plan", "tax_allowance"],
       ),
       selectTolerant<AssetRow[]>(
         (cols) => this.supabase.from("assets").select(cols),
-        ["id", "notes", "currency", "instrument:instruments (isin, wkn, symbol, name, type, currency)"],
+        ["id", "notes", "currency", "user_id", "instrument:instruments (isin, wkn, symbol, name, type, currency)"],
         ["interest_rate", "interest_frequency", "interest_post_day"],
       ),
       // RLS scopes transactions to the user's (or a household peer's) assets
@@ -591,7 +596,7 @@ export class SupabaseStore implements DataStore {
         .order("valued_on", { ascending: true }),
       selectTolerant<AccountRow[]>(
         (cols) => this.supabase.from("accounts").select(cols).order("created_at", { ascending: true }),
-        ["id", "name", "kind", "currency", "is_liability", "opening_balance", "opened_on"],
+        ["id", "name", "kind", "currency", "is_liability", "opening_balance", "opened_on", "user_id"],
         [
           "interest_rate",
           "interest_frequency",
@@ -865,6 +870,7 @@ export class SupabaseStore implements DataStore {
         interestRate: r.interest_rate ?? null,
         interestFrequency: r.interest_frequency ?? null,
         interestPostDay: r.interest_post_day ?? null,
+        ownerId: r.user_id ?? null,
       };
     });
 

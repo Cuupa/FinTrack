@@ -30,6 +30,7 @@ import { useSort } from "@/components/ui/use-sort";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useOwnerLabel } from "@/lib/household/use-owner-label";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
 import { CategoryManager } from "./category-manager";
@@ -46,7 +47,7 @@ import { useToast } from "@/lib/notifications/toast-context";
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
-type SortKey = "date" | "payee" | "payer" | "category" | "amount";
+type SortKey = "date" | "payee" | "payer" | "category" | "owner" | "amount";
 
 /** The two counterparty columns shrink to their content instead of taking an
  *  equal share of the row's width. */
@@ -94,6 +95,7 @@ export function SpendingView({
     addContract,
   } = usePortfolio();
   const { t } = useI18n();
+  const { shared, label: ownerLabel } = useOwnerLabel();
   const contractsEnabled = useFeatureFlag("contracts");
   const todayIso = today();
   const base = data.profile.currency;
@@ -259,10 +261,11 @@ export function SpendingView({
         if (key === "payee") return isMoneyOut(tx) ? tx.payee : ownName;
         if (key === "payer") return isMoneyOut(tx) ? ownName : tx.payee;
         if (key === "category") return categoryLabel(tx.categoryId);
+        if (key === "owner") return ownerLabel(accountsById.get(tx.accountId)?.ownerId) ?? "";
         return tx.amount;
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scoped, applySort, accountsById, categoriesById],
+    [scoped, applySort, accountsById, categoriesById, ownerLabel],
   );
 
   const pager = usePagination(rows);
@@ -631,6 +634,11 @@ export function SpendingView({
               <Th sort={sort} sortKey="category" onSort={toggleSort}>
                 {t("spending.list.category")}
               </Th>
+              {shared && (
+                <Th sort={sort} sortKey="owner" onSort={toggleSort}>
+                  {t("table.owner")}
+                </Th>
+              )}
               <Th align="right" sort={sort} sortKey="amount" onSort={toggleSort}>
                 {t("spending.list.amount")}
               </Th>
@@ -659,6 +667,11 @@ export function SpendingView({
                       {out ? own : tx.payee}
                     </Td>
                     <Td className="text-zinc-500">{categoryLabel(tx.categoryId)}</Td>
+                    {shared && (
+                      <Td className="text-zinc-500">
+                        {ownerLabel(account?.ownerId) ?? "—"}
+                      </Td>
+                    )}
                     <Td
                       align="right"
                       className={`tabular-nums ${tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""}`}

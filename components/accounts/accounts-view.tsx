@@ -32,6 +32,7 @@ import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useOwnerLabel } from "@/lib/household/use-owner-label";
 import {
   Table,
   TablePagination,
@@ -50,7 +51,7 @@ import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-action
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
-type SortKey = "name" | "kind" | "balance";
+type SortKey = "name" | "kind" | "owner" | "balance";
 
 /** The add-account form. Lives in a modal now, so it closes itself on success
  *  via `onDone` instead of resetting in place. */
@@ -249,6 +250,7 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
 export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) {
   const { data, deleteAccount } = usePortfolio();
   const { t } = useI18n();
+  const { shared, label: ownerLabel } = useOwnerLabel();
   const base = data.profile.currency;
   const movements = useAccountMovements();
 
@@ -267,10 +269,11 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
     return applySort(withValues, (r, key) => {
       if (key === "name") return r.account.name;
       if (key === "kind") return kindLabel(r.account.kind);
+      if (key === "owner") return ownerLabel(r.account.ownerId) ?? "";
       return r.signed;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.accounts, data.accountBalances, applySort, movements]);
+  }, [data.accounts, data.accountBalances, applySort, movements, ownerLabel]);
 
   const pager = usePagination(rows);
 
@@ -289,6 +292,11 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
               <Th sort={sort} sortKey="kind" onSort={toggleSort}>
                 {t("accounts.list.kind")}
               </Th>
+              {shared && (
+                <Th sort={sort} sortKey="owner" onSort={toggleSort}>
+                  {t("table.owner")}
+                </Th>
+              )}
               <Th align="right" sort={sort} sortKey="balance" onSort={toggleSort}>
                 {t("accounts.list.balance")}
               </Th>
@@ -315,6 +323,9 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
                       )}
                     </Td>
                     <Td className="text-zinc-500">{kindLabel(account.kind)}</Td>
+                    {shared && (
+                      <Td className="text-zinc-500">{ownerLabel(account.ownerId) ?? "—"}</Td>
+                    )}
                     <Td
                       align="right"
                       className={`tabular-nums ${signed < 0 ? "text-red-600 dark:text-red-400" : ""}`}
