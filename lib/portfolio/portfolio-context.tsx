@@ -55,6 +55,7 @@ import {
   type WatchlistItem,
 } from "../types";
 import { useAuth } from "../auth/auth-context";
+import { readAccountSelection, writeAccountSelection } from "../accounts/selection-storage";
 import { useFeatureFlag } from "../flags/flags-context";
 import { setManualValuations } from "../finance/manual-valuation";
 
@@ -216,6 +217,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       (loaded) => {
         if (!active) return;
         setData(loaded);
+        // Restore the persisted account scope, pruned to accounts that still
+        // exist for this user (empty = every account).
+        setSelectedAccounts(readAccountSelection(user?.id ?? null, loaded.accounts.map((a) => a.id)));
         setLoadError(false);
         setLoading(false);
       },
@@ -231,7 +235,16 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [authLoading, store]);
+  }, [authLoading, store, user?.id]);
+
+  // The picker's setter also persists, so a refresh keeps the account scope.
+  const selectAccounts = useCallback(
+    (ids: string[]) => {
+      setSelectedAccounts(ids);
+      writeAccountSelection(user?.id ?? null, ids);
+    },
+    [user?.id],
+  );
 
   const addAsset = useCallback(
     async (input: AssetInput) => {
@@ -983,7 +996,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     selectedPortfolioIds: activeIds,
     setSelectedPortfolios: setSelectedIds,
     selectedAccountIds,
-    setSelectedAccounts,
+    setSelectedAccounts: selectAccounts,
     createPortfolio,
     renamePortfolio,
     updatePortfolio,
