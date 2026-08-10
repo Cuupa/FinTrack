@@ -39,6 +39,7 @@ import { Modal } from "@/components/ui/modal";
 import { RecurringForm } from "@/components/spending/recurring-form";
 import { PlannedForm } from "@/components/spending/planned-form";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { useCollapsed } from "@/lib/ui/use-collapsed";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import {
@@ -137,6 +138,7 @@ export function RecurringCard() {
   } = usePortfolio();
   const { t } = useI18n();
   const { showToast } = useToast();
+  const [collapsed, toggleCollapsed] = useCollapsed("recurring");
   // The flag decides visibility, the plan decides unlocked: a locked entry
   // surface stays on screen behind a teaser rather than vanishing.
   const contracts = useFeature("contracts");
@@ -561,7 +563,20 @@ export function RecurringCard() {
   return (
     <Card data-tour="recurring-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{t("recurring.title")}</h2>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
+          className="flex items-center gap-1.5 text-lg font-semibold"
+        >
+          <span
+            className={`inline-block text-sm text-zinc-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+            aria-hidden
+          >
+            ›
+          </span>
+          {t("recurring.title")}
+        </button>
         {/* No "add" button here on purpose (owner rule): booking something and
             booking something that repeats are the SAME act, so the entry mask
             above owns it via its "recurring" switch. A button here was a second
@@ -701,7 +716,7 @@ export function RecurringCard() {
       {/* Charges that look recurring but are not tracked as such yet. Accepting
           one turns it into an entry and back-links the transactions it was
           detected from. */}
-      {contracts.enabled && visibleCandidates.length > 0 && (
+      {!collapsed && contracts.enabled && visibleCandidates.length > 0 && (
         <ProGate locked={contracts.locked} feature="contracts" className="mt-4">
           <div data-tour="recurring-suggestions" className="mt-4">
             <h3 className="text-sm font-semibold">{t("contracts.suggestions.title")}</h3>
@@ -737,7 +752,8 @@ export function RecurringCard() {
         </ProGate>
       )}
 
-      {rows.length === 0 ? (
+      {!collapsed &&
+        (rows.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("recurring.empty")}</p>
       ) : (
         <div className="mt-4">
@@ -831,7 +847,7 @@ export function RecurringCard() {
           </Table>
           <TablePagination pager={pager} />
         </div>
-      )}
+      ))}
 
       {editingRow?.kind === "contract" && (
         <Modal open onClose={() => setEditingRow(null)} maxWidthClass="max-w-5xl">
