@@ -60,7 +60,7 @@ export const en = {
   "form.missingFields": "Fill in the highlighted fields",
 
   "watchlist.title": "Watchlist",
-  "watchlist.empty": "Add instruments you want to follow without holding them.",
+  "watchlist.empty": "Add instruments to follow without holding them.",
   "watchlist.add": "Add",
   "watchlist.placeholder": "ISIN, WKN or symbol",
   "watchlist.notFound": "Nothing found for that identifier.",
@@ -120,7 +120,7 @@ export const en = {
   "sp.review": "Review",
   "sp.reviewTitle": "Due savings-plan executions",
   "sp.reviewHint":
-    "Each row is booked at the price shown (the real close on that day when available) using the plan's booking type: buy, or Einbuchung for external inflows. Nothing is booked until you confirm.",
+    "Each row is booked with the plan's booking type: buy, or Einbuchung for external inflows. The price is the real close on that day, otherwise the best available. Nothing is booked before your confirmation.",
   "sp.confirm": "Book {count} execution(s)",
   "sp.applying": "Booking…",
   "sp.applyError": "Booking failed.",
@@ -143,13 +143,13 @@ export const en = {
   "div.received12m": "Received (12 months)",
   "div.received12mTip": "Dividends received across all holdings in the trailing 12 months, in your base currency.",
   "div.receivedTotal": "Received (all time)",
-  "div.receivedTotalTip": "All dividends your holdings have paid since you held them (up to 10 years back).",
+  "div.receivedTotalTip": "All dividends paid by your holdings during your holding period (up to 10 years back).",
   "div.yield": "Dividend yield",
-  "div.yieldTip": "Trailing 12-month income divided by the portfolio's current market value. This is YOUR yield, based on what you actually hold.",
+  "div.yieldTip": "Trailing 12-month income divided by the portfolio's current market value. This is YOUR yield, based on your actual holdings.",
   "div.yieldOnCost": "Yield on cost",
-  "div.yieldOnCostTip": "Trailing 12-month income divided by the cost basis of your holdings. This is the yield on what you actually paid.",
+  "div.yieldOnCostTip": "Trailing 12-month income divided by the cost basis of your holdings. This is the yield on your actual cost.",
   "div.income": "Income",
-  "div.incomeTip": "Dividends credited per period, from real payout events scaled by the shares you held on each pay date.",
+  "div.incomeTip": "Dividends credited per period, from real payout events scaled by your share count on each pay date.",
   "div.range12m": "12 months",
   "div.rangeYears": "By year",
   "div.byHolding": "By holding",
@@ -159,7 +159,7 @@ export const en = {
   "div.colYield": "Yield",
   "div.colYoC": "YoC",
   "div.upcoming": "Upcoming dividends",
-  "div.upcomingTip": "Your next payouts over the coming 12 months, projected from the trailing year at your current holdings. Where the announced dividend calendar has a confirmed ex- and pay-date, it is used and marked; the rest are estimates.",
+  "div.upcomingTip": "Your next payouts over the coming 12 months, projected from the trailing year at your current holdings. The announced dividend calendar sometimes has a confirmed ex- and pay-date; that date is used and marked. The rest are estimates.",
   "div.forecastDisclaimer": "Projection from last year's payouts at your current holdings. Not a guarantee. Confirmed dates come from the announced dividend calendar.",
   "div.confirmedDate": "confirmed",
   "div.exDate": "Ex-date",
@@ -182,7 +182,7 @@ export const en = {
   "settings.churchTax": "Church tax",
   "settings.churchTaxNone": "None",
   "settings.teilfreistellung": "Teilfreistellung",
-  "settings.teilfreistellungHint": "Only enable this if your funds and ETFs are mostly equity funds.",
+  "settings.teilfreistellungHint": "Enable only for mostly equity-based funds and ETFs.",
   "settings.changePassword": "Change password",
   "settings.newPassword": "New password",
   "settings.confirmPassword": "Confirm password",
@@ -211,16 +211,16 @@ export const en = {
   "settings.fees.orderFlat": "Order fee",
   "settings.fees.orderFreeFrom": "Free from",
   "settings.fees.orderFreeFromHint":
-    "Order volume at or above which the order fee is waived. Leave empty to always charge it.",
+    "At or above this order volume, the order fee is waived. Leave empty to charge it on every order.",
   "settings.fees.savingsPlan": "Savings-plan fee",
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
-    "Leave empty if you haven't registered one at this broker. The tax report in the analysis shields each broker's gains with the amount entered here.",
+    "Leave empty without a registered allowance at this broker. The tax report in the analysis shields each broker's gains with this amount.",
   "settings.fees.saveError": "Could not save.",
 
   "settings.ai.title": "AI assistant",
   "settings.ai.intro":
-    "Ask questions about your portfolio in plain language via the chat bubble, for example about your allocation, risk figures like alpha and beta, dividends or savings plans. The chat uses your own API key, sends your portfolio data to the chosen provider only when you ask a question, never changes your data and does not give investment advice.",
+    "Ask questions about your portfolio in plain language via the chat bubble, for example about your allocation, risk figures like alpha and beta, dividends or savings plans. The chat uses your own API key. Your portfolio data goes to the chosen provider only on a question. It never changes your data and does not give investment advice.",
   "settings.ai.provider": "Provider",
   "settings.ai.model": "Model",
   "settings.ai.apiKey": "API key",
@@ -237,9 +237,9 @@ export const en = {
   "settings.ai.scope.account": "In your account (on every device)",
   "settings.ai.scope.browser": "Only in this browser",
   "settings.ai.scope.browserHint": "Cleared when you sign out.",
-  "settings.ai.privacyNote": "Account: on every device, kept until you remove it. This browser only: cleared when you sign out. Chatting sends your portfolio data to your provider; we never store or log the conversation.",
+  "settings.ai.privacyNote": "Account: on every device, kept there until removal. This browser only: cleared on sign-out. Chatting sends your portfolio data to your provider; we never store or log the conversation.",
   "settings.ai.privacyNoteGuest":
-    "In Guest Mode your key stays only in this browser. When you use the chat, your portfolio data is sent to the provider you choose; we never store or log the conversation on our server.",
+    "In Guest Mode your key stays only in this browser. Using the chat sends your portfolio data to your chosen provider; we never store or log the conversation on our server.",
   "settings.ai.privacyLink": "Privacy policy",
   "settings.ai.saveError": "Could not save.",
   "settings.ai.error.invalidKey": "Invalid API key.",
@@ -251,7 +251,7 @@ export const en = {
   // Guided tour (onboarding/guided-tour.tsx)
   "tour.welcome.title": "Welcome to FinTrack",
   "tour.welcome.body":
-    "A quick look around, about a minute. Add your holdings, watch your net worth grow, and dig into the details whenever you like.",
+    "A quick look around, about a minute. Add your holdings, watch your net worth grow, and dig into the details anytime.",
   "tour.addAsset.title": "Add your holdings",
   "tour.addAsset.body":
     "Add a position manually or import a CSV export from your broker right here.",
@@ -262,10 +262,10 @@ export const en = {
     "Every position lives here, sortable by column. Click a row to open its details.",
   "tour.areas.title": "Your everyday money",
   "tour.areas.body":
-    "Accounts, spending and goals each get a card here, so the home screen covers your whole financial picture and not just the portfolio. Click a card's title to open that area.",
+    "Accounts, spending and goals each get a card here. The home screen covers your whole financial picture, not just the portfolio. Click a card's title for that area.",
   "tour.contracts.suggestions.title": "Detected charges",
   "tour.contracts.suggestions.body":
-    "A payment that repeats at a regular cadence shows up here so you can take it into the register. Loan instalments are left out: paying a debt down is a transfer, not a running cost.",
+    "A payment repeating at a regular cadence shows up here for the register. Loan instalments are left out: paying a debt down is a transfer, not a running cost.",
   "tour.nav.title": "More to explore",
   "tour.nav.body": "Everything else lives here, sorted into three areas.",
   "tour.nav.everyday.title": "Everyday",
@@ -301,27 +301,27 @@ export const en = {
     "These cards summarize your portfolio's risk profile: Sharpe and Sortino measure risk-adjusted return, Beta and Alpha compare you to the market.",
   "tour.risk.metrics.title": "Volatility & drawdown",
   "tour.risk.metrics.body":
-    "Volatility shows how much your value swings day to day; max drawdown is the worst peak-to-trough loss it has actually suffered.",
+    "Volatility shows the size of your daily value swings; max drawdown is the worst peak-to-trough loss actually suffered.",
   "tour.risk.correlation.title": "Correlation matrix",
   "tour.risk.correlation.body":
-    "Each cell shows how two holdings move together: near +1 means they rise and fall in lockstep, near 0 means independently, near -1 means opposite directions. Mixing uncorrelated assets smooths the ride.",
+    "Each cell shows the co-movement of two holdings: near +1 means lockstep rising and falling, near 0 means independent movement, near -1 means opposite directions. Mixing uncorrelated assets smooths the ride.",
 
   "tour.rebalancing.targets.title": "Set your target weights",
   "tour.rebalancing.targets.body":
     "Type a target percentage for each position, or add a brand-new one. Use Normalise to make everything sum to 100%.",
   "tour.rebalancing.drift.title": "Current vs. target",
   "tour.rebalancing.drift.body":
-    "Compare what you actually hold with where you want to be; the gap between the two columns is your drift.",
+    "Compare your actual holdings with your target weights; the gap between the two columns is your drift.",
   "tour.rebalancing.orders.title": "Suggested orders",
   "tour.rebalancing.orders.body":
     "These buy/sell amounts get you to your targets. Nothing is executed automatically, you place the trades yourself.",
 
   "tour.simulation.accumulation.title": "Accumulation phase",
   "tour.simulation.accumulation.body":
-    "Set your starting capital, monthly contribution (or tick the box to use your active savings plans), and how many years you're investing.",
+    "Set your starting capital, monthly contribution (or tick the box to use your active savings plans), and your investing horizon in years.",
   "tour.simulation.withdrawal.title": "Withdrawal phase",
   "tour.simulation.withdrawal.body":
-    "Add years of withdrawals after accumulation ends, and the annual rate you'd draw down, to see how long your money lasts.",
+    "Add years of withdrawals following the accumulation phase, plus your annual drawdown rate, and see your money's staying power.",
   "tour.simulation.model.title": "Choose your model",
   "tour.simulation.model.body":
     "\"My portfolio\" measures return and risk from your real holdings' history; Custom lets you set your own assumptions. Rebalance yearly keeps your weights on target.",
@@ -332,53 +332,53 @@ export const en = {
   // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
   "tour.accounts.totals.title": "Assets minus debts",
   "tour.accounts.totals.body":
-    "The three figures are your accounts: what you own, what you owe, and the difference. All of it flows into the net worth on the dashboard.",
+    "The three figures are your accounts: your assets, your debts, and the difference. All of it flows into the net worth on the dashboard.",
   "tour.accounts.form.title": "Add an account",
   "tour.accounts.form.body":
-    "Give it a name and a starting balance. The kind decides whether it counts as an asset or as a debt.",
+    "Give it a name and a starting balance. The kind decides its role: asset or debt.",
   "tour.accounts.list.title": "Keep balances current",
   "tour.accounts.list.body":
-    "Every account keeps a dated list of balances. Add a reading whenever you check your bank; the chart carries the last one forward.",
+    "Every account keeps a dated list of balances. Add a reading after each check with your bank. The chart carries the last one forward.",
   "tour.spending.totals.title": "Income vs. expenses",
   "tour.spending.totals.body": "What came in, what went out, and what is left over.",
   "tour.spending.form.title": "Book in seconds",
   "tour.spending.form.body":
-    "Pick the account, type the amount and the payee. The category is suggested from how you filed that payee before.",
+    "Pick the account, type the amount and the payee. The category is suggested from your past filing of that payee.",
   "tour.spending.table.title": "Your ledger",
   "tour.spending.table.body":
     "Every booking, sortable by any column. Import a bank statement here instead of typing months of history.",
   "tour.goals.form.title": "Set a goal",
   "tour.goals.form.body":
-    "Name it, set the amount and the date. Link an account so progress updates itself; link a debt and the goal becomes paying it off.",
+    "Name it, set the amount and the date. Link an account for automatic progress. A linked debt turns the goal into paying it off.",
   "tour.goals.list.title": "Progress and pace",
   "tour.goals.list.body":
-    "Each goal shows how far along it is and what you would have to put aside monthly to make the date.",
+    "Each goal shows its progress and the monthly amount needed to make the date.",
   "tour.debt.totals.title": "What you owe",
   "tour.debt.totals.body":
     "Total debt, the minimum you have to pay each month, and how long until everything is repaid.",
   "tour.debt.list.title": "Every liability",
   "tour.debt.list.body":
-    "Loans, mortgages and credit lines from your accounts, with their rate and payoff date. Sort by rate to see what costs you most.",
+    "Loans, mortgages and credit lines from your accounts, with their rate and payoff date. Sort by rate to find your most expensive debt.",
   "tour.debt.chart.title": "The shape of the debt",
   "tour.debt.chart.body":
-    "How the balance falls month by month, where a fixed-rate period ends, and how much of each year goes to interest rather than principal.",
+    "The monthly balance decline, the end of any fixed-rate period, and the yearly interest share versus principal.",
   "tour.debt.plan.title": "Avalanche or snowball",
   "tour.debt.plan.body":
-    "Extra money goes either to the most expensive debt or to the smallest one. The plan shows what each choice costs you.",
+    "Extra money goes either to the most expensive debt or to the smallest one. The plan shows the cost of each choice.",
   "tour.health.gauges.title": "Four vital signs",
   "tour.health.gauges.body":
     "Emergency buffer, savings rate, debt load and net worth relative to income. Together they say more than any single number.",
   "tour.health.sources.title": "Where the numbers come from",
   "tour.health.sources.body":
-    "They are computed from your accounts and your spending. The more complete those are, the more the figures are worth.",
+    "They are computed from your accounts and your spending. Fuller data means more reliable figures.",
   "tour.fire.inputs.title": "Your assumptions",
   "tour.fire.inputs.body": "Withdrawal rate, annual expenses, monthly savings and expected return. Every figure reacts to these.",
   "tour.fire.targets.title": "Lean, regular, fat",
   "tour.fire.targets.body":
-    "Three target sums for three lifestyles, each with the year you would reach it at your current pace.",
+    "Three target sums for three lifestyles. Each with your target year at your current pace.",
   "tour.fire.simulation.title": "Test it against bad luck",
   "tour.fire.simulation.body":
-    "One click takes this plan into the simulator with your horizon already set, and it runs thousands of market paths: you see how often the plan survives a rough decade, not just the average case.",
+    "One click takes this plan into the simulator with your horizon already set, and it runs thousands of market paths: you see the plan's survival rate through a rough decade, not just the average case.",
   "tour.household.create.title": "Share with someone",
   "tour.household.create.body":
     "Create a household to share your data with a partner. Without one, everything stays yours alone.",
@@ -387,19 +387,19 @@ export const en = {
     "Everyone listed here sees the shared data. You can remove a member or leave the household at any time.",
   "tour.household.invite.title": "Send an invite",
   "tour.household.invite.body":
-    "Invite by email. The other side has to accept before anything is shared.",
+    "Invite by email. Sharing starts only after their acceptance.",
   "tour.dividends.kpis.title": "What actually arrived",
   "tour.dividends.kpis.body":
     "Payouts of the last twelve months and since the start, plus your personal yield on today's value and on what you paid.",
   "tour.dividends.income.title": "Month by month",
   "tour.dividends.income.body":
-    "Real payment events, scaled to the shares you held on each pay date. Accumulating funds show nothing here on purpose.",
+    "Real payment events, scaled to your shares on each pay date. Accumulating funds show nothing here on purpose.",
   "tour.dividends.upcoming.title": "The next twelve months",
   "tour.dividends.upcoming.body":
     "A projection from your trailing payouts at today's share count. An officially announced date replaces the estimated one; the amount always stays an estimate.",
   "tour.xray.table.title": "Inside your funds",
   "tour.xray.table.body":
-    "Your ETFs are broken down into the companies behind them and added to the shares you hold directly, so you see your real exposure per company.",
+    "Your ETFs are broken down into their underlying companies and added to your direct shares, showing your real exposure per company.",
   "tour.xray.limits.title": "Only what is known",
   "tour.xray.limits.body":
     "Funds whose holdings are known get broken down. Everything else stays visible as an unclassified remainder instead of quietly disappearing.",
@@ -408,7 +408,7 @@ export const en = {
     "Distribution, returns, trades, risk and taxes. Each tab answers a different question about the same portfolio.",
   "tour.assetTags.what.title": "What are tags?",
   "tour.assetTags.what.body":
-    "Tags are grouped key-value labels you define, like Strategie: gamble. Use them to mark holdings however makes sense to you.",
+    "Tags are grouped key-value labels of your own choosing, like Strategie: gamble. Use them to mark holdings in your own way.",
   "tour.assetTags.add.title": "Add a tag",
   "tour.assetTags.add.body": "Pick a group, type a value, and confirm. Create a new group anytime from here.",
   "tour.assetTags.analysis.title": "Where they pay off",
@@ -474,7 +474,7 @@ export const en = {
   "addAsset.isin": "ISIN",
   "addAsset.wkn": "WKN",
   "addAsset.tradingCurrency": "Trading currency",
-  "addAsset.tradingCurrencyHint": "Prices use the listing in this currency. Pick {base} if you trade on your home exchange.",
+  "addAsset.tradingCurrencyHint": "Prices use the listing in this currency. For your home exchange, pick {base}.",
   "addAsset.openingTx": "Opening transaction",
   "addAsset.amount": "Amount",
   "addAsset.quantity": "Quantity",
@@ -583,7 +583,7 @@ export const en = {
   "sync.synced": "Synced",
   "sync.paused": "Offline changes are waiting to sync",
   "sync.pausedAction": "Log in to sync",
-  "sync.droppedUnit": "change(s) couldn't be synced because the item changed elsewhere",
+  "sync.droppedUnit": "change(s) not synced: the item changed elsewhere",
 
   "privacy.showFigures": "Show figures",
   "privacy.hideFigures": "Hide figures",
@@ -607,7 +607,7 @@ export const en = {
 
   "goals.form.payOff": "pay off",
   "goals.form.payOffHint":
-    "Progress is what you have already repaid, measured from the highest balance ever owed. The target amount ({currency}) is how much of it you want to pay off.",
+    "Progress is your amount already repaid, measured from the highest balance ever owed. The target amount ({currency}) is your payoff goal amount.",
 
   "spending.categories.addDefaults": "Add standard categories",
   "cat.group.home": "Home",
@@ -721,7 +721,7 @@ export const en = {
   "share.button": "Share",
   "share.live": "Live",
   "share.snapshotDesc": "Off: the link shows a frozen copy of right now.",
-  "share.liveDesc": "On: the link updates as your portfolio changes.",
+  "share.liveDesc": "On: the link updates with every change to your portfolio.",
   "share.liveHint": "Sign in to share live",
   "share.full": "Share full portfolio",
   "share.fullDesc": "Includes absolute amounts.",
@@ -768,7 +768,7 @@ export const en = {
   "asset.metric.marketValueTip": "Current value of this holding.",
   "asset.metric.unrealizedTip": "Paper gain/loss on shares still held.",
   "asset.metric.realizedTip":
-    "Locked-in gain/loss from shares of this asset you have already sold.",
+    "Locked-in gain/loss from already-sold shares of this asset.",
   "asset.row.name": "Name",
   "asset.row.isin": "ISIN",
   "asset.row.wkn": "WKN",
@@ -831,7 +831,7 @@ export const en = {
   "tx.interestAmount": "Interest amount",
   "tx.interestReceived": "Interest received",
   "tx.interestHint":
-    "Record the interest your bank credited, as the net amount on your statement. It is added to your cash balance and counts as return.",
+    "Record your bank's credited interest, as the net amount on your statement. It is added to your cash balance and counts as return.",
   "tx.deposit": "Deposit",
   "tx.withdrawal": "Withdrawal",
   "tx.addDeposit": "Add deposit",
@@ -854,7 +854,7 @@ export const en = {
 
   // Interest-bearing cash (CASH asset detail)
   "cashInterest.title": "Interest",
-  "cashInterest.intro": "Earn interest on this cash balance. Credits accrue automatically and post as interest bookings after you review them.",
+  "cashInterest.intro": "Earn interest on this cash balance. Credits accrue automatically. After your review they post as interest bookings.",
   "cashInterest.rateLabel": "Annual rate (%)",
   "cashInterest.frequencyLabel": "Credited",
   "cashInterest.freq.MONTHLY": "Monthly",
@@ -871,7 +871,7 @@ export const en = {
   "cashInterest.dueShort": "{count} interest credit(s) due",
   "cashInterest.review": "Review",
   "cashInterest.modalTitle": "Book interest",
-  "cashInterest.modalHint": "Each credit posts as an interest booking on its date. Adjust an amount before booking if your statement differs.",
+  "cashInterest.modalHint": "Each credit posts as an interest booking on its date. On a differing statement, adjust the amount before booking.",
   "cashInterest.amount": "Amount",
   "cashInterest.bookAll": "Book {count} credit(s)",
   "cashInterest.error": "Could not book the interest. Please try again.",
@@ -909,7 +909,7 @@ export const en = {
   "accounts.form.interestLabel": "Interest rate (% p.a.)",
   "accounts.form.interestFrequencyLabel": "Credited",
   "accounts.form.interestHint":
-    "Interest is credited to the balance and compounds from then on. A dated balance reading always wins over it, so entering the figure from your statement corrects any drift.",
+    "Interest is credited to the balance and compounds from then on. A dated balance reading always wins over it. Enter the figure from your statement to correct any drift.",
   "accounts.form.add": "Add account",
   "accounts.form.liabilityHint": "This type is a liability: its balance subtracts from your net worth.",
   "accounts.form.error": "Could not save the account. Please try again.",
@@ -924,7 +924,7 @@ export const en = {
   "accounts.edit.intro":
     "Correct the account's own details. The opening balance is the figure on the opening date, not today's balance.",
   "accounts.edit.hasReadings":
-    "This account has dated balance readings, and the latest one is what net worth uses. To change the current figure, edit the balances instead.",
+    "This account has dated balance readings; net worth uses the latest one. To change the current figure, edit the balances instead.",
   "accounts.edit.save": "Save",
   "accounts.edit.error": "Could not save the account. Please try again.",
   "accounts.list.delete": "Delete",
@@ -944,7 +944,7 @@ export const en = {
   "accounts.balances.dateLabel": "Date",
   "accounts.balances.valueLabel": "Balance ({currency})",
   "accounts.balances.add": "Add balance",
-  "accounts.balances.empty": "No balance updates yet. The opening balance is carried forward until you add one.",
+  "accounts.balances.empty": "No balance updates yet. The opening balance is carried forward until your first entry.",
   "accounts.balances.remove": "Remove balance",
   "accounts.balances.error": "Could not save the balance. Please try again.",
   "spending.title": "Income & spending",
@@ -953,7 +953,7 @@ export const en = {
   "spending.totals.expense": "Expense",
   "spending.totals.net": "Net",
   "spending.form.title": "Add a transaction",
-  "spending.form.noAccounts": "You need an account before you can log spending. Add one on the Accounts page first.",
+  "spending.form.noAccounts": "You need an account for logging spending. Add one on the Accounts page first.",
   "spending.form.accountLabel": "Account",
   "spending.form.typeLabel": "Type",
   "spending.form.type.expense": "Expense",
@@ -984,7 +984,7 @@ export const en = {
   "spending.list.edit": "Edit",
   "spending.edit.title": "Edit booking",
   "spending.edit.save": "Save",
-  "spending.edit.originNote": "This booking came from a recurring or planned entry. You can change its figures, but not where it came from.",
+  "spending.edit.originNote": "This booking came from a recurring or planned entry. You can change its figures, but not its origin.",
   "spending.edit.transferLabel": "Transfer to",
   "spending.edit.transferNone": "Not a transfer",
   "spending.edit.transferHintOn": "Counts as a transfer: it moves the other account and stays out of income and expenses.",
@@ -1019,7 +1019,7 @@ export const en = {
   "spending.import.skipDuplicate": "Skip (already recorded)",
   "spending.import.importAnyway": "Import anyway",
   "spending.budgets.title": "Budgets",
-  "spending.budgets.noCategories": "You need a spending category before you can set a budget. Add one from the transaction form first.",
+  "spending.budgets.noCategories": "A budget needs a spending category first. Add one from the transaction form.",
   "spending.budgets.empty": "No budgets yet. Set a monthly cap for a category.",
   "spending.budgets.categoryLabel": "Category",
   "spending.budgets.amountLabel": "Monthly cap ({currency})",
@@ -1031,7 +1031,7 @@ export const en = {
 
   "spending.planned.title": "Planned income & expenses",
   "spending.planned.intro":
-    "Money you already know about: your salary, a bonus, or a one-off cost. Due entries are booked into the ledger after you check them.",
+    "Money already known to you: your salary, a bonus, or a one-off cost. Due entries are booked into the ledger after your review.",
   "spending.planned.noAccounts": "You need an account first. Add one under Accounts.",
   "spending.planned.empty": "Nothing planned yet. Add your salary or an upcoming cost.",
   "spending.planned.nameLabel": "Description",
@@ -1087,7 +1087,7 @@ export const en = {
   "spending.planned.due.error": "The bookings could not be saved.",
 
   "spending.forecast.title": "Cash-flow forecast",
-  "spending.forecast.intro": "What is already booked plus what is still expected, for the next {n} months. Recurring payments are included.",
+  "spending.forecast.intro": "Already-booked amounts plus still-expected ones, for the next {n} months. Recurring payments are included.",
   "spending.forecast.empty": "Nothing to forecast yet. Plan some income or spending, or add a recurring payment.",
   "spending.forecast.income": "Income",
   "spending.forecast.expense": "Expenses",
@@ -1099,7 +1099,7 @@ export const en = {
   "spending.forecast.monthlyNet": "Planned balance per month",
   "spending.forecast.aria": "Projected income and expenses for the next {n} months",
   "contracts.suggestions.title": "Detected recurring charges",
-  "contracts.suggestions.intro": "These payees charged a similar amount on a regular schedule. Add them so their renewal and cancellation deadlines stay in view.",
+  "contracts.suggestions.intro": "These payees charged a similar amount on a regular schedule. Add them and keep their renewal and cancellation deadlines in view.",
   "contracts.suggestions.accept": "Add",
   "contracts.suggestions.dismiss": "Ignore",
   "contracts.form.nameLabel": "Name",
@@ -1122,7 +1122,7 @@ export const en = {
   "cashflow.subtitle": "Where the money goes, and whether it adds up.",
   "recurring.title": "Recurring",
   "recurring.add": "Add recurring payment",
-  "recurring.empty": "Nothing recurring yet. Switch \u201crecurring\u201d on when you add an entry.",
+  "recurring.empty": "Nothing recurring yet. Switch \u201crecurring\u201d on during entry.",
   "recurring.noNext": "not booked",
   "recurring.col.name": "Name",
   "recurring.col.amount": "Amount",
@@ -1139,14 +1139,14 @@ export const en = {
   "recurring.due.review": "Review",
   "recurring.due.reviewTitle": "Due bookings",
   "recurring.due.reviewHint":
-    "Every row is a proposal: correct the date or the amount before you book it, or skip it if it never happened. Nothing is booked until you confirm.",
+    "Every row is a proposal: correct the date or the amount before booking, or skip a never-happened payment. Nothing is booked before your confirmation.",
   "recurring.due.book": "Book {n} booking(s)",
   "recurring.due.dateLabel": "Booking date",
   "recurring.due.amountLabel": "Amount",
   "recurring.due.skip": "Skip",
   "recurring.due.skipTitle": "Skip this due booking?",
   "recurring.due.skipMessage":
-    "{name} on {date} is not booked and will not be offered again. Anything of it still open before that date is settled with it.",
+    "{name} on {date} is not booked and will not be offered again. Earlier open occurrences are settled with it.",
   "recurring.due.skipError": "The booking could not be skipped.",
   "recurring.bookError": "The due entries could not be booked.",
   "recurring.interval.ONCE": "Once",
@@ -1178,9 +1178,9 @@ export const en = {
   "recurring.detail.back": "Accounts & Bookings",
   "recurring.scope.title": "Which payments does the change apply to?",
   "recurring.scope.message":
-    "This entry has already booked {n} payments. Future ones always use the new figures; the booked ones only change if you say so.",
+    "This entry has already booked {n} payments. Future ones always use the new figures. The booked ones change only on your request.",
   "recurring.scope.splitHint":
-    "This is a loan instalment: its booked amounts split into interest and principal per month and stay as they were booked. Name and category are updated.",
+    "This is a loan instalment: its booked amounts split into interest and principal per month and stay at their original booked split. Name and category are updated.",
   "recurring.scope.future": "Only future payments",
   "recurring.scope.all": "Also the {n} booked ones",
   "recurring.split.interest": "interest",
@@ -1202,7 +1202,7 @@ export const en = {
   "contracts.form.targetHintOn":
     "Counted as a transfer, not as spending: the money moves to that account instead of being consumed.",
   "contracts.form.targetHintOff":
-    "For a loan instalment or a policy that builds value, pick the account it pays into.",
+    "For a loan instalment or a value-building policy, pick its target account.",
   "contracts.form.startLabel": "Running since",
   "contracts.form.startHint": "Charges are booked from this date. Pick a date in the past and the missed charges are offered for catching up, each one individually.",
   "contracts.list.edit": "Edit",
@@ -1226,7 +1226,7 @@ export const en = {
   "goals.form.targetLabel": "Target amount ({currency})",
   "goals.form.dateLabel": "Target date (optional)",
   "goals.form.dateHint":
-    "Leave it empty for an open-ended goal. With a date we show how much per month is still missing.",
+    "Leave it empty for an open-ended goal. With a date we show your still-missing monthly amount.",
   "goals.form.linkedAccountLabel": "Track progress with",
   "goals.form.manualTracking": "Manual tracking",
   "goals.form.wholeDepot": "Whole depot (all brokers)",
@@ -1237,7 +1237,7 @@ export const en = {
   "goals.form.position": "Position: {name}",
   "goals.form.manualCurrentLabel": "Current amount ({currency})",
   "goals.form.manualCurrentHint":
-    "What you have put aside for this goal so far. Edit the goal to change it whenever you add money.",
+    "Your amount put aside for this goal so far. On new money, edit the goal to update it.",
   "goals.form.parentLabel": "Part of",
   "goals.form.noParent": "A goal of its own",
   "goals.form.parentHint":
@@ -1285,62 +1285,62 @@ export const en = {
   "withdrawal.strategyLabel": "Withdrawal strategy",
   "withdrawal.strategy.fixed": "Fixed amount",
   "withdrawal.strategy.fixed.desc":
-    "The classic rule: set the amount on the day you retire and keep drawing it. Steady income, and the only strategy that can run the portfolio dry.",
+    "The classic rule: set the amount at retirement and keep drawing it. Steady income, and the only strategy able to run the portfolio dry.",
   "withdrawal.strategy.percentOfPortfolio": "Share of the portfolio",
   "withdrawal.strategy.percentOfPortfolio.desc":
-    "Always the same percentage of what is actually left. It can never run out, but your income falls with the market.",
+    "Always the same percentage of the remaining balance. It can never run out, but your income falls with the market.",
   "withdrawal.strategy.guardrails": "Guardrails",
   "withdrawal.strategy.guardrails.desc":
-    "Keep last year's income until the rate drifts too far, then step it up or down. Few changes, and each one small.",
+    "Keep last year's income up to a drift limit on the rate, then step it up or down. Few changes, and each one small.",
   "withdrawal.strategy.floorCeiling": "Floor and ceiling",
   "withdrawal.strategy.floorCeiling.desc":
-    "Follows the portfolio, but never below a floor or above a ceiling. A compromise between a steady income and one that adjusts.",
+    "Follows the portfolio, but never below a floor or above a ceiling. A compromise between a steady income and an adjusting one.",
   "withdrawal.stepsTitle": "What you do",
   "withdrawal.steps.fixed.1": "At retirement, take your withdrawal rate times the portfolio.",
-  "withdrawal.steps.fixed.2": "Transfer that same amount every year, whatever the market did.",
+  "withdrawal.steps.fixed.2": "Transfer that same amount every year, regardless of market performance.",
   "withdrawal.steps.fixed.3":
-    "Check the balance once a year anyway: if it keeps falling, you need a different plan, not a smaller month.",
+    "Check the balance once a year anyway: a continued fall means you need a different plan, not a smaller month.",
   "withdrawal.steps.percentOfPortfolio.1":
     "Pick one day a year and note the portfolio value on it.",
   "withdrawal.steps.percentOfPortfolio.2": "Multiply it by your rate. That is next year's income.",
   "withdrawal.steps.percentOfPortfolio.3":
-    "Hold a cash buffer of one to two years, so a bad year cuts the calculation and not your groceries.",
+    "Hold a cash buffer of one to two years. A bad year then cuts the calculation, not your groceries.",
   "withdrawal.steps.guardrails.1":
     "Once a year, divide last year's income by the current portfolio value.",
   "withdrawal.steps.guardrails.2":
     "Inside the band around your target rate, change nothing at all.",
   "withdrawal.steps.guardrails.3":
-    "Outside it, move the income by one step: down when the rate is too high, up when it is too low.",
+    "Outside it, move the income by one step: down for too high a rate, up for too low.",
   "withdrawal.steps.floorCeiling.1":
-    "Work out your rate times the current portfolio, as you would for a share of the portfolio.",
+    "Work out your rate times the current portfolio, the same as the share-of-portfolio calculation.",
   "withdrawal.steps.floorCeiling.2":
     "Compare it against your floor and your ceiling, both set from the first year's income.",
   "withdrawal.steps.floorCeiling.3":
 
-    "Draw the figure in between. Set the floor at what you genuinely need, not at what you would like.",
+    "Draw the figure in between. Set the floor at your genuine needs, not at your wishes.",
   "withdrawal.strategy.vpw": "Spread over the years left",
   "withdrawal.strategy.vpw.desc":
-    "Each year, divide what is there over the years you still have to fund. The rate rises with age, so nothing is left unspent and nothing runs out.",
+    "Each year, divide the current balance over your remaining funding years. The rate rises with age, so nothing is left unspent and nothing runs out.",
   "withdrawal.steps.vpw.1": "Once a year, note the portfolio value and the years still to fund.",
   "withdrawal.steps.vpw.2":
-    "Take the annuity share of it: more of the pot every year, because fewer years are left.",
+    "Take the annuity share of it: more of the pot every year, with fewer years left.",
   "withdrawal.steps.vpw.3":
-    "Expect the income to move with the market. This one never runs dry, but it never promises a fixed amount either.",
+    "Your income moves with the market. This one never runs dry, but it never promises a fixed amount either.",
   "withdrawal.stressLabel": "Stress scenario",
   "withdrawal.stress.none": "No stress",
-  "withdrawal.stress.none.desc": "Returns fall in whatever order the simulation draws them.",
+  "withdrawal.stress.none.desc": "Returns fall in the simulation's own random order.",
   "withdrawal.stress.earlyCrash": "Crash at the start",
   "withdrawal.stress.earlyCrash.desc":
     "A heavy loss in the first month of retirement. The same returns, in the worst possible order.",
   "withdrawal.stress.lostDecade": "Lost decade",
   "withdrawal.stress.lostDecade.desc":
-    "The first ten years of retirement grow by nothing at all, while you are already drawing.",
+    "The first ten years of retirement grow by nothing at all, during your ongoing withdrawals.",
   "withdrawal.stress.highInflation": "Inflation shock",
   "withdrawal.stress.highInflation.desc":
-    "Three points of extra inflation for the whole run: less real return, and withdrawals that have to rise faster.",
+    "Three points of extra inflation for the whole run: less real return, and faster-rising withdrawals.",
   "withdrawal.compareTitle": "Every strategy, same markets",
   "withdrawal.compareHint":
-    "All four run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with an income that moves.",
+    "All four run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with a moving income.",
   "withdrawal.col.strategy": "Strategy",
   "withdrawal.col.success": "Lasts",
   "withdrawal.col.income": "Income / year",
@@ -1351,19 +1351,19 @@ export const en = {
   // two answers to one question, so they are tabs of one page.
   "retirement.title": "Retirement",
   "retirement.subtitle":
-    "What you will live on once you stop working: your own capital, and what you are entitled to.",
+    "Your income in retirement: your own capital, and your statutory entitlements.",
   "retirement.tab.fire": "FIRE",
   "retirement.tab.pension": "Pension",
 
   // FIRE planner (ROADMAP #8)
   "fire.title": "Retirement / FIRE planner",
-  "fire.subtitle": "How big a portfolio covers your expenses, and how long it takes to get there.",
+  "fire.subtitle": "The portfolio size covering your expenses, and the time to get there.",
   "fire.withdrawalRate.label": "Withdrawal rate",
-  "fire.withdrawalRate.hint": "The classic \"4% rule\" assumes a portfolio withdrawn at this rate lasts through retirement.",
+  "fire.withdrawalRate.hint": "The classic \"4% rule\": a portfolio withdrawn at this rate lasts through retirement.",
   "fire.pension.count": "Count my pension",
   "fire.pension.hint": "{amount} a month from {year}.",
   "fire.pension.saves":
-    "Your pension takes the target from {without} down to {with}: the portfolio only has to carry everything for the {years} years before it starts, and after that just the shortfall.",
+    "Your pension takes the target from {without} down to {with}: the portfolio only has to carry everything for the {years} years until pension start, and after that just the shortfall.",
   "fire.pension.missing":
     "No pension income recorded yet. Add your Entgeltpunkte or a policy on the Pension tab and this target drops.",
   "fire.annualExpenses.label": "Annual expenses",
@@ -1375,14 +1375,14 @@ export const en = {
   "fire.netWorth.label": "Current net worth",
   "fire.targets.title": "Your targets",
   "fire.targets.subtitle":
-    "How much capital covers your expenses permanently at the withdrawal rate above.",
+    "Your expense-covering capital at the withdrawal rate above.",
   "fire.lean.label": "Lean FIRE",
-  "fire.lean.info": "Financial independence on a leaner budget: {ratio} of what you spend today.",
+  "fire.lean.info": "Financial independence on a leaner budget: {ratio} of your current spending.",
   "fire.regular.label": "FIRE number",
   "fire.regular.info":
-    "The capital that covers your current expenses at the withdrawal rate above. At 4% that is the familiar 25 times your annual expenses.",
+    "The expense-covering capital at the withdrawal rate above. At 4% that is the familiar 25 times your annual expenses.",
   "fire.fat.label": "Fat FIRE",
-  "fire.fat.info": "Financial independence with more headroom: {ratio} of what you spend today.",
+  "fire.fat.info": "Financial independence with more headroom: {ratio} of your current spending.",
   "fire.tile.risk": "{risk} of simulated {years}-year retirements run out at this rate.",
   "fire.tile.basis": "Funds {expenses} of expenses a year at {rate} withdrawal.",
   "fire.tile.basisRatio": "Funds {ratio} of your expenses ({expenses} a year) at {rate} withdrawal.",
@@ -1407,7 +1407,7 @@ export const en = {
   "pension.edit": "Edit",
   "pension.title": "Retirement",
   "pension.subtitle": "Your statutory pension points and private policies, projected to a monthly retirement income.",
-  "pension.todaysMoney": "All figures are in today's money: no inflation, no wage growth and no assumed return are applied, so you can compare them against what you spend today.",
+  "pension.todaysMoney": "All figures are in today's money: no inflation, no wage growth and no assumed return are applied, so you can compare them against your current spending.",
   "pension.saveFailed": "Could not save.",
   "pension.gap": "You are {amount} per month short of your target.",
   "pension.stat.points": "Projected pension points",
@@ -1430,19 +1430,19 @@ export const en = {
     "{current} points earned + {annual} per year × {years} years = {total} points.",
   "pension.calc.money": "{total} × {value} per point × {factor} = {monthly} per month.",
   "pension.calc.trend":
-    "Following your recorded years' trend: {start} points in the first year rising to {end} in the last, fitted from {years} years and capped at what one year can earn. This deliberately departs from the Renteninformation, which assumes no progression.",
+    "Following your recorded years' trend: {start} points in the first year rising to {end} in the last, fitted from {years} years and capped at the maximum earnable in one year. This deliberately departs from the Renteninformation: it assumes no progression.",
   "pension.assumeTrend": "Assume my career keeps rising",
   "pension.assumeTrendHint":
-    "Off by default so this page reproduces your Renteninformation, which carries the flat average of your last five years forward. On, it follows the trend of your {years} recorded years instead — a what-if, not the official figure.",
+    "Off by default. This page then reproduces your Renteninformation: the flat average of your last five years, carried forward. On, it follows the trend of your {years} recorded years instead. A what-if, not the official figure.",
   "pension.outlierNotice":
     "{year} records {points} points, far above your other years. The projection ignores it, but the row is still wrong: a Renteninformation's cumulative total belongs in “Total points”, not in a single year.",
   "pension.targetMonthly": "Target pension / month",
   "pension.standardAge": "Standard retirement age: {age}",
-  "pension.cappedNotice": "{raw} points a year is more than a year can earn, so the projection assumes {max}. If that is your total so far, it belongs in “Total points”.",
+  "pension.cappedNotice": "{raw} points a year is more than a year can earn, so the projection assumes {max}. That may be your total so far, and then it belongs in “Total points”.",
   "pension.points.title": "Pension points",
   "pension.statements.title": "Your pension statements",
   "pension.statements.hint":
-    "Each Renteninformation states your TOTAL Entgeltpunkte so far, never a per-year figure. Enter one row per letter. From the second letter on, FinTrack measures what a year adds by subtracting the two totals.",
+    "Each Renteninformation states your TOTAL Entgeltpunkte so far, never a per-year figure. Enter one row per letter. From the second letter on, FinTrack measures the yearly addition by subtracting the two totals.",
   "pension.statements.year": "Statement year",
   "pension.statements.total": "Total points",
   "pension.statements.note": "Note",
@@ -1451,18 +1451,18 @@ export const en = {
   "pension.statements.rate":
     "{gained} points between {from} and {to}, over {years} years: {points} points a year. That is the assumption for every year still to come.",
   "pension.statements.needSecond":
-    "With a second, older statement FinTrack can measure how many points a year of your work adds.",
+    "With a second, older statement FinTrack can measure your yearly point gain.",
   "pension.statements.deleteTitle": "Delete statement?",
   "pension.statements.deleteMessage": "The statement for {year} will be removed.",
   "pension.points.looksLikeStatements":
-    "These rows look like statement totals: they only ever rise, and the newest is above what a single year can earn. Move them to your pension statements?",
+    "These rows look like statement totals: they only ever rise, and the newest is above the maximum earnable in a single year. Move them to your pension statements?",
   "pension.points.moveToStatements": "Move to statements",
   "pension.points.moveTitle": "Move rows to statements?",
   "pension.points.moveMessage":
     "{count} rows are read as statement totals from then on, and the year-by-year table is cleared.",
   "pension.points.detailTitle": "Year by year (optional)",
   "pension.points.overMax": "One year earns at most {max} points. A cumulative figure belongs in “Total points”.",
-  "pension.points.hint": "From your Versicherungsverlauf, if you have it. Years dated after the total add to it. 1.0 point is a year at exactly the average income.",
+  "pension.points.hint": "From your Versicherungsverlauf, if available. Years dated after the total add to it. 1.0 point is a year at exactly the average income.",
   "pension.points.year": "Year",
   "pension.points.points": "Points",
   "pension.points.note": "Note",
@@ -1471,7 +1471,7 @@ export const en = {
   "pension.points.deleteTitle": "Delete year?",
   "pension.points.deleteMessage": "The points recorded for {year} will be removed.",
   "pension.contracts.title": "Pension policies",
-  "pension.contracts.hint": "Private, Riester, Ruerup or company policies. The expected monthly payout is what feeds the projection.",
+  "pension.contracts.hint": "Private, Riester, Ruerup or company policies. The expected monthly payout feeds the projection.",
   "pension.contracts.name": "Name",
   "pension.contracts.kind": "Type",
   "pension.contracts.provider": "Provider",
@@ -1481,23 +1481,23 @@ export const en = {
   "pension.contracts.rentenfaktorHint":
     "Monthly pension per 10,000 of capital, as stated on your policy. With it the payout is calculated instead of guessed.",
   "pension.contracts.dynamic": "Contribution increase (% p.a.)",
-  "pension.contracts.dynamicHint": "Dynamik: how much the premium rises every year.",
+  "pension.contracts.dynamicHint": "Dynamik: the premium's yearly rise.",
   "pension.contracts.returnPct": "Assumed return (% p.a.)",
-  "pension.contracts.returnHint": "Growth of the capital until the payout starts. Blank assumes none.",
+  "pension.contracts.returnHint": "Growth of the capital up to the payout date. Blank assumes none.",
   "pension.contracts.account": "Settlement account",
   "pension.contracts.accountNone": "None (records only)",
-  "pension.contracts.accountHint": "Each premium is debited from this account after you confirm it.",
+  "pension.contracts.accountHint": "Each premium is debited from this account after your confirmation.",
   "pension.contracts.bookingStart": "First premium on",
   "pension.contracts.bookingStartHint": "Premiums due since this date collect for review.",
   "pension.premiums.title": "Due premiums ({n})",
   "pension.premiums.book": "Book {n} premiums",
   "pension.premiums.transferNote":
-    "A premium counts as a transfer, not spending: it buys an entitlement worth what leaves the account.",
+    "A premium counts as a transfer, not spending: it buys an entitlement worth the amount leaving the account.",
   "pension.contracts.returnColumn": "Return (% p. a.)",
   "pension.values.open": "Values",
   "pension.values.title": "Recorded values: {name}",
   "pension.values.hint":
-    "What the policy was worth, as its annual statement states it. Two readings and the premiums in between measure what it actually earns, so nobody has to guess a return.",
+    "The policy's stated value, from its annual statement. Two readings and the premiums in between measure its actual earnings, so nobody has to guess a return.",
   "pension.values.date": "Date",
   "pension.values.value": "Value",
   "pension.values.add": "Add value",
@@ -1511,9 +1511,9 @@ export const en = {
   "pension.values.deleteTitle": "Delete value?",
   "pension.values.deleteMessage": "The reading from {date} will be removed.",
   "pension.contracts.derivedNote":
-    "In {years} years the policy holds about {capital}, which at this Rentenfaktor pays {monthly} per month.",
+    "In {years} years the policy holds about {capital}; at this Rentenfaktor that pays {monthly} per month.",
   "pension.contracts.derivedNoteNow":
-    "The policy holds {capital} today, which at this Rentenfaktor pays {monthly} per month. Set a payout date or your birth year to project it forward.",
+    "The policy holds {capital} today; at this Rentenfaktor that pays {monthly} per month. Set a payout date or your birth year to project it forward.",
   "pension.contracts.contribution": "Contribution / month",
   "pension.contracts.currentValue": "Current value",
   "pension.contracts.startsOn": "Payout starts",
@@ -1583,7 +1583,7 @@ export const en = {
   "debt.details.rateSectionTitle": "Fixed-rate period",
   "debt.details.rateFixedUntilLabel": "Fixed rate ends on",
   "debt.details.followUpRateLabel": "Assumed rate afterwards (%)",
-  "debt.details.followUpHint": "Leave empty if the rate holds for the whole term.",
+  "debt.details.followUpHint": "Leave empty for a rate fixed over the whole term.",
   "debt.chart.title": "How the debt develops",
   "debt.chart.scopeLabel": "Show",
   "debt.chart.all": "All liabilities",
@@ -1629,29 +1629,29 @@ export const en = {
     "Return per unit of total risk: (annual return − 2% risk-free) ÷ volatility. Higher is better; above 1 is good.",
   "risk.sortino": "Sortino",
   "risk.sortinoTip":
-    "Like Sharpe but only penalises downside volatility, so upside swings don't count against you. Higher is better.",
+    "Like Sharpe but only penalises downside volatility. Upside swings don't count against you. Higher is better.",
   "risk.volatility": "Volatility",
   "risk.volatilityTip":
-    "Annualised standard deviation of returns: how much the value swings. Lower means a smoother ride.",
+    "Annualised standard deviation of returns: the size of the value's swings. Lower means a smoother ride.",
   "risk.beta": "Beta",
   "risk.betaTip":
     "Sensitivity of a holding to the MSCI World index: 1 tracks it, above 1 amplifies its swings, below 1 dampens them, negative moves opposite (a hedge). Measured over the recent overlapping window.",
   "risk.betaSuffix": "vs. MSCI World",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
-    "A holding's annualised return beyond what its beta to the MSCI World would predict (CAPM). Positive = beat the index risk-adjusted.",
+    "A holding's annualised return beyond its beta-predicted return to the MSCI World (CAPM). Positive = beat the index risk-adjusted.",
   "risk.portfolioBeta": "Beta",
   "risk.portfolioBetaTip":
-    "How your whole portfolio moves relative to the MSCI World index: 1 tracks it, above 1 amplifies its swings, below 1 dampens them.",
+    "Your whole portfolio's movement relative to the MSCI World index: 1 tracks it, above 1 amplifies its swings, below 1 dampens them.",
   "risk.portfolioAlpha": "Alpha",
   "risk.portfolioAlphaTip":
-    "Your portfolio's annualised return beyond what its beta to the MSCI World would predict (CAPM).",
+    "Your portfolio's annualised return beyond its beta-predicted return to the MSCI World (CAPM).",
   "risk.maxDrawdown": "Max drawdown",
   "risk.maxDrawdownTip":
-    "Largest peak-to-trough drop over the window, with how long it lasted. Smaller is better. Measured from the actual daily holding-period path.",
+    "Largest peak-to-trough drop over the window, with its duration. Smaller is better. Measured from the actual daily holding-period path.",
   "risk.var": "VaR (95%, 1mo)",
   "risk.varTip":
-    "Value at Risk: with 95% confidence, the most you'd expect to lose over one month (normal approximation). Lower is better.",
+    "Value at Risk: with 95% confidence, your maximum expected loss over one month (normal approximation). Lower is better.",
   "risk.days": "days",
   "risk.byAsset": "Risk by holding",
   "risk.byAssetTip": "Per-holding volatility, beta & alpha vs. the MSCI World index, Sharpe ratio and weight. Each row measures the asset on its own over the selected window.",
@@ -1660,7 +1660,7 @@ export const en = {
   "risk.weightTip": "This holding's share of the selected scope's total market value.",
   "risk.correlation": "Correlation matrix",
   "risk.correlationTip":
-    "How holdings move together: red = move in sync (less diversification), blue = move oppositely (a hedge), pale = independent.",
+    "Holdings' co-movement: red = move in sync (less diversification), blue = move oppositely (a hedge), pale = independent.",
   "risk.correlationNeed": "Add at least two holdings with history to see correlations.",
   "risk.correlationHighPairs": "Pairs above 0.8 move together, limiting diversification.",
 
@@ -1732,7 +1732,7 @@ export const en = {
   // Returns
   "returns.title": "Returns",
   "returns.tip":
-    "Period returns adjusted for deposits/withdrawals (modified Dietz), so adding money doesn't show up as a gain.",
+    "Period returns adjusted for deposits/withdrawals (modified Dietz). Adding money doesn't show up as a gain.",
   "returns.byQuarter": "Return by quarter",
   "returns.byYear": "Return by year",
   "returns.perfMap": "Performance map",
@@ -1745,8 +1745,8 @@ export const en = {
   // Trades
   "trades.byMonth": "Realized P&L by month",
   "trades.byMonthTip":
-    "Locked-in gain/loss from sells, attributed to the month each sale happened (average-cost basis).",
-  "trades.noSells": "No sells yet. Realised P&L appears here once you sell.",
+    "Locked-in gain/loss from sells, attributed to each sale's month (average-cost basis).",
+  "trades.noSells": "No sells yet. Realised P&L appears here after your first sell.",
   "trades.realized": "Realized",
   "trades.topMoversTitle": "Top movers",
   "trades.topWinners": "Top winners",
@@ -1775,7 +1775,7 @@ export const en = {
   "tax.taxable": "Taxable",
   "tax.estimatedTax": "Estimated tax",
   "tax.estimatedTaxTip":
-    "25% Abgeltungsteuer plus a 5.5% solidarity surcharge, plus church tax if configured in Settings.",
+    "25% Abgeltungsteuer plus a 5.5% solidarity surcharge. Church tax is added per your Settings.",
   "tax.withheld": "Withheld by broker",
   "tax.withheldTip":
     "Sum of tax already withheld on your recorded sells. Your broker may already account for a Freistellungsauftrag or Teilfreistellung; this is a rough comparison, not a reconciliation. Enter the exact figure from your tax statement to override the computed sum.",
@@ -1789,7 +1789,7 @@ export const en = {
     "Gains from crypto and commodity sells follow separate rules (§23 EStG): tax-free after a one-year holding period, and exempt below a small yearly threshold. Not part of your capital income allowance.",
   "tax.vorab": "Vorabpauschale",
   "tax.vorabTip":
-    "A notional annual tax pre-payment on funds, based on the year's Basiszins. Leave it blank and FinTrack shows an estimate from your year-start fund value and that year's Basiszins, capped by the fund's value gain; enter the figure from your broker's annual tax statement to override it. Teilfreistellung applies when enabled, since it counts as fund income.",
+    "A notional annual tax pre-payment on funds, based on the year's Basiszins. With the field blank, FinTrack shows an estimate from your year-start fund value and that year's Basiszins, capped by the fund's value gain. Enter the figure from your broker's annual tax statement to override it. Teilfreistellung applies once enabled, as fund income.",
   "tax.vorabAriaLabel": "Vorabpauschale for {year}",
   "tax.withheldAriaLabel": "Withheld tax override for {year}",
   "tax.editAriaLabel": "Edit {field}",
@@ -1810,7 +1810,7 @@ export const en = {
   "household.registeredOnly": "Sign in to create or join a household.",
   "household.actionError": "Could not save. Please try again.",
   "household.createTitle": "Create a household",
-  "household.createSubtitle": "Start a household to share your accounts with someone you invite.",
+  "household.createSubtitle": "Start a household to share your accounts with an invited member.",
   "household.namePlaceholder": "e.g. Our household",
   "household.create": "Create",
   "household.members": "Members",
@@ -1830,7 +1830,7 @@ export const en = {
   "household.accept": "Accept",
   "household.decline": "Decline",
   "household.sharingPaused":
-    "Sharing is paused: nobody in this household is on Pro right now, so everyone only sees their own data. Nothing was deleted, sharing resumes as soon as one member subscribes.",
+    "Sharing is paused: nobody in this household is on Pro right now, so everyone only sees their own data. Nothing was deleted. Sharing resumes with the first member's subscription.",
   "household.limitHint": "Up to {n} people are included. Additional members cost {price} each (pending invitations count).",
   "household.addSeat": "Add a seat for {price}",
 
@@ -1886,7 +1886,7 @@ export const en = {
   "sim.seededFromFire": "Horizon taken from your FIRE plan: {years} years until financial independence.",
   "sim.inflation": "Inflation",
   "sim.inflationHint":
-    "Withdrawals rise by this every year. Without it a plan that looks safe quietly halves what you can buy.",
+    "Withdrawals rise by this every year. Without it a safe-looking plan quietly halves your buying power.",
   "sim.modelPortfolioDesc":
     "Simulates each holding with its own volatility and the correlations between them.",
   "sim.modelCustomDesc": "Simulates a single blended return and volatility.",
@@ -1898,20 +1898,20 @@ export const en = {
   "sim.monthlyWithdrawal": "Monthly withdrawal",
   "sim.withdrawalRate": "Annual withdrawal rate",
   "sim.withdrawalRateHint":
-    "Each year you draw this percentage of the portfolio's value at retirement (fixed thereafter). ~4% is the classic long-run safe rate; the amount you can actually draw depends on how your portfolio grows.",
+    "Each year you draw this percentage of the portfolio's value at retirement (fixed thereafter). ~4% is the classic long-run safe rate; your actually drawable amount depends on your portfolio's growth.",
   "sim.withdrawalTitle": "Withdrawal income",
   "sim.withdrawalMetricsTip":
-    "How much this plan lets you draw during the withdrawal phase, from the pessimistic (10th pct) to optimistic (90th pct) outcomes.",
+    "Your drawable amount under this plan during the withdrawal phase, from the pessimistic (10th pct) to optimistic (90th pct) outcomes.",
   "sim.withdrawalPensionNote":
     "Includes {amount} a year of pension from {year} on. Only the rest comes out of the portfolio.",
   "sim.perYear": "yr",
   "sim.useSafeRate": "Use safe rate",
   "sim.perMonth": "mo",
   "sim.safeRateHint":
-    "The safe rate draws only the expected growth, so the invested capital isn't consumed (in expectation).",
+    "The safe rate draws only the expected growth. The invested capital stays intact (in expectation).",
   "sim.rebalanceYearly": "Rebalance to target weights yearly",
   "sim.rebalanceYearlyTip":
-    "Resets every position to its target weight once a year. The target weights are the percentages from the model list. Positions that did well get partially sold, positions that did poorly get topped up. Without rebalancing the weights drift apart as the market moves.",
+    "Resets every position to its target weight once a year. The target weights are the percentages from the model list. Well-performing positions get partially sold, poorly-performing ones get topped up. Without rebalancing the weights drift apart with market movement.",
   "sim.expectedReturn": "Expected annual return",
   "sim.volatility": "Volatility (std. dev.)",
   "sim.runs": "Simulation runs",
@@ -1930,7 +1930,7 @@ export const en = {
   "sim.growth": "Projected growth (median)",
   "sim.multiple": "Multiple",
   "sim.configurePrompt": "Configure your plan and run a simulation",
-  "sim.configureHint": "Adjust the parameters to project how your wealth could grow under thousands of market scenarios.",
+  "sim.configureHint": "Adjust the parameters to project your wealth's growth under thousands of market scenarios.",
   "sim.edit": "Enable editing",
   "sim.lock": "Lock parameters",
   "sim.capitalLocked": "Initial capital is set from your net worth, click to override",
@@ -1945,20 +1945,20 @@ export const en = {
   "sim.tipBand50": "The middle 50% of all simulated outcomes (25th-75th percentile): a quarter ended below this band, a quarter above it.",
   "sim.tipBand80": "The middle 80% of all simulated outcomes (10th-90th percentile): only 10% ended below it and 10% above it.",
   "sim.tipBandFull": "The full spread: from the single worst to the single best of all simulated paths.",
-  "sim.tipContributed": "Total you would have paid in (initial capital + contributions), with no growth.",
+  "sim.tipContributed": "Your total paid in (initial capital + contributions), with no growth.",
   "sim.tipOptimistic": "The 90th percentile: you beat 90% of the simulated outcomes. Only 10% did better.",
   "sim.tipPessimistic": "The 10th percentile: a poor case. 90% of simulated outcomes did better, only 10% did worse.",
   "sim.accumulationPhase": "Accumulation phase",
   "sim.withdrawalDuration": "Duration",
   "sim.useSavingsPlans": "Use my savings plans ({amount}/month)",
   "sim.guidelinesTip":
-    "7% p.a. is the baseline real-world expectation for broad equity over a standard 30-year horizon (the long-run global equity premium). Volatility of about 16% is the research-backed annual figure for a diversified world-equity index. Measured figures from your holdings override these; over long horizons they regress toward the baseline, since a recent streak isn't sustainable for decades. Runs 1,000-10,000 paths with monthly compounding and normally-distributed returns.",
+    "7% p.a. is the baseline real-world expectation for broad equity over a standard 30-year horizon (the long-run global equity premium). Volatility of about 16% is the research-backed annual figure for a diversified world-equity index. Measured figures from your holdings override these; over long horizons they regress toward the baseline: a recent streak isn't sustainable for decades. Runs 1,000-10,000 paths with monthly compounding and normally-distributed returns.",
   "sim.perAssetModel": "Per-asset model",
   "sim.estimate": "Estimate",
   "sim.blended": "Blended",
   "sim.yrsHistory": "{years} yrs history",
   "sim.pureGuessNote":
-    "Some holdings have no usable price history, so their return and risk below are a long-run assumption. The projection sharpens as market data accrues.",
+    "Some holdings have no usable price history, so their return and risk below are a long-run assumption. More market data sharpens the projection.",
   "sim.blendedNote":
     "Figures use each holding's own history, regressed toward long-run market assumptions for longer horizons (a recent streak isn't sustainable for decades).",
   "sim.hideOverrides": "Hide overrides",
@@ -1970,7 +1970,7 @@ export const en = {
   "sim.yrHistory": "{years} yr history",
   "sim.yrHistoryBlended": "{years} yr history · blended to long-run",
   "sim.corrNote":
-    "Each holding is simulated with its own volatility; correlations come from the {years} yr the holdings overlap.",
+    "Each holding is simulated with its own volatility; correlations come from the holdings' {years} yr of overlap.",
   "sim.modelSummary": "{count} positions, weighted {ret} expected return at {vol} volatility p.a.",
   "sim.showModelDetails": "Show per-asset details",
   "sim.hideModelDetails": "Hide per-asset details",
@@ -2013,7 +2013,7 @@ export const en = {
   "error.tryAgain": "Try again",
   "error.backHome": "Back to dashboard",
   "notFound.title": "Page not found",
-  "notFound.body": "The page you're looking for doesn't exist or may have moved.",
+  "notFound.body": "The requested page doesn't exist or may have moved.",
   "notFound.backHome": "Back to dashboard",
 
   "common.loadError": "Your data could not be loaded. Check your connection and try again.",
@@ -2028,7 +2028,7 @@ export const en = {
   "admin.nav.usage": "Usage",
   "admin.usage.title": "Usage & operations",
   "admin.usage.intro":
-    "Counted from the data users already store, whenever you open this page. No event tracking, no cookie, nothing retained.",
+    "Counted from the data users already store, on each visit to this page. No event tracking, no cookie, nothing retained.",
   "admin.usage.noSession": "Not signed in.",
   "admin.usage.users": "Registered users",
   "admin.usage.active": "Signed in (30d)",
@@ -2037,7 +2037,7 @@ export const en = {
   "admin.usage.errors7d": "in 7 days",
   "admin.usage.featuresTitle": "Feature usage",
   "admin.usage.featuresIntro":
-    "Users with at least one entry, and how much they have. The bar is the share of all registered users.",
+    "Users with at least one entry, and their entry counts. The bar is the share of all registered users.",
   "admin.usage.colFeature": "Feature",
   "admin.usage.colUsers": "Users",
   "admin.usage.colRecords": "Entries",
@@ -2100,7 +2100,7 @@ export const en = {
   "admin.flags.colEnabled": "Enabled",
   "admin.flags.overridesTitle": "Per-user overrides",
   "admin.flags.overridesSubtitle":
-    "Overrides win over the global on/off value for that user. They do not grant Pro: a Pro flag stays locked until the user's plan is Pro (see Premium grants under Billing).",
+    "Overrides win over the global on/off value for that user. They do not grant Pro: a Pro flag stays locked without a Pro plan (see Premium grants under Billing).",
   "admin.flags.searchEmail": "Find user by email",
   "admin.flags.searchEmailPlaceholder": "Type at least 2 characters",
   "admin.flags.searching": "Searching...",
@@ -2162,11 +2162,11 @@ export const en = {
   "admin.billing.removeKey": "Remove stored key",
   "admin.billing.removeConfirmTitle": "Remove stored key?",
   "admin.billing.removeConfirmMsg":
-    'Remove the stored "{field}"? The environment variable will be used instead, if set.',
+    'Remove the stored "{field}"? A set environment variable will be used instead.',
   "admin.billing.error": "That didn't work. Try again.",
   "admin.billing.sellingTitle": "Selling",
   "admin.billing.sellingSubtitle":
-    "Stripe price ids for the monthly and yearly plans, and whether checkout is open to users.",
+    "Stripe price ids for the monthly and yearly plans, and checkout availability to users.",
   "admin.billing.priceMonthlyLabel": "Monthly price id",
   "admin.billing.priceYearlyLabel": "Yearly price id",
   "admin.billing.priceIdPlaceholder": "price_...",
@@ -2178,7 +2178,7 @@ export const en = {
   "admin.billing.enabledLabel": "Selling enabled",
   "admin.billing.grantsTitle": "Premium grants",
   "admin.billing.grantsSubtitle":
-    "Grant a user Pro without a Stripe subscription, e.g. as a thank-you. An end date is optional; leave it empty for a grant that never expires.",
+    "Grant a user Pro without a Stripe subscription, e.g. as a thank-you. An end date is optional; leave it empty for a grant without expiry.",
   "admin.billing.grantSearchEmail": "Find user by email",
   "admin.billing.grantSearchEmailPlaceholder": "Type at least 2 characters",
   "admin.billing.grantSearching": "Searching...",
@@ -2213,12 +2213,12 @@ export const en = {
   "admin.prices.colFxRate": "FX rate",
   "admin.prices.colSynced": "Synced",
   "admin.prices.colRetries": "Retries",
-  "admin.prices.retriesTip": "Consecutive syncs that left this row without a price. A queued row goes first in the next sweep and re-resolves its listing from scratch.",
+  "admin.prices.retriesTip": "Consecutive syncs leaving this row without a price. A queued row goes first in the next sweep and re-resolves its listing from scratch.",
   "admin.prices.staleness.fresh": "Fresh",
   "admin.prices.staleness.stale": "Stale",
   "admin.prices.staleness.dead": "Dead",
   "admin.prices.staleness.unknown": "Unknown",
-  "admin.prices.syntheticTip": "No real market data cached for this instrument yet — the app falls back to a synthetic price.",
+  "admin.prices.syntheticTip": "No real market data cached for this instrument yet. The app falls back to a synthetic price.",
   "admin.prices.noMatch": "No instruments match your filter.",
   "admin.prices.empty": "No instruments in the catalog yet.",
   "admin.prices.error": "That didn't work. Try again.",
@@ -2239,7 +2239,7 @@ export const en = {
   "admin.errors.kindUnhandledrejection": "Unhandled rejection",
   "admin.errors.kindBoundaryHelp": "A React component crashed and its error boundary caught it",
   "admin.errors.kindWindowHelp": "An uncaught JavaScript error",
-  "admin.errors.kindUnhandledrejectionHelp": "A promise rejection nobody handled",
+  "admin.errors.kindUnhandledrejectionHelp": "An unhandled promise rejection",
   "admin.errors.kindFetch": "Request",
   "admin.errors.kindFetchHelp": "A request answered with an error status or did not go through",
   "admin.errors.kindConsole": "Console",
@@ -2290,7 +2290,7 @@ export const en = {
   // Guest mode banner
   "guestBanner.title": "Guest Mode:",
   "guestBanner.body":
-    "your data is stored only in this browser and will be lost if you delete your browser data.",
+    "your data is stored only in this browser and will be lost on clearing your browser data.",
   "guestBanner.cta": "Sign up to save it",
 
   // Chat bubble + panel (flag `llmChat`)
@@ -2327,12 +2327,12 @@ export const en = {
   "settings.billing.errorUnavailable": "Billing is currently unavailable.",
 
   "pricing.title": "Pricing",
-  "pricing.subtitle": "Simple, transparent pricing. Pick the plan that fits how you invest.",
+  "pricing.subtitle": "Simple, transparent pricing. Pick the plan matching your investing style.",
   "pricing.free.name": "Free",
-  "pricing.free.tagline": "Everything you need to track your portfolio.",
+  "pricing.free.tagline": "Everything needed to track your portfolio.",
   "pricing.free.feature1": "Unlimited portfolio and transaction tracking",
   "pricing.free.feature2": "CSV import from your broker exports",
-  "pricing.free.feature3": "Watchlist for instruments you're following",
+  "pricing.free.feature3": "Watchlist for followed instruments",
   "pricing.pro.name": "Pro",
   "pricing.pro.tagline": "The full analysis toolkit, on top of everything in Free.",
   "pricing.pro.feature1": "Risk analysis with portfolio beta and alpha",
@@ -2354,7 +2354,7 @@ export const en = {
   "push.savingsBody": "Savings plan due today: {assets}.",
   "push.andMore": "{names} and {count} more",
   "notif.title": "Notifications",
-  "notif.subtitle": "Get a reminder on this device when a dividend pays out or a savings plan is due. No marketing, ever.",
+  "notif.subtitle": "Get a reminder on this device for a dividend pay-out or a due savings plan. No marketing, ever.",
   "notif.dividendLabel": "Dividend pay-day",
   "notif.savingsLabel": "Savings plan due",
   "notif.enable": "Enable on this device",
@@ -2419,7 +2419,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "form.missingFields": "Fülle die markierten Felder aus",
 
   "watchlist.title": "Watchlist",
-  "watchlist.empty": "Füge Wertpapiere hinzu, die du beobachten möchtest, ohne sie zu halten.",
+  "watchlist.empty": "Füge Wertpapiere zur Beobachtung hinzu, ohne sie zu halten.",
   "watchlist.add": "Hinzufügen",
   "watchlist.placeholder": "ISIN, WKN oder Symbol",
   "watchlist.notFound": "Zu dieser Kennung wurde nichts gefunden.",
@@ -2479,7 +2479,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sp.review": "Prüfen",
   "sp.reviewTitle": "Fällige Sparplan-Ausführungen",
   "sp.reviewHint":
-    "Jede Zeile wird zum angezeigten Kurs (dem echten Schlusskurs des Tages, sofern verfügbar) mit der Buchungsart des Plans gebucht: als Kauf oder als Einbuchung für externe Zuflüsse. Gebucht wird erst nach deiner Bestätigung.",
+    "Jede Zeile wird mit der Buchungsart des Plans gebucht: als Kauf oder als Einbuchung für externe Zuflüsse. Der Kurs ist der echte Schlusskurs des Tages, sonst der beste verfügbare. Gebucht wird erst nach deiner Bestätigung.",
   "sp.confirm": "{count} Ausführung(en) buchen",
   "sp.applying": "Wird gebucht…",
   "sp.applyError": "Buchung fehlgeschlagen.",
@@ -2502,7 +2502,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "div.received12m": "Erhalten (12 Monate)",
   "div.received12mTip": "In den letzten 12 Monaten über alle Positionen erhaltene Dividenden, in deiner Basiswährung.",
   "div.receivedTotal": "Erhalten (gesamt)",
-  "div.receivedTotalTip": "Alle Dividenden, die deine Positionen gezahlt haben, seit du sie hältst (bis zu 10 Jahre zurück).",
+  "div.receivedTotalTip": "Alle von deinen Positionen gezahlten Dividenden während deiner Haltedauer (bis zu 10 Jahre zurück).",
   "div.yield": "Dividendenrendite",
   "div.yieldTip": "Einnahmen der letzten 12 Monate geteilt durch den aktuellen Marktwert des Portfolios. Das ist DEINE Rendite, basierend auf deinem tatsächlichen Bestand.",
   "div.yieldOnCost": "Rendite auf Einstand",
@@ -2518,7 +2518,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "div.colYield": "Rendite",
   "div.colYoC": "RaE",
   "div.upcoming": "Anstehende Dividenden",
-  "div.upcomingTip": "Deine nächsten Ausschüttungen der kommenden 12 Monate, projiziert aus dem letzten Jahr mit deinem aktuellen Bestand. Wo der angekündigte Ausschüttungskalender einen bestätigten Ex- und Zahltag hat, wird dieser verwendet und markiert; der Rest sind Schätzungen.",
+  "div.upcomingTip": "Deine nächsten Ausschüttungen der kommenden 12 Monate, projiziert aus dem letzten Jahr mit deinem aktuellen Bestand. Der angekündigte Ausschüttungskalender hat manchmal einen bestätigten Ex- und Zahltag; dieser wird dann verwendet und markiert. Der Rest sind Schätzungen.",
   "div.forecastDisclaimer": "Projektion aus den Ausschüttungen des letzten Jahres mit aktuellem Bestand. Keine Garantie. Bestätigte Termine stammen aus dem angekündigten Ausschüttungskalender.",
   "div.confirmedDate": "bestätigt",
   "div.exDate": "Ex-Tag",
@@ -2541,7 +2541,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.churchTax": "Kirchensteuer",
   "settings.churchTaxNone": "Keine",
   "settings.teilfreistellung": "Teilfreistellung",
-  "settings.teilfreistellungHint": "Nur aktivieren, wenn deine Fonds und ETFs überwiegend Aktienfonds sind.",
+  "settings.teilfreistellungHint": "Nur bei überwiegend aktienbasierten Fonds und ETFs aktivieren.",
   "settings.changePassword": "Passwort ändern",
   "settings.newPassword": "Neues Passwort",
   "settings.confirmPassword": "Passwort bestätigen",
@@ -2570,16 +2570,16 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.fees.orderFlat": "Ordergebühr",
   "settings.fees.orderFreeFrom": "Kostenlos ab",
   "settings.fees.orderFreeFromHint":
-    "Ordervolumen, ab dem die Ordergebühr entfällt. Leer lassen, damit sie immer anfällt.",
+    "Ab diesem Ordervolumen entfällt die Ordergebühr. Leer lassen für eine Gebühr auf jede Order.",
   "settings.fees.savingsPlan": "Sparplan-Gebühr",
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
-    "Leer lassen, wenn du bei diesem Broker keinen Freistellungsauftrag erteilt hast. Der Steuer-Report in der Analyse rechnet je Broker mit dem hier eingetragenen Betrag.",
+    "Ohne Freistellungsauftrag bei diesem Broker leer lassen. Der Steuer-Report in der Analyse rechnet je Broker mit diesem Betrag.",
   "settings.fees.saveError": "Konnte nicht gespeichert werden.",
 
   "settings.ai.title": "KI-Assistent",
   "settings.ai.intro":
-    "Stell über die Chat-Blase Fragen zu deinem Portfolio in normaler Sprache, zum Beispiel zu deiner Allokation, Risikokennzahlen wie Alpha und Beta, Dividenden oder Sparplänen. Der Chat nutzt deinen eigenen API-Schlüssel, sendet deine Portfoliodaten nur dann an den gewählten Anbieter, wenn du eine Frage stellst, ändert nichts an deinen Daten und gibt keine Anlageberatung.",
+    "Stell über die Chat-Blase Fragen zu deinem Portfolio in normaler Sprache, zum Beispiel zu Allokation, Risikokennzahlen wie Alpha und Beta, Dividenden oder Sparplänen. Der Chat nutzt deinen eigenen API-Schlüssel. Deine Portfoliodaten gehen nur bei einer Frage an den gewählten Anbieter. Er ändert nichts an deinen Daten und gibt keine Anlageberatung.",
   "settings.ai.provider": "Anbieter",
   "settings.ai.model": "Modell",
   "settings.ai.apiKey": "API-Schlüssel",
@@ -2596,9 +2596,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.ai.scope.account": "In deinem Konto (auf allen Geräten)",
   "settings.ai.scope.browser": "Nur in diesem Browser",
   "settings.ai.scope.browserHint": "Wird beim Abmelden gelöscht.",
-  "settings.ai.privacyNote": "Konto: auf allen Geräten, bleibt bis du ihn löschst. Nur dieser Browser: wird beim Abmelden gelöscht. Beim Chatten gehen deine Portfoliodaten an deinen Anbieter; wir speichern und protokollieren das Gespräch nie.",
+  "settings.ai.privacyNote": "Konto: auf allen Geräten, bleibt dort bis zur Löschung. Nur dieser Browser: wird beim Abmelden gelöscht. Beim Chatten gehen deine Portfoliodaten an deinen Anbieter; wir speichern und protokollieren das Gespräch nie.",
   "settings.ai.privacyNoteGuest":
-    "Im Gastmodus bleibt dein Schlüssel nur in diesem Browser gespeichert. Wenn du den Chat nutzt, werden deine Portfoliodaten an den gewählten Anbieter gesendet; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
+    "Im Gastmodus bleibt dein Schlüssel nur in diesem Browser gespeichert. Die Chat-Nutzung sendet deine Portfoliodaten an den gewählten Anbieter; wir speichern oder protokollieren das Gespräch nicht auf unserem Server.",
   "settings.ai.privacyLink": "Datenschutzerklärung",
   "settings.ai.saveError": "Konnte nicht gespeichert werden.",
   "settings.ai.error.invalidKey": "Ungültiger API-Schlüssel.",
@@ -2610,7 +2610,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Guided tour (onboarding/guided-tour.tsx)
   "tour.welcome.title": "Willkommen bei FinTrack",
   "tour.welcome.body":
-    "Eine kurze Tour, etwa eine Minute. Füge deine Positionen hinzu, verfolge dein Vermögen und schau dir die Details an, wann immer du willst.",
+    "Eine kurze Tour, etwa eine Minute. Füge deine Positionen hinzu, verfolge dein Vermögen und schau dir die Details jederzeit an.",
   "tour.addAsset.title": "Positionen hinzufügen",
   "tour.addAsset.body":
     "Füge eine Position von Hand hinzu oder importiere direkt hier einen CSV-Export deiner Bank.",
@@ -2622,10 +2622,10 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Alle Positionen findest du hier, sortierbar nach Spalte. Klicke auf eine Zeile für die Details.",
   "tour.areas.title": "Dein Alltagsgeld",
   "tour.areas.body":
-    "Konten, Ausgaben und Ziele bekommen hier je eine Karte, damit die Startseite dein ganzes Finanzbild zeigt und nicht nur das Depot. Klick auf den Titel einer Karte, um den Bereich zu öffnen.",
+    "Konten, Ausgaben und Ziele bekommen hier je eine Karte. So zeigt die Startseite dein ganzes Finanzbild, nicht nur das Depot. Klick auf den Titel einer Karte für den Bereich.",
   "tour.contracts.suggestions.title": "Erkannte Zahlungen",
   "tour.contracts.suggestions.body":
-    "Zahlungen, die sich regelmäßig wiederholen, tauchen hier auf und lassen sich ins Register übernehmen. Kreditraten bleiben außen vor: Schulden tilgen ist eine Umbuchung, keine laufende Ausgabe.",
+    "Regelmäßig wiederkehrende Zahlungen tauchen hier auf und lassen sich ins Register übernehmen. Kreditraten bleiben außen vor: Schulden tilgen ist eine Umbuchung, keine laufende Ausgabe.",
   "tour.nav.title": "Mehr entdecken",
   "tour.nav.body": "Alles Weitere steckt hier, aufgeteilt in drei Bereiche.",
   "tour.nav.everyday.title": "Alltag",
@@ -2661,17 +2661,17 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Diese Karten fassen das Risikoprofil deines Portfolios zusammen: Sharpe und Sortino messen die risikoadjustierte Rendite, Beta und Alpha vergleichen dich mit dem Markt.",
   "tour.risk.metrics.title": "Volatilität & Drawdown",
   "tour.risk.metrics.body":
-    "Die Volatilität zeigt, wie stark dein Wert schwankt; der maximale Drawdown ist der größte Verlust vom Hoch bis zum Tief, den es tatsächlich gab.",
+    "Die Volatilität zeigt das Ausmaß der täglichen Wertschwankung; der maximale Drawdown ist der größte tatsächlich erlittene Verlust vom Hoch bis zum Tief.",
   "tour.risk.correlation.title": "Korrelationsmatrix",
   "tour.risk.correlation.body":
-    "Jede Zelle zeigt, wie sich zwei Positionen zueinander bewegen: nahe +1 heißt, sie steigen und fallen im Gleichschritt, nahe 0 unabhängig voneinander, nahe -1 gegenläufig. Unkorrelierte Positionen zu mischen macht den Verlauf ruhiger.",
+    "Jede Zelle zeigt die Wechselbewegung zweier Positionen: nahe +1 heißt, sie steigen und fallen im Gleichschritt, nahe 0 unabhängig voneinander, nahe -1 gegenläufig. Unkorrelierte Positionen zu mischen macht den Verlauf ruhiger.",
 
   "tour.rebalancing.targets.title": "Zielgewichtungen festlegen",
   "tour.rebalancing.targets.body":
     "Gib für jede Position einen Zielanteil in Prozent ein oder füge eine neue hinzu. Mit Normalisieren summierst du alles auf 100%.",
   "tour.rebalancing.drift.title": "Ist- vs. Zielwert",
   "tour.rebalancing.drift.body":
-    "Vergleiche, was du tatsächlich hältst, mit dem, wo du hinwillst. Der Unterschied zwischen den beiden Spalten ist deine Abweichung.",
+    "Vergleiche deinen tatsächlichen Bestand mit deiner Zielgewichtung. Der Unterschied zwischen den beiden Spalten ist deine Abweichung.",
   "tour.rebalancing.orders.title": "Vorgeschlagene Orders",
   "tour.rebalancing.orders.body":
     "Diese Kauf-/Verkaufsbeträge bringen dich zu deinen Zielen. Es wird nichts automatisch ausgeführt, du gibst die Trades selbst auf.",
@@ -2681,7 +2681,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Lege Startkapital, monatliche Sparrate (oder aktiviere die Checkbox für deine aktiven Sparpläne) und die Anzahl der Jahre fest.",
   "tour.simulation.withdrawal.title": "Entnahmephase",
   "tour.simulation.withdrawal.body":
-    "Füge Jahre der Entnahme nach der Ansparphase hinzu und die jährliche Entnahmerate, um zu sehen, wie lange dein Geld reicht.",
+    "Füge Jahre der Entnahme nach der Ansparphase hinzu, dazu die jährliche Entnahmerate: So siehst du die Reichweite deines Geldes.",
   "tour.simulation.model.title": "Modell wählen",
   "tour.simulation.model.body":
     "Mein Portfolio misst Rendite und Risiko aus der echten Historie deiner Positionen, bei Benutzerdefiniert legst du eigene Annahmen fest. Jährlich rebalancieren hält deine Gewichtung auf Ziel.",
@@ -2692,53 +2692,53 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
   "tour.accounts.totals.title": "Vermögen minus Schulden",
   "tour.accounts.totals.body":
-    "Die drei Zahlen sind deine Konten: was du besitzt, was du schuldest und die Differenz. Alles davon fließt ins Nettovermögen auf der Übersicht.",
+    "Die drei Zahlen sind deine Konten: dein Vermögen, deine Schulden und die Differenz. Alles davon fließt ins Nettovermögen auf der Übersicht.",
   "tour.accounts.form.title": "Konto anlegen",
   "tour.accounts.form.body":
-    "Gib ihm einen Namen und einen Startsaldo. Die Art entscheidet, ob es als Vermögen oder als Schuld zählt.",
+    "Gib ihm einen Namen und einen Startsaldo. Die Art entscheidet über die Rolle: Vermögen oder Schuld.",
   "tour.accounts.list.title": "Salden aktuell halten",
   "tour.accounts.list.body":
-    "Jedes Konto führt eine datierte Liste von Ständen. Trag einen neuen ein, wenn du bei der Bank nachschaust; der Verlauf schreibt den letzten Stand fort.",
+    "Jedes Konto führt eine datierte Liste von Ständen. Trag nach dem Blick aufs Bankkonto einen neuen ein. Der Verlauf schreibt den letzten Stand fort.",
   "tour.spending.totals.title": "Einnahmen und Ausgaben",
   "tour.spending.totals.body": "Was reinkam, was rausging und was übrig bleibt.",
   "tour.spending.form.title": "In Sekunden erfassen",
   "tour.spending.form.body":
-    "Konto wählen, Betrag und Empfänger eintippen. Die Kategorie wird danach vorgeschlagen, wie du diesen Empfänger zuletzt einsortiert hast.",
+    "Konto wählen, Betrag und Empfänger eintippen. Die Kategorie wird aus deiner bisherigen Einsortierung dieses Empfängers vorgeschlagen.",
   "tour.spending.table.title": "Dein Ausgabenbuch",
   "tour.spending.table.body":
     "Jede Buchung, nach jeder Spalte sortierbar. Importier hier einen Kontoauszug, statt Monate von Hand zu tippen.",
   "tour.goals.form.title": "Ziel festlegen",
   "tour.goals.form.body":
-    "Benenn es, setz Betrag und Datum. Verknüpf ein Konto, damit der Fortschritt von allein mitläuft; verknüpfst du eine Schuld, wird daraus ein Abzahlziel.",
+    "Benenn es, setz Betrag und Datum. Verknüpf ein Konto für automatischen Fortschritt. Eine verknüpfte Schuld wird zum Abzahlziel.",
   "tour.goals.list.title": "Fortschritt und Tempo",
   "tour.goals.list.body":
-    "Jedes Ziel zeigt, wie weit es ist und was du monatlich zurücklegen müsstest, um das Datum zu schaffen.",
+    "Jedes Ziel zeigt seinen Fortschritt und den nötigen monatlichen Betrag für das Zieldatum.",
   "tour.debt.totals.title": "Was du schuldest",
   "tour.debt.totals.body":
     "Gesamtschuld, die monatliche Mindestrate und wie lange es dauert, bis alles abbezahlt ist.",
   "tour.debt.list.title": "Alle Verbindlichkeiten",
   "tour.debt.list.body":
-    "Kredite, Hypotheken und Kreditlinien aus deinen Konten, mit Zins und Abzahldatum. Sortier nach Zins, um zu sehen, was dich am meisten kostet.",
+    "Kredite, Hypotheken und Kreditlinien aus deinen Konten, mit Zins und Abzahldatum. Sortier nach Zins für deine teuerste Schuld.",
   "tour.debt.chart.title": "Der Verlauf deiner Schuld",
   "tour.debt.chart.body":
-    "Wie die Restschuld Monat für Monat sinkt, wo eine Zinsbindung endet und wie viel von jedem Jahr in Zinsen statt in Tilgung geht.",
+    "Der monatliche Rückgang der Restschuld, das Ende der Zinsbindung und der jährliche Zins- und Tilgungsanteil.",
   "tour.debt.plan.title": "Lawine oder Schneeball",
   "tour.debt.plan.body":
-    "Zusätzliches Geld geht entweder auf die teuerste oder auf die kleinste Schuld. Der Plan zeigt, was dich die jeweilige Wahl kostet.",
+    "Zusätzliches Geld geht entweder auf die teuerste oder auf die kleinste Schuld. Der Plan zeigt die Kosten der jeweiligen Wahl.",
   "tour.health.gauges.title": "Vier Kennzahlen",
   "tour.health.gauges.body":
     "Notgroschen, Sparquote, Schuldenlast und Vermögen im Verhältnis zum Einkommen. Zusammen sagen sie mehr als jede einzelne Zahl.",
   "tour.health.sources.title": "Woher die Zahlen kommen",
   "tour.health.sources.body":
-    "Sie werden aus deinen Konten und deinen Ausgaben berechnet. Je vollständiger die sind, desto aussagekräftiger sind die Werte.",
+    "Sie werden aus deinen Konten und deinen Ausgaben berechnet. Vollständigere Daten ergeben aussagekräftigere Werte.",
   "tour.fire.inputs.title": "Deine Annahmen",
   "tour.fire.inputs.body": "Entnahmerate, Jahresausgaben, monatliche Sparrate und erwartete Rendite. Alle Zahlen reagieren darauf.",
   "tour.fire.targets.title": "Lean, normal, fat",
   "tour.fire.targets.body":
-    "Drei Zielsummen für drei Lebensstile, jeweils mit dem Jahr, in dem du sie im aktuellen Tempo erreichst.",
+    "Drei Zielsummen für drei Lebensstile. Dazu jeweils dein Zieljahr im aktuellen Tempo.",
   "tour.fire.simulation.title": "Gegen Pech testen",
   "tour.fire.simulation.body":
-    "Ein Klick nimmt diesen Plan mit in den Simulator, Horizont schon gesetzt. Der rechnet tausende Marktverläufe durch, und du siehst, wie oft der Plan ein schlechtes Jahrzehnt übersteht, nicht nur den Durchschnittsfall.",
+    "Ein Klick nimmt diesen Plan mit in den Simulator, Horizont schon gesetzt. Der rechnet tausende Marktverläufe durch, und du siehst die Überlebensrate des Plans über ein schlechtes Jahrzehnt, nicht nur den Durchschnittsfall.",
   "tour.household.create.title": "Mit jemandem teilen",
   "tour.household.create.body":
     "Leg einen Haushalt an, um deine Daten mit jemandem zu teilen. Ohne Haushalt bleibt alles nur bei dir.",
@@ -2747,13 +2747,13 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Alle hier gelisteten Personen sehen die geteilten Daten. Du kannst jederzeit jemanden entfernen oder selbst austreten.",
   "tour.household.invite.title": "Einladung schicken",
   "tour.household.invite.body":
-    "Lade per E-Mail ein. Die andere Seite muss annehmen, bevor irgendetwas geteilt wird.",
+    "Lade per E-Mail ein. Geteilt wird erst nach der Annahme durch die andere Seite.",
   "tour.dividends.kpis.title": "Was tatsächlich ankam",
   "tour.dividends.kpis.body":
     "Ausschüttungen der letzten zwölf Monate und seit Beginn, dazu deine persönliche Rendite auf den heutigen Wert und auf deinen Einstand.",
   "tour.dividends.income.title": "Monat für Monat",
   "tour.dividends.income.body":
-    "Echte Zahlungstermine, skaliert auf die Stückzahl, die du am jeweiligen Zahltag hattest. Thesaurierende Fonds zeigen hier bewusst nichts.",
+    "Echte Zahlungstermine, skaliert auf deine Stückzahl am jeweiligen Zahltag. Thesaurierende Fonds zeigen hier bewusst nichts.",
   "tour.dividends.upcoming.title": "Die nächsten zwölf Monate",
   "tour.dividends.upcoming.body":
     "Eine Hochrechnung aus deinen bisherigen Ausschüttungen bei heutiger Stückzahl. Ein offiziell angekündigter Termin ersetzt den geschätzten; der Betrag bleibt immer geschätzt.",
@@ -2762,13 +2762,13 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Deine ETFs werden in die Unternehmen dahinter zerlegt und mit deinen direkt gehaltenen Aktien zusammengezählt. So siehst du deine echte Position pro Unternehmen.",
   "tour.xray.limits.title": "Nur was bekannt ist",
   "tour.xray.limits.body":
-    "Fonds, deren Bestandteile bekannt sind, werden aufgeschlüsselt. Alles andere bleibt als nicht zugeordneter Anteil sichtbar, statt stillschweigend zu verschwinden.",
+    "Fonds mit bekannten Bestandteilen werden aufgeschlüsselt. Alles andere bleibt als nicht zugeordneter Anteil sichtbar, statt stillschweigend zu verschwinden.",
   "tour.analysis.tabs.title": "Fünf Sichten auf ein Portfolio",
   "tour.analysis.tabs.body":
     "Verteilung, Rendite, Trades, Risiko und Steuern. Jeder Tab beantwortet eine andere Frage zum selben Portfolio.",
   "tour.assetTags.what.title": "Was sind Tags?",
   "tour.assetTags.what.body":
-    "Tags sind gruppierte Schlüssel-Wert-Label, die du selbst festlegst, zum Beispiel Strategie: gamble. Nutze sie, um Positionen so zu markieren, wie es für dich Sinn ergibt.",
+    "Tags sind gruppierte Schlüssel-Wert-Label nach eigener Wahl, zum Beispiel Strategie: gamble. Nutze sie, um Positionen auf deine eigene Art zu markieren.",
   "tour.assetTags.add.title": "Tag hinzufügen",
   "tour.assetTags.add.body":
     "Wähle eine Gruppe, gib einen Wert ein und bestätige. Eine neue Gruppe kannst du jederzeit von hier aus anlegen.",
@@ -2832,7 +2832,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "addAsset.isin": "ISIN",
   "addAsset.wkn": "WKN",
   "addAsset.tradingCurrency": "Handelswährung",
-  "addAsset.tradingCurrencyHint": "Preise stammen von der Notierung in dieser Währung. Wähle {base}, wenn du an deiner Heimatbörse handelst.",
+  "addAsset.tradingCurrencyHint": "Preise stammen von der Notierung in dieser Währung. Für deine Heimatbörse wähle {base}.",
   "addAsset.openingTx": "Eröffnungsbuchung",
   "addAsset.amount": "Betrag",
   "addAsset.quantity": "Anzahl",
@@ -2940,7 +2940,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sync.synced": "Synchronisiert",
   "sync.paused": "Offline-Änderungen warten auf Synchronisierung",
   "sync.pausedAction": "Zum Synchronisieren anmelden",
-  "sync.droppedUnit": "Änderung(en) konnten nicht synchronisiert werden, weil der Eintrag anderswo geändert wurde",
+  "sync.droppedUnit": "Änderung(en) nicht synchronisiert: Der Eintrag wurde anderswo geändert",
 
   "privacy.showFigures": "Beträge anzeigen",
   "privacy.hideFigures": "Beträge ausblenden",
@@ -2964,7 +2964,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "goals.form.payOff": "abbezahlen",
   "goals.form.payOffHint":
-    "Der Fortschritt ist das, was du schon zurückgezahlt hast, gemessen am höchsten Schuldenstand. Der Zielbetrag ({currency}) ist, wie viel davon du abbezahlen willst.",
+    "Der Fortschritt ist dein bereits zurückgezahlter Betrag, gemessen am höchsten Schuldenstand. Der Zielbetrag ({currency}) ist dein Abzahlungsziel.",
 
   "spending.categories.addDefaults": "Standardkategorien hinzufügen",
   "cat.group.home": "Wohnen",
@@ -3067,7 +3067,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "names.upToDate": "Alle Namen sind aktuell.",
   "names.reviewTitle": "Auf offizielle Instrumentennamen aktualisieren",
   "names.reviewHint":
-    "Jede Zeile benennt eine Position in den offiziellen Instrumentennamen um, der über ISIN/WKN/Symbol ermittelt wurde. Nur der Name ändert sich. Typ und Bestände bleiben unberührt. Erst mit Übernehmen wird umbenannt.",
+    "Jede Zeile benennt eine Position in den über ISIN/WKN/Symbol ermittelten offiziellen Instrumentennamen um. Nur der Name ändert sich. Typ und Bestände bleiben unberührt. Erst mit Übernehmen wird umbenannt.",
   "names.current": "Aktueller Name",
   "names.official": "Offizieller Name",
   "names.apply": "{count} Name(n) aktualisieren",
@@ -3078,7 +3078,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "share.button": "Teilen",
   "share.live": "Live",
   "share.snapshotDesc": "Aus: Der Link zeigt eine eingefrorene Kopie von jetzt.",
-  "share.liveDesc": "An: Der Link aktualisiert sich, wenn sich dein Depot ändert.",
+  "share.liveDesc": "An: Der Link aktualisiert sich bei jeder Änderung deines Depots.",
   "share.liveHint": "Zum Live-Teilen anmelden",
   "share.full": "Vollständiges Portfolio teilen",
   "share.fullDesc": "Enthält absolute Beträge.",
@@ -3212,7 +3212,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   // Verzinstes Guthaben (CASH-Detailseite)
   "cashInterest.title": "Zinsen",
-  "cashInterest.intro": "Verzinse dieses Guthaben. Zinsen laufen automatisch auf und werden als Zinsbuchung gebucht, nachdem du sie geprüft hast.",
+  "cashInterest.intro": "Verzinse dieses Guthaben. Zinsen laufen automatisch auf. Nach deiner Prüfung werden sie als Zinsbuchung gebucht.",
   "cashInterest.rateLabel": "Zinssatz p.a. (%)",
   "cashInterest.frequencyLabel": "Gutschrift",
   "cashInterest.freq.MONTHLY": "Monatlich",
@@ -3229,7 +3229,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "cashInterest.dueShort": "{count} Zinsgutschrift(en) fällig",
   "cashInterest.review": "Prüfen",
   "cashInterest.modalTitle": "Zinsen buchen",
-  "cashInterest.modalHint": "Jede Gutschrift wird als Zinsbuchung zu ihrem Datum gebucht. Passe einen Betrag vor dem Buchen an, falls dein Kontoauszug abweicht.",
+  "cashInterest.modalHint": "Jede Gutschrift wird als Zinsbuchung zu ihrem Datum gebucht. Bei abweichendem Kontoauszug passe den Betrag vor dem Buchen an.",
   "cashInterest.amount": "Betrag",
   "cashInterest.bookAll": "{count} Gutschrift(en) buchen",
   "cashInterest.error": "Die Zinsen konnten nicht gebucht werden. Bitte versuche es erneut.",
@@ -3267,7 +3267,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.form.interestLabel": "Zinssatz (% p.a.)",
   "accounts.form.interestFrequencyLabel": "Gutschrift",
   "accounts.form.interestHint":
-    "Zinsen werden dem Saldo gutgeschrieben und verzinsen sich ab dann mit. Ein datierter Kontostand hat immer Vorrang, du korrigierst also jede Abweichung, indem du den Wert von deinem Auszug einträgst.",
+    "Zinsen werden dem Saldo gutgeschrieben und verzinsen sich ab dann mit. Ein datierter Kontostand hat immer Vorrang. Trag den Wert von deinem Auszug ein und jede Abweichung ist korrigiert.",
   "accounts.form.add": "Konto hinzufügen",
   "accounts.form.liabilityHint": "Dieser Typ ist eine Verbindlichkeit: Sein Saldo verringert dein Nettovermögen.",
   "accounts.form.error": "Das Konto konnte nicht gespeichert werden. Bitte versuche es erneut.",
@@ -3282,7 +3282,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.edit.intro":
     "Korrigiere die Stammdaten des Kontos. Der Anfangssaldo ist der Stand am Eröffnungsdatum, nicht der heutige.",
   "accounts.edit.hasReadings":
-    "Für dieses Konto sind Salden mit Datum erfasst, und der neueste davon zählt für dein Vermögen. Wenn du den aktuellen Betrag ändern willst, bearbeite die Salden.",
+    "Für dieses Konto sind Salden mit Datum erfasst, und der neueste davon zählt für dein Vermögen. Für den aktuellen Betrag bearbeite stattdessen die Salden.",
   "accounts.edit.save": "Speichern",
   "accounts.edit.error": "Konto konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "accounts.list.delete": "Löschen",
@@ -3302,7 +3302,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.balances.dateLabel": "Datum",
   "accounts.balances.valueLabel": "Saldo ({currency})",
   "accounts.balances.add": "Saldo hinzufügen",
-  "accounts.balances.empty": "Noch keine Saldoaktualisierungen. Der Startsaldo wird fortgeschrieben, bis du einen hinzufügst.",
+  "accounts.balances.empty": "Noch keine Saldoaktualisierungen. Der Startsaldo wird bis zu deinem ersten Eintrag fortgeschrieben.",
   "accounts.balances.remove": "Saldo entfernen",
   "accounts.balances.error": "Der Saldo konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "spending.title": "Ein- & Ausgaben",
@@ -3377,7 +3377,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.import.skipDuplicate": "Überspringen (bereits erfasst)",
   "spending.import.importAnyway": "Trotzdem importieren",
   "spending.budgets.title": "Budgets",
-  "spending.budgets.noCategories": "Du brauchst eine Ausgabenkategorie, bevor du ein Budget festlegen kannst. Füge zuerst eine im Buchungsformular hinzu.",
+  "spending.budgets.noCategories": "Für ein Budget brauchst du zuerst eine Ausgabenkategorie. Füge eine im Buchungsformular hinzu.",
   "spending.budgets.empty": "Noch keine Budgets. Lege ein monatliches Limit für eine Kategorie fest.",
   "spending.budgets.categoryLabel": "Kategorie",
   "spending.budgets.amountLabel": "Monatliches Limit ({currency})",
@@ -3389,7 +3389,7 @@ export const de: Partial<Record<MessageKey, string>> = {
 
   "spending.planned.title": "Geplante Ein- und Ausgaben",
   "spending.planned.intro":
-    "Geld, von dem du schon weißt: dein Gehalt, ein Bonus oder eine einmalige Ausgabe. Fällige Posten wandern nach deiner Prüfung ins Buch.",
+    "Dir bereits bekanntes Geld: dein Gehalt, ein Bonus oder eine einmalige Ausgabe. Fällige Posten wandern nach deiner Prüfung ins Buch.",
   "spending.planned.noAccounts": "Du brauchst zuerst ein Konto. Leg eines unter Konten an.",
   "spending.planned.empty": "Noch nichts geplant. Trag dein Gehalt oder eine kommende Ausgabe ein.",
   "spending.planned.nameLabel": "Bezeichnung",
@@ -3446,7 +3446,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.planned.due.error": "Die Buchungen konnten nicht gespeichert werden.",
 
   "spending.forecast.title": "Prognose",
-  "spending.forecast.intro": "Was schon gebucht ist, plus was noch erwartet wird, für die nächsten {n} Monate. Wiederkehrende Zahlungen sind enthalten.",
+  "spending.forecast.intro": "Bereits Gebuchtes plus noch Erwartetes, für die nächsten {n} Monate. Wiederkehrende Zahlungen sind enthalten.",
   "spending.forecast.empty": "Noch nichts zu prognostizieren. Plane Ein- oder Ausgaben, oder lege eine wiederkehrende Zahlung an.",
   "spending.forecast.income": "Einnahmen",
   "spending.forecast.expense": "Ausgaben",
@@ -3458,7 +3458,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.forecast.monthlyNet": "Geplanter Saldo pro Monat",
   "spending.forecast.aria": "Erwartete Einnahmen und Ausgaben der nächsten {n} Monate",
   "contracts.suggestions.title": "Erkannte wiederkehrende Zahlungen",
-  "contracts.suggestions.intro": "Diese Zahlungsempfänger haben regelmäßig einen ähnlichen Betrag abgebucht. Übernimm sie, damit Verlängerung und Kündigungsfrist im Blick bleiben.",
+  "contracts.suggestions.intro": "Diese Zahlungsempfänger haben regelmäßig einen ähnlichen Betrag abgebucht. Übernimm sie und behalte Verlängerung und Kündigungsfrist im Blick.",
   "contracts.suggestions.accept": "Übernehmen",
   "contracts.suggestions.dismiss": "Ignorieren",
   "contracts.form.nameLabel": "Name",
@@ -3498,14 +3498,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "recurring.due.review": "Prüfen",
   "recurring.due.reviewTitle": "Fällige Buchungen",
   "recurring.due.reviewHint":
-    "Jede Zeile ist ein Vorschlag: Korrigiere Datum oder Betrag vor dem Buchen, oder überspringe sie, wenn sie nie stattgefunden hat. Gebucht wird erst nach deiner Bestätigung.",
+    "Jede Zeile ist ein Vorschlag: Korrigiere Datum oder Betrag vor dem Buchen, oder überspringe eine nie erfolgte Zahlung. Gebucht wird erst nach deiner Bestätigung.",
   "recurring.due.book": "{n} Buchung(en) buchen",
   "recurring.due.dateLabel": "Buchungsdatum",
   "recurring.due.amountLabel": "Betrag",
   "recurring.due.skip": "Überspringen",
   "recurring.due.skipTitle": "Fällige Buchung überspringen?",
   "recurring.due.skipMessage":
-    "{name} am {date} wird nicht gebucht und nicht erneut angeboten. Was davon davor noch offen ist, ist damit ebenfalls erledigt.",
+    "{name} am {date} wird nicht gebucht und nicht erneut angeboten. Frühere offene Fälligkeiten sind damit ebenfalls erledigt.",
   "recurring.due.skipError": "Die Buchung konnte nicht übersprungen werden.",
   "recurring.bookError": "Die fälligen Einträge konnten nicht gebucht werden.",
   "recurring.interval.ONCE": "Einmalig",
@@ -3537,9 +3537,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "recurring.detail.back": "Konten & Buchungen",
   "recurring.scope.title": "Für welche Zahlungen gilt die Änderung?",
   "recurring.scope.message":
-    "Dieser Eintrag hat schon {n} Zahlungen gebucht. Künftige nutzen immer die neuen Werte, die gebuchten nur, wenn du es willst.",
+    "Dieser Eintrag hat schon {n} Zahlungen gebucht. Künftige nutzen immer die neuen Werte. Die gebuchten nur auf deinen Wunsch.",
   "recurring.scope.splitHint":
-    "Das ist eine Kreditrate: ihre gebuchten Beträge teilen sich pro Monat in Zinsen und Tilgung und bleiben so, wie sie gebucht wurden. Name und Kategorie werden aktualisiert.",
+    "Das ist eine Kreditrate: ihre gebuchten Beträge teilen sich pro Monat in Zinsen und Tilgung und bleiben bei ihrer ursprünglichen Aufteilung. Name und Kategorie werden aktualisiert.",
   "recurring.scope.future": "Nur zukünftige Zahlungen",
   "recurring.scope.all": "Auch die {n} gebuchten",
   "recurring.split.interest": "Zinsen",
@@ -3561,7 +3561,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "contracts.form.targetHintOn":
     "Zählt als Umbuchung, nicht als Ausgabe: das Geld wandert auf dieses Konto, statt verbraucht zu werden.",
   "contracts.form.targetHintOff":
-    "Bei einer Kreditrate oder einer Police, die Wert aufbaut, wähl das Konto, auf das sie einzahlt.",
+    "Bei einer Kreditrate oder einer wertaufbauenden Police wähl ihr Zielkonto.",
   "contracts.form.startLabel": "Läuft seit",
   "contracts.form.startHint": "Ab diesem Datum werden Abbuchungen erzeugt. Wählst du ein Datum in der Vergangenheit, bekommst du die verpassten Abbuchungen zum Nachholen angeboten, jede einzeln abwählbar.",
   "contracts.list.edit": "Bearbeiten",
@@ -3585,7 +3585,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.form.targetLabel": "Zielbetrag ({currency})",
   "goals.form.dateLabel": "Zieldatum (optional)",
   "goals.form.dateHint":
-    "Lass es leer für ein Ziel ohne festes Enddatum. Mit Datum zeigen wir dir, wie viel pro Monat noch fehlt.",
+    "Lass es leer für ein Ziel ohne festes Enddatum. Mit Datum zeigen wir dir den noch fehlenden monatlichen Betrag.",
   "goals.form.linkedAccountLabel": "Fortschritt verfolgen über",
   "goals.form.manualTracking": "Manuelle Erfassung",
   "goals.form.wholeDepot": "Gesamtes Depot (alle Broker)",
@@ -3596,7 +3596,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "goals.form.position": "Position: {name}",
   "goals.form.manualCurrentLabel": "Aktueller Betrag ({currency})",
   "goals.form.manualCurrentHint":
-    "Was du für dieses Ziel bisher zurückgelegt hast. Bearbeite das Ziel, um den Betrag zu ändern, wenn Geld dazukommt.",
+    "Dein bislang für dieses Ziel zurückgelegter Betrag. Bei neuem Geld bearbeite das Ziel und passe ihn an.",
   "goals.form.parentLabel": "Teil von",
   "goals.form.noParent": "Eigenständiges Ziel",
   "goals.form.parentHint":
@@ -3630,7 +3630,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "health.gauge.monthsOfExpenses.label": "Abgedeckte Monate",
   "health.gauge.monthsOfExpenses.hint": "Strebe 3 bis 6 Monate Ausgaben in liquiden Ersparnissen an.",
   "health.gauge.savingsRate.label": "Sparquote",
-  "health.gauge.savingsRate.hint": "Anteil deines Einkommens, den du nach Ausgaben behältst, strebe 20% oder mehr an.",
+  "health.gauge.savingsRate.hint": "Anteil deines nach Ausgaben behaltenen Einkommens, strebe 20% oder mehr an.",
   "health.gauge.debtToIncome.label": "Schulden zu Einkommen",
   "health.gauge.debtToIncome.hint": "Gesamte Verbindlichkeiten im Verhältnis zu einem Jahreseinkommen, niedriger ist besser.",
   "health.gauge.netWorthToIncome.label": "Nettovermögen zu Einkommen",
@@ -3644,13 +3644,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "withdrawal.strategyLabel": "Entnahmestrategie",
   "withdrawal.strategy.fixed": "Fester Betrag",
   "withdrawal.strategy.fixed.desc":
-    "Die klassische Regel: Betrag am Tag des Ruhestands festlegen und immer weiter entnehmen. Stabiles Einkommen, und die einzige Strategie, die das Depot leerlaufen lassen kann.",
+    "Die klassische Regel: Betrag am Tag des Ruhestands festlegen und immer weiter entnehmen. Stabiles Einkommen, und als einzige Strategie mit dem Risiko, das Depot leerlaufen zu lassen.",
   "withdrawal.strategy.percentOfPortfolio": "Anteil am Depot",
   "withdrawal.strategy.percentOfPortfolio.desc":
-    "Immer derselbe Prozentsatz von dem, was tatsächlich noch da ist. Kann nie ausgehen, dafür sinkt dein Einkommen mit dem Markt.",
+    "Immer derselbe Prozentsatz vom tatsächlich verbleibenden Bestand. Kann nie ausgehen, dafür sinkt dein Einkommen mit dem Markt.",
   "withdrawal.strategy.guardrails": "Leitplanken",
   "withdrawal.strategy.guardrails.desc":
-    "Du behältst das Einkommen des Vorjahres, bis die Entnahmequote zu weit abdriftet, und passt es dann an. Wenige Änderungen, jede davon klein.",
+    "Du behältst das Einkommen des Vorjahres bis zu einer Drift-Grenze der Entnahmequote und passt es dann an. Wenige Änderungen, jede davon klein.",
   "withdrawal.strategy.floorCeiling": "Unter- und Obergrenze",
   "withdrawal.strategy.floorCeiling.desc":
     "Folgt dem Depot, aber nie unter eine Untergrenze und nie über eine Obergrenze. Der Kompromiss zwischen stabilem und mitlaufendem Einkommen.",
@@ -3666,44 +3666,44 @@ export const de: Partial<Record<MessageKey, string>> = {
   "withdrawal.steps.percentOfPortfolio.2":
     "Multiplizier ihn mit deiner Rate. Das ist dein Einkommen für das nächste Jahr.",
   "withdrawal.steps.percentOfPortfolio.3":
-    "Halt einen Puffer von ein bis zwei Jahresausgaben in bar, damit ein schlechtes Jahr die Rechnung kürzt und nicht deinen Einkauf.",
+    "Halt einen Puffer von ein bis zwei Jahresausgaben in bar. So kürzt ein schlechtes Jahr die Rechnung, nicht deinen Einkauf.",
   "withdrawal.steps.guardrails.1":
     "Einmal im Jahr teilst du das Einkommen des Vorjahres durch den aktuellen Depotwert.",
   "withdrawal.steps.guardrails.2":
     "Liegt das Ergebnis im Band um deine Zielrate, änderst du gar nichts.",
   "withdrawal.steps.guardrails.3":
-    "Liegt es außerhalb, gehst du einen Schritt: runter, wenn die Quote zu hoch ist, rauf, wenn sie zu niedrig ist.",
+    "Außerhalb der Grenzen gehst du einen Schritt: runter bei zu hoher Quote, rauf bei zu niedriger.",
   "withdrawal.steps.floorCeiling.1":
     "Rechne deine Rate mal dem aktuellen Depotwert, wie beim Anteil am Depot.",
   "withdrawal.steps.floorCeiling.2":
     "Vergleich das mit deiner Unter- und Obergrenze, beide vom Einkommen des ersten Jahres abgeleitet.",
   "withdrawal.steps.floorCeiling.3":
-    "Entnimm den Wert dazwischen. Setz die Untergrenze auf das, was du wirklich brauchst, nicht auf das, was du gern hättest.",
+    "Entnimm den Wert dazwischen. Setz die Untergrenze auf deinen tatsächlichen Bedarf, nicht auf deinen Wunsch.",
   "withdrawal.strategy.vpw": "Auf die Restjahre verteilt",
   "withdrawal.strategy.vpw.desc":
-    "Du teilst jedes Jahr das vorhandene Kapital auf die Jahre auf, die du noch finanzieren musst. Die Rate steigt mit dem Alter, deshalb bleibt nichts liegen und nichts geht aus.",
+    "Du teilst jedes Jahr das vorhandene Kapital auf deine verbleibenden Finanzierungsjahre auf. Die Rate steigt mit dem Alter, deshalb bleibt nichts liegen und nichts geht aus.",
   "withdrawal.steps.vpw.1":
     "Notier einmal im Jahr den Depotwert und die Jahre, die noch zu finanzieren sind.",
   "withdrawal.steps.vpw.2":
-    "Entnimm den Rentenanteil davon: jedes Jahr mehr vom Topf, weil weniger Jahre übrig sind.",
+    "Entnimm den Rentenanteil davon: jedes Jahr mehr vom Topf bei weniger verbleibenden Jahren.",
   "withdrawal.steps.vpw.3":
-    "Rechne damit, dass dein Einkommen mit dem Markt schwankt. Diese Regel läuft nie leer, verspricht aber auch keinen festen Betrag.",
+    "Dein Einkommen schwankt mit dem Markt. Diese Regel läuft nie leer, verspricht aber auch keinen festen Betrag.",
   "withdrawal.stressLabel": "Stressszenario",
   "withdrawal.stress.none": "Ohne Stress",
   "withdrawal.stress.none.desc":
-    "Die Renditen fallen in der Reihenfolge an, die die Simulation zieht.",
+    "Die Renditen fallen in der eigenen Zufallsreihenfolge der Simulation an.",
   "withdrawal.stress.earlyCrash": "Crash zu Beginn",
   "withdrawal.stress.earlyCrash.desc":
     "Ein schwerer Verlust im ersten Monat des Ruhestands. Dieselben Renditen, in der denkbar schlechtesten Reihenfolge.",
   "withdrawal.stress.lostDecade": "Verlorenes Jahrzehnt",
   "withdrawal.stress.lostDecade.desc":
-    "Die ersten zehn Jahre im Ruhestand wachsen überhaupt nicht, während du schon entnimmst.",
+    "Die ersten zehn Jahre im Ruhestand wachsen überhaupt nicht, trotz deiner bereits laufenden Entnahmen.",
   "withdrawal.stress.highInflation": "Inflationsschock",
   "withdrawal.stress.highInflation.desc":
     "Drei Punkte mehr Inflation über den ganzen Lauf: weniger reale Rendite, und die Entnahme muss schneller steigen.",
   "withdrawal.compareTitle": "Alle Strategien, gleiche Märkte",
   "withdrawal.compareHint":
-    "Alle vier laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem Einkommen, das schwankt.",
+    "Alle vier laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem schwankenden Einkommen.",
   "withdrawal.col.strategy": "Strategie",
   "withdrawal.col.success": "Reicht",
   "withdrawal.col.income": "Einkommen / Jahr",
@@ -3714,15 +3714,15 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Antworten auf dieselbe Frage und damit Reiter einer Seite.
   "retirement.title": "Ruhestand",
   "retirement.subtitle":
-    "Wovon du lebst, wenn du aufhörst zu arbeiten: dein eigenes Kapital und das, was dir zusteht.",
+    "Dein Einkommen im Ruhestand: dein eigenes Kapital und deine gesetzlichen Ansprüche.",
   "retirement.tab.fire": "FIRE",
   "retirement.tab.pension": "Rente",
 
   // FIRE-Planer (ROADMAP #8)
   "fire.title": "Rente / FIRE-Planer",
-  "fire.subtitle": "Wie groß dein Portfolio sein muss, um deine Ausgaben zu decken, und wie lange es dauert, dorthin zu kommen.",
+  "fire.subtitle": "Die für deine Ausgaben nötige Portfoliogröße, und die Zeit bis dorthin.",
   "fire.withdrawalRate.label": "Entnahmerate",
-  "fire.withdrawalRate.hint": "Die klassische \"4%-Regel\" geht davon aus, dass ein Portfolio bei dieser Entnahmerate die ganze Rentenzeit über reicht.",
+  "fire.withdrawalRate.hint": "Die klassische \"4%-Regel\": Bei dieser Entnahmerate reicht ein Portfolio die ganze Rentenzeit über.",
   "fire.pension.count": "Rente einrechnen",
   "fire.pension.hint": "{amount} pro Monat ab {year}.",
   "fire.pension.saves":
@@ -3738,13 +3738,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "fire.netWorth.label": "Aktuelles Nettovermögen",
   "fire.targets.title": "Deine Ziele",
   "fire.targets.subtitle":
-    "Wie viel Vermögen deine Ausgaben bei der Entnahmerate oben dauerhaft deckt.",
+    "Das ausgabendeckende Vermögen bei der Entnahmerate oben.",
   "fire.lean.label": "Lean FIRE",
   "fire.lean.info":
     "Finanzielle Unabhängigkeit mit schlankerem Budget: {ratio} deiner heutigen Ausgaben.",
   "fire.regular.label": "FIRE-Zahl",
   "fire.regular.info":
-    "Das Vermögen, das deine heutigen Ausgaben bei der Entnahmerate oben deckt. Bei 4 % sind das die bekannten 25 Jahresausgaben.",
+    "Das ausgabendeckende Vermögen bei der Entnahmerate oben. Bei 4 % sind das die bekannten 25 Jahresausgaben.",
   "fire.fat.label": "Fat FIRE",
   "fire.fat.info": "Finanzielle Unabhängigkeit mit mehr Spielraum: {ratio} deiner heutigen Ausgaben.",
   "fire.tile.risk": "{risk} der simulierten {years} Rentenjahre gehen bei dieser Rate leer aus.",
@@ -3794,10 +3794,10 @@ export const de: Partial<Record<MessageKey, string>> = {
     "{current} Punkte erworben + {annual} pro Jahr × {years} Jahre = {total} Punkte.",
   "pension.calc.money": "{total} × {value} pro Punkt × {factor} = {monthly} pro Monat.",
   "pension.calc.trend":
-    "Folgt dem Trend deiner erfassten Jahre: {start} Punkte im ersten Jahr, steigend auf {end} im letzten, ermittelt aus {years} Jahren und gedeckelt auf das, was ein Jahr bringen kann. Das weicht bewusst von der Renteninformation ab, die keine Steigerung unterstellt.",
+    "Folgt dem Trend deiner erfassten Jahre: {start} Punkte im ersten Jahr, steigend auf {end} im letzten, ermittelt aus {years} Jahren und gedeckelt auf das Maximum eines Jahres. Das weicht bewusst von der Renteninformation ab: Sie unterstellt keine Steigerung.",
   "pension.assumeTrend": "Weiteren Karriereanstieg unterstellen",
   "pension.assumeTrendHint":
-    "Standardmäßig aus, damit diese Seite deine Renteninformation nachrechnet: die schreibt den flachen Durchschnitt deiner letzten fünf Jahre fort. An folgt sie stattdessen dem Trend deiner {years} erfassten Jahre — ein Was-wäre-wenn, nicht die offizielle Zahl.",
+    "Standardmäßig aus. So bildet diese Seite deine Renteninformation nach: den flachen Durchschnitt deiner letzten fünf Jahre, fortgeschrieben. An folgt sie stattdessen dem Trend deiner {years} erfassten Jahre. Ein Was-wäre-wenn, nicht die offizielle Zahl.",
   "pension.outlierNotice":
     "{year} steht mit {points} Punkten weit über deinen anderen Jahren. Die Hochrechnung lässt die Zeile außen vor, falsch ist sie trotzdem: der Gesamtstand aus der Renteninformation gehört in „Entgeltpunkte insgesamt“, nicht in ein einzelnes Jahr.",
   "pension.targetMonthly": "Wunschrente / Monat",
@@ -3815,18 +3815,18 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.statements.rate":
     "{gained} Punkte zwischen {from} und {to}, also in {years} Jahren: {points} Punkte pro Jahr. Damit rechnet FinTrack für jedes weitere Jahr.",
   "pension.statements.needSecond":
-    "Mit einer zweiten, älteren Renteninformation kann FinTrack messen, wie viele Punkte ein Arbeitsjahr bei dir bringt.",
+    "Mit einer zweiten, älteren Renteninformation kann FinTrack deinen jährlichen Punktezuwachs messen.",
   "pension.statements.deleteTitle": "Renteninformation löschen?",
   "pension.statements.deleteMessage": "Die Renteninformation von {year} wird entfernt.",
   "pension.points.looksLikeStatements":
-    "Diese Zeilen sehen aus wie Gesamtstände: sie steigen nur und der neueste Wert liegt über dem, was ein einzelnes Jahr bringen kann. Zu deinen Renteninformationen verschieben?",
+    "Diese Zeilen sehen aus wie Gesamtstände: sie steigen nur und der neueste Wert liegt über dem Maximum eines einzelnen Jahres. Zu deinen Renteninformationen verschieben?",
   "pension.points.moveToStatements": "Zu den Renteninformationen verschieben",
   "pension.points.moveTitle": "Zeilen verschieben?",
   "pension.points.moveMessage":
     "{count} Zeilen gelten danach als Gesamtstände, und die Jahr-für-Jahr-Tabelle wird geleert.",
   "pension.points.detailTitle": "Jahr für Jahr (optional)",
   "pension.points.overMax": "Ein Jahr bringt höchstens {max} Punkte. Ein Gesamtstand gehört in „Entgeltpunkte insgesamt“.",
-  "pension.points.hint": "Aus deinem Versicherungsverlauf, falls du ihn hast. Jahre nach dem Gesamtstand kommen hinzu. 1,0 Punkte entsprechen einem Jahr mit genau dem Durchschnittsentgelt.",
+  "pension.points.hint": "Aus deinem Versicherungsverlauf, falls vorhanden. Jahre nach dem Gesamtstand kommen hinzu. 1,0 Punkte entsprechen einem Jahr mit genau dem Durchschnittsentgelt.",
   "pension.points.year": "Jahr",
   "pension.points.points": "Punkte",
   "pension.points.note": "Notiz",
@@ -3840,28 +3840,28 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.contracts.kind": "Art",
   "pension.contracts.provider": "Anbieter",
   "pension.contracts.expected": "Erwartet / Monat",
-  "pension.contracts.expectedHint": "Nur nötig, wenn du keinen Rentenfaktor hast. Mit ihm wird die Rente aus Beitrag, Dynamik und Rendite gerechnet.",
+  "pension.contracts.expectedHint": "Nur ohne Rentenfaktor nötig. Mit ihm rechnet sich die Rente aus Beitrag, Dynamik und Rendite.",
   "pension.contracts.rentenfaktor": "Rentenfaktor (je 10.000)",
   "pension.contracts.rentenfaktorHint":
-    "Monatliche Rente je 10.000 Kapital, wie sie in deinem Vertrag steht. Damit wird die Rente gerechnet statt geschätzt.",
+    "Monatliche Rente je 10.000 Kapital, laut Vertrag. Damit wird die Rente gerechnet statt geschätzt.",
   "pension.contracts.dynamic": "Beitragsdynamik (% p. a.)",
-  "pension.contracts.dynamicHint": "Um wie viel dein Beitrag jedes Jahr steigt.",
+  "pension.contracts.dynamicHint": "Die jährliche Steigerung deines Beitrags.",
   "pension.contracts.returnPct": "Angenommene Rendite (% p. a.)",
   "pension.contracts.returnHint": "Wachstum des Kapitals bis zum Rentenbeginn. Leer heißt: kein Wachstum.",
   "pension.contracts.account": "Verrechnungskonto",
   "pension.contracts.accountNone": "Keins (nur erfassen)",
-  "pension.contracts.accountHint": "Jeder Beitrag wird von diesem Konto abgebucht, sobald du ihn bestätigst.",
+  "pension.contracts.accountHint": "Jeder Beitrag wird nach deiner Bestätigung von diesem Konto abgebucht.",
   "pension.contracts.bookingStart": "Erster Beitrag am",
   "pension.contracts.bookingStartHint": "Fällige Beiträge ab diesem Datum sammeln sich zur Kontrolle.",
   "pension.premiums.title": "Fällige Beiträge ({n})",
   "pension.premiums.book": "{n} Beiträge buchen",
   "pension.premiums.transferNote":
-    "Ein Beitrag zählt als Umbuchung, nicht als Ausgabe: du bekommst dafür einen Anspruch, der so viel wert ist wie das, was vom Konto geht.",
+    "Ein Beitrag zählt als Umbuchung, nicht als Ausgabe: du bekommst dafür einen Anspruch im Wert des vom Konto abgehenden Betrags.",
   "pension.contracts.returnColumn": "Rendite (% p. a.)",
   "pension.values.open": "Stände",
   "pension.values.title": "Erfasste Stände: {name}",
   "pension.values.hint":
-    "Was der Vertrag wert war, so wie es auf der jährlichen Standmitteilung steht. Zwei Stände und die Beiträge dazwischen messen, was er wirklich bringt. Dann musst du keine Rendite raten.",
+    "Der laut jährlicher Standmitteilung gültige Vertragswert. Zwei Stände und die Beiträge dazwischen messen den tatsächlichen Ertrag. Dann musst du keine Rendite raten.",
   "pension.values.date": "Datum",
   "pension.values.value": "Wert",
   "pension.values.add": "Stand hinzufügen",
@@ -3871,7 +3871,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "pension.values.needSecond":
     "Ein zweiter Stand mindestens ein halbes Jahr später misst die Rendite. Bis dahin gilt die angenommene.",
   "pension.values.typedWins":
-    "Deine getippte Rendite gilt für die Prognose. Lösch sie, wenn die gemessene gelten soll.",
+    "Deine getippte Rendite gilt für die Prognose. Lösch sie für die gemessene.",
   "pension.values.deleteTitle": "Stand löschen?",
   "pension.values.deleteMessage": "Der Stand vom {date} wird entfernt.",
   "pension.contracts.derivedNote":
@@ -3947,7 +3947,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "debt.details.rateSectionTitle": "Zinsbindung",
   "debt.details.rateFixedUntilLabel": "Zinsbindung endet am",
   "debt.details.followUpRateLabel": "Angenommener Anschlusszins (%)",
-  "debt.details.followUpHint": "Leer lassen, wenn der Zinssatz die ganze Laufzeit gilt.",
+  "debt.details.followUpHint": "Leer lassen bei festem Zinssatz über die ganze Laufzeit.",
   "debt.chart.title": "So entwickelt sich deine Schuld",
   "debt.chart.scopeLabel": "Anzeigen",
   "debt.chart.all": "Alle Verbindlichkeiten",
@@ -3993,23 +3993,23 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Rendite je Einheit Gesamtrisiko: (Jahresrendite − 2% risikofrei) ÷ Volatilität. Höher ist besser; über 1 ist gut.",
   "risk.sortino": "Sortino",
   "risk.sortinoTip":
-    "Wie Sharpe, bestraft aber nur die Abwärtsvolatilität, sodass Aufwärtsbewegungen nicht negativ zählen. Höher ist besser.",
+    "Wie Sharpe, bestraft aber nur die Abwärtsvolatilität. Aufwärtsbewegungen zählen nicht negativ. Höher ist besser.",
   "risk.volatility": "Volatilität",
   "risk.volatilityTip":
-    "Annualisierte Standardabweichung der Renditen: wie stark der Wert schwankt. Niedriger bedeutet ruhigeren Verlauf.",
+    "Annualisierte Standardabweichung der Renditen: das Ausmaß der Wertschwankung. Niedriger bedeutet ruhigeren Verlauf.",
   "risk.beta": "Beta",
   "risk.betaTip":
     "Empfindlichkeit einer Position gegenüber dem MSCI World Index: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie, negativ läuft gegenläufig (Absicherung). Gemessen über das jüngste überlappende Fenster.",
   "risk.betaSuffix": "ggü. MSCI World",
   "risk.alpha": "Alpha",
   "risk.alphaTip":
-    "Die annualisierte Rendite einer Position über das hinaus, was ihr Beta zum MSCI World erwarten ließe (CAPM). Positiv = risikobereinigt besser als der Index.",
+    "Die annualisierte Rendite einer Position über ihre beta-erwartete Rendite zum MSCI World hinaus (CAPM). Positiv = risikobereinigt besser als der Index.",
   "risk.portfolioBeta": "Beta",
   "risk.portfolioBetaTip":
-    "Wie sich dein gesamtes Portfolio relativ zum MSCI World Index bewegt: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie.",
+    "Die Bewegung deines gesamten Portfolios relativ zum MSCI World Index: 1 läuft mit, über 1 verstärkt die Schwankungen, unter 1 dämpft sie.",
   "risk.portfolioAlpha": "Alpha",
   "risk.portfolioAlphaTip":
-    "Die annualisierte Rendite deines Portfolios über das hinaus, was sein Beta zum MSCI World erwarten ließe (CAPM).",
+    "Die annualisierte Rendite deines Portfolios über seine beta-erwartete Rendite zum MSCI World hinaus (CAPM).",
   "risk.maxDrawdown": "Max. Drawdown",
   "risk.maxDrawdownTip":
     "Größter Rückgang vom Hoch zum Tief im Zeitraum, mit Dauer. Kleiner ist besser. Gemessen am tatsächlichen täglichen Verlauf im Anlagezeitraum.",
@@ -4024,7 +4024,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "risk.weightTip": "Anteil dieser Position am Gesamtwert der gewählten Auswahl.",
   "risk.correlation": "Korrelationsmatrix",
   "risk.correlationTip":
-    "Wie sich Positionen gemeinsam bewegen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",
+    "Die Wechselbewegung von Positionen: rot = im Gleichschritt (weniger Diversifikation), blau = gegenläufig (Absicherung), blass = unabhängig.",
   "risk.correlationNeed": "Füge mindestens zwei Positionen mit Historie hinzu, um Korrelationen zu sehen.",
   "risk.correlationHighPairs": "Paare über 0,8 bewegen sich im Gleichschritt, dies schränkt die Diversifikation ein.",
 
@@ -4097,7 +4097,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Returns
   "returns.title": "Renditen",
   "returns.tip":
-    "Periodenrenditen bereinigt um Ein-/Auszahlungen (modifizierte Dietz-Methode), sodass Einzahlungen nicht als Gewinn erscheinen.",
+    "Periodenrenditen bereinigt um Ein-/Auszahlungen (modifizierte Dietz-Methode). Einzahlungen erscheinen so nicht als Gewinn.",
   "returns.byQuarter": "Rendite je Quartal",
   "returns.byYear": "Rendite je Jahr",
   "returns.perfMap": "Performance-Karte",
@@ -4111,7 +4111,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "trades.byMonth": "Realisierter G/V je Monat",
   "trades.byMonthTip":
     "Realisierter Gewinn/Verlust aus Verkäufen, dem Monat des jeweiligen Verkaufs zugeordnet (Durchschnittskosten).",
-  "trades.noSells": "Noch keine Verkäufe. Realisierter G/V erscheint hier, sobald du verkaufst.",
+  "trades.noSells": "Noch keine Verkäufe. Nach dem ersten Verkauf erscheint hier der realisierte G/V.",
   "trades.realized": "Realisiert",
   "trades.topMoversTitle": "Top-Bewegungen",
   "trades.topWinners": "Top-Gewinner",
@@ -4140,7 +4140,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tax.taxable": "Zu versteuern",
   "tax.estimatedTax": "Geschätzte Steuer",
   "tax.estimatedTaxTip":
-    "25% Abgeltungsteuer zuzüglich 5,5% Solidaritätszuschlag, zuzüglich Kirchensteuer, falls in den Einstellungen konfiguriert.",
+    "25% Abgeltungsteuer plus 5,5% Solidaritätszuschlag. Kirchensteuer kommt bei entsprechender Einstellung dazu.",
   "tax.withheld": "Vom Broker einbehalten",
   "tax.withheldTip":
     "Summe der bereits auf deine erfassten Verkäufe einbehaltenen Steuer. Dein Broker berücksichtigt darin eventuell schon einen Freistellungsauftrag oder eine Teilfreistellung; das hier ist ein grober Vergleich, keine Abstimmung. Trage den genauen Wert aus deiner Steuerbescheinigung ein, um die berechnete Summe zu überschreiben.",
@@ -4154,7 +4154,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Gewinne aus Krypto- und Rohstoffverkäufen folgen eigenen Regeln (§23 EStG): steuerfrei nach einem Jahr Haltefrist, und steuerfrei unterhalb einer kleinen jährlichen Freigrenze. Zählen nicht zu deinem Sparerpauschbetrag.",
   "tax.vorab": "Vorabpauschale",
   "tax.vorabTip":
-    "Eine fiktive jährliche Steuervorauszahlung auf Fonds, basierend auf dem Basiszins des Jahres. Lässt du das Feld leer, zeigt FinTrack eine Schätzung aus deinem Fondswert zu Jahresbeginn und dem Basiszins des Jahres, begrenzt durch den Wertzuwachs des Fonds; trage den Wert aus der Steuerbescheinigung deines Brokers ein, um sie zu überschreiben. Die Teilfreistellung wird berücksichtigt, wenn sie aktiviert ist, da es sich um Fondserträge handelt.",
+    "Eine fiktive jährliche Steuervorauszahlung auf Fonds, basierend auf dem Basiszins des Jahres. Bei leerem Feld zeigt FinTrack eine Schätzung aus deinem Fondswert zu Jahresbeginn und dem Basiszins, begrenzt durch den Wertzuwachs des Fonds. Zum Überschreiben trag den Wert aus der Steuerbescheinigung deines Brokers ein. Die Teilfreistellung fließt bei aktivierter Einstellung ein, denn es geht um Fondserträge.",
   "tax.vorabAriaLabel": "Vorabpauschale für {year}",
   "tax.withheldAriaLabel": "Überschreibung der einbehaltenen Steuer für {year}",
   "tax.editAriaLabel": "{field} bearbeiten",
@@ -4195,7 +4195,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "household.accept": "Annehmen",
   "household.decline": "Ablehnen",
   "household.sharingPaused":
-    "Das Teilen ist pausiert: niemand in diesem Haushalt hat gerade Pro, deshalb sieht jede Person nur die eigenen Daten. Es wurde nichts gelöscht, das Teilen läuft weiter, sobald ein Mitglied ein Abo hat.",
+    "Das Teilen ist pausiert: Niemand in diesem Haushalt hat gerade Pro, also sieht jede Person nur die eigenen Daten. Es wurde nichts gelöscht. Mit dem ersten Abo eines Mitglieds läuft das Teilen weiter.",
   "household.limitHint": "Bis zu {n} Personen sind enthalten. Weitere Mitglieder kosten jeweils {price} (offene Einladungen zählen mit).",
   "household.addSeat": "Sitzplatz für {price} hinzufügen",
 
@@ -4251,7 +4251,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.seededFromFire": "Horizont aus deinem FIRE-Plan: {years} Jahre bis zur finanziellen Unabhängigkeit.",
   "sim.inflation": "Inflation",
   "sim.inflationHint":
-    "Um diesen Satz steigt deine Entnahme jedes Jahr. Ohne ihn sieht ein Plan sicher aus und halbiert still, was du dir davon kaufen kannst.",
+    "Um diesen Satz steigt deine Entnahme jedes Jahr. Ohne ihn sieht ein Plan sicher aus und halbiert still deine Kaufkraft.",
   "sim.modelPortfolioDesc":
     "Simuliert jede Position mit ihrer eigenen Volatilität und den Korrelationen untereinander.",
   "sim.modelCustomDesc": "Simuliert eine einzelne gemischte Rendite und Volatilität.",
@@ -4266,14 +4266,14 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Du entnimmst jährlich diesen Prozentsatz des Portfoliowerts zu Rentenbeginn (danach fest). ~4% gilt als klassische sichere Rate; der real entnehmbare Betrag hängt vom Portfoliowachstum ab.",
   "sim.withdrawalTitle": "Entnahme-Einkommen",
   "sim.withdrawalMetricsTip":
-    "Wie viel dieser Plan in der Entnahmephase ausschüttet: vom pessimistischen (10. Perzentil) bis zum optimistischen (90. Perzentil) Verlauf.",
+    "Der Ausschüttungsbetrag dieses Plans in der Entnahmephase: vom pessimistischen (10. Perzentil) bis zum optimistischen (90. Perzentil) Verlauf.",
   "sim.withdrawalPensionNote":
     "Enthält {amount} Rente pro Jahr ab {year}. Nur der Rest kommt aus dem Depot.",
   "sim.perYear": "Jahr",
   "sim.useSafeRate": "Sichere Rate verwenden",
   "sim.perMonth": "Mon.",
   "sim.safeRateHint":
-    "Die sichere Rate entnimmt nur das erwartete Wachstum, sodass das investierte Kapital (im Erwartungswert) nicht verbraucht wird.",
+    "Die sichere Rate entnimmt nur das erwartete Wachstum. Das investierte Kapital bleibt (im Erwartungswert) unangetastet.",
   "sim.rebalanceYearly": "Jährlich auf Zielgewichte umschichten",
   "sim.rebalanceYearlyTip":
     "Setzt einmal im Jahr jede Position auf ihr Zielgewicht zurück. Die Zielgewichte sind die Prozentanteile aus der Modell-Liste. Gut gelaufene Positionen werden anteilig verkauft, schlecht gelaufene nachgekauft. Ohne Umschichten laufen die Gewichte mit der Marktentwicklung auseinander.",
@@ -4295,7 +4295,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.growth": "Projiziertes Wachstum (Median)",
   "sim.multiple": "Vielfaches",
   "sim.configurePrompt": "Konfiguriere deinen Plan und starte eine Simulation",
-  "sim.configureHint": "Passe die Parameter an, um zu projizieren, wie dein Vermögen unter tausenden Marktszenarien wachsen könnte.",
+  "sim.configureHint": "Passe die Parameter an, um das Wachstum deines Vermögens unter tausenden Marktszenarien zu projizieren.",
   "sim.edit": "Bearbeiten aktivieren",
   "sim.lock": "Parameter sperren",
   "sim.capitalLocked": "Das Anfangskapital stammt aus deinem Nettovermögen, zum Überschreiben klicken",
@@ -4317,13 +4317,13 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.withdrawalDuration": "Dauer",
   "sim.useSavingsPlans": "Meine Sparpläne verwenden ({amount}/Monat)",
   "sim.guidelinesTip":
-    "7 % p.a. sind die grundlegende realistische Erwartung für breit gestreute Aktien über einen üblichen 30-Jahres-Horizont (die langfristige globale Aktienrisikoprämie). Eine Volatilität von rund 16 % ist der forschungsgestützte Jahreswert für einen diversifizierten Welt-Aktienindex. Gemessene Werte aus deinen Beständen überschreiben diese Annahmen; über lange Horizonte nähern sie sich wieder der Baseline an, da eine aktuelle Serie sich nicht über Jahrzehnte fortsetzen lässt. Die Simulation nutzt 1.000 bis 10.000 Pfade mit monatlicher Verzinsung und normalverteilten Renditen.",
+    "7 % p.a. sind die grundlegende realistische Erwartung für breit gestreute Aktien über einen üblichen 30-Jahres-Horizont (die langfristige globale Aktienrisikoprämie). Eine Volatilität von rund 16 % ist der forschungsgestützte Jahreswert für einen diversifizierten Welt-Aktienindex. Gemessene Werte aus deinen Beständen überschreiben diese Annahmen; über lange Horizonte nähern sie sich wieder der Baseline an: Eine aktuelle Serie lässt sich nicht über Jahrzehnte fortsetzen. Die Simulation nutzt 1.000 bis 10.000 Pfade mit monatlicher Verzinsung und normalverteilten Renditen.",
   "sim.perAssetModel": "Modell pro Anlage",
   "sim.estimate": "Schätzung",
   "sim.blended": "Gemischt",
   "sim.yrsHistory": "{years} Jahre Historie",
   "sim.pureGuessNote":
-    "Einige Bestände haben keine nutzbare Kurshistorie, daher sind Rendite und Risiko unten eine langfristige Annahme. Die Projektion wird genauer, sobald mehr Marktdaten vorliegen.",
+    "Einige Bestände haben keine nutzbare Kurshistorie. Rendite und Risiko unten sind daher eine langfristige Annahme. Mit mehr Marktdaten wird die Projektion genauer.",
   "sim.blendedNote":
     "Die Werte nutzen die eigene Historie jedes Bestands, für längere Horizonte angenähert an langfristige Marktannahmen (eine aktuelle Serie hält sich nicht über Jahrzehnte).",
   "sim.hideOverrides": "Überschreibungen ausblenden",
@@ -4335,7 +4335,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.yrHistory": "{years} Jahr Historie",
   "sim.yrHistoryBlended": "{years} Jahr Historie · an Langfrist angenähert",
   "sim.corrNote":
-    "Jede Anlage wird mit ihrer eigenen Volatilität simuliert; die Korrelationen stammen aus den {years} Jahren, in denen sich die Bestände überschneiden.",
+    "Jede Anlage wird mit ihrer eigenen Volatilität simuliert; die Korrelationen stammen aus den {years} Jahren Überschneidung der Bestände.",
   "sim.modelSummary": "{count} Positionen, gewichtete erwartete Rendite {ret} bei {vol} Volatilität p.a.",
   "sim.showModelDetails": "Details pro Anlage anzeigen",
   "sim.hideModelDetails": "Details pro Anlage ausblenden",
@@ -4393,7 +4393,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.nav.usage": "Nutzung",
   "admin.usage.title": "Nutzung & Betrieb",
   "admin.usage.intro":
-    "Gezählt aus den Daten, die deine Nutzer ohnehin speichern, jedes Mal wenn du diese Seite öffnest. Kein Event-Tracking, kein Cookie, nichts wird aufbewahrt.",
+    "Gezählt aus den ohnehin gespeicherten Daten deiner Nutzer, bei jedem Öffnen dieser Seite. Kein Event-Tracking, kein Cookie, nichts wird aufbewahrt.",
   "admin.usage.noSession": "Nicht angemeldet.",
   "admin.usage.users": "Registrierte Nutzer",
   "admin.usage.active": "Angemeldet (30 T.)",
@@ -4402,7 +4402,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.usage.errors7d": "in 7 Tagen",
   "admin.usage.featuresTitle": "Feature-Nutzung",
   "admin.usage.featuresIntro":
-    "Nutzer mit mindestens einem Eintrag, und wie viel darin steckt. Der Balken ist der Anteil an allen registrierten Nutzern.",
+    "Nutzer mit mindestens einem Eintrag, und ihre Eintragsanzahl. Der Balken ist der Anteil an allen registrierten Nutzern.",
   "admin.usage.colFeature": "Feature",
   "admin.usage.colUsers": "Nutzer",
   "admin.usage.colRecords": "Einträge",
@@ -4465,7 +4465,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.flags.colEnabled": "Aktiviert",
   "admin.flags.overridesTitle": "Overrides pro Nutzer",
   "admin.flags.overridesSubtitle":
-    "Overrides gewinnen für diesen Nutzer gegenüber dem globalen An/Aus-Wert. Sie schalten kein Pro frei: ein Pro-Flag bleibt gesperrt, bis der Plan des Nutzers Pro ist (siehe Premium-Freischaltungen unter Abrechnung).",
+    "Overrides gewinnen für diesen Nutzer gegenüber dem globalen An/Aus-Wert. Sie schalten kein Pro frei: ein Pro-Flag bleibt ohne Pro-Plan gesperrt (siehe Premium-Freischaltungen unter Abrechnung).",
   "admin.flags.searchEmail": "Nutzer per E-Mail finden",
   "admin.flags.searchEmailPlaceholder": "Mindestens 2 Zeichen eingeben",
   "admin.flags.searching": "Suche läuft...",
@@ -4527,11 +4527,11 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.billing.removeKey": "Gespeicherten Schlüssel entfernen",
   "admin.billing.removeConfirmTitle": "Gespeicherten Schlüssel entfernen?",
   "admin.billing.removeConfirmMsg":
-    'Den gespeicherten Wert für "{field}" entfernen? Die Umgebungsvariable wird stattdessen verwendet, falls gesetzt.',
+    'Den gespeicherten Wert für "{field}" entfernen? Eine gesetzte Umgebungsvariable wird stattdessen verwendet.',
   "admin.billing.error": "Das hat nicht geklappt. Versuch es erneut.",
   "admin.billing.sellingTitle": "Verkauf",
   "admin.billing.sellingSubtitle":
-    "Stripe-Preis-IDs für den monatlichen und jährlichen Plan sowie ob der Checkout für Nutzer geöffnet ist.",
+    "Stripe-Preis-IDs für den monatlichen und jährlichen Plan sowie die Checkout-Verfügbarkeit für Nutzer.",
   "admin.billing.priceMonthlyLabel": "Monatliche Preis-ID",
   "admin.billing.priceYearlyLabel": "Jährliche Preis-ID",
   "admin.billing.priceIdPlaceholder": "price_...",
@@ -4543,7 +4543,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.billing.enabledLabel": "Verkauf aktiviert",
   "admin.billing.grantsTitle": "Premium-Freischaltungen",
   "admin.billing.grantsSubtitle":
-    "Schalte einem Nutzer Pro frei, ohne dass er ein Stripe-Abo braucht, z. B. als Dankeschön. Ein Enddatum ist optional; lass es leer für eine Freischaltung, die nie abläuft.",
+    "Schalte einem Nutzer Pro frei, ganz ohne Stripe-Abo, z. B. als Dankeschön. Ein Enddatum ist optional; leer bedeutet eine Freischaltung ohne Ablauf.",
   "admin.billing.grantSearchEmail": "Nutzer per E-Mail finden",
   "admin.billing.grantSearchEmailPlaceholder": "Mindestens 2 Zeichen eingeben",
   "admin.billing.grantSearching": "Suche läuft...",
@@ -4578,12 +4578,12 @@ export const de: Partial<Record<MessageKey, string>> = {
   "admin.prices.colFxRate": "Wechselkurs",
   "admin.prices.colSynced": "Synchronisiert",
   "admin.prices.colRetries": "Fehlversuche",
-  "admin.prices.retriesTip": "Wie oft der Sync diese Zeile hintereinander ohne Kurs verlassen hat. Eine Zeile in der Warteschlange kommt beim nächsten Lauf zuerst dran und sucht ihr Listing neu.",
+  "admin.prices.retriesTip": "Aufeinanderfolgende Syncs ohne Kurstreffer für diese Zeile. Eine Zeile in der Warteschlange kommt beim nächsten Lauf zuerst dran und sucht ihr Listing neu.",
   "admin.prices.staleness.fresh": "Aktuell",
   "admin.prices.staleness.stale": "Veraltet",
   "admin.prices.staleness.dead": "Tot",
   "admin.prices.staleness.unknown": "Unbekannt",
-  "admin.prices.syntheticTip": "Für dieses Instrument liegen noch keine echten Marktdaten vor - die App weicht auf einen synthetischen Kurs aus.",
+  "admin.prices.syntheticTip": "Für dieses Instrument liegen noch keine echten Marktdaten vor. Die App weicht auf einen synthetischen Kurs aus.",
   "admin.prices.noMatch": "Kein Instrument passt zu deinem Filter.",
   "admin.prices.empty": "Noch keine Instrumente im Katalog.",
   "admin.prices.error": "Das hat nicht geklappt. Versuch es erneut.",
@@ -4655,7 +4655,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Guest mode banner
   "guestBanner.title": "Gastmodus:",
   "guestBanner.body":
-    "Deine Daten werden nur in diesem Browser gespeichert und gehen verloren, wenn du deine Browserdaten leerst.",
+    "Deine Daten werden nur in diesem Browser gespeichert. Beim Leeren deiner Browserdaten gehen sie verloren.",
   "guestBanner.cta": "Registrieren, um sie zu speichern",
 
   // Chat bubble + panel (flag `llmChat`)
@@ -4692,12 +4692,12 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.billing.errorUnavailable": "Abrechnung ist gerade nicht verfügbar.",
 
   "pricing.title": "Preise",
-  "pricing.subtitle": "Einfache, transparente Preise. Wähl den Plan, der zu deiner Anlagestrategie passt.",
+  "pricing.subtitle": "Einfache, transparente Preise. Wähl den zu deiner Anlagestrategie passenden Plan.",
   "pricing.free.name": "Free",
-  "pricing.free.tagline": "Alles, was du zur Verfolgung deines Portfolios brauchst.",
+  "pricing.free.tagline": "Alles Nötige zur Verfolgung deines Portfolios.",
   "pricing.free.feature1": "Unbegrenztes Portfolio- und Transaktions-Tracking",
   "pricing.free.feature2": "CSV-Import aus deinen Broker-Exporten",
-  "pricing.free.feature3": "Watchlist für Instrumente, die du beobachtest",
+  "pricing.free.feature3": "Watchlist für beobachtete Instrumente",
   "pricing.pro.name": "Pro",
   "pricing.pro.tagline": "Das komplette Analyse-Werkzeug, zusätzlich zu allem in Free.",
   "pricing.pro.feature1": "Risikoanalyse mit Portfolio-Beta und -Alpha",
@@ -4718,7 +4718,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "push.savingsBody": "Heute Sparplan fällig: {assets}.",
   "push.andMore": "{names} und {count} weitere",
   "notif.title": "Benachrichtigungen",
-  "notif.subtitle": "Erhalte auf diesem Gerät eine Erinnerung, wenn eine Dividende ausgezahlt wird oder ein Sparplan fällig ist. Keine Werbung, niemals.",
+  "notif.subtitle": "Erhalte auf diesem Gerät eine Erinnerung bei Dividendenzahlung oder fälligem Sparplan. Keine Werbung, niemals.",
   "notif.dividendLabel": "Dividendenzahltag",
   "notif.savingsLabel": "Sparplan fällig",
   "notif.enable": "Auf diesem Gerät aktivieren",
@@ -4843,7 +4843,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sp.review": "Revisar",
   "sp.reviewTitle": "Ejecuciones de planes de inversión pendientes",
   "sp.reviewHint":
-    "Cada fila se registra al precio mostrado (el cierre real de ese día cuando está disponible) con el tipo de operación del plan: compra, o Einbuchung para entradas externas. No se registra nada hasta que lo confirmes.",
+    "Cada fila se registra con el tipo de operación del plan: compra, o Einbuchung para entradas externas. El precio es el cierre real de ese día, o el mejor disponible. No se registra nada sin tu confirmación.",
   "sp.confirm": "Registrar {count} ejecución(es)",
   "sp.applying": "Registrando…",
   "sp.applyError": "Error al registrar.",
@@ -4905,7 +4905,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.churchTax": "Impuesto eclesiástico (Kirchensteuer)",
   "settings.churchTaxNone": "Ninguno",
   "settings.teilfreistellung": "Teilfreistellung",
-  "settings.teilfreistellungHint": "Actívalo solo si tus fondos y ETFs son mayoritariamente fondos de renta variable.",
+  "settings.teilfreistellungHint": "Actívalo solo con fondos y ETFs mayoritariamente de renta variable.",
   "settings.changePassword": "Cambiar contraseña",
   "settings.newPassword": "Nueva contraseña",
   "settings.confirmPassword": "Confirmar contraseña",
@@ -4934,16 +4934,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.fees.orderFlat": "Comisión de orden",
   "settings.fees.orderFreeFrom": "Gratis a partir de",
   "settings.fees.orderFreeFromHint":
-    "Volumen de la orden a partir del cual se exime la comisión. Déjalo vacío para cobrarla siempre.",
+    "A partir de este volumen de orden se exime la comisión. Déjalo vacío para cobrarla en cada orden.",
   "settings.fees.savingsPlan": "Comisión del plan de inversión",
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
-    "Déjalo vacío si no tienes uno registrado en este bróker. El informe fiscal del análisis calcula por bróker con el importe indicado aquí.",
+    "Déjalo vacío sin una exención registrada en este bróker. El informe fiscal del análisis calcula por bróker con este importe.",
   "settings.fees.saveError": "No se ha podido guardar.",
 
   "settings.ai.title": "Asistente de IA",
   "settings.ai.intro":
-    "Haz preguntas sobre tu cartera en lenguaje natural a través de la burbuja de chat, por ejemplo sobre tu asignación, métricas de riesgo como alfa y beta, dividendos o planes de ahorro. El chat usa tu propia clave de API, envía los datos de tu cartera al proveedor elegido solo cuando haces una pregunta, nunca modifica tus datos y no ofrece asesoramiento de inversión.",
+    "Haz preguntas sobre tu cartera en lenguaje natural a través de la burbuja de chat, por ejemplo sobre tu asignación, métricas de riesgo como alfa y beta, dividendos o planes de ahorro. El chat usa tu propia clave de API. Los datos de tu cartera van al proveedor elegido solo con una pregunta. Nunca modifica tus datos y no ofrece asesoramiento de inversión.",
   "settings.ai.provider": "Proveedor",
   "settings.ai.model": "Modelo",
   "settings.ai.apiKey": "Clave de API",
@@ -4985,7 +4985,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Aquí están todas tus posiciones, ordenables por columna. Haz clic en una fila para ver sus detalles.",
   "tour.areas.title": "Tu dinero del día a día",
   "tour.areas.body":
-    "Cuentas, gastos y objetivos tienen aquí su propia tarjeta, para que la pantalla de inicio cubra toda tu situación financiera y no solo la cartera. Pulsa el título de una tarjeta para abrir esa área.",
+    "Cuentas, gastos y objetivos tienen aquí su propia tarjeta. Así la pantalla de inicio cubre toda tu situación financiera, no solo la cartera. Pulsa el título de una tarjeta para esa área.",
   "tour.contracts.suggestions.title": "Cargos detectados",
   "tour.contracts.suggestions.body":
     "Los pagos que se repiten con una cadencia regular aparecen aquí para que los pases al registro. Las cuotas de préstamo quedan fuera: amortizar deuda es una transferencia, no un gasto corriente.",
@@ -5061,7 +5061,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Ponle un nombre y un saldo inicial. El tipo decide si cuenta como activo o como deuda.",
   "tour.accounts.list.title": "Mantén los saldos al día",
   "tour.accounts.list.body":
-    "Cada cuenta guarda una lista de saldos con fecha. Añade uno nuevo cuando consultes el banco; el gráfico arrastra el último.",
+    "Cada cuenta guarda una lista de saldos con fecha. Añade uno nuevo tras cada consulta al banco. El gráfico arrastra el último.",
   "tour.spending.totals.title": "Ingresos y gastos",
   "tour.spending.totals.body": "Lo que entró, lo que salió y lo que queda.",
   "tour.spending.form.title": "Registra en segundos",
@@ -5072,7 +5072,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Cada apunte, ordenable por cualquier columna. Importa aquí un extracto bancario en vez de teclear meses de historial.",
   "tour.goals.form.title": "Define un objetivo",
   "tour.goals.form.body":
-    "Ponle nombre, importe y fecha. Vincula una cuenta para que el progreso se actualice solo; si vinculas una deuda, el objetivo pasa a ser saldarla.",
+    "Ponle nombre, importe y fecha. Vincula una cuenta para un progreso automático. Una deuda vinculada convierte el objetivo en saldarla.",
   "tour.goals.list.title": "Progreso y ritmo",
   "tour.goals.list.body":
     "Cada objetivo muestra cuánto llevas y cuánto tendrías que apartar al mes para llegar a la fecha.",
@@ -5087,7 +5087,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Cómo baja el saldo mes a mes, dónde termina un periodo de tipo fijo y cuánto de cada año se va en intereses en lugar de amortización.",
   "tour.debt.plan.title": "Avalancha o bola de nieve",
   "tour.debt.plan.body":
-    "El dinero extra va a la deuda más cara o a la más pequeña. El plan muestra lo que te cuesta cada opción.",
+    "El dinero extra va a la deuda más cara o a la más pequeña. El plan muestra el coste de cada opción.",
   "tour.health.gauges.title": "Cuatro señales vitales",
   "tour.health.gauges.body":
     "Colchón de emergencia, tasa de ahorro, carga de deuda y patrimonio en relación con tus ingresos. Juntas dicen más que cualquier cifra suelta.",
@@ -5098,7 +5098,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.fire.inputs.body": "Tasa de retiro, gastos anuales, ahorro mensual y rendimiento esperado. Todas las cifras reaccionan a esto.",
   "tour.fire.targets.title": "Lean, normal, fat",
   "tour.fire.targets.body":
-    "Tres importes objetivo para tres estilos de vida, cada uno con el año en que llegarías a tu ritmo actual.",
+    "Tres importes objetivo para tres estilos de vida. Cada uno con tu año objetivo a tu ritmo actual.",
   "tour.fire.simulation.title": "Ponlo a prueba",
   "tour.fire.simulation.body":
     "Un clic lleva este plan al simulador con tu horizonte ya puesto, que recorre miles de trayectorias de mercado: ves con qué frecuencia el plan sobrevive a una mala década y no solo al caso medio.",
@@ -5110,13 +5110,13 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Todas las personas de esta lista ven los datos compartidos. Puedes quitar a alguien o salir del hogar cuando quieras.",
   "tour.household.invite.title": "Envía una invitación",
   "tour.household.invite.body":
-    "Invita por correo. La otra persona debe aceptar antes de compartir nada.",
+    "Invita por correo. Solo se comparte tras su aceptación.",
   "tour.dividends.kpis.title": "Lo que realmente llegó",
   "tour.dividends.kpis.body":
     "Pagos de los últimos doce meses y desde el inicio, además de tu rendimiento personal sobre el valor actual y sobre lo que pagaste.",
   "tour.dividends.income.title": "Mes a mes",
   "tour.dividends.income.body":
-    "Pagos reales, escalados a las participaciones que tenías en cada fecha de pago. Los fondos de acumulación no muestran nada aquí, y es intencionado.",
+    "Pagos reales, escalados a tus participaciones en cada fecha de pago. Los fondos de acumulación no muestran nada aquí, y es intencionado.",
   "tour.dividends.upcoming.title": "Los próximos doce meses",
   "tour.dividends.upcoming.body":
     "Una proyección de tus pagos anteriores con el número de participaciones actual. Una fecha anunciada oficialmente sustituye a la estimada; el importe sigue siendo siempre una estimación.",
@@ -5195,7 +5195,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "addAsset.isin": "ISIN",
   "addAsset.wkn": "WKN",
   "addAsset.tradingCurrency": "Moneda de negociación",
-  "addAsset.tradingCurrencyHint": "Los precios usan la cotización en esta moneda. Elige {base} si operas en tu mercado local.",
+  "addAsset.tradingCurrencyHint": "Los precios usan la cotización en esta moneda. Para tu mercado local, elige {base}.",
   "addAsset.openingTx": "Transacción de apertura",
   "addAsset.amount": "Importe",
   "addAsset.quantity": "Cantidad",
@@ -5304,7 +5304,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sync.synced": "Sincronizado",
   "sync.paused": "Hay cambios sin conexión esperando para sincronizarse",
   "sync.pausedAction": "Inicia sesión para sincronizar",
-  "sync.droppedUnit": "cambio(s) no se pudieron sincronizar porque el elemento cambió en otro sitio",
+  "sync.droppedUnit": "cambio(s) no sincronizados: el elemento cambió en otro sitio",
 
   "privacy.showFigures": "Mostrar importes",
   "privacy.hideFigures": "Ocultar importes",
@@ -5442,7 +5442,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "share.button": "Compartir",
   "share.live": "En vivo",
   "share.snapshotDesc": "Desactivado: el enlace muestra una copia congelada de ahora.",
-  "share.liveDesc": "Activado: el enlace se actualiza cuando cambia tu cartera.",
+  "share.liveDesc": "Activado: el enlace se actualiza con cada cambio de tu cartera.",
   "share.liveHint": "Inicia sesión para compartir en vivo",
   "share.full": "Compartir cartera completa",
   "share.fullDesc": "Incluye importes absolutos.",
@@ -5575,7 +5575,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   // Efectivo con intereses (detalle del activo CASH)
   "cashInterest.title": "Intereses",
-  "cashInterest.intro": "Genera intereses sobre este saldo de efectivo. Se acumulan automáticamente y se registran como un apunte de intereses cuando los revisas.",
+  "cashInterest.intro": "Genera intereses sobre este saldo de efectivo. Se acumulan automáticamente. Tras tu revisión se registran como un apunte de intereses.",
   "cashInterest.rateLabel": "Tasa anual (%)",
   "cashInterest.frequencyLabel": "Abono",
   "cashInterest.freq.MONTHLY": "Mensual",
@@ -5592,7 +5592,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "cashInterest.dueShort": "{count} abono(s) de intereses pendiente(s)",
   "cashInterest.review": "Revisar",
   "cashInterest.modalTitle": "Registrar intereses",
-  "cashInterest.modalHint": "Cada abono se registra como un apunte de intereses en su fecha. Ajusta un importe antes de registrarlo si tu extracto difiere.",
+  "cashInterest.modalHint": "Cada abono se registra como un apunte de intereses en su fecha. Con un extracto distinto, ajusta el importe antes de registrarlo.",
   "cashInterest.amount": "Importe",
   "cashInterest.bookAll": "Registrar {count} abono(s)",
   "cashInterest.error": "No se pudieron registrar los intereses. Inténtalo de nuevo.",
@@ -5630,7 +5630,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.form.interestLabel": "Tipo de interés (% anual)",
   "accounts.form.interestFrequencyLabel": "Abono",
   "accounts.form.interestHint":
-    "Los intereses se abonan al saldo y a partir de ahí se capitalizan. Un saldo con fecha siempre tiene prioridad, así que introduciendo la cifra de tu extracto corriges cualquier desviación.",
+    "Los intereses se abonan al saldo y a partir de ahí se capitalizan. Un saldo con fecha siempre tiene prioridad. Introduce la cifra de tu extracto y corriges cualquier desviación.",
   "accounts.form.add": "Añadir cuenta",
   "accounts.form.liabilityHint": "Este tipo es un pasivo: su saldo resta de tu patrimonio neto.",
   "accounts.form.error": "No se pudo guardar la cuenta. Inténtalo de nuevo.",
@@ -5740,7 +5740,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.import.skipDuplicate": "Omitir (ya registrado)",
   "spending.import.importAnyway": "Importar de todos modos",
   "spending.budgets.title": "Presupuestos",
-  "spending.budgets.noCategories": "Necesitas una categoría de gasto antes de poder fijar un presupuesto. Añade una desde el formulario de movimientos.",
+  "spending.budgets.noCategories": "Un presupuesto necesita primero una categoría de gasto. Añade una desde el formulario de movimientos.",
   "spending.budgets.empty": "Todavía no hay presupuestos. Fija un límite mensual para una categoría.",
   "spending.budgets.categoryLabel": "Categoría",
   "spending.budgets.amountLabel": "Límite mensual ({currency})",
@@ -5820,7 +5820,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.forecast.monthlyNet": "Saldo previsto al mes",
   "spending.forecast.aria": "Ingresos y gastos previstos de los próximos {n} meses",
   "contracts.suggestions.title": "Pagos recurrentes detectados",
-  "contracts.suggestions.intro": "Estos beneficiarios cobraron un importe similar de forma periódica. Añádelos para no perder de vista su renovación y plazo de cancelación.",
+  "contracts.suggestions.intro": "Estos beneficiarios cobraron un importe similar de forma periódica. Añádelos y no pierdas de vista su renovación y plazo de cancelación.",
   "contracts.suggestions.accept": "Añadir",
   "contracts.suggestions.dismiss": "Ignorar",
   "contracts.form.nameLabel": "Nombre",
@@ -5860,14 +5860,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "recurring.due.review": "Revisar",
   "recurring.due.reviewTitle": "Registros pendientes",
   "recurring.due.reviewHint":
-    "Cada fila es una propuesta: corrige la fecha o el importe antes de registrarla, u omítela si nunca ocurrió. No se registra nada hasta que lo confirmes.",
+    "Cada fila es una propuesta: corrige la fecha o el importe antes de registrarla, u omite un pago que nunca ocurrió. No se registra nada sin tu confirmación.",
   "recurring.due.book": "Registrar {n} apunte(s)",
   "recurring.due.dateLabel": "Fecha de registro",
   "recurring.due.amountLabel": "Importe",
   "recurring.due.skip": "Omitir",
   "recurring.due.skipTitle": "¿Omitir este apunte pendiente?",
   "recurring.due.skipMessage":
-    "{name} del {date} no se registra y no se volverá a ofrecer. Lo que siga abierto antes de esa fecha queda saldado con él.",
+    "{name} del {date} no se registra y no se volverá a ofrecer. Los vencimientos anteriores pendientes quedan saldados con él.",
   "recurring.due.skipError": "No se pudo omitir el apunte.",
   "recurring.bookError": "No se pudieron registrar las entradas pendientes.",
   "recurring.interval.ONCE": "Una vez",
@@ -5899,7 +5899,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "recurring.detail.back": "Cuentas y movimientos",
   "recurring.scope.title": "¿A qué pagos se aplica el cambio?",
   "recurring.scope.message":
-    "Esta entrada ya ha registrado {n} pagos. Los futuros usan siempre los valores nuevos; los registrados solo cambian si tú lo dices.",
+    "Esta entrada ya ha registrado {n} pagos. Los futuros usan siempre los valores nuevos. Los registrados solo cambian a petición tuya.",
   "recurring.scope.splitHint":
     "Es una cuota de préstamo: sus importes registrados se reparten cada mes entre intereses y amortización y se quedan como se registraron. El nombre y la categoría sí se actualizan.",
   "recurring.scope.future": "Solo pagos futuros",
@@ -5958,7 +5958,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.form.position": "Posición: {name}",
   "goals.form.manualCurrentLabel": "Importe actual ({currency})",
   "goals.form.manualCurrentHint":
-    "Lo que has apartado para esta meta hasta ahora. Edita la meta para cambiarlo cuando añadas dinero.",
+    "Tu importe apartado para esta meta hasta ahora. Con dinero nuevo, edita la meta y actualízalo.",
   "goals.form.parentLabel": "Parte de",
   "goals.form.noParent": "Meta independiente",
   "goals.form.parentHint":
@@ -6027,13 +6027,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "withdrawal.steps.percentOfPortfolio.2":
     "Multiplícalo por tu tasa. Ese es tu ingreso del año siguiente.",
   "withdrawal.steps.percentOfPortfolio.3":
-    "Mantén un colchón de uno o dos años de gastos en efectivo, para que un mal año recorte el cálculo y no tu compra.",
+    "Mantén un colchón de uno o dos años de gastos en efectivo. Así un mal año recorta el cálculo, no tu compra.",
   "withdrawal.steps.guardrails.1":
     "Una vez al año, divide el ingreso del año pasado entre el valor actual de la cartera.",
   "withdrawal.steps.guardrails.2":
     "Si queda dentro de la banda alrededor de tu tasa objetivo, no cambies nada.",
   "withdrawal.steps.guardrails.3":
-    "Si queda fuera, mueve el ingreso un paso: hacia abajo cuando la tasa es alta, hacia arriba cuando es baja.",
+    "Fuera de los límites, mueve el ingreso un paso: abajo con la tasa alta, arriba con la baja.",
   "withdrawal.steps.floorCeiling.1":
     "Calcula tu tasa por el valor actual de la cartera, igual que en el porcentaje de la cartera.",
   "withdrawal.steps.floorCeiling.2":
@@ -6045,9 +6045,9 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Cada año reparte lo que hay entre los años que aún tienes que financiar. La tasa sube con la edad, así que no queda dinero sin usar ni se agota.",
   "withdrawal.steps.vpw.1": "Una vez al año anota el valor de la cartera y los años que quedan.",
   "withdrawal.steps.vpw.2":
-    "Toma la parte de renta vitalicia: cada año una porción mayor, porque quedan menos años.",
+    "Toma la parte de renta vitalicia: cada año una porción mayor, con menos años por delante.",
   "withdrawal.steps.vpw.3":
-    "Cuenta con que el ingreso se mueva con el mercado. Esta regla nunca vacía la cartera, pero tampoco promete un importe fijo.",
+    "Tu ingreso se mueve con el mercado. Esta regla nunca vacía la cartera, pero tampoco promete un importe fijo.",
   "withdrawal.stressLabel": "Escenario de estrés",
   "withdrawal.stress.none": "Sin estrés",
   "withdrawal.stress.none.desc":
@@ -6074,7 +6074,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   // responden a la misma pregunta, así que son pestañas de una sola página.
   "retirement.title": "Jubilación",
   "retirement.subtitle":
-    "De qué vivirás cuando dejes de trabajar: tu propio capital y aquello a lo que tienes derecho.",
+    "Tus ingresos en la jubilación: tu propio capital y tus derechos legales.",
   "retirement.tab.fire": "FIRE",
   "retirement.tab.pension": "Pensión",
 
@@ -6082,7 +6082,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.title": "Jubilación / planificador FIRE",
   "fire.subtitle": "Cuánto patrimonio cubre tus gastos y cuánto tiempo te llevará conseguirlo.",
   "fire.withdrawalRate.label": "Tasa de retiro",
-  "fire.withdrawalRate.hint": "La clásica \"regla del 4%\" asume que un patrimonio retirado a esta tasa dura toda la jubilación.",
+  "fire.withdrawalRate.hint": "La clásica \"regla del 4%\": un patrimonio retirado a esta tasa dura toda la jubilación.",
   "fire.pension.count": "Contar mi pensión",
   "fire.pension.hint": "{amount} al mes desde {year}.",
   "fire.pension.saves":
@@ -6157,7 +6157,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Sigue la tendencia de tus años registrados: {start} puntos el primer año, subiendo a {end} el último, ajustado con {years} años y limitado a lo que un año puede dar. Esto se aparta a propósito de la Renteninformation, que no supone ninguna progresión.",
   "pension.assumeTrend": "Suponer que mi carrera sigue subiendo",
   "pension.assumeTrendHint":
-    "Desactivado por defecto para que esta página reproduzca tu Renteninformation, que proyecta la media plana de tus últimos cinco años. Activado, sigue la tendencia de tus {years} años registrados: un supuesto, no la cifra oficial.",
+    "Desactivado por defecto. Así esta página reproduce tu Renteninformation: la media plana de tus últimos cinco años, proyectada. Activado, sigue la tendencia de tus {years} años registrados. Un supuesto, no la cifra oficial.",
   "pension.outlierNotice":
     "{year} registra {points} puntos, muy por encima de tus otros años. La proyección lo ignora, pero la fila sigue estando mal: el total acumulado de la Renteninformation va en «Puntos totales», no en un solo año.",
   "pension.targetMonthly": "Pensión objetivo / mes",
@@ -6186,7 +6186,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "{count} filas pasarán a contar como totales acumulados y la tabla año por año se vaciará.",
   "pension.points.detailTitle": "Año por año (opcional)",
   "pension.points.overMax": "Un año da como máximo {max} puntos. Una cifra acumulada va en «Puntos totales».",
-  "pension.points.hint": "De tu historial de cotización, si lo tienes. Los años posteriores al total se suman a él. 1,0 punto equivale a un año con exactamente el salario medio.",
+  "pension.points.hint": "De tu historial de cotización, si está disponible. Los años posteriores al total se suman a él. 1,0 punto equivale a un año con exactamente el salario medio.",
   "pension.points.year": "Año",
   "pension.points.points": "Puntos",
   "pension.points.note": "Nota",
@@ -6210,7 +6210,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.contracts.returnHint": "Crecimiento del capital hasta el inicio del cobro. En blanco: sin crecimiento.",
   "pension.contracts.account": "Cuenta de cargo",
   "pension.contracts.accountNone": "Ninguna (solo registro)",
-  "pension.contracts.accountHint": "Cada prima se carga en esta cuenta cuando la confirmas.",
+  "pension.contracts.accountHint": "Cada prima se carga en esta cuenta tras tu confirmación.",
   "pension.contracts.bookingStart": "Primera prima el",
   "pension.contracts.bookingStartHint": "Las primas vencidas desde esta fecha se acumulan para revisarlas.",
   "pension.premiums.title": "Primas vencidas ({n})",
@@ -6307,7 +6307,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.details.rateSectionTitle": "Periodo de tipo fijo",
   "debt.details.rateFixedUntilLabel": "El tipo fijo termina el",
   "debt.details.followUpRateLabel": "Tipo estimado posterior (%)",
-  "debt.details.followUpHint": "Déjalo vacío si el tipo se mantiene todo el plazo.",
+  "debt.details.followUpHint": "Déjalo vacío con un tipo fijo todo el plazo.",
   "debt.chart.title": "Cómo evoluciona tu deuda",
   "debt.chart.scopeLabel": "Mostrar",
   "debt.chart.all": "Todos los pasivos",
@@ -6353,7 +6353,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Rentabilidad por unidad de riesgo total: (rentabilidad anual − 2% libre de riesgo) ÷ volatilidad. Cuanto más alto, mejor; por encima de 1 es bueno.",
   "risk.sortino": "Sortino",
   "risk.sortinoTip":
-    "Como Sharpe, pero solo penaliza la volatilidad bajista, así que los movimientos al alza no cuentan en tu contra. Cuanto más alto, mejor.",
+    "Como Sharpe, pero solo penaliza la volatilidad bajista. Los movimientos al alza no cuentan en tu contra. Más alto es mejor.",
   "risk.volatility": "Volatilidad",
   "risk.volatilityTip":
     "Desviación estándar anualizada de las rentabilidades: cuánto oscila el valor. Menor significa un recorrido más suave.",
@@ -6456,7 +6456,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Returns
   "returns.title": "Rentabilidad",
   "returns.tip":
-    "Rentabilidad por periodo ajustada por aportaciones/retiradas (método Dietz modificado), para que ingresar dinero no aparezca como una ganancia.",
+    "Rentabilidad por periodo ajustada por aportaciones/retiradas (método Dietz modificado). Ingresar dinero no aparece como una ganancia.",
   "returns.byQuarter": "Rentabilidad por trimestre",
   "returns.byYear": "Rentabilidad por año",
   "returns.perfMap": "Mapa de rendimiento",
@@ -6470,7 +6470,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "trades.byMonth": "P&G realizada por mes",
   "trades.byMonthTip":
     "Ganancia/pérdida consolidada de las ventas, atribuida al mes en que ocurrió cada venta (coste medio).",
-  "trades.noSells": "Todavía no hay ventas. La P&G realizada aparecerá aquí cuando vendas.",
+  "trades.noSells": "Todavía no hay ventas. La P&G realizada aparecerá aquí tras tu primera venta.",
   "trades.realized": "Realizada",
   "trades.topMoversTitle": "Mayores variaciones",
   "trades.topWinners": "Mejores posiciones",
@@ -6499,7 +6499,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tax.taxable": "Base imponible",
   "tax.estimatedTax": "Impuesto estimado",
   "tax.estimatedTaxTip":
-    "25% de Abgeltungsteuer más un 5,5% de recargo de solidaridad, más impuesto eclesiástico si está configurado en Ajustes.",
+    "25% de Abgeltungsteuer más un 5,5% de recargo de solidaridad. El impuesto eclesiástico se añade según tus Ajustes.",
   "tax.withheld": "Retenido por el bróker",
   "tax.withheldTip":
     "Suma del impuesto ya retenido en tus ventas registradas. Tu bróker puede haber tenido ya en cuenta un Freistellungsauftrag o una Teilfreistellung; esto es una comparación aproximada, no una conciliación. Introduce la cifra exacta de tu certificado fiscal para sobrescribir el cálculo.",
@@ -6513,7 +6513,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Las ganancias por ventas de cripto y materias primas siguen reglas independientes (§23 EStG): libres de impuestos tras un año de tenencia, y exentas por debajo de un pequeño umbral anual. No forman parte de tu franquicia sobre rendimientos del capital.",
   "tax.vorab": "Vorabpauschale",
   "tax.vorabTip":
-    "Un pago anticipado ficticio anual sobre fondos, basado en el Basiszins del año. Si lo dejas vacío, FinTrack muestra una estimación a partir del valor de tu fondo al inicio del año y el Basiszins de ese año, limitada por la revalorización del fondo; introduce la cifra del certificado fiscal anual de tu bróker para sustituirla. La Teilfreistellung se aplica si está activada, ya que cuenta como rendimiento de fondos.",
+    "Un pago anticipado ficticio anual sobre fondos, basado en el Basiszins del año. Con el campo vacío, FinTrack muestra una estimación a partir del valor de tu fondo al inicio del año y el Basiszins de ese año, limitada por la revalorización del fondo. Introduce la cifra del certificado fiscal anual de tu bróker para sustituirla. La Teilfreistellung se aplica una vez activada, como rendimiento de fondos.",
   "tax.vorabAriaLabel": "Vorabpauschale de {year}",
   "tax.withheldAriaLabel": "Sobrescritura del impuesto retenido de {year}",
   "tax.editAriaLabel": "Editar {field}",
@@ -6554,7 +6554,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "household.accept": "Aceptar",
   "household.decline": "Rechazar",
   "household.sharingPaused":
-    "El uso compartido está en pausa: ahora mismo nadie de este hogar tiene Pro, así que cada persona solo ve sus propios datos. No se ha borrado nada y volverá a funcionar en cuanto un miembro se suscriba.",
+    "El uso compartido está en pausa: ahora mismo nadie de este hogar tiene Pro, así que cada persona solo ve sus propios datos. No se ha borrado nada. Volverá a funcionar con la primera suscripción de un miembro.",
   "household.limitHint": "Se incluyen hasta {n} personas. Cada miembro adicional cuesta {price} (las invitaciones pendientes cuentan).",
   "household.addSeat": "Añadir un asiento por {price}",
 
@@ -6632,7 +6632,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.useSafeRate": "Usar tasa segura",
   "sim.perMonth": "mes",
   "sim.safeRateHint":
-    "La tasa segura solo retira el crecimiento esperado, de modo que el capital invertido no se consume (en valor esperado).",
+    "La tasa segura solo retira el crecimiento esperado. El capital invertido no se consume (en valor esperado).",
   "sim.rebalanceYearly": "Reequilibrar a los pesos objetivo cada año",
   "sim.rebalanceYearlyTip":
     "Restablece cada posición a su peso objetivo una vez al año. Los pesos objetivo son los porcentajes de la lista del modelo. Las posiciones que fueron bien se venden parcialmente, las que fueron mal se compran más. Sin reequilibrio, los pesos se van separando con la evolución del mercado.",
@@ -6682,7 +6682,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.blended": "Combinado",
   "sim.yrsHistory": "{years} años de historial",
   "sim.pureGuessNote":
-    "Algunas posiciones no tienen historial de precios utilizable, así que su rentabilidad y riesgo de abajo son una suposición a largo plazo. La proyección se afina a medida que se acumulan datos de mercado.",
+    "Algunas posiciones no tienen historial de precios utilizable, así que su rentabilidad y riesgo de abajo son una suposición a largo plazo. Con más datos de mercado, la proyección se afina.",
   "sim.blendedNote":
     "Las cifras usan el historial propio de cada posición, ajustado hacia las suposiciones de mercado a largo plazo en horizontes más largos (una racha reciente no es sostenible durante décadas).",
   "sim.hideOverrides": "Ocultar sobrescrituras",
@@ -6752,7 +6752,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.nav.usage": "Uso",
   "admin.usage.title": "Uso y operación",
   "admin.usage.intro":
-    "Contado a partir de los datos que tus usuarios ya guardan, cada vez que abres esta página. Sin seguimiento de eventos, sin cookies, sin nada almacenado.",
+    "Contado a partir de los datos ya guardados por tus usuarios, en cada visita a esta página. Sin seguimiento de eventos, sin cookies, sin nada almacenado.",
   "admin.usage.noSession": "No has iniciado sesión.",
   "admin.usage.users": "Usuarios registrados",
   "admin.usage.active": "Con sesión (30 d)",
@@ -6886,7 +6886,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.billing.removeKey": "Eliminar clave guardada",
   "admin.billing.removeConfirmTitle": "¿Eliminar la clave guardada?",
   "admin.billing.removeConfirmMsg":
-    '¿Eliminar el valor guardado de "{field}"? Se usará la variable de entorno en su lugar, si existe.',
+    '¿Eliminar el valor guardado de "{field}"? En su lugar se usará la variable de entorno definida.',
   "admin.billing.error": "Eso no ha funcionado. Inténtalo de nuevo.",
   "admin.billing.sellingTitle": "Venta",
   "admin.billing.sellingSubtitle":
@@ -6902,7 +6902,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.billing.enabledLabel": "Venta activada",
   "admin.billing.grantsTitle": "Concesiones premium",
   "admin.billing.grantsSubtitle":
-    "Concede Pro a un usuario sin una suscripción de Stripe, por ejemplo como agradecimiento. La fecha de fin es opcional; déjala vacía para una concesión que nunca caduque.",
+    "Concede Pro a un usuario sin una suscripción de Stripe, por ejemplo como agradecimiento. La fecha de fin es opcional; déjala vacía para una concesión sin caducidad.",
   "admin.billing.grantSearchEmail": "Buscar usuario por email",
   "admin.billing.grantSearchEmailPlaceholder": "Escribe al menos 2 caracteres",
   "admin.billing.grantSearching": "Buscando...",
@@ -7014,7 +7014,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Guest mode banner
   "guestBanner.title": "Modo invitado:",
   "guestBanner.body":
-    "tus datos se guardan solo en este navegador y se perderán si borras los datos de tu navegador.",
+    "tus datos se guardan solo en este navegador y se perderán al borrar los datos de tu navegador.",
   "guestBanner.cta": "Regístrate para guardarlos",
 
   // Chat bubble + panel (flag `llmChat`)
@@ -7078,7 +7078,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "push.savingsBody": "Hoy vence un plan de ahorro: {assets}.",
   "push.andMore": "{names} y {count} más",
   "notif.title": "Notificaciones",
-  "notif.subtitle": "Recibe un recordatorio en este dispositivo cuando se pague un dividendo o venza un plan de ahorro. Nunca publicidad.",
+  "notif.subtitle": "Recibe un recordatorio en este dispositivo por el pago de un dividendo o un plan de ahorro vencido. Nunca publicidad.",
   "notif.dividendLabel": "Día de pago de dividendo",
   "notif.savingsLabel": "Plan de ahorro vencido",
   "notif.enable": "Activar en este dispositivo",

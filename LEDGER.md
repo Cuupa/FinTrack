@@ -1,5 +1,14 @@
 # Ledger
 
+## In progress
+
+- **2026-08-16 — Humanize copy: remove ALL subordinate clauses (Nebensätze) from
+  the ENTIRE i18n dictionary, all three locales (en/de/es)** — session `2573ae55`.
+  One Sonnet subworker doing an exhaustive in-file rewrite of
+  `lib/i18n/dictionaries.ts`. Rule: short main clauses over nested sentences,
+  every locale, placeholders + du/tú register preserved, no em-dashes. Parity
+  tests must stay green.
+
 ## Done
 
 - **2026-08-10 — TODO "Haushalt" (who owns what in a shared household)** —

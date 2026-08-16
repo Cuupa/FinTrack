@@ -55,8 +55,10 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
-  const { user, authAvailable, signInWithPassword, signUp, signInWithOAuth } =
-    useAuth();
+  // SSO is wired up but its buttons are not rendered (see the commented block
+  // below). To re-enable: add `signInWithOAuth` back to this destructure,
+  // uncomment `handleOAuth`, and uncomment the button row in the JSX.
+  const { user, authAvailable, signInWithPassword, signUp } = useAuth();
   // Open the register tab when arriving via /login?tab=signup.
   const initialTab = searchParams.get("tab");
   const [tab, setTab] = useState<"signin" | "signup">(
@@ -165,14 +167,14 @@ function LoginForm() {
     }
   }
 
-  async function handleOAuth(provider: "google" | "github") {
-    setError(null);
-    try {
-      await signInWithOAuth(provider);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("login.genericError"));
-    }
-  }
+  // async function handleOAuth(provider: "google" | "github") {
+  //   setError(null);
+  //   try {
+  //     await signInWithOAuth(provider);
+  //   } catch (err) {
+  //     setError(err instanceof Error ? err.message : t("login.genericError"));
+  //   }
+  // }
 
   return (
     <div className="mx-auto max-w-md py-8">
@@ -301,6 +303,7 @@ function LoginForm() {
           </p>
         )}
 
+        {/* SSO buttons removed for now; keep for easy re-enable (see handleOAuth above).
         <div className="mt-3 flex gap-2">
           <Button
             variant="secondary"
@@ -319,6 +322,7 @@ function LoginForm() {
             {t("login.github")}
           </Button>
         </div>
+        */}
 
         <p className="mt-5 text-center text-sm text-zinc-500">
           {tab === "signin" ? t("login.noAccountYet") : t("login.alreadyHaveAccount")}{" "}
