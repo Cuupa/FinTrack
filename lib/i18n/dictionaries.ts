@@ -270,7 +270,7 @@ export const en = {
   "tour.nav.body": "Everything else lives here, sorted into three areas.",
   "tour.nav.everyday.title": "Everyday",
   "tour.nav.everyday.body":
-    "Your accounts, what you spend, what you owe, and what you share with your household.",
+    "Your accounts, your spending, your debts, and your shared household.",
   "tour.nav.invest.title": "Investments",
   "tour.nav.invest.body": "Your depot: positions, analysis, dividends, look-through, rebalancing.",
   "tour.nav.plan.title": "Planning",
@@ -2630,7 +2630,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.nav.body": "Alles Weitere steckt hier, aufgeteilt in drei Bereiche.",
   "tour.nav.everyday.title": "Alltag",
   "tour.nav.everyday.body":
-    "Deine Konten, was du ausgibst, was du schuldest und was du im Haushalt teilst.",
+    "Deine Konten, deine Ausgaben, deine Schulden und dein geteilter Haushalt.",
   "tour.nav.invest.title": "Anlagen",
   "tour.nav.invest.body": "Dein Depot: Positionen, Analyse, Dividenden, Durchschau, Rebalancing.",
   "tour.nav.plan.title": "Planung",
@@ -4783,7 +4783,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "form.missingFields": "Rellena los campos resaltados",
 
   "watchlist.title": "Lista de seguimiento",
-  "watchlist.empty": "Añade instrumentos que quieras seguir sin tenerlos en cartera.",
+  "watchlist.empty": "Añade instrumentos para seguir sin tenerlos en cartera.",
   "watchlist.add": "Añadir",
   "watchlist.placeholder": "ISIN, WKN o símbolo",
   "watchlist.notFound": "No se ha encontrado nada con ese identificador.",
@@ -4866,13 +4866,13 @@ export const es: Partial<Record<MessageKey, string>> = {
   "div.received12m": "Recibido (12 meses)",
   "div.received12mTip": "Dividendos recibidos de todas tus posiciones en los últimos 12 meses, en tu moneda base.",
   "div.receivedTotal": "Recibido (histórico)",
-  "div.receivedTotalTip": "Todos los dividendos que han pagado tus posiciones desde que las tienes (hasta 10 años atrás).",
+  "div.receivedTotalTip": "Todos los dividendos pagados por tus posiciones durante tu periodo de tenencia (hasta 10 años atrás).",
   "div.yield": "Rentabilidad por dividendo",
-  "div.yieldTip": "Ingresos de los últimos 12 meses divididos entre el valor de mercado actual de la cartera. Esta es TU rentabilidad, según lo que realmente tienes.",
+  "div.yieldTip": "Ingresos de los últimos 12 meses divididos entre el valor de mercado actual de la cartera. Esta es TU rentabilidad, según tus posiciones reales.",
   "div.yieldOnCost": "Rentabilidad sobre el coste",
-  "div.yieldOnCostTip": "Ingresos de los últimos 12 meses divididos entre el coste de adquisición de tus posiciones. Es la rentabilidad sobre lo que realmente pagaste.",
+  "div.yieldOnCostTip": "Ingresos de los últimos 12 meses divididos entre el coste de adquisición de tus posiciones. Es la rentabilidad sobre tu coste real.",
   "div.income": "Ingresos",
-  "div.incomeTip": "Dividendos abonados por periodo, a partir de repartos reales, escalados según las participaciones que tenías en cada fecha de pago.",
+  "div.incomeTip": "Dividendos abonados por periodo, a partir de repartos reales, escalados según tu número de participaciones en cada fecha de pago.",
   "div.range12m": "12 meses",
   "div.rangeYears": "Por año",
   "div.byHolding": "Por posición",
@@ -4882,7 +4882,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "div.colYield": "Rentabilidad",
   "div.colYoC": "RsC",
   "div.upcoming": "Próximos dividendos",
-  "div.upcomingTip": "Tus próximos repartos de los siguientes 12 meses, proyectados desde el último año con tus posiciones actuales. Cuando el calendario de dividendos anunciado tiene una fecha ex- y de pago confirmada, se usa y se marca; el resto son estimaciones.",
+  "div.upcomingTip": "Tus próximos repartos de los siguientes 12 meses, proyectados desde el último año con tus posiciones actuales. El calendario de dividendos anunciado a veces tiene una fecha ex- y de pago confirmada; esa fecha se usa entonces y se marca. El resto son estimaciones.",
   "div.forecastDisclaimer": "Proyección a partir de los repartos del último año con tus posiciones actuales. No es una garantía. Las fechas confirmadas provienen del calendario de dividendos anunciado.",
   "div.confirmedDate": "confirmada",
   "div.exDate": "Fecha ex",
@@ -4960,9 +4960,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.ai.scope.account": "En tu cuenta (en todos tus dispositivos)",
   "settings.ai.scope.browser": "Solo en este navegador",
   "settings.ai.scope.browserHint": "Se elimina al cerrar sesión.",
-  "settings.ai.privacyNote": "Cuenta: en todos tus dispositivos, hasta que la borres. Solo este navegador: se borra al cerrar sesión. Al chatear tus datos van a tu proveedor; nunca guardamos ni registramos la conversación.",
+  "settings.ai.privacyNote": "Cuenta: en todos tus dispositivos, hasta su eliminación. Solo este navegador: se borra al cerrar sesión. Al chatear tus datos van a tu proveedor; nunca guardamos ni registramos la conversación.",
   "settings.ai.privacyNoteGuest":
-    "En modo invitado, tu clave se guarda solo en este navegador. Cuando usas el chat, tus datos de cartera se envían al proveedor que elijas; nunca almacenamos ni registramos la conversación en nuestro servidor.",
+    "En modo invitado, tu clave se guarda solo en este navegador. El uso del chat envía tus datos de cartera al proveedor elegido; nunca almacenamos ni registramos la conversación en nuestro servidor.",
   "settings.ai.privacyLink": "Política de privacidad",
   "settings.ai.saveError": "No se ha podido guardar.",
   "settings.ai.error.invalidKey": "Clave de API no válida.",
@@ -4974,7 +4974,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Guided tour (onboarding/guided-tour.tsx)
   "tour.welcome.title": "Bienvenido a FinTrack",
   "tour.welcome.body":
-    "Un vistazo rápido, apenas un minuto. Añade tus posiciones, observa cómo crece tu patrimonio y explora los detalles cuando quieras.",
+    "Un vistazo rápido, apenas un minuto. Añade tus posiciones, observa el crecimiento de tu patrimonio y explora los detalles en cualquier momento.",
   "tour.addAsset.title": "Añade tus posiciones",
   "tour.addAsset.body":
     "Añade una posición a mano o importa aquí mismo un archivo CSV exportado de tu banco.",
@@ -4988,12 +4988,12 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Cuentas, gastos y objetivos tienen aquí su propia tarjeta. Así la pantalla de inicio cubre toda tu situación financiera, no solo la cartera. Pulsa el título de una tarjeta para esa área.",
   "tour.contracts.suggestions.title": "Cargos detectados",
   "tour.contracts.suggestions.body":
-    "Los pagos que se repiten con una cadencia regular aparecen aquí para que los pases al registro. Las cuotas de préstamo quedan fuera: amortizar deuda es una transferencia, no un gasto corriente.",
+    "Los pagos con una cadencia regular aparecen aquí para el registro. Las cuotas de préstamo quedan fuera: amortizar deuda es una transferencia, no un gasto corriente.",
   "tour.nav.title": "Más por explorar",
   "tour.nav.body": "Todo lo demás está aquí, repartido en tres áreas.",
   "tour.nav.everyday.title": "Día a día",
   "tour.nav.everyday.body":
-    "Tus cuentas, lo que gastas, lo que debes y lo que compartes con tu hogar.",
+    "Tus cuentas, tus gastos, tus deudas y tu hogar compartido.",
   "tour.nav.invest.title": "Inversiones",
   "tour.nav.invest.body": "Tu cartera: posiciones, análisis, dividendos, radiografía, rebalanceo.",
   "tour.nav.plan.title": "Planificación",
@@ -5024,17 +5024,17 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Estas tarjetas resumen el perfil de riesgo de tu cartera: Sharpe y Sortino miden la rentabilidad ajustada al riesgo, Beta y Alfa te comparan con el mercado.",
   "tour.risk.metrics.title": "Volatilidad y drawdown",
   "tour.risk.metrics.body":
-    "La volatilidad muestra cuánto oscila tu valor día a día; el drawdown máximo es la mayor pérdida de pico a valle que realmente ha sufrido.",
+    "La volatilidad muestra la magnitud de la oscilación diaria de tu valor; el drawdown máximo es la mayor pérdida de pico a valle realmente sufrida.",
   "tour.risk.correlation.title": "Matriz de correlación",
   "tour.risk.correlation.body":
-    "Cada celda muestra cómo se mueven dos posiciones entre sí: cerca de +1 significa que suben y bajan juntas, cerca de 0 de forma independiente, cerca de -1 en direcciones opuestas. Mezclar activos no correlacionados suaviza el recorrido.",
+    "Cada celda muestra el movimiento conjunto de dos posiciones: cerca de +1 significa que suben y bajan juntas, cerca de 0 de forma independiente, cerca de -1 en direcciones opuestas. Mezclar activos no correlacionados suaviza el recorrido.",
 
   "tour.rebalancing.targets.title": "Define tus pesos objetivo",
   "tour.rebalancing.targets.body":
     "Escribe un porcentaje objetivo para cada posición o añade una nueva. Usa Normalizar para que todo sume 100%.",
   "tour.rebalancing.drift.title": "Actual vs. objetivo",
   "tour.rebalancing.drift.body":
-    "Compara lo que realmente tienes con lo que quieres tener; la diferencia entre ambas columnas es tu desviación.",
+    "Compara tu posición real con tu objetivo de peso; la diferencia entre ambas columnas es tu desviación.",
   "tour.rebalancing.orders.title": "Órdenes sugeridas",
   "tour.rebalancing.orders.body":
     "Estos importes de compra/venta te llevan a tus objetivos. No se ejecuta nada automáticamente, tú realizas las operaciones.",
@@ -5044,7 +5044,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Define el capital inicial, la aportación mensual (o marca la casilla para usar tus planes de ahorro activos) y el número de años.",
   "tour.simulation.withdrawal.title": "Fase de retirada",
   "tour.simulation.withdrawal.body":
-    "Añade años de retirada tras la fase de ahorro y la tasa anual que retirarías, para ver cuánto dura tu dinero.",
+    "Añade años de retirada tras la fase de ahorro y tu tasa anual de retirada, para ver la duración de tu dinero.",
   "tour.simulation.model.title": "Elige tu modelo",
   "tour.simulation.model.body":
     "Mi cartera mide rentabilidad y riesgo con el historial real de tus posiciones; Personalizado te deja fijar tus propias hipótesis. Rebalancear cada año mantiene tus pesos en el objetivo.",
@@ -5055,10 +5055,10 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
   "tour.accounts.totals.title": "Activos menos deudas",
   "tour.accounts.totals.body":
-    "Las tres cifras son tus cuentas: lo que tienes, lo que debes y la diferencia. Todo eso entra en el patrimonio neto del panel.",
+    "Las tres cifras son tus cuentas: tus activos, tus deudas y la diferencia. Todo eso entra en el patrimonio neto del panel.",
   "tour.accounts.form.title": "Añade una cuenta",
   "tour.accounts.form.body":
-    "Ponle un nombre y un saldo inicial. El tipo decide si cuenta como activo o como deuda.",
+    "Ponle un nombre y un saldo inicial. El tipo decide su rol: activo o deuda.",
   "tour.accounts.list.title": "Mantén los saldos al día",
   "tour.accounts.list.body":
     "Cada cuenta guarda una lista de saldos con fecha. Añade uno nuevo tras cada consulta al banco. El gráfico arrastra el último.",
@@ -5066,7 +5066,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.spending.totals.body": "Lo que entró, lo que salió y lo que queda.",
   "tour.spending.form.title": "Registra en segundos",
   "tour.spending.form.body":
-    "Elige la cuenta y escribe el importe y el beneficiario. La categoría se sugiere según cómo clasificaste antes a ese beneficiario.",
+    "Elige la cuenta y escribe el importe y el beneficiario. La categoría se sugiere según tu clasificación anterior de ese beneficiario.",
   "tour.spending.table.title": "Tu registro",
   "tour.spending.table.body":
     "Cada apunte, ordenable por cualquier columna. Importa aquí un extracto bancario en vez de teclear meses de historial.",
@@ -5075,16 +5075,16 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Ponle nombre, importe y fecha. Vincula una cuenta para un progreso automático. Una deuda vinculada convierte el objetivo en saldarla.",
   "tour.goals.list.title": "Progreso y ritmo",
   "tour.goals.list.body":
-    "Cada objetivo muestra cuánto llevas y cuánto tendrías que apartar al mes para llegar a la fecha.",
+    "Cada objetivo muestra su progreso y el importe mensual necesario para llegar a la fecha.",
   "tour.debt.totals.title": "Lo que debes",
   "tour.debt.totals.body":
     "Deuda total, el mínimo que pagas cada mes y cuánto falta hasta saldarlo todo.",
   "tour.debt.list.title": "Todas las deudas",
   "tour.debt.list.body":
-    "Préstamos, hipotecas y líneas de crédito de tus cuentas, con su interés y fecha de liquidación. Ordena por interés para ver qué te cuesta más.",
+    "Préstamos, hipotecas y líneas de crédito de tus cuentas, con su interés y fecha de liquidación. Ordena por interés para encontrar tu deuda más cara.",
   "tour.debt.chart.title": "La forma de tu deuda",
   "tour.debt.chart.body":
-    "Cómo baja el saldo mes a mes, dónde termina un periodo de tipo fijo y cuánto de cada año se va en intereses en lugar de amortización.",
+    "La bajada mensual del saldo, el final del periodo de tipo fijo y la parte anual en intereses frente a amortización.",
   "tour.debt.plan.title": "Avalancha o bola de nieve",
   "tour.debt.plan.body":
     "El dinero extra va a la deuda más cara o a la más pequeña. El plan muestra el coste de cada opción.",
@@ -5093,7 +5093,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Colchón de emergencia, tasa de ahorro, carga de deuda y patrimonio en relación con tus ingresos. Juntas dicen más que cualquier cifra suelta.",
   "tour.health.sources.title": "De dónde salen las cifras",
   "tour.health.sources.body":
-    "Se calculan a partir de tus cuentas y tus gastos. Cuanto más completos estén, más valen los números.",
+    "Se calculan a partir de tus cuentas y tus gastos. Unos datos más completos dan cifras más fiables.",
   "tour.fire.inputs.title": "Tus supuestos",
   "tour.fire.inputs.body": "Tasa de retiro, gastos anuales, ahorro mensual y rendimiento esperado. Todas las cifras reaccionan a esto.",
   "tour.fire.targets.title": "Lean, normal, fat",
@@ -5101,7 +5101,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Tres importes objetivo para tres estilos de vida. Cada uno con tu año objetivo a tu ritmo actual.",
   "tour.fire.simulation.title": "Ponlo a prueba",
   "tour.fire.simulation.body":
-    "Un clic lleva este plan al simulador con tu horizonte ya puesto, que recorre miles de trayectorias de mercado: ves con qué frecuencia el plan sobrevive a una mala década y no solo al caso medio.",
+    "Un clic lleva este plan al simulador con tu horizonte ya puesto. El simulador recorre miles de trayectorias de mercado y muestra la tasa de supervivencia del plan durante una mala década, no solo el caso medio.",
   "tour.household.create.title": "Compártelo con alguien",
   "tour.household.create.body":
     "Crea un hogar para compartir tus datos con otra persona. Sin él, todo sigue siendo solo tuyo.",
@@ -5122,16 +5122,16 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Una proyección de tus pagos anteriores con el número de participaciones actual. Una fecha anunciada oficialmente sustituye a la estimada; el importe sigue siendo siempre una estimación.",
   "tour.xray.table.title": "Dentro de tus fondos",
   "tour.xray.table.body":
-    "Tus ETFs se descomponen en las empresas que hay detrás y se suman a las acciones que tienes en directo, así ves tu exposición real por empresa.",
+    "Tus ETFs se descomponen en sus empresas subyacentes y se suman a tus acciones directas, mostrando tu exposición real por empresa.",
   "tour.xray.limits.title": "Solo lo conocido",
   "tour.xray.limits.body":
-    "Los fondos cuyas posiciones se conocen se desglosan. El resto sigue visible como remanente sin clasificar en vez de desaparecer sin más.",
+    "Los fondos con posiciones conocidas se desglosan. El resto sigue visible como remanente sin clasificar en vez de desaparecer sin más.",
   "tour.analysis.tabs.title": "Cinco vistas de una cartera",
   "tour.analysis.tabs.body":
     "Distribución, rentabilidad, operaciones, riesgo e impuestos. Cada pestaña responde a una pregunta distinta sobre la misma cartera.",
   "tour.assetTags.what.title": "¿Qué son las etiquetas?",
   "tour.assetTags.what.body":
-    "Las etiquetas son pares clave-valor agrupados que tú defines, como Strategie: gamble. Úsalas para marcar posiciones como tenga sentido para ti.",
+    "Las etiquetas son pares clave-valor agrupados y de tu elección, como Strategie: gamble. Úsalas para marcar posiciones a tu manera.",
   "tour.assetTags.add.title": "Añadir una etiqueta",
   "tour.assetTags.add.body":
     "Elige un grupo, escribe un valor y confirma. Puedes crear un grupo nuevo en cualquier momento desde aquí.",
@@ -5328,7 +5328,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "goals.form.payOff": "amortizar",
   "goals.form.payOffHint":
-    "El progreso es lo que ya has devuelto, medido desde el saldo más alto que llegaste a deber. El importe objetivo ({currency}) es cuánto de esa deuda quieres amortizar.",
+    "El progreso es tu importe ya devuelto, medido desde el saldo máximo adeudado. El importe objetivo ({currency}) es tu meta de amortización.",
 
   "spending.categories.addDefaults": "Añadir categorías estándar",
   "cat.group.home": "Vivienda",
@@ -5370,7 +5370,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tip.depotValue": "Valor de mercado actual de tus posiciones. Las cuentas y los pasivos no se incluyen aquí.",
   "tip.change": "Variación absoluta del patrimonio neto en el periodo; el porcentaje es la rentabilidad ponderada en el tiempo (ajustada por aportaciones).",
   "tip.unrealized": "Ganancia/pérdida latente en las participaciones que aún tienes.",
-  "tip.realized": "Ganancia/pérdida consolidada de las participaciones que has vendido.",
+  "tip.realized": "Ganancia/pérdida consolidada de las participaciones ya vendidas.",
   "tip.dividends": "Suma de los dividendos realmente recibidos, escalados según las participaciones que tenías en cada fecha de pago.",
   "tip.irr": "Rentabilidad anualizada y ponderada por capital, que tiene en cuenta el momento y el importe de cada compra y venta.",
   "tip.twr": "Rentabilidad real ponderada en el tiempo durante el periodo seleccionado: el rendimiento compuesto de la cartera sin el efecto de aportaciones/retiradas (comparable con un fondo/índice de referencia).",
