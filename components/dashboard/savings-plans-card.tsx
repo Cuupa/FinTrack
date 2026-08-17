@@ -439,7 +439,7 @@ function SavingsPlansCardInner() {
   const pager = usePagination(planRows);
 
   return (
-    <Card>
+    <Card data-tour="savings-plans">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("sp.title")}</h2>
         {!creating && (

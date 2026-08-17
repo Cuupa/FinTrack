@@ -1,15 +1,48 @@
 # Ledger
 
-## In progress
+## Done
+
+- **2026-08-16 — Guided tour: critically re-audited EVERY step vs the current
+  screen + added coverage for new surfaces** — session `2573ae55`. One Sonnet
+  subworker audited read-only (keep/edit/drop), a second started the
+  implementation but died on a session limit; main agent finished it.
+  Fixed real bugs: the dashboard `addAsset` + `holdings` steps were PERMANENTLY
+  dead (their anchors live only on /portfolio, which the dashboard tour never
+  shows) -> dropped; /portfolio had no tour at all -> new `PORTFOLIO_TOUR_STEPS`
+  (add positions, holdings, savings plans, watchlist) mounted via
+  `PageHeaderWithTour`. `pension.points` copy contradicted the round-30 redesign
+  ("one line per year" -> enter each letter's cumulative total). `accounts.list`
+  promised a dead feature (`AccountBalancesDialog` unreachable) -> balances are
+  ledger-derived. `navEveryday` still listed household (now its own nav group)
+  -> new `navHousehold` step. Added 3 simulation steps (withdrawal strategy /
+  stress test / comparison). Reordered `DEBT_TOUR_STEPS` to DOM order. Refreshed
+  drifted bodies (netWorth, accounts.totals, simulation.withdrawal/model,
+  risk.metrics VaR, pension.contracts, spending.form, assetTags.add) across
+  en/de/es, all nebensatzfrei + no em-dashes. Fixed the wrong PENSION doc
+  comment. Updated `tests/tour-steps.test.ts` (simulation now 7 steps). Full
+  unit suite green (1276 passed), tsc clean.
 
 - **2026-08-16 — Humanize copy: remove ALL subordinate clauses (Nebensätze) from
-  the ENTIRE i18n dictionary, all three locales (en/de/es)** — session `2573ae55`.
-  One Sonnet subworker doing an exhaustive in-file rewrite of
-  `lib/i18n/dictionaries.ts`. Rule: short main clauses over nested sentences,
-  every locale, placeholders + du/tú register preserved, no em-dashes. Parity
-  tests must stay green.
+  the ENTIRE i18n dictionary, all three locales (en/de/es)** — session `2573ae55`,
+  one Sonnet subworker (exhaustive in-file rewrite) after ~140 hand-done first.
+  ~188 string values rewritten into short main clauses across en/de/es;
+  placeholders + du/tú preserved, em-dashes removed (incl. "—" title separators
+  -> colons, the rebalance "—" symbol -> "-"). Full unit suite green (1276
+  passed, 4 skipped), parity 6/6, tsc clean. Style rule saved to memory
+  (few-subordinate-clauses). Also removed the SSO buttons from /login (handler +
+  buttons commented for easy re-enable, dictionary keys kept) and wrote the
+  `styleguide` skill (.claude/skills/styleguide/).
 
-## Done
+- **2026-08-16 — Humanize copy: remove ALL subordinate clauses (Nebensätze) from
+  the ENTIRE i18n dictionary, all three locales (en/de/es)** — session `2573ae55`,
+  one Sonnet subworker (exhaustive in-file rewrite) after ~140 hand-done first.
+  ~188 string values rewritten into short main clauses across en/de/es;
+  placeholders + du/tú preserved, em-dashes removed (incl. "—" title separators
+  -> colons, the rebalance "—" symbol -> "-"). Full unit suite green (1276
+  passed, 4 skipped), parity 6/6, tsc clean. Style rule saved to memory
+  (few-subordinate-clauses). Also removed the SSO buttons from /login (handler +
+  buttons commented for easy re-enable, dictionary keys kept) and wrote the
+  `styleguide` skill (.claude/skills/styleguide/).
 
 - **2026-08-10 — TODO "Haushalt" (who owns what in a shared household)** —
   session `476e2bb1`, no subworker. Portfolios, accounts and assets all already

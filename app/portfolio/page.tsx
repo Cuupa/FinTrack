@@ -27,19 +27,27 @@ import { WatchlistCard } from "@/components/dashboard/watchlist-card";
 import { SavingsPlansCard } from "@/components/dashboard/savings-plans-card";
 import { CashInterestDueCard } from "@/components/dashboard/cash-interest-due";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
-import { Button, PAGE_STACK, PageHeader } from "@/components/ui/primitives";
+import { Button, PAGE_STACK } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/modal";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
+import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
+import { PORTFOLIO_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 
 export default function PortfolioPage() {
-  const { loading, loadError, reload } = usePortfolio();
+  const { data, loading, loadError, reload } = usePortfolio();
   const { mode } = useAuth();
   const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   // Shared so the holdings table's profit column tracks the chart timeframe.
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
+
+  // Loaded, not errored, and actually has holdings: the tour's targets
+  // (holdings table, savings plans, watchlist) only render once there is
+  // something to hold them, same "content is on screen" gate every page
+  // tour follows.
+  const ready = !loading && !loadError && data.assets.length > 0;
 
   // A CSV import handed off via `onRun` keeps running after the add-asset
   // modal has already closed — this tracks it for the floating status pill.
@@ -80,9 +88,12 @@ export default function PortfolioPage() {
 
   return (
     <div className={PAGE_STACK}>
-      <PageHeader
+      <PageHeaderWithTour
         title={t("portfolio.title")}
         subtitle={t("portfolio.subtitle")}
+        tourId="portfolio"
+        steps={PORTFOLIO_TOUR_STEPS}
+        ready={ready}
         actions={
           <>
             <ShareMenu />

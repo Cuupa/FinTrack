@@ -42,7 +42,7 @@ describe("page tour registries (risk, rebalancing, simulation, assetTags)", () =
   const registries: [string, TourStep[], number][] = [
     ["RISK_TOUR_STEPS", RISK_TOUR_STEPS, 4],
     ["REBALANCING_TOUR_STEPS", REBALANCING_TOUR_STEPS, 3],
-    ["SIMULATION_TOUR_STEPS", SIMULATION_TOUR_STEPS, 4],
+    ["SIMULATION_TOUR_STEPS", SIMULATION_TOUR_STEPS, 7],
     ["ASSET_TAGS_TOUR_STEPS", ASSET_TAGS_TOUR_STEPS, 4],
   ];
 
@@ -75,11 +75,14 @@ describe("page tour registries (risk, rebalancing, simulation, assetTags)", () =
     ]);
   });
 
-  it("SIMULATION_TOUR_STEPS follows accumulation -> withdrawal -> model -> chart", () => {
+  it("SIMULATION_TOUR_STEPS follows accumulation -> withdrawal -> strategy -> model -> stress -> comparison -> chart", () => {
     expect(SIMULATION_TOUR_STEPS.map((s) => s.key)).toEqual([
       "simulationAccumulation",
       "simulationWithdrawal",
+      "simulationStrategy",
       "simulationModel",
+      "simulationStress",
+      "simulationComparison",
       "simulationChart",
     ]);
   });

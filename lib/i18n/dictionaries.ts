@@ -252,14 +252,9 @@ export const en = {
   "tour.welcome.title": "Welcome to FinTrack",
   "tour.welcome.body":
     "A quick look around, about a minute. Add your holdings, watch your net worth grow, and dig into the details anytime.",
-  "tour.addAsset.title": "Add your holdings",
-  "tour.addAsset.body":
-    "Add a position manually or import a CSV export from your broker right here.",
   "tour.netWorth.title": "Net worth over time",
-  "tour.netWorth.body": "This chart tracks your net worth. Switch the timeframe to zoom in or out.",
-  "tour.holdings.title": "Your holdings",
-  "tour.holdings.body":
-    "Every position lives here, sortable by column. Click a row to open its details.",
+  "tour.netWorth.body":
+    "Your whole net worth at a glance: KPI tiles, a composition bar, the chart with benchmarks, and risk stats below.",
   "tour.areas.title": "Your everyday money",
   "tour.areas.body":
     "Accounts, spending and goals each get a card here. The home screen covers your whole financial picture, not just the portfolio. Click a card's title for that area.",
@@ -269,8 +264,9 @@ export const en = {
   "tour.nav.title": "More to explore",
   "tour.nav.body": "Everything else lives here, sorted into three areas.",
   "tour.nav.everyday.title": "Everyday",
-  "tour.nav.everyday.body":
-    "Your accounts, your spending, your debts, and your shared household.",
+  "tour.nav.everyday.body": "Your accounts, your spending, and your debts.",
+  "tour.nav.household.title": "Household",
+  "tour.nav.household.body": "Share your finances with your household. Invite others or accept an invite.",
   "tour.nav.invest.title": "Investments",
   "tour.nav.invest.body": "Your depot: positions, analysis, dividends, look-through, rebalancing.",
   "tour.nav.plan.title": "Planning",
@@ -291,6 +287,17 @@ export const en = {
   "tour.finish": "Finish",
   "tour.progressAria": "Step {current} of {total}",
   "tour.replay": "Show this tour again",
+  "tour.portfolio.addAsset.title": "Add positions",
+  "tour.portfolio.addAsset.body":
+    "Add a holding by hand, or import a CSV export from your bank right here.",
+  "tour.portfolio.holdings.title": "Your holdings",
+  "tour.portfolio.holdings.body": "Every position, sortable by any column. Click a row for its details.",
+  "tour.portfolio.savingsPlans.title": "Savings plans",
+  "tour.portfolio.savingsPlans.body":
+    "Set up recurring buys. Due runs show up here for review, then book as normal buys.",
+  "tour.portfolio.watchlist.title": "Watchlist",
+  "tour.portfolio.watchlist.body":
+    "Follow instruments without owning them. Add one to your portfolio anytime.",
 
   // Page tours (onboarding/page-tours.tsx): risk, rebalancing, simulation,
   // asset tags. Reuse tour.start/next/back/skip/finish/progressAria above.
@@ -301,7 +308,7 @@ export const en = {
     "These cards summarize your portfolio's risk profile: Sharpe and Sortino measure risk-adjusted return, Beta and Alpha compare you to the market.",
   "tour.risk.metrics.title": "Volatility & drawdown",
   "tour.risk.metrics.body":
-    "Volatility shows the size of your daily value swings; max drawdown is the worst peak-to-trough loss actually suffered.",
+    "Volatility is the size of your daily value swings. Max drawdown is the worst peak-to-trough loss. VaR is the loss to expect on a bad day.",
   "tour.risk.correlation.title": "Correlation matrix",
   "tour.risk.correlation.body":
     "Each cell shows the co-movement of two holdings: near +1 means lockstep rising and falling, near 0 means independent movement, near -1 means opposite directions. Mixing uncorrelated assets smooths the ride.",
@@ -321,10 +328,19 @@ export const en = {
     "Set your starting capital, monthly contribution (or tick the box to use your active savings plans), and your investing horizon in years.",
   "tour.simulation.withdrawal.title": "Withdrawal phase",
   "tour.simulation.withdrawal.body":
-    "Add years of withdrawals following the accumulation phase, plus your annual drawdown rate, and see your money's staying power.",
+    "Add years of withdrawals, your annual drawdown rate, and inflation. Also count your pension income, and pick a withdrawal strategy.",
+  "tour.simulation.strategy.title": "Withdrawal strategy",
+  "tour.simulation.strategy.body":
+    "Pick how the annual amount is decided each year. The numbered steps below show exactly what to do.",
   "tour.simulation.model.title": "Choose your model",
   "tour.simulation.model.body":
-    "\"My portfolio\" measures return and risk from your real holdings' history; Custom lets you set your own assumptions. Rebalance yearly keeps your weights on target.",
+    "\"My portfolio\" measures return and risk from your real holdings' history; Custom lets you set your own assumptions.",
+  "tour.simulation.stress.title": "Stress test",
+  "tour.simulation.stress.body":
+    "Force a bad sequence of returns onto every simulated path, to see how the plan holds up early on.",
+  "tour.simulation.comparison.title": "Compare strategies",
+  "tour.simulation.comparison.body":
+    "Every strategy runs over the same simulated markets. No winner is crowned, since each trades risk differently.",
   "tour.simulation.chart.title": "Projected wealth",
   "tour.simulation.chart.body":
     "Run a simulation to see the range of likely outcomes here: shaded bands are probability ranges around the median line, and a dashed line marks the switch to withdrawals.",
@@ -332,18 +348,18 @@ export const en = {
   // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
   "tour.accounts.totals.title": "Assets minus debts",
   "tour.accounts.totals.body":
-    "The three figures are your accounts: your assets, your debts, and the difference. All of it flows into the net worth on the dashboard.",
+    "Your assets, your debts, and the difference, with a change stat and an account count. The chart below tracks it over time. All of it feeds your net worth.",
   "tour.accounts.form.title": "Add an account",
   "tour.accounts.form.body":
     "Give it a name and a starting balance. The kind decides its role: asset or debt.",
   "tour.accounts.list.title": "Keep balances current",
   "tour.accounts.list.body":
-    "Every account keeps a dated list of balances. Add a reading after each check with your bank. The chart carries the last one forward.",
+    "Every account shows its current balance. Balances come from the booking journal: opening balance plus booked transactions. Change a balance with a booking, not by hand.",
   "tour.spending.totals.title": "Income vs. expenses",
   "tour.spending.totals.body": "What came in, what went out, and what is left over.",
   "tour.spending.form.title": "Book in seconds",
   "tour.spending.form.body":
-    "Pick the account, type the amount and the payee. The category is suggested from your past filing of that payee.",
+    "These buttons run your ledger: import a statement, auto-categorize, manage categories, or book an entry by hand. The booking form opens in a dialog.",
   "tour.spending.table.title": "Your ledger",
   "tour.spending.table.body":
     "Every booking, sortable by any column. Import a bank statement here instead of typing months of history.",
@@ -410,7 +426,7 @@ export const en = {
   "tour.assetTags.what.body":
     "Tags are grouped key-value labels of your own choosing, like Strategie: gamble. Use them to mark holdings in your own way.",
   "tour.assetTags.add.title": "Add a tag",
-  "tour.assetTags.add.body": "Pick a group, type a value, and confirm. Create a new group anytime from here.",
+  "tour.assetTags.add.body": "Tap the plus to add a tag. Pick a group and type a value. Create a new group anytime from here.",
   "tour.assetTags.analysis.title": "Where they pay off",
   "tour.assetTags.analysis.body":
     "Switch Analysis to the Custom breakdown and pick a group to see your portfolio sliced by your own tags.",
@@ -937,7 +953,7 @@ export const en = {
   "accounts.kind.mortgage": "Mortgage",
   "accounts.kind.other_asset": "Other asset",
   "accounts.kind.other_liability": "Other liability",
-  "accounts.balances.title": "Balances — {name}",
+  "accounts.balances.title": "Balances: {name}",
   "accounts.balances.intro": "Record the account's balance on any date; the most recent entry is its current balance.",
   "accounts.balances.readOnlyIntro": "Historical balance readings are shown for reference. Change the balance through a booking.",
   "accounts.balances.opening": "Opening balance: {value} (as of {date})",
@@ -1534,9 +1550,9 @@ export const en = {
   "tour.pension.assumptions.title": "Assumptions",
   "tour.pension.assumptions.body": "Your year of birth sets the retirement date; everything else has a sensible default.",
   "tour.pension.points.title": "Pension points",
-  "tour.pension.points.body": "Copy one line per year from your annual pension statement.",
+  "tour.pension.points.body": "Enter the total points from each Renteninformation letter, with its date. The per-year Versicherungsverlauf is an optional detail.",
   "tour.pension.contracts.title": "Policies",
-  "tour.pension.contracts.body": "Record private, Riester, Ruerup and company pensions with their expected monthly payout.",
+  "tour.pension.contracts.body": "Record private, Riester, Ruerup and company pensions. Enter each statement's dated value: the return is measured from them. A premium debits an account on review.",
   "debt.title": "Liabilities",
   "debt.subtitle": "Amortisation schedules and an avalanche/snowball plan for your liabilities.",
   "debt.totals.debt": "Total outstanding",
@@ -1584,7 +1600,7 @@ export const en = {
   "debt.details.rateFixedUntilLabel": "Fixed rate ends on",
   "debt.details.followUpRateLabel": "Assumed rate afterwards (%)",
   "debt.details.followUpHint": "Leave empty for a rate fixed over the whole term.",
-  "debt.chart.title": "How the debt develops",
+  "debt.chart.title": "The debt's development",
   "debt.chart.scopeLabel": "Show",
   "debt.chart.all": "All liabilities",
   "debt.chart.remaining": "Remaining debt",
@@ -1868,7 +1884,7 @@ export const en = {
   "rebalance.colAction": "Action",
   "rebalance.buy": "Buy",
   "rebalance.sell": "Sell",
-  "rebalance.keep": "—",
+  "rebalance.keep": "-",
   "rebalance.addPosition": "+ Add target position",
   "rebalance.newPositionName": "New position {n}",
   "rebalance.pool": "Pool to allocate:",
@@ -2611,15 +2627,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.welcome.title": "Willkommen bei FinTrack",
   "tour.welcome.body":
     "Eine kurze Tour, etwa eine Minute. Füge deine Positionen hinzu, verfolge dein Vermögen und schau dir die Details jederzeit an.",
-  "tour.addAsset.title": "Positionen hinzufügen",
-  "tour.addAsset.body":
-    "Füge eine Position von Hand hinzu oder importiere direkt hier einen CSV-Export deiner Bank.",
   "tour.netWorth.title": "Vermögen im Zeitverlauf",
   "tour.netWorth.body":
-    "Dieses Diagramm zeigt dein Vermögen. Wechsle den Zeitraum, um rein- oder rauszuzoomen.",
-  "tour.holdings.title": "Deine Positionen",
-  "tour.holdings.body":
-    "Alle Positionen findest du hier, sortierbar nach Spalte. Klicke auf eine Zeile für die Details.",
+    "Dein ganzes Vermögen auf einen Blick: Kennzahlen, ein Zusammensetzungsbalken, das Diagramm mit Vergleichsindizes und Risikokennzahlen darunter.",
   "tour.areas.title": "Dein Alltagsgeld",
   "tour.areas.body":
     "Konten, Ausgaben und Ziele bekommen hier je eine Karte. So zeigt die Startseite dein ganzes Finanzbild, nicht nur das Depot. Klick auf den Titel einer Karte für den Bereich.",
@@ -2629,8 +2639,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.nav.title": "Mehr entdecken",
   "tour.nav.body": "Alles Weitere steckt hier, aufgeteilt in drei Bereiche.",
   "tour.nav.everyday.title": "Alltag",
-  "tour.nav.everyday.body":
-    "Deine Konten, deine Ausgaben, deine Schulden und dein geteilter Haushalt.",
+  "tour.nav.everyday.body": "Deine Konten, deine Ausgaben und deine Schulden.",
+  "tour.nav.household.title": "Haushalt",
+  "tour.nav.household.body": "Teile deine Finanzen mit deinem Haushalt. Lade andere ein oder nimm eine Einladung an.",
   "tour.nav.invest.title": "Anlagen",
   "tour.nav.invest.body": "Dein Depot: Positionen, Analyse, Dividenden, Durchschau, Rebalancing.",
   "tour.nav.plan.title": "Planung",
@@ -2651,6 +2662,17 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.finish": "Fertig",
   "tour.progressAria": "Schritt {current} von {total}",
   "tour.replay": "Tour erneut anzeigen",
+  "tour.portfolio.addAsset.title": "Positionen hinzufügen",
+  "tour.portfolio.addAsset.body":
+    "Füge eine Position von Hand hinzu oder importiere direkt hier einen CSV-Export deiner Bank.",
+  "tour.portfolio.holdings.title": "Deine Positionen",
+  "tour.portfolio.holdings.body": "Jede Position, nach jeder Spalte sortierbar. Klick auf eine Zeile für die Details.",
+  "tour.portfolio.savingsPlans.title": "Sparpläne",
+  "tour.portfolio.savingsPlans.body":
+    "Richte wiederkehrende Käufe ein. Fällige Ausführungen erscheinen hier zur Prüfung und werden dann als normale Käufe gebucht.",
+  "tour.portfolio.watchlist.title": "Watchlist",
+  "tour.portfolio.watchlist.body":
+    "Beobachte Wertpapiere ohne Bestand. Nimm sie jederzeit in dein Depot auf.",
 
   // Seiten-Touren (onboarding/page-tours.tsx): Risiko, Rebalancing,
   // Simulation, Tags. Nutzen tour.start/next/back/skip/finish/progressAria oben.
@@ -2661,7 +2683,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Diese Karten fassen das Risikoprofil deines Portfolios zusammen: Sharpe und Sortino messen die risikoadjustierte Rendite, Beta und Alpha vergleichen dich mit dem Markt.",
   "tour.risk.metrics.title": "Volatilität & Drawdown",
   "tour.risk.metrics.body":
-    "Die Volatilität zeigt das Ausmaß der täglichen Wertschwankung; der maximale Drawdown ist der größte tatsächlich erlittene Verlust vom Hoch bis zum Tief.",
+    "Die Volatilität ist das Ausmaß der täglichen Wertschwankung. Der maximale Drawdown ist der größte Verlust vom Hoch bis zum Tief. Der VaR ist der Verlust an einem schlechten Tag.",
   "tour.risk.correlation.title": "Korrelationsmatrix",
   "tour.risk.correlation.body":
     "Jede Zelle zeigt die Wechselbewegung zweier Positionen: nahe +1 heißt, sie steigen und fallen im Gleichschritt, nahe 0 unabhängig voneinander, nahe -1 gegenläufig. Unkorrelierte Positionen zu mischen macht den Verlauf ruhiger.",
@@ -2681,10 +2703,19 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Lege Startkapital, monatliche Sparrate (oder aktiviere die Checkbox für deine aktiven Sparpläne) und die Anzahl der Jahre fest.",
   "tour.simulation.withdrawal.title": "Entnahmephase",
   "tour.simulation.withdrawal.body":
-    "Füge Jahre der Entnahme nach der Ansparphase hinzu, dazu die jährliche Entnahmerate: So siehst du die Reichweite deines Geldes.",
+    "Füge Jahre der Entnahme, deine jährliche Entnahmerate und die Inflation hinzu. Zähl auch deine Rente mit, und wähl eine Entnahmestrategie.",
+  "tour.simulation.strategy.title": "Entnahmestrategie",
+  "tour.simulation.strategy.body":
+    "Wähl, wie der jährliche Betrag jedes Jahr neu bestimmt wird. Die nummerierten Schritte unten zeigen genau, was zu tun ist.",
   "tour.simulation.model.title": "Modell wählen",
   "tour.simulation.model.body":
-    "Mein Portfolio misst Rendite und Risiko aus der echten Historie deiner Positionen, bei Benutzerdefiniert legst du eigene Annahmen fest. Jährlich rebalancieren hält deine Gewichtung auf Ziel.",
+    "Mein Portfolio misst Rendite und Risiko aus der echten Historie deiner Positionen, bei Benutzerdefiniert legst du eigene Annahmen fest.",
+  "tour.simulation.stress.title": "Stresstest",
+  "tour.simulation.stress.body":
+    "Erzwing eine schlechte Renditefolge für jeden simulierten Pfad, um zu sehen, wie der Plan früh standhält.",
+  "tour.simulation.comparison.title": "Strategien vergleichen",
+  "tour.simulation.comparison.body":
+    "Jede Strategie läuft über dieselben simulierten Märkte. Es gibt keinen Sieger, da jede das Risiko anders handhabt.",
   "tour.simulation.chart.title": "Prognostiziertes Vermögen",
   "tour.simulation.chart.body":
     "Starte eine Simulation, um hier die Bandbreite möglicher Verläufe zu sehen: Die farbigen Bänder sind Wahrscheinlichkeitsbereiche um die Medianlinie, eine gestrichelte Linie markiert den Wechsel zur Entnahme.",
@@ -2692,18 +2723,18 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
   "tour.accounts.totals.title": "Vermögen minus Schulden",
   "tour.accounts.totals.body":
-    "Die drei Zahlen sind deine Konten: dein Vermögen, deine Schulden und die Differenz. Alles davon fließt ins Nettovermögen auf der Übersicht.",
+    "Dein Vermögen, deine Schulden und die Differenz, dazu eine Veränderung und die Kontenzahl. Der Chart darunter zeigt den Verlauf. Alles davon fließt ins Nettovermögen.",
   "tour.accounts.form.title": "Konto anlegen",
   "tour.accounts.form.body":
     "Gib ihm einen Namen und einen Startsaldo. Die Art entscheidet über die Rolle: Vermögen oder Schuld.",
   "tour.accounts.list.title": "Salden aktuell halten",
   "tour.accounts.list.body":
-    "Jedes Konto führt eine datierte Liste von Ständen. Trag nach dem Blick aufs Bankkonto einen neuen ein. Der Verlauf schreibt den letzten Stand fort.",
+    "Jedes Konto zeigt seinen aktuellen Saldo. Der Saldo kommt aus dem Buchungsjournal: Startsaldo plus gebuchte Transaktionen. Ändere einen Saldo per Buchung, nicht von Hand.",
   "tour.spending.totals.title": "Einnahmen und Ausgaben",
   "tour.spending.totals.body": "Was reinkam, was rausging und was übrig bleibt.",
   "tour.spending.form.title": "In Sekunden erfassen",
   "tour.spending.form.body":
-    "Konto wählen, Betrag und Empfänger eintippen. Die Kategorie wird aus deiner bisherigen Einsortierung dieses Empfängers vorgeschlagen.",
+    "Diese Buttons steuern dein Ausgabenbuch: Kontoauszug importieren, automatisch kategorisieren, Kategorien verwalten oder eine Buchung von Hand erfassen. Das Formular öffnet sich im Dialog.",
   "tour.spending.table.title": "Dein Ausgabenbuch",
   "tour.spending.table.body":
     "Jede Buchung, nach jeder Spalte sortierbar. Importier hier einen Kontoauszug, statt Monate von Hand zu tippen.",
@@ -2771,7 +2802,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Tags sind gruppierte Schlüssel-Wert-Label nach eigener Wahl, zum Beispiel Strategie: gamble. Nutze sie, um Positionen auf deine eigene Art zu markieren.",
   "tour.assetTags.add.title": "Tag hinzufügen",
   "tour.assetTags.add.body":
-    "Wähle eine Gruppe, gib einen Wert ein und bestätige. Eine neue Gruppe kannst du jederzeit von hier aus anlegen.",
+    "Tipp auf das Plus für ein Tag. Wähl eine Gruppe und gib einen Wert ein. Eine neue Gruppe legst du hier jederzeit an.",
   "tour.assetTags.analysis.title": "Wo sie sich auszahlen",
   "tour.assetTags.analysis.body":
     "Wechsle in der Analyse zur Aufschlüsselung Benutzerdefiniert und wähle eine Gruppe, um dein Portfolio nach deinen eigenen Tags aufgeteilt zu sehen.",
@@ -3295,7 +3326,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "accounts.kind.mortgage": "Hypothek",
   "accounts.kind.other_asset": "Sonstiges Vermögen",
   "accounts.kind.other_liability": "Sonstige Verbindlichkeit",
-  "accounts.balances.title": "Salden — {name}",
+  "accounts.balances.title": "Salden: {name}",
   "accounts.balances.intro": "Erfasse den Saldo des Kontos zu einem beliebigen Datum; der neueste Eintrag ist der aktuelle Saldo.",
   "accounts.balances.readOnlyIntro": "Historische Saldo-Einträge dienen nur zur Information. Ändere den Saldo über eine Buchung.",
   "accounts.balances.opening": "Startsaldo: {value} (Stand {date})",
@@ -3898,9 +3929,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "tour.pension.assumptions.title": "Annahmen",
   "tour.pension.assumptions.body": "Dein Geburtsjahr legt den Rentenbeginn fest; alles andere hat einen sinnvollen Standardwert.",
   "tour.pension.points.title": "Entgeltpunkte",
-  "tour.pension.points.body": "Übernimm eine Zeile pro Jahr aus deiner Renteninformation.",
+  "tour.pension.points.body": "Trag den Gesamtstand an Punkten aus jeder Renteninformation ein, mit Datum. Der jährliche Versicherungsverlauf ist ein optionales Detail.",
   "tour.pension.contracts.title": "Verträge",
-  "tour.pension.contracts.body": "Erfasse private, Riester-, Rürup- und Betriebsrenten mit ihrer erwarteten Monatsrente.",
+  "tour.pension.contracts.body": "Erfasse private, Riester-, Rürup- und Betriebsrenten. Trag die datierten Werte der Standmitteilungen ein: daraus wird die Rendite gemessen. Ein Beitrag bucht nach Prüfung von einem Konto ab.",
   "debt.title": "Verbindlichkeiten",
   "debt.subtitle": "Tilgungspläne und ein Avalanche-/Schneeball-Plan für deine Verbindlichkeiten.",
   "debt.totals.debt": "Offene Verbindlichkeiten",
@@ -4233,7 +4264,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "rebalance.colAction": "Aktion",
   "rebalance.buy": "Kaufen",
   "rebalance.sell": "Verkaufen",
-  "rebalance.keep": "—",
+  "rebalance.keep": "-",
   "rebalance.addPosition": "+ Zielposition hinzufügen",
   "rebalance.newPositionName": "Neue Position {n}",
   "rebalance.pool": "Zu verteilendes Kapital:",
@@ -4975,14 +5006,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.welcome.title": "Bienvenido a FinTrack",
   "tour.welcome.body":
     "Un vistazo rápido, apenas un minuto. Añade tus posiciones, observa el crecimiento de tu patrimonio y explora los detalles en cualquier momento.",
-  "tour.addAsset.title": "Añade tus posiciones",
-  "tour.addAsset.body":
-    "Añade una posición a mano o importa aquí mismo un archivo CSV exportado de tu banco.",
   "tour.netWorth.title": "Patrimonio neto en el tiempo",
-  "tour.netWorth.body": "Este gráfico muestra la evolución de tu patrimonio neto. Cambia el periodo para ampliar o alejar la vista.",
-  "tour.holdings.title": "Tus posiciones",
-  "tour.holdings.body":
-    "Aquí están todas tus posiciones, ordenables por columna. Haz clic en una fila para ver sus detalles.",
+  "tour.netWorth.body":
+    "Todo tu patrimonio de un vistazo: indicadores clave, una barra de composición, el gráfico con comparativas y las métricas de riesgo debajo.",
   "tour.areas.title": "Tu dinero del día a día",
   "tour.areas.body":
     "Cuentas, gastos y objetivos tienen aquí su propia tarjeta. Así la pantalla de inicio cubre toda tu situación financiera, no solo la cartera. Pulsa el título de una tarjeta para esa área.",
@@ -4992,8 +5018,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.nav.title": "Más por explorar",
   "tour.nav.body": "Todo lo demás está aquí, repartido en tres áreas.",
   "tour.nav.everyday.title": "Día a día",
-  "tour.nav.everyday.body":
-    "Tus cuentas, tus gastos, tus deudas y tu hogar compartido.",
+  "tour.nav.everyday.body": "Tus cuentas, tus gastos y tus deudas.",
+  "tour.nav.household.title": "Hogar",
+  "tour.nav.household.body": "Comparte tus finanzas con tu hogar. Invita a otros o acepta una invitación.",
   "tour.nav.invest.title": "Inversiones",
   "tour.nav.invest.body": "Tu cartera: posiciones, análisis, dividendos, radiografía, rebalanceo.",
   "tour.nav.plan.title": "Planificación",
@@ -5014,6 +5041,17 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.finish": "Finalizar",
   "tour.progressAria": "Paso {current} de {total}",
   "tour.replay": "Mostrar este tour de nuevo",
+  "tour.portfolio.addAsset.title": "Añadir posiciones",
+  "tour.portfolio.addAsset.body":
+    "Añade una posición a mano o importa aquí un CSV de tu banco.",
+  "tour.portfolio.holdings.title": "Tus posiciones",
+  "tour.portfolio.holdings.body": "Cada posición, ordenable por cualquier columna. Pulsa una fila para ver los detalles.",
+  "tour.portfolio.savingsPlans.title": "Planes de ahorro",
+  "tour.portfolio.savingsPlans.body":
+    "Crea compras periódicas. Las ejecuciones pendientes aparecen aquí para revisarlas y luego se registran como compras normales.",
+  "tour.portfolio.watchlist.title": "Lista de seguimiento",
+  "tour.portfolio.watchlist.body":
+    "Sigue instrumentos sin tenerlos. Añádelos a tu cartera cuando quieras.",
 
   // Tours de página (onboarding/page-tours.tsx): riesgo, rebalanceo,
   // simulación, etiquetas. Reutilizan tour.start/next/back/skip/finish/progressAria de arriba.
@@ -5024,7 +5062,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Estas tarjetas resumen el perfil de riesgo de tu cartera: Sharpe y Sortino miden la rentabilidad ajustada al riesgo, Beta y Alfa te comparan con el mercado.",
   "tour.risk.metrics.title": "Volatilidad y drawdown",
   "tour.risk.metrics.body":
-    "La volatilidad muestra la magnitud de la oscilación diaria de tu valor; el drawdown máximo es la mayor pérdida de pico a valle realmente sufrida.",
+    "La volatilidad es la magnitud de la oscilación diaria de tu valor. El drawdown máximo es la mayor pérdida de pico a valle. El VaR es la pérdida esperable en un mal día.",
   "tour.risk.correlation.title": "Matriz de correlación",
   "tour.risk.correlation.body":
     "Cada celda muestra el movimiento conjunto de dos posiciones: cerca de +1 significa que suben y bajan juntas, cerca de 0 de forma independiente, cerca de -1 en direcciones opuestas. Mezclar activos no correlacionados suaviza el recorrido.",
@@ -5044,10 +5082,19 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Define el capital inicial, la aportación mensual (o marca la casilla para usar tus planes de ahorro activos) y el número de años.",
   "tour.simulation.withdrawal.title": "Fase de retirada",
   "tour.simulation.withdrawal.body":
-    "Añade años de retirada tras la fase de ahorro y tu tasa anual de retirada, para ver la duración de tu dinero.",
+    "Añade años de retirada, tu tasa anual de retirada y la inflación. Cuenta también tu pensión y elige una estrategia de retirada.",
+  "tour.simulation.strategy.title": "Estrategia de retirada",
+  "tour.simulation.strategy.body":
+    "Elige cómo se decide el importe anual cada año. Los pasos numerados de abajo muestran exactamente qué hacer.",
   "tour.simulation.model.title": "Elige tu modelo",
   "tour.simulation.model.body":
-    "Mi cartera mide rentabilidad y riesgo con el historial real de tus posiciones; Personalizado te deja fijar tus propias hipótesis. Rebalancear cada año mantiene tus pesos en el objetivo.",
+    "Mi cartera mide rentabilidad y riesgo con el historial real de tus posiciones; Personalizado te deja fijar tus propias hipótesis.",
+  "tour.simulation.stress.title": "Prueba de estrés",
+  "tour.simulation.stress.body":
+    "Fuerza una mala secuencia de rentabilidades en cada ruta simulada, para ver la resistencia del plan al principio.",
+  "tour.simulation.comparison.title": "Comparar estrategias",
+  "tour.simulation.comparison.body":
+    "Cada estrategia corre sobre los mismos mercados simulados. No se corona a ninguna: cada una equilibra el riesgo de otra forma.",
   "tour.simulation.chart.title": "Patrimonio proyectado",
   "tour.simulation.chart.body":
     "Ejecuta una simulación para ver aquí el rango de resultados probables: las bandas de color son rangos de probabilidad alrededor de la mediana, y una línea discontinua marca el cambio a la fase de retirada.",
@@ -5055,18 +5102,18 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Round-24 page tours: one per primary surface (lib/onboarding/tour-steps.ts).
   "tour.accounts.totals.title": "Activos menos deudas",
   "tour.accounts.totals.body":
-    "Las tres cifras son tus cuentas: tus activos, tus deudas y la diferencia. Todo eso entra en el patrimonio neto del panel.",
+    "Tus activos, tus deudas y la diferencia, con un dato de variación y el número de cuentas. El gráfico de abajo muestra su evolución. Todo eso entra en tu patrimonio neto.",
   "tour.accounts.form.title": "Añade una cuenta",
   "tour.accounts.form.body":
     "Ponle un nombre y un saldo inicial. El tipo decide su rol: activo o deuda.",
   "tour.accounts.list.title": "Mantén los saldos al día",
   "tour.accounts.list.body":
-    "Cada cuenta guarda una lista de saldos con fecha. Añade uno nuevo tras cada consulta al banco. El gráfico arrastra el último.",
+    "Cada cuenta muestra su saldo actual. El saldo sale del diario de apuntes: saldo inicial más movimientos registrados. Cambia un saldo con un apunte, no a mano.",
   "tour.spending.totals.title": "Ingresos y gastos",
   "tour.spending.totals.body": "Lo que entró, lo que salió y lo que queda.",
   "tour.spending.form.title": "Registra en segundos",
   "tour.spending.form.body":
-    "Elige la cuenta y escribe el importe y el beneficiario. La categoría se sugiere según tu clasificación anterior de ese beneficiario.",
+    "Estos botones manejan tu registro: importar un extracto, categorizar automáticamente, gestionar categorías o registrar un apunte a mano. El formulario se abre en un diálogo.",
   "tour.spending.table.title": "Tu registro",
   "tour.spending.table.body":
     "Cada apunte, ordenable por cualquier columna. Importa aquí un extracto bancario en vez de teclear meses de historial.",
@@ -5134,7 +5181,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Las etiquetas son pares clave-valor agrupados y de tu elección, como Strategie: gamble. Úsalas para marcar posiciones a tu manera.",
   "tour.assetTags.add.title": "Añadir una etiqueta",
   "tour.assetTags.add.body":
-    "Elige un grupo, escribe un valor y confirma. Puedes crear un grupo nuevo en cualquier momento desde aquí.",
+    "Toca el más para añadir una etiqueta. Elige un grupo y escribe un valor. Crea un grupo nuevo aquí cuando quieras.",
   "tour.assetTags.analysis.title": "Dónde dan sus frutos",
   "tour.assetTags.analysis.body":
     "Cambia Análisis al desglose Personalizado y elige un grupo para ver tu cartera repartida según tus propias etiquetas.",
@@ -5487,9 +5534,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "asset.metric.sharpeTip":
     "Rentabilidad ajustada al riesgo: rentabilidad anualizada por encima de un tipo libre de riesgo del 2%, por unidad de volatilidad, medida a partir del histórico de precios de este activo.",
   "asset.metric.marketValueTip": "Valor actual de esta posición.",
-  "asset.metric.unrealizedTip": "Ganancia/pérdida latente en las participaciones que aún tienes.",
+  "asset.metric.unrealizedTip": "Ganancia/pérdida latente en las participaciones aún en cartera.",
   "asset.metric.realizedTip":
-    "Ganancia/pérdida consolidada de las participaciones de este activo que ya has vendido.",
+    "Ganancia/pérdida consolidada de las participaciones ya vendidas de este activo.",
   "asset.row.name": "Nombre",
   "asset.row.isin": "ISIN",
   "asset.row.wkn": "WKN",
@@ -5552,7 +5599,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tx.interestAmount": "Importe de los intereses",
   "tx.interestReceived": "Intereses recibidos",
   "tx.interestHint":
-    "Registra los intereses que te ha abonado tu banco, como el importe neto de tu extracto. Se añaden a tu saldo de efectivo y cuentan como rentabilidad.",
+    "Registra los intereses abonados por tu banco, como el importe neto de tu extracto. Se añaden a tu saldo de efectivo y cuentan como rentabilidad.",
   "tx.deposit": "Ingreso",
   "tx.withdrawal": "Retirada",
   "tx.addDeposit": "Añadir ingreso",
@@ -5645,7 +5692,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.edit.intro":
     "Corrige los datos de la cuenta. El saldo inicial es el importe en la fecha de apertura, no el de hoy.",
   "accounts.edit.hasReadings":
-    "Esta cuenta tiene saldos con fecha y el más reciente es el que cuenta para tu patrimonio. Si quieres cambiar el importe actual, edita los saldos.",
+    "Esta cuenta tiene saldos con fecha; tu patrimonio usa el más reciente. Para cambiar el importe actual, edita los saldos en su lugar.",
   "accounts.edit.save": "Guardar",
   "accounts.edit.error": "No se pudo guardar la cuenta. Inténtalo de nuevo.",
   "accounts.list.delete": "Eliminar",
@@ -5658,14 +5705,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "accounts.kind.mortgage": "Hipoteca",
   "accounts.kind.other_asset": "Otro activo",
   "accounts.kind.other_liability": "Otro pasivo",
-  "accounts.balances.title": "Saldos — {name}",
+  "accounts.balances.title": "Saldos: {name}",
   "accounts.balances.intro": "Registra el saldo de la cuenta en cualquier fecha; la entrada más reciente es su saldo actual.",
   "accounts.balances.readOnlyIntro": "Los saldos históricos se muestran solo como referencia. Cambia el saldo mediante un movimiento.",
   "accounts.balances.opening": "Saldo inicial: {value} (a fecha de {date})",
   "accounts.balances.dateLabel": "Fecha",
   "accounts.balances.valueLabel": "Saldo ({currency})",
   "accounts.balances.add": "Añadir saldo",
-  "accounts.balances.empty": "Aún no hay actualizaciones de saldo. El saldo inicial se arrastra hasta que añadas una.",
+  "accounts.balances.empty": "Aún no hay actualizaciones de saldo. El saldo inicial se arrastra hasta tu primera entrada.",
   "accounts.balances.remove": "Eliminar saldo",
   "accounts.balances.error": "No se pudo guardar el saldo. Inténtalo de nuevo.",
   "spending.title": "Ingresos y gastos",
@@ -5752,7 +5799,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   "spending.planned.title": "Ingresos y gastos previstos",
   "spending.planned.intro":
-    "Dinero que ya conoces: tu sueldo, una paga extra o un gasto puntual. Los vencidos se registran en el libro después de que los revises.",
+    "Dinero ya conocido para ti: tu sueldo, una paga extra o un gasto puntual. Los vencidos se registran en el libro después de tu revisión.",
   "spending.planned.noAccounts": "Primero necesitas una cuenta. Añade una en Cuentas.",
   "spending.planned.empty": "Todavía no hay nada previsto. Añade tu sueldo o un gasto que se acerca.",
   "spending.planned.nameLabel": "Descripción",
@@ -5775,7 +5822,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.planned.transferLabel": "Traspaso a (opcional)",
   "spending.planned.transferNone": "No es un traspaso",
   "spending.planned.transferHint":
-    "El dinero que mueves entre tus propias cuentas no cuenta como ingreso ni como gasto.",
+    "El dinero movido entre tus propias cuentas no cuenta como ingreso ni como gasto.",
   "spending.planned.noteLabel": "Nota",
   "spending.planned.notePlaceholder": "Opcional",
   "spending.planned.add": "Añadir previsión",
@@ -5808,7 +5855,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.planned.due.error": "No se han podido guardar los movimientos.",
 
   "spending.forecast.title": "Previsión de tesorería",
-  "spending.forecast.intro": "Lo ya registrado más lo que todavía se espera, para los próximos {n} meses. Los pagos recurrentes están incluidos.",
+  "spending.forecast.intro": "Lo ya registrado más lo todavía esperado, para los próximos {n} meses. Los pagos recurrentes están incluidos.",
   "spending.forecast.empty": "Todavía no hay nada que prever. Planifica ingresos o gastos, o añade un pago recurrente.",
   "spending.forecast.income": "Ingresos",
   "spending.forecast.expense": "Gastos",
@@ -5860,7 +5907,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "recurring.due.review": "Revisar",
   "recurring.due.reviewTitle": "Registros pendientes",
   "recurring.due.reviewHint":
-    "Cada fila es una propuesta: corrige la fecha o el importe antes de registrarla, u omite un pago que nunca ocurrió. No se registra nada sin tu confirmación.",
+    "Cada fila es una propuesta: corrige la fecha o el importe antes de registrarla, u omite un pago nunca ocurrido. No se registra nada sin tu confirmación.",
   "recurring.due.book": "Registrar {n} apunte(s)",
   "recurring.due.dateLabel": "Fecha de registro",
   "recurring.due.amountLabel": "Importe",
@@ -5901,7 +5948,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "recurring.scope.message":
     "Esta entrada ya ha registrado {n} pagos. Los futuros usan siempre los valores nuevos. Los registrados solo cambian a petición tuya.",
   "recurring.scope.splitHint":
-    "Es una cuota de préstamo: sus importes registrados se reparten cada mes entre intereses y amortización y se quedan como se registraron. El nombre y la categoría sí se actualizan.",
+    "Es una cuota de préstamo: sus importes registrados se reparten cada mes entre intereses y amortización y mantienen su reparto original. El nombre y la categoría sí se actualizan.",
   "recurring.scope.future": "Solo pagos futuros",
   "recurring.scope.all": "También los {n} registrados",
   "recurring.split.interest": "intereses",
@@ -5923,9 +5970,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "contracts.form.targetHintOn":
     "Cuenta como traspaso, no como gasto: el dinero pasa a esa cuenta en vez de consumirse.",
   "contracts.form.targetHintOff":
-    "Para la cuota de un préstamo o una póliza que acumula valor, elige la cuenta en la que ingresa.",
+    "Para la cuota de un préstamo o una póliza acumuladora de valor, elige su cuenta de destino.",
   "contracts.form.startLabel": "Vigente desde",
-  "contracts.form.startHint": "Los cargos se registran a partir de esta fecha. Si eliges una fecha pasada, se te ofrecen los cargos pendientes para ponerte al día, cada uno por separado.",
+  "contracts.form.startHint": "Los cargos se registran a partir de esta fecha. Una fecha pasada te ofrece los cargos pendientes para ponerte al día, cada uno por separado.",
   "contracts.list.edit": "Editar",
   "contracts.edit.title": "Editar pago recurrente",
   "contracts.edit.save": "Guardar",
@@ -5947,7 +5994,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "goals.form.targetLabel": "Importe objetivo ({currency})",
   "goals.form.dateLabel": "Fecha objetivo (opcional)",
   "goals.form.dateHint":
-    "Déjala vacía para una meta sin fecha límite. Con fecha te mostramos cuánto falta al mes.",
+    "Déjala vacía para una meta sin fecha límite. Con fecha te mostramos tu importe mensual pendiente.",
   "goals.form.linkedAccountLabel": "Seguir el progreso con",
   "goals.form.manualTracking": "Seguimiento manual",
   "goals.form.wholeDepot": "Toda la cartera (todos los brókeres)",
@@ -5992,7 +6039,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "health.gauge.monthsOfExpenses.label": "Meses de gastos cubiertos",
   "health.gauge.monthsOfExpenses.hint": "Apunta a 3-6 meses de gastos en ahorros líquidos.",
   "health.gauge.savingsRate.label": "Tasa de ahorro",
-  "health.gauge.savingsRate.hint": "Parte de tus ingresos que conservas después de los gastos, apunta al 20% o más.",
+  "health.gauge.savingsRate.hint": "Parte de tus ingresos conservada después de los gastos, apunta al 20% o más.",
   "health.gauge.debtToIncome.label": "Deuda sobre ingresos",
   "health.gauge.debtToIncome.hint": "Total de pasivos frente a un año de ingresos, cuanto más bajo mejor.",
   "health.gauge.netWorthToIncome.label": "Patrimonio neto sobre ingresos",
@@ -6006,16 +6053,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   "withdrawal.strategyLabel": "Estrategia de retiro",
   "withdrawal.strategy.fixed": "Importe fijo",
   "withdrawal.strategy.fixed.desc":
-    "La regla clásica: fijas el importe el día en que te jubilas y lo retiras siempre. Ingreso estable, y la única estrategia que puede agotar la cartera.",
+    "La regla clásica: fijas el importe al jubilarte y lo retiras siempre. Ingreso estable, y como única estrategia con riesgo de agotar la cartera.",
   "withdrawal.strategy.percentOfPortfolio": "Porcentaje de la cartera",
   "withdrawal.strategy.percentOfPortfolio.desc":
-    "Siempre el mismo porcentaje de lo que queda de verdad. Nunca se agota, pero tu ingreso baja con el mercado.",
+    "Siempre el mismo porcentaje del saldo realmente restante. Nunca se agota, pero tu ingreso baja con el mercado.",
   "withdrawal.strategy.guardrails": "Barreras",
   "withdrawal.strategy.guardrails.desc":
-    "Mantienes el ingreso del año anterior hasta que la tasa se desvía demasiado, y entonces lo ajustas. Pocos cambios, y cada uno pequeño.",
+    "Mantienes el ingreso del año anterior hasta un límite de desviación de la tasa, y entonces lo ajustas. Pocos cambios, y cada uno pequeño.",
   "withdrawal.strategy.floorCeiling": "Suelo y techo",
   "withdrawal.strategy.floorCeiling.desc":
-    "Sigue a la cartera, pero nunca por debajo de un suelo ni por encima de un techo. El punto medio entre un ingreso estable y uno que se ajusta.",
+    "Sigue a la cartera, pero nunca por debajo de un suelo ni por encima de un techo. El punto medio entre un ingreso estable y uno ajustable.",
   "withdrawal.stepsTitle": "Qué haces",
   "withdrawal.steps.fixed.1": "Al jubilarte, toma tu tasa de retiro por el valor de la cartera.",
   "withdrawal.steps.fixed.2":
@@ -6031,7 +6078,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "withdrawal.steps.guardrails.1":
     "Una vez al año, divide el ingreso del año pasado entre el valor actual de la cartera.",
   "withdrawal.steps.guardrails.2":
-    "Si queda dentro de la banda alrededor de tu tasa objetivo, no cambies nada.",
+    "Dentro de la banda alrededor de tu tasa objetivo, no cambies nada.",
   "withdrawal.steps.guardrails.3":
     "Fuera de los límites, mueve el ingreso un paso: abajo con la tasa alta, arriba con la baja.",
   "withdrawal.steps.floorCeiling.1":
@@ -6039,10 +6086,10 @@ export const es: Partial<Record<MessageKey, string>> = {
   "withdrawal.steps.floorCeiling.2":
     "Compáralo con tu suelo y tu techo, ambos derivados del ingreso del primer año.",
   "withdrawal.steps.floorCeiling.3":
-    "Retira la cifra intermedia. Pon el suelo en lo que necesitas de verdad, no en lo que te gustaría.",
+    "Retira la cifra intermedia. Pon el suelo en tu necesidad real, no en tu deseo.",
   "withdrawal.strategy.vpw": "Repartido entre los años que quedan",
   "withdrawal.strategy.vpw.desc":
-    "Cada año reparte lo que hay entre los años que aún tienes que financiar. La tasa sube con la edad, así que no queda dinero sin usar ni se agota.",
+    "Cada año reparte el saldo actual entre tus años de financiación restantes. La tasa sube con la edad, así que no queda dinero sin usar ni se agota.",
   "withdrawal.steps.vpw.1": "Una vez al año anota el valor de la cartera y los años que quedan.",
   "withdrawal.steps.vpw.2":
     "Toma la parte de renta vitalicia: cada año una porción mayor, con menos años por delante.",
@@ -6051,19 +6098,19 @@ export const es: Partial<Record<MessageKey, string>> = {
   "withdrawal.stressLabel": "Escenario de estrés",
   "withdrawal.stress.none": "Sin estrés",
   "withdrawal.stress.none.desc":
-    "Las rentabilidades llegan en el orden que saca la simulación.",
+    "Las rentabilidades llegan en el propio orden aleatorio de la simulación.",
   "withdrawal.stress.earlyCrash": "Caída al principio",
   "withdrawal.stress.earlyCrash.desc":
     "Una pérdida fuerte en el primer mes de jubilación. Las mismas rentabilidades, en el peor orden posible.",
   "withdrawal.stress.lostDecade": "Década perdida",
   "withdrawal.stress.lostDecade.desc":
-    "Los primeros diez años de jubilación no crecen nada, mientras ya estás retirando.",
+    "Los primeros diez años de jubilación no crecen nada, durante tus retiros ya en marcha.",
   "withdrawal.stress.highInflation": "Shock de inflación",
   "withdrawal.stress.highInflation.desc":
-    "Tres puntos más de inflación durante todo el recorrido: menos rentabilidad real y retiros que deben subir más rápido.",
+    "Tres puntos más de inflación durante todo el recorrido: menos rentabilidad real y retiros de subida más rápida.",
   "withdrawal.compareTitle": "Todas las estrategias, los mismos mercados",
   "withdrawal.compareHint":
-    "Las cuatro corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso que se mueve.",
+    "Las cuatro corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso variable.",
   "withdrawal.col.strategy": "Estrategia",
   "withdrawal.col.success": "Aguanta",
   "withdrawal.col.income": "Ingreso / año",
@@ -6080,7 +6127,7 @@ export const es: Partial<Record<MessageKey, string>> = {
 
   // Planificador FIRE (ROADMAP #8)
   "fire.title": "Jubilación / planificador FIRE",
-  "fire.subtitle": "Cuánto patrimonio cubre tus gastos y cuánto tiempo te llevará conseguirlo.",
+  "fire.subtitle": "El patrimonio necesario para cubrir tus gastos, y el tiempo para conseguirlo.",
   "fire.withdrawalRate.label": "Tasa de retiro",
   "fire.withdrawalRate.hint": "La clásica \"regla del 4%\": un patrimonio retirado a esta tasa dura toda la jubilación.",
   "fire.pension.count": "Contar mi pensión",
@@ -6094,19 +6141,19 @@ export const es: Partial<Record<MessageKey, string>> = {
   "fire.noExpenseData": "Todavía no hay historial de gastos, introduce tus gastos manualmente.",
   "fire.monthlyContribution.label": "Aportación mensual",
   "fire.annualReturn.label": "Rentabilidad anual esperada",
-  "fire.annualReturn.hint": "Medida a partir del historial real de tus inversiones cuando está disponible, si no de un índice de referencia.",
+  "fire.annualReturn.hint": "Medida a partir del historial real de tus inversiones si está disponible, si no de un índice de referencia.",
   "fire.netWorth.label": "Patrimonio neto actual",
   "fire.targets.title": "Tus objetivos",
   "fire.targets.subtitle":
-    "Cuánto capital cubre tus gastos de forma permanente con la tasa de retiro de arriba.",
+    "El capital necesario para cubrir tus gastos de forma permanente con la tasa de retiro de arriba.",
   "fire.lean.label": "Lean FIRE",
   "fire.lean.info":
-    "Independencia financiera con un presupuesto más ajustado: {ratio} de lo que gastas hoy.",
+    "Independencia financiera con un presupuesto más ajustado: {ratio} de tu gasto actual.",
   "fire.regular.label": "Número FIRE",
   "fire.regular.info":
-    "El capital que cubre tus gastos actuales con la tasa de retiro de arriba. Al 4% son las conocidas 25 veces tus gastos anuales.",
+    "El capital necesario para cubrir tus gastos actuales con la tasa de retiro de arriba. Al 4% son las conocidas 25 veces tus gastos anuales.",
   "fire.fat.label": "Fat FIRE",
-  "fire.fat.info": "Independencia financiera con más margen: {ratio} de lo que gastas hoy.",
+  "fire.fat.info": "Independencia financiera con más margen: {ratio} de tu gasto actual.",
   "fire.tile.risk": "{risk} de las jubilaciones simuladas de {years} años se quedan sin dinero a esta tasa.",
   "fire.tile.basis": "Cubre {expenses} de gastos al año con un retiro del {rate}.",
   "fire.tile.basisRatio": "Cubre {ratio} de tus gastos ({expenses} al año) con un retiro del {rate}.",
@@ -6131,7 +6178,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.edit": "Editar",
   "pension.title": "Jubilación",
   "pension.subtitle": "Tus puntos de pensión y tus planes privados, proyectados a un ingreso mensual de jubilación.",
-  "pension.todaysMoney": "Todas las cifras están en dinero de hoy: sin inflación, sin subidas salariales y sin rentabilidad supuesta, para que puedas compararlas con lo que gastas hoy.",
+  "pension.todaysMoney": "Todas las cifras están en dinero de hoy: sin inflación, sin subidas salariales y sin rentabilidad supuesta. Así puedes compararlas con tu gasto actual.",
   "pension.saveFailed": "No se pudo guardar.",
   "pension.gap": "Te faltan {amount} al mes para alcanzar tu objetivo.",
   "pension.stat.points": "Puntos de pensión (proyección)",
@@ -6154,7 +6201,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "{current} puntos ganados + {annual} al año × {years} años = {total} puntos.",
   "pension.calc.money": "{total} × {value} por punto × {factor} = {monthly} al mes.",
   "pension.calc.trend":
-    "Sigue la tendencia de tus años registrados: {start} puntos el primer año, subiendo a {end} el último, ajustado con {years} años y limitado a lo que un año puede dar. Esto se aparta a propósito de la Renteninformation, que no supone ninguna progresión.",
+    "Sigue la tendencia de tus años registrados: {start} puntos el primer año, subiendo a {end} el último, ajustado con {years} años y limitado al máximo anual posible. Esto se aparta a propósito de la Renteninformation: no supone ninguna progresión.",
   "pension.assumeTrend": "Suponer que mi carrera sigue subiendo",
   "pension.assumeTrendHint":
     "Desactivado por defecto. Así esta página reproduce tu Renteninformation: la media plana de tus últimos cinco años, proyectada. Activado, sigue la tendencia de tus {years} años registrados. Un supuesto, no la cifra oficial.",
@@ -6162,11 +6209,11 @@ export const es: Partial<Record<MessageKey, string>> = {
     "{year} registra {points} puntos, muy por encima de tus otros años. La proyección lo ignora, pero la fila sigue estando mal: el total acumulado de la Renteninformation va en «Puntos totales», no en un solo año.",
   "pension.targetMonthly": "Pensión objetivo / mes",
   "pension.standardAge": "Edad ordinaria de jubilación: {age}",
-  "pension.cappedNotice": "{raw} puntos al año es más de lo que un año puede dar, así que la proyección asume {max}. Si esa cifra es tu total acumulado, va en «Puntos totales».",
+  "pension.cappedNotice": "{raw} puntos al año supera el máximo anual posible, así que la proyección asume {max}. Esa cifra podría ser tu total acumulado, y entonces va en «Puntos totales».",
   "pension.points.title": "Puntos de pensión",
   "pension.statements.title": "Tus informes de pensión",
   "pension.statements.hint":
-    "Cada informe indica tu TOTAL de puntos acumulados, nunca una cifra por año. Añade una fila por carta. Desde el segundo informe, FinTrack mide con la resta lo que aporta un año.",
+    "Cada informe indica tu TOTAL de puntos acumulados, nunca una cifra por año. Añade una fila por carta. Desde el segundo informe, FinTrack mide la aportación de cada año con la resta.",
   "pension.statements.year": "Año del informe",
   "pension.statements.total": "Puntos totales",
   "pension.statements.note": "Nota",
@@ -6175,11 +6222,11 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.statements.rate":
     "{gained} puntos entre {from} y {to}, es decir en {years} años: {points} puntos al año. Con eso cuenta FinTrack cada año restante.",
   "pension.statements.needSecond":
-    "Con un segundo informe más antiguo, FinTrack puede medir cuántos puntos aporta un año de tu trabajo.",
+    "Con un segundo informe más antiguo, FinTrack puede medir tu ganancia anual de puntos.",
   "pension.statements.deleteTitle": "¿Borrar el informe?",
   "pension.statements.deleteMessage": "Se eliminará el informe de {year}.",
   "pension.points.looksLikeStatements":
-    "Estas filas parecen totales acumulados: solo suben y la más reciente supera lo que puede dar un solo año. ¿Moverlas a tus informes de pensión?",
+    "Estas filas parecen totales acumulados: solo suben y la más reciente supera el máximo de un solo año. ¿Moverlas a tus informes de pensión?",
   "pension.points.moveToStatements": "Mover a los informes",
   "pension.points.moveTitle": "¿Mover las filas a los informes?",
   "pension.points.moveMessage":
@@ -6195,7 +6242,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.points.deleteTitle": "¿Eliminar el año?",
   "pension.points.deleteMessage": "Se eliminarán los puntos registrados para {year}.",
   "pension.contracts.title": "Planes de pensiones",
-  "pension.contracts.hint": "Planes privados, Riester, Rürup o de empresa. La pensión mensual esperada es lo que alimenta la proyección.",
+  "pension.contracts.hint": "Planes privados, Riester, Rürup o de empresa. La pensión mensual esperada alimenta la proyección.",
   "pension.contracts.name": "Nombre",
   "pension.contracts.kind": "Tipo",
   "pension.contracts.provider": "Proveedor",
@@ -6203,9 +6250,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.contracts.expectedHint": "Solo hace falta sin factor de renta. Con él, la renta se calcula a partir de tu prima, el incremento y la rentabilidad.",
   "pension.contracts.rentenfaktor": "Factor de renta (por 10.000)",
   "pension.contracts.rentenfaktorHint":
-    "Renta mensual por cada 10.000 de capital, tal como figura en tu póliza. Con él la renta se calcula en vez de estimarse.",
+    "Renta mensual por cada 10.000 de capital, según tu póliza. Con él la renta se calcula en vez de estimarse.",
   "pension.contracts.dynamic": "Incremento de la prima (% anual)",
-  "pension.contracts.dynamicHint": "Cuánto sube tu prima cada año.",
+  "pension.contracts.dynamicHint": "La subida anual de tu prima.",
   "pension.contracts.returnPct": "Rentabilidad supuesta (% anual)",
   "pension.contracts.returnHint": "Crecimiento del capital hasta el inicio del cobro. En blanco: sin crecimiento.",
   "pension.contracts.account": "Cuenta de cargo",
@@ -6216,12 +6263,12 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.premiums.title": "Primas vencidas ({n})",
   "pension.premiums.book": "Registrar {n} primas",
   "pension.premiums.transferNote":
-    "Una prima cuenta como traspaso, no como gasto: compra un derecho que vale lo que sale de la cuenta.",
+    "Una prima cuenta como traspaso, no como gasto: compra un derecho equivalente al importe saliente de la cuenta.",
   "pension.contracts.returnColumn": "Rentabilidad (% anual)",
   "pension.values.open": "Valores",
   "pension.values.title": "Valores registrados: {name}",
   "pension.values.hint":
-    "Lo que valía la póliza, tal como lo indica su extracto anual. Dos valores y las primas intermedias miden lo que rinde de verdad, así no tienes que suponer una rentabilidad.",
+    "El valor declarado de la póliza, según su extracto anual. Dos valores y las primas intermedias miden el rendimiento real, así no tienes que suponer una rentabilidad.",
   "pension.values.date": "Fecha",
   "pension.values.value": "Valor",
   "pension.values.add": "Añadir valor",
@@ -6235,9 +6282,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "pension.values.deleteTitle": "¿Eliminar el valor?",
   "pension.values.deleteMessage": "Se eliminará el valor del {date}.",
   "pension.contracts.derivedNote":
-    "En {years} años la póliza acumula unos {capital}, lo que con este factor de renta paga {monthly} al mes.",
+    "En {years} años la póliza acumula unos {capital}; con este factor de renta eso paga {monthly} al mes.",
   "pension.contracts.derivedNoteNow":
-    "Hoy la póliza acumula {capital}, lo que con este factor de renta paga {monthly} al mes. Indica una fecha de cobro o tu año de nacimiento para proyectarla.",
+    "Hoy la póliza acumula {capital}; con este factor de renta eso paga {monthly} al mes. Indica una fecha de cobro o tu año de nacimiento para proyectarla.",
   "pension.contracts.contribution": "Aportación / mes",
   "pension.contracts.currentValue": "Valor actual",
   "pension.contracts.startsOn": "Inicio del pago",
@@ -6258,9 +6305,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "tour.pension.assumptions.title": "Supuestos",
   "tour.pension.assumptions.body": "Tu año de nacimiento fija la fecha de jubilación; todo lo demás tiene un valor por defecto razonable.",
   "tour.pension.points.title": "Puntos de pensión",
-  "tour.pension.points.body": "Copia una línea por año de tu informe anual de pensión.",
+  "tour.pension.points.body": "Introduce el total de puntos de cada carta Renteninformation, con su fecha. El historial anual Versicherungsverlauf es un detalle opcional.",
   "tour.pension.contracts.title": "Planes",
-  "tour.pension.contracts.body": "Registra planes privados, Riester, Rürup y de empresa con su pensión mensual esperada.",
+  "tour.pension.contracts.body": "Registra planes privados, Riester, Rürup y de empresa. Introduce los valores con fecha de cada extracto: de ahí se mide la rentabilidad. Una prima se carga en una cuenta tras revisarla.",
   "debt.title": "Pasivos",
   "debt.subtitle": "Planes de amortización y un plan avalancha/bola de nieve para tus pasivos.",
   "debt.totals.debt": "Total pendiente",
@@ -6308,7 +6355,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "debt.details.rateFixedUntilLabel": "El tipo fijo termina el",
   "debt.details.followUpRateLabel": "Tipo estimado posterior (%)",
   "debt.details.followUpHint": "Déjalo vacío con un tipo fijo todo el plazo.",
-  "debt.chart.title": "Cómo evoluciona tu deuda",
+  "debt.chart.title": "La evolución de tu deuda",
   "debt.chart.scopeLabel": "Mostrar",
   "debt.chart.all": "Todos los pasivos",
   "debt.chart.remaining": "Deuda pendiente",
@@ -6356,20 +6403,20 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Como Sharpe, pero solo penaliza la volatilidad bajista. Los movimientos al alza no cuentan en tu contra. Más alto es mejor.",
   "risk.volatility": "Volatilidad",
   "risk.volatilityTip":
-    "Desviación estándar anualizada de las rentabilidades: cuánto oscila el valor. Menor significa un recorrido más suave.",
+    "Desviación estándar anualizada de las rentabilidades: la magnitud de la oscilación del valor. Menor significa un recorrido más suave.",
   "risk.beta": "Beta",
   "risk.betaTip":
     "Sensibilidad de una posición frente al índice MSCI World: 1 lo sigue, por encima de 1 amplifica sus oscilaciones, por debajo de 1 las amortigua, negativo se mueve en sentido contrario (cobertura). Medida sobre la ventana solapada más reciente.",
   "risk.betaSuffix": "vs. MSCI World",
   "risk.alpha": "Alfa",
   "risk.alphaTip":
-    "Rentabilidad anualizada de una posición por encima de lo que predeciría su beta frente al MSCI World (CAPM). Positivo = mejor que el índice en términos ajustados al riesgo.",
+    "Rentabilidad anualizada de una posición por encima de su rentabilidad predicha por beta frente al MSCI World (CAPM). Positivo = mejor que el índice en términos ajustados al riesgo.",
   "risk.portfolioBeta": "Beta",
   "risk.portfolioBetaTip":
-    "Cómo se mueve toda tu cartera en relación con el índice MSCI World: 1 lo sigue, por encima de 1 amplifica sus oscilaciones, por debajo de 1 las amortigua.",
+    "El movimiento de toda tu cartera en relación con el índice MSCI World: 1 lo sigue, por encima de 1 amplifica sus oscilaciones, por debajo de 1 las amortigua.",
   "risk.portfolioAlpha": "Alfa",
   "risk.portfolioAlphaTip":
-    "Rentabilidad anualizada de tu cartera por encima de lo que predeciría su beta frente al MSCI World (CAPM).",
+    "Rentabilidad anualizada de tu cartera por encima de su rentabilidad predicha por beta frente al MSCI World (CAPM).",
   "risk.maxDrawdown": "Caída máxima",
   "risk.maxDrawdownTip":
     "Mayor caída de máximo a mínimo en el periodo, con su duración. Cuanto menor, mejor. Medida a partir de la evolución diaria real durante el periodo de inversión.",
@@ -6384,7 +6431,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "risk.weightTip": "Peso de esta posición sobre el valor de mercado total del ámbito seleccionado.",
   "risk.correlation": "Matriz de correlación",
   "risk.correlationTip":
-    "Cómo se mueven juntas las posiciones: rojo = se mueven al unísono (menos diversificación), azul = se mueven en sentido contrario (cobertura), pálido = independientes.",
+    "El movimiento conjunto de las posiciones: rojo = se mueven al unísono (menos diversificación), azul = se mueven en sentido contrario (cobertura), pálido = independientes.",
   "risk.correlationNeed": "Añade al menos dos posiciones con histórico para ver correlaciones.",
   "risk.correlationHighPairs": "Los pares por encima de 0,8 se mueven juntos, lo que limita la diversificación.",
 
@@ -6469,7 +6516,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Trades
   "trades.byMonth": "P&G realizada por mes",
   "trades.byMonthTip":
-    "Ganancia/pérdida consolidada de las ventas, atribuida al mes en que ocurrió cada venta (coste medio).",
+    "Ganancia/pérdida consolidada de las ventas, atribuida al mes de cada venta (coste medio).",
   "trades.noSells": "Todavía no hay ventas. La P&G realizada aparecerá aquí tras tu primera venta.",
   "trades.realized": "Realizada",
   "trades.topMoversTitle": "Mayores variaciones",
@@ -6534,7 +6581,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "household.registeredOnly": "Inicia sesión para crear o unirte a un hogar.",
   "household.actionError": "No se ha podido guardar. Inténtalo de nuevo.",
   "household.createTitle": "Crear un hogar",
-  "household.createSubtitle": "Crea un hogar para compartir tus cuentas con alguien que invites.",
+  "household.createSubtitle": "Crea un hogar para compartir tus cuentas con un miembro invitado.",
   "household.namePlaceholder": "p. ej. Nuestro hogar",
   "household.create": "Crear",
   "household.members": "Miembros",
@@ -6592,7 +6639,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "rebalance.colAction": "Acción",
   "rebalance.buy": "Comprar",
   "rebalance.sell": "Vender",
-  "rebalance.keep": "—",
+  "rebalance.keep": "-",
   "rebalance.addPosition": "+ Añadir posición objetivo",
   "rebalance.newPositionName": "Nueva posición {n}",
   "rebalance.pool": "Capital por asignar:",
@@ -6610,7 +6657,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.seededFromFire": "Horizonte tomado de tu plan FIRE: {years} años hasta la independencia financiera.",
   "sim.inflation": "Inflación",
   "sim.inflationHint":
-    "Tus retiros suben esto cada año. Sin ello, un plan que parece seguro reduce en silencio a la mitad lo que puedes comprar.",
+    "Tus retiros suben esto cada año. Sin ello, un plan de apariencia segura reduce en silencio tu poder adquisitivo a la mitad.",
   "sim.modelPortfolioDesc":
     "Simula cada posición con su propia volatilidad y las correlaciones entre ellas.",
   "sim.modelCustomDesc": "Simula una única rentabilidad y volatilidad combinadas.",
@@ -6622,10 +6669,10 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.monthlyWithdrawal": "Retirada mensual",
   "sim.withdrawalRate": "Tasa de retirada anual",
   "sim.withdrawalRateHint":
-    "Cada año retiras este porcentaje del valor de la cartera en el momento de la jubilación (fijo a partir de entonces). ~4% es la tasa segura clásica a largo plazo; el importe que realmente puedas retirar depende de cómo crezca tu cartera.",
+    "Cada año retiras este porcentaje del valor de la cartera en el momento de la jubilación (fijo a partir de entonces). ~4% es la tasa segura clásica a largo plazo; tu importe realmente retirable depende del crecimiento de tu cartera.",
   "sim.withdrawalTitle": "Ingresos en la retirada",
   "sim.withdrawalMetricsTip":
-    "Cuánto permite retirar este plan durante la fase de retirada, desde el resultado pesimista (percentil 10) hasta el optimista (percentil 90).",
+    "El importe retirable con este plan durante la fase de retirada, desde el resultado pesimista (percentil 10) hasta el optimista (percentil 90).",
   "sim.withdrawalPensionNote":
     "Incluye {amount} de pensión al año desde {year}. Solo el resto sale de la cartera.",
   "sim.perYear": "año",
@@ -6635,7 +6682,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "La tasa segura solo retira el crecimiento esperado. El capital invertido no se consume (en valor esperado).",
   "sim.rebalanceYearly": "Reequilibrar a los pesos objetivo cada año",
   "sim.rebalanceYearlyTip":
-    "Restablece cada posición a su peso objetivo una vez al año. Los pesos objetivo son los porcentajes de la lista del modelo. Las posiciones que fueron bien se venden parcialmente, las que fueron mal se compran más. Sin reequilibrio, los pesos se van separando con la evolución del mercado.",
+    "Restablece cada posición a su peso objetivo una vez al año. Los pesos objetivo son los porcentajes de la lista del modelo. Las posiciones con buen resultado se venden parcialmente, las de mal resultado se compran más. Sin reequilibrio, los pesos se van separando con la evolución del mercado.",
   "sim.expectedReturn": "Rentabilidad anual esperada",
   "sim.volatility": "Volatilidad (desv. típica)",
   "sim.runs": "Ejecuciones de simulación",
@@ -6654,7 +6701,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.growth": "Crecimiento proyectado (mediana)",
   "sim.multiple": "Múltiplo",
   "sim.configurePrompt": "Configura tu plan y ejecuta una simulación",
-  "sim.configureHint": "Ajusta los parámetros para proyectar cómo podría crecer tu patrimonio bajo miles de escenarios de mercado.",
+  "sim.configureHint": "Ajusta los parámetros para proyectar el crecimiento de tu patrimonio bajo miles de escenarios de mercado.",
   "sim.edit": "Activar edición",
   "sim.lock": "Bloquear parámetros",
   "sim.capitalLocked": "El capital inicial procede de tu patrimonio neto, haz clic para sobrescribirlo",
@@ -6669,14 +6716,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.tipBand50": "El 50% central de todos los resultados simulados (percentil 25-75): un cuarto terminó por debajo de esta banda, un cuarto por encima.",
   "sim.tipBand80": "El 80% central de todos los resultados simulados (percentil 10-90): solo el 10% terminó por debajo y el 10% por encima.",
   "sim.tipBandFull": "El rango completo: desde la peor hasta la mejor de todas las trayectorias simuladas.",
-  "sim.tipContributed": "Total que habrías aportado (capital inicial + aportaciones), sin crecimiento.",
+  "sim.tipContributed": "Tu total aportado (capital inicial + aportaciones), sin crecimiento.",
   "sim.tipOptimistic": "El percentil 90: superas al 90% de los resultados simulados. Solo el 10% lo hizo mejor.",
   "sim.tipPessimistic": "El percentil 10: un caso desfavorable. El 90% de los resultados simulados fue mejor, solo el 10% fue peor.",
   "sim.accumulationPhase": "Fase de acumulación",
   "sim.withdrawalDuration": "Duración",
   "sim.useSavingsPlans": "Usar mis planes de ahorro ({amount}/mes)",
   "sim.guidelinesTip":
-    "El 7% anual es la expectativa base realista para renta variable amplia en un horizonte estándar de 30 años (la prima de riesgo bursátil global a largo plazo). Una volatilidad de aproximadamente el 16% es la cifra anual respaldada por la investigación para un índice de renta variable mundial diversificado. Las cifras medidas de tus posiciones sustituyen estos valores; en horizontes largos vuelven a acercarse a la base, ya que una racha reciente no es sostenible durante décadas. La simulación ejecuta entre 1.000 y 10.000 trayectorias con capitalización mensual y rendimientos con distribución normal.",
+    "El 7% anual es la expectativa base realista para renta variable amplia en un horizonte estándar de 30 años (la prima de riesgo bursátil global a largo plazo). Una volatilidad de aproximadamente el 16% es la cifra anual respaldada por la investigación para un índice de renta variable mundial diversificado. Las cifras medidas de tus posiciones sustituyen estos valores; en horizontes largos vuelven a acercarse a la base: una racha reciente no es sostenible durante décadas. La simulación ejecuta entre 1.000 y 10.000 trayectorias con capitalización mensual y rendimientos con distribución normal.",
   "sim.perAssetModel": "Modelo por activo",
   "sim.estimate": "Estimación",
   "sim.blended": "Combinado",
@@ -6694,7 +6741,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.yrHistory": "{years} año de historial",
   "sim.yrHistoryBlended": "{years} año de historial · ajustado a largo plazo",
   "sim.corrNote":
-    "Cada posición se simula con su propia volatilidad; las correlaciones proceden de los {years} años en los que las posiciones se superponen.",
+    "Cada posición se simula con su propia volatilidad; las correlaciones proceden de los {years} años de superposición entre posiciones.",
   "sim.modelSummary": "{count} posiciones, rentabilidad esperada ponderada del {ret} con una volatilidad del {vol} anual.",
   "sim.showModelDetails": "Mostrar detalles por activo",
   "sim.hideModelDetails": "Ocultar detalles por activo",
@@ -6737,7 +6784,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "error.tryAgain": "Intentar de nuevo",
   "error.backHome": "Volver al inicio",
   "notFound.title": "Página no encontrada",
-  "notFound.body": "La página que buscas no existe o puede que se haya movido.",
+  "notFound.body": "La página solicitada no existe o puede que se haya movido.",
   "notFound.backHome": "Volver al inicio",
 
   "common.loadError": "No se han podido cargar tus datos. Comprueba tu conexión e inténtalo de nuevo.",
@@ -6761,7 +6808,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.usage.errors7d": "en 7 días",
   "admin.usage.featuresTitle": "Uso de funciones",
   "admin.usage.featuresIntro":
-    "Usuarios con al menos una entrada, y cuánto tienen. La barra es la proporción sobre todos los usuarios registrados.",
+    "Usuarios con al menos una entrada, y su número de entradas. La barra es la proporción sobre todos los usuarios registrados.",
   "admin.usage.colFeature": "Función",
   "admin.usage.colUsers": "Usuarios",
   "admin.usage.colRecords": "Entradas",
@@ -6824,7 +6871,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.flags.colEnabled": "Activado",
   "admin.flags.overridesTitle": "Overrides por usuario",
   "admin.flags.overridesSubtitle":
-    "Los overrides prevalecen sobre el valor global de activado/desactivado para ese usuario. No conceden Pro: una flag Pro sigue bloqueada hasta que el plan del usuario sea Pro (ver Concesiones premium en Facturación).",
+    "Los overrides prevalecen sobre el valor global de activado/desactivado para ese usuario. No conceden Pro: una flag Pro sigue bloqueada sin un plan Pro (ver Concesiones premium en Facturación).",
   "admin.flags.searchEmail": "Buscar usuario por correo",
   "admin.flags.searchEmailPlaceholder": "Escribe al menos 2 caracteres",
   "admin.flags.searching": "Buscando...",
@@ -6890,7 +6937,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.billing.error": "Eso no ha funcionado. Inténtalo de nuevo.",
   "admin.billing.sellingTitle": "Venta",
   "admin.billing.sellingSubtitle":
-    "Los ids de precio de Stripe para el plan mensual y anual, y si el checkout está abierto para los usuarios.",
+    "Los ids de precio de Stripe para el plan mensual y anual, y la disponibilidad del checkout para los usuarios.",
   "admin.billing.priceMonthlyLabel": "Id de precio mensual",
   "admin.billing.priceYearlyLabel": "Id de precio anual",
   "admin.billing.priceIdPlaceholder": "price_...",
@@ -6937,7 +6984,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.prices.colFxRate": "Tipo de cambio",
   "admin.prices.colSynced": "Sincronizado",
   "admin.prices.colRetries": "Reintentos",
-  "admin.prices.retriesTip": "Sincronizaciones consecutivas que dejaron esta fila sin precio. Una fila en cola va primero en la siguiente pasada y vuelve a resolver su cotización desde cero.",
+  "admin.prices.retriesTip": "Sincronizaciones consecutivas sin cotización encontrada para esta fila. Una fila en cola va primero en la siguiente pasada y vuelve a resolver su cotización desde cero.",
   "admin.prices.staleness.fresh": "Actualizado",
   "admin.prices.staleness.stale": "Desactualizado",
   "admin.prices.staleness.dead": "Muerto",
@@ -6963,7 +7010,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "admin.errors.kindUnhandledrejection": "Rechazo no gestionado",
   "admin.errors.kindBoundaryHelp": "Un componente de React ha fallado y su límite de errores lo ha capturado",
   "admin.errors.kindWindowHelp": "Un error de JavaScript no capturado",
-  "admin.errors.kindUnhandledrejectionHelp": "Un rechazo de promesa que nadie ha gestionado",
+  "admin.errors.kindUnhandledrejectionHelp": "Un rechazo de promesa no gestionado",
   "admin.errors.kindFetch": "Petición",
   "admin.errors.kindFetchHelp": "Una petición respondió con un estado de error o no llegó a completarse",
   "admin.errors.kindConsole": "Consola",
@@ -7051,12 +7098,12 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.billing.errorUnavailable": "La facturación no está disponible en este momento.",
 
   "pricing.title": "Precios",
-  "pricing.subtitle": "Precios simples y transparentes. Elige el plan que se ajuste a tu forma de invertir.",
+  "pricing.subtitle": "Precios simples y transparentes. Elige el plan ajustado a tu forma de invertir.",
   "pricing.free.name": "Free",
-  "pricing.free.tagline": "Todo lo que necesitas para seguir tu cartera.",
+  "pricing.free.tagline": "Todo lo necesario para seguir tu cartera.",
   "pricing.free.feature1": "Seguimiento ilimitado de cartera y transacciones",
   "pricing.free.feature2": "Importación CSV desde los exportes de tu bróker",
-  "pricing.free.feature3": "Lista de seguimiento para los instrumentos que sigues",
+  "pricing.free.feature3": "Lista de seguimiento para los instrumentos seguidos",
   "pricing.pro.name": "Pro",
   "pricing.pro.tagline": "El conjunto completo de análisis, además de todo lo del plan Free.",
   "pricing.pro.feature1": "Análisis de riesgo con beta y alfa de la cartera",

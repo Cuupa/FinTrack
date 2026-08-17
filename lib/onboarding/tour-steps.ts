@@ -18,25 +18,13 @@ export interface TourStep {
 export const TOUR_STEPS: TourStep[] = [
   { key: "welcome", target: null, titleKey: "tour.welcome.title", bodyKey: "tour.welcome.body" },
   {
-    key: "addAsset",
-    target: "add-asset",
-    titleKey: "tour.addAsset.title",
-    bodyKey: "tour.addAsset.body",
-  },
-  {
     key: "netWorth",
     target: "net-worth",
     titleKey: "tour.netWorth.title",
     bodyKey: "tour.netWorth.body",
   },
   {
-    key: "holdings",
-    target: "holdings",
-    titleKey: "tour.holdings.title",
-    bodyKey: "tour.holdings.body",
-  },
-  {
-    // Sits right after the holdings so the tour tells the same story the page
+    // Sits right after net worth so the tour tells the same story the page
     // now does: net worth, then everyday money, then investments.
     key: "areas",
     target: "areas",
@@ -54,6 +42,14 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-group-everyday",
     titleKey: "tour.nav.everyday.title",
     bodyKey: "tour.nav.everyday.body",
+  },
+  {
+    // Household is its own nav group now (lib/nav/routes.tsx), separate from
+    // Everyday.
+    key: "navHousehold",
+    target: "nav-group-household",
+    titleKey: "tour.nav.household.title",
+    bodyKey: "tour.nav.household.body",
   },
   {
     key: "navInvest",
@@ -89,6 +85,34 @@ export const TOUR_STEPS: TourStep[] = [
 // "first visit with data" gate does the auto-start-once-with-data job, no
 // extra flag needed here. Completion is tracked per tourId in
 // `profile.toursDone`, separate from the dashboard tour's `tourDoneAt`.
+
+/** Investments (/portfolio, app/portfolio/page.tsx). */
+export const PORTFOLIO_TOUR_STEPS: TourStep[] = [
+  {
+    key: "portfolioAddAsset",
+    target: "add-asset",
+    titleKey: "tour.portfolio.addAsset.title",
+    bodyKey: "tour.portfolio.addAsset.body",
+  },
+  {
+    key: "portfolioHoldings",
+    target: "holdings",
+    titleKey: "tour.portfolio.holdings.title",
+    bodyKey: "tour.portfolio.holdings.body",
+  },
+  {
+    key: "portfolioSavingsPlans",
+    target: "savings-plans",
+    titleKey: "tour.portfolio.savingsPlans.title",
+    bodyKey: "tour.portfolio.savingsPlans.body",
+  },
+  {
+    key: "portfolioWatchlist",
+    target: "watchlist",
+    titleKey: "tour.portfolio.watchlist.title",
+    bodyKey: "tour.portfolio.watchlist.body",
+  },
+];
 
 /** Analysis -> Risk tab (components/analysis/risk-view.tsx). */
 export const RISK_TOUR_STEPS: TourStep[] = [
@@ -155,10 +179,28 @@ export const SIMULATION_TOUR_STEPS: TourStep[] = [
     bodyKey: "tour.simulation.withdrawal.body",
   },
   {
+    key: "simulationStrategy",
+    target: "withdrawal-strategy",
+    titleKey: "tour.simulation.strategy.title",
+    bodyKey: "tour.simulation.strategy.body",
+  },
+  {
     key: "simulationModel",
     target: "sim-model",
     titleKey: "tour.simulation.model.title",
     bodyKey: "tour.simulation.model.body",
+  },
+  {
+    key: "simulationStress",
+    target: "stress-scenario",
+    titleKey: "tour.simulation.stress.title",
+    bodyKey: "tour.simulation.stress.body",
+  },
+  {
+    key: "simulationComparison",
+    target: "withdrawal-comparison",
+    titleKey: "tour.simulation.comparison.title",
+    bodyKey: "tour.simulation.comparison.body",
   },
   {
     key: "simulationChart",
@@ -231,8 +273,9 @@ export const ACCOUNTS_TOUR_STEPS: TourStep[] = [
     titleKey: "tour.spending.form.title",
     bodyKey: "tour.spending.form.body",
   },
-  // Skipped on a page with no detected charges: TourOverlay keeps only the
-  // steps whose target is on screen at mount.
+  // Skipped on a page with no detected charges, and also when the
+  // RecurringCard is collapsed (collapsed state persists per browser):
+  // TourOverlay keeps only the steps whose target is on screen at mount.
   {
     key: "spendingRecurring",
     target: "recurring-suggestions",
@@ -264,7 +307,7 @@ export const GOALS_TOUR_STEPS: TourStep[] = [
   },
 ];
 
-/** Debt payoff (/debt, components/debt/debt-view.tsx). */
+/** Pension (/retirement pension tab, components/pension/pension-view.tsx). */
 export const PENSION_TOUR_STEPS: TourStep[] = [
   {
     key: "pensionSummary",
@@ -292,6 +335,7 @@ export const PENSION_TOUR_STEPS: TourStep[] = [
   },
 ];
 
+// Order mirrors the DOM: debt-chart is nested inside the debt-plan card.
 export const DEBT_TOUR_STEPS: TourStep[] = [
   {
     key: "debtTotals",
@@ -300,10 +344,10 @@ export const DEBT_TOUR_STEPS: TourStep[] = [
     bodyKey: "tour.debt.totals.body",
   },
   {
-    key: "debtList",
-    target: "debt-list",
-    titleKey: "tour.debt.list.title",
-    bodyKey: "tour.debt.list.body",
+    key: "debtPlan",
+    target: "debt-plan",
+    titleKey: "tour.debt.plan.title",
+    bodyKey: "tour.debt.plan.body",
   },
   {
     key: "debtChart",
@@ -312,10 +356,10 @@ export const DEBT_TOUR_STEPS: TourStep[] = [
     bodyKey: "tour.debt.chart.body",
   },
   {
-    key: "debtPlan",
-    target: "debt-plan",
-    titleKey: "tour.debt.plan.title",
-    bodyKey: "tour.debt.plan.body",
+    key: "debtList",
+    target: "debt-list",
+    titleKey: "tour.debt.list.title",
+    bodyKey: "tour.debt.list.body",
   },
 ];
 

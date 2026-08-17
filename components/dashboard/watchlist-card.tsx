@@ -186,7 +186,7 @@ function WatchlistCardInner() {
   }
 
   return (
-    <Card>
+    <Card data-tour="watchlist">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("watchlist.title")}</h2>
         <form onSubmit={handleAdd} className="flex items-center gap-2">
