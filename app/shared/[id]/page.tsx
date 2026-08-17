@@ -6,14 +6,16 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { normalizeShare, type SharePayload } from "@/lib/share/share";
+import { isSankeyShare, type SankeySharePayload } from "@/lib/share/sankey-share";
 import { Card } from "@/components/ui/primitives";
 import { SharedPortfolioView } from "@/components/shared/shared-portfolio-view";
+import { SharedSankeyView } from "@/components/shared/shared-sankey-view";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
 export default function SharedByIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t } = useI18n();
-  const [payload, setPayload] = useState<SharePayload | null | "missing">(null);
+  const [payload, setPayload] = useState<SharePayload | SankeySharePayload | null | "missing">(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,7 +23,8 @@ export default function SharedByIdPage({ params }: { params: Promise<{ id: strin
       .then((r) => (r.ok ? r.json() : { found: false }))
       .then((d: { found?: boolean; payload?: unknown }) => {
         if (cancelled) return;
-        const p = d.found ? normalizeShare(d.payload) : null;
+        const raw = d.found ? d.payload : null;
+        const p = isSankeyShare(raw) ? raw : normalizeShare(raw);
         setPayload(p ?? "missing");
       })
       .catch(() => {
@@ -47,5 +50,6 @@ export default function SharedByIdPage({ params }: { params: Promise<{ id: strin
       </Card>
     );
   }
+  if (isSankeyShare(payload)) return <SharedSankeyView payload={payload} />;
   return <SharedPortfolioView payload={payload} />;
 }

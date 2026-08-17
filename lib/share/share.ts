@@ -6,6 +6,8 @@
 // relative data (allocations, returns, TWROR/IRR percentages) — no absolute
 // figures exist in the payload, so the recipient cannot reveal them.
 
+import { isSankeyShare, type SankeySharePayload } from "./sankey-share";
+
 export interface SharePt {
   date: string;
   value: number;
@@ -98,20 +100,30 @@ export function buildSharePayload(
 }
 
 /** Base64url-encode a payload for the URL-fragment fallback. */
-export function encodeShare(payload: SharePayload): string {
+export function encodeShare(payload: SharePayload | SankeySharePayload): string {
   const json = JSON.stringify(payload);
   const b64 = btoa(unescape(encodeURIComponent(json)));
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function decodeShare(fragment: string): SharePayload | null {
+/** Decode a base64url fragment back to its raw object, or null on garbage. */
+function decodeFragment(fragment: string): unknown {
   try {
     const b64 = fragment.replace(/-/g, "+").replace(/_/g, "/");
-    const json = decodeURIComponent(escape(atob(b64)));
-    return normalizeShare(JSON.parse(json));
+    return JSON.parse(decodeURIComponent(escape(atob(b64))));
   } catch {
     return null;
   }
+}
+
+export function decodeShare(fragment: string): SharePayload | null {
+  return normalizeShare(decodeFragment(fragment));
+}
+
+/** Decode a fragment into whichever share kind it holds (portfolio or Sankey). */
+export function decodeShareAny(fragment: string): SharePayload | SankeySharePayload | null {
+  const raw = decodeFragment(fragment);
+  return isSankeyShare(raw) ? raw : normalizeShare(raw);
 }
 
 /** Validate/normalise an arbitrary object into a SharePayload, or null. */

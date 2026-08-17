@@ -8,6 +8,7 @@
 // limit below itself.
 
 import { normalizeShare, validateExpiresAt } from "@/lib/share/share";
+import { normalizeSankeyShare } from "@/lib/share/sankey-share";
 import { supabaseSecret } from "@/lib/server/supabase-keys";
 import { serverFail } from "@/lib/server/error-log";
 
@@ -40,13 +41,16 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
   const b = body as { payload?: unknown; owner?: unknown; mode?: unknown; expiresAt?: unknown };
-  const payload = normalizeShare(b?.payload);
+  // A Sankey cash-flow share is stored in the same table, discriminated by
+  // `mode = "sankey"` (derived from the payload, not trusted from the client).
+  const sankeyPayload = normalizeSankeyShare(b?.payload);
+  const payload = sankeyPayload ?? normalizeShare(b?.payload);
   if (!payload) return Response.json({ error: "invalid payload" }, { status: 400 });
   if (JSON.stringify(payload).length > MAX_PAYLOAD_BYTES) {
     return Response.json({ error: "payload too large" }, { status: 413 });
   }
   const owner = typeof b.owner === "string" ? b.owner : null;
-  const mode = b.mode === "live" ? "live" : "snapshot";
+  const mode = sankeyPayload ? "sankey" : b.mode === "live" ? "live" : "snapshot";
   const expiresAt = validateExpiresAt(b.expiresAt);
   if (expiresAt === undefined) return Response.json({ error: "invalid expiry" }, { status: 400 });
 

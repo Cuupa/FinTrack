@@ -3,6 +3,7 @@
 // (incognito snapshots contain no absolute figures).
 
 import { normalizeShare } from "@/lib/share/share";
+import { normalizeSankeyShare } from "@/lib/share/sankey-share";
 import { supabasePublishable } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export async function GET(
       .select("payload")
       .eq("id", id)
       .maybeSingle();
-    const payload = normalizeShare((data as { payload?: unknown } | null)?.payload);
+    const raw = (data as { payload?: unknown } | null)?.payload;
+    const payload = normalizeSankeyShare(raw) ?? normalizeShare(raw);
     if (!payload) return Response.json({ found: false });
     return Response.json({ found: true, payload });
   } catch {

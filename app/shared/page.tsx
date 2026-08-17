@@ -5,18 +5,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { decodeShare, type SharePayload } from "@/lib/share/share";
+import { decodeShareAny, type SharePayload } from "@/lib/share/share";
+import { isSankeyShare, type SankeySharePayload } from "@/lib/share/sankey-share";
 import { Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SharedPortfolioView } from "@/components/shared/shared-portfolio-view";
+import { SharedSankeyView } from "@/components/shared/shared-sankey-view";
 
 export default function SharedFragmentPage() {
-  const [payload, setPayload] = useState<SharePayload | null | "missing">(null);
+  const [payload, setPayload] = useState<SharePayload | SankeySharePayload | null | "missing">(null);
 
   useEffect(() => {
     void Promise.resolve().then(() => {
       const frag = window.location.hash.replace(/^#/, "");
-      setPayload(frag ? (decodeShare(frag) ?? "missing") : "missing");
+      setPayload(frag ? (decodeShareAny(frag) ?? "missing") : "missing");
     });
   }, []);
 
@@ -44,5 +46,6 @@ export default function SharedFragmentPage() {
       </Card>
     );
   }
+  if (isSankeyShare(payload)) return <SharedSankeyView payload={payload} />;
   return <SharedPortfolioView payload={payload} />;
 }

@@ -63,10 +63,11 @@ export function ShareMenu() {
     setCopied(false);
     // Live shares require an account (the owner keeps them refreshed).
     const isLive = live && !!user;
-    // Creating a new link voids the user's previous ones.
+    // Creating a new link voids the user's previous portfolio ones — but not
+    // their Sankey shares, which are managed separately (mode = "sankey").
     if (user) {
       const supabase = getSupabaseClient();
-      await supabase?.from("shared_portfolios").delete().eq("owner", user.id);
+      await supabase?.from("shared_portfolios").delete().eq("owner", user.id).neq("mode", "sankey");
     }
     const payload = buildSharePayload(source, incognito, isLive);
     const wantExpiry = expiryMode === "at" && expiryAt ? new Date(expiryAt).toISOString() : null;
