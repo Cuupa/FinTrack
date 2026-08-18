@@ -32,6 +32,7 @@ import type {
   PlannedCashflowInput,
   DataStore,
   GoalInput,
+  OwnerTarget,
   PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -175,6 +176,9 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
     case "deleteAccount":
       await inner.deleteAccount(op.id);
       return;
+    case "setAccountOwner":
+      await inner.setAccountOwner(op.id, op.payload as OwnerTarget);
+      return;
     case "setAccountBalances": {
       const { accountId, points } = op.payload as {
         accountId: string;
@@ -285,6 +289,9 @@ async function applyOp(inner: DataStore, op: QueuedMutation): Promise<void> {
       return;
     case "deletePortfolio":
       await inner.deletePortfolio(op.id);
+      return;
+    case "setPortfolioOwner":
+      await inner.setPortfolioOwner(op.id, op.payload as OwnerTarget);
       return;
   }
 }

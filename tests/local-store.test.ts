@@ -496,3 +496,38 @@ describe("LocalStore savings-plan occurrences", () => {
     expect(data.spendingTransactions).toHaveLength(1);
   });
 });
+
+describe("LocalStore owner reassignment", () => {
+  const ACCOUNT_INPUT = {
+    name: "Girokonto",
+    kind: "CHECKING" as const,
+    currency: null,
+    isLiability: false,
+    openingBalance: 0,
+    openedOn: "2026-01-01",
+  };
+
+  it("setAccountOwner to the household marks the account shared; to a member clears it", async () => {
+    const store = new LocalStore();
+    const acct = await store.addAccount(ACCOUNT_INPUT);
+
+    await store.setAccountOwner(acct.id, { kind: "household", householdId: "hh-1" });
+    let data = await store.load();
+    expect(data.accounts[0].shared).toBe(true);
+
+    await store.setAccountOwner(acct.id, { kind: "member", userId: "peer" });
+    data = await store.load();
+    expect(data.accounts[0].shared).toBe(false);
+    expect(data.accounts[0].ownerId).toBe("peer");
+  });
+
+  it("setPortfolioOwner to the household marks the broker shared", async () => {
+    const store = new LocalStore();
+    const p = await store.createPortfolio("Trade Republic");
+
+    await store.setPortfolioOwner(p.id, { kind: "household", householdId: "hh-1" });
+    const data = await store.load();
+    const row = data.portfolios.find((x) => x.id === p.id)!;
+    expect(row.shared).toBe(true);
+  });
+});

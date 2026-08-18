@@ -3,6 +3,7 @@ import {
   collectNotifications,
   notificationsByRoute,
   totalNotifications,
+  kindAvailability,
   NOTIFICATION_KINDS,
   type NotificationInput,
   type NotificationKind,
@@ -189,6 +190,44 @@ describe("collectNotifications", () => {
       }),
     );
     expect(items).toEqual([{ kind: "householdInvite", count: 1 }]);
+  });
+});
+
+describe("kindAvailability", () => {
+  const flags: Record<NotificationKind, readonly string[]> = {
+    householdInvite: ["household"],
+    savingsPlanDue: ["savingsPlans"],
+    cashInterestDue: ["cashInterest"],
+    accountInterestDue: ["accounts", "spending"],
+    contractDue: ["contracts"],
+    plannedDue: ["plannedCashflow"],
+    pensionPremiumDue: ["pension"],
+  };
+
+  it("keeps a received invite countable while the feature is Pro-locked", () => {
+    // Accepting an invite lives outside the ProGate, so the lock must not hide
+    // its count -- only a flag that is off outright does.
+    const available = kindAvailability(flags, () => ({ enabled: true, locked: true }));
+    expect(available.householdInvite).toBe(true);
+    // Every other kind's action sits behind the gate, so the lock still hides it.
+    expect(available.savingsPlanDue).toBe(false);
+    expect(available.contractDue).toBe(false);
+  });
+
+  it("drops even the invite when its flag is off", () => {
+    const available = kindAvailability(flags, (flag) => ({
+      enabled: flag !== "household",
+      locked: false,
+    }));
+    expect(available.householdInvite).toBe(false);
+  });
+
+  it("needs every flag of a multi-flag kind", () => {
+    const available = kindAvailability(flags, (flag) => ({
+      enabled: flag !== "spending",
+      locked: false,
+    }));
+    expect(available.accountInterestDue).toBe(false);
   });
 });
 

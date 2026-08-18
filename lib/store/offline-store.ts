@@ -52,6 +52,7 @@ import type {
   PlannedCashflowInput,
   DataStore,
   GoalInput,
+  OwnerTarget,
   PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -346,6 +347,15 @@ export class OfflineStore implements DataStore {
       await this.inner.deleteAccount(id);
     } catch (err) {
       await this.handleFailure(err, "deleteAccount", id, null);
+    }
+  }
+
+  async setAccountOwner(id: string, target: OwnerTarget): Promise<void> {
+    await this.mirror.setAccountOwner(id, target);
+    try {
+      await this.inner.setAccountOwner(id, target);
+    } catch (err) {
+      await this.handleFailure(err, "setAccountOwner", id, target);
     }
   }
 
@@ -657,6 +667,15 @@ export class OfflineStore implements DataStore {
       await this.inner.deletePortfolio(id);
     } catch (err) {
       await this.handleFailure(err, "deletePortfolio", id, null);
+    }
+  }
+
+  async setPortfolioOwner(id: string, target: OwnerTarget): Promise<void> {
+    await this.mirror.setPortfolioOwner(id, target);
+    try {
+      await this.inner.setPortfolioOwner(id, target);
+    } catch (err) {
+      await this.handleFailure(err, "setPortfolioOwner", id, target);
     }
   }
 

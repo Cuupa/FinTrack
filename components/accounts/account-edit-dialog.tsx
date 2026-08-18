@@ -24,8 +24,10 @@ import { Button, Card } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { OwnerSelect, useOwnerSelectVisible } from "@/components/household/owner-select";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
+import type { OwnerTarget } from "@/lib/store/types";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
@@ -39,9 +41,12 @@ export function AccountEditDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const { data, updateAccount } = usePortfolio();
+  const { data, updateAccount, setAccountOwner } = usePortfolio();
   const { t } = useI18n();
   const base = data.profile.currency;
+  const ownerVisible = useOwnerSelectVisible();
+  // null until the user touches the picker; then the reassignment to apply on save.
+  const [ownerTarget, setOwnerTarget] = useState<OwnerTarget | null>(null);
 
   const [name, setName] = useState(account.name);
   const [kind, setKind] = useState<AccountKind>(account.kind);
@@ -110,6 +115,9 @@ export function AccountEditDialog({
             }
           : { interestFrequency: rate ? interestFrequency : null }),
       });
+      // Owner reassignment is a separate row change (user_id/household_id), not
+      // part of the account patch — apply it only when the picker was touched.
+      if (ownerTarget) await setAccountOwner(account.id, ownerTarget);
       onClose();
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("accounts.edit.error"));
@@ -149,6 +157,24 @@ export function AccountEditDialog({
               options={ACCOUNT_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
             />
           </div>
+          {ownerVisible && (
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium">{t("household.ownerLabel")}</label>
+              <OwnerSelect
+                className="mt-1 w-full"
+                ariaLabel={t("household.ownerLabel")}
+                value={
+                  ownerTarget
+                    ? ownerTarget.kind === "household"
+                      ? { shared: true }
+                      : { ownerId: ownerTarget.userId, shared: false }
+                    : { ownerId: account.ownerId, shared: account.shared }
+                }
+                onChange={setOwnerTarget}
+              />
+              <p className="mt-1 text-xs text-zinc-500">{t("household.ownerHint")}</p>
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium" htmlFor="account-edit-currency">
               {t("accounts.form.currencyLabel")}

@@ -5,7 +5,7 @@
 // page. Per-asset prices are in the native currency; value is in the base
 // currency (so allocation is comparable across currencies).
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
@@ -24,7 +24,7 @@ import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from 
 import { useSort } from "@/components/ui/use-sort";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
-type SortKey = "name" | "owner" | "price" | "value" | "entry" | "profit" | "allocation";
+type SortKey = "name" | "owner" | "portfolio" | "price" | "value" | "entry" | "profit" | "allocation";
 type PastSortKey = "name" | "realizedPL" | "lastTransaction";
 
 const TYPE_FILTERS: (AssetType | "ALL")[] = [
@@ -55,6 +55,40 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
   const { t } = useI18n();
   const { shared, label: ownerLabel } = useOwnerLabel();
   const currency = data.profile.currency;
+
+  // Which broker(s) hold each asset, so two members' A2PKXG (or one member's
+  // same holding split across brokers) are no longer indistinguishable rows.
+  // Derived from the transaction log: an asset row can span several portfolios.
+  const portfoliosById = useMemo(
+    () => new Map(data.portfolios.map((p) => [p.id, p])),
+    [data.portfolios],
+  );
+  const assetPortfolioIds = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const tx of data.transactions) {
+      let set = m.get(tx.assetId);
+      if (!set) m.set(tx.assetId, (set = new Set()));
+      set.add(tx.portfolioId);
+    }
+    return m;
+  }, [data.transactions]);
+  const portfolioLabel = useCallback(
+    (assetId: string): string => {
+      const ids = assetPortfolioIds.get(assetId);
+      if (!ids || ids.size === 0) return "";
+      const names = [...ids]
+        .map((id) => {
+          const p = portfoliosById.get(id);
+          if (!p) return "";
+          const owner = shared ? ownerLabel(p.ownerId, p.shared) : null;
+          return owner ? `${p.name} · ${owner}` : p.name;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+      return names.join(", ");
+    },
+    [assetPortfolioIds, portfoliosById, shared, ownerLabel],
+  );
 
   const allSummaries = useMemo(
     () => summarizeAll(data.assets, data.transactions, valuation),
@@ -113,6 +147,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
     return applySort(list, (r, key) => {
       if (key === "name") return r.h.asset.name;
       if (key === "owner") return ownerLabel(r.h.asset.ownerId) ?? "";
+      if (key === "portfolio") return portfolioLabel(r.h.asset.id);
       // CASH has no per-unit price — sort by what's actually displayed (the
       // position's total value) instead of the constant 1.
       if (key === "price") return r.h.asset.type === "CASH" ? r.h.marketValue : r.h.price;
@@ -121,7 +156,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
       if (key === "profit") return r.profit.abs;
       return r.allocation;
     });
-  }, [holdings, query, typeFilter, applySort, total, data.transactions, timeframe, valuation, ownerLabel]);
+  }, [holdings, query, typeFilter, applySort, total, data.transactions, timeframe, valuation, ownerLabel, portfolioLabel]);
 
   const pager = usePagination(rows);
 
@@ -190,6 +225,11 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                         {ownerLabel(h.asset.ownerId)}
                       </div>
                     )}
+                    {portfolioLabel(h.asset.id) && (
+                      <div className="mt-0.5 truncate text-xs text-zinc-500">
+                        {portfolioLabel(h.asset.id)}
+                      </div>
+                    )}
                     <div className="mt-0.5 text-xs text-zinc-500">
                       {isCash ? (
                         <>
@@ -237,6 +277,9 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                 {t("table.owner")}
               </Th>
             )}
+            <Th sort={sort} sortKey="portfolio" onSort={toggleSort}>
+              {t("table.portfolio")}
+            </Th>
             <Th align="right" sort={sort} sortKey="price" onSort={toggleSort}>
               {t("table.currentPrice")}
             </Th>
@@ -271,6 +314,7 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                   {shared && (
                     <Td className="text-zinc-500">{ownerLabel(h.asset.ownerId) ?? "—"}</Td>
                   )}
+                  <Td className="text-zinc-500">{portfolioLabel(h.asset.id) || "—"}</Td>
                   <Td align="right" className="tabular-nums" {...(isCash ? { "data-private": "" } : {})}>
                     {isCash ? (
                       formatCurrency(h.marketValue, currency)

@@ -189,6 +189,11 @@ export interface Account {
    *  Registered Mode; null/undefined in Guest Mode. Read-only: derived from the
    *  row, never written through the input types. */
   ownerId?: string | null;
+  /** True when this is a joint account owned by the household itself (the DB
+   *  `household_id` is set), not by any single member. Displayed as
+   *  "Gemeinsam". Read-only: reassigned through `setAccountOwner`, never the
+   *  input types. */
+  shared?: boolean;
 }
 
 /**
@@ -801,6 +806,10 @@ export interface Portfolio {
    *  Registered Mode; null/undefined in Guest Mode. Read-only: derived from the
    *  row, never written. */
   ownerId?: string | null;
+  /** True when this is a joint broker owned by the household itself (the DB
+   *  `household_id` is set), not by any single member. Displayed as
+   *  "Gemeinsam". Read-only: reassigned through `setPortfolioOwner`. */
+  shared?: boolean;
 }
 
 export const MAX_PORTFOLIOS = 20;

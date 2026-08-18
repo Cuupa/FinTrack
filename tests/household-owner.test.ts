@@ -33,8 +33,20 @@ describe("resolveOwnerName", () => {
     expect(resolveOwnerName("me", ctx)).toBe("you");
   });
 
-  it("names a peer by their email", () => {
+  it("names a peer by their email when no display name is known", () => {
     expect(resolveOwnerName("peer", ctx)).toBe("peer@example.com");
+  });
+
+  it("prefers a peer's display name over their email", () => {
+    expect(
+      resolveOwnerName("peer", { ...ctx, memberNames: { peer: "Alex Rivera" } }),
+    ).toBe("Alex Rivera");
+  });
+
+  it("still falls back to email when the display name is missing for that id", () => {
+    expect(
+      resolveOwnerName("peer", { ...ctx, memberNames: { me: "Me" } }),
+    ).toBe("peer@example.com");
   });
 
   it("falls back to the generic member label for an unknown id", () => {

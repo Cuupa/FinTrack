@@ -88,6 +88,7 @@ import type {
   DataStore,
   PensionContractInput,
   GoalInput,
+  OwnerTarget,
   PortfolioPatch,
   SavingsPlanInput,
   SimulationCacheEntry,
@@ -101,6 +102,8 @@ interface PortfolioRow {
   id: string;
   name: string;
   user_id?: string | null;
+  // Optional: a DB that predates migration 0131 doesn't return this.
+  household_id?: string | null;
   fee_order_flat?: number | string | null;
   fee_order_free_from?: number | string | null;
   fee_savings_plan?: number | string | null;
@@ -132,7 +135,20 @@ function portfolioFromRow(r: PortfolioRow): Portfolio {
     feeSavingsPlan: r.fee_savings_plan != null ? Number(r.fee_savings_plan) : 0,
     taxAllowance: r.tax_allowance != null ? Number(r.tax_allowance) : null,
     ownerId: r.user_id ?? null,
+    shared: r.household_id != null,
   };
+}
+
+/**
+ * Translate an {@link OwnerTarget} into the `accounts`/`portfolios` column
+ * patch. To a member: point `user_id` at them and clear `household_id`. To the
+ * household: set `household_id` (the joint marker) and leave `user_id` as the
+ * creator/cascade anchor.
+ */
+function ownerUpdate(target: OwnerTarget): Record<string, unknown> {
+  return target.kind === "member"
+    ? { user_id: target.userId, household_id: null }
+    : { household_id: target.householdId };
 }
 
 interface InstrumentEmbed {
@@ -236,6 +252,8 @@ interface AccountRow {
   interest_frequency?: Account["interestFrequency"] | null;
   // Optional: a DB that predates migration 0129 doesn't return this.
   interest_skipped_until?: string | null;
+  // Optional: a DB that predates migration 0131 doesn't return this.
+  household_id?: string | null;
 }
 
 function accountFromRow(r: AccountRow): Account {
@@ -256,6 +274,7 @@ function accountFromRow(r: AccountRow): Account {
     followUpRate: r.follow_up_rate != null ? Number(r.follow_up_rate) : null,
     interestSkippedUntil: r.interest_skipped_until ?? null,
     ownerId: r.user_id ?? null,
+    shared: r.household_id != null,
   };
 }
 
@@ -557,7 +576,7 @@ export class SupabaseStore implements DataStore {
       selectTolerant<PortfolioRow[]>(
         (cols) => this.supabase.from("portfolios").select(cols).order("created_at", { ascending: true }),
         ["id", "name", "user_id"],
-        ["fee_order_flat", "fee_order_free_from", "fee_savings_plan", "tax_allowance"],
+        ["fee_order_flat", "fee_order_free_from", "fee_savings_plan", "tax_allowance", "household_id"],
       ),
       selectTolerant<AssetRow[]>(
         (cols) => this.supabase.from("assets").select(cols),
@@ -604,6 +623,7 @@ export class SupabaseStore implements DataStore {
           "rate_fixed_until",
           "follow_up_rate",
           "interest_skipped_until",
+          "household_id",
         ],
       ),
       this.supabase
@@ -1529,6 +1549,18 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
   }
 
+  async setAccountOwner(id: string, target: OwnerTarget): Promise<void> {
+    // No .eq("user_id", ...): RLS already authorizes editing a peer's / a joint
+    // row, and the whole point here is to change who owns it. Match by id only.
+    const { data, error } = await this.supabase
+      .from("accounts")
+      .update(ownerUpdate(target))
+      .eq("id", id)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new RowNotFoundError(`account ${id} not found`);
+  }
+
   async setAccountBalances(
     accountId: string,
     points: { date: string; balance: number }[],
@@ -2172,6 +2204,18 @@ export class SupabaseStore implements DataStore {
     // No .eq("user_id", ...): RLS permits deleting a household peer's portfolio too.
     const { error } = await this.supabase.from("portfolios").delete().eq("id", id);
     if (error) throw error;
+  }
+
+  async setPortfolioOwner(id: string, target: OwnerTarget): Promise<void> {
+    // No .eq("user_id", ...): RLS authorizes editing a peer's / a joint row,
+    // and reassigning owner is the whole point. Match by id only.
+    const { data, error } = await this.supabase
+      .from("portfolios")
+      .update(ownerUpdate(target))
+      .eq("id", id)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new RowNotFoundError(`portfolio ${id} not found`);
   }
 
   async loadSimulation(hash: string): Promise<SimulationCacheEntry | null> {

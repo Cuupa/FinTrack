@@ -182,7 +182,6 @@ function LoginForm() {
         <h1 className="text-2xl font-semibold">
           {tab === "signin" ? t("login.signIn") : t("login.createAccount")}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">{t("login.subtitle")}</p>
 
         {!authAvailable && (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">

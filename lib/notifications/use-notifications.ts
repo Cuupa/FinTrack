@@ -14,7 +14,7 @@ import {
   collectNotifications,
   notificationsByRoute,
   totalNotifications,
-  NOTIFICATION_KINDS,
+  kindAvailability,
   type NotificationItem,
   type NotificationKind,
 } from "./notifications";
@@ -47,16 +47,10 @@ export function useNotifications(): Notifications {
   const movements = useAccountMovements();
   const todayIso = today();
 
-  const available = useMemo(() => {
-    const out = {} as Record<NotificationKind, boolean>;
-    for (const kind of NOTIFICATION_KINDS) {
-      out[kind] = KIND_FLAGS[kind].every((flag) => {
-        const { enabled, locked } = getFeature(flag);
-        return enabled && !locked;
-      });
-    }
-    return out;
-  }, [getFeature]);
+  const available = useMemo(
+    () => kindAvailability(KIND_FLAGS, getFeature),
+    [getFeature],
+  );
 
   return useMemo(() => {
     const items = collectNotifications({

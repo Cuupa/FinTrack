@@ -13,22 +13,27 @@ import { ownershipVisible, resolveOwnerName } from "./owner";
  */
 export function useOwnerLabel() {
   const { user } = useAuth();
-  const { members, memberEmails, sharingActive } = useHousehold();
+  const { members, memberEmails, memberNames, sharingActive } = useHousehold();
   const { t } = useI18n();
 
   const shared = ownershipVisible(sharingActive, members.length);
 
+  // `isShared` marks a row owned by the household itself (joint): it reads as
+  // "Gemeinsam" regardless of which member created it (the row still carries a
+  // creator in `ownerId`).
   const label = useCallback(
-    (ownerId: string | null | undefined): string | null =>
-      shared
-        ? resolveOwnerName(ownerId, {
-            currentUserId: user?.id ?? null,
-            memberEmails,
-            you: t("household.you"),
-            fallback: t("household.roleMember"),
-          })
-        : null,
-    [shared, user?.id, memberEmails, t],
+    (ownerId: string | null | undefined, isShared = false): string | null => {
+      if (!shared) return null;
+      if (isShared) return t("household.joint");
+      return resolveOwnerName(ownerId, {
+        currentUserId: user?.id ?? null,
+        memberNames,
+        memberEmails,
+        you: t("household.you"),
+        fallback: t("household.roleMember"),
+      });
+    },
+    [shared, user?.id, memberNames, memberEmails, t],
   );
 
   return useMemo(() => ({ shared, label }), [shared, label]);

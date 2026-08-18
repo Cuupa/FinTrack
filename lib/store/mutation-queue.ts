@@ -33,6 +33,7 @@ export type MutationOp =
   | "addAccount"
   | "updateAccount"
   | "deleteAccount"
+  | "setAccountOwner"
   | "setAccountBalances"
   | "setPensionPoints"
   | "setPensionStatements"
@@ -62,7 +63,8 @@ export type MutationOp =
   | "createPortfolio"
   | "renamePortfolio"
   | "updatePortfolio"
-  | "deletePortfolio";
+  | "deletePortfolio"
+  | "setPortfolioOwner";
 
 /** One queued op, matching the shape frozen in OFFLINE_DESIGN.md §2. */
 export interface QueuedMutation {

@@ -22,6 +22,7 @@ import type {
   ContractInput,
   PlannedCashflowInput,
   GoalInput,
+  OwnerTarget,
   PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -100,6 +101,8 @@ interface PortfolioContextValue {
   addAccount(input: AccountInput): Promise<Account>;
   updateAccount(id: string, patch: Partial<AccountInput>): Promise<void>;
   deleteAccount(id: string): Promise<void>;
+  /** Reassign an account to a household member or the household (joint). */
+  setAccountOwner(id: string, target: OwnerTarget): Promise<void>;
   /** Replace-set an account's dated balance readings. */
   setAccountBalances(accountId: string, points: { date: string; balance: number }[]): Promise<void>;
   /** Replace-set the whole statutory pension record, keyed by year. */
@@ -159,9 +162,20 @@ interface PortfolioContextValue {
   renamePortfolio(id: string, name: string): Promise<void>;
   updatePortfolio(id: string, patch: PortfolioPatch): Promise<void>;
   deletePortfolio(id: string): Promise<void>;
+  /** Reassign a broker to a household member or the household (joint). */
+  setPortfolioOwner(id: string, target: OwnerTarget): Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null);
+
+/** In-memory owner patch mirroring the store's write: a member target pins the
+ *  owner and clears the joint flag; the household target sets it. Structural so
+ *  it applies to both {@link Account} and {@link Portfolio}. */
+function ownerPatch(target: OwnerTarget): { ownerId?: string | null; shared: boolean } {
+  return target.kind === "member"
+    ? { ownerId: target.userId, shared: false }
+    : { shared: true };
+}
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -511,6 +525,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           .map((p) => (p.transferAccountId === id ? { ...p, transferAccountId: null } : p)),
         // A savings plan only loses its Verrechnungskonto, never itself.
         savingsPlans: d.savingsPlans.map((p) => (p.accountId === id ? { ...p, accountId: null } : p)),
+      }));
+    },
+    [store],
+  );
+
+  const setAccountOwner = useCallback(
+    async (id: string, target: OwnerTarget) => {
+      await store.setAccountOwner(id, target);
+      const patch = ownerPatch(target);
+      setData((d) => ({
+        ...d,
+        accounts: d.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
       }));
     },
     [store],
@@ -884,6 +910,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [store, reload],
   );
 
+  const setPortfolioOwner = useCallback(
+    async (id: string, target: OwnerTarget) => {
+      await store.setPortfolioOwner(id, target);
+      const patch = ownerPatch(target);
+      setData((d) => ({
+        ...d,
+        portfolios: d.portfolios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+      }));
+    },
+    [store],
+  );
+
   const loadSimulation = useCallback((hash: string) => store.loadSimulation(hash), [store]);
   const saveSimulation = useCallback(
     (entry: SimulationCacheEntry) => store.saveSimulation(entry),
@@ -957,6 +995,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     addAccount,
     updateAccount,
     deleteAccount,
+    setAccountOwner,
     setAccountBalances,
     setPensionPoints,
     setPensionStatements,
@@ -1001,6 +1040,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     renamePortfolio,
     updatePortfolio,
     deletePortfolio,
+    setPortfolioOwner,
   };
 
   return (

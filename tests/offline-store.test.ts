@@ -180,6 +180,10 @@ function makeInner(initial: PortfolioData) {
       calls.push("deleteAccount");
       guard();
     },
+    async setAccountOwner() {
+      calls.push("setAccountOwner");
+      guard();
+    },
     async setAccountBalances() {
       calls.push("setAccountBalances");
       guard();
@@ -251,6 +255,10 @@ function makeInner(initial: PortfolioData) {
     },
     async deletePortfolio() {
       calls.push("deletePortfolio");
+      guard();
+    },
+    async setPortfolioOwner() {
+      calls.push("setPortfolioOwner");
       guard();
     },
     async loadSimulation() {

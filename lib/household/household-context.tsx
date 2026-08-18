@@ -71,6 +71,8 @@ interface HouseholdState {
   household: Household | null;
   members: HouseholdMember[];
   memberEmails: Record<string, string>;
+  /** Display name per member (profile name or OAuth metadata), when known. */
+  memberNames: Record<string, string>;
   /** Invites sent by this household, pending. */
   sentInvites: HouseholdInvite[];
   /** Invites addressed to the signed-in user's own email, pending. */
@@ -106,6 +108,7 @@ const EMPTY_STATE: Omit<HouseholdState, "userId"> = {
   household: null,
   members: [],
   memberEmails: {},
+  memberNames: {},
   sentInvites: [],
   receivedInvites: [],
   sharingActive: true,
@@ -152,8 +155,16 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
 
   const members = (membersRes.data ?? []).map(memberFromRow);
   const memberEmails: Record<string, string> = {};
-  const emailRows = (emailsRes.data ?? []) as { user_id: string; email: string }[];
-  for (const row of emailRows) memberEmails[row.user_id] = row.email;
+  const memberNames: Record<string, string> = {};
+  const emailRows = (emailsRes.data ?? []) as {
+    user_id: string;
+    email: string;
+    display_name?: string | null;
+  }[];
+  for (const row of emailRows) {
+    memberEmails[row.user_id] = row.email;
+    if (row.display_name) memberNames[row.user_id] = row.display_name;
+  }
   const receivedInvites = (receivedRes.data ?? []).map(inviteFromRow);
 
   const own = members.find((m) => m.userId === userId);
@@ -174,6 +185,7 @@ async function loadState(userId: string, email: string | null): Promise<Omit<Hou
     household: householdRes.data ? householdFromRow(householdRes.data) : null,
     members,
     memberEmails,
+    memberNames,
     sentInvites: (sentInvitesRes.data ?? []).map(inviteFromRow),
     receivedInvites,
     // Anything other than an explicit `false` counts as sharing (a DB that
@@ -345,6 +357,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       household: state?.household ?? null,
       members: state?.members ?? [],
       memberEmails: state?.memberEmails ?? {},
+      memberNames: state?.memberNames ?? {},
       sentInvites: state?.sentInvites ?? [],
       receivedInvites: state?.receivedInvites ?? [],
       sharingActive: state?.sharingActive ?? true,

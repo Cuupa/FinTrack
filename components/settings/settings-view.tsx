@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useOwnerLabel } from "@/lib/household/use-owner-label";
+import { OwnerSelect, useOwnerSelectVisible } from "@/components/household/owner-select";
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { SubscriptionCard } from "@/components/settings/subscription-card";
@@ -29,7 +30,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { isStorageFullError } from "@/lib/store/errors";
 import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
 import type { Portfolio } from "@/lib/types";
-import type { PortfolioPatch } from "@/lib/store/types";
+import type { OwnerTarget, PortfolioPatch } from "@/lib/store/types";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK"];
@@ -52,7 +53,7 @@ const TAB_LABEL_KEYS: Record<TabKey, MessageKey> = {
 };
 
 export function SettingsView() {
-  const { data, updateProfile, portfolios, updatePortfolio } = usePortfolio();
+  const { data, updateProfile, portfolios, updatePortfolio, setPortfolioOwner } = usePortfolio();
   const { user, mode, updatePassword, signOut } = useAuth();
   const { t } = useI18n();
   const { shared, label: ownerLabel } = useOwnerLabel();
@@ -434,6 +435,7 @@ export function SettingsView() {
                   portfolio={feePortfolio}
                   baseCurrency={data.profile.currency}
                   onSave={updatePortfolio}
+                  onSetOwner={setPortfolioOwner}
                 />
               </div>
             )}
@@ -478,12 +480,16 @@ function PortfolioFeeRow({
   portfolio,
   baseCurrency,
   onSave,
+  onSetOwner,
 }: {
   portfolio: Portfolio;
   baseCurrency: string;
   onSave: (id: string, patch: PortfolioPatch) => Promise<void>;
+  onSetOwner: (id: string, target: OwnerTarget) => Promise<void>;
 }) {
   const { t } = useI18n();
+  const ownerVisible = useOwnerSelectVisible();
+  const [ownerTarget, setOwnerTarget] = useState<OwnerTarget | null>(null);
   const [flat, setFlat] = useState(formatInputDecimal(portfolio.feeOrderFlat ?? 0));
   const [freeFrom, setFreeFrom] = useState(
     portfolio.feeOrderFreeFrom != null ? formatInputDecimal(portfolio.feeOrderFreeFrom) : "",
@@ -512,6 +518,9 @@ function PortfolioFeeRow({
         taxAllowance:
           taxAllowanceNum != null && Number.isFinite(taxAllowanceNum) ? taxAllowanceNum : null,
       });
+      // Owner reassignment is a distinct row change (user_id/household_id),
+      // applied only when the picker was touched.
+      if (ownerTarget) await onSetOwner(portfolio.id, ownerTarget);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -523,6 +532,24 @@ function PortfolioFeeRow({
 
   return (
     <div>
+      {ownerVisible && (
+        <div className="mb-3">
+          <Field label={t("household.ownerLabel")} hint={t("household.ownerHint")}>
+            <OwnerSelect
+              className="w-full"
+              ariaLabel={t("household.ownerLabel")}
+              value={
+                ownerTarget
+                  ? ownerTarget.kind === "household"
+                    ? { shared: true }
+                    : { ownerId: ownerTarget.userId, shared: false }
+                  : { ownerId: portfolio.ownerId, shared: portfolio.shared }
+              }
+              onChange={setOwnerTarget}
+            />
+          </Field>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("settings.fees.orderFlat")}>
           <div className="relative">

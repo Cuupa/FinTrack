@@ -50,6 +50,16 @@ export interface PortfolioPatch {
   taxAllowance?: number | null;
 }
 
+/**
+ * Reassignment target for a household-ownable entity (account or portfolio):
+ * a specific household member, or the household itself (joint / "Gemeinsam").
+ * Only meaningful inside a sharing household; a no-op in Guest Mode, where
+ * there is no ownership to reassign.
+ */
+export type OwnerTarget =
+  | { kind: "member"; userId: string }
+  | { kind: "household"; householdId: string };
+
 /** A cached Monte Carlo run, keyed by a hash of its (seed-independent) params. */
 export interface SimulationCacheEntry {
   hash: string;
@@ -103,6 +113,12 @@ export interface DataStore {
   updateAccount(id: string, patch: Partial<AccountInput>): Promise<void>;
   /** Deletes the account and every balance reading that referenced it. */
   deleteAccount(id: string): Promise<void>;
+  /**
+   * Reassigns the account to a household member or to the household itself
+   * (joint / "Gemeinsam"). Only the row's owner changes -- every balance
+   * reading and booking stays attached. No-op in Guest Mode.
+   */
+  setAccountOwner(id: string, target: OwnerTarget): Promise<void>;
   /**
    * Replace-set the dated balance readings for one account (idempotent,
    * replay-safe like `setAssetValuations`). The given array becomes exactly
@@ -171,6 +187,11 @@ export interface DataStore {
   updatePortfolio(id: string, patch: PortfolioPatch): Promise<void>;
   /** Deletes the portfolio, its transactions, and assets held only in it. */
   deletePortfolio(id: string): Promise<void>;
+  /**
+   * Reassigns the broker to a household member or to the household itself
+   * (joint / "Gemeinsam"). Only the row's owner changes. No-op in Guest Mode.
+   */
+  setPortfolioOwner(id: string, target: OwnerTarget): Promise<void>;
   /** Reuse a previously computed simulation with identical params, or null. */
   loadSimulation(hash: string): Promise<SimulationCacheEntry | null>;
   saveSimulation(entry: SimulationCacheEntry): Promise<void>;

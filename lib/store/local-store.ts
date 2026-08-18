@@ -22,6 +22,7 @@ import type {
   PlannedCashflowInput,
   DataStore,
   GoalInput,
+  OwnerTarget,
   PensionContractInput,
   PortfolioPatch,
   SavingsPlanInput,
@@ -34,6 +35,18 @@ import type {
 import { newId } from "./types";
 
 const STORAGE_KEY = "fintrack:portfolio:v1";
+
+/**
+ * The in-memory owner patch for an account/portfolio. Guest Mode has no
+ * household, so these methods are never reached from the UI, but the field is
+ * still kept consistent so an exported/re-imported blob round-trips: a member
+ * target clears the joint flag, the household target sets it.
+ */
+function applyOwner(target: OwnerTarget): { ownerId?: string | null; shared: boolean } {
+  return target.kind === "member"
+    ? { ownerId: target.userId, shared: false }
+    : { shared: true };
+}
 const SIM_KEY = "fintrack:simulations:v1";
 const IMPORT_KEY = "fintrack:imported:v1";
 const IMPORT_SPENDING_KEY = "fintrack:imported-spending:v1";
@@ -413,6 +426,14 @@ export class LocalStore implements DataStore {
     }
   }
 
+  async setAccountOwner(id: string, target: OwnerTarget) {
+    const data = this.read();
+    const idx = data.accounts.findIndex((a) => a.id === id);
+    if (idx < 0) return;
+    data.accounts[idx] = { ...data.accounts[idx], ...applyOwner(target) };
+    this.write(data);
+  }
+
   async deleteAccount(id: string) {
     const data = this.read();
     data.accounts = data.accounts.filter((a) => a.id !== id);
@@ -756,6 +777,14 @@ export class LocalStore implements DataStore {
       ...(patch.feeSavingsPlan !== undefined ? { feeSavingsPlan: patch.feeSavingsPlan } : {}),
       ...(patch.taxAllowance !== undefined ? { taxAllowance: patch.taxAllowance } : {}),
     };
+    this.write(data);
+  }
+
+  async setPortfolioOwner(id: string, target: OwnerTarget) {
+    const data = this.read();
+    const idx = data.portfolios.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    data.portfolios[idx] = { ...data.portfolios[idx], ...applyOwner(target) };
     this.write(data);
   }
 

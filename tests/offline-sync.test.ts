@@ -231,6 +231,11 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
       data.accounts = data.accounts.filter((a) => a.id !== id);
       data.accountBalances = data.accountBalances.filter((b) => b.accountId !== id);
     },
+    async setAccountOwner(id, target) {
+      calls.push(`setAccountOwner:${id}`);
+      maybeFail();
+      void target;
+    },
     async setAccountBalances(accountId, points) {
       calls.push(`setAccountBalances:${accountId}`);
       maybeFail();
@@ -318,6 +323,11 @@ function makeInner(initial: PortfolioData, opts: InnerOpts = {}) {
     async deletePortfolio(id) {
       calls.push(`deletePortfolio:${id}`);
       maybeFail();
+    },
+    async setPortfolioOwner(id, target) {
+      calls.push(`setPortfolioOwner:${id}`);
+      maybeFail();
+      void target;
     },
     async loadSimulation() {
       calls.push("loadSimulation");

@@ -437,7 +437,6 @@ export const en = {
   // Login / register page
   "login.signIn": "Sign in",
   "login.createAccount": "Create account",
-  "login.subtitle": "Registered Mode syncs your portfolio across devices.",
   "login.authUnavailablePrefix": "Authentication is not configured. Add",
   "login.authUnavailableMiddle": "and",
   "login.authUnavailableSuffix":
@@ -717,6 +716,7 @@ export const en = {
   "table.profit": "Profit",
   "table.allocation": "Allocation",
   "table.owner": "Owner",
+  "table.portfolio": "Portfolio",
   "table.noMatch": "No holdings match your filter.",
   "table.pastHoldings": "Past holdings",
   "table.lastTransaction": "Last transaction",
@@ -1827,6 +1827,9 @@ export const en = {
   "household.you": "you",
   "household.roleOwner": "Owner",
   "household.roleMember": "Member",
+  "household.joint": "Joint",
+  "household.ownerLabel": "Owner",
+  "household.ownerHint": "Joint means it belongs to the household, not one person.",
   "household.remove": "Remove",
   "household.removeConfirm": "Remove {email} from the household? They will lose access to shared accounts.",
   "household.leave": "Leave household",
@@ -2807,7 +2810,6 @@ export const de: Partial<Record<MessageKey, string>> = {
   // Login / register page
   "login.signIn": "Anmelden",
   "login.createAccount": "Konto erstellen",
-  "login.subtitle": "Der registrierte Modus synchronisiert dein Portfolio geräteübergreifend.",
   "login.authUnavailablePrefix": "Authentifizierung ist nicht konfiguriert. Füge",
   "login.authUnavailableMiddle": "und",
   "login.authUnavailableSuffix":
@@ -3083,6 +3085,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "table.profit": "Gewinn",
   "table.allocation": "Gewichtung",
   "table.owner": "Inhaber:in",
+  "table.portfolio": "Depot",
   "table.noMatch": "Keine Positionen entsprechen deinem Filter.",
   "table.pastHoldings": "Frühere Positionen",
   "table.lastTransaction": "Letzte Transaktion",
@@ -4201,6 +4204,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "household.you": "du",
   "household.roleOwner": "Inhaber:in",
   "household.roleMember": "Mitglied",
+  "household.joint": "Gemeinsam",
+  "household.ownerLabel": "Inhaber:in",
+  "household.ownerHint": "Gemeinsam heißt: gehört dem Haushalt, nicht einer Person.",
   "household.remove": "Entfernen",
   "household.removeConfirm": "{email} aus dem Haushalt entfernen? Diese Person verliert den Zugriff auf geteilte Konten.",
   "household.leave": "Haushalt verlassen",
@@ -5180,7 +5186,6 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Login / register page
   "login.signIn": "Iniciar sesión",
   "login.createAccount": "Crear cuenta",
-  "login.subtitle": "El modo registrado sincroniza tu cartera entre dispositivos.",
   "login.authUnavailablePrefix": "La autenticación no está configurada. Añade",
   "login.authUnavailableMiddle": "y",
   "login.authUnavailableSuffix":
@@ -5457,6 +5462,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "table.profit": "Ganancia",
   "table.allocation": "Distribución",
   "table.owner": "Titular",
+  "table.portfolio": "Cartera",
   "table.noMatch": "Ninguna posición coincide con tu filtro.",
   "table.pastHoldings": "Posiciones pasadas",
   "table.lastTransaction": "Última transacción",
@@ -6570,6 +6576,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "household.you": "tú",
   "household.roleOwner": "Propietario/a",
   "household.roleMember": "Miembro",
+  "household.joint": "Conjunta",
+  "household.ownerLabel": "Titular",
+  "household.ownerHint": "Conjunta significa que pertenece al hogar, no a una persona.",
   "household.remove": "Eliminar",
   "household.removeConfirm": "¿Eliminar a {email} del hogar? Perderá el acceso a las cuentas compartidas.",
   "household.leave": "Salir del hogar",

@@ -269,7 +269,7 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
     return applySort(withValues, (r, key) => {
       if (key === "name") return r.account.name;
       if (key === "kind") return kindLabel(r.account.kind);
-      if (key === "owner") return ownerLabel(r.account.ownerId) ?? "";
+      if (key === "owner") return ownerLabel(r.account.ownerId, r.account.shared) ?? "";
       return r.signed;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -324,7 +324,7 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
                     </Td>
                     <Td className="text-zinc-500">{kindLabel(account.kind)}</Td>
                     {shared && (
-                      <Td className="text-zinc-500">{ownerLabel(account.ownerId) ?? "—"}</Td>
+                      <Td className="text-zinc-500">{ownerLabel(account.ownerId, account.shared) ?? "—"}</Td>
                     )}
                     <Td
                       align="right"

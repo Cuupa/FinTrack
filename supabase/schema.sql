@@ -702,6 +702,16 @@ create index if not exists household_invites_email_idx
 create index if not exists household_invites_household_id_idx
   on public.household_invites (household_id);
 
+-- Household ownership for accounts and portfolios (migration 0131): set = the
+-- row belongs to the whole household ("Gemeinsam"), null = owned by user_id.
+-- Kept here rather than beside each table because the FK needs households to
+-- exist first. `on delete set null` reverts a row to individual ownership if
+-- the household dissolves. user_id stays the creator / cascade anchor.
+alter table public.accounts add column if not exists household_id uuid references public.households (id) on delete set null;
+alter table public.portfolios add column if not exists household_id uuid references public.households (id) on delete set null;
+create index if not exists accounts_household_id_idx on public.accounts (household_id);
+create index if not exists portfolios_household_id_idx on public.portfolios (household_id);
+
 -- SECURITY DEFINER helpers so per-table RLS policies (accounts today, more
 -- tables in later rounds) can extend "own row" to "own row OR a household
 -- peer's row" without those policies needing their own read access to
@@ -740,11 +750,19 @@ grant execute on function public.is_household_owner(uuid) to authenticated;
 -- disclosure -- they already know each other's email from the invite),
 -- never the full user list.
 create or replace function public.household_member_emails()
-returns table (user_id uuid, email text)
+returns table (user_id uuid, email text, display_name text)
 language sql stable security definer set search_path = public, auth as $$
-  select hm.user_id, u.email
+  select
+    hm.user_id,
+    u.email,
+    coalesce(
+      p.display_name,
+      u.raw_user_meta_data->>'full_name',
+      u.raw_user_meta_data->>'name'
+    ) as display_name
   from public.household_members hm
   join auth.users u on u.id = hm.user_id
+  left join public.profiles p on p.id = hm.user_id
   where hm.household_id = public.my_household_id();
 $$;
 grant execute on function public.household_member_emails() to authenticated;
@@ -2027,6 +2045,38 @@ returns setof uuid language sql stable security definer set search_path = public
   where public.household_sharing_enabled(mine.household_id);
 $$;
 grant execute on function public.household_peer_ids() to authenticated;
+
+-- Household-owned accounts/portfolios (migration 0131): extend the plain
+-- policies above so a member also reaches a row owned by their own household
+-- (household_id = my_household_id()). Re-created HERE, after
+-- household_sharing_active() exists, and gated by it: a joint row created by a
+-- peer must vanish again once the household drops back to free, exactly as the
+-- user_id/peer clause does (household_peer_ids() collapses to self then).
+drop policy if exists "own accounts" on public.accounts;
+create policy "own accounts" on public.accounts
+  for all using (
+    auth.uid() = user_id
+    or user_id in (select public.household_peer_ids())
+    or (household_id = public.my_household_id() and public.household_sharing_active())
+  )
+  with check (
+    auth.uid() = user_id
+    or user_id in (select public.household_peer_ids())
+    or (household_id = public.my_household_id() and public.household_sharing_active())
+  );
+
+drop policy if exists "own portfolios" on public.portfolios;
+create policy "own portfolios" on public.portfolios
+  for all using (
+    auth.uid() = user_id
+    or user_id in (select public.household_peer_ids())
+    or (household_id = public.my_household_id() and public.household_sharing_active())
+  )
+  with check (
+    auth.uid() = user_id
+    or user_id in (select public.household_peer_ids())
+    or (household_id = public.my_household_id() and public.household_sharing_active())
+  );
 
 -- Joining needs Pro somewhere too, otherwise a free pair sits in a household
 -- that shares nothing and looks broken. Either side may carry it: the

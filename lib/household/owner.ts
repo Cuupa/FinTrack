@@ -13,13 +13,15 @@ export function ownershipVisible(sharingActive: boolean, memberCount: number): b
 
 /**
  * The display name for an owner id: the current user reads as "you", a peer as
- * their email, and an unknown id (or missing owner) as the generic member
- * fallback. Returns null when there is no owner to attribute (guest data).
+ * their display name (falling back to email, then the generic member label),
+ * and a missing owner as null (guest data). A real person's name beats their
+ * email address wherever we know it.
  */
 export function resolveOwnerName(
   ownerId: string | null | undefined,
   ctx: {
     currentUserId: string | null;
+    memberNames?: Record<string, string>;
     memberEmails: Record<string, string>;
     you: string;
     fallback: string;
@@ -27,5 +29,5 @@ export function resolveOwnerName(
 ): string | null {
   if (!ownerId) return null;
   if (ownerId === ctx.currentUserId) return ctx.you;
-  return ctx.memberEmails[ownerId] ?? ctx.fallback;
+  return ctx.memberNames?.[ownerId] ?? ctx.memberEmails[ownerId] ?? ctx.fallback;
 }

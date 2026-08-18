@@ -35,6 +35,7 @@ export function HouseholdView() {
     household,
     members,
     memberEmails,
+    memberNames,
     sentInvites,
     receivedInvites,
     loading,
@@ -180,7 +181,7 @@ export function HouseholdView() {
               {members.map((m) => (
                 <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="truncate">
-                    {memberEmails[m.userId] ?? m.userId}
+                    {memberNames[m.userId] ?? memberEmails[m.userId] ?? m.userId}
                     {m.userId === user?.id && ` (${t("household.you")})`}
                     {" · "}
                     {t(m.role === "owner" ? "household.roleOwner" : "household.roleMember")}

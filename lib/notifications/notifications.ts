@@ -63,6 +63,37 @@ export const NOTIFICATION_ROUTES: Record<NotificationKind, string> = {
   pensionPremiumDue: "/retirement",
 };
 
+// Normally a Pro-locked kind is dropped: its review dialog sits behind the
+// ProGate, so a count would point at a teaser the page can't honour. A received
+// household invite is the exception -- accepting it is how you JOIN a household
+// someone else pays for, so that card renders OUTSIDE the ProGate (see
+// household-view.tsx) and stays actionable while the feature is locked. For
+// these kinds only the flag's visibility gates the count, never the plan lock.
+export const ACTIONABLE_WHILE_LOCKED: ReadonlySet<NotificationKind> = new Set<NotificationKind>([
+  "householdInvite",
+]);
+
+/**
+ * Which kinds may contribute, from each flag's `{enabled, locked}` state. A
+ * kind needs every one of its flags visible; a plan lock additionally hides it
+ * unless the kind's action survives the lock (`ACTIONABLE_WHILE_LOCKED`).
+ * Generic over the flag string so the pure core never imports the flag registry.
+ */
+export function kindAvailability<F extends string>(
+  kindFlags: Record<NotificationKind, readonly F[]>,
+  resolve: (flag: F) => { enabled: boolean; locked: boolean },
+): Record<NotificationKind, boolean> {
+  const out = {} as Record<NotificationKind, boolean>;
+  for (const kind of NOTIFICATION_KINDS) {
+    const lockHides = !ACTIONABLE_WHILE_LOCKED.has(kind);
+    out[kind] = kindFlags[kind].every((flag) => {
+      const { enabled, locked } = resolve(flag);
+      return enabled && (!lockHides || !locked);
+    });
+  }
+  return out;
+}
+
 export interface NotificationItem {
   kind: NotificationKind;
   /** Always > 0 — a zero-count kind is dropped, never emitted. */
