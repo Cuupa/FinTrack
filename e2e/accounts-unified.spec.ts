@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import {
+  bookTransaction,
+  dismissTour,
+  openAddAccountModal,
+  submitAddAccountModal,
+} from "./helpers";
 
 // /accounts absorbed /spending in round 28: one page for an account and the
 // bookings against it, shaped like /portfolio. What only the wiring can show is
@@ -23,13 +28,7 @@ async function book(
   payee: string,
   amount: string,
 ) {
-  const form = page.locator('[data-tour="spending-form"]');
-  await form.getByRole("button", { name: "Account" }).click();
-  await page.getByRole("option", { name: account }).click();
-  await form.locator("#spending-amount").fill(amount);
-  await form.locator("#spending-payee").fill(payee);
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
-  await expect(form.locator("#spending-payee")).toHaveValue("");
+  await bookTransaction(page, { account, payee, amount });
 }
 
 test("the page carries accounts, what recurs and what was booked", async ({ page }) => {
@@ -37,7 +36,11 @@ test("the page carries accounts, what recurs and what was booked", async ({ page
 
   const headings = page.locator("h2");
   await expect(headings.filter({ hasText: "Your accounts" })).toHaveCount(1);
-  await expect(headings.filter({ hasText: "Recurring" })).toHaveCount(1);
+  // The recurring card's heading is its collapse toggle, a button rather than a
+  // plain h2.
+  await expect(
+    page.locator('[data-tour="recurring-card"]').getByRole("button", { name: "Recurring" }),
+  ).toBeVisible();
   await expect(headings.filter({ hasText: "Bookings" })).toHaveCount(1);
 
   // The add-account form is behind the header button, not a permanent card.

@@ -26,6 +26,9 @@ test.describe("export (Guest Mode)", () => {
   test("CSV export downloads a FinTrack export file", async ({ page }) => {
     await openDashboard(page);
     await addOtherAsset(page, "Vienna Apartment", "300000");
+    // Seeding the first holding makes the portfolio tour auto-open over the
+    // header, where it would swallow the Export click.
+    await dismissTour(page);
 
     const { download, content } = await downloadExport(page, "Download CSV");
     expect(download.suggestedFilename()).toMatch(/^fintrack-.*\.csv$/);

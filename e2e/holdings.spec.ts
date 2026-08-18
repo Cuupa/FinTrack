@@ -52,7 +52,9 @@ test.describe("asset detail (Guest Mode)", () => {
     await page.getByLabel("Group name").fill("Strategy");
     await page.getByLabel("Group name").press("Enter");
 
-    // Group now exists: type a value and add the tag.
+    // The value controls sit behind the "+" toggle once a group exists; the
+    // toggle and the submit share the "+ Tag" name but only one is on screen.
+    await page.getByRole("button", { name: "+ Tag" }).click();
     await page.getByLabel("Value…").fill("core");
     await page.getByRole("button", { name: "+ Tag" }).click();
 

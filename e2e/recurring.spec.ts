@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import {
+  dismissTour,
+  openAddAccountModal,
+  openEntryMask,
+  submitAddAccountModal,
+} from "./helpers";
 
 // Recurring payments (/spending, flag `contracts`) in Guest Mode, after the
 // separate contract register was removed AND the card's own "add" button went
@@ -29,11 +34,12 @@ async function addRecurring(
   amount: string,
   startDate?: string,
 ) {
-  const form = page.locator('[data-tour="spending-form"]');
+  const form = await openEntryMask(page);
   await form.locator("#spending-recurring").click();
   await form.locator("#spending-amount").fill(amount);
   await form.locator("#spending-payee").fill(name);
-  if (startDate) await form.locator("#spending-date").fill(startDate);
+  // The date field is a datetime-local; a date-only value is malformed.
+  if (startDate) await form.locator("#spending-date").fill(`${startDate}T09:00`);
   await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
 }
 
@@ -81,11 +87,12 @@ test("changing a booked recurring payment asks which payments it applies to", as
 
   // Promoting a booking is the path that still produces a CONTRACT, which is
   // the entity that carries booked payments and therefore the scope question.
-  const form = page.locator('[data-tour="spending-form"]');
+  const form = await openEntryMask(page);
   await form.locator("#spending-amount").fill("30");
   await form.locator("#spending-payee").fill("Gym");
-  await form.locator("#spending-date").fill("2026-01-05");
+  await form.locator("#spending-date").fill("2026-01-05T09:00");
   await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   const ledger = page.locator('[data-tour="spending-table"]');
   await ledger
@@ -97,16 +104,15 @@ test("changing a booked recurring payment asks which payments it applies to", as
 
   await expect(card.locator("tbody tr").filter({ hasText: "Gym" })).toHaveCount(1);
 
-  // Inline edit on the row lands straight in the editor on its own page.
-  await card
-    .locator("tbody tr")
-    .filter({ hasText: "Gym" })
-    .getByRole("button", { name: "Edit", exact: true })
-    .click();
-  const editor = page.getByRole("dialog");
-  await expect(editor.locator("#contract-amount")).toBeVisible();
-  await editor.locator("#contract-amount").fill("45");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  // The scope question lives on the entry's OWN page: the inline edit on the
+  // card saves straight through, the detail-page editor is the one that asks.
+  await card.locator("tbody tr").filter({ hasText: "Gym" }).getByRole("link", { name: "Gym" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Gym" })).toBeVisible();
+  // The editor is behind the header's Edit button (the row-level icons edit a
+  // booked transaction, so .first() takes the header one).
+  await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+  await page.locator("#contract-amount").fill("45");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
 
   // The question, and the answer that rewrites what was booked.
   const scope = page.getByRole("dialog").filter({ hasText: "Which payments does the change" });
@@ -117,7 +123,7 @@ test("changing a booked recurring payment asks which payments it applies to", as
   await expect(page.locator("tbody tr").filter({ hasText: "Gym" }).first()).toContainText("45");
 });
 
-test("a recurring entry's page links back to income & spending", async ({ page }) => {
+test("a recurring entry's page links back to accounts & bookings", async ({ page }) => {
   await seedAccount(page);
   await page.goto("/spending");
   await dismissTour(page);
@@ -127,8 +133,10 @@ test("a recurring entry's page links back to income & spending", async ({ page }
 
   await card.getByRole("link", { name: "Spotify" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Spotify" })).toBeVisible();
-  await page.getByRole("link", { name: /Back to income & spending/ }).click();
-  await expect(page).toHaveURL(/\/spending$/);
+  // The back link (distinct from the sidebar nav entry) points at /spending,
+  // which redirects onto the merged page.
+  await page.getByRole("link", { name: "← Accounts & Bookings" }).click();
+  await expect(page).toHaveURL(/\/accounts$/);
 });
 
 test("the retired /contracts route is gone", async ({ page }) => {
@@ -142,14 +150,14 @@ test("pausing a recurring entry stops its due bookings until it is resumed", asy
   await dismissTour(page);
   const card = page.locator('[data-tour="recurring-card"]');
 
-  // Backdated, so it is already due and the review list has something in it.
+  // Backdated, so it is already due and the review notice shows its button.
   await addRecurring(page, "Gym", "30", "2024-01-15");
   const row = card.locator("tbody tr").filter({ hasText: "Gym" }).first();
-  await expect(card.getByRole("heading", { name: /^Due/ })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Review" })).toBeVisible();
 
   await row.getByRole("button", { name: "Pause" }).click({ force: true });
   await expect(row).toContainText("paused");
-  await expect(card.getByRole("heading", { name: /^Due/ })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Review" })).toHaveCount(0);
 
   // Survives a reload: the pause is stored, not just view state.
   await page.reload();
@@ -159,5 +167,7 @@ test("pausing a recurring entry stops its due bookings until it is resumed", asy
 
   await after.getByRole("button", { name: "Resume" }).click({ force: true });
   await expect(after).not.toContainText("paused");
-  await expect(page.locator('[data-tour="recurring-card"]').getByRole("heading", { name: /^Due/ })).toBeVisible();
+  await expect(
+    page.locator('[data-tour="recurring-card"]').getByRole("button", { name: "Review" }),
+  ).toBeVisible();
 });

@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import {
+  bookTransaction,
+  dismissTour,
+  openAddAccountModal,
+  submitAddAccountModal,
+} from "./helpers";
 
 // The overview is not a depot report (owner call): four of the hero's six
 // figures used to be securities-only, on a page that also answers for
@@ -23,20 +28,10 @@ async function seed(page: import("@playwright/test").Page) {
 
   await page.goto("/spending");
   await dismissTour(page);
-  const form = page.locator('[data-tour="spending-form"]');
 
   // 3000 in, 1200 out in one month -> a savings rate of exactly 60%.
-  await form.getByRole("button", { name: "Income", exact: true }).click();
-  await form.locator("#spending-amount").fill("3000");
-  await form.locator("#spending-payee").fill("Salary");
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
-  await expect(form.locator("#spending-payee")).toHaveValue("");
-
-  await form.getByRole("button", { name: "Expense", exact: true }).click();
-  await form.locator("#spending-amount").fill("1200");
-  await form.locator("#spending-payee").fill("Rent");
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
-  await expect(form.locator("#spending-payee")).toHaveValue("");
+  await bookTransaction(page, { type: "Income", payee: "Salary", amount: "3000" });
+  await bookTransaction(page, { type: "Expense", payee: "Rent", amount: "1200" });
 }
 
 test("the overview leads with everyday money, the portfolio page with the depot", async ({

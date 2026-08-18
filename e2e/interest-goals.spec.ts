@@ -1,11 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { addOtherAsset, dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import {
+  addOtherAsset,
+  dismissTour,
+  openAddAccountModal,
+  openEntryMask,
+  submitAddAccountModal,
+} from "./helpers";
 
 // Wiring the unit tests can't see: an asset account's rate actually growing its
 // balance, a goal tracking one position, and the booking form's recurring
 // switch flipping the form into "recurring entry" mode.
 
-test("an asset account's interest rate grows its balance", async ({ page }) => {
+test("an asset account's booked interest grows its balance", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
   await openAddAccountModal(page);
@@ -15,9 +21,15 @@ test("an asset account's interest rate grows its balance", async ({ page }) => {
   await page.locator("#account-interest").fill("3");
   await submitAddAccountModal(page);
 
-  const row = page.locator("table tbody tr").first();
-  await expect(row).toContainText("Tagesgeld");
+  const row = page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Tagesgeld" });
   await expect(row).toContainText("3% p.a.");
+
+  // Credit interest waits for review now (a liability's books itself); booking
+  // the accrued interest is what finally moves the balance past 10,000.
+  const card = page.locator('[data-tour="recurring-card"]');
+  await card.getByRole("button", { name: "Review" }).click();
+  await card.getByRole("button", { name: /^Book \d/ }).click();
+
   const balance = await row.locator("td").nth(2).innerText();
   expect(Number(balance.replace(/[^\d.]/g, ""))).toBeGreaterThan(10000);
 });
@@ -30,7 +42,9 @@ test("a goal can track a single position", async ({ page }) => {
   await page.goto("/goals");
   await dismissTour(page);
   await page.getByRole("button", { name: /Track progress with/i }).click();
-  await page.getByRole("option", { name: /Position: MetaTest/i }).click();
+  // The picker groups holdings under "Positions"; the option itself is the bare
+  // asset name, while the saved goal row reads "Position: MetaTest".
+  await page.getByRole("option", { name: "MetaTest", exact: true }).click();
   await page.locator("#goal-name").fill("Meta 2k");
   await page.locator("#goal-target").fill("2000");
   await page.getByRole("button", { name: "Add goal", exact: true }).click();
@@ -49,9 +63,10 @@ test("the recurring switch turns a booking into a recurring entry", async ({ pag
 
   await page.goto("/spending");
   await dismissTour(page);
-  const toggle = page.getByRole("switch").first();
+  const form = await openEntryMask(page);
+  const toggle = form.getByRole("switch").first();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByRole("button", { name: /Add recurring entry/i })).toBeVisible();
+  await expect(form.getByRole("button", { name: /Add recurring entry/i })).toBeVisible();
 });

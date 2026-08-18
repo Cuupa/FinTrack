@@ -9,6 +9,9 @@ test.describe("simulation (Guest Mode)", () => {
   test("runs a Monte Carlo simulation and renders an outcome", async ({ page }) => {
     await openDashboard(page);
     await addOtherAsset(page, "Vienna Apartment", "300000");
+    // Seeding the first holding auto-opens the portfolio tour, whose overlay
+    // would swallow the sidebar click.
+    await dismissTour(page);
 
     await page.getByRole("link", { name: /^Simulation$/ }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Simulation" })).toBeVisible();

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import { bookTransaction, dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
 
 // Liabilities (/debt, flag `debtPayoff`) in Guest Mode. The wiring worth
 // pinning is the payoff plan reacting to its two what-if levers: the extra
@@ -49,11 +49,9 @@ test("a balance is read as repayment against the original loan sum", async ({ pa
   await page.locator("#account-opened").fill("2019-04-01");
   await submitAddAccountModal(page);
 
-  const row = page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Old mortgage" });
-  await row.getByRole("button", { name: "Balances" }).click();
-  await page.locator("#balance-value").fill("218000");
-  await page.getByRole("button", { name: "Add balance", exact: true }).click();
-  await page.keyboard.press("Escape");
+  // Balances come from the journal now: an 82,000 repayment booked against the
+  // mortgage takes the 300,000 opening down to 218,000 left.
+  await bookTransaction(page, { type: "Income", payee: "Repayment", amount: "82000" });
 
   await page.goto("/debt");
   await dismissTour(page);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import { dismissTour, openAddAccountModal, openEntryMask, submitAddAccountModal } from "./helpers";
 
 // Planned income & expenses (flag `plannedCashflow`) in Guest Mode.
 //
@@ -35,12 +35,14 @@ async function addRecurring(
 ) {
   await page.goto("/spending");
   await dismissTour(page);
-  if (income) await page.getByRole("button", { name: "Income", exact: true }).click();
-  await page.locator("#spending-recurring").click();
-  await page.locator("#spending-amount").fill(amount);
-  await page.locator("#spending-payee").fill(name);
-  await page.locator("#spending-date").fill(date);
-  await page.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+  const form = await openEntryMask(page);
+  if (income) await form.getByRole("button", { name: "Income", exact: true }).click();
+  await form.locator("#spending-recurring").click();
+  await form.locator("#spending-amount").fill(amount);
+  await form.locator("#spending-payee").fill(name);
+  // datetime-local needs a time component; a date-only value is malformed.
+  await form.locator("#spending-date").fill(`${date}T09:00`);
+  await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
 }
 
 test("a planned salary books into the ledger after review", async ({ page }) => {
@@ -51,14 +53,15 @@ test("a planned salary books into the ledger after review", async ({ page }) => 
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card.locator("tbody tr").filter({ hasText: "Salary" })).toHaveCount(1);
 
-  await card.getByRole("button", { name: /^Book selected/ }).click();
+  await card.getByRole("button", { name: "Review" }).click();
+  await card.getByRole("button", { name: /^Book \d/ }).click();
 
   const ledger = page.locator('[data-tour="spending-table"]');
   const booked = ledger.locator("tbody tr").filter({ hasText: "Salary" });
   await expect(booked).toHaveCount(1);
   await expect(booked).toContainText("2,500");
   // Nothing is due any more.
-  await expect(card.getByRole("button", { name: /^Book selected/ })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Review" })).toHaveCount(0);
 });
 
 test("a planned expense reaches the cash-flow forecast", async ({ page }) => {
@@ -73,7 +76,7 @@ test("a planned expense reaches the cash-flow forecast", async ({ page }) => {
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card.locator("tbody tr").filter({ hasText: "Holiday" })).toHaveCount(1);
   // Nothing due, so no review button.
-  await expect(card.getByRole("button", { name: /^Book selected/ })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Review" })).toHaveCount(0);
 
   // The forecast lives one page over and charts the planned entries as
   // aggregate lines (no per-entry labels), so what is assertable here is that

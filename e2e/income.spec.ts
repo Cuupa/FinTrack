@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import {
+  bookTransaction,
+  dismissTour,
+  openAddAccountModal,
+  openEntryMask,
+  submitAddAccountModal,
+} from "./helpers";
 
 // Income is not a mirror of expense (owner report, round 27): the entry mask
 // used to render identically for both, so a salary asked for a "payee" and
@@ -23,18 +29,14 @@ async function book(
   payee: string,
   amount: string,
 ) {
-  const form = page.locator('[data-tour="spending-form"]');
-  await form.getByRole("button", { name: type, exact: true }).click();
-  await form.locator("#spending-amount").fill(amount);
-  await form.locator("#spending-payee").fill(payee);
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await bookTransaction(page, { type, payee, amount });
 }
 
 test("the entry mask changes when you switch to income", async ({ page }) => {
   await seedAccount(page);
   await page.goto("/spending");
   await dismissTour(page);
-  const form = page.locator('[data-tour="spending-form"]');
+  const form = await openEntryMask(page);
 
   // Expense: a recipient, and the transfer target is on offer.
   await expect(form.getByText("Payee", { exact: true })).toBeVisible();
@@ -107,14 +109,14 @@ test("a recurring entry can be pinned to the last day of the month", async ({ pa
   await page.goto("/spending");
   await dismissTour(page);
 
-  const form = page.locator('[data-tour="spending-form"]');
+  const form = await openEntryMask(page);
   await form.locator("#spending-recurring").click();
   await form.locator("#spending-amount").fill("900");
   await form.locator("#spending-payee").fill("Rent");
   // Anchored mid-month on purpose: without the flag every occurrence would
-  // keep landing on the 15th.
-  await form.locator("#spending-date").fill("2026-01-15");
-  await form.getByLabel(/last day of the month/i).check();
+  // keep landing on the 15th. The field is a datetime-local, so it needs a time.
+  await form.locator("#spending-date").fill("2026-01-15T09:00");
+  await form.getByRole("switch", { name: /last day of the month/i }).click();
   await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
 
   // The next due date is a month end, not the 15th it was started on.
@@ -136,12 +138,11 @@ test("promoting a transfer keeps its target account", async ({ page }) => {
 
   await page.goto("/spending");
   await dismissTour(page);
-  const form = page.locator('[data-tour="spending-form"]');
-  await form.locator("#spending-amount").fill("1035");
-  await form.locator("#spending-payee").fill("Mortgage instalment");
-  await form.getByRole("button", { name: "Transfer to" }).click();
-  await page.getByRole("option", { name: "Mortgage" }).click();
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await bookTransaction(page, {
+    payee: "Mortgage instalment",
+    amount: "1035",
+    transferTo: "Mortgage",
+  });
 
   const row = page.locator("tbody tr").filter({ hasText: "Mortgage instalment" }).first();
   await row.getByRole("button", { name: "Add as recurring", exact: true }).click();

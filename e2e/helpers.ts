@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 // Shared drivers for the Guest-Mode E2E specs. Kept text/locale-tolerant where
 // possible (stable ids and data-tour hooks over copy) so a dictionary tweak
@@ -104,4 +104,46 @@ export async function submitAddAccountModal(page: Page): Promise<void> {
     .getByRole("dialog")
     .getByRole("button", { name: "Add account", exact: true })
     .click();
+}
+
+/**
+ * The entry mask moved behind the "Add a transaction" header button into a
+ * modal (account-booking cleanup): the fields no longer sit permanently on the
+ * page. Opens it and returns the dialog carrying them. Callers fill and submit
+ * from the returned locator; a successful add closes the modal.
+ */
+export async function openEntryMask(page: Page): Promise<Locator> {
+  await page.getByRole("button", { name: "Add a transaction", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator("#spending-amount")).toBeVisible();
+  return dialog;
+}
+
+/** Books one transaction through the entry mask and waits for the modal to close. */
+export async function bookTransaction(
+  page: Page,
+  opts: {
+    type?: "Expense" | "Income";
+    account?: string;
+    payee: string;
+    amount: string;
+    transferTo?: string;
+  },
+): Promise<void> {
+  const form = await openEntryMask(page);
+  if (opts.type === "Income") {
+    await form.getByRole("button", { name: "Income", exact: true }).click();
+  }
+  if (opts.account) {
+    await form.getByRole("button", { name: "Account", exact: true }).click();
+    await page.getByRole("option", { name: opts.account }).click();
+  }
+  await form.locator("#spending-amount").fill(opts.amount);
+  await form.locator("#spending-payee").fill(opts.payee);
+  if (opts.transferTo) {
+    await form.getByRole("button", { name: "Transfer to" }).click();
+    await page.getByRole("option", { name: opts.transferTo }).click();
+  }
+  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
