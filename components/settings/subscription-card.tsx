@@ -42,8 +42,10 @@ const ERROR_KIND_KEYS: Record<BillingRedirectErrorKind, MessageKey> = {
 
 export function SubscriptionCard() {
   const { mode } = useAuth();
-  const billingEnabled = useFeatureFlag("billing");
-  if (mode !== "registered" || !billingEnabled) return null;
+  // Registered users always see their current plan. Checkout/manage buttons
+  // are gated by the `billing` flag inside (no dead-end CTA when billing is
+  // dark), but hiding the whole card left users unable to see they were Pro.
+  if (mode !== "registered") return null;
   return (
     <Suspense fallback={<SubscriptionCardSkeleton />}>
       <SubscriptionCardContent />
@@ -67,6 +69,7 @@ function SubscriptionCardContent() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const billingParam = searchParams.get("billing");
+  const billingEnabled = useFeatureFlag("billing");
   const { plan, subscription, grants, loading } = useBilling();
 
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -134,7 +137,7 @@ function SubscriptionCardContent() {
             )}
           </div>
 
-          {view.kind !== "granted" && (
+          {view.kind !== "granted" && billingEnabled && (
             <div className="flex flex-wrap items-center gap-3">
               {view.kind === "free" ? (
                 <>

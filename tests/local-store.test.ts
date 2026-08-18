@@ -500,7 +500,7 @@ describe("LocalStore savings-plan occurrences", () => {
 describe("LocalStore owner reassignment", () => {
   const ACCOUNT_INPUT = {
     name: "Girokonto",
-    kind: "CHECKING" as const,
+    kind: "checking" as const,
     currency: null,
     isLiability: false,
     openingBalance: 0,

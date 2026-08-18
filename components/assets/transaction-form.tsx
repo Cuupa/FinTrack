@@ -13,6 +13,7 @@ import { assetPriceKey, type Asset, type TransactionType } from "@/lib/types";
 import { Button } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { usePortfolioLabel } from "@/lib/household/use-portfolio-label";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 import { useCatalog } from "@/lib/catalog/catalog-context";
 import { lookupInstrument } from "@/lib/catalog/catalog";
@@ -40,6 +41,7 @@ export function TransactionForm({
   ensureAsset?: () => Promise<Asset>;
 }) {
   const { addTransaction, createPortfolio, portfolios, selectedPortfolioIds } = usePortfolio();
+  const depotLabel = usePortfolioLabel();
   const { t } = useI18n();
   const billingEnabled = useFeatureFlag("billing");
   const { limit: portfoliosLimit } = usePlanLimit("portfolios");
@@ -357,7 +359,7 @@ export function TransactionForm({
               value={portfolioId}
               ariaLabel={t("tx.portfolio")}
               onChange={setPortfolioId}
-              options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+              options={portfolios.map((p) => ({ value: p.id, label: depotLabel(p) }))}
               footer={(close) =>
                 addingPortfolio ? (
                   <input

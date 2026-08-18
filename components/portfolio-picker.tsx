@@ -10,6 +10,7 @@ import { MAX_PORTFOLIOS } from "@/lib/types";
 import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { atLimit } from "@/lib/billing/limits";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { usePortfolioLabel } from "@/lib/household/use-portfolio-label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function PortfolioPicker() {
@@ -33,6 +34,7 @@ export function PortfolioPicker() {
   const ref = useRef<HTMLDivElement>(null);
 
   const { t } = useI18n();
+  const depotLabel = usePortfolioLabel();
   const billingEnabled = useFeatureFlag("billing");
   const { limit: portfoliosLimit } = usePlanLimit("portfolios");
   // Plan-limit cap (MONETIZATION.md Phase 4), distinct from the hard
@@ -64,7 +66,10 @@ export function PortfolioPicker() {
   const summary = allSelected
     ? t("nav.allPortfolios")
     : selectedPortfolioIds.length === 1
-      ? (portfolios.find((p) => p.id === selectedPortfolioIds[0])?.name ?? t("select.nSelected", { count: 1 }))
+      ? (() => {
+          const p = portfolios.find((x) => x.id === selectedPortfolioIds[0]);
+          return p ? depotLabel(p) : t("select.nSelected", { count: 1 });
+        })()
       : t("nav.nOfM", { n: selectedPortfolioIds.length, m: portfolios.length });
 
   const toggle = (id: string) => {
@@ -170,7 +175,7 @@ export function PortfolioPicker() {
                         >
                           {on ? "✓" : ""}
                         </span>
-                        <span className="truncate">{p.name}</span>
+                        <span className="truncate">{depotLabel(p)}</span>
                       </button>
                       <button
                         type="button"

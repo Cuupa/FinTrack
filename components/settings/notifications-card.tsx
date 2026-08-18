@@ -21,14 +21,21 @@ import {
 
 export function NotificationsCard() {
   const { mode } = useAuth();
-  // Flag off ⇒ hidden. Flag on but Pro-locked ⇒ the real card renders blurred
-  // behind the paywall (owner rule: a paywalled feature stays visible).
+  const { t } = useI18n();
+  // Flag off ⇒ hidden. Flag on but Pro-locked ⇒ the controls render blurred
+  // behind the paywall (owner rule: a paywalled feature stays visible). The
+  // heading + subtitle stay OUTSIDE the gate so the user can read what the
+  // feature is and what they'd unlock, never a blurred mystery card.
   const { enabled, locked } = useFeature("pushNotifications");
   if (mode !== "registered" || !enabled) return null;
   return (
-    <ProGate locked={locked} feature="pushNotifications">
-      <NotificationsCardContent />
-    </ProGate>
+    <Card>
+      <h2 className="text-base font-semibold">{t("notif.title")}</h2>
+      <p className="mt-1 text-sm text-zinc-500">{t("notif.subtitle")}</p>
+      <ProGate locked={locked} feature="pushNotifications" className="mt-4">
+        <NotificationsCardContent />
+      </ProGate>
+    </Card>
   );
 }
 

@@ -22,6 +22,7 @@ import { Button, Card } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { usePortfolioLabel } from "@/lib/household/use-portfolio-label";
 import { useFormTouched, missingFieldCls } from "@/lib/forms/required";
 import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { atLimit } from "@/lib/billing/limits";
@@ -56,6 +57,7 @@ export function AddAssetForm({
     selectedPortfolioIds,
   } = usePortfolio();
   const { t: tr } = useI18n();
+  const depotLabel = usePortfolioLabel();
   const billingEnabled = useFeatureFlag("billing");
   const manualValuationEnabled = useFeatureFlag("manualValuation");
   const { limit: portfoliosLimit } = usePlanLimit("portfolios");
@@ -604,7 +606,7 @@ export function AddAssetForm({
                   value={portfolioId}
                   ariaLabel={tr("addAsset.portfolio")}
                   onChange={setPortfolioId}
-                  options={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+                  options={portfolios.map((p) => ({ value: p.id, label: depotLabel(p) }))}
                   footer={(close) =>
                     addingPortfolio ? (
                       <input
