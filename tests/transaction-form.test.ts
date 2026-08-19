@@ -42,6 +42,10 @@ vi.mock("@/lib/live/live-prices-context", () => ({
   useLivePrices: () => ({ valuation: { base: "EUR" }, stale: false, asOf: null }),
 }));
 
+vi.mock("@/lib/household/use-portfolio-label", () => ({
+  usePortfolioLabel: () => (p: { name: string }) => p.name,
+}));
+
 const nonHeldAsset: Asset = {
   id: "wl:w1",
   isin: null,

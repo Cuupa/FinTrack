@@ -51,6 +51,10 @@ vi.mock("@/lib/live/live-prices-context", () => ({
   useLivePrices: () => ({ valuation: { base: "EUR" }, stale: false, asOf: null }),
 }));
 
+vi.mock("@/lib/household/use-portfolio-label", () => ({
+  usePortfolioLabel: () => (p: { name: string }) => p.name,
+}));
+
 function val(el: Element): string {
   return (el as HTMLInputElement).value;
 }
