@@ -8,6 +8,7 @@ import {
   betaAlpha,
   compositeLevelSeries,
   windowChange,
+  changeContributions,
 } from "../lib/finance/returns";
 import { realizedByMonth, topMovers } from "../lib/finance/trades";
 import { dividendsFromEvents, projectDividends, totalDividends } from "../lib/finance/dividends";
@@ -138,6 +139,39 @@ describe("windowChange", () => {
     const { abs, pct } = windowChange(series, [], 0.1);
     expect(abs).toBeCloseTo(2000, 6);
     expect(pct).toBe(0.1);
+  });
+});
+
+describe("changeContributions", () => {
+  it("splits a change into three bands that sum back to it", () => {
+    // net grew 3000. Accounts +2000, debt paid down 1000 → investments is the
+    // residual: 3000 - 2000 - 1000 = 0.
+    const s = changeContributions(
+      3000,
+      { assets: 5000, liabilities: 4000 },
+      { assets: 7000, liabilities: 3000 },
+    );
+    expect(s).toEqual({ investments: 0, accounts: 2000, liabilities: 1000 });
+    expect(s.investments + s.accounts + s.liabilities).toBeCloseTo(3000, 6);
+  });
+
+  it("reads a growing debt as a negative contribution", () => {
+    const s = changeContributions(
+      -500,
+      { assets: 1000, liabilities: 1000 },
+      { assets: 1000, liabilities: 1500 },
+    );
+    // debt rose 500 → -500 contribution; investments residual 0.
+    expect(s).toEqual({ investments: 0, accounts: 0, liabilities: -500 });
+  });
+
+  it("puts a market move entirely in the investments band", () => {
+    const s = changeContributions(
+      1200,
+      { assets: 800, liabilities: 200 },
+      { assets: 800, liabilities: 200 },
+    );
+    expect(s).toEqual({ investments: 1200, accounts: 0, liabilities: 0 });
   });
 });
 

@@ -25,7 +25,7 @@ import { NetWorthComposition } from "./net-worth-composition";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { today } from "@/lib/finance/dates";
 import { useDividends } from "@/lib/history/use-dividends";
-import { netFlows, riskMetrics, windowChange } from "@/lib/finance/returns";
+import { changeContributions, netFlows, riskMetrics, windowChange } from "@/lib/finance/returns";
 import { InfoTip } from "@/components/ui/info-tip";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 import { portfolioIRR } from "@/lib/finance/irr";
@@ -263,6 +263,40 @@ export function NetWorthHero({
     [series, data.assets, data.transactions, valuation, risk.twr],
   );
 
+  // "Wie setzt sich die Veränderung zusammen?" -- the same three bands the
+  // composition bar splits net worth into, but as each band's CONTRIBUTION to
+  // the change over the window (a debt paid down is a positive contribution).
+  // The three add up to `periodChange.abs` exactly (investments is the residual,
+  // so any rounding in the account totals lands there, not in a broken sum).
+  // Only meaningful once accounts fold in; on /portfolio the plain tip stays.
+  const changeInfo = useMemo(() => {
+    if (investmentsOnly || !accounts || accounts.length === 0) return t("tip.change");
+    const startPoint = series.find((p) => p.value !== 0);
+    if (!startPoint) return t("tip.change");
+    const start = accountsTotals(accounts, accountBalances ?? [], valuation, movements, startPoint.date);
+    const split = changeContributions(periodChange.abs, start, acctSplit);
+    const contributions = [
+      { label: t("nav.group.invest"), v: split.investments },
+      { label: t("nav.accounts"), v: split.accounts },
+      { label: t("nav.debt"), v: split.liabilities },
+    ].filter((c) => Math.round(c.v) !== 0);
+    if (contributions.length < 2) return t("tip.change");
+    const signed = (v: number) => (v >= 0 ? "+" : "") + formatCurrency(v, currency);
+    const parts = contributions.map((c) => `${c.label} ${signed(c.v)}`).join(", ");
+    return t("tip.changeBreakdown", { parts });
+  }, [
+    investmentsOnly,
+    accounts,
+    accountBalances,
+    valuation,
+    movements,
+    series,
+    acctSplit,
+    periodChange.abs,
+    currency,
+    t,
+  ]);
+
   return (
     <Card data-tour="net-worth">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -279,7 +313,7 @@ export function NetWorthHero({
             value={historyLoading ? "…" : formatCurrency(periodChange.abs, currency)}
             sub={historyLoading ? undefined : formatPercent(periodChange.pct)}
             valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
-            info={t("tip.change")}
+            info={changeInfo}
             isPrivate
             size="sm"
           />

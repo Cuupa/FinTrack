@@ -133,6 +133,34 @@ export function windowChange(
   return { abs, pct };
 }
 
+export interface BandTotals {
+  /** Sum of asset-account balances, base currency, positive. */
+  assets: number;
+  /** Magnitude of liability accounts, base currency, positive. */
+  liabilities: number;
+}
+
+/**
+ * Splits a net-worth change into the same three bands the composition bar
+ * shows, as each band's CONTRIBUTION to the change: paying down debt is a
+ * positive contribution, and the three always sum to `absChange` exactly
+ * (investments is the residual, so any inconsistency between the net-worth
+ * series and the account totals lands there rather than breaking the sum).
+ *
+ * `netWorth = investments + assets - liabilities`, so investments =
+ * absChange - Δassets + Δliabilities.
+ */
+export function changeContributions(
+  absChange: number,
+  start: BandTotals,
+  now: BandTotals,
+): { investments: number; accounts: number; liabilities: number } {
+  const accounts = now.assets - start.assets;
+  const liabilities = start.liabilities - now.liabilities;
+  const investments = absChange - accounts - liabilities;
+  return { investments, accounts, liabilities };
+}
+
 export interface RiskMetrics {
   /** Cumulative time-weighted return over the window (fraction). */
   twr: number;
