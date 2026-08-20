@@ -4,6 +4,7 @@ import {
   dismissTour,
   openAddAccountModal,
   openEntryMask,
+  openRecurring,
   submitAddAccountModal,
 } from "./helpers";
 
@@ -21,15 +22,21 @@ test("an asset account's booked interest grows its balance", async ({ page }) =>
   await page.locator("#account-interest").fill("3");
   await submitAddAccountModal(page);
 
-  const row = page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Tagesgeld" });
-  await expect(row).toContainText("3% p.a.");
+  await expect(
+    page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Tagesgeld" }),
+  ).toContainText("3% p.a.");
 
   // Credit interest waits for review now (a liability's books itself); booking
-  // the accrued interest is what finally moves the balance past 10,000.
+  // the accrued interest is what finally moves the balance past 10,000. The
+  // review is on the Recurring tab.
+  await openRecurring(page);
   const card = page.locator('[data-tour="recurring-card"]');
   await card.getByRole("button", { name: "Review" }).click();
   await card.getByRole("button", { name: /^Book \d/ }).click();
 
+  await page.goto("/accounts");
+  await dismissTour(page);
+  const row = page.locator('[data-tour="accounts-list"] tbody tr').filter({ hasText: "Tagesgeld" });
   const balance = await row.locator("td").nth(2).innerText();
   expect(Number(balance.replace(/[^\d.]/g, ""))).toBeGreaterThan(10000);
 });

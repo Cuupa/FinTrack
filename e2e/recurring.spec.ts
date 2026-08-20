@@ -2,14 +2,18 @@ import { expect, test } from "@playwright/test";
 import {
   dismissTour,
   openAddAccountModal,
+  openBookings,
   openEntryMask,
+  openRecurring,
   submitAddAccountModal,
 } from "./helpers";
 
-// Recurring payments (/spending, flag `contracts`) in Guest Mode, after the
-// separate contract register was removed AND the card's own "add" button went
-// with it: booking something and booking something that repeats are the same
-// act, so the entry mask's "Recurring" switch is the only way in.
+// Recurring payments (flag `contracts`) in Guest Mode, after the separate
+// contract register was removed AND the card's own "add" button went with it:
+// booking something and booking something that repeats are the same act, so the
+// entry mask's "Recurring" switch is the only way in. The mask lives on the
+// Bookings tab of the merged /accounts page, the recurring card on the
+// Recurring tab (spec §10).
 //
 // What only the wiring can show: the switch reaches the store, the merged list
 // and its delete confirmation work from this one card, promoting a booking
@@ -27,7 +31,7 @@ async function seedAccount(page: import("@playwright/test").Page, name = "Curren
   await expect(page.locator('[data-tour="accounts-list"]').getByText(name)).toBeVisible();
 }
 
-/** Adds a recurring entry through the switch on the entry mask. */
+/** Adds a recurring entry through the switch on the entry mask (Bookings tab). */
 async function addRecurring(
   page: import("@playwright/test").Page,
   name: string,
@@ -47,8 +51,7 @@ test("a recurring payment is added from the entry mask and deleted from the card
   page,
 }) => {
   await seedAccount(page);
-  await page.goto("/spending");
-  await dismissTour(page);
+  await openRecurring(page);
 
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card).toBeVisible();
@@ -57,6 +60,7 @@ test("a recurring payment is added from the entry mask and deleted from the card
 
   await addRecurring(page, "Netflix", "17.99");
 
+  await openRecurring(page);
   const row = card.locator("tbody tr").filter({ hasText: "Netflix" });
   await expect(row).toHaveCount(1);
   await expect(row).toContainText("Monthly");
@@ -81,8 +85,7 @@ test("a recurring payment is added from the entry mask and deleted from the card
 
 test("changing a booked recurring payment asks which payments it applies to", async ({ page }) => {
   await seedAccount(page);
-  await page.goto("/spending");
-  await dismissTour(page);
+  await openBookings(page);
   const card = page.locator('[data-tour="recurring-card"]');
 
   // Promoting a booking is the path that still produces a CONTRACT, which is
@@ -102,6 +105,7 @@ test("changing a booked recurring payment asks which payments it applies to", as
     .click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Add as recurring" }).click();
 
+  await openRecurring(page);
   await expect(card.locator("tbody tr").filter({ hasText: "Gym" })).toHaveCount(1);
 
   // The scope question lives on the entry's OWN page: the inline edit on the
@@ -125,18 +129,16 @@ test("changing a booked recurring payment asks which payments it applies to", as
 
 test("a recurring entry's page links back to accounts & bookings", async ({ page }) => {
   await seedAccount(page);
-  await page.goto("/spending");
-  await dismissTour(page);
-  const card = page.locator('[data-tour="recurring-card"]');
-
   await addRecurring(page, "Spotify", "11");
+  await openRecurring(page);
+  const card = page.locator('[data-tour="recurring-card"]');
 
   await card.getByRole("link", { name: "Spotify" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Spotify" })).toBeVisible();
   // The back link (distinct from the sidebar nav entry) points at /spending,
-  // which redirects onto the merged page.
+  // which redirects onto the merged page's bookings tab.
   await page.getByRole("link", { name: "← Accounts & Bookings" }).click();
-  await expect(page).toHaveURL(/\/accounts$/);
+  await expect(page).toHaveURL(/\/accounts(\?|$)/);
 });
 
 test("the retired /contracts route is gone", async ({ page }) => {
@@ -146,12 +148,11 @@ test("the retired /contracts route is gone", async ({ page }) => {
 
 test("pausing a recurring entry stops its due bookings until it is resumed", async ({ page }) => {
   await seedAccount(page);
-  await page.goto("/spending");
-  await dismissTour(page);
-  const card = page.locator('[data-tour="recurring-card"]');
 
   // Backdated, so it is already due and the review notice shows its button.
   await addRecurring(page, "Gym", "30", "2024-01-15");
+  await openRecurring(page);
+  const card = page.locator('[data-tour="recurring-card"]');
   const row = card.locator("tbody tr").filter({ hasText: "Gym" }).first();
   await expect(card.getByRole("button", { name: "Review" })).toBeVisible();
 

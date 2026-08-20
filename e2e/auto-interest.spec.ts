@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { dismissTour, openAddAccountModal, submitAddAccountModal } from "./helpers";
+import {
+  dismissTour,
+  openAddAccountModal,
+  openBookings,
+  openRecurring,
+  submitAddAccountModal,
+} from "./helpers";
 
 // Interest on a liability posts on its own (owner rule): the lender charges it
 // whatever the app thinks, so there is nothing to review. Credit interest on an
@@ -40,22 +46,32 @@ test("a liability's interest books itself, an account's credit interest waits", 
 
   await setLoanRate(page, "12");
 
-  await page.goto("/spending");
-  await dismissTour(page);
-  // 12% a year on 10,000 is 100 a month, and it landed without a review.
-  const ledger = page.locator('[data-tour="spending-table"]');
-  const row = ledger.locator("tbody tr").filter({ hasText: `Interest · ${LOAN}` });
-  await expect(row).toHaveCount(1);
-  await expect(row).toContainText("100");
+  // 12% a year on 10,000 is 100 a month, and it landed without a review. The
+  // ledger is on the Bookings tab.
+  await openBookings(page);
+  const loanRow = page
+    .locator('[data-tour="spending-table"]')
+    .locator("tbody tr")
+    .filter({ hasText: `Interest · ${LOAN}` });
+  await expect(loanRow).toHaveCount(1);
+  await expect(loanRow).toContainText("100");
 
+  // The Recurring tab says it books itself and offers no review.
+  await openRecurring(page);
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card).toContainText("Booked automatically");
   await expect(card.getByRole("button", { name: "Review" })).toHaveCount(0);
 
   // It is booked once, not once per visit.
+  await openBookings(page);
   await page.reload();
   await dismissTour(page);
-  await expect(ledger.locator("tbody tr").filter({ hasText: `Interest · ${LOAN}` })).toHaveCount(1);
+  await expect(
+    page
+      .locator('[data-tour="spending-table"]')
+      .locator("tbody tr")
+      .filter({ hasText: `Interest · ${LOAN}` }),
+  ).toHaveCount(1);
 
   // The other half of the rule: credit interest the user can reconcile against
   // a statement still asks first.
@@ -70,10 +86,16 @@ test("a liability's interest books itself, an account's credit interest waits", 
   await page.locator("#account-interest").fill("12");
   await submitAddAccountModal(page);
 
-  await page.goto("/spending");
-  await dismissTour(page);
-  await expect(card.getByRole("button", { name: "Review" })).toBeVisible();
+  await openRecurring(page);
   await expect(
-    ledger.locator("tbody tr").filter({ hasText: `Interest · ${SAVINGS}` }),
+    page.locator('[data-tour="recurring-card"]').getByRole("button", { name: "Review" }),
+  ).toBeVisible();
+
+  await openBookings(page);
+  await expect(
+    page
+      .locator('[data-tour="spending-table"]')
+      .locator("tbody tr")
+      .filter({ hasText: `Interest · ${SAVINGS}` }),
   ).toHaveCount(0);
 });

@@ -68,9 +68,12 @@ test("a booking moves the listed figure", async ({ page }) => {
   await submitAddAccountModal(page);
   await expect(page.locator('[data-tour="accounts-list"]').getByText("Savings pot")).toBeVisible();
 
-  // 1000 opening + 1750.25 in = 2750.25.
+  // 1000 opening + 1750.25 in = 2750.25. Booking happens on the Bookings tab
+  // (the entry mask lives there now); the balance shows on the accounts list.
   await bookTransaction(page, { type: "Income", payee: "Bonus", amount: "1750.25" });
 
+  await page.goto("/accounts");
+  await dismissTour(page);
   await expect(accountRow(page, "Savings pot")).toContainText("2,750.25");
 });
 

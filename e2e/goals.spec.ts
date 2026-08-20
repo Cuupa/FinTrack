@@ -87,7 +87,9 @@ test("an existing goal's saved-up amount can be changed afterwards", async ({ pa
   await page.getByRole("button", { name: "Add goal", exact: true }).click();
 
   const row = page.locator('[data-tour="goals-list"] tbody tr').filter({ hasText: "New bike" });
-  await expect(row).toContainText("€100.00 / €1,000.00");
+  // Current and target are separate columns now (spec §12.4), not one "x / y" cell.
+  await expect(row).toContainText("€1,000.00");
+  await expect(row).toContainText("€100.00");
 
   // The whole point: put more money aside later without recreating the goal.
   await row.getByRole("button", { name: "Edit" }).click();
@@ -97,11 +99,12 @@ test("an existing goal's saved-up amount can be changed afterwards", async ({ pa
   await dialog.getByRole("button", { name: "Save changes" }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(row).toContainText("€450.00 / €1,000.00");
+  await expect(row).toContainText("€450.00");
+  await expect(row).toContainText("€1,000.00");
   // Persisted, not just re-rendered.
   await page.reload();
   await dismissTour(page);
-  await expect(row).toContainText("€450.00 / €1,000.00");
+  await expect(row).toContainText("€450.00");
 });
 
 test("a sub-goal on a liability does not swallow its derived payoff goal", async ({ page }) => {

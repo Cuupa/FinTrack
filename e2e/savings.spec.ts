@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openDashboard, addOtherAsset } from "./helpers";
+import { openDashboard, addOtherAsset, dismissTour } from "./helpers";
 
 // Savings plans ride the full store seam and derive due occurrences purely, but
 // creating one through the dashboard card and seeing it land in the plan table
@@ -9,8 +9,12 @@ test.describe("savings plans (Guest Mode)", () => {
     await openDashboard(page);
     await addOtherAsset(page, "Vienna Apartment", "300000");
 
-    // The savings-plans card sits on the dashboard; open its inline form. The
-    // asset auto-selects the only holding, so amount is the one field to fill.
+    // The savings-plans card moved to the Investments page's Savings plans tab.
+    // addOtherAsset leaves us on /portfolio (Positions); the portfolio tour
+    // auto-starts once a holding exists, so dismiss it before switching tabs.
+    // The asset auto-selects the only holding, so amount is the one field to fill.
+    await dismissTour(page);
+    await page.getByRole("tab", { name: "Savings plans" }).click();
     await page.getByRole("button", { name: "+ New plan" }).click();
     await page.getByRole("button", { name: "Create plan" }).scrollIntoViewIfNeeded();
 
