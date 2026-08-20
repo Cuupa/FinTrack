@@ -941,6 +941,38 @@ Finanz-/Store-Defekt; es sind bewusst gekoppelte Reste und eine Scope-Grenze.
    Token-Variablen greifen dort, aber keine IA-/Primitive-Migration. Kein
    Defekt, die vereinbarte Scope-Grenze.
 
+9. **Post-Redesign-Audit von Flags / Tours / Paywall (20.08.2026).** Nach dem
+   IA-Umbau (Routen → Tabs, entfernte Nav-Einträge, gesplittete Komponenten)
+   geprüft, ob die Gating-Wiring noch greift:
+   - **Sauber:** Feature-Flags gaten alle zusammengelegten Flächen korrekt
+     (X-Ray-Tab `xray`, Health-Section `finHealth`, Household-Settings-Tab
+     `household` — je flag- + Pro-gegated, `ProTeaser`/`ProGate` sichtbar bei
+     Lock). Redirects erhalten (`/xray`→`/analysis?tab=xray`,
+     `/household`→`/settings?tab=household`, `/spending`→`/accounts?tab=bookings`,
+     `/fire`//`/pension`→`/retirement`, `/health` voll gegated). Nav-Registry
+     ohne tote Einträge, Gruppen-IDs `everyday/invest/plan` unverändert.
+     Notifications-Routing der Haushalt-Einladung auf `/settings` umgezogen.
+     Kein verwaistes Flag. Alle Tour-Anker existieren.
+   - **Behoben:** die Depot- und Konten-Tour verloren nach dem Tab-Umbau ihre
+     Schritte auf inaktiven Tabs (`TourOverlay` friert das Step-Set beim Mount
+     auf die Anker des Default-Tabs ein). Fix: **tab-bewusste Tour** —
+     `TourStep.activateTab` benennt den Ziel-Tab, `TourOverlay` bekommt
+     `onActivateTab`/`availableTabs`, aktiviert vor jedem Schritt den Tab und
+     löst den Anker über ein paar Frames auf; die Mount-Filterung behält
+     `activateTab`-Schritte, solange ihr Tab existiert (ein flag-off-Tab lässt
+     seine Schritte weiter fallen). Durchgereicht via `PageTour`/
+     `PageHeaderWithTour`; `/portfolio` + `/accounts` geben `setTab` +
+     `availableTabs` mit. 4 neue `filterVisibleSteps`-Unit-Tests; live
+     verifiziert (Guest DE dark + EN light): die Tour macht auf `/portfolio`
+     die Sparpläne- und Watchlist-Tabs mit auf, alle Anker sichtbar, keine
+     Konsolenfehler.
+   - **Noch offen (nicht durch diese Änderung verursacht):**
+     `e2e/dashboard-kpis.spec.ts` ist seit dem §9-Hero-Umbau (P4.3) stale — es
+     sucht "Savings rate"/den "Return"-Umschalter noch im Übersichts-Hero
+     (beide nach `/portfolio` bzw. in die Health-Card verschoben) und erwartet
+     die alte Einzellinie statt des Breakdown-Charts. Muss an das aktuelle
+     Dashboard angepasst werden.
+
 ---
 
 ## 7. Deliverables-Mapping (Spec §22)

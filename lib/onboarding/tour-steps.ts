@@ -12,6 +12,11 @@ export interface TourStep {
   target: string | null;
   titleKey: MessageKey;
   bodyKey: MessageKey;
+  /** When the target lives on a tabbed view, the tab value to activate before
+   *  the step is shown. The page threads an `onActivateTab` handler and its
+   *  `availableTabs`; the step survives mount-time filtering as long as that
+   *  tab exists (a flag-off tab is absent, so its steps still drop out). */
+  activateTab?: string;
 }
 
 // Order mirrors the table in ONBOARDING.md "Phase 1: guided tour" exactly.
@@ -79,28 +84,34 @@ export const TOUR_STEPS: TourStep[] = [
 // `profile.toursDone`, separate from the dashboard tour's `tourDoneAt`.
 
 /** Investments (/portfolio, app/portfolio/page.tsx). */
+// Positions, savings plans and the watchlist each sit on their own tab now,
+// so every step names the tab the tour must activate before spotlighting it.
 export const PORTFOLIO_TOUR_STEPS: TourStep[] = [
   {
     key: "portfolioAddAsset",
     target: "add-asset",
+    activateTab: "positions",
     titleKey: "tour.portfolio.addAsset.title",
     bodyKey: "tour.portfolio.addAsset.body",
   },
   {
     key: "portfolioHoldings",
     target: "holdings",
+    activateTab: "positions",
     titleKey: "tour.portfolio.holdings.title",
     bodyKey: "tour.portfolio.holdings.body",
   },
   {
     key: "portfolioSavingsPlans",
     target: "savings-plans",
+    activateTab: "savings",
     titleKey: "tour.portfolio.savingsPlans.title",
     bodyKey: "tour.portfolio.savingsPlans.body",
   },
   {
     key: "portfolioWatchlist",
     target: "watchlist",
+    activateTab: "watchlist",
     titleKey: "tour.portfolio.watchlist.title",
     bodyKey: "tour.portfolio.watchlist.body",
   },
@@ -235,48 +246,56 @@ export const ASSET_TAGS_TOUR_STEPS: TourStep[] = [
 // above; the targets are the `data-tour` anchors on each view's cards.
 
 /** Accounts & liabilities (/accounts, components/accounts/accounts-view.tsx). */
+// /spending merged into this page as tabs (round 28), so its tour merged too:
+// accounts sit on the first tab, bookings and recurring charges on their own.
+// Each step names the tab to activate; a bookings/recurring step drops when
+// the `spending` flag is off (that tab is absent from `availableTabs`).
 export const ACCOUNTS_TOUR_STEPS: TourStep[] = [
   {
     key: "accountsTotals",
     target: "accounts-totals",
+    activateTab: "accounts",
     titleKey: "tour.accounts.totals.title",
     bodyKey: "tour.accounts.totals.body",
   },
   {
     key: "accountsForm",
     // The form moved into a modal behind this button, so the tour points at
-    // the button: a target inside a closed dialog is not on screen, and
-    // TourOverlay resolves its steps once per mount.
+    // the button: a target inside a closed dialog is not on screen.
     target: "add-account",
+    activateTab: "accounts",
     titleKey: "tour.accounts.form.title",
     bodyKey: "tour.accounts.form.body",
   },
   {
     key: "accountsList",
     target: "accounts-list",
+    activateTab: "accounts",
     titleKey: "tour.accounts.list.title",
     bodyKey: "tour.accounts.list.body",
   },
-  // /spending merged into this page (round 28), so its tour merged too --
-  // a separate SPENDING_TOUR_STEPS would have had no page left to run on.
   {
     key: "spendingForm",
     target: "spending-form",
+    activateTab: "bookings",
     titleKey: "tour.spending.form.title",
     bodyKey: "tour.spending.form.body",
   },
-  // Skipped on a page with no detected charges, and also when the
-  // RecurringCard is collapsed (collapsed state persists per browser):
-  // TourOverlay keeps only the steps whose target is on screen at mount.
+  // On a page with no detected charges (or a collapsed RecurringCard, whose
+  // state persists per browser) the anchor never mounts even after its tab
+  // activates; the card then centers, the same fallback a target that vanishes
+  // mid-tour already uses.
   {
     key: "spendingRecurring",
     target: "recurring-suggestions",
+    activateTab: "recurring",
     titleKey: "tour.contracts.suggestions.title",
     bodyKey: "tour.contracts.suggestions.body",
   },
   {
     key: "spendingTable",
     target: "spending-table",
+    activateTab: "bookings",
     titleKey: "tour.spending.table.title",
     bodyKey: "tour.spending.table.body",
   },
@@ -456,8 +475,16 @@ export const ANALYSIS_TOUR_STEPS: TourStep[] = [
 export function filterVisibleSteps(
   steps: readonly TourStep[],
   hasTarget: (target: string) => boolean,
+  hasTab?: (tab: string) => boolean,
 ): TourStep[] {
-  return steps.filter((s) => s.target === null || hasTarget(s.target));
+  return steps.filter((s) => {
+    if (s.target === null) return true;
+    // A step whose target sits on another tab is kept as long as that tab
+    // exists: its anchor mounts once the tour activates the tab. Without a
+    // tab predicate (a tour with no tabs) fall back to on-screen presence.
+    if (s.activateTab != null && hasTab) return hasTab(s.activateTab);
+    return hasTarget(s.target);
+  });
 }
 
 export interface Rect {

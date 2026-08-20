@@ -109,6 +109,8 @@ export default function PortfolioPage() {
         tourId="portfolio"
         steps={PORTFOLIO_TOUR_STEPS}
         ready={ready}
+        onActivateTab={(value) => setTab(value as PortfolioTab)}
+        availableTabs={tabItems.map((item) => item.value)}
         scope={<PageScope />}
         actions={
           <>

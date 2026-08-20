@@ -100,6 +100,8 @@ function AccountsPageInner() {
         tourId="accounts"
         steps={ACCOUNTS_TOUR_STEPS}
         ready={ready}
+        onActivateTab={(value) => setTab(value as AccountsTab)}
+        availableTabs={tabItems.map((item) => item.value)}
         scope={ready ? <PageScope /> : undefined}
         actions={
           ready ? (
