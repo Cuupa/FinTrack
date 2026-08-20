@@ -5,6 +5,7 @@
 
 import { usePrivacy } from "@/lib/privacy/privacy-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { FOCUS_RING } from "./ui/primitives";
 
 export function PrivacyToggle({
   className = "",
@@ -27,7 +28,7 @@ export function PrivacyToggle({
       aria-pressed={incognito}
       title={incognito ? t("privacy.showFigures") : t("privacy.hideFigures") }
       aria-label={incognito ? t("privacy.showFigures") : t("privacy.hideFigures") }
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${FOCUS_RING} ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

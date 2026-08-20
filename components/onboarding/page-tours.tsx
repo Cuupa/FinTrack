@@ -117,6 +117,7 @@ export function PageHeaderWithTour({
   tourId,
   steps,
   ready = true,
+  scope,
   actions,
   children,
 }: {
@@ -125,6 +126,7 @@ export function PageHeaderWithTour({
   tourId: string;
   steps: readonly TourStep[];
   ready?: boolean;
+  scope?: ReactNode;
   actions?: ReactNode;
   children?: ReactNode;
 }) {
@@ -134,6 +136,7 @@ export function PageHeaderWithTour({
       <PageHeader
         title={title}
         subtitle={subtitle}
+        scope={scope}
         actions={actions}
         titleAdornment={
           ready ? <TourReplayButton onClick={() => setRestartToken((n) => n + 1)} /> : undefined

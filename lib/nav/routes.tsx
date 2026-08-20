@@ -7,12 +7,14 @@
 // between them is layout, not content.
 //
 // The list is GROUPED, and that is the point of it rather than a cosmetic
-// detail. Presented flat, the 14 routes were ordered by the date each feature
+// detail. Presented flat, the routes were ordered by the date each feature
 // shipped (dashboard, accounts, debt, spending, contracts, goals, health,
 // fire, household, analysis, dividends, xray, rebalancing, simulation) — so
 // the navigation read as a pile of tools bolted on one after another instead
 // of one product. The groups below are the product's mental model: what you
 // deal with day to day, what you have invested, and where you are headed.
+// Financial health folds into the dashboard and household administration into
+// Settings, so neither is a top-level entry any more.
 
 import type { ReactNode } from "react";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -20,11 +22,10 @@ import type { FeatureFlag, FeatureState } from "@/lib/flags/flags-context";
 
 /** The areas of the product. The dashboard belongs to none of them: it is the
     home that summarises all three, so it sits above the first group header. */
-export type NavGroup = "everyday" | "household" | "invest" | "plan";
+export type NavGroup = "everyday" | "invest" | "plan";
 
 export const NAV_GROUPS: { id: NavGroup; key: MessageKey }[] = [
   { id: "everyday", key: "nav.group.everyday" },
-  { id: "household", key: "nav.group.household" },
   { id: "invest", key: "nav.group.invest" },
   { id: "plan", key: "nav.group.plan" },
 ];
@@ -56,9 +57,11 @@ export const NAV_ROUTES: NavRoute[] = [
     primary: true,
   },
 
-  // Everyday money: the balances you hold, what flows out of them, and what
-  // you owe. Household has its own cross-functional area because it controls
-  // access to every shared financial surface.
+  // Money: the balances you hold and what flows through them. What you OWE
+  // moved to Planning, next to the payoff plans and goals that pay it down — a
+  // liability reads as a plan, not a day-to-day balance. Managing WHO shares
+  // this data (the household + its members) is account administration, so it
+  // lives in Settings now, not as a top-level financial area of its own.
   {
     href: "/accounts",
     key: "nav.accounts",
@@ -81,22 +84,6 @@ export const NAV_ROUTES: NavRoute[] = [
     flags: ["spending"],
     primary: true,
     group: "everyday",
-  },
-  {
-    href: "/debt",
-    key: "nav.debt",
-    // Downward trending bar chart glyph: paying a balance down over time.
-    icon: <path d="M4 20h16M6 20V13l4 2 4-6 4 3v8" />,
-    flags: ["debtPayoff"],
-    group: "everyday",
-  },
-  {
-    href: "/household",
-    key: "nav.household",
-    // Two-person glyph: shared/collaborative access.
-    icon: <path d="M9 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 12v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M17 5a3 3 0 0 1 0 6M21 20v-2a5 5 0 0 0-3.5-4.8" />,
-    flags: ["household"],
-    group: "household",
   },
 
   // Investments: everything that reads the transaction log rather than a
@@ -128,13 +115,6 @@ export const NAV_ROUTES: NavRoute[] = [
     group: "invest",
   },
   {
-    href: "/xray",
-    key: "nav.xray",
-    icon: <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,
-    flags: ["xray"],
-    group: "invest",
-  },
-  {
     href: "/rebalancing",
     key: "nav.rebalance",
     icon: <path d="M12 3v18M5 7h14M7 7l-3 6a3 3 0 0 0 6 0L7 7zm10 0l-3 6a3 3 0 0 0 6 0l-3-6z" />,
@@ -151,6 +131,14 @@ export const NAV_ROUTES: NavRoute[] = [
     flags: ["goals"],
     group: "plan",
   },
+  {
+    href: "/debt",
+    key: "nav.debt",
+    // Downward trending bar chart glyph: paying a balance down over time.
+    icon: <path d="M4 20h16M6 20V13l4 2 4-6 4 3v8" />,
+    flags: ["debtPayoff"],
+    group: "plan",
+  },
   // FIRE and the statutory pension were two entries answering one question:
   // what do I live on once I stop working. Side by side in the same group they
   // read as rival planners, and the German labels ("FIRE", "Rente") gave no
@@ -164,14 +152,9 @@ export const NAV_ROUTES: NavRoute[] = [
     flags: ["firePlanner", "pension"],
     group: "plan",
   },
-  {
-    href: "/health",
-    key: "nav.health",
-    // Pulse glyph: heartbeat line through a circle.
-    icon: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 12h3l1.5-4 3 8 1.5-4H18" />,
-    flags: ["finHealth"],
-    group: "plan",
-  },
+  // Financial health is no longer a top-level entry: its four gauges are folded
+  // into the dashboard as a compact clickable section (health-summary-card),
+  // and the full read-only view stays reachable at /health through that link.
   {
     href: "/simulation",
     key: "nav.simulation",
@@ -242,7 +225,6 @@ const PORTFOLIO_SCOPED = [
   "/portfolio",
   "/analysis",
   "/dividends",
-  "/xray",
   "/rebalancing",
   "/simulation",
   "/assets",

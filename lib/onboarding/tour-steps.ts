@@ -44,14 +44,6 @@ export const TOUR_STEPS: TourStep[] = [
     bodyKey: "tour.nav.everyday.body",
   },
   {
-    // Household is its own nav group now (lib/nav/routes.tsx), separate from
-    // Everyday.
-    key: "navHousehold",
-    target: "nav-group-household",
-    titleKey: "tour.nav.household.title",
-    bodyKey: "tour.nav.household.body",
-  },
-  {
     key: "navInvest",
     target: "nav-group-invest",
     titleKey: "tour.nav.invest.title",
@@ -442,22 +434,6 @@ export const DIVIDENDS_TOUR_STEPS: TourStep[] = [
     target: "dividends-upcoming",
     titleKey: "tour.dividends.upcoming.title",
     bodyKey: "tour.dividends.upcoming.body",
-  },
-];
-
-/** ETF look-through (/xray, components/xray/xray-view.tsx). */
-export const XRAY_TOUR_STEPS: TourStep[] = [
-  {
-    key: "xrayTable",
-    target: "xray-table",
-    titleKey: "tour.xray.table.title",
-    bodyKey: "tour.xray.table.body",
-  },
-  {
-    key: "xrayLimits",
-    target: null,
-    titleKey: "tour.xray.limits.title",
-    bodyKey: "tour.xray.limits.body",
   },
 ];
 

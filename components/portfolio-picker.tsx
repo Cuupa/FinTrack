@@ -12,6 +12,7 @@ import { atLimit } from "@/lib/billing/limits";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePortfolioLabel } from "@/lib/household/use-portfolio-label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FOCUS_RING } from "@/components/ui/primitives";
 
 export function PortfolioPicker() {
   const {
@@ -99,7 +100,7 @@ export function PortfolioPicker() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-9 w-full max-w-[8rem] items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:max-w-[12rem] dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className={`inline-flex h-9 w-full max-w-[8rem] items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 sm:max-w-[12rem] dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800 ${FOCUS_RING}`}
         title="Portfolios"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0" strokeLinecap="round" strokeLinejoin="round">

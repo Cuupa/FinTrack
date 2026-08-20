@@ -31,8 +31,7 @@ import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import type { Account, Asset, Goal, Portfolio } from "@/lib/types";
 import type { GoalInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { colorForLabel } from "@/lib/colors";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, Field, Input, SectionTitle, Stat, StatRow } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -42,9 +41,6 @@ import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from 
 import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError } from "@/lib/store/errors";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 // The tracking picker is one control over four sources, so its value is a
 // tagged string: "" = manual, "depot:" = every broker, "depot:<portfolioId>"
@@ -66,7 +62,35 @@ function trackingOf(goal: Goal): string {
   return goal.linkedAccountId ?? MANUAL_TRACKING;
 }
 
-type SortKey = "name" | "progress" | "targetAmount" | "targetDate";
+type SortKey = "name" | "progress" | "targetAmount" | "current" | "targetDate";
+
+// A goal's status is presentational: reached once it is fully funded, overdue
+// once its target date has passed unmet (the only "actual deviation from plan"
+// that warrants a warning tone), on track otherwise -- an open-ended goal can
+// never be overdue. Dates are YYYY-MM-DD, so a lexical compare is enough.
+type GoalStatus = "reached" | "onTrack" | "overdue";
+function goalStatusOf(
+  current: number,
+  target: number,
+  targetDate: string | null,
+  todayIso: string,
+): GoalStatus {
+  if (current >= target) return "reached";
+  if (targetDate && targetDate < todayIso) return "overdue";
+  return "onTrack";
+}
+// Progress fill stays brand (emerald) and turns to the warning tone only on an
+// overdue goal (spec 12.4). Status text mirrors it.
+const STATUS_TONE: Record<GoalStatus, string> = {
+  reached: "text-emerald-600 dark:text-emerald-400",
+  onTrack: "text-zinc-500",
+  overdue: "text-amber-600 dark:text-amber-500",
+};
+const STATUS_BAR: Record<GoalStatus, string> = {
+  reached: "bg-emerald-500 dark:bg-emerald-400",
+  onTrack: "bg-emerald-500 dark:bg-emerald-400",
+  overdue: "bg-amber-500 dark:bg-amber-400",
+};
 
 /** A goal plus the figures shown for it. `target`/`current` are the derived
  *  ones, so a composite goal reports the sum over its sub-goals. */
@@ -217,48 +241,36 @@ function GoalForm({
   return (
     <>
       <div className={`mt-4 grid gap-4 ${gridCls}`}>
-        <div>
-          <label className="text-sm font-medium" htmlFor={id("name")}>
-            {t("goals.form.nameLabel")}
-          </label>
-          <input
+        <Field label={t("goals.form.nameLabel")} htmlFor={id("name")}>
+          <Input
             id={id("name")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("goals.form.namePlaceholder")}
-            className={inputCls}
             data-private={name !== "" ? "" : undefined}
           />
-        </div>
+        </Field>
         {!composite && (
-          <div>
-            <label className="text-sm font-medium" htmlFor={id("target")}>
-              {t("goals.form.targetLabel", { currency: base })}
-            </label>
-            <input
+          <Field label={t("goals.form.targetLabel", { currency: base })} htmlFor={id("target")}>
+            <Input
               id={id("target")}
               inputMode="decimal"
               value={targetAmount}
               onChange={(e) => setTargetAmount(stripLeadingZero(e.target.value))}
               placeholder="0"
-              className={inputCls}
-            data-private={targetAmount !== "" ? "" : undefined}
+              data-private={targetAmount !== "" ? "" : undefined}
             />
-          </div>
+          </Field>
         )}
-        <div>
-          <label className="text-sm font-medium" htmlFor={id("date")}>
-            {t("goals.form.dateLabel")}
-          </label>
-          <input
+        <Field label={t("goals.form.dateLabel")} htmlFor={id("date")}>
+          <Input
             id={id("date")}
             type="date"
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
-            className={inputCls}
           />
           <p className="mt-1 text-sm text-zinc-500">{t("goals.form.dateHint")}</p>
-        </div>
+        </Field>
         {composite ? (
           <div className="sm:col-span-2">
             <p className="text-sm text-zinc-500">
@@ -266,8 +278,7 @@ function GoalForm({
             </p>
           </div>
         ) : (
-          <div>
-            <label className="text-sm font-medium">{t("goals.form.linkedAccountLabel")}</label>
+          <Field label={t("goals.form.linkedAccountLabel")}>
             <SelectMenu
               className="mt-1 w-full"
               ariaLabel={t("goals.form.linkedAccountLabel")}
@@ -308,11 +319,10 @@ function GoalForm({
                 {t("goals.form.payOffHint", { currency: base })}
               </p>
             )}
-          </div>
+          </Field>
         )}
         {!composite && parentCandidates.length > 0 && (
-          <div>
-            <label className="text-sm font-medium">{t("goals.form.parentLabel")}</label>
+          <Field label={t("goals.form.parentLabel")}>
             <SelectMenu
               className="mt-1 w-full"
               ariaLabel={t("goals.form.parentLabel")}
@@ -324,14 +334,11 @@ function GoalForm({
               ]}
             />
             <p className="mt-1 text-sm text-zinc-500">{t("goals.form.parentHint")}</p>
-          </div>
+          </Field>
         )}
         {!composite && !tracking && (
-          <div>
-            <label className="text-sm font-medium" htmlFor={id("manual-current")}>
-              {t("goals.form.manualCurrentLabel", { currency: base })}
-            </label>
-            <input
+          <Field label={t("goals.form.manualCurrentLabel", { currency: base })} htmlFor={id("manual-current")}>
+            <Input
               id={id("manual-current")}
               inputMode="decimal"
               value={manualCurrentAmount}
@@ -340,11 +347,10 @@ function GoalForm({
                 if (e.key === "Enter") void submit();
               }}
               placeholder="0"
-              className={inputCls}
               data-private={manualCurrentAmount !== "" ? "" : undefined}
             />
             <p className="mt-1 text-sm text-zinc-500">{t("goals.form.manualCurrentHint")}</p>
-          </div>
+          </Field>
         )}
       </div>
       <FormActions error={error}>
@@ -456,6 +462,7 @@ export function GoalsView() {
       if (key === "name") return r.goal.name;
       if (key === "progress") return r.pct;
       if (key === "targetAmount") return r.target;
+      if (key === "current") return r.current;
       return r.goal.targetDate;
     };
 
@@ -492,8 +499,8 @@ export function GoalsView() {
     childCount: number,
     isChild = false,
   ) {
-    const color = colorForLabel(goal.name);
     const derived = isPayoffGoal(goal);
+    const status = goalStatusOf(current, target, goal.targetDate, todayIso);
     const linkedAccount = goal.linkedAccountId ? accountsById.get(goal.linkedAccountId) : null;
     const linkedAsset =
       goal.tracksInvestments && goal.linkedAssetId
@@ -524,18 +531,26 @@ export function GoalsView() {
                     : t("goals.list.manualTracking")}
           </div>
         </Td>
+        <Td align="right" className="tabular-nums" data-private>
+          {formatCurrency(target, base)}
+        </Td>
+        <Td align="right" className="tabular-nums" data-private>
+          {formatCurrency(current, base)}
+        </Td>
         <Td>
-          <div className="min-w-[10rem]">
-            <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
-              <span data-private>
-                {formatCurrency(current, base)} / {formatCurrency(target, base)}
-              </span>
-              <span>{Math.round(pct)}%</span>
-            </div>
+          {goal.targetDate ? (
+            formatDate(goal.targetDate)
+          ) : (
+            <span className="text-zinc-500">{t("goals.list.openEnded")}</span>
+          )}
+        </Td>
+        <Td>
+          <div className="min-w-[8rem]">
+            <div className="text-right text-xs text-zinc-500 tabular-nums">{Math.round(pct)}%</div>
             <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
               <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${pct}%`, backgroundColor: color }}
+                className={`h-full rounded-full transition-all ${STATUS_BAR[status]}`}
+                style={{ width: `${pct}%` }}
               />
             </div>
             {monthly !== null && (
@@ -545,15 +560,8 @@ export function GoalsView() {
             )}
           </div>
         </Td>
-        <Td align="right" className="tabular-nums" data-private>
-          {formatCurrency(target, base)}
-        </Td>
-        <Td>
-          {goal.targetDate ? (
-            formatDate(goal.targetDate)
-          ) : (
-            <span className="text-zinc-500">{t("goals.list.openEnded")}</span>
-          )}
+        <Td className={`text-sm font-medium ${STATUS_TONE[status]}`}>
+          {t(`goals.status.${status}`)}
         </Td>
         <Td>
           <RowActions>
@@ -574,10 +582,34 @@ export function GoalsView() {
 
   const pager = usePagination(rows);
 
+  // Summary over the top-level rows only: a composite goal already sums its
+  // parts, and a derived payoff goal is a top-level row too, so this never
+  // double-counts.
+  const totalTarget = rows.reduce((sum, r) => sum + r.target, 0);
+  const totalCurrent = rows.reduce((sum, r) => sum + r.current, 0);
+  const overallPct = goalProgressPct(totalTarget, totalCurrent);
+
   return (
     <div className="space-y-6">
+      {rows.length > 0 && (
+        <StatRow cols={4}>
+          <Stat label={t("goals.summary.count")} value={String(rows.length)} />
+          <Stat
+            label={t("goals.summary.target")}
+            value={formatCurrency(totalTarget, base)}
+            isPrivate
+          />
+          <Stat
+            label={t("goals.summary.saved")}
+            value={formatCurrency(totalCurrent, base)}
+            isPrivate
+          />
+          <Stat label={t("goals.summary.progress")} value={`${Math.round(overallPct)}%`} />
+        </StatRow>
+      )}
+
       <Card data-tour="goals-form">
-        <h2 className="text-lg font-semibold">{t("goals.form.title")}</h2>
+        <SectionTitle>{t("goals.form.title")}</SectionTitle>
         <GoalForm
           base={base}
           accounts={data.accounts}
@@ -590,7 +622,7 @@ export function GoalsView() {
       </Card>
 
       <Card data-tour="goals-list">
-        <h2 className="text-lg font-semibold">{t("goals.list.title")}</h2>
+        <SectionTitle>{t("goals.list.title")}</SectionTitle>
         {rows.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("goals.list.empty")}</p>
         ) : (
@@ -600,15 +632,19 @@ export function GoalsView() {
                 <Th sort={sort} sortKey="name" onSort={toggleSort}>
                   {t("goals.list.name")}
                 </Th>
-                <Th sort={sort} sortKey="progress" onSort={toggleSort}>
-                  {t("goals.list.progress")}
-                </Th>
                 <Th align="right" sort={sort} sortKey="targetAmount" onSort={toggleSort}>
                   {t("goals.list.target")}
+                </Th>
+                <Th align="right" sort={sort} sortKey="current" onSort={toggleSort}>
+                  {t("goals.list.current")}
                 </Th>
                 <Th sort={sort} sortKey="targetDate" onSort={toggleSort}>
                   {t("goals.list.targetDate")}
                 </Th>
+                <Th sort={sort} sortKey="progress" onSort={toggleSort}>
+                  {t("goals.list.progress")}
+                </Th>
+                <Th>{t("goals.list.status")}</Th>
                 <Th />
               </Thead>
               <Tbody>

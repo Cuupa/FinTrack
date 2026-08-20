@@ -5,6 +5,7 @@
 import { useTheme } from "@/lib/theme/theme-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
+import { FOCUS_RING } from "./ui/primitives";
 
 export function ThemeToggle({
   className = "",
@@ -35,7 +36,7 @@ export function ThemeToggle({
       title={label}
       aria-label={label}
       data-tour={dataTour}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${FOCUS_RING} ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

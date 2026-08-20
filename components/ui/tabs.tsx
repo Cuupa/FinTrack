@@ -15,6 +15,7 @@
 
 import type { ReactNode } from "react";
 import { LockIcon } from "@/components/billing/pro-teaser";
+import { FOCUS_RING } from "./primitives";
 
 export type TabItem<T extends string> = {
   value: T;
@@ -45,7 +46,7 @@ export function Tabs<T extends string>({
   return (
     <div
       data-tour={dataTour}
-      className={`border-b border-zinc-200 dark:border-zinc-800 ${className}`}
+      className={`border-b border-subtle ${className}`}
     >
       <div className="-mb-px flex items-end gap-6">
         <div role="tablist" className="flex min-w-0 flex-1 gap-6 overflow-x-auto">
@@ -56,10 +57,10 @@ export function Tabs<T extends string>({
               role="tab"
               aria-selected={item.value === value}
               onClick={() => onChange(item.value)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 pb-2.5 text-sm font-medium transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 rounded-sm border-b-2 pb-2.5 text-sm font-medium transition-colors ${FOCUS_RING} ${
                 item.value === value
-                  ? "border-emerald-500 text-zinc-900 dark:text-white"
-                  : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  ? "border-brand text-primary"
+                  : "border-transparent text-tertiary hover:text-primary"
               }`}
             >
               {item.label}

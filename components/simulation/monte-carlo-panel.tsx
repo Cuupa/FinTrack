@@ -19,7 +19,8 @@ import type {
   PortfolioMonteCarloParams,
 } from "@/lib/finance/monte-carlo";
 import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat, StatRow, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { Button, Card, EmptyState, SectionTitle, Stat, StatRow, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { InlineNotice } from "@/components/ui/inline-notice";
 import { Slider } from "@/components/ui/slider";
 import { Tabs } from "@/components/ui/tabs";
 import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
@@ -358,13 +359,13 @@ export function MonteCarloPanel() {
   const final = result?.bands[result.bands.length - 1];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
       {holdings.length > 0 && <SimulationTour restartToken={tourReplay} />}
-      <Card className="lg:col-span-1">
-        <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+      <Card className="lg:sticky lg:top-6 self-start">
+        <SectionTitle>
           {t("sim.parameters")}
           {holdings.length > 0 && <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />}
-        </h2>
+        </SectionTitle>
 
         {/* The model is what the ENTIRE panel below configures, so it is a tab
             strip at the top of the card rather than a toggle buried inside a
@@ -640,9 +641,60 @@ export function MonteCarloPanel() {
         </ProGate>
       </Card>
 
-      <div className="space-y-6 lg:col-span-2">
+      <div className="space-y-6 min-w-0">
         {result && final ? (
           <>
+            {/* The projection band comes first: the shape of the outcome is
+                what the run is for, and the headline figures read off it. */}
+            <Card data-tour="sim-chart">
+              <SectionTitle
+                actions={
+                  <>
+                    <SegmentedControl<ChartScale>
+                      size="sm"
+                      value={scale}
+                      onChange={setScale}
+                      options={[
+                        { label: t("sim.linear"), value: "linear" },
+                        { label: t("sim.logarithmic"), value: "log" },
+                      ]}
+                    />
+                    <span className="text-xs text-zinc-500">
+                      {result.params.runs.toLocaleString()} {t("sim.runsLabel")}
+                    </span>
+                  </>
+                }
+              >
+                {t("sim.projectedWealth")}
+              </SectionTitle>
+              <div className="mt-4">
+                <DistributionChart
+                  result={result}
+                  currency={currency}
+                  scale={scale}
+                  highlight={hover}
+                  phaseBoundaryYear={
+                    result.params.withdrawalYears ? result.params.years : undefined
+                  }
+                  phaseBoundaryLabel={
+                    result.params.withdrawalYears ? t("sim.withdrawalStarts") : undefined
+                  }
+                />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} info={t("sim.tipBand50")} seriesKey="range50" onHover={setHover} />
+                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} info={t("sim.tipBand80")} seriesKey="range80" onHover={setHover} />
+                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} info={t("sim.tipBandFull")} seriesKey="rangeFull" onHover={setHover} />
+                <Legend color="#4f46e5" label={t("sim.medianLine")} line info={t("sim.tipMedian")} seriesKey="median" onHover={setHover} />
+                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed info={t("sim.tipContributed")} seriesKey="contributed" onHover={setHover} />
+              </div>
+              <SummaryRow
+                contributed={final.contributed}
+                median={final.median}
+                currency={currency}
+              />
+            </Card>
+
             <StatRow cols={3}>
               <Stat
                 label={t("sim.median")}
@@ -670,10 +722,9 @@ export function MonteCarloPanel() {
             {/* Decumulation: how much this plan lets you draw each year/month. */}
             {result.withdrawal && (
               <Card>
-                <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+                <SectionTitle info={t("sim.withdrawalMetricsTip")}>
                   {t("sim.withdrawalTitle")}
-                  <InfoTip text={t("sim.withdrawalMetricsTip")} />
-                </h2>
+                </SectionTitle>
                 <div className="mt-4 grid gap-4 sm:grid-cols-3">
                   <WithdrawalStat
                     label={t("sim.pessimistic")}
@@ -717,59 +768,13 @@ export function MonteCarloPanel() {
                 currency={currency}
               />
             )}
-
-            <Card data-tour="sim-chart">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{t("sim.projectedWealth")}</h2>
-                <div className="flex flex-wrap items-center gap-3">
-                  <SegmentedControl<ChartScale>
-                    size="sm"
-                    value={scale}
-                    onChange={setScale}
-                    options={[
-                      { label: t("sim.linear"), value: "linear" },
-                      { label: t("sim.logarithmic"), value: "log" },
-                    ]}
-                  />
-                  <span className="text-xs text-zinc-500">
-                    {result.params.runs.toLocaleString()} {t("sim.runsLabel")}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4">
-                <DistributionChart
-                  result={result}
-                  currency={currency}
-                  scale={scale}
-                  highlight={hover}
-                  phaseBoundaryYear={
-                    result.params.withdrawalYears ? result.params.years : undefined
-                  }
-                  phaseBoundaryLabel={
-                    result.params.withdrawalYears ? t("sim.withdrawalStarts") : undefined
-                  }
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                <Legend color="#6366f1" opacity={0.5} label={t("sim.band50")} info={t("sim.tipBand50")} seriesKey="range50" onHover={setHover} />
-                <Legend color="#6366f1" opacity={0.32} label={t("sim.band80")} info={t("sim.tipBand80")} seriesKey="range80" onHover={setHover} />
-                <Legend color="#6366f1" opacity={0.16} label={t("sim.bandFull")} info={t("sim.tipBandFull")} seriesKey="rangeFull" onHover={setHover} />
-                <Legend color="#4f46e5" label={t("sim.medianLine")} line info={t("sim.tipMedian")} seriesKey="median" onHover={setHover} />
-                <Legend color="#64748b" label={t("sim.contributedLine")} line dashed info={t("sim.tipContributed")} seriesKey="contributed" onHover={setHover} />
-              </div>
-              <SummaryRow
-                contributed={final.contributed}
-                median={final.median}
-                currency={currency}
-              />
-            </Card>
           </>
         ) : (
           <Card data-tour="sim-chart">
-            <div className="flex h-80 flex-col items-center justify-center gap-2 text-center text-zinc-500">
-              <p className="font-medium">{t("sim.configurePrompt")}</p>
-              <p className="text-sm">{t("sim.configureHint")}</p>
-            </div>
+            <EmptyState
+              title={t("sim.configurePrompt")}
+              hint={t("sim.configureHint")}
+            />
           </Card>
         )}
       </div>
@@ -795,17 +800,6 @@ function PortfolioModelNote({
   // data-backed (possibly blended toward the long-run prior for short windows).
   const pureGuess = model.assets.some((a) => !a.real);
   const blended = model.assets.some((a) => a.real && a.estimated);
-  const theme = pureGuess
-    ? {
-        box: "border-amber-300/70 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20",
-        head: "text-amber-900 dark:text-amber-200",
-        bar: "bg-amber-400 dark:bg-amber-500",
-      }
-    : {
-        box: "border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/30",
-        head: "text-indigo-900 dark:text-indigo-200",
-        bar: "bg-indigo-400 dark:bg-indigo-500",
-      };
 
   const [adv, setAdv] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
@@ -828,10 +822,10 @@ function PortfolioModelNote({
     }, 0) / totalWeight;
 
   return (
-    <div className={`rounded-lg border p-3.5 text-xs ${theme.box}`}>
-      <div className={`flex items-center justify-between gap-2 ${theme.head}`}>
+    <div className="rounded-lg border border-zinc-200 p-3.5 text-xs dark:border-zinc-800">
+      <div className="flex items-center justify-between gap-2 text-zinc-700 dark:text-zinc-200">
         <span className="font-semibold">{t("sim.perAssetModel")}</span>
-        <span className="text-right text-[11px] font-medium">
+        <span className="text-right text-[11px] font-medium text-zinc-500">
           {pureGuess
             ? t("sim.estimate")
             : blended
@@ -841,9 +835,13 @@ function PortfolioModelNote({
       </div>
 
       {pureGuess ? (
-        <p className="mt-2 text-amber-800/90 dark:text-amber-200/80">{t("sim.pureGuessNote")}</p>
+        <InlineNotice variant="warning" className="mt-2">
+          {t("sim.pureGuessNote")}
+        </InlineNotice>
       ) : blended ? (
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400">{t("sim.blendedNote")}</p>
+        <InlineNotice variant="info" className="mt-2">
+          {t("sim.blendedNote")}
+        </InlineNotice>
       ) : null}
 
       {showAssets ? (
@@ -890,7 +888,7 @@ function PortfolioModelNote({
                   <div className="mt-1 flex items-center gap-2">
                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800">
                       <div
-                        className={`h-full rounded-full ${theme.bar}`}
+                        className="h-full rounded-full bg-zinc-400 dark:bg-zinc-500"
                         style={{ width: `${Math.min(100, a.weight * 100)}%` }}
                       />
                     </div>
@@ -996,31 +994,25 @@ function CustomAssumptionsNote({
 }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3 text-xs dark:border-indigo-900/50 dark:bg-indigo-950/30">
-      <div className="flex items-center justify-between">
-        <span className="font-medium text-indigo-900 dark:text-indigo-200">
-          {t("sim.customAssumptions")}
-        </span>
-        {!usingEstimates && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="font-medium text-indigo-700 underline underline-offset-2 dark:text-indigo-300"
-          >
+    <InlineNotice
+      variant="info"
+      title={t("sim.customAssumptions")}
+      action={
+        !usingEstimates ? (
+          <Button variant="ghost" size="sm" onClick={onReset}>
             {t("sim.resetToDefaults", {
               ret: CUSTOM_RETURN_DEFAULT,
               vol: CUSTOM_VOL_DEFAULT,
             })}
-          </button>
-        )}
-      </div>
-      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-        {t("sim.customAssumptionsNote", {
-          ret: CUSTOM_RETURN_DEFAULT,
-          vol: CUSTOM_VOL_DEFAULT,
-        })}
-      </p>
-    </div>
+          </Button>
+        ) : undefined
+      }
+    >
+      {t("sim.customAssumptionsNote", {
+        ret: CUSTOM_RETURN_DEFAULT,
+        vol: CUSTOM_VOL_DEFAULT,
+      })}
+    </InlineNotice>
   );
 }
 
@@ -1116,7 +1108,6 @@ function SliderField({
   onToggleLock?: () => void;
 }) {
   const { t } = useI18n();
-  const [manual, setManual] = useState(false);
   const [draft, setDraft] = useState(() => formatInputDecimal(value, digits));
   const [dirty, setDirty] = useState(false);
   const display = formatInputDecimal(value, digits);
@@ -1159,23 +1150,20 @@ function SliderField({
     );
   }
 
+  // The precise value is a numeric field wired to the same value as the
+  // slider (§12.3): drag the track or type an exact figure, both edit one
+  // state. No separate "enter value" mode to toggle.
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <label className="text-sm font-medium">{label}</label>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setManual((m) => !m)}
-            className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-          >
-            {manual ? t("sim.useSlider") : t("sim.enterValue")}
-          </button>
-          {lockBtn}
-        </div>
+        {lockBtn}
       </div>
-      {manual ? (
-        <div className="group relative mt-1">
+      <div className="mt-2 flex items-center gap-3">
+        <div className="flex-1">
+          <Slider min={min} max={max} step={step} value={value} onChange={onChange} aria-label={label} />
+        </div>
+        <div className="flex w-28 shrink-0 items-center gap-1">
           <input
             type="text"
             inputMode="decimal"
@@ -1185,27 +1173,12 @@ function SliderField({
             value={dirty ? draft : display}
             onChange={(e) => handleManualChange(e.target.value)}
             onBlur={() => setDirty(false)}
-            className={`w-full rounded-md border border-zinc-300 bg-transparent py-2 pl-3 text-sm tabular-nums outline-none transition-colors focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:focus:border-zinc-300 dark:focus:ring-white/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-              suffix ? "pr-12" : "pr-3"
-            }`}
+            aria-label={label}
+            className="w-full min-w-0 rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-right text-sm font-medium tabular-nums outline-none transition-colors focus:border-zinc-900 dark:border-zinc-700 dark:focus:border-zinc-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
-          {suffix && (
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-400">
-              {suffix}
-            </span>
-          )}
+          {suffix ? <span className="shrink-0 text-xs text-zinc-400">{suffix}</span> : null}
         </div>
-      ) : (
-        <div className="mt-2 flex items-center gap-3">
-          <div className="flex-1">
-            <Slider min={min} max={max} step={step} value={value} onChange={onChange} aria-label={label} />
-          </div>
-          <span className="w-24 shrink-0 text-right text-sm font-medium tabular-nums">
-            {display}
-            {suffix ? <span className="ml-1 text-xs text-zinc-400">{suffix}</span> : null}
-          </span>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

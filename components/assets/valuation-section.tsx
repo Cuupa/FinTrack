@@ -14,7 +14,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import type { Asset } from "@/lib/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, Field, Input } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import {
@@ -30,9 +30,6 @@ import {
 import { useSort } from "@/components/ui/use-sort";
 import { DeleteAction, RowActions } from "@/components/ui/row-actions";
 import { isStorageFullError } from "@/lib/store/errors";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function ValuationSection({ asset }: { asset: Asset }) {
   const { data, setAssetValuations } = usePortfolio();
@@ -108,24 +105,17 @@ export function ValuationSection({ asset }: { asset: Asset }) {
       )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-        <div>
-          <label className="text-sm font-medium" htmlFor="valuation-date">
-            {t("valuation.dateLabel")}
-          </label>
-          <input
+        <Field label={t("valuation.dateLabel")} htmlFor="valuation-date">
+          <Input
             id="valuation-date"
             type="date"
             value={date}
             max={today()}
             onChange={(e) => setDate(e.target.value)}
-            className={inputCls}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="valuation-value">
-            {t("valuation.valueLabel", { currency: cur })}
-          </label>
-          <input
+        </Field>
+        <Field label={t("valuation.valueLabel", { currency: cur })} htmlFor="valuation-value">
+          <Input
             id="valuation-value"
             inputMode="decimal"
             value={value}
@@ -134,10 +124,9 @@ export function ValuationSection({ asset }: { asset: Asset }) {
               if (e.key === "Enter") void add();
             }}
             placeholder="0"
-            className={inputCls}
             data-private={value !== "" ? "" : undefined}
           />
-        </div>
+        </Field>
       </div>
 
       <FormActions error={error}>

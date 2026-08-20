@@ -37,8 +37,7 @@ import {
 import { addDays, today } from "@/lib/finance/dates";
 import { assetPriceKey, type Asset } from "@/lib/types";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
-import { Card, SegmentedControl, Stat, StatRow } from "@/components/ui/primitives";
-import { InfoTip } from "@/components/ui/info-tip";
+import { Card, SectionTitle, SegmentedControl, Stat, StatRow } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatSkeleton, ListRowSkeleton } from "@/components/dividends/dividends-skeleton";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -335,21 +334,22 @@ export function DividendsView() {
       </StatRow>
 
       <Card data-tour="dividends-income">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-            {t("div.income")}
-            <InfoTip text={t("div.incomeTip")} />
-          </h2>
-          <SegmentedControl
-            size="sm"
-            value={range}
-            onChange={setRange}
-            options={[
-              { label: t("div.range12m"), value: "12m" as const },
-              { label: t("div.rangeYears"), value: "years" as const },
-            ]}
-          />
-        </div>
+        <SectionTitle
+          info={t("div.incomeTip")}
+          actions={
+            <SegmentedControl
+              size="sm"
+              value={range}
+              onChange={setRange}
+              options={[
+                { label: t("div.range12m"), value: "12m" as const },
+                { label: t("div.rangeYears"), value: "years" as const },
+              ]}
+            />
+          }
+        >
+          {t("div.income")}
+        </SectionTitle>
         {showSkeleton ? (
           <div className="mt-3">
             <Skeleton className="h-[260px] w-full rounded-md" />
@@ -388,17 +388,18 @@ export function DividendsView() {
       </Card>
 
       <Card data-tour="dividends-upcoming">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-            {t("div.upcoming")}
-            <InfoTip text={t("div.upcomingTip")} />
-          </h2>
-          {upcoming.length > 0 && (
-            <span className="text-sm font-medium tabular-nums" data-private>
-              {formatCurrency(upcomingTotal, currency)}
-            </span>
-          )}
-        </div>
+        <SectionTitle
+          info={t("div.upcomingTip")}
+          actions={
+            upcoming.length > 0 ? (
+              <span className="text-sm font-medium tabular-nums" data-private>
+                {formatCurrency(upcomingTotal, currency)}
+              </span>
+            ) : undefined
+          }
+        >
+          {t("div.upcoming")}
+        </SectionTitle>
         {showSkeleton ? (
           <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -463,10 +464,7 @@ export function DividendsView() {
       </Card>
 
       <Card>
-        <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-          {t("div.byHolding")}
-          <InfoTip text={t("div.byHoldingTip")} />
-        </h2>
+        <SectionTitle info={t("div.byHoldingTip")}>{t("div.byHolding")}</SectionTitle>
         {showSkeleton ? (
           <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800/60">
             {Array.from({ length: 5 }).map((_, i) => (

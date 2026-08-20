@@ -5,7 +5,7 @@
 // they persist to local storage via the store.
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -17,6 +17,9 @@ import { useFeature } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { SubscriptionCard } from "@/components/settings/subscription-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
+import { HouseholdView } from "@/components/household/household-view";
+import { PageTour } from "@/components/onboarding/page-tours";
+import { HOUSEHOLD_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 import { useLlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
 import { providerList, getProvider } from "@/lib/llm";
 import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
@@ -43,11 +46,12 @@ const feeInputCls =
 // existing accounts can still sign in with a shorter one.
 const NEW_PASSWORD_MIN_LENGTH = 8;
 
-const TABS = ["general", "fees", "ai"] as const;
+const TABS = ["general", "household", "fees", "ai"] as const;
 type TabKey = (typeof TABS)[number];
 
 const TAB_LABEL_KEYS: Record<TabKey, MessageKey> = {
   general: "settings.tabGeneral",
+  household: "nav.household",
   fees: "settings.tabFees",
   ai: "settings.tabAi",
 };
@@ -58,18 +62,40 @@ export function SettingsView() {
   const { t } = useI18n();
   const { shared, label: ownerLabel } = useOwnerLabel();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   // The AI tab is visible whenever the flag is on — including when it is
   // Pro-locked, in which case the panel below renders behind <ProGate> rather
-  // than disappearing (owner rule: a paywalled feature stays visible).
+  // than disappearing (owner rule: a paywalled feature stays visible). The
+  // Household tab follows the same rule but never carries a padlock: even while
+  // Pro-locked a member can still accept an invite and leave, so HouseholdView
+  // gates only its create/invite sub-surfaces (see household-view.tsx).
   const ai = useFeature("llmChat");
+  const household = useFeature("household");
 
-  const visibleTabs: TabKey[] = ai.enabled ? [...TABS] : TABS.filter((key) => key !== "ai");
+  const visibleTabs: TabKey[] = TABS.filter((key) => {
+    if (key === "ai") return ai.enabled;
+    if (key === "household") return household.enabled;
+    return true;
+  });
 
-  const [tab, setTab] = useState<TabKey>("general");
-  // Falls back to "general" if the "ai" tab was selected and then the flag
-  // turned off underneath it (per-user override changing live), rather than
-  // rendering a tablist with no matching panel.
+  // Initial tab mirrors `?tab=` (like /analysis and /retirement) so the
+  // redirect from the old /household route lands on the household tab.
+  const requested = searchParams.get("tab");
+  const initialTab: TabKey =
+    requested && (TABS as readonly string[]).includes(requested) ? (requested as TabKey) : "general";
+  const [tab, setTab] = useState<TabKey>(initialTab);
+  // Falls back to "general" if the selected tab's flag turned off underneath it
+  // (a per-user override changing live), rather than rendering a tablist with
+  // no matching panel.
   const activeTab = visibleTabs.includes(tab) ? tab : "general";
+
+  const selectTab = (key: TabKey) => {
+    setTab(key);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", key);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const [name, setName] = useState(data.profile.name ?? "");
   const [currency, setCurrency] = useState(data.profile.currency);
@@ -199,7 +225,7 @@ export function SettingsView() {
     <div className="max-w-3xl space-y-6">
       <Tabs
         value={activeTab}
-        onChange={setTab}
+        onChange={selectTab}
         items={visibleTabs.map((key) => ({
           value: key,
           label: t(TAB_LABEL_KEYS[key]),
@@ -356,6 +382,22 @@ export function SettingsView() {
             </Card>
           )}
         </div>
+      )}
+
+      {activeTab === "household" && household.enabled && (
+        mode === "registered" ? (
+          <div className="space-y-6">
+            <HouseholdView />
+            {/* Tour moved here with the feature: the household cards now live
+                under this tab, so the spotlight targets render here. */}
+            <PageTour tourId="household" steps={HOUSEHOLD_TOUR_STEPS} />
+          </div>
+        ) : (
+          <Card>
+            <SectionTitle>{t("household.title")}</SectionTitle>
+            <p className="mt-4 text-sm text-zinc-500">{t("household.registeredOnly")}</p>
+          </Card>
+        )
       )}
 
       {activeTab === "fees" && (

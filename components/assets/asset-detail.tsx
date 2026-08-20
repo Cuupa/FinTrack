@@ -96,6 +96,7 @@ import {
   usePagination,
 } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
+import { PageScope } from "@/components/page-scope";
 import { DeleteAction, EditAction, PauseAction, RowActions } from "@/components/ui/row-actions";
 import {MessageKey} from "@/lib/i18n/dictionaries";
 
@@ -576,13 +577,14 @@ export function AssetDetail({
             )}
           </div>
         </div>
-        {held && (
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          <PageScope />
+          {held && (
             <Button variant="danger" onClick={handleDelete}>
               {t("asset.delete")}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Tags */}

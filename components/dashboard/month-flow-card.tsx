@@ -3,10 +3,10 @@
 // How the current month is running.
 //
 // It used to carry a second block splitting net worth into invested/liquid/
-// liabilities -- the same statement the hero's `NetWorthComposition` already
-// makes one line above the chart. Two headings for one set of figures is noise,
-// so the split is gone and the composition line is the single place net worth
-// is broken down (owner rule, round 27).
+// liabilities -- the same statement the hero's Finanzstatus strip already
+// makes above the chart. Two headings for one set of figures is noise, so the
+// split is gone and the status strip is the single place net worth is broken
+// down (owner rule, round 27).
 //
 // This block deliberately counts CASH FLOW, not income vs expense: a loan
 // instalment leaving the joint account is money gone from the pocket even
@@ -77,23 +77,23 @@ export function MonthFlowCard() {
 
   return (
     <Card>
-      <h2 className="text-lg font-semibold">{t("dashboard.month.title")}</h2>
+      <h2 className="text-lg font-semibold text-primary">{t("dashboard.month.title")}</h2>
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label={t("dashboard.month.in")} value={formatCurrency(month.inflow, base)} isPrivate />
         <Stat
           label={t("dashboard.month.out")}
           value={formatCurrency(-month.outflow, base)}
-          valueClassName={month.outflow > 0 ? "text-red-600 dark:text-red-400" : ""}
+          valueClassName={month.outflow > 0 ? "text-negative" : ""}
           isPrivate
         />
         <Stat
           label={t("dashboard.month.open")}
           value={formatCurrency(-month.open, base)}
-          valueClassName={month.open > 0 ? "text-amber-600 dark:text-amber-400" : ""}
+          valueClassName={month.open > 0 ? "text-warning" : ""}
           isPrivate
         />
       </div>
-      <p className="mt-3 text-sm text-zinc-500">{t("dashboard.month.hint")}</p>
+      <p className="mt-3 text-sm text-tertiary">{t("dashboard.month.hint")}</p>
     </Card>
   );
 }

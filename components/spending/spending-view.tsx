@@ -12,7 +12,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
 import { formatCurrency, formatDateTime, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { Button, Card, Field, Input, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { inMonth } from "@/components/ui/month-picker";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -44,9 +44,6 @@ import { PLANNED_INTERVALS, type PlannedInterval, type SpendingTransaction } fro
 import { DeleteAction, EditAction, RecurringAction, RowActions } from "@/components/ui/row-actions";
 import { useToast } from "@/lib/notifications/toast-context";
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
-
 type SortKey = "date" | "payee" | "payer" | "category" | "owner" | "amount";
 
 /** The two counterparty columns shrink to their content instead of taking an
@@ -73,6 +70,7 @@ export function SpendingView({
   accountIds: scopeAccountIds = [],
   timeframe,
   month = null,
+  showRecurring = true,
 }: {
   /** Narrows the ledger to the selected accounts and prefills the entry mask
    *  with the first of them. Empty means every account, which is how this view
@@ -85,6 +83,10 @@ export function SpendingView({
    *  chart's rolling window: both answer "which bookings", and the month is
    *  the one the user just set. */
   month?: string | null;
+  /** Whether to render the recurring-entries accordion above the ledger. The
+   *  Konten page lifts it onto its own "Wiederkehrend" tab (spec §10.1), so it
+   *  passes false and renders `<RecurringCard>` there itself. */
+  showRecurring?: boolean;
 } = {}) {
   const {
     data,
@@ -390,8 +392,7 @@ export function SpendingView({
               />
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="text-sm font-medium">{t("spending.form.accountLabel")}</label>
+              <Field label={t("spending.form.accountLabel")}>
                 <SelectMenu
                   className="mt-1 w-full"
                   ariaLabel={t("spending.form.accountLabel")}
@@ -399,28 +400,27 @@ export function SpendingView({
                   onChange={setAccountId}
                   options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
                 />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="spending-amount">
-                  {t("spending.form.amountLabel", {
-                    currency: accountsById.get(accountId)?.currency || base,
-                  })}
-                </label>
-                <input
+              </Field>
+              <Field
+                label={t("spending.form.amountLabel", {
+                  currency: accountsById.get(accountId)?.currency || base,
+                })}
+                htmlFor="spending-amount"
+              >
+                <Input
                   id="spending-amount"
                   inputMode="decimal"
                   value={amount}
                   onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
                   placeholder="0"
-                  className={inputCls}
                   data-private={amount !== "" ? "" : undefined}
                 />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="spending-date">
-                  {recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
-                </label>
-                <input
+              </Field>
+              <Field
+                label={recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
+                htmlFor="spending-date"
+              >
+                <Input
                   id="spending-date"
                   type="datetime-local"
                   // Future dates are allowed on purpose: a standing order or a
@@ -429,12 +429,10 @@ export function SpendingView({
                   // capping it here only meant "save it wrong, then correct it".
                   value={dateTime}
                   onChange={(e) => setDateTime(e.target.value)}
-                  className={inputCls}
                 />
-              </div>
+              </Field>
               {recurring && (
-                <div>
-                  <label className="text-sm font-medium">{t("recurring.col.interval")}</label>
+                <Field label={t("recurring.col.interval")}>
                   <SelectMenu
                     className="mt-1 w-full"
                     ariaLabel={t("recurring.col.interval")}
@@ -457,16 +455,16 @@ export function SpendingView({
                       />
                     </div>
                   )}
-                </div>
+                </Field>
               )}
               {/* Money out has a recipient, money in has a source. One field,
                   but calling a salary's employer the "payee" was backwards. */}
               {!transfer ? (
-                <div>
-                  <label className="text-sm font-medium" htmlFor="spending-payee">
-                    {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
-                  </label>
-                  <input
+                <Field
+                  label={t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
+                  htmlFor="spending-payee"
+                >
+                  <Input
                     id="spending-payee"
                     value={payee}
                     onChange={(e) => setPayee(e.target.value)}
@@ -474,10 +472,9 @@ export function SpendingView({
                     placeholder={t(
                       isIncome ? "spending.form.payerPlaceholder" : "spending.form.payeePlaceholder",
                     )}
-                    className={inputCls}
                     data-private={payee !== "" ? "" : undefined}
                   />
-                </div>
+                </Field>
               ) : (
                 <div className="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">
                   <span className="font-medium">{t("spending.edit.transferLabel")}</span>
@@ -486,8 +483,7 @@ export function SpendingView({
                   </p>
                 </div>
               )}
-              <div>
-                <label className="text-sm font-medium">{t("spending.form.categoryLabel")}</label>
+              <Field label={t("spending.form.categoryLabel")}>
                 <SelectMenu
                   className="mt-1 w-full"
                   ariaLabel={t("spending.form.categoryLabel")}
@@ -515,7 +511,7 @@ export function SpendingView({
                     </button>
                   )}
                 />
-              </div>
+              </Field>
               {/* Same control and same words as the edit dialog: marking a
                   booking as a transfer keeps it out of the expense figures and
                   moves the other account instead, which is what makes a rate
@@ -527,8 +523,7 @@ export function SpendingView({
                   answer. The same move is recorded as an expense from the
                   account it actually leaves. */}
               {!isIncome && (
-              <div>
-                <label className="text-sm font-medium">{t("spending.edit.transferLabel")}</label>
+              <Field label={t("spending.edit.transferLabel")}>
                 <SelectMenu
                   className="mt-1 w-full"
                   ariaLabel={t("spending.edit.transferLabel")}
@@ -541,18 +536,20 @@ export function SpendingView({
                       .map((a) => ({ value: a.id, label: a.name })),
                   ]}
                 />
+                {/* text-sm hint kept as a child, not Field's text-xs hint prop. */}
                 <p className="mt-1 text-sm text-zinc-500">
                   {transferAccountId
                     ? t("spending.edit.transferHintOn")
                     : t("spending.edit.transferHintOff")}
                 </p>
-              </div>
+              </Field>
               )}
-              <div className="sm:col-span-2 lg:col-span-3">
-                <label className="text-sm font-medium" htmlFor="spending-note">
-                  {t("spending.form.noteLabel")}
-                </label>
-                <input
+              <Field
+                label={t("spending.form.noteLabel")}
+                htmlFor="spending-note"
+                className="sm:col-span-2 lg:col-span-3"
+              >
+                <Input
                   id="spending-note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -560,9 +557,8 @@ export function SpendingView({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void submit();
                   }}
-                  className={inputCls}
                 />
-              </div>
+              </Field>
             </div>
             <FormActions error={error}>
               <Button
@@ -580,8 +576,9 @@ export function SpendingView({
 
       {/* Everything that repeats, contracts and planned entries in ONE list:
           whether they live in different tables is the data model's business,
-          not something the user should have to know. */}
-      <RecurringCard />
+          not something the user should have to know. Lifted onto its own tab on
+          the Konten page (spec §10.1), so it is optional here. */}
+      {showRecurring && <RecurringCard />}
 
       <Card data-tour="spending-table">
         {/* Every button that acts on this list lives in this list's header

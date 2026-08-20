@@ -9,8 +9,10 @@ import { GuidedTour } from "@/components/onboarding/guided-tour";
 import { TourReplayButton } from "@/components/onboarding/page-tours";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { PAGE_STACK, PageHeader } from "@/components/ui/primitives";
-import { AreaCards } from "@/components/dashboard/area-cards";
 import { MonthFlowCard } from "@/components/dashboard/month-flow-card";
+import { PlanProgressCard } from "@/components/dashboard/plan-progress-card";
+import { KeyInsightsCard } from "@/components/dashboard/key-insights-card";
+import { HealthSummaryCard } from "@/components/dashboard/health-summary-card";
 import { LoadError } from "@/components/ui/load-error";
 import { useI18n } from "@/lib/i18n/i18n-context";
 
@@ -43,17 +45,26 @@ export default function DashboardPage() {
           <LiveShareSync />
           <NetWorthHero timeframe={timeframe} onTimeframe={setTimeframe} />
 
-          {/* How the current month is running. What net worth is made of is
-              said once, by the composition line inside the hero. */}
-          <MonthFlowCard />
-
-          {/* Everyday money before investments. The order is the argument: the
-              home screen used to be the holdings table with a net-worth chart
-              on top, so accounts and spending were only ever a sidebar click
-              away and the product read as a portfolio tracker with extras. */}
-          <div data-tour="areas">
-            <AreaCards />
+          {/* "Aktueller Monat" (spec §9 M): the month's movement on the left,
+              the standing of the plans on the right -- cashflow and progress,
+              side by side. Replaces the old Konten/Ausgaben/Ziele area cards,
+              whose figures now live in the KPI strip (Konten), this cashflow
+              card (Ausgaben) and the plan-progress card (Ziele). The tour's
+              "everyday money" step spotlights this pair. */}
+          <div data-tour="areas" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <MonthFlowCard />
+            <PlanProgressCard />
           </div>
+
+          {/* Wichtige Hinweise (spec §9 I): up to three prioritized findings
+              from the user's own figures, each a link to where it is acted on.
+              Renders nothing when there is nothing worth surfacing. */}
+          <KeyInsightsCard />
+
+          {/* Financial health as a compact, clickable section (spec §9): the
+              four gauges no longer earn their own top-level nav page, and the
+              savings rate lives here rather than duplicated across KPI rows. */}
+          <HealthSummaryCard />
 
           <GuidedTour restartToken={tourRestart} />
         </>

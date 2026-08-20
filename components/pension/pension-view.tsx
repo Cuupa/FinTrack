@@ -39,7 +39,8 @@ import {
 } from "@/lib/types";
 import type { PensionContractInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
+import { Button, Card, SectionTitle, Stat, Toggle } from "@/components/ui/primitives";
+import { InlineNotice } from "@/components/ui/inline-notice";
 import { Private } from "@/components/ui/private";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -497,13 +498,17 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
       <p className="mt-1 text-xs text-zinc-500">{t("pension.points.hint")}</p>
 
       {mistyped && (
-        <div className="mt-3 rounded-md border border-amber-300 p-3 dark:border-amber-500/40">
-          <p className="text-sm text-amber-700 dark:text-amber-400">
+        <div className="mt-3">
+          <InlineNotice
+            variant="warning"
+            action={
+              <Button size="sm" onClick={() => setPendingMove(true)}>
+                {t("pension.points.moveToStatements")}
+              </Button>
+            }
+          >
             {t("pension.points.looksLikeStatements")}
-          </p>
-          <div className="mt-2">
-            <Button onClick={() => setPendingMove(true)}>{t("pension.points.moveToStatements")}</Button>
-          </div>
+          </InlineNotice>
         </div>
       )}
 
@@ -983,7 +988,7 @@ function ContractValuesDialog({
   return (
     <Modal open onClose={onClose} maxWidthClass="max-w-2xl">
       <Card>
-        <h2 className="text-lg font-semibold">{t("pension.values.title", { name: contract.name })}</h2>
+        <SectionTitle>{t("pension.values.title", { name: contract.name })}</SectionTitle>
         <p className="mt-1 text-xs text-zinc-500">{t("pension.values.hint")}</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1356,7 +1361,7 @@ function ContractsCard() {
 
       <Modal open={adding} onClose={() => setAdding(false)}>
         <Card>
-          <h2 className="text-lg font-semibold">{t("pension.contracts.add")}</h2>
+          <SectionTitle>{t("pension.contracts.add")}</SectionTitle>
           <div className="mt-4">
             <ContractForm
               onSubmit={async (input) => {
@@ -1372,7 +1377,7 @@ function ContractsCard() {
       <Modal open={editing !== null} onClose={() => setEditing(null)}>
         {editing && (
           <Card>
-            <h2 className="text-lg font-semibold">{t("pension.contracts.edit")}</h2>
+            <SectionTitle>{t("pension.contracts.edit")}</SectionTitle>
             <div className="mt-4">
               {/* Keyed on the policy so opening another row re-seeds the fields. */}
               <ContractForm
@@ -1511,25 +1516,35 @@ export function PensionView() {
           </p>
         )}
         {projection.outlierYear && (
-          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400" data-private>
-            {t("pension.outlierNotice", {
-              year: String(projection.outlierYear.year),
-              points: projection.outlierYear.points.toFixed(2),
-            })}
-          </p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">
+              <span data-private>
+                {t("pension.outlierNotice", {
+                  year: String(projection.outlierYear.year),
+                  points: projection.outlierYear.points.toFixed(2),
+                })}
+              </span>
+            </InlineNotice>
+          </div>
         )}
         {projection.annualPointsCapped && projection.maxAnnualPoints != null && (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400" data-private>
-            {t("pension.cappedNotice", {
-              raw: projection.rawAnnualPoints.toFixed(2),
-              max: projection.maxAnnualPoints.toFixed(2),
-            })}
-          </p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">
+              <span data-private>
+                {t("pension.cappedNotice", {
+                  raw: projection.rawAnnualPoints.toFixed(2),
+                  max: projection.maxAnnualPoints.toFixed(2),
+                })}
+              </span>
+            </InlineNotice>
+          </div>
         )}
         {projection.gap > 0 && (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
-            <Private>{t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}</Private>
-          </p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">
+              <Private>{t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}</Private>
+            </InlineNotice>
+          </div>
         )}
         <p className="mt-4 text-xs text-zinc-500">{t("pension.todaysMoney")}</p>
       </Card>

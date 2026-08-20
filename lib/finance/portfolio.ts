@@ -384,22 +384,7 @@ export function netWorthSeries(
   }
   const start = timeframeStart(tf, end, earliest);
   const dates = dateRange(start, end);
-  // Per-asset native currency, live-continuity factor and real history,
-  // precomputed. The FX rate itself is looked up per-date below (rateOn), not
-  // precomputed here, so it can vary across the series instead of being
-  // pinned to one spot value for every historical point.
-  const byAsset = assets.map((a) => {
-    const key = assetPriceKey(a);
-    const atxs = transactionsByAsset(a.id, txs);
-    return {
-      asset: a,
-      txs: atxs,
-      key,
-      cur: v ? nativeCurrency(a, v.base) : (a.currency ?? ""),
-      factor: priceFactor(a, atxs, v),
-      hist: history?.[key] ?? null,
-    };
-  });
+  const holdings = holdingsValueSeries(assets, txs, dates, v, history);
 
   // Accounts fold in as real user data (like CASH / manual valuations), so they
   // never trip the synthetic flag. Signed by is_liability, FX-converted at spot.
@@ -419,9 +404,46 @@ export function netWorthSeries(
         )
       : null;
 
+  const points = dates.map((date, i) => ({
+    date,
+    value: (accountValues ? accountValues[i] : 0) + holdings.values[i],
+  }));
+  return { points, containsSynthetic: holdings.containsSynthetic };
+}
+
+/**
+ * Base-currency market value of every holding on each of `dates` (ascending),
+ * the securities side of `netWorthSeries`, plus whether any point fell back to
+ * a synthetic price. Factored out so the net-worth line and its
+ * assets/liabilities breakdown share one replay of the transaction log.
+ */
+function holdingsValueSeries(
+  assets: Asset[],
+  txs: Transaction[],
+  dates: readonly string[],
+  v?: ValuationContext,
+  history?: HistoryMap,
+): { values: number[]; containsSynthetic: boolean } {
+  // Per-asset native currency, live-continuity factor and real history,
+  // precomputed. The FX rate itself is looked up per-date below (rateOn), not
+  // precomputed here, so it can vary across the series instead of being
+  // pinned to one spot value for every historical point.
+  const byAsset = assets.map((a) => {
+    const key = assetPriceKey(a);
+    const atxs = transactionsByAsset(a.id, txs);
+    return {
+      asset: a,
+      txs: atxs,
+      key,
+      cur: v ? nativeCurrency(a, v.base) : (a.currency ?? ""),
+      factor: priceFactor(a, atxs, v),
+      hist: history?.[key] ?? null,
+    };
+  });
+
   let containsSynthetic = false;
-  const points = dates.map((date, i) => {
-    let value = accountValues ? accountValues[i] : 0;
+  const values = dates.map((date) => {
+    let value = 0;
     for (const { asset, txs: atxs, key, cur, factor, hist } of byAsset) {
       const shares = sharesAt(atxs, date);
       if (shares === 0) continue;
@@ -435,9 +457,74 @@ export function netWorthSeries(
       const native = real != null ? real : priceOn(key, asset.type, date) * factor;
       value += shares * native * rateOn(cur, date, v);
     }
-    return { date, value };
+    return value;
   });
-  return { points, containsSynthetic };
+  return { values, containsSynthetic };
+}
+
+export interface NetWorthBreakdownPoint {
+  date: string;
+  /** Everything owned on the date: holdings market value + asset accounts. */
+  assets: number;
+  /** Everything owed on the date: liability accounts, as a positive figure. */
+  liabilities: number;
+  /** assets - liabilities; may be negative when debt outweighs assets. */
+  net: number;
+}
+
+export interface NetWorthBreakdownResult {
+  points: NetWorthBreakdownPoint[];
+  containsSynthetic: boolean;
+}
+
+/**
+ * Net worth split into its two sides over a timeframe (spec §9's overview
+ * chart): for each sampled date, everything owned (holdings + asset accounts)
+ * against everything owed (liability accounts), and their net. The net line
+ * equals `netWorthSeries` exactly on the same inputs -- both walk the same
+ * dates and the same holdings replay -- so the overview's three lines and the
+ * depot's single one can never disagree. Accounts are optional; with none,
+ * `liabilities` is 0 and `assets` equals the net, so a pure-investment install
+ * gets a degenerate but correct breakdown.
+ */
+export function netWorthBreakdownSeries(
+  assets: Asset[],
+  txs: Transaction[],
+  tf: Timeframe,
+  v?: ValuationContext,
+  history?: HistoryMap,
+  accounts?: Account[],
+  accountBalances?: AccountBalance[],
+  movements?: AccountMovements,
+): NetWorthBreakdownResult {
+  const end = today();
+  let earliest = earliestTxDate(txs);
+  for (const a of accounts ?? []) {
+    if (earliest === null || a.openedOn < earliest) earliest = a.openedOn;
+  }
+  const start = timeframeStart(tf, end, earliest);
+  const dates = dateRange(start, end);
+  const holdings = holdingsValueSeries(assets, txs, dates, v, history);
+
+  // Each side gets its OWN accounts-value pass so the two lines are separable;
+  // `accountsValueSeries` already signs a liability negative, so the liability
+  // pass comes back negative and is flipped to a positive "owed" figure.
+  const acctVal = { base: v?.base ?? "", fx: v?.fx };
+  const assetAccounts = (accounts ?? []).filter((a) => !a.isLiability);
+  const liabilityAccounts = (accounts ?? []).filter((a) => a.isLiability);
+  const assetAcctValues = assetAccounts.length
+    ? accountsValueSeries(assetAccounts, accountBalances ?? [], dates, acctVal, movements)
+    : null;
+  const liabilityAcctValues = liabilityAccounts.length
+    ? accountsValueSeries(liabilityAccounts, accountBalances ?? [], dates, acctVal, movements)
+    : null;
+
+  const points = dates.map((date, i) => {
+    const assetSide = holdings.values[i] + (assetAcctValues ? assetAcctValues[i] : 0);
+    const liabilitySide = liabilityAcctValues ? -liabilityAcctValues[i] : 0;
+    return { date, assets: assetSide, liabilities: liabilitySide, net: assetSide - liabilitySide };
+  });
+  return { points, containsSynthetic: holdings.containsSynthetic };
 }
 
 export interface AssetValueSeriesResult {

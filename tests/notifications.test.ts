@@ -236,7 +236,7 @@ describe("notificationsByRoute", () => {
     const items = collectNotifications(
       input({ contracts: [contract()], plannedCashflows: [planned()], householdInvites: 1 }),
     );
-    expect(notificationsByRoute(items)).toEqual({ "/accounts": 5, "/household": 1 });
+    expect(notificationsByRoute(items)).toEqual({ "/accounts": 5, "/settings": 1 });
   });
 
   it("is empty when nothing waits", () => {

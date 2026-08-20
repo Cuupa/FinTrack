@@ -1,39 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { HouseholdView } from "@/components/household/household-view";
-import { FeatureUnavailable } from "@/components/feature-unavailable";
-import { Card } from "@/components/ui/primitives";
-import { useAuth } from "@/lib/auth/auth-context";
-import { useFeature } from "@/lib/flags/flags-context";
-import { useI18n } from "@/lib/i18n/i18n-context";
-import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
-import { HOUSEHOLD_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
-
+// Household administration moved into Settings (spec §13): managing WHO shares
+// the data is account admin, not a top-level financial area. The route stays
+// and redirects rather than 404s, same call as /fire after the retirement
+// merge: it has been in the nav, in the PWA's install scope and in browser
+// histories since the feature shipped, and `?tab=household` lands a bookmark on
+// the settings tab it now lives in.
 export default function HouseholdPage() {
-  const { t } = useI18n();
-  const { mode } = useAuth();
-  const { enabled } = useFeature("household");
-  return (
-    <div className="space-y-6">
-      <PageHeaderWithTour
-        title={t("household.title")}
-        subtitle={t("household.subtitle")}
-        tourId="household"
-        steps={HOUSEHOLD_TOUR_STEPS}
-        ready={enabled && mode === "registered"}
-      />
-      {/* No page-level lock: HouseholdView gates the create/invite cards
-          itself, because accepting an invitation and leaving a household must
-          work on the free plan (family plan, migration 0101). */}
-      {!enabled ? (
-        <FeatureUnavailable />
-      ) : mode !== "registered" ? (
-        <Card>
-          <p className="text-sm text-zinc-500">{t("household.registeredOnly")}</p>
-        </Card>
-      ) : (
-        <HouseholdView />
-      )}
-    </div>
-  );
+  redirect("/settings?tab=household");
 }

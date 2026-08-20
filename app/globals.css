@@ -6,9 +6,67 @@
    prefers-color-scheme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Semantic design tokens (UX-Unification-Spec §5). Roles, not raw palettes:
+   brand / positive / negative / warning / info are distinct meanings, and the
+   six chart colors are neutral categorical series that never carry those
+   meanings. Light values live on :root, dark values override under .dark, so
+   the existing class-based theme toggle drives both. Migrate a surface by
+   swapping zinc/emerald/red utilities for bg-surface / text-primary /
+   text-brand / text-positive etc. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --bg-app: #f5f7f8;
+  --bg-sidebar: #f8fafb;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-hover: #f0f3f5;
+  --border-subtle: #dde2e7;
+  --border-strong: #c8d0d8;
+  --text-primary: #14171a;
+  --text-secondary: #4d5966;
+  --text-tertiary: #6b7682;
+  --brand: #087f63;
+  --brand-hover: #066c54;
+  --positive: #177a45;
+  --negative: #c9364a;
+  --warning: #96620a;
+  --info: #1d64b7;
+  --chart-1: #5364d8;
+  --chart-2: #1689a5;
+  --chart-3: #7b50c7;
+  --chart-4: #a96b0b;
+  --chart-5: #a64a82;
+  --chart-6: #647286;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --bg-app: #090b0e;
+  --bg-sidebar: #0d0f13;
+  --surface: #14171c;
+  --surface-elevated: #181c22;
+  --surface-hover: #1e232b;
+  --border-subtle: #2a3039;
+  --border-strong: #3a424d;
+  --text-primary: #f4f6f8;
+  --text-secondary: #a8b0bc;
+  --text-tertiary: #8b95a3;
+  --brand: #2ad1a3;
+  --brand-hover: #35e0b0;
+  --positive: #45d483;
+  --negative: #ff6b7a;
+  --warning: #f2b84b;
+  --info: #6ea8fe;
+  --chart-1: #6f7bf7;
+  --chart-2: #34b7d6;
+  --chart-3: #a87ff2;
+  --chart-4: #e7a94b;
+  --chart-5: #d874b6;
+  --chart-6: #8b97a8;
 }
 
 @theme inline {
@@ -16,11 +74,39 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* Semantic color utilities: bg-app, bg-sidebar, bg-surface,
+     bg-surface-elevated, bg-surface-hover, border-subtle, border-strong,
+     text-primary/-secondary/-tertiary, {bg,text,border}-brand, brand-hover,
+     text-positive/-negative/-warning/-info, {text,fill,stroke}-chart-1..6. */
+  --color-app: var(--bg-app);
+  --color-sidebar: var(--bg-sidebar);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-subtle: var(--border-subtle);
+  --color-strong: var(--border-strong);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-tertiary: var(--text-tertiary);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+
+  /* Geometry (Spec §5.1). Tailwind's default spacing scale already matches
+     space-1..7 (4/8/12/16/24/32/48 = 1/2/3/4/6/8/12); only the two surface
+     radii need naming: rounded-control (6px), rounded-surface (10px). */
+  --radius-control: 6px;
+  --radius-surface: 10px;
 }
 
 body {
@@ -76,7 +162,7 @@ body {
   border-radius: 9999px;
   background: linear-gradient(
     to right,
-    #10b981 var(--fill, 0%),
+    var(--brand) var(--fill, 0%),
     rgb(228 228 231) var(--fill, 0%)
   );
 }
@@ -88,7 +174,7 @@ body {
 .fin-slider::-moz-range-progress {
   height: 6px;
   border-radius: 9999px;
-  background: #10b981;
+  background: var(--brand);
 }
 .fin-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -120,7 +206,7 @@ body {
 .dark .fin-slider::-webkit-slider-runnable-track {
   background: linear-gradient(
     to right,
-    #10b981 var(--fill, 0%),
+    var(--brand) var(--fill, 0%),
     rgb(63 63 70) var(--fill, 0%)
   );
 }

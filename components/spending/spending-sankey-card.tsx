@@ -1,17 +1,28 @@
 "use client";
 
-// Cash-flow Sankey (ROADMAP #2 follow-up): income category groups -> Total ->
-// expense category groups, plus a Savings/"from savings" link carrying the
-// period's net (see spendingSankeyData in lib/finance/spending.ts, which owns
-// all the graph-building logic — this file only wires context + rendering).
-// The chart itself lives in SankeyChart, shared with the read-only shared view.
+// Cash-flow overview card. Two views of the same period: `Balken` (the default)
+// ranks income and expense category groups as horizontal bars, `Geldfluss`
+// draws the Sankey (income groups -> Total -> expense groups + a savings /
+// shortfall link). Bars lead because a ranked list answers "where does the
+// money go" at a glance; the Sankey stays available for the flow shape.
+//
+// All graph-building lives in lib/finance/spending.ts (spendingSankeyData +
+// spendingGroupBreakdown) — this file only wires context, windowing and
+// rendering. The Sankey itself is SankeyChart, shared with the read-only
+// shared view.
 
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { type Timeframe, timeframeStart, today } from "@/lib/finance/dates";
-import { incomeExpenseSplit, spendingSankeyData, toBaseCurrency } from "@/lib/finance/spending";
+import {
+  incomeExpenseSplit,
+  spendingGroupBreakdown,
+  spendingSankeyData,
+  toBaseCurrency,
+} from "@/lib/finance/spending";
 import { formatCurrency } from "@/lib/format";
+import { colorForLabel } from "@/lib/colors";
 import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { inMonth } from "@/components/ui/month-picker";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -19,6 +30,7 @@ import { SankeyChart } from "./sankey-chart";
 import { SankeyShareMenu } from "./sankey-share-menu";
 
 const PERIODS: Timeframe[] = ["1M", "3M", "YTD", "1Y", "MAX"];
+type FlowView = "bars" | "flow";
 
 export function SpendingSankeyCard({ month = null }: { month?: string | null }) {
   const { data } = usePortfolio();
@@ -26,6 +38,7 @@ export function SpendingSankeyCard({ month = null }: { month?: string | null }) 
   const { t } = useI18n();
   const base = data.profile.currency;
   const [timeframe, setTimeframe] = useState<Timeframe>("3M");
+  const [view, setView] = useState<FlowView>("bars");
 
   const earliest = useMemo(
     () =>
@@ -65,6 +78,11 @@ export function SpendingSankeyCard({ month = null }: { month?: string | null }) 
     [converted, data.spendingCategories, labels],
   );
 
+  const breakdown = useMemo(
+    () => spendingGroupBreakdown(converted, data.spendingCategories, labels),
+    [converted, data.spendingCategories, labels],
+  );
+
   const split = useMemo(() => incomeExpenseSplit(converted), [converted]);
 
   const ariaLabel = t("spending.sankey.ariaLabel", {
@@ -73,11 +91,22 @@ export function SpendingSankeyCard({ month = null }: { month?: string | null }) 
     net: formatCurrency(split.net, base),
   });
 
+  const empty = graph.nodes.length === 0;
+
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{t("spending.sankey.title")}</h2>
-        <div className="flex items-center gap-2">
+        <h2 className="text-lg font-semibold">{t("cashflow.flow.title")}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl
+            size="sm"
+            value={view}
+            onChange={setView}
+            options={[
+              { label: t("cashflow.view.bars"), value: "bars" },
+              { label: t("cashflow.view.flow"), value: "flow" },
+            ]}
+          />
           {/* A window control means nothing inside a single month. */}
           {!month && (
             <SegmentedControl
@@ -97,16 +126,85 @@ export function SpendingSankeyCard({ month = null }: { month?: string | null }) 
           />
         </div>
       </div>
-      {graph.nodes.length === 0 ? (
-        <p className="py-16 text-center text-sm text-zinc-500">{t("common.noData")}</p>
-      ) : (
+      {empty ? (
+        <p className="py-16 text-center text-sm text-tertiary">{t("common.noData")}</p>
+      ) : view === "flow" ? (
         <SankeyChart
           graph={graph}
           labels={labels}
           formatValue={(v) => formatCurrency(v, base)}
           ariaLabel={ariaLabel}
         />
+      ) : (
+        <div
+          className="mt-5 grid gap-x-8 gap-y-6 sm:grid-cols-2"
+          role="img"
+          aria-label={ariaLabel}
+        >
+          <BreakdownColumn
+            title={t("spending.totals.income")}
+            total={breakdown.incomeTotal}
+            groups={breakdown.income}
+            currency={base}
+          />
+          <BreakdownColumn
+            title={t("spending.totals.expense")}
+            total={breakdown.expenseTotal}
+            groups={breakdown.expense}
+            currency={base}
+          />
+        </div>
       )}
     </Card>
+  );
+}
+
+function BreakdownColumn({
+  title,
+  total,
+  groups,
+  currency,
+}: {
+  title: string;
+  total: number;
+  groups: { label: string; value: number }[];
+  currency: string;
+}) {
+  const { t } = useI18n();
+  const max = groups.reduce((m, g) => Math.max(m, g.value), 0);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 border-b border-subtle pb-2">
+        <h3 className="text-xs font-semibold tracking-wider text-tertiary uppercase">{title}</h3>
+        <span className="text-sm font-semibold tabular-nums text-primary" data-private>
+          {formatCurrency(total, currency)}
+        </span>
+      </div>
+      {groups.length === 0 ? (
+        <p className="mt-3 text-sm text-tertiary">{t("common.noData")}</p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {groups.map((g) => (
+            <li key={g.label}>
+              <div className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="truncate font-medium text-secondary">{g.label}</span>
+                <span className="tabular-nums text-primary" data-private>
+                  {formatCurrency(g.value, currency)}
+                </span>
+              </div>
+              <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-hover">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${max > 0 ? Math.max(2, (g.value / max) * 100) : 0}%`,
+                    backgroundColor: colorForLabel(g.label),
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

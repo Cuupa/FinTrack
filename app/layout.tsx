@@ -85,7 +85,7 @@ export default function RootLayout({
              `position: fixed; bottom: 0` bar drifts with the scroll instead of
              staying put. The dynamic viewport unit tracks the real thing, and
              it needs no height on <html> at all. */}
-      <body className="min-h-dvh bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <body className="min-h-dvh bg-app text-primary">
         <Providers>
           <GuestBanner />
           {/* Needs FeatureFlagsProvider/LivePricesProvider, so it lives inside
@@ -95,10 +95,14 @@ export default function RootLayout({
           <SiteNav />
           <div className="flex w-full">
             <Sidebar />
-            {/* Window-wide content. pb leaves room for the fixed mobile tab bar. */}
+            {/* Content is centered and capped at 1480px (UX-Unification-Spec
+                §4.2), with the responsive 16/24/32px gutters. pb leaves room
+                for the fixed mobile tab bar. */}
             <main className="min-w-0 flex-1 overflow-x-clip px-4 py-5 pb-24 sm:px-6 md:pb-8 lg:px-8">
-              {children}
-              <LegalFooter />
+              <div className="mx-auto w-full max-w-[1480px]">
+                {children}
+                <LegalFooter />
+              </div>
             </main>
           </div>
           <MobileNav />

@@ -8,9 +8,7 @@ import { Button } from "./ui/primitives";
 import { PrivacyToggle } from "./privacy-toggle";
 import { ThemeToggle } from "./theme-toggle";
 import { ProfileMenu } from "./profile-menu";
-import { PortfolioPicker } from "./portfolio-picker";
-import { AccountPicker } from "./account-picker";
-import { hidesNavigation, scopesToAccounts, scopesToPortfolio } from "@/lib/nav/routes";
+import { hidesNavigation } from "@/lib/nav/routes";
 
 export function SiteNav() {
   const pathname = usePathname();
@@ -21,12 +19,12 @@ export function SiteNav() {
   // navigation, no privacy switcher — just a notice and a way back to the app.
   if (hidesNavigation(pathname)) {
     return (
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+      <header className="sticky top-0 z-10 border-b border-subtle bg-surface/80 backdrop-blur">
         <nav className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3">
           <span className="text-lg font-semibold tracking-tight">
-            Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
+            Fin<span className="text-brand">Track</span>
           </span>
-          <span className="hidden items-center gap-1.5 text-sm text-zinc-500 sm:flex">
+          <span className="hidden items-center gap-1.5 text-sm text-tertiary sm:flex">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 16v-4M12 8h.01" strokeLinecap="round" />
@@ -45,19 +43,18 @@ export function SiteNav() {
   }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
-      <nav className="flex items-center gap-2 px-4 py-2.5 sm:gap-4">
+    <header className="sticky top-0 z-10 border-b border-subtle bg-surface/80 backdrop-blur">
+      <nav className="flex flex-wrap items-center gap-2 px-4 py-2.5 sm:gap-4">
         <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
-          Fin<span className="text-emerald-600 dark:text-emerald-400">Track</span>
+          Fin<span className="text-brand">Track</span>
         </Link>
-        {/* Primary navigation lives in the sidebar (desktop) / MobileNav (mobile). */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
-          {/* Only where a portfolio actually scopes the content. On /accounts,
-              /spending, /goals and friends it filtered nothing while implying
-              the whole app lived inside a portfolio. */}
-          {scopesToPortfolio(pathname) && <PortfolioPicker />}
-          {/* Same slot as the depot's picker, because it is the same job. */}
-          {scopesToAccounts(pathname) && <AccountPicker />}
+        {/* Primary navigation lives in the sidebar (desktop) / MobileNav
+            (mobile); the scope selector (portfolio / account picker) now sits in
+            each page's header, next to the content it scopes. What stays global
+            is chrome that belongs to no single page: the theme + privacy toggles
+            and the account menu. The cluster wraps below the logo on a narrow
+            phone rather than pushing the body wider than the viewport. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-3">
           <ThemeToggle dataTour="theme-toggle" />
           <PrivacyToggle dataTour="privacy-toggle" />
           {mode === "registered" ? (
@@ -67,10 +64,14 @@ export function SiteNav() {
           ) : (
             <>
               <Link href="/login">
-                <Button variant="secondary">{t("nav.login")}</Button>
+                <Button variant="secondary" size="sm">
+                  {t("nav.login")}
+                </Button>
               </Link>
               <Link href="/login?tab=signup">
-                <Button variant="primary">{t("nav.register")}</Button>
+                <Button variant="primary" size="sm">
+                  {t("nav.register")}
+                </Button>
               </Link>
             </>
           )}
