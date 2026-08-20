@@ -814,6 +814,96 @@ Finanz-/Store-Defekt; es sind bewusst gekoppelte Reste und eine Scope-Grenze.
    `category-manager.tsx` (bespoke inline-flex, `Input` passt nicht); die
    aufgeschobene Compact-Label-Familie `transaction-form.tsx`/`plan-form.tsx`.
 
+   **Elfte Call-Site migriert:** die Ruhestand-/Rente-Seite (`pension-view.tsx`,
+   `/retirement`-Rente-Tab) — alle 23 `<input className={inputCls}>` auf das
+   geteilte `<Input>` gehoben (Annahmen-Card, Entgeltpunkte-/Renteninfo-Tabelle,
+   Vertragswerte), lokaler `inputCls`-Const entfernt. Bewusst **nicht** auf
+   `Field` gehoben: die Seite nutzt ein eigenes gedämpftes Label-Idiom
+   (`<label className="block text-sm"><span className="text-zinc-500">…`), das
+   `Field`s fettes `font-medium`-Label optisch verändern würde — die Label-/Hint-
+   Wrapper bleiben unangetastet, nur das `<input>` wird zum `<Input>` (INPUT_CLS
+   ist eingebacken, daher pixelgleich). Der Häkchen-`<input type="checkbox">` in
+   der Prämien-Liste bleibt unverändert (kein `inputCls`). `tsc`/lint grün; Guest
+   verifiziert DE Dark + EN Light 1440x900 auf `/retirement`-Rente-Tab (Annahmen-
+   Card: vier Inputs mit gedämpften Labels und `text-xs`-Hints darunter, korrekte
+   Border in beiden Themes, keine Konsolenfehler). Damit noch ~5
+   `inputCls`-Call-Sites offen: `recurring-form.tsx`/`transaction-edit-dialog.tsx`
+   (bg/focus abweichend, brauchen Entscheidung); `household-view.tsx`/
+   `share-menu.tsx`/`category-manager.tsx` (bespoke inline-flex, `Input` passt
+   nicht); die aufgeschobene Compact-Label-Familie `transaction-form.tsx`/
+   `plan-form.tsx`.
+
+   **Zwölfte Call-Site migriert:** das Vertrags-/Wiederkehrend-Formular
+   (`RecurringForm` in `components/spending/recurring-form.tsx`, gerendert im
+   Bearbeiten-Modal auf `/recurring/contract/[id]` und in der `RecurringCard`).
+   Die "brauchen Entscheidung"-Frage (die lokale `inputCls` wich mit
+   `bg-white dark:bg-zinc-900` + `focus:border-zinc-400` vom Standard-`INPUT_CLS`
+   ab) ist zugunsten der Vereinheitlichung entschieden: alle sechs
+   `<input className={inputCls}>` (Name, Betrag, Läuft-seit inkl. Startdatum-Hint
+   + Monatsende-Toggle als Kinder, Versicherungssumme, Verlängerungsdatum,
+   Kündigungsfrist) auf `Field`+`Input` gehoben, lokaler `inputCls`-Const
+   entfernt. Das Formular nutzte bereits exakt das `Field`-Idiom
+   (`<label className="text-sm font-medium" htmlFor>`), daher rein mechanisch.
+   Da das Formular auf einer `Modal`>`Card`-Fläche (weiß/`zinc-900`) sitzt, ist
+   die Normalisierung `bg-white`→`bg-transparent` dort optisch deckungsgleich;
+   einziger realer Unterschied ist die um eine Stufe hellere Fokus-Border
+   (`zinc-500` statt `zinc-400`). Die `SelectMenu`-Blöcke `contract-account`/
+   `contract-kind` bleiben handgerollt: sie tragen ein `data-tour`-Attribut, das
+   `Field` nicht durchreicht; ihr `text-sm font-medium`-Label deckt sich ohnehin
+   mit `Field`s Label. `tsc`/lint grün; Guest verifiziert DE Dark + EN Light
+   1440x900 auf `/recurring/contract/[id]?edit=1` (Modal deckungsgleich, alle
+   Inputs mit korrekter Border in beiden Themes, Hints in `text-sm`, Toggle +
+   SegmentedControl als Kinder intakt, `FormActions`-Footer, keine
+   Konsolenfehler). Damit noch 6 Dateien mit `inputCls`-Call-Sites offen:
+   `transaction-edit-dialog.tsx` (identischer Stil wie recurring-form, der direkte
+   Zwilling und nächster Schritt); `household-view.tsx`/`share-menu.tsx`/
+   `category-manager.tsx` (bespoke inline-flex, `Input` passt nicht); die
+   aufgeschobene Compact-Label-Familie `transaction-form.tsx`/`plan-form.tsx`.
+
+   **Dreizehnte Call-Site migriert:** der Buchungs-Bearbeiten-Dialog
+   (`TransactionEditDialog`/`EditForm` in
+   `components/spending/transaction-edit-dialog.tsx`, Zeilen-Aktion auf
+   `/spending`). Der direkte Zwilling von recurring-form: identischer lokaler
+   `inputCls`-String (`bg-white`/`focus:border-zinc-400`/`dark:bg-zinc-900`),
+   gleiche Entscheidung zugunsten der Vereinheitlichung. Alle vier
+   `<input className={inputCls}>` (Datum als `datetime-local` mit `max`,
+   Empfänger im `!transfer`-Zweig, Betrag, Notiz) auf `Field`+`Input` gehoben,
+   lokaler `inputCls`-Const entfernt. Sitzt in `Modal`>`Card` (weiß/`zinc-900`),
+   daher `bg-white`→`bg-transparent` optisch deckungsgleich. Der Payee-Kommentar
+   wanderte über das `Field`, der Umbuchungs-Else-Zweig (gestrichelter Kasten)
+   bleibt. Die `SelectMenu`-Blöcke (Art/Konto/Kategorie/Umbuchung) bleiben
+   handgerollt, Label-Idiom deckt sich mit `Field`. `tsc`/lint grün; Guest
+   verifiziert DE Dark + EN Light 1440x900 auf `/spending` (Zeilen-Aktion öffnet
+   den Dialog, Zweispalten-Grid deckungsgleich, alle Inputs korrekt in beiden
+   Themes, Umbuchungs-Hint in `text-sm`, SegmentedControl + `FormActions` intakt,
+   keine Konsolenfehler).
+
+   **Migration hier abgeschlossen (Entscheidung 20.08.2026).** Die 13 migrierten
+   Call-Sites waren die echte Dublette: gestapelte Standard-Formularfelder mit
+   `text-sm font-medium`-Label. Die 5 verbliebenen lokalen `inputCls`-Consts sind
+   eine andere Spezies und bleiben **bewusst unangetastet** — sie aufs geteilte
+   `Field`/`Input` zu zwingen würde die UI verschlechtern, nicht vereinheitlichen:
+   - **`transaction-form.tsx` / `plan-form.tsx` (Compact-Label-Familie).** Ihr
+     `inputCls` ist exakt `INPUT_CLS` *ohne* `mt-1` — bewusst, weil das Label die
+     Abstände via `mb-1` trägt; `Input`s eingebackenes `mt-1` ergäbe gegen das
+     `mb-1` den doppelten Abstand. Ihr Label ist `mb-1 block text-xs font-medium
+     text-zinc-500`, die **andere, im Styleguide dokumentierte**
+     Formularfeld-Konvention; `Field` würde es auf `text-sm font-medium` (fett,
+     größer) umstellen und das Aussehen der prominentesten Kauf-/Sparplan-
+     Formulare ändern. Beide haben zudem custom Suffix-Overlay-Inputs
+     (Währungskürzel absolut im Feld), die kein bare `<Input>` sauber abbildet
+     (`transaction-form` hat dafür eine eigene lokale `Field`-Variante).
+   - **`household-view.tsx` / `share-menu.tsx` / `category-manager.tsx`
+     (Inline-flex).** Kompakte Inline-Mikro-Inputs mit `flex-1`/`rounded-sm`/
+     `text-xs`/enger Padding; `Input`s festes `mt-1 w-full rounded-md px-3 py-2`
+     bricht ihr Flex-Layout, und Tailwind kann diese Utilities per angehängter
+     className nicht zuverlässig überschreiben (Konflikt via Stylesheet-Reihen-
+     folge, nicht Attribut-Reihenfolge — ohne `tailwind-merge` ein Footgun).
+
+   `Input` um Größen-/Tight-Varianten zu erweitern, nur um diese 5 Stellen
+   aufzusaugen, wäre Over-Engineering mit negativem optischen Ertrag. Die lokalen
+   `inputCls`-Consts dort sind ein akzeptierter, dokumentierter Rest, kein Defekt.
+
    Hinweis (dieser Durchgang): Branch-Reparatur vorangestellt. `feat/redesign`
    stand versehentlich auf dem veralteten `origin/feat/redesign` mit einem kaputten
    `git stash pop` im Arbeitsbaum. Aufgelöst per `git reset --hard main` +

@@ -29,13 +29,10 @@ import type {
 import type { ContractInput } from "@/lib/store/types";
 import { today } from "@/lib/finance/dates";
 import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { Button, Field, Input, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900";
 
 export interface RecurringFormProps {
   accounts: Account[];
@@ -133,33 +130,25 @@ export function RecurringForm({
 
   return (
     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div>
-        <label className="text-sm font-medium" htmlFor="contract-name">
-          {t("contracts.form.nameLabel")}
-        </label>
-        <input
+      <Field label={t("contracts.form.nameLabel")} htmlFor="contract-name">
+        <Input
           id="contract-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t("contracts.form.namePlaceholder")}
-          className={inputCls}
           data-private={name !== "" ? "" : undefined}
         />
-      </div>
-      <div>
-        <label className="text-sm font-medium" htmlFor="contract-amount">
-          {t("contracts.form.amountLabel", { currency: base })}
-        </label>
-        <input
+      </Field>
+      <Field label={t("contracts.form.amountLabel", { currency: base })} htmlFor="contract-amount">
+        <Input
           id="contract-amount"
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
           placeholder="0"
-          className={inputCls}
           data-private={amount !== "" ? "" : undefined}
         />
-      </div>
+      </Field>
       <div>
         <label className="text-sm font-medium">{t("contracts.form.intervalLabel")}</label>
         <SelectMenu
@@ -192,17 +181,14 @@ export function RecurringForm({
       {/* Since when the contract has been running. Only asked once it books,
           because without an account there is nothing to book from. */}
       {accountId && (
-        <div>
-          <label className="text-sm font-medium" htmlFor="contract-start">
-            {t("contracts.form.startLabel")}
-          </label>
-          <input
+        <Field label={t("contracts.form.startLabel")} htmlFor="contract-start">
+          <Input
             id="contract-start"
             type="date"
             value={bookingStartDate}
             onChange={(e) => setBookingStartDate(e.target.value)}
-            className={inputCls}
           />
+          {/* text-sm hint kept as a child, not Field's text-xs hint prop. */}
           <p className="mt-1 text-sm text-zinc-500">{t("contracts.form.startHint")}</p>
           {/* A contract only ever runs monthly, quarterly or annually, so
               month-end always applies once it books. */}
@@ -213,7 +199,7 @@ export function RecurringForm({
               label={t("recurring.monthEnd")}
             />
           </div>
-        </div>
+        </Field>
       )}
       {/* Only meaningful once the contract books: it says the money is not
           consumed but moved somewhere of yours — a loan being repaid, or a
@@ -300,38 +286,30 @@ export function RecurringForm({
         </div>
       )}
       {insuranceEnabled && isInsurance && insuranceType && (
-        <div>
-          <label className="text-sm font-medium" htmlFor="contract-sum-insured">
-            {t("contracts.form.sumInsuredLabel", { currency: base })}
-          </label>
-          <input
+        <Field
+          label={t("contracts.form.sumInsuredLabel", { currency: base })}
+          htmlFor="contract-sum-insured"
+        >
+          <Input
             id="contract-sum-insured"
             inputMode="decimal"
             value={sumInsured}
             onChange={(e) => setSumInsured(stripLeadingZero(e.target.value))}
             placeholder="0"
-            className={inputCls}
             data-private={sumInsured !== "" ? "" : undefined}
           />
-        </div>
+        </Field>
       )}
-      <div>
-        <label className="text-sm font-medium" htmlFor="contract-renewal">
-          {t("contracts.form.renewalLabel")}
-        </label>
-        <input
+      <Field label={t("contracts.form.renewalLabel")} htmlFor="contract-renewal">
+        <Input
           id="contract-renewal"
           type="date"
           value={renewalDate}
           onChange={(e) => setRenewalDate(e.target.value)}
-          className={inputCls}
         />
-      </div>
-      <div>
-        <label className="text-sm font-medium" htmlFor="contract-notice">
-          {t("contracts.form.noticeLabel")}
-        </label>
-        <input
+      </Field>
+      <Field label={t("contracts.form.noticeLabel")} htmlFor="contract-notice">
+        <Input
           id="contract-notice"
           inputMode="numeric"
           value={noticeDays}
@@ -340,9 +318,8 @@ export function RecurringForm({
             if (e.key === "Enter") handleSubmit();
           }}
           placeholder="0"
-          className={inputCls}
         />
-      </div>
+      </Field>
       <FormActions>
         {onCancel && (
           <Button variant="secondary" onClick={onCancel}>
