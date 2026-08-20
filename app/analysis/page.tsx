@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { AllocationView } from "@/components/allocation/allocation-view";
+import { XrayView } from "@/components/xray/xray-view";
 import { ReturnsView } from "@/components/analysis/returns-view";
 import { TradesView } from "@/components/analysis/trades-view";
 import { RiskView } from "@/components/analysis/risk-view";
@@ -12,10 +13,14 @@ import { RiskDisclaimer } from "@/components/ui/risk-disclaimer";
 import { Tabs } from "@/components/ui/tabs";
 import { ProTeaser } from "@/components/billing/pro-teaser";
 import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
+import { PageScope } from "@/components/page-scope";
 import { ANALYSIS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 import { useFeature } from "@/lib/flags/flags-context";
 
-const TABS = ["distributions", "returns", "trades", "risks", "tax"] as const;
+// X-Ray folds in here as a first-class tab: it is a look-through of the same
+// holdings the distributions donut breaks down, not a separate destination.
+// The standalone /xray route redirects onto ?tab=xray (spec §9/P5.1).
+const TABS = ["distributions", "xray", "returns", "trades", "risks", "tax"] as const;
 
 type TabKey = (typeof TABS)[number];
 
@@ -44,9 +49,10 @@ function AnalysisPageInner() {
   // switch) removes the tab outright, same as before the plan layer.
   const risk = useFeature("risk");
   const taxReport = useFeature("taxReport");
-  const tabs = TABS.filter((key) => key !== "risks" || risk.enabled).filter(
-    (key) => key !== "tax" || taxReport.enabled,
-  );
+  const xray = useFeature("xray");
+  const tabs = TABS.filter((key) => key !== "risks" || risk.enabled)
+    .filter((key) => key !== "tax" || taxReport.enabled)
+    .filter((key) => key !== "xray" || xray.enabled);
 
   // The URL is a mirror of the client state, not the other way round: the
   // initial tab is read once from `?tab=`, invalid or flag-hidden values fall
@@ -78,6 +84,7 @@ function AnalysisPageInner() {
         subtitle={tr(`analysis.blurb.${tab}`)}
         tourId="analysis"
         steps={ANALYSIS_TOUR_STEPS}
+        scope={<PageScope />}
       />
 
       <RiskDisclaimer variant="compact" />
@@ -91,11 +98,27 @@ function AnalysisPageInner() {
         items={tabs.map((key) => ({
           value: key,
           label: tr(key === "tax" ? "tax.tabLabel" : `analysis.tab.${key}`),
-          locked: key === "risks" ? risk.locked : key === "tax" ? taxReport.locked : false,
+          locked:
+            key === "risks"
+              ? risk.locked
+              : key === "tax"
+                ? taxReport.locked
+                : key === "xray"
+                  ? xray.locked
+                  : false,
         }))}
       />
 
       {tab === "distributions" && <AllocationView />}
+      {tab === "xray" &&
+        xray.enabled &&
+        (xray.locked ? (
+          <ProTeaser feature="xray">
+            <XrayView />
+          </ProTeaser>
+        ) : (
+          <XrayView />
+        ))}
       {tab === "returns" && <ReturnsView />}
       {tab === "trades" && <TradesView />}
       {tab === "risks" &&

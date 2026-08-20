@@ -13,7 +13,7 @@
 // picker and the chart; a second copy of "assets / liabilities / net" directly
 // under it was the duplication this restructure exists to remove.
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import {
@@ -27,29 +27,17 @@ import {
 import { currentAccountBalance } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, Field, Input } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { useOwnerLabel } from "@/lib/household/use-owner-label";
-import {
-  Table,
-  TablePagination,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  usePagination,
-} from "@/components/ui/table";
+import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
 import { isStorageFullError } from "@/lib/store/errors";
 import { AccountEditDialog } from "./account-edit-dialog";
 import { DeleteAction, EditAction, RowActions } from "@/components/ui/row-actions";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 type SortKey = "name" | "kind" | "owner" | "balance";
 
@@ -124,21 +112,16 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
       <h2 className="text-lg font-semibold">{t("accounts.form.title")}</h2>
       <p className="mt-1 text-sm text-zinc-500">{t("accounts.form.intro")}</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <label className="text-sm font-medium" htmlFor="account-name">
-            {t("accounts.form.nameLabel")}
-          </label>
-          <input
+        <Field label={t("accounts.form.nameLabel")} htmlFor="account-name">
+          <Input
             id="account-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("accounts.form.namePlaceholder")}
-            className={inputCls}
             data-private={name !== "" ? "" : undefined}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("accounts.form.kindLabel")}</label>
+        </Field>
+        <Field label={t("accounts.form.kindLabel")}>
           <SelectMenu
             className="mt-1 w-full"
             ariaLabel={t("accounts.form.kindLabel")}
@@ -146,24 +129,20 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
             onChange={(v) => setKind(v as AccountKind)}
             options={ACCOUNT_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="account-currency">
-            {t("accounts.form.currencyLabel")}
-          </label>
-          <input
+        </Field>
+        <Field label={t("accounts.form.currencyLabel")} htmlFor="account-currency">
+          <Input
             id="account-currency"
             value={currency}
             onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
             placeholder={base}
-            className={inputCls}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="account-opening">
-            {t("accounts.form.openingLabel", { currency: currency.trim() || base })}
-          </label>
-          <input
+        </Field>
+        <Field
+          label={t("accounts.form.openingLabel", { currency: currency.trim() || base })}
+          htmlFor="account-opening"
+        >
+          <Input
             id="account-opening"
             inputMode="decimal"
             value={opening}
@@ -172,30 +151,22 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
               if (e.key === "Enter") void submit();
             }}
             placeholder="0"
-            className={inputCls}
             data-private={opening !== "" ? "" : undefined}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="account-opened">
-            {t("accounts.form.openedLabel")}
-          </label>
-          <input
+        </Field>
+        <Field label={t("accounts.form.openedLabel")} htmlFor="account-opened">
+          <Input
             id="account-opened"
             type="date"
             value={openedOn}
             max={today()}
             onChange={(e) => setOpenedOn(e.target.value)}
-            className={inputCls}
           />
-        </div>
+        </Field>
         {!LIABILITY_KINDS.includes(kind) && (
           <>
-            <div>
-              <label className="text-sm font-medium" htmlFor="account-interest">
-                {t("accounts.form.interestLabel")}
-              </label>
-              <input
+            <Field label={t("accounts.form.interestLabel")} htmlFor="account-interest">
+              <Input
                 id="account-interest"
                 inputMode="decimal"
                 value={interestRate}
@@ -204,13 +175,9 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
                   if (e.key === "Enter") void submit();
                 }}
                 placeholder="0"
-                className={inputCls}
               />
-            </div>
-            <div>
-              <label className="text-sm font-medium">
-                {t("accounts.form.interestFrequencyLabel")}
-              </label>
+            </Field>
+            <Field label={t("accounts.form.interestFrequencyLabel")}>
               <SelectMenu
                 className="mt-1 w-full"
                 ariaLabel={t("accounts.form.interestFrequencyLabel")}
@@ -221,7 +188,7 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
                   label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
                 }))}
               />
-            </div>
+            </Field>
           </>
         )}
       </div>
@@ -244,9 +211,24 @@ export function AddAccountForm({ onDone }: { onDone?: () => void }) {
   );
 }
 
-/** The account list. `selectedIds` only marks the rows the hero is scoped to --
- *  the list always shows every account, since hiding the others would leave no
- *  way back to them. Empty means no filter, so nothing is singled out. */
+/** The mental buckets accounts fall into (spec §10.1: "gruppiere Konten nach
+ *  ihrem mentalen Zweck, nicht nur als flache Tabelle"). Liabilities are one
+ *  group regardless of kind; the rest split by what the money is for. */
+type AccountGroup = "payments" | "reserves" | "other" | "credit";
+const GROUP_ORDER: AccountGroup[] = ["payments", "reserves", "other", "credit"];
+
+function accountGroup(a: Account): AccountGroup {
+  if (a.isLiability) return "credit";
+  if (a.kind === "checking") return "payments";
+  if (a.kind === "savings") return "reserves";
+  return "other";
+}
+
+/** The account list, grouped by purpose. `selectedIds` only marks the rows the
+ *  summary is scoped to -- the list always shows every account, since hiding
+ *  the others would leave no way back to them. Empty means no filter. Balances
+ *  are shown NEUTRAL: a mortgage balance is a stock, not an error state, so it
+ *  is not painted alarm-red (spec §6.2). */
 export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) {
   const { data, deleteAccount } = usePortfolio();
   const { t } = useI18n();
@@ -260,100 +242,113 @@ export function AccountsTable({ selectedIds = [] }: { selectedIds?: string[] }) 
 
   const kindLabel = (k: AccountKind) => t(`accounts.kind.${k}` as Parameters<typeof t>[0]);
 
-  const rows = useMemo(() => {
+  // Sorted globally by the shared sort, then partitioned into groups preserving
+  // that order: grouping is the primary structure, the column sort orders
+  // within each group.
+  const groups = useMemo(() => {
     const withValues = data.accounts.map((a) => {
       const magnitude = currentAccountBalance(a, data.accountBalances, movements);
       const signed = a.isLiability ? -magnitude : magnitude;
       return { account: a, signed };
     });
-    return applySort(withValues, (r, key) => {
+    const sorted = applySort(withValues, (r, key) => {
       if (key === "name") return r.account.name;
       if (key === "kind") return kindLabel(r.account.kind);
       if (key === "owner") return ownerLabel(r.account.ownerId, r.account.shared) ?? "";
       return r.signed;
     });
+    return GROUP_ORDER.map((id) => ({
+      id,
+      rows: sorted.filter((r) => accountGroup(r.account) === id),
+    })).filter((g) => g.rows.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.accounts, data.accountBalances, applySort, movements, ownerLabel]);
 
-  const pager = usePagination(rows);
+  // name, kind, [owner], balance, actions.
+  const colSpan = shared ? 5 : 4;
 
   return (
     <Card data-tour="accounts-list">
-      <h2 className="text-lg font-semibold">{t("accounts.list.title")}</h2>
+      <h2 className="text-lg font-semibold text-primary">{t("accounts.list.title")}</h2>
       {data.accounts.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-500">{t("accounts.list.empty")}</p>
+        <p className="mt-3 text-sm text-tertiary">{t("accounts.list.empty")}</p>
       ) : (
-        <>
-          <Table className="mt-4">
-            <Thead>
-              <Th sort={sort} sortKey="name" onSort={toggleSort}>
-                {t("accounts.list.name")}
+        <Table className="mt-4">
+          <Thead>
+            <Th sort={sort} sortKey="name" onSort={toggleSort}>
+              {t("accounts.list.name")}
+            </Th>
+            <Th sort={sort} sortKey="kind" onSort={toggleSort}>
+              {t("accounts.list.kind")}
+            </Th>
+            {shared && (
+              <Th sort={sort} sortKey="owner" onSort={toggleSort}>
+                {t("table.owner")}
               </Th>
-              <Th sort={sort} sortKey="kind" onSort={toggleSort}>
-                {t("accounts.list.kind")}
-              </Th>
-              {shared && (
-                <Th sort={sort} sortKey="owner" onSort={toggleSort}>
-                  {t("table.owner")}
-                </Th>
-              )}
-              <Th align="right" sort={sort} sortKey="balance" onSort={toggleSort}>
-                {t("accounts.list.balance")}
-              </Th>
-              <Th />
-            </Thead>
-            <Tbody>
-              {pager.rows.map(({ account, signed }) => {
-                const cur = account.currency || base;
-                return (
-                  <Tr key={account.id} selected={selectedIds.includes(account.id)}>
-                    <Td className="font-medium" data-private>
-                      {account.name}
-                      {!account.isLiability && (account.interestRate ?? 0) > 0 && (
-                        <div className="text-xs font-normal text-zinc-500">
-                          {t("accounts.list.interest", {
-                            rate: String(account.interestRate),
-                            frequency: t(
-                              `cashInterest.freq.${account.interestFrequency ?? "MONTHLY"}` as Parameters<
-                                typeof t
-                              >[0],
-                            ),
-                          })}
-                        </div>
+            )}
+            <Th align="right" sort={sort} sortKey="balance" onSort={toggleSort}>
+              {t("accounts.list.balance")}
+            </Th>
+            <Th />
+          </Thead>
+          <Tbody>
+            {groups.map((group) => (
+              <Fragment key={group.id}>
+                <tr>
+                  <td
+                    colSpan={colSpan}
+                    className="px-3 pt-4 pb-1 text-xs font-semibold tracking-wider text-tertiary uppercase"
+                  >
+                    {t(`accounts.group.${group.id}` as Parameters<typeof t>[0])}
+                  </td>
+                </tr>
+                {group.rows.map(({ account, signed }) => {
+                  const cur = account.currency || base;
+                  return (
+                    <Tr key={account.id} selected={selectedIds.includes(account.id)}>
+                      <Td className="font-medium" data-private>
+                        {account.name}
+                        {!account.isLiability && (account.interestRate ?? 0) > 0 && (
+                          <div className="text-xs font-normal text-tertiary">
+                            {t("accounts.list.interest", {
+                              rate: String(account.interestRate),
+                              frequency: t(
+                                `cashInterest.freq.${account.interestFrequency ?? "MONTHLY"}` as Parameters<
+                                  typeof t
+                                >[0],
+                              ),
+                            })}
+                          </div>
+                        )}
+                      </Td>
+                      <Td className="text-secondary">{kindLabel(account.kind)}</Td>
+                      {shared && (
+                        <Td className="text-secondary">{ownerLabel(account.ownerId, account.shared) ?? "—"}</Td>
                       )}
-                    </Td>
-                    <Td className="text-zinc-500">{kindLabel(account.kind)}</Td>
-                    {shared && (
-                      <Td className="text-zinc-500">{ownerLabel(account.ownerId, account.shared) ?? "—"}</Td>
-                    )}
-                    <Td
-                      align="right"
-                      className={`tabular-nums ${signed < 0 ? "text-red-600 dark:text-red-400" : ""}`}
-                      data-private
-                    >
-                      {formatCurrency(signed, cur)}
-                    </Td>
-                    <Td>
-                      <RowActions>
-                        <EditAction
-                          label={t("accounts.list.edit")}
-                          onClick={() => setEditing(account)}
-                        />
-                        {/* Its own affordance, not an edit: a dated balance
-                            series is a second entity behind this row. */}
-                        <DeleteAction
-                          label={t("accounts.list.delete")}
-                          onClick={() => setConfirmDelete(account)}
-                        />
-                      </RowActions>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-          <TablePagination pager={pager} />
-        </>
+                      <Td align="right" className="tabular-nums text-primary" data-private>
+                        {formatCurrency(signed, cur)}
+                      </Td>
+                      <Td>
+                        <RowActions>
+                          <EditAction
+                            label={t("accounts.list.edit")}
+                            onClick={() => setEditing(account)}
+                          />
+                          {/* Its own affordance, not an edit: a dated balance
+                              series is a second entity behind this row. */}
+                          <DeleteAction
+                            label={t("accounts.list.delete")}
+                            onClick={() => setConfirmDelete(account)}
+                          />
+                        </RowActions>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </Tbody>
+        </Table>
       )}
 
       {editing && (

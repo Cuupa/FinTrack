@@ -11,6 +11,7 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import type { Timeframe } from "@/lib/finance/dates";
 import {
+  netWorthBreakdownSeries,
   netWorthSeries,
   portfolioTotals,
   summarizeAll,
@@ -19,9 +20,8 @@ import {
 } from "@/lib/finance/portfolio";
 import { dividendsFromEvents, totalDividends } from "@/lib/finance/dividends";
 import { accountsTotals, accountsValueOn } from "@/lib/finance/accounts";
-import { computeFinancialHealth } from "@/lib/finance/health";
+import { computeFinancialHealth, liquidBalance } from "@/lib/finance/health";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
-import { NetWorthComposition } from "./net-worth-composition";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { today } from "@/lib/finance/dates";
 import { useDividends } from "@/lib/history/use-dividends";
@@ -42,6 +42,7 @@ import {
   type ChartMode,
   type ChartScale,
 } from "@/components/charts/performance-chart";
+import { NetWorthBreakdownChart } from "@/components/charts/net-worth-breakdown-chart";
 import { BENCHMARKS, buildCustomBenchmark, type Benchmark } from "@/lib/finance/benchmarks";
 import { resolveInstrumentByQuery } from "@/lib/import/resolve-instrument";
 
@@ -144,6 +145,41 @@ export function NetWorthHero({
       movements,
     ],
   );
+  // The overview charts net worth split into the two sides it is made of
+  // (spec §9): everything owned against everything owed, plus the net line. Its
+  // net equals `series` exactly (same replay, same dates), so the two never
+  // disagree. Only built for the dashboard -- the depot chart is a single line.
+  const breakdown = useMemo(
+    () =>
+      investmentsOnly
+        ? null
+        : netWorthBreakdownSeries(
+            data.assets,
+            data.transactions,
+            timeframe,
+            effectiveValuation,
+            histories,
+            accounts,
+            accountBalances,
+            movements,
+          ),
+    [
+      investmentsOnly,
+      data.assets,
+      data.transactions,
+      timeframe,
+      effectiveValuation,
+      histories,
+      accounts,
+      accountBalances,
+      movements,
+    ],
+  );
+  // The breakdown replaces the plain net line only in currency mode. Privacy
+  // mode forces percent (wealth hidden), where the Return line and its scope
+  // note stand instead, so the single-line PerformanceChart still renders there.
+  const showBreakdown = !investmentsOnly && chartMode === "currency" && breakdown != null;
+
   // True time-weighted cumulative return (price-based, deposits never counted),
   // for "Return" mode — what brokers plot as TWROR.
   const returnSeries = useMemo(
@@ -182,10 +218,13 @@ export function NetWorthHero({
   // which come from that same series. Benchmarks force percent mode, so a
   // comparison is covered by the same rule.
   const returnScoped = !investmentsOnly && chartMode === "percent";
+  // The overview chart carries no return metrics (spec §9/§17: no index
+  // comparison, no Rendite figures on net worth), so the scope note only
+  // applies when a Return line is actually on screen -- which on the dashboard
+  // only happens in privacy mode, where wealth is hidden and the chart is
+  // forced to percent.
   const showScopeNote =
-    !investmentsOnly &&
-    (accounts?.length ?? 0) > 0 &&
-    (chartMode === "percent" || data.assets.length > 0);
+    !investmentsOnly && (accounts?.length ?? 0) > 0 && chartMode === "percent";
 
   // Split of that same number, so the headline can show what it is made of
   // rather than presenting a portfolio figure with accounts silently folded in.
@@ -195,6 +234,17 @@ export function NetWorthHero({
         ? accountsTotals(accounts, accountBalances ?? [], valuation, movements)
         : { assets: 0, liabilities: 0, net: 0 },
     [accounts, accountBalances, valuation, movements],
+  );
+
+  // Cash you can spend now: liquid (checking/savings) account balances only,
+  // not property or other manual-valuation accounts. Feeds the overview's
+  // "Liquid verfügbar" status figure (spec §9).
+  const liquid = useMemo(
+    () =>
+      accounts
+        ? liquidBalance(accounts, accountBalances ?? [], { base: currency, fx: valuation.fx }, movements)
+        : 0,
+    [accounts, accountBalances, currency, valuation.fx, movements],
   );
 
   // The overview is not a depot report: four of its six figures used to be
@@ -300,100 +350,117 @@ export function NetWorthHero({
   return (
     <Card data-tour="net-worth">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
-          <Stat
-            label={headlineLabel}
-            value={formatCurrency(netWorth, currency)}
-            info={headlineInfo}
-            isPrivate
-            size="sm"
-          />
-          <Stat
-            label={`${t("stat.change")} (${timeframe})`}
-            value={historyLoading ? "…" : formatCurrency(periodChange.abs, currency)}
-            sub={historyLoading ? undefined : formatPercent(periodChange.pct)}
-            valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
-            info={changeInfo}
-            isPrivate
-            size="sm"
-          />
-          {investmentsOnly ? (
-            <>
-              <Stat
-                label={t("stat.unrealized")}
-                value={formatCurrency(totals.unrealizedPL, currency)}
-                sub={formatPercent(totals.totalPLPercent)}
-                valueClassName={plColor(totals.unrealizedPL)}
-                info={t("tip.unrealized")}
-                isPrivate
-                size="sm"
-              />
-              <Stat
-                label={t("stat.realized")}
-                value={formatCurrency(totals.realizedPL, currency)}
-                valueClassName={plColor(totals.realizedPL)}
-                info={t("tip.realized")}
-                isPrivate
-                size="sm"
-              />
-            </>
-          ) : (
-            <>
-              {/* Not a currency figure, so no `isPrivate`: a rate and a count of
-                  months say nothing about how much money there is. */}
-              <Stat
-                label={t("health.gauge.savingsRate.label")}
-                value={
-                  health?.savingsRate != null ? formatPercent(health.savingsRate) : t("health.noData")
-                }
-                valueClassName={health?.savingsRate != null ? plColor(health.savingsRate) : "text-zinc-400"}
-                info={t("health.gauge.savingsRate.hint")}
-                size="sm"
-              />
-              <Stat
-                label={t("health.gauge.monthsOfExpenses.label")}
-                value={
-                  health?.monthsOfExpensesCovered != null
-                    ? `${formatNumber(health.monthsOfExpensesCovered, 1)} ${t("health.unit.months")}`
-                    : t("health.noData")
-                }
-                valueClassName={health?.monthsOfExpensesCovered == null ? "text-zinc-400" : ""}
-                info={t("health.gauge.monthsOfExpenses.hint")}
-                size="sm"
-              />
-            </>
-          )}
-          <Stat
-            label={t("stat.dividends")}
-            value={formatCurrency(dividendsReceived, currency)}
-            valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
-            info={t("tip.dividends")}
-            isPrivate
-            size="sm"
-          />
-          <Stat
-            label={t("stat.irr")}
-            value={irr != null ? formatPercent(irr) : "—"}
-            valueClassName={irr != null ? plColor(irr) : ""}
-            info={t("tip.irr")}
-            size="sm"
-          />
-        </div>
+        {investmentsOnly ? (
+          // Depot readout: the figures ARE the subject here, so the return
+          // metrics (P&L, dividends, IRR) belong.
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:gap-x-8 md:gap-y-3 lg:grid-cols-6">
+            <Stat
+              label={headlineLabel}
+              value={formatCurrency(netWorth, currency)}
+              info={headlineInfo}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={`${t("stat.change")} (${timeframe})`}
+              value={historyLoading ? "…" : formatCurrency(periodChange.abs, currency)}
+              sub={historyLoading ? undefined : formatPercent(periodChange.pct)}
+              valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
+              info={changeInfo}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("stat.unrealized")}
+              value={formatCurrency(totals.unrealizedPL, currency)}
+              sub={formatPercent(totals.totalPLPercent)}
+              valueClassName={plColor(totals.unrealizedPL)}
+              info={t("tip.unrealized")}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("stat.realized")}
+              value={formatCurrency(totals.realizedPL, currency)}
+              valueClassName={plColor(totals.realizedPL)}
+              info={t("tip.realized")}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("stat.dividends")}
+              value={formatCurrency(dividendsReceived, currency)}
+              valueClassName={dividendsReceived > 0 ? plColor(1) : ""}
+              info={t("tip.dividends")}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("stat.irr")}
+              value={irr != null ? formatPercent(irr) : "—"}
+              valueClassName={irr != null ? plColor(irr) : ""}
+              info={t("tip.irr")}
+              size="sm"
+            />
+          </div>
+        ) : (
+          // Financial STATUS, not depot performance (spec §9): what you are
+          // worth, how the month moved it, what is liquid, what is invested and
+          // what you owe. The change is the only figure that carries semantic
+          // colour (§6.2) -- the stock values stay neutral. Return metrics
+          // (dividends, IRR, realised/unrealised, savings rate) live on
+          // /portfolio and in the health section, not on the overview.
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 md:gap-x-8 lg:grid-cols-5">
+            <Stat
+              label={t("stat.netWorth")}
+              value={formatCurrency(netWorth, currency)}
+              info={t("tip.netWorth")}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={`${t("stat.change")} (${timeframe})`}
+              value={historyLoading ? "…" : formatCurrency(periodChange.abs, currency)}
+              sub={historyLoading ? undefined : formatPercent(periodChange.pct)}
+              valueClassName={historyLoading ? "text-zinc-400" : plColor(periodChange.abs)}
+              info={changeInfo}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("overview.status.liquid")}
+              value={formatCurrency(liquid, currency)}
+              sub={
+                health?.monthsOfExpensesCovered != null
+                  ? `${formatNumber(health.monthsOfExpensesCovered, 1)} ${t("health.unit.months")}`
+                  : undefined
+              }
+              info={t("overview.status.liquidTip")}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("overview.status.invested")}
+              value={formatCurrency(totals.marketValue, currency)}
+              sub={formatPercent(totals.totalPLPercent)}
+              info={t("overview.status.investedTip")}
+              isPrivate
+              size="sm"
+            />
+            <Stat
+              label={t("nav.debt")}
+              value={formatCurrency(Math.abs(acctSplit.liabilities), currency)}
+              info={t("overview.status.liabilitiesTip")}
+              isPrivate
+              size="sm"
+            />
+          </div>
+        )}
       </div>
 
-      {/* The composition bar splits net worth into investments, account cash
-          and debt. On /portfolio there is nothing to split -- the other two
-          bands are zero by construction -- so a bar reading "100 % investments"
-          would be noise dressed as information. */}
-      {!investmentsOnly && (
-        <NetWorthComposition
-          investments={totals.marketValue}
-          accountAssets={acctSplit.assets}
-          liabilities={acctSplit.liabilities}
-          currency={currency}
-        />
-      )}
-
+      {/* No composition bar: the Finanzstatus strip above already states
+          invested, liquid and liabilities as figures, and the spec forbids
+          saying the same thing twice on the overview (§9). */}
 
       <div className="mt-3 md:mt-4">
         <ChartControls
@@ -403,9 +470,15 @@ export function NetWorthHero({
           onScale={setScale}
           // Comparing forces relative (Return) mode — reflect that in the toggle.
           // Privacy mode forbids Wealth entirely, so hide the toggle there.
+          // The overview is net worth over time, not a return view, so the
+          // Wealth/Return toggle only belongs on the depot chart (spec §9/§17).
           mode={chartMode}
           onMode={setMode}
-          showMode={!incognito}
+          showMode={!incognito && investmentsOnly}
+          // The overview's assets/liabilities/net view is a comparison of
+          // magnitudes that crosses zero (a mortgage), where a log axis is
+          // undefined; the depot's single positive line keeps its log toggle.
+          scaleAvailable={investmentsOnly}
         />
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 md:mt-3">
@@ -414,15 +487,20 @@ export function NetWorthHero({
             <EstimatedBadge tip={t("data.estimatedChartTip")} />
           )}
         </span>
-        <div className="min-w-0">
-          <BenchmarkPicker
-            selected={benchmarks}
-            onToggle={toggleBenchmark}
-            custom={customBenchmarks}
-            onAddCustom={addCustomBenchmark}
-            onRemoveCustom={removeCustomBenchmark}
-          />
-        </div>
+        {/* Benchmarks compare the DEPOT against indices. Net worth carries a
+            mortgage and cash, so an index line on it compares unlike things --
+            offered on /portfolio only (spec §9/§17). */}
+        {investmentsOnly && (
+          <div className="min-w-0">
+            <BenchmarkPicker
+              selected={benchmarks}
+              onToggle={toggleBenchmark}
+              custom={customBenchmarks}
+              onAddCustom={addCustomBenchmark}
+              onRemoveCustom={removeCustomBenchmark}
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-3 md:mt-4">
@@ -430,6 +508,22 @@ export function NetWorthHero({
           <EmptyChart />
         ) : historyLoading ? (
           <LoadingChart />
+        ) : showBreakdown && breakdown ? (
+          <NetWorthBreakdownChart
+            points={breakdown.points}
+            currency={currency}
+            labels={{
+              net: t("stat.netWorth"),
+              assets: t("overview.chart.assets"),
+              liabilities: t("nav.debt"),
+            }}
+            ariaLabel={t("chart.netWorthBreakdown.ariaLabel", {
+              timeframe,
+              start: series[0] ? formatDate(series[0].date) : "",
+              end: series.length ? formatDate(series[series.length - 1].date) : "",
+              net: formatCurrency(netWorth, currency),
+            })}
+          />
         ) : (
           <PerformanceChart
             series={series}
@@ -463,7 +557,10 @@ export function NetWorthHero({
         <p className="mt-2 text-xs text-zinc-500">{t("chart.returnScope")}</p>
       )}
 
-      {data.assets.length > 0 && (
+      {/* Risk/return figures (TWR, volatility, drawdown) are depot metrics.
+          The overview answers "what am I worth", not "how did the depot
+          perform", so they render on /portfolio only (spec §9/§17). */}
+      {investmentsOnly && data.assets.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-zinc-200 pt-4 text-sm sm:grid-cols-3 lg:grid-cols-5 dark:border-zinc-800">
           <RiskStat
             label={`${t("stat.twr")} (${timeframe})`}

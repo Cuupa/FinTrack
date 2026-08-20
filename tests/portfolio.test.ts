@@ -4,6 +4,7 @@ import {
   sharesAt,
   portfolioTotals,
   netWorthSeries,
+  netWorthBreakdownSeries,
   assetValueSeries,
   holdingPeriodProfit,
   twrSeries,
@@ -11,7 +12,20 @@ import {
   type ValuationContext,
 } from "../lib/finance/portfolio";
 import { today, addDays } from "../lib/finance/dates";
-import { assetPriceKey, type Asset, type Transaction } from "../lib/types";
+import { assetPriceKey, type Account, type Asset, type Transaction } from "../lib/types";
+
+function account(over: Partial<Account> & Pick<Account, "id" | "isLiability">): Account {
+  return {
+    name: "Acct",
+    kind: over.isLiability ? "loan" : "checking",
+    currency: null,
+    openingBalance: 0,
+    openedOn: "2025-01-01",
+    interestRate: null,
+    minPayment: null,
+    ...over,
+  } as Account;
+}
 
 function tx(p: Partial<Transaction> & Pick<Transaction, "type" | "quantity" | "price">): Transaction {
   return { id: "t", assetId: "a", portfolioId: "p1", fee: 0, tax: 0, date: "2025-01-01T00:00:00", ...p };
@@ -209,6 +223,57 @@ describe("netWorthSeries", () => {
       a.points[a.points.length - 1].value,
       6,
     );
+  });
+});
+
+describe("netWorthBreakdownSeries", () => {
+  const cash = asset({ id: "c1", type: "CASH", name: "Cash" });
+  const txs = [tx({ assetId: "c1", type: "BUY", quantity: 1000, price: 1 })];
+  const checking = account({ id: "a1", isLiability: false, openingBalance: 5000 });
+  // A liability's opening balance is the amount OWED, stored positive; the
+  // `isLiability` sign flip is what makes it reduce net worth.
+  const loan = account({ id: "a2", isLiability: true, openingBalance: 300000 });
+
+  it("splits owned from owed, with liabilities positive, and net = assets - liabilities", () => {
+    const { points } = netWorthBreakdownSeries(
+      [cash],
+      txs,
+      "MAX",
+      undefined,
+      undefined,
+      [checking, loan],
+      [],
+    );
+    const last = points[points.length - 1];
+    // Assets: 1000 cash holding + 5000 checking. Liabilities: 300000 owed, shown
+    // as a positive figure. Net: 6000 - 300000.
+    expect(last.assets).toBeCloseTo(6000, 6);
+    expect(last.liabilities).toBeCloseTo(300000, 6);
+    expect(last.net).toBeCloseTo(-294000, 6);
+  });
+
+  it("net equals netWorthSeries on the same inputs (the overview and depot lines cannot disagree)", () => {
+    const args = [cash] as const;
+    const bd = netWorthBreakdownSeries(
+      [cash], txs, "MAX", undefined, undefined, [checking, loan], [],
+    );
+    const nw = netWorthSeries(
+      [cash], txs, "MAX", undefined, undefined, [checking, loan], [],
+    );
+    expect(bd.points.length).toBe(nw.points.length);
+    for (let i = 0; i < bd.points.length; i++) {
+      expect(bd.points[i].date).toBe(nw.points[i].date);
+      expect(bd.points[i].net).toBeCloseTo(nw.points[i].value, 6);
+    }
+    void args;
+  });
+
+  it("with no accounts, liabilities is 0 and assets equals net (pure-investment install)", () => {
+    const { points } = netWorthBreakdownSeries([cash], txs, "MAX");
+    const last = points[points.length - 1];
+    expect(last.liabilities).toBe(0);
+    expect(last.assets).toBeCloseTo(last.net, 6);
+    expect(last.assets).toBeCloseTo(1000, 6);
   });
 });
 

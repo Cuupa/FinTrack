@@ -305,3 +305,54 @@ export function spendingSankeyData(
 
   return { nodes, links };
 }
+
+export interface GroupBreakdown {
+  /** Income category groups, largest first. */
+  income: { label: string; value: number }[];
+  /** Expense category groups, largest first (values are positive magnitudes). */
+  expense: { label: string; value: number }[];
+  incomeTotal: number;
+  expenseTotal: number;
+  /** incomeTotal - expenseTotal. */
+  net: number;
+}
+
+/**
+ * Same category-group aggregation the Sankey uses, laid out as two ranked
+ * lists for a bar view: income groups and expense groups, each sorted
+ * descending, transfers excluded. Inputs are already period-filtered and in
+ * base currency. Small groups are NOT folded here (bars have the room the
+ * Sankey's crossing links don't), so every group is its own bar.
+ */
+export function spendingGroupBreakdown(
+  transactions: SpendingTransaction[],
+  categories: SpendingCategory[],
+  labels: { uncategorizedIncome: string; uncategorizedExpense: string },
+): GroupBreakdown {
+  const groupNameById = new Map(categories.map((c) => [c.id, c.groupName]));
+  const groupLabel = (categoryId: string | null, fallback: string) =>
+    (categoryId && groupNameById.get(categoryId)) || fallback;
+
+  const flows = withoutTransfers(transactions);
+  const groupSum = (
+    predicate: (t: SpendingTransaction) => boolean,
+    magnitude: (t: SpendingTransaction) => number,
+    fallback: string,
+  ) => {
+    const map = new Map<string, number>();
+    for (const t of flows) {
+      if (!predicate(t)) continue;
+      const label = groupLabel(t.categoryId, fallback);
+      map.set(label, (map.get(label) ?? 0) + magnitude(t));
+    }
+    return [...map.entries()]
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const income = groupSum((t) => t.amount > 0, (t) => t.amount, labels.uncategorizedIncome);
+  const expense = groupSum((t) => t.amount < 0, (t) => -t.amount, labels.uncategorizedExpense);
+  const incomeTotal = income.reduce((s, g) => s + g.value, 0);
+  const expenseTotal = expense.reduce((s, g) => s + g.value, 0);
+  return { income, expense, incomeTotal, expenseTotal, net: incomeTotal - expenseTotal };
+}

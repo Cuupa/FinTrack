@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { SettingsView } from "@/components/settings/settings-view";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
@@ -21,7 +22,11 @@ export default function SettingsPage() {
           <Skeleton className="h-96 w-full" />
         </Card>
       ) : (
-        <SettingsView />
+        // SettingsView reads `?tab=` via useSearchParams, which needs a Suspense
+        // boundary for prerendering (same as /analysis and /retirement).
+        <Suspense fallback={null}>
+          <SettingsView />
+        </Suspense>
       )}
     </div>
   );

@@ -18,7 +18,7 @@ import { fetchLivePrice } from "@/lib/live/fetch-price";
 import { dateKey, nowDateTimeLocal } from "@/lib/finance/dates";
 import { isStorageFullError } from "@/lib/store/errors";
 import { ASSET_TYPES, type AssetType } from "@/lib/types";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, Field, Input } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -28,9 +28,6 @@ import { useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { atLimit } from "@/lib/billing/limits";
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
@@ -307,7 +304,7 @@ export function AddAssetForm({
             {tr("addAsset.identifierLabel")}
           </label>
           <div className="flex gap-2">
-            <input
+            <Input
               id="import"
               value={query}
               onChange={(e) => {
@@ -331,7 +328,6 @@ export function AddAssetForm({
                 }
               }}
               placeholder={tr("addAsset.identifierPlaceholder")}
-              className={inputCls}
               autoFocus
             />
             <Button
@@ -421,11 +417,8 @@ export function AddAssetForm({
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium" htmlFor="name">
-              {tr("addAsset.name")}
-            </label>
-            <input
+          <Field label={tr("addAsset.name")} htmlFor="name">
+            <Input
               id="name"
               value={name}
               onChange={(e) => {
@@ -434,18 +427,15 @@ export function AddAssetForm({
               }}
               onBlur={touch}
               placeholder={isCash ? tr("addAsset.namePlaceholderCash") : tr("addAsset.namePlaceholder")}
-              className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
+              className={missingFieldCls(identifierOrNameMissing, touched)}
             />
-          </div>
+          </Field>
 
           {!isCash &&
             !isOther &&
             (type === "CRYPTO" || type === "COMMODITY" ? (
-              <div>
-                <label className="text-sm font-medium" htmlFor="symbol">
-                  {tr("addAsset.symbol")}
-                </label>
-                <input
+              <Field label={tr("addAsset.symbol")} htmlFor="symbol">
+                <Input
                   id="symbol"
                   value={symbol}
                   onChange={(e) => {
@@ -454,16 +444,13 @@ export function AddAssetForm({
                   }}
                   onBlur={touch}
                   placeholder={tr("addAsset.symbolPlaceholder")}
-                  className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
+                  className={missingFieldCls(identifierOrNameMissing, touched)}
                 />
-              </div>
+              </Field>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium" htmlFor="isin">
-                    {tr("addAsset.isin")}
-                  </label>
-                  <input
+                <Field label={tr("addAsset.isin")} htmlFor="isin">
+                  <Input
                     id="isin"
                     value={isin}
                     onChange={(e) => {
@@ -471,14 +458,11 @@ export function AddAssetForm({
                       setIsin(e.target.value.toUpperCase());
                     }}
                     onBlur={touch}
-                    className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
+                    className={missingFieldCls(identifierOrNameMissing, touched)}
                   />
-                </div>
-                <div>
-                  <label className="text-sm font-medium" htmlFor="wkn">
-                    {tr("addAsset.wkn")}
-                  </label>
-                  <input
+                </Field>
+                <Field label={tr("addAsset.wkn")} htmlFor="wkn">
+                  <Input
                     id="wkn"
                     value={wkn}
                     onChange={(e) => {
@@ -486,9 +470,9 @@ export function AddAssetForm({
                       setWkn(e.target.value.toUpperCase());
                     }}
                     onBlur={touch}
-                    className={`${inputCls}${missingFieldCls(identifierOrNameMissing, touched)}`}
+                    className={missingFieldCls(identifierOrNameMissing, touched)}
                   />
-                </div>
+                </Field>
               </div>
             ))}
         </div>
@@ -523,11 +507,11 @@ export function AddAssetForm({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
           <h3 className="text-sm font-semibold">{tr("addAsset.openingTx")}</h3>
           <div className="grid gap-4 sm:grid-cols-4">
-            <div>
-              <label className="text-sm font-medium" htmlFor="quantity">
-                {isCash ? tr("addAsset.amount") : tr("addAsset.quantity")}
-              </label>
-              <input
+            <Field
+              label={isCash ? tr("addAsset.amount") : tr("addAsset.quantity")}
+              htmlFor="quantity"
+            >
+              <Input
                 id="quantity"
                 type="text"
                 inputMode="decimal"
@@ -537,9 +521,9 @@ export function AddAssetForm({
                   setQuantity(stripLeadingZero(e.target.value));
                 }}
                 onBlur={touch}
-                className={`${inputCls}${missingFieldCls(quantityMissing, touched)}`}
+                className={missingFieldCls(quantityMissing, touched)}
               />
-            </div>
+            </Field>
             {!isCash && (
               <div>
                 <div className="flex items-center justify-between">
@@ -559,7 +543,7 @@ export function AddAssetForm({
                     </button>
                   )}
                 </div>
-                <input
+                <Input
                   id="price"
                   type="text"
                   inputMode="decimal"
@@ -569,36 +553,28 @@ export function AddAssetForm({
                     setPrice(stripLeadingZero(e.target.value));
                   }}
                   onBlur={touch}
-                  className={`${inputCls}${missingFieldCls(priceMissing, touched)}`}
+                  className={missingFieldCls(priceMissing, touched)}
                 />
               </div>
             )}
-            <div>
-              <label className="text-sm font-medium" htmlFor="fee">
-                {tr("addAsset.fee")}
-              </label>
-              <input
+            <Field label={tr("addAsset.fee")} htmlFor="fee">
+              <Input
                 id="fee"
                 type="text"
                 inputMode="decimal"
                 value={fee}
                 onChange={(e) => setFeeManual(stripLeadingZero(e.target.value))}
-                className={inputCls}
               />
-            </div>
-            <div>
-              <label className="text-sm font-medium" htmlFor="date">
-                {tr("addAsset.dateTime")}
-              </label>
-              <input
+            </Field>
+            <Field label={tr("addAsset.dateTime")} htmlFor="date">
+              <Input
                 id="date"
                 type="datetime-local"
                 value={executedAt}
                 max={nowDateTimeLocal()}
                 onChange={(e) => setExecutedAt(e.target.value)}
-                className={inputCls}
               />
-            </div>
+            </Field>
             <div>
               <label className="text-sm font-medium">{tr("addAsset.portfolio")}</label>
               <div className="mt-1">

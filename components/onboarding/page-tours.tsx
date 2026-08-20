@@ -47,7 +47,14 @@ export function PageTour({
   tourId,
   steps,
   restartToken = 0,
-}: PageTourProps & { tourId: string; steps: readonly TourStep[] }) {
+  onActivateTab,
+  availableTabs,
+}: PageTourProps & {
+  tourId: string;
+  steps: readonly TourStep[];
+  onActivateTab?: (tab: string) => void;
+  availableTabs?: readonly string[];
+}) {
   const { data, updateProfile } = usePortfolio();
   return (
     <TourOverlay
@@ -61,6 +68,8 @@ export function PageTour({
         })
       }
       forceOpen={restartToken > 0}
+      onActivateTab={onActivateTab}
+      availableTabs={availableTabs}
     />
   );
 }
@@ -117,16 +126,24 @@ export function PageHeaderWithTour({
   tourId,
   steps,
   ready = true,
+  scope,
   actions,
   children,
+  onActivateTab,
+  availableTabs,
 }: {
   title: string;
   subtitle?: string;
   tourId: string;
   steps: readonly TourStep[];
   ready?: boolean;
+  scope?: ReactNode;
   actions?: ReactNode;
   children?: ReactNode;
+  /** For a tabbed page: activate a step's tab before spotlighting it, and the
+   *  set of tabs actually rendered (so a flag-off tab's steps drop). */
+  onActivateTab?: (tab: string) => void;
+  availableTabs?: readonly string[];
 }) {
   const [restartToken, setRestartToken] = useState(0);
   return (
@@ -134,6 +151,7 @@ export function PageHeaderWithTour({
       <PageHeader
         title={title}
         subtitle={subtitle}
+        scope={scope}
         actions={actions}
         titleAdornment={
           ready ? <TourReplayButton onClick={() => setRestartToken((n) => n + 1)} /> : undefined
@@ -141,7 +159,15 @@ export function PageHeaderWithTour({
       >
         {children}
       </PageHeader>
-      {ready && <PageTour tourId={tourId} steps={steps} restartToken={restartToken} />}
+      {ready && (
+        <PageTour
+          tourId={tourId}
+          steps={steps}
+          restartToken={restartToken}
+          onActivateTab={onActivateTab}
+          availableTabs={availableTabs}
+        />
+      )}
     </>
   );
 }

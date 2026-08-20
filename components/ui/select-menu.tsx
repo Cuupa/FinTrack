@@ -17,6 +17,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/lib/i18n/i18n-context";
+import { FOCUS_RING } from "./primitives";
 
 export interface SelectOption {
   value: string;
@@ -179,7 +180,7 @@ export function SelectMenu(props: SingleSelectProps | MultiSelectProps) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className={`inline-flex h-9 w-full items-center justify-between gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800 ${FOCUS_RING}`}
       >
         {/* The trigger's width is fixed by the layout around it, so a long
             account name still clips here -- the title keeps it readable. */}

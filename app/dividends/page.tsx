@@ -9,6 +9,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useFeature } from "@/lib/flags/flags-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
+import { PageScope } from "@/components/page-scope";
 import { DIVIDENDS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 
 export default function DividendsPage() {
@@ -23,6 +24,7 @@ export default function DividendsPage() {
         tourId="dividends"
         steps={DIVIDENDS_TOUR_STEPS}
         ready={enabled && !locked && !loading && !loadError}
+        scope={<PageScope />}
       />
       {!enabled ? (
         <FeatureUnavailable />

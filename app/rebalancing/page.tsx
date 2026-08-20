@@ -8,6 +8,7 @@ import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { Card } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageScope } from "@/components/page-scope";
 
 export default function RebalancingPage() {
   const { t } = useI18n();
@@ -17,9 +18,12 @@ export default function RebalancingPage() {
   const { loading } = usePortfolio();
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("rebalancing.title")}</h1>
-        <p className="text-sm text-zinc-500">{t("rebalancing.subtitle")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{t("rebalancing.title")}</h1>
+          <p className="text-sm text-zinc-500">{t("rebalancing.subtitle")}</p>
+        </div>
+        <PageScope />
       </div>
       {!enabled ? (
         <FeatureUnavailable />

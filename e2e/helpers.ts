@@ -107,13 +107,34 @@ export async function submitAddAccountModal(page: Page): Promise<void> {
 }
 
 /**
+ * The Bookings and Recurring surfaces became tabs of the merged /accounts page
+ * (spec §10): bookings + the entry mask on `?tab=bookings`, the recurring card
+ * on `?tab=recurring`, accounts on the default tab. These land straight on the
+ * tab a spec needs (the tab param is read on mount).
+ */
+export async function openBookings(page: Page): Promise<void> {
+  await page.goto("/accounts?tab=bookings");
+  await dismissTour(page);
+}
+
+export async function openRecurring(page: Page): Promise<void> {
+  await page.goto("/accounts?tab=recurring");
+  await dismissTour(page);
+}
+
+/**
  * The entry mask moved behind the "Add a transaction" header button into a
  * modal (account-booking cleanup): the fields no longer sit permanently on the
- * page. Opens it and returns the dialog carrying them. Callers fill and submit
- * from the returned locator; a successful add closes the modal.
+ * page. It lives on the Bookings tab, so if that button is not on the current
+ * page this first lands on `?tab=bookings`. Opens the modal and returns the
+ * dialog carrying the fields; a successful add closes it.
  */
 export async function openEntryMask(page: Page): Promise<Locator> {
-  await page.getByRole("button", { name: "Add a transaction", exact: true }).click();
+  const trigger = page.getByRole("button", { name: "Add a transaction", exact: true });
+  if (!(await trigger.isVisible().catch(() => false))) {
+    await openBookings(page);
+  }
+  await trigger.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.locator("#spending-amount")).toBeVisible();
   return dialog;

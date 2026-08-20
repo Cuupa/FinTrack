@@ -6,8 +6,20 @@
 // hold one spacing and typography scale so a new surface inherits it instead
 // of picking new values.
 
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+} from "react";
 import { InfoTip } from "./info-tip";
+
+// One keyboard-focus ring for every interactive primitive (WCAG 2.4.7). The
+// emerald outline only shows for keyboard focus (focus-visible), never on a
+// mouse click, so it never competes with the hover/active styling. Matches the
+// sortable table header's ring so focus reads the same everywhere.
+export const FOCUS_RING =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:focus-visible:outline-emerald-400";
 
 export function Card({
   children,
@@ -19,7 +31,7 @@ export function Card({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
+      className={`rounded-surface border border-subtle bg-surface p-5 shadow-sm ${className}`}
       {...rest}
     >
       {children}
@@ -126,15 +138,113 @@ const STAT_COLS: Record<2 | 3 | 4 | 5, string> = {
   5: "grid-cols-2 md:grid-cols-3 lg:grid-cols-5",
 };
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+/**
+ * A row of 2-5 headline figures as ONE divided surface (UX-Unification-Spec
+ * §7.2), the canonical KPI readout. Unlike {@link StatRow} it draws no card
+ * per figure: the cells share a single bordered surface, split by hairline
+ * dividers — vertical on desktop, horizontal when the grid wraps. Semantic
+ * tokens (bg-surface / border-subtle) so light and dark come from one place.
+ */
+export type SummaryItem = {
+  label: string;
+  value: string;
+  sub?: string;
+  valueClassName?: string;
+  info?: string;
+  isPrivate?: boolean;
+};
 
+// Spelled out so Tailwind emits the classes: column count plus the matching
+// point at which vertical dividers replace the stacked horizontal ones.
+const SUMMARY_COLS: Record<2 | 3 | 4 | 5, string> = {
+  2: "sm:grid-cols-2 sm:divide-x sm:[&>*]:border-t-0",
+  3: "sm:grid-cols-3 sm:divide-x sm:[&>*]:border-t-0",
+  4: "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x",
+  5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x",
+};
+
+export function SummaryStrip({
+  items,
+  className = "",
+}: {
+  items: SummaryItem[];
+  className?: string;
+}) {
+  const cols = Math.min(5, Math.max(2, items.length)) as 2 | 3 | 4 | 5;
+  return (
+    <div
+      className={`grid overflow-hidden rounded-surface border border-subtle bg-surface divide-subtle ${SUMMARY_COLS[cols]} ${className}`}
+    >
+      {items.map((it, i) => (
+        <div key={i} className="min-h-[5.25rem] border-t border-subtle p-5 first:border-t-0">
+          <Stat
+            label={it.label}
+            value={it.value}
+            sub={it.sub}
+            valueClassName={it.valueClassName}
+            info={it.info}
+            isPrivate={it.isPrivate}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A titled block of content (UX-Unification-Spec §7.3). Optional title,
+ * description and an action slot on the right; content begins below with the
+ * standard rhythm. `bordered` wraps it in a surface for blocks that need a
+ * boundary; the default is frameless so a page is not a stack of nested cards.
+ */
+export function Section({
+  title,
+  description,
+  actions,
+  bordered = false,
+  className = "",
+  children,
+}: {
+  title?: ReactNode;
+  description?: string;
+  actions?: ReactNode;
+  bordered?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const frame = bordered
+    ? "rounded-surface border border-subtle bg-surface p-5"
+    : "";
+  return (
+    <section className={`${frame} ${className}`}>
+      {(title || actions) && (
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            {title && <h2 className="text-base font-semibold text-primary">{title}</h2>}
+            {description && <p className="mt-0.5 text-sm text-secondary">{description}</p>}
+          </div>
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+// "destructive" is the spec's name (§7.5); "danger" stays as an alias so the
+// existing call sites keep working. Both render the same outline-red treatment.
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "destructive";
+
+// Brand-primary (§7.5): the mint brand carries dark text in dark mode, where
+// white on it fails contrast; the darker green in light mode carries white.
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white",
+  primary: "bg-brand text-white hover:bg-brand-hover dark:text-zinc-950",
   secondary:
-    "border border-zinc-300 text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800",
-  ghost: "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800",
+    "border border-strong text-primary hover:bg-surface-hover",
+  ghost: "text-secondary hover:bg-surface-hover",
   danger:
+    "border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950",
+  destructive:
     "border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950",
 };
 
@@ -153,7 +263,7 @@ export function Button({
       : "px-3.5 py-2 text-sm";
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeCls} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING} ${sizeCls} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
@@ -178,12 +288,17 @@ export const SECTION_STACK = "space-y-4";
 export function PageHeader({
   title,
   subtitle,
+  scope,
   actions,
   titleAdornment,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** Scope selector (portfolio / account picker) for the whole page. Sits at
+      the head of the right-hand control group, before the timeframe and any
+      action, per the unified header order (spec 7.1). */
+  scope?: ReactNode;
   /** Primary/secondary actions for the whole page, e.g. "+ Add asset". */
   actions?: ReactNode;
   /** Sits inline after the title rather than out in the actions group —
@@ -200,10 +315,15 @@ export function PageHeader({
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           {titleAdornment}
         </div>
-        {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-secondary">{subtitle}</p>}
         {children}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {(scope || actions) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {scope}
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
@@ -251,9 +371,59 @@ export function EmptyState({
 }) {
   return (
     <div className={`flex flex-col items-center justify-center px-4 py-12 text-center ${className}`}>
-      <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{title}</p>
-      {hint && <p className="mt-1 max-w-sm text-sm text-zinc-500">{hint}</p>}
+      <p className="text-sm font-medium text-secondary">{title}</p>
+      {hint && <p className="mt-1 max-w-sm text-sm text-tertiary">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+// The one text-input styling. This exact string had been copy-pasted as a
+// local `inputCls` in ~16 forms; `Input` owns it now. Callers append their own
+// classes (e.g. the amber `missingFieldCls`) after a space and they win via the
+// later position / the `!` override.
+export const INPUT_CLS =
+  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
+
+/**
+ * A styled text input carrying {@link INPUT_CLS}. It is a thin wrapper over the
+ * native `<input>` (every prop passes through), so `type`, `inputMode`,
+ * `onKeyDown`, `data-private` etc. work unchanged — the only value it adds is
+ * not restating the border/focus classes in every form.
+ */
+export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={`${INPUT_CLS}${className ? ` ${className}` : ""}`} {...props} />;
+}
+
+/**
+ * A labelled form field: the `text-sm font-medium` label above its control,
+ * with an optional muted hint below it. `children` is the control itself (an
+ * {@link Input}, a `SelectMenu`, anything), so the wrapper stays layout-only —
+ * it replaces the hand-rolled `<div><label/>…</div>` triple the data-entry
+ * forms each rebuilt. Pass `htmlFor` + a matching `id` on the control to keep
+ * the label association for a plain input; controls with their own trigger
+ * (SelectMenu) carry their own `ariaLabel` instead and omit it.
+ */
+export function Field({
+  label,
+  htmlFor,
+  hint,
+  className = "",
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  hint?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <label className="text-sm font-medium" htmlFor={htmlFor}>
+        {label}
+      </label>
+      {children}
+      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }
@@ -288,7 +458,7 @@ export function Toggle({
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="group flex items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50"
+      className={`group flex items-center gap-3 rounded-md text-left disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
     >
       <span
         aria-hidden
@@ -326,16 +496,16 @@ export function SegmentedControl<T extends string>({
 }) {
   const pad = size === "sm" ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm";
   return (
-    <div className="inline-flex flex-wrap rounded-md border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-800 dark:bg-zinc-800/50">
+    <div className="inline-flex flex-wrap rounded-control border border-subtle bg-surface-hover p-0.5">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={opt.value === value}
-          className={`rounded-sm font-medium transition-colors ${pad} ${
+          className={`rounded-sm font-medium transition-colors ${FOCUS_RING} ${pad} ${
             opt.value === value
-              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-              : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              ? "bg-surface text-primary shadow-sm"
+              : "text-tertiary hover:text-primary"
           }`}
         >
           {opt.label}

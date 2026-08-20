@@ -28,7 +28,7 @@ import { useClassifications } from "@/lib/finance/use-classifications";
 import { useEtfSectors } from "@/lib/finance/use-etf-sectors";
 import { useEtfRegions } from "@/lib/finance/use-etf-regions";
 import { useEtfCountries } from "@/lib/finance/use-etf-countries";
-import { Card } from "@/components/ui/primitives";
+import { Card, SegmentedControl } from "@/components/ui/primitives";
 import { AllocationPie } from "./allocation-pie";
 
 const TABS = [
@@ -146,24 +146,13 @@ export function AllocationView() {
   return (
     <div className="space-y-6">
       <Card>
-        {/* Breakdown selector: a contained pill group, distinct from the page's
-            primary underline tabs. */}
-        <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/50">
-          {TABS.map((key) => (
-            <button
-              key={key}
-              onClick={() => selectTab(key)}
-              aria-pressed={tab === key}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                tab === key
-                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              {t(`alloc.${key}`)}
-            </button>
-          ))}
-        </div>
+        {/* Breakdown dimension: the secondary axis of one donut, so a
+            SegmentedControl, distinct from the page's primary underline tabs. */}
+        <SegmentedControl
+          options={TABS.map((key) => ({ label: t(`alloc.${key}`), value: key }))}
+          value={tab}
+          onChange={selectTab}
+        />
 
         {tab !== "custom" ? (
           <div className="mt-8">

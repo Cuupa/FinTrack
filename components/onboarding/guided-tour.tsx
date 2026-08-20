@@ -77,9 +77,24 @@ export interface TourOverlayProps {
   /** Replay affordance: open the tour regardless of `isDone`. Callers force a
    *  fresh mount alongside this (e.g. bump a `key`) so `closed` also resets. */
   forceOpen?: boolean;
+  /** For tabbed pages: activate the tab a step lives on before spotlighting it.
+   *  A step's `activateTab` is passed here as it becomes current. */
+  onActivateTab?: (tab: string) => void;
+  /** The tab values the page actually renders. A step whose `activateTab` is
+   *  not in this set is filtered out at mount (e.g. a flag-off tab). Omit for
+   *  a page with no tabs; then `activateTab` steps fall back to on-screen. */
+  availableTabs?: readonly string[];
 }
 
-export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false }: TourOverlayProps) {
+export function TourOverlay({
+  tourId,
+  steps,
+  isDone,
+  markDone,
+  forceOpen = false,
+  onActivateTab,
+  availableTabs,
+}: TourOverlayProps) {
   const { t } = useI18n();
 
   const [closed, setClosed] = useState(false);
@@ -95,16 +110,30 @@ export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false
 
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Held in a ref so the measurement effect can fire it per step without
+  // taking `onActivateTab` as a dependency (a page passes an inline closure).
+  const activateTabRef = useRef(onActivateTab);
+  useEffect(() => {
+    activateTabRef.current = onActivateTab;
+  });
+
   const open = (forceOpen || !isDone) && !closed;
 
   // Compute the step set once per mount (a replay bumps the caller's `key`,
   // remounting this component, so a fresh computation naturally happens
   // then too). Deferred to a rAF continuation, never a synchronous setState
-  // in the effect body.
+  // in the effect body. Steps on another tab survive as long as that tab
+  // exists (`availableTabs`); the measurement effect activates it in turn.
   useEffect(() => {
     if (!open) return;
     const raf = requestAnimationFrame(() => {
-      setVisibleSteps(filterVisibleSteps(steps, (name) => resolveTarget(name) !== null));
+      setVisibleSteps(
+        filterVisibleSteps(
+          steps,
+          (name) => resolveTarget(name) !== null,
+          availableTabs ? (tab) => availableTabs.includes(tab) : undefined,
+        ),
+      );
     });
     return () => cancelAnimationFrame(raf);
     // Intentionally run once per mount, not on every `open` recompute.
@@ -113,11 +142,16 @@ export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false
 
   const step = visibleSteps[stepIndex] ?? null;
 
-  // Scroll the target into view and measure it on step change.
+  // Activate the step's tab, then scroll its target into view and measure it.
+  // After a tab switch the anchor mounts a frame or two later, so resolution
+  // retries across a handful of frames before giving up (a centered card).
   useEffect(() => {
     if (!open || !step) return;
     let cancelled = false;
-    const raf = requestAnimationFrame(() => {
+    if (step.activateTab) activateTabRef.current?.(step.activateTab);
+    let raf = 0;
+    let tries = 0;
+    const attempt = () => {
       if (cancelled) return;
       if (!step.target) {
         setTargetRect(null);
@@ -125,12 +159,17 @@ export function TourOverlay({ tourId, steps, isDone, markDone, forceOpen = false
       }
       const el = resolveTarget(step.target);
       if (!el) {
+        if (tries++ < 6) {
+          raf = requestAnimationFrame(attempt);
+          return;
+        }
         setTargetRect(null);
         return;
       }
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       setTargetRect(rectOf(el));
-    });
+    };
+    raf = requestAnimationFrame(attempt);
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);

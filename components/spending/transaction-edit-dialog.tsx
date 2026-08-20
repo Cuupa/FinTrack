@@ -18,15 +18,12 @@ import { useState } from "react";
 import type { Account, SpendingCategory, SpendingTransaction } from "@/lib/types";
 import type { SpendingTransactionInput } from "@/lib/store/types";
 import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, SegmentedControl } from "@/components/ui/primitives";
+import { Button, Card, Field, Input, SegmentedControl } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Modal } from "@/components/ui/modal";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { nowDateTimeLocal } from "@/lib/finance/dates";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900";
 
 export interface TransactionEditDialogProps {
   /** The booking being edited; null closes the dialog. */
@@ -150,34 +147,29 @@ function EditForm({
             />
           </div>
         </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="edit-tx-date">
-            {t("spending.form.dateLabel")}
-          </label>
-          <input
+        <Field label={t("spending.form.dateLabel")} htmlFor="edit-tx-date">
+          <Input
             id="edit-tx-date"
             type="datetime-local"
             value={dateTime}
             max={nowDateTimeLocal()}
             onChange={(e) => setDateTime(e.target.value)}
-            className={inputCls}
           />
-        </div>
+        </Field>
         {!transfer ? (
-          <div>
-            {/* An income's counterparty is the SENDER: the selected account is
-                already the recipient, so asking for one is the wrong question. */}
-            <label className="text-sm font-medium" htmlFor="edit-tx-payee">
-              {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
-            </label>
-            <input
+          // An income's counterparty is the SENDER: the selected account is
+          // already the recipient, so asking for one is the wrong question.
+          <Field
+            label={t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
+            htmlFor="edit-tx-payee"
+          >
+            <Input
               id="edit-tx-payee"
               value={payee}
               onChange={(e) => setPayee(e.target.value)}
-              className={inputCls}
               data-private={payee !== "" ? "" : undefined}
             />
-          </div>
+          </Field>
         ) : (
           <div className="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">
             <span className="font-medium">{t("spending.edit.transferLabel")}</span>
@@ -194,20 +186,16 @@ function EditForm({
             options={accounts.map((a) => ({ value: a.id, label: a.name }))}
           />
         </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="edit-tx-amount">
-            {t("spending.form.amountLabel", { currency })}
-          </label>
-          <input
+        <Field label={t("spending.form.amountLabel", { currency })} htmlFor="edit-tx-amount">
+          <Input
             id="edit-tx-amount"
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
             placeholder="0"
-            className={inputCls}
             data-private={amount !== "" ? "" : undefined}
           />
-        </div>
+        </Field>
         <div>
           <label className="text-sm font-medium">{t("spending.form.categoryLabel")}</label>
           <SelectMenu
@@ -244,21 +232,17 @@ function EditForm({
               : t("spending.edit.transferHintOff")}
           </p>
         </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="edit-tx-note">
-            {t("spending.form.noteLabel")}
-          </label>
-          <input
+        <Field label={t("spending.form.noteLabel")} htmlFor="edit-tx-note">
+          <Input
             id="edit-tx-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") save();
             }}
-            className={inputCls}
             data-private={note !== "" ? "" : undefined}
           />
-        </div>
+        </Field>
       </div>
 
       <FormActions error={error}>

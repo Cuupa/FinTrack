@@ -14,7 +14,8 @@ test.describe("navigation", () => {
     const routes: { link: RegExp; heading: RegExp }[] = [
       { link: /^Analysis$/, heading: /^Analysis$/ },
       { link: /^Dividends$/, heading: /^Dividends$/ },
-      { link: /^X-Ray$/, heading: /^Portfolio X-Ray$/ },
+      // X-Ray folded into Analysis as a tab (P5.1): no standalone nav link.
+      // The /xray -> /analysis?tab=xray redirect is covered below.
       { link: /^Rebalance$/, heading: /^Rebalancing$/ },
       { link: /^Simulation$/, heading: /^Simulation$/ },
     ];
@@ -30,6 +31,14 @@ test.describe("navigation", () => {
     // …and back to the dashboard.
     await page.getByRole("link", { name: /^Dashboard$/ }).first().click();
     await expect(page.getByText("Everything you own, owe and spend, in one place.")).toBeVisible();
+  });
+
+  test("the old /xray link redirects onto the Analysis X-Ray tab", async ({ page }) => {
+    await page.goto("/xray");
+    await dismissTour(page);
+    await expect(page).toHaveURL(/\/analysis\?tab=xray/);
+    await expect(page.getByRole("heading", { level: 1, name: /^Analysis$/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /^X-Ray$/, selected: true })).toBeVisible();
   });
 
   test("settings and legal pages render", async ({ page }) => {

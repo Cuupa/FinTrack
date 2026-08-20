@@ -51,10 +51,12 @@ export const NOTIFICATION_KINDS: NotificationKind[] = [
 /**
  * Where each kind is acted on. Cash interest is reviewed on an asset's detail
  * page, which is not a nav entry of its own — `/portfolio` is the table that
- * page is reached from, so that is where its count belongs.
+ * page is reached from, so that is where its count belongs. Household invites
+ * are accepted in Settings (household administration moved there, spec §13),
+ * which the account/avatar menu opens — so `/settings` owns that count.
  */
 export const NOTIFICATION_ROUTES: Record<NotificationKind, string> = {
-  householdInvite: "/household",
+  householdInvite: "/settings",
   savingsPlanDue: "/portfolio",
   cashInterestDue: "/portfolio",
   accountInterestDue: "/accounts",

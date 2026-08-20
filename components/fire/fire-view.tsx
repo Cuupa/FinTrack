@@ -29,7 +29,8 @@ import {
 } from "@/lib/finance/fire";
 import { useFireInputs } from "@/lib/fire/use-fire-inputs";
 import { formatCurrency, formatInputDecimal, formatPercentPlain, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Card, Stat, Toggle } from "@/components/ui/primitives";
+import { Card, SectionTitle, Stat, Toggle } from "@/components/ui/primitives";
+import { InlineNotice } from "@/components/ui/inline-notice";
 import { Private } from "@/components/ui/private";
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -222,7 +223,7 @@ export function FireView() {
                 )}
               </>
             ) : (
-              <p className="text-sm text-zinc-500">{t("fire.pension.missing")}</p>
+              <InlineNotice variant="info">{t("fire.pension.missing")}</InlineNotice>
             )}
           </div>
         )}
@@ -249,13 +250,15 @@ export function FireView() {
           />
         </div>
         {!hasExpenseData && expensesOverride === null && (
-          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">{t("fire.noExpenseData")}</p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">{t("fire.noExpenseData")}</InlineNotice>
+          </div>
         )}
         <p className="mt-1 text-xs text-zinc-500">{t("fire.annualReturn.hint")}</p>
       </Card>
 
       <div data-tour="fire-targets">
-        <h2 className="text-lg font-semibold">{t("fire.targets.title")}</h2>
+        <SectionTitle>{t("fire.targets.title")}</SectionTitle>
         <p className="mt-1 text-sm text-zinc-500">{t("fire.targets.subtitle")}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <FireTile
@@ -300,7 +303,7 @@ export function FireView() {
           Years-to-FI is simply the investment horizon, so the link hands it
           over as exactly that, with the drawdown phase switched on. */}
       <Card data-tour="fire-simulation">
-        <h2 className="text-lg font-semibold">{t("fire.simulation.title")}</h2>
+        <SectionTitle>{t("fire.simulation.title")}</SectionTitle>
         <p className="mt-1 text-sm text-zinc-500">{t("fire.simulation.movedHint")}</p>
         <div className="mt-4">
           <Link

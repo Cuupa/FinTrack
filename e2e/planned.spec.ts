@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissTour, openAddAccountModal, openEntryMask, submitAddAccountModal } from "./helpers";
+import {
+  dismissTour,
+  openAddAccountModal,
+  openBookings,
+  openEntryMask,
+  openRecurring,
+  submitAddAccountModal,
+} from "./helpers";
 
 // Planned income & expenses (flag `plannedCashflow`) in Guest Mode.
 //
@@ -50,18 +57,23 @@ test("a planned salary books into the ledger after review", async ({ page }) => 
   // A first date in the past makes the entry due right away.
   await addRecurring(page, { name: "Salary", amount: "2500", date: daysAgo(3), income: true });
 
+  await openRecurring(page);
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card.locator("tbody tr").filter({ hasText: "Salary" })).toHaveCount(1);
 
   await card.getByRole("button", { name: "Review" }).click();
   await card.getByRole("button", { name: /^Book \d/ }).click();
-
-  const ledger = page.locator('[data-tour="spending-table"]');
-  const booked = ledger.locator("tbody tr").filter({ hasText: "Salary" });
-  await expect(booked).toHaveCount(1);
-  await expect(booked).toContainText("2,500");
   // Nothing is due any more.
   await expect(card.getByRole("button", { name: "Review" })).toHaveCount(0);
+
+  // The booked row lands in the bookings ledger, one tab over.
+  await openBookings(page);
+  const booked = page
+    .locator('[data-tour="spending-table"]')
+    .locator("tbody tr")
+    .filter({ hasText: "Salary" });
+  await expect(booked).toHaveCount(1);
+  await expect(booked).toContainText("2,500");
 });
 
 test("a planned expense reaches the cash-flow forecast", async ({ page }) => {
@@ -73,6 +85,7 @@ test("a planned expense reaches the cash-flow forecast", async ({ page }) => {
     date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
   });
 
+  await openRecurring(page);
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card.locator("tbody tr").filter({ hasText: "Holiday" })).toHaveCount(1);
   // Nothing due, so no review button.
@@ -83,6 +96,8 @@ test("a planned expense reaches the cash-flow forecast", async ({ page }) => {
   // it renders with the entry in the data.
   await page.goto("/cashflow");
   await dismissTour(page);
+  // The forecast is its own tab now (spec §11).
+  await page.getByRole("tab", { name: "Forecast" }).click();
   const forecast = page.locator('[data-tour="spending-forecast"]');
   await expect(forecast).toBeVisible();
   await expect(forecast.locator("svg").first()).toBeVisible();

@@ -13,7 +13,7 @@ import { useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { today } from "@/lib/finance/dates";
 import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { Button, Field, Input, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
@@ -21,9 +21,6 @@ import { missingFieldCls, missingLabelCls, useFormTouched } from "@/lib/forms/re
 import { isStorageFullError } from "@/lib/store/errors";
 import { PLANNED_INTERVALS, type PlannedCashflow, type PlannedInterval } from "@/lib/types";
 import type { PlannedCashflowInput } from "@/lib/store/types";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function PlannedForm({
   initial,
@@ -104,14 +101,14 @@ export function PlannedForm({
   return (
     <div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
+        <Field
+          label={t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
+          htmlFor="planned-name"
+        >
           {/* The same field the entry mask calls "payee" — it is filled from
               exactly that box when a booking is switched to recurring, so it
               must not be renamed on the way to the detail view. */}
-          <label className="text-sm font-medium" htmlFor="planned-name">
-            {t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
-          </label>
-          <input
+          <Input
             id="planned-name"
             value={name}
             onChange={(e) => {
@@ -119,12 +116,11 @@ export function PlannedForm({
               setName(e.target.value);
             }}
             placeholder={t("spending.planned.namePlaceholder")}
-            className={inputCls + missingFieldCls(missingName, touched)}
+            className={missingFieldCls(missingName, touched)}
             data-private={name !== "" ? "" : undefined}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("spending.planned.accountLabel")}</label>
+        </Field>
+        <Field label={t("spending.planned.accountLabel")}>
           <SelectMenu
             className="mt-1 w-full"
             ariaLabel={t("spending.planned.accountLabel")}
@@ -132,9 +128,8 @@ export function PlannedForm({
             onChange={setAccountId}
             options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("spending.form.typeLabel")}</label>
+        </Field>
+        <Field label={t("spending.form.typeLabel")}>
           {/* Expense/income is a SegmentedControl in the entry mask and in the
               edit dialog; a pair of buttons here made the same choice look
               like a different kind of control. */}
@@ -148,12 +143,9 @@ export function PlannedForm({
               onChange={(v) => setIsIncome(v === "income")}
             />
           </div>
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="planned-amount">
-            {t("spending.planned.amountLabel", { currency })}
-          </label>
-          <input
+        </Field>
+        <Field label={t("spending.planned.amountLabel", { currency })} htmlFor="planned-amount">
+          <Input
             id="planned-amount"
             inputMode="decimal"
             value={amount}
@@ -162,12 +154,11 @@ export function PlannedForm({
               setAmount(stripLeadingZero(e.target.value));
             }}
             placeholder="0"
-            className={inputCls + missingFieldCls(missingAmount, touched)}
+            className={missingFieldCls(missingAmount, touched)}
             data-private={amount !== "" ? "" : undefined}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("spending.planned.intervalLabel")}</label>
+        </Field>
+        <Field label={t("spending.planned.intervalLabel")}>
           <SelectMenu
             className="mt-1 w-full"
             ariaLabel={t("spending.planned.intervalLabel")}
@@ -187,9 +178,8 @@ export function PlannedForm({
               />
             </div>
           )}
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("spending.planned.categoryLabel")}</label>
+        </Field>
+        <Field label={t("spending.planned.categoryLabel")}>
           <SelectMenu
             className="mt-1 w-full"
             ariaLabel={t("spending.planned.categoryLabel")}
@@ -201,16 +191,18 @@ export function PlannedForm({
               ...data.spendingCategories.map((c) => ({
                 value: c.id,
                 label: c.name,
-              group: c.groupName,
+                group: c.groupName,
               })),
             ]}
           />
-        </div>
+        </Field>
+        {/* Start date keeps its hand-rolled label: it turns amber via
+            missingLabelCls when required and empty, which Field cannot express. */}
         <div>
           <label className={missingLabelCls(startDate === "", touched)} htmlFor="planned-start">
             {t("spending.planned.startLabel")}
           </label>
-          <input
+          <Input
             id="planned-start"
             type="date"
             value={startDate}
@@ -218,24 +210,18 @@ export function PlannedForm({
               touch();
               setStartDate(e.target.value);
             }}
-            className={inputCls}
           />
         </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="planned-end">
-            {t("spending.planned.endLabel")}
-          </label>
-          <input
+        <Field label={t("spending.planned.endLabel")} htmlFor="planned-end">
+          <Input
             id="planned-end"
             type="date"
             value={endDate}
             min={startDate || undefined}
             onChange={(e) => setEndDate(e.target.value)}
-            className={inputCls}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("spending.edit.transferLabel")}</label>
+        </Field>
+        <Field label={t("spending.edit.transferLabel")}>
           <SelectMenu
             className="mt-1 w-full"
             ariaLabel={t("spending.edit.transferLabel")}
@@ -248,17 +234,15 @@ export function PlannedForm({
                 .map((a) => ({ value: a.id, label: a.name })),
             ]}
           />
+          {/* text-sm hint kept as a child, not Field's text-xs hint prop. */}
           <p className="mt-1 text-sm text-zinc-500">
             {transferAccountId
               ? t("spending.edit.transferHintOn")
               : t("spending.edit.transferHintOff")}
           </p>
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium" htmlFor="planned-note">
-            {t("spending.planned.noteLabel")}
-          </label>
-          <input
+        </Field>
+        <Field label={t("spending.planned.noteLabel")} htmlFor="planned-note" className="sm:col-span-2">
+          <Input
             id="planned-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -266,9 +250,8 @@ export function PlannedForm({
             onKeyDown={(e) => {
               if (e.key === "Enter") void submit();
             }}
-            className={inputCls}
           />
-        </div>
+        </Field>
       </div>
       <FormActions error={error}>
         {touched && (missingName || missingAmount) && (

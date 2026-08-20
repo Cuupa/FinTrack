@@ -21,15 +21,12 @@ import {
   type Transaction,
 } from "@/lib/types";
 import { formatCurrency, formatDate, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, Field, Input } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -144,11 +141,8 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
       <p className="mt-1 text-sm text-zinc-500">{t("cashInterest.intro")}</p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <div>
-          <label className="text-sm font-medium" htmlFor="interest-rate">
-            {t("cashInterest.rateLabel")}
-          </label>
-          <input
+        <Field label={t("cashInterest.rateLabel")} htmlFor="interest-rate">
+          <Input
             id="interest-rate"
             inputMode="decimal"
             value={rate}
@@ -157,11 +151,9 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
               setSaved(false);
             }}
             placeholder="0"
-            className={inputCls}
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("cashInterest.frequencyLabel")}</label>
+        </Field>
+        <Field label={t("cashInterest.frequencyLabel")}>
           <div className="mt-1">
             <SelectMenu
               value={freq}
@@ -176,9 +168,8 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
               }))}
             />
           </div>
-        </div>
-        <div>
-          <label className="text-sm font-medium">{t("cashInterest.postDayLabel")}</label>
+        </Field>
+        <Field label={t("cashInterest.postDayLabel")}>
           <div className="mt-1">
             <SelectMenu
               value={postDay}
@@ -193,7 +184,7 @@ export function CashInterestSection({ asset, txs }: { asset: Asset; txs: Transac
               }))}
             />
           </div>
-        </div>
+        </Field>
       </div>
 
       <p className="mt-2 text-xs text-zinc-500">{t("cashInterest.disable")}</p>

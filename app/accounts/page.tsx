@@ -17,16 +17,19 @@
 // Adding an account sits behind a header button exactly like "add asset",
 // instead of a permanent form card pushing the actual content down the page.
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
-import { AccountsHero } from "@/components/accounts/accounts-hero";
+import { AccountsSummary, AccountsChart } from "@/components/accounts/accounts-hero";
 import { AccountsTable, AddAccountForm } from "@/components/accounts/accounts-view";
 import { AccountsSkeleton } from "@/components/accounts/accounts-skeleton";
 import { SpendingView } from "@/components/spending/spending-view";
+import { RecurringCard } from "@/components/spending/recurring-card";
 import { FeatureUnavailable } from "@/components/feature-unavailable";
 import { ProTeaser } from "@/components/billing/pro-teaser";
 import { LoadError } from "@/components/ui/load-error";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, PAGE_STACK } from "@/components/ui/primitives";
+import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { MonthPicker } from "@/components/ui/month-picker";
 import { Modal } from "@/components/ui/modal";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
@@ -35,9 +38,20 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import type { Timeframe } from "@/lib/finance/dates";
 import type { ChartScale } from "@/components/charts/performance-chart";
 import { PageHeaderWithTour } from "@/components/onboarding/page-tours";
+import { PageScope } from "@/components/page-scope";
 import { ACCOUNTS_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
 
 export default function AccountsPage() {
+  // useSearchParams (the deep `?tab=` link from the old /spending route) needs a
+  // Suspense boundary to prerender, same as /simulation's `?mode=`.
+  return (
+    <Suspense fallback={<AccountsSkeleton />}>
+      <AccountsPageInner />
+    </Suspense>
+  );
+}
+
+function AccountsPageInner() {
   const { t } = useI18n();
   const { loading, loadError, reload, selectedAccountIds } = usePortfolio();
   const { enabled, locked } = useFeature("accounts");
@@ -53,30 +67,59 @@ export default function AccountsPage() {
   const [scale, setScale] = useState<ChartScale>("linear");
   const [adding, setAdding] = useState(false);
   const [month, setMonth] = useState<string | null>(null);
+  // The page is split into tabs (spec §10.1): the accounts themselves, the
+  // bookings against them, and what recurs -- instead of one long stack. The
+  // bookings and recurring tabs only exist where the `spending` feature is on.
+  // The initial tab honours a deep `?tab=` link (the old /spending route lands
+  // on bookings), but only where that tab actually exists for this user.
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState<AccountsTab>(
+    (requestedTab === "bookings" || requestedTab === "recurring") && spendingEnabled
+      ? requestedTab
+      : "accounts",
+  );
 
   const ready = enabled && !locked && !loading && !loadError;
 
+  const tabItems: TabItem<AccountsTab>[] = [
+    { value: "accounts", label: t("accounts.tab.accounts") },
+    ...(spendingEnabled
+      ? ([
+          { value: "bookings", label: t("accounts.tab.bookings") },
+          { value: "recurring", label: t("accounts.tab.recurring") },
+        ] as TabItem<AccountsTab>[])
+      : []),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className={PAGE_STACK}>
       <PageHeaderWithTour
         title={t("accounts.title")}
         subtitle={t("accounts.subtitle")}
         tourId="accounts"
         steps={ACCOUNTS_TOUR_STEPS}
         ready={ready}
+        onActivateTab={(value) => setTab(value as AccountsTab)}
+        availableTabs={tabItems.map((item) => item.value)}
+        scope={ready ? <PageScope /> : undefined}
         actions={
           ready ? (
             <>
-            <MonthPicker value={month} onChange={setMonth} />
-            <Button
-              variant="primary"
-              size="sm"
-              className="shrink-0 whitespace-nowrap"
-              data-tour="add-account"
-              onClick={() => setAdding(true)}
-            >
-              {t("accounts.form.add")}
-            </Button>
+              <MonthPicker value={month} onChange={setMonth} />
+              {/* Adding an account is the Konten tab's primary action; the
+                  bookings tab carries its own "add booking" in the list header. */}
+              {tab === "accounts" && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="shrink-0 whitespace-nowrap"
+                  data-tour="add-account"
+                  onClick={() => setAdding(true)}
+                >
+                  {t("accounts.form.add")}
+                </Button>
+              )}
             </>
           ) : undefined
         }
@@ -94,18 +137,33 @@ export default function AccountsPage() {
         </ProTeaser>
       ) : (
         <>
-          <AccountsHero
-            accountIds={accountIds}
-            timeframe={timeframe}
-            onTimeframe={setTimeframe}
-            scale={scale}
-            onScale={setScale}
-            month={month}
-          />
-          <AccountsTable selectedIds={accountIds} />
-          {spendingEnabled && (
-            <SpendingView accountIds={accountIds} timeframe={timeframe} month={month} />
+          <Tabs items={tabItems} value={tab} onChange={setTab} />
+
+          {tab === "accounts" && (
+            <>
+              <AccountsSummary accountIds={accountIds} timeframe={timeframe} month={month} />
+              <AccountsTable selectedIds={accountIds} />
+              <AccountsChart
+                accountIds={accountIds}
+                timeframe={timeframe}
+                onTimeframe={setTimeframe}
+                scale={scale}
+                onScale={setScale}
+                month={month}
+              />
+            </>
           )}
+
+          {tab === "bookings" && spendingEnabled && (
+            <SpendingView
+              accountIds={accountIds}
+              timeframe={timeframe}
+              month={month}
+              showRecurring={false}
+            />
+          )}
+
+          {tab === "recurring" && spendingEnabled && <RecurringCard />}
         </>
       )}
 
@@ -117,3 +175,5 @@ export default function AccountsPage() {
     </div>
   );
 }
+
+type AccountsTab = "accounts" | "bookings" | "recurring";

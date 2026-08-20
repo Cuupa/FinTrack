@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   dismissTour,
   openAddAccountModal,
+  openBookings,
   setLocale,
   submitAddAccountModal,
 } from "./helpers";
@@ -256,9 +257,8 @@ test("a policy with a settlement account collects its premiums for review", asyn
   await expect(contracts).not.toContainText("Due premiums");
 
   // A premium is a transfer, not consumption: it moves the balance without
-  // being reported as spending.
-  await page.goto("/accounts");
-  await dismissTour(page);
+  // being reported as spending. The booking shows in the bookings ledger.
+  await openBookings(page);
   await expect(page.getByRole("row").filter({ hasText: "Allianz" }).first()).toContainText(
     "150",
   );

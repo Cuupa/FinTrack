@@ -21,6 +21,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { usePortfolioLabel } from "@/lib/household/use-portfolio-label";
 import { AssetIdentifiers } from "@/components/ui/asset-identifiers";
 import { Table, TablePagination, Tbody, Td, Th, Thead, Tr, usePagination } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/primitives";
 import { useSort } from "@/components/ui/use-sort";
 import { EstimatedBadge } from "@/components/ui/estimated-badge";
 
@@ -49,7 +50,19 @@ interface Row {
   profit: { abs: number; pct: number };
 }
 
-export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
+export function AssetTable({
+  timeframe,
+  view = "all",
+}: {
+  timeframe: Timeframe;
+  /**
+   * Which holdings to show. The depot pilot splits these across tabs:
+   * "current" is the Positionen tab, "past" the Historie tab. "all" keeps the
+   * original stacked layout (current table + collapsed past section) that the
+   * dashboard and other callers rely on.
+   */
+  view?: "current" | "past" | "all";
+}) {
   const { data } = usePortfolio();
   const { valuation } = useLivePrices();
   const { t } = useI18n();
@@ -174,14 +187,15 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
 
   return (
     <>
-    <div data-tour="holdings" className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
+    {view !== "past" && (
+    <div data-tour="holdings" className="rounded-surface border border-subtle bg-surface shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b border-subtle p-4">
         <h2 className="text-lg font-semibold">{t("table.holdings")}</h2>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("table.filter")}
-          className="ml-auto w-full max-w-xs rounded-md border border-zinc-300 bg-transparent px-3 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+          className="ml-auto w-full max-w-xs rounded-control border border-strong bg-transparent px-3 py-1.5 text-sm outline-none focus:border-brand"
         />
         <div className="flex gap-1">
           {TYPE_FILTERS.map((_t) => (
@@ -190,8 +204,8 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
               onClick={() => setTypeFilter(_t)}
               className={`rounded-sm px-2.5 py-1 text-xs font-medium ${
                 typeFilter === _t
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  ? "bg-brand text-white dark:text-zinc-950"
+                  : "text-tertiary hover:bg-surface-hover"
               }`}
             >
               {t(`assetType.${_t}`)}
@@ -328,9 +342,9 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
                   </Td>
                   <Td align="right" className="tabular-nums">
                     <div className="flex items-center justify-end gap-2">
-                      <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-zinc-100 sm:block dark:bg-zinc-800">
+                      <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-surface-hover sm:block">
                         <div
-                          className="h-full rounded-full bg-emerald-500"
+                          className="h-full rounded-full bg-brand"
                           style={{ width: `${Math.min(100, allocation * 100)}%` }}
                         />
                       </div>
@@ -350,17 +364,27 @@ export function AssetTable({ timeframe }: { timeframe: Timeframe }) {
         </>
       )}
     </div>
+    )}
 
-    {pastHoldings.length > 0 && (
-      <details className="group mt-4 rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <summary className="flex cursor-pointer list-none items-center gap-1 px-4 py-4 text-lg font-semibold marker:content-none">
-          <span className="inline-block text-sm transition-transform group-open:rotate-90">
-            ›
-          </span>
-          {t("table.pastHoldings")}{" "}
-          <span className="font-normal text-zinc-400">({pastHoldings.length})</span>
-        </summary>
-        <div className="border-t border-zinc-200 dark:border-zinc-800">
+    {view === "past" && pastHoldings.length === 0 && (
+      <EmptyState title={t("table.pastHoldings")} hint={t("table.noMatch")} />
+    )}
+
+    {view !== "current" && pastHoldings.length > 0 && (
+      <details
+        open={view === "past"}
+        className={`group rounded-surface border border-subtle bg-surface shadow-sm ${view === "all" ? "mt-4" : ""}`}
+      >
+        {view === "all" && (
+          <summary className="flex cursor-pointer list-none items-center gap-1 px-4 py-4 text-lg font-semibold marker:content-none">
+            <span className="inline-block text-sm transition-transform group-open:rotate-90">
+              ›
+            </span>
+            {t("table.pastHoldings")}{" "}
+            <span className="font-normal text-tertiary">({pastHoldings.length})</span>
+          </summary>
+        )}
+        <div className={view === "all" ? "border-t border-subtle" : ""}>
           <Table ariaLabel={t("table.pastHoldings")}>
             <Thead>
               <Th sort={pastSort.sort} sortKey="name" onSort={pastSort.toggle}>

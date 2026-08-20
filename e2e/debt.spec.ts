@@ -38,6 +38,20 @@ async function seedMortgage(page: Page): Promise<void> {
   await expect(page.locator('[data-tour="debt-plan"]')).toBeVisible();
 }
 
+/**
+ * The lump-sum form moved into a dialog behind the "Add repayment" button
+ * (spec §12.1): it no longer sits permanently in the plan card. Opens it, fills
+ * date + amount, submits, and waits for the dialog to close.
+ */
+async function addRepayment(page: Page, date: string, amount: string): Promise<void> {
+  await page.locator('[data-tour="debt-plan"]').getByRole("button", { name: /Add repayment/i }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#debt-repay-date").fill(date);
+  await dialog.locator("#debt-repay-amount").fill(amount);
+  await dialog.getByRole("button", { name: /Add repayment/i }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+}
+
 test("a balance is read as repayment against the original loan sum", async ({ page }) => {
   await page.goto("/accounts");
   await dismissTour(page);
@@ -89,9 +103,7 @@ test("a planned one-off repayment shortens the payoff plan", async ({ page }) =>
     .locator("../..");
   const before = (await timeToFree.textContent())!;
 
-  await plan.locator("#debt-repay-date").fill("2030-06-01");
-  await plan.locator("#debt-repay-amount").fill("40000");
-  await plan.getByRole("button", { name: /Add repayment/i }).click();
+  await addRepayment(page, "2030-06-01", "40000");
 
   // It lands in the list of planned lump sums...
   await expect(plan.getByText("40,000")).toBeVisible();
@@ -118,9 +130,7 @@ test("a planned repayment can be removed again", async ({ page }) => {
   await seedMortgage(page);
 
   const plan = page.locator('[data-tour="debt-plan"]');
-  await plan.locator("#debt-repay-date").fill("2031-01-15");
-  await plan.locator("#debt-repay-amount").fill("15000");
-  await plan.getByRole("button", { name: /Add repayment/i }).click();
+  await addRepayment(page, "2031-01-15", "15000");
   await expect(plan.getByText("15,000")).toBeVisible();
 
   await plan.getByRole("button", { name: /Remove repayment/i }).click();
@@ -132,12 +142,8 @@ test("planned repayments are live only and do not survive a reload", async ({ pa
 
   const plan = page.locator('[data-tour="debt-plan"]');
   // Several at once: the point of the list is stacking more than one.
-  await plan.locator("#debt-repay-date").fill("2030-06-01");
-  await plan.locator("#debt-repay-amount").fill("40000");
-  await plan.getByRole("button", { name: /Add repayment/i }).click();
-  await plan.locator("#debt-repay-date").fill("2032-06-01");
-  await plan.locator("#debt-repay-amount").fill("25000");
-  await plan.getByRole("button", { name: /Add repayment/i }).click();
+  await addRepayment(page, "2030-06-01", "40000");
+  await addRepayment(page, "2032-06-01", "25000");
   await expect(plan.getByText("40,000")).toBeVisible();
   await expect(plan.getByText("25,000")).toBeVisible();
 

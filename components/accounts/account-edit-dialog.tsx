@@ -20,7 +20,7 @@ import {
   type InterestFrequency,
 } from "@/lib/types";
 import { parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, Field, Input } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { Modal } from "@/components/ui/modal";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -28,9 +28,6 @@ import { OwnerSelect, useOwnerSelectVisible } from "@/components/household/owner
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import type { OwnerTarget } from "@/lib/store/types";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 export function AccountEditDialog({
   account,
@@ -135,20 +132,15 @@ export function AccountEditDialog({
         <p className="mt-1 text-sm text-zinc-500">{t("accounts.edit.intro")}</p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-edit-name">
-              {t("accounts.form.nameLabel")}
-            </label>
-            <input
+          <Field label={t("accounts.form.nameLabel")} htmlFor="account-edit-name">
+            <Input
               id="account-edit-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={inputCls}
-            data-private={name !== "" ? "" : undefined}
+              data-private={name !== "" ? "" : undefined}
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium">{t("accounts.form.kindLabel")}</label>
+          </Field>
+          <Field label={t("accounts.form.kindLabel")}>
             <SelectMenu
               className="mt-1 w-full"
               ariaLabel={t("accounts.form.kindLabel")}
@@ -156,10 +148,13 @@ export function AccountEditDialog({
               onChange={(v) => setKind(v as AccountKind)}
               options={ACCOUNT_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
             />
-          </div>
+          </Field>
           {ownerVisible && (
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">{t("household.ownerLabel")}</label>
+            <Field
+              className="sm:col-span-2"
+              label={t("household.ownerLabel")}
+              hint={t("household.ownerHint")}
+            >
               <OwnerSelect
                 className="mt-1 w-full"
                 ariaLabel={t("household.ownerLabel")}
@@ -172,41 +167,34 @@ export function AccountEditDialog({
                 }
                 onChange={setOwnerTarget}
               />
-              <p className="mt-1 text-xs text-zinc-500">{t("household.ownerHint")}</p>
-            </div>
+            </Field>
           )}
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-edit-currency">
-              {t("accounts.form.currencyLabel")}
-            </label>
-            <input
+          <Field label={t("accounts.form.currencyLabel")} htmlFor="account-edit-currency">
+            <Input
               id="account-edit-currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
               placeholder={base}
-              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-edit-opened">
-              {t("accounts.form.openedLabel")}
-            </label>
-            <input
+          </Field>
+          <Field label={t("accounts.form.openedLabel")} htmlFor="account-edit-opened">
+            <Input
               id="account-edit-opened"
               type="date"
               value={openedOn}
               max={today()}
               onChange={(e) => setOpenedOn(e.target.value)}
-              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="account-edit-interest">
-              {LIABILITY_KINDS.includes(kind)
+          </Field>
+          <Field
+            label={
+              LIABILITY_KINDS.includes(kind)
                 ? t("debt.details.rateLabel")
-                : t("accounts.form.interestLabel")}
-            </label>
-            <input
+                : t("accounts.form.interestLabel")
+            }
+            htmlFor="account-edit-interest"
+          >
+            <Input
               id="account-edit-interest"
               inputMode="decimal"
               value={interestRate}
@@ -215,70 +203,61 @@ export function AccountEditDialog({
                 if (e.key === "Enter") void save();
               }}
               placeholder="0"
-              className={inputCls}
             />
-          </div>
+          </Field>
           {LIABILITY_KINDS.includes(kind) && (
             <>
-              <div>
-                <label className="text-sm font-medium" htmlFor="account-edit-min-payment">
-                  {t("debt.details.minPaymentLabel", { currency: currency || base })}
-                </label>
-                <input
+              <Field
+                label={t("debt.details.minPaymentLabel", { currency: currency || base })}
+                htmlFor="account-edit-min-payment"
+              >
+                <Input
                   id="account-edit-min-payment"
                   inputMode="decimal"
                   value={minPayment}
                   onChange={(e) => setMinPayment(stripLeadingZero(e.target.value))}
                   placeholder="0"
-                  className={inputCls}
                   data-private={minPayment !== "" ? "" : undefined}
                 />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="account-edit-rate-until">
-                  {t("debt.details.rateFixedUntilLabel")}
-                </label>
-                <input
+              </Field>
+              <Field
+                label={t("debt.details.rateFixedUntilLabel")}
+                htmlFor="account-edit-rate-until"
+              >
+                <Input
                   id="account-edit-rate-until"
                   type="date"
                   value={rateFixedUntil}
                   onChange={(e) => setRateFixedUntil(e.target.value)}
-                  className={inputCls}
                 />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="account-edit-follow-up">
-                  {t("debt.details.followUpRateLabel")}
-                </label>
-                <input
+              </Field>
+              <Field
+                label={t("debt.details.followUpRateLabel")}
+                htmlFor="account-edit-follow-up"
+              >
+                <Input
                   id="account-edit-follow-up"
                   inputMode="decimal"
                   value={followUpRate}
                   onChange={(e) => setFollowUpRate(stripLeadingZero(e.target.value))}
                   placeholder="0"
-                  className={inputCls}
                 />
-              </div>
+              </Field>
             </>
           )}
           {!LIABILITY_KINDS.includes(kind) && (
-            <>
-              <div>
-                <label className="text-sm font-medium">
-                  {t("accounts.form.interestFrequencyLabel")}
-                </label>
-                <SelectMenu
-                  className="mt-1 w-full"
-                  ariaLabel={t("accounts.form.interestFrequencyLabel")}
-                  value={interestFrequency}
-                  onChange={(v) => setInterestFrequency(v as InterestFrequency)}
-                  options={INTEREST_FREQUENCIES.map((f) => ({
-                    value: f,
-                    label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
-                  }))}
-                />
-              </div>
-            </>
+            <Field label={t("accounts.form.interestFrequencyLabel")}>
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("accounts.form.interestFrequencyLabel")}
+                value={interestFrequency}
+                onChange={(v) => setInterestFrequency(v as InterestFrequency)}
+                options={INTEREST_FREQUENCIES.map((f) => ({
+                  value: f,
+                  label: t(`cashInterest.freq.${f}` as Parameters<typeof t>[0]),
+                }))}
+              />
+            </Field>
           )}
         </div>
         {!LIABILITY_KINDS.includes(kind) && interestRate.trim() !== "" && (

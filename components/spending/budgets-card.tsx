@@ -15,15 +15,12 @@ import { today } from "@/lib/finance/dates";
 import { budgetProgress, toBaseCurrency } from "@/lib/finance/spending";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, EmptyState, Field, Input } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import type { Budget } from "@/lib/types";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 /**
  * The card is self-gated: hidden when the flag is off, and — when the flag is
@@ -137,11 +134,19 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {data.spendingCategories.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-500">{t("spending.budgets.noCategories")}</p>
+        // No categories at all: the whole card body is this state (no add-form
+        // below, since a budget needs a category first), so it earns the full
+        // EmptyState. The "no budgets yet" case keeps an inline hint -- its add
+        // form still renders directly beneath it.
+        <EmptyState
+          className="py-8"
+          title={t("spending.budgets.noCategoriesTitle")}
+          hint={t("spending.budgets.noCategories")}
+        />
       ) : (
         <>
           {progress.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("spending.budgets.empty")}</p>
+            <p className="mt-3 text-sm text-tertiary">{t("spending.budgets.empty")}</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {progress.map((p) => {
@@ -206,8 +211,7 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
           )}
 
           <div className="mt-4 grid gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-3 dark:border-zinc-800">
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">{t("spending.budgets.categoryLabel")}</label>
+            <Field label={t("spending.budgets.categoryLabel")} className="sm:col-span-2">
               <SelectMenu
                 className="mt-1 w-full"
                 ariaLabel={t("spending.budgets.categoryLabel")}
@@ -217,24 +221,20 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
                 options={availableCategories.map((c) => ({
                   value: c.id,
                   label: c.name,
-              group: c.groupName,
+                  group: c.groupName,
                 }))}
               />
-            </div>
-            <div>
-              <label className="text-sm font-medium" htmlFor="budget-amount">
-                {t("spending.budgets.amountLabel", { currency: base })}
-              </label>
-              <input
+            </Field>
+            <Field label={t("spending.budgets.amountLabel", { currency: base })} htmlFor="budget-amount">
+              <Input
                 id="budget-amount"
                 inputMode="decimal"
                 value={amount}
                 onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
                 placeholder="0"
-                className={inputCls}
                 data-private={amount !== "" ? "" : undefined}
               />
-            </div>
+            </Field>
             <div className="sm:col-span-3">
               <Button
                 variant="primary"

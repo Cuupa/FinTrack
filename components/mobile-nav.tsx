@@ -100,25 +100,25 @@ export function MobileNav() {
         key={route.href}
         href={route.href}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+        className={`flex items-center gap-3 rounded-control px-3 py-2.5 text-sm font-medium transition-colors ${
           active
-            ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-            : "text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+            ? "bg-surface-hover text-primary"
+            : "text-secondary hover:bg-surface-hover hover:text-primary"
         }`}
       >
         <NavIcon className="h-5 w-5 shrink-0">{route.icon}</NavIcon>
         <span className="truncate">{t(route.key)}</span>
         <span className="ml-auto flex items-center gap-1.5">
           <NotificationCount count={pending[route.href] ?? 0} />
-          {featureState(route).locked && <LockIcon className="h-4 w-4 shrink-0 text-zinc-400" />}
+          {featureState(route).locked && <LockIcon className="h-4 w-4 shrink-0 text-tertiary" />}
         </span>
       </Link>
     );
   };
 
   const tabCls = (active: boolean) =>
-    `flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2 text-[10px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:focus-visible:outline-emerald-400 ${
-      active ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"
+    `flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2 text-[10px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand ${
+      active ? "text-brand" : "text-tertiary"
     }`;
 
   return (
@@ -136,7 +136,7 @@ export function MobileNav() {
             aria-modal="true"
             aria-label={t("nav.more")}
             tabIndex={-1}
-            className="absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-lg border-t border-zinc-200 bg-white outline-none dark:border-zinc-800 dark:bg-zinc-900"
+            className="absolute inset-x-0 bottom-0 max-h-[75dvh] overflow-y-auto rounded-t-surface border-t border-subtle bg-surface outline-none"
             // Clears the tab bar this sheet sits above, plus the home indicator.
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4.5rem)" }}
           >
@@ -146,7 +146,7 @@ export function MobileNav() {
                 type="button"
                 onClick={() => setSheetOpen(false)}
                 aria-label={t("common.close")}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-tertiary hover:bg-surface-hover hover:text-primary"
               >
                 ✕
               </button>
@@ -160,7 +160,7 @@ export function MobileNav() {
               )}
               {restSections.map((section) => (
                 <div key={section.id} className="mt-4 flex flex-col gap-0.5 first:mt-0">
-                  <h3 className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+                  <h3 className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-tertiary uppercase">
                     {t(section.key)}
                   </h3>
                   {section.routes.map(renderSheetLink)}
@@ -172,7 +172,7 @@ export function MobileNav() {
       )}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-950/95"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-subtle bg-surface/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Primary"
       >

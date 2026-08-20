@@ -39,7 +39,8 @@ import {
 } from "@/lib/types";
 import type { PensionContractInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Stat, Toggle } from "@/components/ui/primitives";
+import { Button, Card, Input, SectionTitle, Stat, Toggle } from "@/components/ui/primitives";
+import { InlineNotice } from "@/components/ui/inline-notice";
 import { Private } from "@/components/ui/private";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -59,9 +60,6 @@ import { useSort } from "@/components/ui/use-sort";
 import { DeleteAction, EditAction, HistoryAction, RowActions } from "@/components/ui/row-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError, storeErrorReason } from "@/lib/store/errors";
-
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 /** Parses a user-typed number, treating blank as "not stated" (null) rather
  *  than 0 — the projection distinguishes the two everywhere. */
@@ -135,8 +133,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.birthYear")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="numeric"
             value={birthYear}
             onChange={(e) => setBirthYear(stripLeadingZero(e.target.value))}
@@ -151,8 +148,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.retirementAge")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={retirementAge}
             onChange={(e) => setRetirementAge(stripLeadingZero(e.target.value))}
@@ -162,8 +158,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.annualPoints")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={annualPoints}
             onChange={(e) => setAnnualPoints(stripLeadingZero(e.target.value))}
@@ -181,8 +176,7 @@ function AssumptionsCard({ projection }: { projection: PensionProjection }) {
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.targetMonthly")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={targetMonthly}
             onChange={(e) => setTargetMonthly(stripLeadingZero(e.target.value))}
@@ -304,8 +298,7 @@ function StatementsFields() {
       <div className="mt-3 grid gap-3 sm:grid-cols-4">
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.statements.year")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="numeric"
             value={year}
             onChange={(e) => setYear(stripLeadingZero(e.target.value))}
@@ -315,8 +308,7 @@ function StatementsFields() {
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.statements.total")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={total}
             onChange={(e) => setTotal(stripLeadingZero(e.target.value))}
@@ -326,8 +318,7 @@ function StatementsFields() {
         </label>
         <label className="block text-sm sm:col-span-2">
           <span className="text-zinc-500">{t("pension.statements.note")}</span>
-          <input
-            className={inputCls}
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             data-private
@@ -497,21 +488,24 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
       <p className="mt-1 text-xs text-zinc-500">{t("pension.points.hint")}</p>
 
       {mistyped && (
-        <div className="mt-3 rounded-md border border-amber-300 p-3 dark:border-amber-500/40">
-          <p className="text-sm text-amber-700 dark:text-amber-400">
+        <div className="mt-3">
+          <InlineNotice
+            variant="warning"
+            action={
+              <Button size="sm" onClick={() => setPendingMove(true)}>
+                {t("pension.points.moveToStatements")}
+              </Button>
+            }
+          >
             {t("pension.points.looksLikeStatements")}
-          </p>
-          <div className="mt-2">
-            <Button onClick={() => setPendingMove(true)}>{t("pension.points.moveToStatements")}</Button>
-          </div>
+          </InlineNotice>
         </div>
       )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.points.year")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="numeric"
             value={year}
             onChange={(e) => setYear(stripLeadingZero(e.target.value))}
@@ -520,8 +514,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.points.points")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={points}
             onChange={(e) => setPoints(stripLeadingZero(e.target.value))}
@@ -535,8 +528,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
         </label>
         <label className="block text-sm sm:col-span-2">
           <span className="text-zinc-500">{t("pension.points.note")}</span>
-          <input
-            className={inputCls}
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             data-private
@@ -730,8 +722,7 @@ function ContractForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.name")}</span>
-          <input
-            className={inputCls}
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             data-private
@@ -752,8 +743,7 @@ function ContractForm({
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.provider")}</span>
-          <input
-            className={inputCls}
+          <Input
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
             data-private
@@ -761,8 +751,7 @@ function ContractForm({
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.rentenfaktor")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={rentenfaktor}
             onChange={(e) => setRentenfaktor(stripLeadingZero(e.target.value))}
@@ -775,8 +764,7 @@ function ContractForm({
 
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.contribution")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={contribution}
             onChange={(e) => setContribution(stripLeadingZero(e.target.value))}
@@ -785,8 +773,7 @@ function ContractForm({
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.currentValue")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={value}
             onChange={(e) => setValue(stripLeadingZero(e.target.value))}
@@ -795,8 +782,7 @@ function ContractForm({
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.dynamic")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={dynamicPct}
             onChange={(e) => setDynamicPct(stripLeadingZero(e.target.value))}
@@ -808,8 +794,7 @@ function ContractForm({
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.returnPct")}</span>
-          <input
-            className={inputCls}
+          <Input
             inputMode="decimal"
             value={returnPct}
             onChange={(e) => setReturnPct(stripLeadingZero(e.target.value))}
@@ -821,8 +806,7 @@ function ContractForm({
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.startsOn")}</span>
-          <input
-            className={inputCls}
+          <Input
             type="date"
             value={startsOn}
             onChange={(e) => setStartsOn(e.target.value)}
@@ -836,8 +820,7 @@ function ContractForm({
         {!derivesPayout && (
           <label className="block text-sm">
             <span className="text-zinc-500">{t("pension.contracts.expected")}</span>
-            <input
-              className={inputCls}
+            <Input
               inputMode="decimal"
               value={expected}
               onChange={(e) => setExpected(stripLeadingZero(e.target.value))}
@@ -871,8 +854,7 @@ function ContractForm({
         {accountId !== "" && (
           <label className="block text-sm">
             <span className="text-zinc-500">{t("pension.contracts.bookingStart")}</span>
-            <input
-              className={inputCls}
+            <Input
               type="date"
               value={bookingStartDate}
               onChange={(e) => setBookingStartDate(e.target.value)}
@@ -885,8 +867,7 @@ function ContractForm({
         )}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("pension.contracts.note")}</span>
-          <input
-            className={inputCls}
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             data-private
@@ -983,14 +964,13 @@ function ContractValuesDialog({
   return (
     <Modal open onClose={onClose} maxWidthClass="max-w-2xl">
       <Card>
-        <h2 className="text-lg font-semibold">{t("pension.values.title", { name: contract.name })}</h2>
+        <SectionTitle>{t("pension.values.title", { name: contract.name })}</SectionTitle>
         <p className="mt-1 text-xs text-zinc-500">{t("pension.values.hint")}</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="text-zinc-500">{t("pension.values.date")}</span>
-            <input
-              className={inputCls}
+            <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -998,8 +978,7 @@ function ContractValuesDialog({
           </label>
           <label className="block text-sm">
             <span className="text-zinc-500">{t("pension.values.value")}</span>
-            <input
-              className={inputCls}
+            <Input
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(stripLeadingZero(e.target.value))}
@@ -1356,7 +1335,7 @@ function ContractsCard() {
 
       <Modal open={adding} onClose={() => setAdding(false)}>
         <Card>
-          <h2 className="text-lg font-semibold">{t("pension.contracts.add")}</h2>
+          <SectionTitle>{t("pension.contracts.add")}</SectionTitle>
           <div className="mt-4">
             <ContractForm
               onSubmit={async (input) => {
@@ -1372,7 +1351,7 @@ function ContractsCard() {
       <Modal open={editing !== null} onClose={() => setEditing(null)}>
         {editing && (
           <Card>
-            <h2 className="text-lg font-semibold">{t("pension.contracts.edit")}</h2>
+            <SectionTitle>{t("pension.contracts.edit")}</SectionTitle>
             <div className="mt-4">
               {/* Keyed on the policy so opening another row re-seeds the fields. */}
               <ContractForm
@@ -1511,25 +1490,35 @@ export function PensionView() {
           </p>
         )}
         {projection.outlierYear && (
-          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400" data-private>
-            {t("pension.outlierNotice", {
-              year: String(projection.outlierYear.year),
-              points: projection.outlierYear.points.toFixed(2),
-            })}
-          </p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">
+              <span data-private>
+                {t("pension.outlierNotice", {
+                  year: String(projection.outlierYear.year),
+                  points: projection.outlierYear.points.toFixed(2),
+                })}
+              </span>
+            </InlineNotice>
+          </div>
         )}
         {projection.annualPointsCapped && projection.maxAnnualPoints != null && (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400" data-private>
-            {t("pension.cappedNotice", {
-              raw: projection.rawAnnualPoints.toFixed(2),
-              max: projection.maxAnnualPoints.toFixed(2),
-            })}
-          </p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">
+              <span data-private>
+                {t("pension.cappedNotice", {
+                  raw: projection.rawAnnualPoints.toFixed(2),
+                  max: projection.maxAnnualPoints.toFixed(2),
+                })}
+              </span>
+            </InlineNotice>
+          </div>
         )}
         {projection.gap > 0 && (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
-            <Private>{t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}</Private>
-          </p>
+          <div className="mt-3">
+            <InlineNotice variant="warning">
+              <Private>{t("pension.gap", { amount: formatCurrency(projection.gap, currency) })}</Private>
+            </InlineNotice>
+          </div>
         )}
         <p className="mt-4 text-xs text-zinc-500">{t("pension.todaysMoney")}</p>
       </Card>

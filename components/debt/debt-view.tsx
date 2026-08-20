@@ -46,7 +46,8 @@ import {
   stripLeadingZero,
 } from "@/lib/format";
 import { formatMonths, formatMonthsShort } from "@/lib/i18n/duration";
-import { Card, SegmentedControl, Stat } from "@/components/ui/primitives";
+import { Card, SectionTitle, SegmentedControl } from "@/components/ui/primitives";
+import { SummaryStrip } from "@/components/ui/summary-strip";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -298,51 +299,53 @@ export function DebtView() {
 
   return (
     <div className="space-y-6">
-      {/* Four figures, not six: "originally borrowed" and "repaid so far" are
-          two readings of the same fact, so they ride along under the balance
-          they explain. */}
-      <Card data-tour="debt-totals">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
-            label={t("debt.totals.debt")}
-            value={formatCurrency(totalDebt, base)}
-            isPrivate
-            sub={
+      {/* Summary strip (Spec §12.1): open liabilities, minimum payment,
+          debt-free date, interest left. Every figure is a stock, so it stays
+          neutral -- a debt is not an error state just for being a minus. The
+          "originally borrowed / repaid so far" reading rides along under the
+          balance it explains. */}
+      <SummaryStrip
+        dataTour="debt-totals"
+        metrics={[
+          {
+            label: t("debt.totals.debt"),
+            value: formatCurrency(totalDebt, base),
+            isPrivate: true,
+            context:
               totalOriginal > 0
                 ? t("debt.totals.repaidOf", {
                     repaid: formatCurrency(totalRepaid, base),
                     original: formatCurrency(totalOriginal, base),
                     pct: formatNumber((totalRepaid / totalOriginal) * 100, 1),
                   })
-                : undefined
-            }
-          />
-          <Stat
-            label={t("debt.totals.minPayment")}
-            value={formatCurrency(totalMinPayment, base)}
-            isPrivate
-          />
-          <Stat
-            label={t("debt.totals.months")}
-            value={plan.totalMonths != null ? formatMonths(plan.totalMonths, t) : "—"}
-            sub={
-              debtFreeDate ? `${t("debt.totals.debtFreeOn")} ${formatDate(debtFreeDate)}` : undefined
-            }
-          />
-          <Stat
-            label={t("debt.totals.interestLeft")}
-            value={formatCurrency(plan.totalInterest, base)}
-            isPrivate
-          />
-        </div>
-      </Card>
+                : undefined,
+          },
+          {
+            label: t("debt.totals.minPayment"),
+            value: formatCurrency(totalMinPayment, base),
+            isPrivate: true,
+          },
+          {
+            label: t("debt.totals.months"),
+            value: plan.totalMonths != null ? formatMonths(plan.totalMonths, t) : "—",
+            context: debtFreeDate
+              ? `${t("debt.totals.debtFreeOn")} ${formatDate(debtFreeDate)}`
+              : undefined,
+          },
+          {
+            label: t("debt.totals.interestLeft"),
+            value: formatCurrency(plan.totalInterest, base),
+            isPrivate: true,
+          },
+        ]}
+      />
 
       {/* The plan and the chart it moves, together and above the table: the
           levers are the point of this page, and they used to sit two cards
           below the thing they change. */}
       {planDebts.length > 0 && (
         <Card data-tour="debt-plan">
-          <h2 className="text-lg font-semibold">{t("debt.plan.title")}</h2>
+          <SectionTitle>{t("debt.plan.title")}</SectionTitle>
           <p className="mt-1 max-w-2xl text-sm text-zinc-500">{t("debt.plan.intro")}</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -435,7 +438,7 @@ export function DebtView() {
       )}
 
       <Card data-tour="debt-list">
-        <h2 className="text-lg font-semibold">{t("debt.list.title")}</h2>
+        <SectionTitle>{t("debt.list.title")}</SectionTitle>
         {liabilityAccounts.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">{t("debt.list.empty")}</p>
         ) : (
@@ -536,8 +539,10 @@ export function DebtView() {
 
       {planDebts.length > 0 && (
         <Card>
-          <h2 className="text-lg font-semibold">{t("debt.chart.splitTitle")}</h2>
-          <DebtSplitChart years={years} base={base} />
+          <SectionTitle>{t("debt.chart.splitTitle")}</SectionTitle>
+          <div className="mt-4">
+            <DebtSplitChart years={years} base={base} />
+          </div>
         </Card>
       )}
 

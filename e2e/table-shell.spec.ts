@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addOtherAsset, dismissTour, openAddAccountModal, openAssetDetail, openEntryMask, setLocale, submitAddAccountModal } from "./helpers";
+import { addOtherAsset, dismissTour, openAddAccountModal, openAssetDetail, openEntryMask, openRecurring, setLocale, submitAddAccountModal } from "./helpers";
 
 // Pins what the shared table shell (components/ui/table.tsx) guarantees on the
 // surfaces migrated in round 27: every column header is a real <button> that
@@ -31,6 +31,7 @@ test("the recurring card's headers sort and announce it", async ({ page }) => {
   await form.locator("#spending-payee").fill("Netflix");
   await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
 
+  await openRecurring(page);
   const card = page.locator('[data-tour="recurring-card"]');
   await expect(card.locator("th[aria-sort]")).toHaveCount(5);
 

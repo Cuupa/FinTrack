@@ -13,6 +13,8 @@ import { exportPortfolioCsv, exportPortfolioJson, hasExportableData } from "@/li
 import { useFeature } from "@/lib/flags/flags-context";
 import { ProMenuItem } from "@/components/billing/pro-teaser";
 import { useIsAdmin } from "@/lib/admin/use-is-admin";
+import { useNotifications } from "@/lib/notifications/use-notifications";
+import { NotificationCount } from "@/components/ui/notification-count";
 
 function initials(name: string | null, email: string | null): string {
   const src = (name ?? "").trim() || (email ?? "").trim();
@@ -34,6 +36,11 @@ export function ProfileMenu() {
   const csvEnabled = csv.enabled;
   const jsonEnabled = json.enabled;
   const { isAdmin } = useIsAdmin();
+  // Household invitations are accepted in Settings now (spec §13), so their
+  // count rides the account menu that opens Settings — the entry that owns the
+  // task, per the nav-count rule.
+  const { byRoute } = useNotifications();
+  const settingsCount = byRoute["/settings"] ?? 0;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -62,6 +69,7 @@ export function ProfileMenu() {
       >
         {initials(name, email)}
       </button>
+      {!open && <NotificationCount count={settingsCount} overlay />}
       {open && (
         <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           <div className="border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
@@ -69,11 +77,14 @@ export function ProfileMenu() {
             <div className="truncate text-xs text-zinc-500">{email}</div>
           </div>
           <Link
-            href="/settings"
+            // A pending invite is acted on in the household tab, so point there
+            // when one is waiting; otherwise open plain settings.
+            href={settingsCount > 0 ? "/settings?tab=household" : "/settings"}
             onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
-            {t("nav.settings")}
+            <span>{t("nav.settings")}</span>
+            <NotificationCount count={settingsCount} />
           </Link>
           {isAdmin && (
             <Link

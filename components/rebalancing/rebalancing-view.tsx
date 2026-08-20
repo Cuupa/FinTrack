@@ -9,13 +9,11 @@
 // debounced. See RebalancingPage for the load gate.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
-import type { Slice } from "@/lib/finance/allocation";
 import { formatCurrency, formatInputDecimal, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
-import { Card, SegmentedControl } from "@/components/ui/primitives";
+import { Button, Card, SectionTitle, SegmentedControl } from "@/components/ui/primitives";
 import { Private } from "@/components/ui/private";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
@@ -200,18 +198,6 @@ export function RebalancingView() {
     return map;
   }, [rows]);
 
-  const currentSlices: Slice[] = useMemo(
-    () => rows.filter((r) => r.current > 0).map((r) => ({ label: r.name, value: r.current })),
-    [rows],
-  );
-  const targetSlices: Slice[] = useMemo(
-    () =>
-      rows
-        .map((r) => ({ label: r.name, value: (r.pct / 100) * total }))
-        .filter((s) => s.value > 0),
-    [rows, total],
-  );
-
   if (holdings.length === 0) {
     return (
       <Card>
@@ -266,69 +252,55 @@ export function RebalancingView() {
     <div className="space-y-6">
       <RebalancingTour restartToken={tourReplay} />
       <Card>
-        <div className="flex flex-wrap items-center justify-around gap-8">
-          <RebalanceDonut
-            title={t("rebalance.current")}
-            slices={currentSlices}
-            total={currentTotal}
-            currency={base}
+        <SectionTitle
+          actions={
+            <span className="text-sm tabular-nums text-zinc-500" data-private>
+              {formatCurrency(currentTotal, base)}
+            </span>
+          }
+        >
+          {t("rebalance.deviation")}
+        </SectionTitle>
+        <div className="mt-4">
+          <DeviationBars
+            rows={enrichedRows}
+            currentTotal={currentTotal}
             colorByName={colorByName}
             activeName={activeName}
             onHover={setActiveName}
           />
-
-          {targetSlices.length > 0 ? (
-            <RebalanceDonut
-              title={t("rebalance.target")}
-              slices={targetSlices}
-              total={total}
-              currency={base}
-              colorByName={colorByName}
-              activeName={activeName}
-              onHover={setActiveName}
-            />
-          ) : (
-            <div className="flex h-56 items-center justify-center text-center text-sm text-zinc-500">
-              {t("rebalance.setWeights")}
-            </div>
-          )}
         </div>
       </Card>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-              {t("rebalance.targetAllocation")}
-              <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
-            </h3>
-            <SegmentedControl<RebalanceMode>
-              size="sm"
-              value={mode}
-              onChange={setMode}
-              options={[
-                { label: t("rebalance.modeTrade"), value: "trade" },
-                { label: t("rebalance.modeBuyOnly"), value: "buyOnly" },
-              ]}
-            />
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span
-              className={`tabular-nums ${
-                Math.abs(targetSum - 100) < 0.05 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-              }`}
-            >
-              {t("rebalance.total")}: {targetSum.toFixed(1)}%
-            </span>
-            <button
-              type="button"
-              onClick={normalize}
-              className="rounded-sm border border-zinc-300 px-2.5 py-1 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            >
-              {t("rebalance.normalise")}
-            </button>
-          </div>
-        </div>
+        <SectionTitle
+          actions={
+            <div className="flex flex-wrap items-center gap-3">
+              <SegmentedControl<RebalanceMode>
+                size="sm"
+                value={mode}
+                onChange={setMode}
+                options={[
+                  { label: t("rebalance.modeTrade"), value: "trade" },
+                  { label: t("rebalance.modeBuyOnly"), value: "buyOnly" },
+                ]}
+              />
+              <span
+                className={`text-sm tabular-nums ${
+                  Math.abs(targetSum - 100) < 0.05 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                {t("rebalance.total")}: {targetSum.toFixed(1)}%
+              </span>
+              <Button variant="secondary" size="sm" onClick={normalize}>
+                {t("rebalance.normalise")}
+              </Button>
+            </div>
+          }
+        >
+          {t("rebalance.targetAllocation")}
+          <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
+        </SectionTitle>
 
         <div data-tour="rebalance-table">
           <Table className="mt-4" ariaLabel={t("rebalance.targetAllocation")}>
@@ -432,13 +404,9 @@ export function RebalancingView() {
         </div>
 
         <div className="mt-4 flex items-center justify-between text-sm">
-          <button
-            type="button"
-            onClick={addCustom}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-          >
+          <Button variant="secondary" size="sm" onClick={addCustom}>
             {t("rebalance.addPosition")}
-          </button>
+          </Button>
           <div className="flex flex-wrap items-center gap-4 text-zinc-500">
             {buyOnly && (
               <span>
@@ -460,62 +428,101 @@ export function RebalancingView() {
   );
 }
 
-/** A donut-only allocation chart with a centred total (no legend of its own). */
-function RebalanceDonut({
-  title,
-  slices,
-  total,
-  currency,
+/**
+ * Ist-vs-Ziel deviation view (replaces the two near-identical donuts, spec
+ * 11.4): one horizontal row per position with the current weight (solid) and
+ * target weight (outlined) bars scaled to the largest weight, plus the drift in
+ * percentage points. Hover is shared with the table row through `activeName`.
+ */
+function DeviationBars({
+  rows,
+  currentTotal,
   colorByName,
   activeName,
   onHover,
 }: {
-  title: string;
-  slices: Slice[];
-  total: number;
-  currency: string;
+  rows: EnrichedTarget[];
+  currentTotal: number;
   colorByName: Record<string, string>;
   activeName: string | null;
   onHover: (name: string | null) => void;
 }) {
   const { t } = useI18n();
+  const bars = useMemo(() => {
+    const mapped = rows.map((r) => {
+      const currentPct = currentTotal > 0 ? (r.current / currentTotal) * 100 : 0;
+      const targetPct = r.pct;
+      return { id: r.id, name: r.name, currentPct, targetPct, diff: targetPct - currentPct };
+    });
+    return mapped
+      .filter((b) => b.currentPct > 0.01 || b.targetPct > 0.01)
+      .sort((a, b) => Math.max(b.currentPct, b.targetPct) - Math.max(a.currentPct, a.targetPct));
+  }, [rows, currentTotal]);
+
+  const maxPct = Math.max(1, ...bars.map((b) => Math.max(b.currentPct, b.targetPct)));
+
+  if (bars.length === 0) {
+    return <p className="text-sm text-zinc-500">{t("rebalance.setWeights")}</p>;
+  }
+
   return (
-    <div className="flex flex-col items-center">
-      <h2 className="mb-3 text-sm font-semibold text-zinc-500">{title}</h2>
-      <div className="relative h-56 w-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={slices}
-              dataKey="value"
-              nameKey="label"
-              innerRadius={74}
-              outerRadius={104}
-              paddingAngle={slices.length > 1 ? 2 : 0}
-              cornerRadius={5}
-              stroke="none"
-              isAnimationActive={false}
-              onMouseEnter={(_, i: number) => onHover(slices[i]?.label ?? null)}
-              onMouseLeave={() => onHover(null)}
-            >
-              {slices.map((s) => (
-                <Cell
-                  key={s.label}
-                  fill={colorByName[s.label] ?? "#a1a1aa"}
-                  opacity={activeName === null || activeName === s.label ? 1 : 0.25}
-                  style={{ transition: "opacity 150ms" }}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-[11px] uppercase tracking-wide text-zinc-400">{t("common.total")}</span>
-          <span className="mt-0.5 text-lg font-semibold tabular-nums" data-private>
-            {formatCurrency(total, currency)}
-          </span>
-        </div>
+    <div className="space-y-1">
+      <div className="mb-2 flex items-center gap-4 text-xs text-zinc-500">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-4 rounded-full bg-zinc-500" />
+          {t("rebalance.current")}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-4 rounded-full border border-zinc-400" />
+          {t("rebalance.target")}
+        </span>
       </div>
+      {bars.map((b) => {
+        const color = colorByName[b.name] ?? "#a1a1aa";
+        const active = activeName === b.name;
+        const dim = activeName !== null && !active;
+        return (
+          <div
+            key={b.id}
+            onMouseEnter={() => onHover(b.name)}
+            onMouseLeave={() => onHover(null)}
+            className={`flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors ${
+              active ? "bg-zinc-100 dark:bg-zinc-800/50" : ""
+            }`}
+            style={{ opacity: dim ? 0.4 : 1 }}
+          >
+            <div className="flex w-44 shrink-0 items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                style={{ backgroundColor: color }}
+              />
+              <span className="truncate text-sm">{b.name}</span>
+            </div>
+            <div className="relative h-4 flex-1">
+              <div
+                className="absolute left-0 top-0 h-1.5 rounded-full"
+                style={{ width: `${(b.currentPct / maxPct) * 100}%`, backgroundColor: color }}
+              />
+              <div
+                className="absolute bottom-0 left-0 h-1.5 rounded-full border"
+                style={{
+                  width: `${(b.targetPct / maxPct) * 100}%`,
+                  borderColor: color,
+                  backgroundColor: `${color}22`,
+                }}
+              />
+            </div>
+            <span
+              className={`w-16 shrink-0 text-right text-sm tabular-nums ${
+                Math.abs(b.diff) < 0.05 ? "text-zinc-400" : plColor(b.diff)
+              }`}
+            >
+              {b.diff >= 0 ? "+" : ""}
+              {b.diff.toFixed(1)}%
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

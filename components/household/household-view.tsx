@@ -21,7 +21,7 @@ import { useI18n } from "@/lib/i18n/i18n-context";
 import { useFeature, useFeatureFlag, usePlanLimit } from "@/lib/flags/flags-context";
 import { ProGate } from "@/components/billing/pro-teaser";
 import { atLimit } from "@/lib/billing/limits";
-import { Button, Card } from "@/components/ui/primitives";
+import { Button, Card, SectionTitle } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HouseholdInvite, HouseholdMember } from "@/lib/types";
@@ -102,7 +102,7 @@ export function HouseholdView() {
 
       {receivedInvites.length > 0 && (
         <Card>
-          <h2 className="text-lg font-semibold">{t("household.invitesReceived")}</h2>
+          <SectionTitle>{t("household.invitesReceived")}</SectionTitle>
           <ul className="mt-3 space-y-2">
             {receivedInvites.map((invite: HouseholdInvite) => (
               <li
@@ -127,7 +127,7 @@ export function HouseholdView() {
       {!household ? (
         <ProGate locked={locked} feature="household">
         <Card data-tour="household-create">
-          <h2 className="text-lg font-semibold">{t("household.createTitle")}</h2>
+          <SectionTitle>{t("household.createTitle")}</SectionTitle>
           <p className="mt-1 text-sm text-zinc-500">{t("household.createSubtitle")}</p>
           <div className="mt-3 flex gap-2">
             <input
@@ -218,7 +218,7 @@ export function HouseholdView() {
 
           <ProGate locked={locked} feature="household">
           <Card data-tour="household-invite">
-            <h2 className="text-lg font-semibold">{t("household.inviteTitle")}</h2>
+            <SectionTitle>{t("household.inviteTitle")}</SectionTitle>
             <div className="mt-3 flex gap-2">
               <input
                 type="email"

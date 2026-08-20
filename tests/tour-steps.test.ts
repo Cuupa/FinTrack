@@ -5,9 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNTS_TOUR_STEPS,
   ASSET_TAGS_TOUR_STEPS,
   computeTooltipPosition,
   filterVisibleSteps,
+  PORTFOLIO_TOUR_STEPS,
   REBALANCING_TOUR_STEPS,
   RISK_TOUR_STEPS,
   SIMULATION_TOUR_STEPS,
@@ -35,6 +37,52 @@ describe("filterVisibleSteps", () => {
   it("on a narrow viewport (only welcome/done present) still keeps both centered steps", () => {
     const result = filterVisibleSteps(TOUR_STEPS, () => false);
     expect(result.map((s) => s.key)).toEqual(["welcome", "done"]);
+  });
+
+  it("keeps a step whose target sits on an inactive tab, as long as the tab exists", () => {
+    const steps: TourStep[] = [
+      // On the active tab: resolvable now.
+      { key: "here", target: "on-tab-a", activateTab: "a", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+      // On another tab: not on screen yet, but its tab is available.
+      { key: "there", target: "on-tab-b", activateTab: "b", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+    ];
+    // Only tab a's anchor is in the DOM right now; both tabs exist.
+    const result = filterVisibleSteps(
+      steps,
+      (t) => t === "on-tab-a",
+      (tab) => ["a", "b"].includes(tab),
+    );
+    expect(result.map((s) => s.key)).toEqual(["here", "there"]);
+  });
+
+  it("drops a tab step whose tab is absent (e.g. a flag-off tab)", () => {
+    const steps: TourStep[] = [
+      { key: "keep", target: "on-tab-a", activateTab: "a", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+      { key: "gone", target: "on-tab-b", activateTab: "b", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+    ];
+    // Tab b does not exist (its feature flag is off), so its step drops even
+    // though a tab predicate is supplied.
+    const result = filterVisibleSteps(
+      steps,
+      () => false,
+      (tab) => tab === "a",
+    );
+    expect(result.map((s) => s.key)).toEqual(["keep"]);
+  });
+
+  it("without a tab predicate, a tab step falls back to on-screen presence", () => {
+    const steps: TourStep[] = [
+      { key: "x", target: "present", activateTab: "a", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+      { key: "y", target: "missing", activateTab: "b", titleKey: "tour.nav.title", bodyKey: "tour.nav.body" },
+    ];
+    const result = filterVisibleSteps(steps, (t) => t === "present");
+    expect(result.map((s) => s.key)).toEqual(["x"]);
+  });
+
+  it("the portfolio and accounts registries tag every targeted step with its tab", () => {
+    for (const step of [...PORTFOLIO_TOUR_STEPS, ...ACCOUNTS_TOUR_STEPS]) {
+      expect(step.activateTab).toBeTruthy();
+    }
   });
 });
 

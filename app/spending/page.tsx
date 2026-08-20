@@ -8,5 +8,7 @@ import { redirect } from "next/navigation";
 // the PWA's install scope and in browser histories since the feature shipped,
 // and a bookmark that suddenly dead-ends is a worse answer than a hop.
 export default function SpendingPage() {
-  redirect("/accounts");
+  // Deep onto the bookings tab -- that is the surface /spending used to be, so a
+  // bookmark lands where it always did rather than on the accounts table.
+  redirect("/accounts?tab=bookings");
 }

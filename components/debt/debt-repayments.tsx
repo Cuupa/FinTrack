@@ -16,8 +16,10 @@
 import { useMemo, useState } from "react";
 import { today } from "@/lib/finance/dates";
 import { formatCurrency, formatDate, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button } from "@/components/ui/primitives";
+import { Button, Card, Field, Input } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Modal } from "@/components/ui/modal";
+import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { DeleteAction, RowActions } from "@/components/ui/row-actions";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
@@ -38,9 +40,6 @@ export interface PlannedRepayment {
   amount: number;
 }
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
-
 export function DebtRepaymentsPlanner({
   debts,
   value,
@@ -53,6 +52,9 @@ export function DebtRepaymentsPlanner({
   const { t } = useI18n();
   const todayIso = today();
 
+  // The form lives in a dialog opened from "Add repayment" (Spec §12.1): a
+  // what-if input is not a permanent empty row on the page.
+  const [open, setOpen] = useState(false);
   const [accountId, setAccountId] = useState(debts[0]?.id ?? "");
   const [date, setDate] = useState(todayIso);
   const [amount, setAmount] = useState("");
@@ -89,6 +91,14 @@ export function DebtRepaymentsPlanner({
       { accountId: target.id, date, amount: parsed },
     ]);
     setAmount("");
+    setOpen(false);
+  }
+
+  function openDialog() {
+    setError(null);
+    setAmount("");
+    setDate(todayIso);
+    setOpen(true);
   }
 
   function remove(id: string, dropDate: string) {
@@ -99,56 +109,13 @@ export function DebtRepaymentsPlanner({
 
   return (
     <div data-tour="debt-repayments">
-      <h3 className="text-sm font-semibold">{t("debt.repayments.title")}</h3>
-      <p className="mt-1 max-w-2xl text-sm text-zinc-500">{t("debt.repayments.intro")}</p>
-
-      <div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-        <div>
-          <label className="text-sm font-medium">{t("debt.repayments.accountLabel")}</label>
-          <SelectMenu
-            className="mt-1 w-full"
-            ariaLabel={t("debt.repayments.accountLabel")}
-            value={target?.id ?? ""}
-            onChange={setAccountId}
-            options={debts.map((d) => ({ value: d.id, label: d.name }))}
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="debt-repay-date">
-            {t("debt.repayments.dateLabel")}
-          </label>
-          <input
-            id="debt-repay-date"
-            type="date"
-            value={date}
-            min={todayIso}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="debt-repay-amount">
-            {t("debt.repayments.amountLabel", { currency: target?.currency ?? "" })}
-          </label>
-          <input
-            id="debt-repay-amount"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") add();
-            }}
-            placeholder="0"
-            className={inputCls}
-            data-private={amount !== "" ? "" : undefined}
-          />
-        </div>
-        <Button variant="secondary" disabled={!date || !amount.trim()} onClick={add}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold">{t("debt.repayments.title")}</h3>
+        <Button variant="secondary" size="sm" onClick={openDialog}>
           {t("debt.repayments.add")}
         </Button>
       </div>
-
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <p className="mt-1 max-w-2xl text-sm text-zinc-500">{t("debt.repayments.intro")}</p>
 
       {planned.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-500">{t("debt.repayments.empty")}</p>
@@ -187,6 +154,60 @@ export function DebtRepaymentsPlanner({
           </Tbody>
         </Table>
       )}
+
+      <Modal open={open} onClose={() => setOpen(false)} maxWidthClass="max-w-lg">
+        <Card>
+          <h2 className="text-lg font-semibold">{t("debt.repayments.title")}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{t("debt.repayments.intro")}</p>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label={t("debt.repayments.accountLabel")} className="sm:col-span-2">
+              <SelectMenu
+                className="mt-1 w-full"
+                ariaLabel={t("debt.repayments.accountLabel")}
+                value={target?.id ?? ""}
+                onChange={setAccountId}
+                options={debts.map((d) => ({ value: d.id, label: d.name }))}
+              />
+            </Field>
+            <Field label={t("debt.repayments.dateLabel")} htmlFor="debt-repay-date">
+              <Input
+                id="debt-repay-date"
+                type="date"
+                value={date}
+                min={todayIso}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("debt.repayments.amountLabel", { currency: target?.currency ?? "" })}
+              htmlFor="debt-repay-amount"
+            >
+              <Input
+                id="debt-repay-amount"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") add();
+                }}
+                placeholder="0"
+                data-private={amount !== "" ? "" : undefined}
+                autoFocus
+              />
+            </Field>
+          </div>
+
+          <FormActions error={error}>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="primary" disabled={!date || !amount.trim()} onClick={add}>
+              {t("debt.repayments.add")}
+            </Button>
+          </FormActions>
+        </Card>
+      </Modal>
     </div>
   );
 }
