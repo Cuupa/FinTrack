@@ -75,6 +75,13 @@ Audit §5.4: forms are actions, not permanent primary content. Reused the existi
 - [x] All keys in en/de/es (parity green). tsc + eslint clean; 1320 tests pass. Guest-mode Playwright smoke: goals + both pension modals open, 0 console errors; budgets card mounts clean (no-categories state, guest has none).
 - [ ] DEFERRED to Phase 6: data-bearing confirm of the budget "has categories, no budgets" modal path (needs a seeded spending category) and the pension modals with real rows.
 
+### DONE — Phase 5 Page polish (2026-08-21)
+Audit §5.5 deferred layout items. No new dictionary keys, no finance calc touched.
+- [x] **Rebalancing percent axis / shared baseline** (`components/rebalancing/rebalancing-view.tsx` `DeviationBars`): the Ist/Ziel bars now scale to a rounded axis max (`niceAxis`, ticks on clean 0/25/50/75/100%-style percentages) instead of the bare `maxPct`, with faint vertical gridlines behind every bar and a percent-axis label row aligned to the same track. Both bars already shared one baseline; the axis makes the magnitude legible. Verified in guest mode (2 seeded OTHER holdings): axis + gridlines render, 8000/9200≈87% and 1200/9200≈13% bars correct, 0 console errors.
+- [x] **Rebalancing name truncation** (same file): the position-name column widened responsively (`w-44 lg:w-56 xl:w-64`) and carries a `title` tooltip, so names truncate only when they genuinely overflow and the full name is always reachable.
+- [x] **Übersicht dual-scale annotation**: NO CHANGE warranted. The status strip (`net-worth-hero.tsx`) already states liquid/invested/debt as absolute figures above the chart, and `NetWorthBreakdownChart` already carries three labeled lines (net/assets/liabilities), a zero baseline, a legend and a per-date tooltip with all three magnitudes — exactly the "detail values/annotations" §5.5 asks for, without the forbidden artificial dual axis. Documented, left untouched.
+- [x] tsc + eslint clean on the touched view.
+
 ### Blockers — RESOLVED by owner (2026-08-21)
 - K5 Teilfreistellung: owner said "vorerst nicht anfassen" -> SKIPPED this pass. Global checkbox + calc unchanged. Do not touch.
 - K6 Zielzählung: owner wanted "the cleanest technical variant". VERIFIED in code: no double-count exists. `goalTotals` derives a composite parent from its children (parent's own amount ignored while it has children); the page summary (`goals-view.tsx:585`) reduces over TOP-LEVEL rows only, sub-goals nested under parents. Count/target/progress are already clean -> no code change (inventing one would alter correct logic). Left untouched.
