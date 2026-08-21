@@ -104,16 +104,15 @@ function NotificationsCardContent() {
     setBusy(false);
   };
 
+  // Title + subtitle live on the wrapping NotificationsCard; this renders only
+  // the controls, so they are not shown (and boxed) twice.
   return (
-    <Card>
-      <h2 className="text-base font-semibold">{t("notif.title")}</h2>
-      <p className="mt-1 text-sm text-zinc-500">{t("notif.subtitle")}</p>
-
+    <>
       {!supported ? (
-        <p className="mt-4 text-sm text-zinc-500">{t("notif.unsupported")}</p>
+        <p className="text-sm text-zinc-500">{t("notif.unsupported")}</p>
       ) : (
         <>
-          <div className="mt-4 space-y-2">
+          <div className="space-y-2">
             <label className="flex items-center gap-2.5 text-sm">
               <input
                 type="checkbox"
@@ -159,6 +158,6 @@ function NotificationsCardContent() {
           {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
         </>
       )}
-    </Card>
+    </>
   );
 }

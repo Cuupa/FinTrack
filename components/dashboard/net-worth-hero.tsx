@@ -332,7 +332,7 @@ export function NetWorthHero({
     ].filter((c) => Math.round(c.v) !== 0);
     if (contributions.length < 2) return t("tip.change");
     const signed = (v: number) => (v >= 0 ? "+" : "") + formatCurrency(v, currency);
-    const parts = contributions.map((c) => `${c.label} ${signed(c.v)}`).join(", ");
+    const parts = contributions.map((c) => `• ${c.label} ${signed(c.v)}`).join("\n");
     return t("tip.changeBreakdown", { parts });
   }, [
     investmentsOnly,
