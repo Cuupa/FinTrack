@@ -15,9 +15,11 @@ import { today } from "@/lib/finance/dates";
 import { budgetProgress, toBaseCurrency } from "@/lib/finance/spending";
 import { formatCurrency, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { colorForLabel } from "@/lib/colors";
-import { Button, Card, EmptyState, Field, Input } from "@/components/ui/primitives";
+import { Button, Card, EmptyState, Field, Input, SectionTitle } from "@/components/ui/primitives";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
+import { FormActions } from "@/components/ui/form-actions";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import { isStorageFullError } from "@/lib/store/errors";
 import type { Budget } from "@/lib/types";
@@ -48,6 +50,7 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
   const month = selected ?? today().slice(0, 7);
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -99,6 +102,7 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
       await addBudget({ categoryId, amount: value });
       setCategoryId("");
       setAmount("");
+      setFormOpen(false);
     } catch (err) {
       reportError(err);
     } finally {
@@ -122,16 +126,32 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
     }
   }
 
+  const canAdd = data.spendingCategories.length > 0 && availableCategories.length > 0;
+
+  function openForm() {
+    setCategoryId("");
+    setAmount("");
+    setError(null);
+    setFormOpen(true);
+  }
+
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{t("spending.budgets.title")}</h2>
-        {/* The month comes from the page header now, but a cap is always read
-            against one, so name the month these bars measure. */}
-        <span className="text-sm font-medium text-zinc-500">{monthLabel}</span>
+        <div className="flex items-center gap-3">
+          {/* The month comes from the page header now, but a cap is always read
+              against one, so name the month these bars measure. */}
+          <span className="text-sm font-medium text-zinc-500">{monthLabel}</span>
+          {canAdd && progress.length > 0 && (
+            <Button size="sm" variant="secondary" onClick={openForm}>
+              {t("spending.budgets.add")}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && !formOpen && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {data.spendingCategories.length === 0 ? (
         // No categories at all: the whole card body is this state (no add-form
@@ -146,7 +166,16 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
       ) : (
         <>
           {progress.length === 0 ? (
-            <p className="mt-3 text-sm text-tertiary">{t("spending.budgets.empty")}</p>
+            <EmptyState
+              className="py-8"
+              title={t("spending.budgets.emptyTitle")}
+              hint={t("spending.budgets.empty")}
+              action={
+                <Button variant="primary" disabled={!canAdd} onClick={openForm}>
+                  {t("spending.budgets.emptyCta")}
+                </Button>
+              }
+            />
           ) : (
             <ul className="mt-4 space-y-3">
               {progress.map((p) => {
@@ -210,8 +239,14 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
             </ul>
           )}
 
-          <div className="mt-4 grid gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-3 dark:border-zinc-800">
-            <Field label={t("spending.budgets.categoryLabel")} className="sm:col-span-2">
+        </>
+      )}
+
+      <Modal open={formOpen} onClose={() => setFormOpen(false)} maxWidthClass="max-w-lg">
+        <Card>
+          <SectionTitle>{t("spending.budgets.add")}</SectionTitle>
+          <div className="mt-4 space-y-3">
+            <Field label={t("spending.budgets.categoryLabel")}>
               <SelectMenu
                 className="mt-1 w-full"
                 ariaLabel={t("spending.budgets.categoryLabel")}
@@ -235,18 +270,21 @@ function BudgetsCardInner({ month: selected }: { month: string | null }) {
                 data-private={amount !== "" ? "" : undefined}
               />
             </Field>
-            <div className="sm:col-span-3">
-              <Button
-                variant="primary"
-                disabled={busy || !categoryId || !amount.trim() || availableCategories.length === 0}
-                onClick={() => void submit()}
-              >
-                {t("spending.budgets.add")}
-              </Button>
-            </div>
           </div>
-        </>
-      )}
+          <FormActions error={formOpen ? error : null}>
+            <Button variant="secondary" onClick={() => setFormOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || !categoryId || !amount.trim() || availableCategories.length === 0}
+              onClick={() => void submit()}
+            >
+              {t("spending.budgets.add")}
+            </Button>
+          </FormActions>
+        </Card>
+      </Modal>
 
       <ConfirmDialog
         open={deleting !== null}

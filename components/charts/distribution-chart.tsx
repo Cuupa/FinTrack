@@ -139,7 +139,7 @@ export function DistributionChart({
   // Same compact-for-large/precise-for-small currency formatting as the main
   // performance chart, so large (e.g. 7-figure) projections don't force a
   // wide axis; reused rather than duplicated.
-  const formatCurrencyTick = axisCurrencyFormatter(axisNums, currency);
+  const formatCurrencyTick = axisCurrencyFormatter(axisNums, currency, { perTick: true });
   const formatYTick = (v: number) => (mode === "percent" ? formatPercent(v, 0) : formatCurrencyTick(v));
   const yWidth = yAxisWidth(axisNums.map(formatYTick));
 

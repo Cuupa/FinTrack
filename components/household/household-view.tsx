@@ -63,6 +63,7 @@ export function HouseholdView() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<HouseholdMember | null>(null);
+  const [confirmSeat, setConfirmSeat] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const isOwner = members.some((m) => m.userId === user?.id && m.role === "owner");
@@ -256,7 +257,7 @@ export function HouseholdView() {
                   </>
                 )}
                 {isOwner && billingEnabled && (
-                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => run(addSeat)}>
+                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => setConfirmSeat(true)}>
                     {t("household.addSeat", { price: seatPriceDisplay ?? "1,99 €" })}
                   </Button>
                 )}
@@ -308,6 +309,17 @@ export function HouseholdView() {
           if (m) void run(() => removeMember(m.id));
         }}
         onCancel={() => setConfirmRemove(null)}
+      />
+      <ConfirmDialog
+        open={confirmSeat}
+        title={t("household.addSeat", { price: seatPriceDisplay ?? "1,99 €" })}
+        message={t("household.addSeatConfirm", { price: seatPriceDisplay ?? "1,99 €" })}
+        confirmLabel={t("household.addSeatConfirmCta")}
+        onConfirm={() => {
+          setConfirmSeat(false);
+          void run(addSeat);
+        }}
+        onCancel={() => setConfirmSeat(false)}
       />
     </div>
   );

@@ -31,7 +31,7 @@ import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import type { Account, Asset, Goal, Portfolio } from "@/lib/types";
 import type { GoalInput } from "@/lib/store/types";
 import { formatCurrency, formatDate, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
-import { Button, Card, Field, Input, SectionTitle, Stat, StatRow } from "@/components/ui/primitives";
+import { Button, Card, EmptyState, Field, Input, SectionTitle, Stat, StatRow } from "@/components/ui/primitives";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -389,6 +389,7 @@ export function GoalsView() {
   const [confirmDelete, setConfirmDelete] = useState<Goal | null>(null);
   const deletedSubGoals = confirmDelete ? subGoals(data.goals, confirmDelete.id).length : 0;
   const [editing, setEditing] = useState<Goal | null>(null);
+  const [adding, setAdding] = useState(false);
 
   // Depot value overall and per broker, for goals that track investments.
   const investments = useMemo(
@@ -608,23 +609,31 @@ export function GoalsView() {
         </StatRow>
       )}
 
-      <Card data-tour="goals-form">
-        <SectionTitle>{t("goals.form.title")}</SectionTitle>
-        <GoalForm
-          base={base}
-          accounts={data.accounts}
-          portfolios={data.portfolios}
-          assets={goalAssets}
-          parentCandidates={parentCandidates}
-          submitLabel={t("goals.form.add")}
-          onSubmit={addGoal}
-        />
-      </Card>
-
       <Card data-tour="goals-list">
-        <SectionTitle>{t("goals.list.title")}</SectionTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SectionTitle>{t("goals.list.title")}</SectionTitle>
+          {rows.length > 0 && (
+            <Button
+              data-tour="goals-form"
+              size="sm"
+              variant="primary"
+              onClick={() => setAdding(true)}
+            >
+              {t("goals.form.add")}
+            </Button>
+          )}
+        </div>
         {rows.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">{t("goals.list.empty")}</p>
+          <EmptyState
+            className="py-8"
+            title={t("goals.list.empty")}
+            hint={t("goals.form.emptyHint")}
+            action={
+              <Button data-tour="goals-form" variant="primary" onClick={() => setAdding(true)}>
+                {t("goals.form.add")}
+              </Button>
+            }
+          />
         ) : (
           <>
             <Table className="mt-4" ariaLabel={t("goals.list.title")}>
@@ -658,6 +667,24 @@ export function GoalsView() {
           </>
         )}
       </Card>
+
+      <Modal open={adding} onClose={() => setAdding(false)}>
+        <Card>
+          <h2 className="text-lg font-semibold">{t("goals.form.title")}</h2>
+          <GoalForm
+            base={base}
+            accounts={data.accounts}
+            portfolios={data.portfolios}
+            assets={goalAssets}
+            parentCandidates={parentCandidates}
+            gridCls="sm:grid-cols-2"
+            submitLabel={t("goals.form.add")}
+            onSubmit={addGoal}
+            onCancel={() => setAdding(false)}
+            onDone={() => setAdding(false)}
+          />
+        </Card>
+      </Modal>
 
       <Modal open={editing !== null} onClose={() => setEditing(null)}>
         {editing && (

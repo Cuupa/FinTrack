@@ -12,8 +12,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
-import { formatCurrency, formatInputDecimal, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, formatNumber, normalizeZero, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SectionTitle, SegmentedControl } from "@/components/ui/primitives";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Private } from "@/components/ui/private";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
@@ -286,11 +287,12 @@ export function RebalancingView() {
                 ]}
               />
               <span
-                className={`text-sm tabular-nums ${
+                className={`inline-flex items-center gap-1 text-sm tabular-nums ${
                   Math.abs(targetSum - 100) < 0.05 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
                 }`}
               >
-                {t("rebalance.total")}: {targetSum.toFixed(1)}%
+                {t("rebalance.total")}: {normalizeZero(targetSum, 1).toFixed(1)}%
+                {Math.abs(targetSum - 100) >= 0.05 && <InfoTip text={t("rebalance.total.hint")} />}
               </span>
               <Button variant="secondary" size="sm" onClick={normalize}>
                 {t("rebalance.normalise")}
@@ -460,6 +462,10 @@ function DeviationBars({
   }, [rows, currentTotal]);
 
   const maxPct = Math.max(1, ...bars.map((b) => Math.max(b.currentPct, b.targetPct)));
+  // Both bars share one baseline and one scale: a rounded axis max so the ticks
+  // land on clean percentages and a full-length bar reads as a real weight, not
+  // just "the largest one".
+  const { axisMax, ticks } = niceAxis(maxPct);
 
   if (bars.length === 0) {
     return <p className="text-sm text-zinc-500">{t("rebalance.setWeights")}</p>;
@@ -491,22 +497,32 @@ function DeviationBars({
             }`}
             style={{ opacity: dim ? 0.4 : 1 }}
           >
-            <div className="flex w-44 shrink-0 items-center gap-2">
+            <div className={`flex ${NAME_COL} shrink-0 items-center gap-2`}>
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
                 style={{ backgroundColor: color }}
               />
-              <span className="truncate text-sm">{b.name}</span>
+              <span className="truncate text-sm" title={b.name}>
+                {b.name}
+              </span>
             </div>
             <div className="relative h-4 flex-1">
+              {ticks.map((tk) => (
+                <div
+                  key={tk}
+                  aria-hidden
+                  className="absolute inset-y-0 w-px bg-zinc-200/80 dark:bg-zinc-700/60"
+                  style={{ left: `${(tk / axisMax) * 100}%` }}
+                />
+              ))}
               <div
                 className="absolute left-0 top-0 h-1.5 rounded-full"
-                style={{ width: `${(b.currentPct / maxPct) * 100}%`, backgroundColor: color }}
+                style={{ width: `${(b.currentPct / axisMax) * 100}%`, backgroundColor: color }}
               />
               <div
                 className="absolute bottom-0 left-0 h-1.5 rounded-full border"
                 style={{
-                  width: `${(b.targetPct / maxPct) * 100}%`,
+                  width: `${(b.targetPct / axisMax) * 100}%`,
                   borderColor: color,
                   backgroundColor: `${color}22`,
                 }}
@@ -517,12 +533,54 @@ function DeviationBars({
                 Math.abs(b.diff) < 0.05 ? "text-zinc-400" : plColor(b.diff)
               }`}
             >
-              {b.diff >= 0 ? "+" : ""}
-              {b.diff.toFixed(1)}%
+              {(() => {
+                // Normalize a rounds-to-zero diff so a tiny negative never
+                // renders as "-0,0 %"; a real zero shows unsigned.
+                const d = normalizeZero(b.diff, 1);
+                return `${d > 0 ? "+" : ""}${d.toFixed(1)}%`;
+              })()}
             </span>
           </div>
         );
       })}
+      <div className="flex items-center gap-3 pt-1">
+        <div className={`${NAME_COL} shrink-0`} />
+        <div className="relative h-4 flex-1">
+          {ticks.map((tk, i) => (
+            <span
+              key={tk}
+              className={`absolute top-0 text-[10px] tabular-nums text-zinc-400 ${
+                i === 0 ? "" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"
+              }`}
+              style={{ left: `${(tk / axisMax) * 100}%` }}
+            >
+              {formatNumber(tk, tk % 1 === 0 ? 0 : 1)}%
+            </span>
+          ))}
+        </div>
+        <div className="w-16 shrink-0" />
+      </div>
     </div>
   );
+}
+
+// Shared width for the position-name column across the bars and the axis row,
+// widening on roomier viewports so names truncate only when they genuinely
+// have to.
+const NAME_COL = "w-44 lg:w-56 xl:w-64";
+
+// A rounded axis maximum >= the largest weight, with evenly spaced ticks that
+// land on clean percentages (0, step, 2·step, … up to the max).
+function niceAxis(maxPct: number): { axisMax: number; ticks: number[] } {
+  if (!(maxPct > 0)) return { axisMax: 1, ticks: [0, 1] };
+  const rawStep = maxPct / 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const n = rawStep / pow;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * pow;
+  const axisMax = Math.max(step, Math.ceil(maxPct / step) * step);
+  const ticks: number[] = [];
+  for (let v = 0; v <= axisMax + step * 1e-6; v += step) {
+    ticks.push(Math.round(v * 1000) / 1000);
+  }
+  return { axisMax, ticks };
 }

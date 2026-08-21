@@ -243,6 +243,7 @@ function StatementsFields() {
   const [total, setTotal] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PensionStatement | null>(null);
 
   const sort = useSort<StatementSortKey>("year", "desc");
@@ -287,51 +288,85 @@ function StatementsFields() {
       setYear("");
       setTotal("");
       setNote("");
+      setFormOpen(false);
     });
   }
 
   return (
     <div>
-      <h3 className="text-sm font-medium">{t("pension.statements.title")}</h3>
-      <p className="mt-1 text-xs text-zinc-500">{t("pension.statements.hint")}</p>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-4">
-        <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.statements.year")}</span>
-          <Input
-            inputMode="numeric"
-            value={year}
-            onChange={(e) => setYear(stripLeadingZero(e.target.value))}
-            placeholder={String(new Date().getFullYear())}
-            data-private
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.statements.total")}</span>
-          <Input
-            inputMode="decimal"
-            value={total}
-            onChange={(e) => setTotal(stripLeadingZero(e.target.value))}
-            placeholder="13,2739"
-            data-private
-          />
-        </label>
-        <label className="block text-sm sm:col-span-2">
-          <span className="text-zinc-500">{t("pension.statements.note")}</span>
-          <Input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            data-private
-          />
-        </label>
-      </div>
-      <FormActions error={error}>
-        <Button onClick={add} disabled={year.trim() === "" || total.trim() === ""}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-medium">{t("pension.statements.title")}</h3>
+          <p className="mt-1 text-xs text-zinc-500">{t("pension.statements.hint")}</p>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setYear("");
+            setTotal("");
+            setNote("");
+            setError(null);
+            setFormOpen(true);
+          }}
+        >
           {t("pension.statements.add")}
         </Button>
-      </FormActions>
+      </div>
 
-      {rows.length > 0 && (
+      {error && !formOpen && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+
+      <Modal open={formOpen} onClose={() => setFormOpen(false)} maxWidthClass="max-w-lg">
+        <Card>
+          <SectionTitle>{t("pension.statements.add")}</SectionTitle>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="text-zinc-500">{t("pension.statements.year")}</span>
+              <Input
+                inputMode="numeric"
+                value={year}
+                onChange={(e) => setYear(stripLeadingZero(e.target.value))}
+                placeholder={String(new Date().getFullYear())}
+                data-private
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-zinc-500">{t("pension.statements.total")}</span>
+              <Input
+                inputMode="decimal"
+                value={total}
+                onChange={(e) => setTotal(stripLeadingZero(e.target.value))}
+                placeholder="13,2739"
+                data-private
+              />
+            </label>
+            <label className="block text-sm sm:col-span-2">
+              <span className="text-zinc-500">{t("pension.statements.note")}</span>
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                data-private
+              />
+            </label>
+          </div>
+          <FormActions error={formOpen ? error : null}>
+            <Button variant="secondary" onClick={() => setFormOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={add}
+              disabled={year.trim() === "" || total.trim() === ""}
+            >
+              {t("pension.statements.add")}
+            </Button>
+          </FormActions>
+        </Card>
+      </Modal>
+
+      {rows.length > 0 ? (
         <div className="mt-4">
           <Table ariaLabel={t("pension.statements.title")}>
             <Thead>
@@ -367,6 +402,8 @@ function StatementsFields() {
             </Tbody>
           </Table>
         </div>
+      ) : (
+        <p className="mt-4 text-sm text-zinc-500">{t("pension.statements.empty")}</p>
       )}
 
       {/* The subtraction the whole projection rests on, spelled out. */}
@@ -427,6 +464,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
   const [points, setPoints] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PensionPoint | null>(null);
 
   // The moment the mistake is actually made: a cumulative total typed into a
@@ -471,6 +509,7 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
       setYear("");
       setPoints("");
       setNote("");
+      setFormOpen(false);
     });
   }
 
@@ -482,10 +521,25 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
         <StatementsFields />
       </div>
 
-      <h3 className="mt-6 border-t border-zinc-100 pt-4 text-sm font-medium dark:border-zinc-800">
-        {t("pension.points.detailTitle")}
-      </h3>
-      <p className="mt-1 text-xs text-zinc-500">{t("pension.points.hint")}</p>
+      <div className="mt-6 flex flex-wrap items-start justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+        <div>
+          <h3 className="text-sm font-medium">{t("pension.points.detailTitle")}</h3>
+          <p className="mt-1 text-xs text-zinc-500">{t("pension.points.hint")}</p>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setYear("");
+            setPoints("");
+            setNote("");
+            setError(null);
+            setFormOpen(true);
+          }}
+        >
+          {t("pension.points.add")}
+        </Button>
+      </div>
 
       {mistyped && (
         <div className="mt-3">
@@ -502,46 +556,62 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
         </div>
       )}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.points.year")}</span>
-          <Input
-            inputMode="numeric"
-            value={year}
-            onChange={(e) => setYear(stripLeadingZero(e.target.value))}
-            data-private
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="text-zinc-500">{t("pension.points.points")}</span>
-          <Input
-            inputMode="decimal"
-            value={points}
-            onChange={(e) => setPoints(stripLeadingZero(e.target.value))}
-            data-private
-          />
-          {overMax && (
-            <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
-              {t("pension.points.overMax", { max: maxPoints!.toFixed(2) })}
-            </span>
-          )}
-        </label>
-        <label className="block text-sm sm:col-span-2">
-          <span className="text-zinc-500">{t("pension.points.note")}</span>
-          <Input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            data-private
-          />
-        </label>
-      </div>
-      <FormActions error={error}>
-        <Button onClick={add} disabled={year.trim() === "" || points.trim() === ""}>
-          {t("pension.points.add")}
-        </Button>
-      </FormActions>
+      {error && !formOpen && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
 
-      {entries.length > 0 && (
+      <Modal open={formOpen} onClose={() => setFormOpen(false)} maxWidthClass="max-w-lg">
+        <Card>
+          <SectionTitle>{t("pension.points.add")}</SectionTitle>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="text-zinc-500">{t("pension.points.year")}</span>
+              <Input
+                inputMode="numeric"
+                value={year}
+                onChange={(e) => setYear(stripLeadingZero(e.target.value))}
+                data-private
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-zinc-500">{t("pension.points.points")}</span>
+              <Input
+                inputMode="decimal"
+                value={points}
+                onChange={(e) => setPoints(stripLeadingZero(e.target.value))}
+                data-private
+              />
+              {overMax && (
+                <span className="mt-1 block text-xs text-amber-700 dark:text-amber-400">
+                  {t("pension.points.overMax", { max: maxPoints!.toFixed(2) })}
+                </span>
+              )}
+            </label>
+            <label className="block text-sm sm:col-span-2">
+              <span className="text-zinc-500">{t("pension.points.note")}</span>
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                data-private
+              />
+            </label>
+          </div>
+          <FormActions error={formOpen ? error : null}>
+            <Button variant="secondary" onClick={() => setFormOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={add}
+              disabled={year.trim() === "" || points.trim() === ""}
+            >
+              {t("pension.points.add")}
+            </Button>
+          </FormActions>
+        </Card>
+      </Modal>
+
+      {entries.length > 0 ? (
         <div className="mt-4">
           <Table ariaLabel={t("pension.points.title")}>
             <Thead>
@@ -578,6 +648,8 @@ function PointsCard({ maxPoints }: { maxPoints: number | null }) {
           </Table>
           <TablePagination pager={pager} />
         </div>
+      ) : (
+        <p className="mt-4 text-sm text-zinc-500">{t("pension.points.empty")}</p>
       )}
 
       {pendingMove && (

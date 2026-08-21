@@ -29,6 +29,9 @@ interface AuthContextValue {
   signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>;
   signInWithOAuth(provider: "google" | "github"): Promise<void>;
   signOut(): Promise<void>;
+  /** Verify the current password (re-auth) before a sensitive change. Throws
+   *  when it does not match. Refreshes the session for the same user. */
+  reauthenticate(password: string): Promise<void>;
   updatePassword(newPassword: string): Promise<void>;
 }
 
@@ -129,6 +132,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearBrowserLlmConfig();
   }, [supabase]);
 
+  const reauthenticate = useCallback(
+    async (password: string) => {
+      const sb = requireSupabase();
+      const email = user?.email;
+      if (!email) throw new Error("No email on the current session.");
+      // Re-signing in for the SAME user only refreshes the session; it verifies
+      // the password without a nonce round trip and never switches accounts.
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    },
+    [requireSupabase, user],
+  );
+
   const updatePassword = useCallback(
     async (newPassword: string) => {
       if (!supabase) throw new Error("Auth is not configured.");
@@ -147,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signInWithOAuth,
     signOut,
+    reauthenticate,
     updatePassword,
   };
 

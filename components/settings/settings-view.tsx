@@ -59,7 +59,7 @@ const TAB_LABEL_KEYS: Record<TabKey, MessageKey> = {
 
 export function SettingsView() {
   const { data, updateProfile, portfolios, updatePortfolio, setPortfolioOwner } = usePortfolio();
-  const { user, mode, updatePassword, signOut } = useAuth();
+  const { user, mode, updatePassword, reauthenticate, signOut } = useAuth();
   const { t } = useI18n();
   const { shared, label: ownerLabel } = useOwnerLabel();
   const router = useRouter();
@@ -109,6 +109,7 @@ export function SettingsView() {
   const [savedTax, setSavedTax] = useState(false);
   const [savingTax, setSavingTax] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwStatus, setPwStatus] = useState<string | null>(null);
@@ -118,6 +119,7 @@ export function SettingsView() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [startingTour, setStartingTour] = useState(false);
   const [tourError, setTourError] = useState<string | null>(null);
@@ -132,6 +134,15 @@ export function SettingsView() {
   const setFeePortfolioId = setSelectedFeePortfolioId;
 
   const hasPassword = user?.identities?.some((i) => i.provider === "email") ?? false;
+
+  // A section's Save is disabled until something actually changes, so an
+  // untouched form never offers an action that does nothing (Audit 5.6).
+  const profileDirty =
+    name !== (data.profile.name ?? "") || currency !== data.profile.currency;
+  const taxDirty =
+    taxAllowance !== formatInputDecimal(data.profile.taxAllowance, 0) ||
+    churchTaxRate !== data.profile.churchTaxRate ||
+    teilfreistellung !== data.profile.taxTeilfreistellung;
 
   const saveProfile = async () => {
     setSavingProfile(true);
@@ -166,7 +177,19 @@ export function SettingsView() {
     setSavingPw(true);
     setPwStatus(null);
     try {
+      // Re-authenticate before changing the password: an unattended open
+      // session must not let someone lock the owner out. OAuth-only accounts
+      // (no password identity) are setting a first password, nothing to verify.
+      if (hasPassword) {
+        try {
+          await reauthenticate(currentPassword);
+        } catch {
+          setPwStatus(t("settings.currentPasswordWrong"));
+          return;
+        }
+      }
       await updatePassword(password);
+      setCurrentPassword("");
       setPassword("");
       setConfirmPassword("");
       setPwStatus(t("settings.saved"));
@@ -267,7 +290,7 @@ export function SettingsView() {
                     {t("settings.saved")}
                   </span>
                 )}
-                <Button variant="primary" onClick={saveProfile} disabled={savingProfile}>
+                <Button variant="primary" onClick={saveProfile} disabled={savingProfile || !profileDirty}>
                   {savingProfile ? "…" : t("settings.save")}
                 </Button>
               </FormActions>
@@ -300,6 +323,17 @@ export function SettingsView() {
             <Card>
               <SectionTitle>{t("settings.changePassword")}</SectionTitle>
               <div className="mt-4 space-y-4">
+                {hasPassword && (
+                  <Field label={t("settings.currentPassword")}>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      autoComplete="current-password"
+                      className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                    />
+                  </Field>
+                )}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("settings.newPassword")}>
                     <input
@@ -327,7 +361,9 @@ export function SettingsView() {
                   <Button
                     variant="primary"
                     onClick={savePassword}
-                    disabled={savingPw || !password || !confirmPassword}
+                    disabled={
+                      savingPw || !password || !confirmPassword || (hasPassword && !currentPassword)
+                    }
                   >
                     {savingPw ? "…" : t("settings.save")}
                   </Button>
@@ -366,7 +402,7 @@ export function SettingsView() {
                 <div className="flex items-center gap-3">
                   <Button
                     variant="danger"
-                    onClick={deleteAccount}
+                    onClick={() => setConfirmDelete(true)}
                     disabled={
                       deleting ||
                       deleteConfirm.trim().toLowerCase() !== "delete" ||
@@ -380,6 +416,17 @@ export function SettingsView() {
                   )}
                 </div>
               </div>
+              <ConfirmDialog
+                open={confirmDelete}
+                title={t("settings.deleteAccount")}
+                message={t("settings.deleteAccountConfirm")}
+                confirmLabel={t("settings.deleteAccount")}
+                onCancel={() => setConfirmDelete(false)}
+                onConfirm={() => {
+                  setConfirmDelete(false);
+                  void deleteAccount();
+                }}
+              />
             </Card>
           )}
         </div>
@@ -448,7 +495,7 @@ export function SettingsView() {
                     {t("settings.saved")}
                   </span>
                 )}
-                <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax}>
+                <Button variant="primary" onClick={saveTaxSettings} disabled={savingTax || !taxDirty}>
                   {savingTax ? "…" : t("settings.save")}
                 </Button>
               </FormActions>
