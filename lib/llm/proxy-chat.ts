@@ -10,6 +10,7 @@
 
 import type { ChatRequest, StreamHandle } from "./types";
 import { newSseState, pushSseChunk } from "./sse";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 const PROXY_URL = "/api/llm";
 
@@ -33,9 +34,18 @@ export function proxyChat(
   const controller = new AbortController();
 
   async function* iterate(): AsyncGenerator<string> {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    // Account scope: the browser never holds the stored key (P0, migration
+    // 0132). It sends its session bearer token instead, and /api/llm reads the
+    // key server-side via the service role. Browser/guest scope keep sending
+    // the key in the body as before.
+    if (!key) {
+      const token = (await getSupabaseClient()?.auth.getSession())?.data.session?.access_token;
+      if (token) headers.authorization = `Bearer ${token}`;
+    }
     const res = await fetch(PROXY_URL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({
         provider,
         model: request.model,

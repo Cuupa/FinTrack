@@ -740,7 +740,7 @@ export class SupabaseStore implements DataStore {
       // Personal, never household-shared (see migration 0093's comment).
       this.supabase
         .from("llm_settings")
-        .select("provider, model, api_key")
+        .select("provider, model, api_key_last4")
         .eq("user_id", this.userId)
         .maybeSingle(),
     ]);
@@ -1020,10 +1020,19 @@ export class SupabaseStore implements DataStore {
     const llmRow = llmSettingsRes.data as {
       provider: string;
       model: string;
-      api_key: string;
+      api_key_last4: string | null;
     } | null;
+    // The stored key never reaches the browser (P0, migration 0132): the row
+    // carries only its last four chars. `/api/llm` reads the full key
+    // server-side via the service role for account scope.
     const llmConfig: LlmConfig | null = llmRow
-      ? { provider: llmRow.provider as LlmProviderId, model: llmRow.model, key: llmRow.api_key }
+      ? {
+          provider: llmRow.provider as LlmProviderId,
+          model: llmRow.model,
+          key: "",
+          hasKey: !!llmRow.api_key_last4,
+          lastFour: llmRow.api_key_last4 ?? undefined,
+        }
       : null;
 
     return {
@@ -2113,11 +2122,24 @@ export class SupabaseStore implements DataStore {
       if (error) throw error;
       return;
     }
+    // An empty incoming key means the user only re-picked provider/model on an
+    // already-stored config: update those, never overwrite the stored key with
+    // "". A non-empty key is a fresh secret, written with its last-four mirror.
+    // Neither path selects the row back, so the key never round-trips.
+    if (config.key === "") {
+      const { error } = await this.supabase
+        .from("llm_settings")
+        .update({ provider: config.provider, model: config.model })
+        .eq("user_id", this.userId);
+      if (error) throw error;
+      return;
+    }
     const { error } = await this.supabase.from("llm_settings").upsert({
       user_id: this.userId,
       provider: config.provider,
       model: config.model,
       api_key: config.key,
+      api_key_last4: config.key.slice(-4),
     });
     if (error) throw error;
   }

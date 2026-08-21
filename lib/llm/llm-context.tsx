@@ -63,7 +63,11 @@ interface LlmConfigContextValue {
   setConfig: (config: LlmConfig, scope?: LlmConfigScope) => Promise<void>;
   /** Clears both the account row and the browser key. */
   clearConfig: () => Promise<void>;
-  /** True once a valid config (provider + model + non-empty key) is stored. */
+  /**
+   * True once a usable config is stored: provider + model plus a key. The key
+   * is either present (browser scope, or a freshly typed one) or held
+   * server-side (account scope, `hasKey` with an empty `key`).
+   */
   configured: boolean;
 }
 
@@ -114,9 +118,10 @@ export function LlmConfigProvider({ children }: { children: ReactNode }) {
     await storeSaveLlmConfig(null);
   }, [storeSaveLlmConfig]);
 
+  const configured = config !== null && (config.key !== "" || config.hasKey === true);
   const value = useMemo<LlmConfigContextValue>(
-    () => ({ config, scope, setConfig, clearConfig, configured: config !== null }),
-    [config, scope, setConfig, clearConfig],
+    () => ({ config, scope, setConfig, clearConfig, configured }),
+    [config, scope, setConfig, clearConfig, configured],
   );
 
   return <LlmConfigContext.Provider value={value}>{children}</LlmConfigContext.Provider>;

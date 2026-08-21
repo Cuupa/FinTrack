@@ -23,6 +23,7 @@ import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { getProvider } from "@/lib/llm";
 import { classifyStatus, type ChatMessage, type LlmErrorCode, type LlmProvider } from "@/lib/llm/types";
 import { newSseState, pushDeltas } from "@/lib/llm/sse";
+import { supabasePublishable, supabaseSecret } from "@/lib/server/supabase-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,38 @@ interface RequestBody {
   messages?: unknown;
   system?: unknown;
   ping?: unknown;
+}
+
+/**
+ * Resolve the caller's account-scope LLM config from their session bearer
+ * token. The stored key never leaves the server: the browser sends only the
+ * token, this reads the row via the service role. Any failure returns null,
+ * so the caller falls through to `invalidKey` rather than leaking a reason.
+ */
+async function resolveAccountConfig(
+  req: Request,
+): Promise<{ provider: string; model: string; apiKey: string } | null> {
+  const authz = req.headers.get("authorization") ?? "";
+  const token = authz.startsWith("Bearer ") ? authz.slice("Bearer ".length).trim() : "";
+  if (!token) return null;
+
+  const verifier = supabasePublishable();
+  if (!verifier) return null;
+  const { data: userData, error: userErr } = await verifier.auth.getUser(token);
+  const user = userData?.user;
+  if (userErr || !user) return null;
+
+  const admin = supabaseSecret();
+  if (!admin) return null;
+  const { data, error } = await admin
+    .from("llm_settings")
+    .select("provider, model, api_key")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as { provider: string; model: string; api_key: string };
+  if (!row.api_key) return null;
+  return { provider: row.provider, model: row.model, apiKey: row.api_key };
 }
 
 function normalizeMessages(raw: unknown): ChatMessage[] | null {
@@ -82,14 +115,30 @@ export async function POST(req: Request): Promise<Response> {
     return errorResponse("badRequest");
   }
 
-  const provider = getProvider(typeof body.provider === "string" ? body.provider : "");
+  let providerId = typeof body.provider === "string" ? body.provider : "";
+  let key = typeof body.key === "string" ? body.key.trim() : "";
+  let model = typeof body.model === "string" && body.model ? body.model : "";
+
+  // Account scope (P0, migration 0132): the browser holds no key and sends its
+  // session bearer token instead. Read the stored key server-side via the
+  // service role, and adopt the ROW's provider/model so the key can only ever
+  // reach its own vendor. Ping keeps requiring a typed body.key. Not applied
+  // to guest/browser scope, which still send the key in the body.
+  if (!key && body.ping !== true) {
+    const account = await resolveAccountConfig(req);
+    if (account) {
+      key = account.apiKey;
+      providerId = account.provider;
+      model = account.model;
+    }
+  }
+
+  const provider = getProvider(providerId);
   if (!provider) return errorResponse("badRequest");
 
-  const key = typeof body.key === "string" ? body.key.trim() : "";
   if (!key) return errorResponse("invalidKey");
 
-  const model =
-    typeof body.model === "string" && body.model ? body.model : provider.defaultModel;
+  if (!model) model = provider.defaultModel;
 
   // Ping mode: minimal non-streamed request for the "test connection" button.
   if (body.ping === true) {
