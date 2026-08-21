@@ -38,5 +38,18 @@ Root cause: `SupabaseStore` is client-side; browser read `llm_settings.api_key` 
 - [x] **Cashflow Sankey as default** — `spending-sankey-card.tsx` default view `flow` (was `bars`); module comment updated. Bars still available.
 - [x] **Privacy blur in Simulation params** — `SliderField` gained `isPrivate` -> `data-private` on value display + input; set on Anfangskapital + Sparbetrag (+ savings-plan amount display). Percentages/years left unblurred per app convention (privacy masks absolute money only).
 
+### DONE — Phase 1 Foundations (2026-08-21)
+- [x] `app/globals.css`: `--action-primary` / `-hover` / `-fg` tokens (light #18181b/white, dark #f4f4f5/#18181b) + `@theme` mapping (K1).
+- [x] `components/ui/primitives.tsx`: `Button` primary -> `bg-action-primary text-action-primary-fg hover:bg-action-primary-hover`; brand no longer the CTA fill.
+- [x] `lib/colors.ts`: PALETTE rebuilt from chart hues, dropped `#059669`/`#ef4444` (K2) — no category can borrow positive/negative red/green.
+- [x] `lib/format.ts`: `normalizeZero` snaps rounds-to-zero to +0 in `formatCurrency`/`formatCompactCurrency`/`formatPercent`/`formatPercentPlain`; `plColor` -> `text-positive`/`text-negative`/`text-tertiary` (K10).
+- [x] Tests `tests/foundations.test.ts`; full suite 1319 green, tsc + eslint clean.
+- SKIPPED (deliberate): `RadioCard` primitive — no consumer yet (Phase 3 KI storage picker). Not adding dead code.
+- [ ] STILL TODO: Light+Dark visual pass for the broad Button/palette swap (Phase 1 acceptance) — needs browser; not done to save cost. Recommend before Phase 2.
+
+### Blockers (need owner answers before Phase 3/4)
+- K5 Teilfreistellung: differentiate per instrument/AssetType, or keep the global assumption and only document it clearer? (calc stays until answered)
+- K6 Zielzählung: are sub-goals double-counted in count/target/progress? Label-only, or adjust aggregation? (display-only until answered)
+
 ### Rule
 No commits until each vertical slice is complete + verified. No mixed commits.
