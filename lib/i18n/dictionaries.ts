@@ -1900,6 +1900,8 @@ export const en = {
     "Sharing is paused: nobody in this household is on Pro right now, so everyone only sees their own data. Nothing was deleted. Sharing resumes with the first member's subscription.",
   "household.limitHint": "Up to {n} people are included. Additional members cost {price} each (pending invitations count).",
   "household.addSeat": "Add a member for {price}",
+  "household.addSeatConfirm": "This adds a paid seat to your subscription for {price} per month, billed until you remove it. Continue?",
+  "household.addSeatConfirmCta": "Add paid seat",
 
   // X-Ray
   "xray.subtitle": "Your true exposure to individual stocks, looking through your funds.",
@@ -4334,6 +4336,8 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Das Teilen ist pausiert: Niemand in diesem Haushalt hat gerade Pro, also sieht jede Person nur die eigenen Daten. Es wurde nichts gelöscht. Mit dem ersten Abo eines Mitglieds läuft das Teilen weiter.",
   "household.limitHint": "Bis zu {n} Personen sind enthalten. Weitere Mitglieder kosten jeweils {price} (offene Einladungen zählen mit).",
   "household.addSeat": "Weiteres Mitglied für {price} hinzufügen",
+  "household.addSeatConfirm": "Das fügt deinem Abo einen kostenpflichtigen Platz für {price} pro Monat hinzu, abgerechnet bis du ihn entfernst. Fortfahren?",
+  "household.addSeatConfirmCta": "Kostenpflichtigen Platz hinzufügen",
 
   // X-Ray
   "xray.subtitle": "Dein tatsächliches Engagement in Einzelaktien, durch deine Fonds hindurch.",
@@ -6763,6 +6767,8 @@ export const es: Partial<Record<MessageKey, string>> = {
     "El uso compartido está en pausa: ahora mismo nadie de este hogar tiene Pro, así que cada persona solo ve sus propios datos. No se ha borrado nada. Volverá a funcionar con la primera suscripción de un miembro.",
   "household.limitHint": "Se incluyen hasta {n} personas. Cada miembro adicional cuesta {price} (las invitaciones pendientes cuentan).",
   "household.addSeat": "Añadir un miembro por {price}",
+  "household.addSeatConfirm": "Esto añade una plaza de pago a tu suscripción por {price} al mes, facturada hasta que la elimines. ¿Continuar?",
+  "household.addSeatConfirmCta": "Añadir plaza de pago",
 
   // X-Ray
   "xray.subtitle": "Tu exposición real a acciones individuales, mirando a través de tus fondos.",
