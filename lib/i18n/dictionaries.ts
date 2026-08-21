@@ -165,7 +165,7 @@ export const en = {
   "div.chart.ariaLabel": "Bar chart of dividend income per period, {total} in total.",
 
   "settings.title": "Settings",
-  "settings.subtitle": "Your profile, language, and security.",
+  "settings.subtitle": "Your profile, household, taxes and AI assistant.",
   "settings.profileSection": "Profile",
   "settings.tabGeneral": "General",
   "settings.tabFees": "Fees & taxes",
@@ -182,6 +182,8 @@ export const en = {
   "settings.teilfreistellung": "Teilfreistellung",
   "settings.teilfreistellungHint": "Enable only for mostly equity-based funds and ETFs.",
   "settings.changePassword": "Change password",
+  "settings.currentPassword": "Current password",
+  "settings.currentPasswordWrong": "The current password is not correct.",
   "settings.newPassword": "New password",
   "settings.confirmPassword": "Confirm password",
   "settings.passwordTooShort": "Password must be at least {n} characters.",
@@ -193,6 +195,8 @@ export const en = {
   "settings.deleteAccount": "Delete account",
   "settings.deleteAccountHint":
     "Permanently deletes your account and all data: portfolios, assets, and transactions. This cannot be undone.",
+  "settings.deleteAccountConfirm":
+    "This permanently deletes your account and every portfolio, account, transaction and setting, and removes you from any shared household. It cannot be undone.",
   "settings.deleteAccountType": 'Type "delete" to confirm',
   "settings.deleteAccountPassword": "Current password",
   "settings.deleteAccountWrongPassword": "Wrong password.",
@@ -2590,7 +2594,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "div.chart.ariaLabel": "Balkendiagramm der Dividendeneinnahmen je Periode, insgesamt {total}.",
 
   "settings.title": "Einstellungen",
-  "settings.subtitle": "Dein Profil, deine Sprache und Sicherheit.",
+  "settings.subtitle": "Dein Profil, Haushalt, Steuern und KI-Assistent.",
   "settings.profileSection": "Profil",
   "settings.tabGeneral": "Allgemein",
   "settings.tabFees": "Gebühren und Steuern",
@@ -2607,6 +2611,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.teilfreistellung": "Teilfreistellung",
   "settings.teilfreistellungHint": "Nur bei überwiegend aktienbasierten Fonds und ETFs aktivieren.",
   "settings.changePassword": "Passwort ändern",
+  "settings.currentPassword": "Aktuelles Passwort",
+  "settings.currentPasswordWrong": "Das aktuelle Passwort ist nicht korrekt.",
   "settings.newPassword": "Neues Passwort",
   "settings.confirmPassword": "Passwort bestätigen",
   "settings.passwordTooShort": "Das Passwort muss mindestens {n} Zeichen lang sein.",
@@ -2618,6 +2624,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.deleteAccount": "Konto löschen",
   "settings.deleteAccountHint":
     "Löscht dein Konto und alle Daten dauerhaft: Portfolios, Wertpapiere und Transaktionen. Dies kann nicht rückgängig gemacht werden.",
+  "settings.deleteAccountConfirm":
+    "Das löscht dein Konto und jedes Portfolio, Konto, jede Transaktion und Einstellung dauerhaft und entfernt dich aus jedem geteilten Haushalt. Es kann nicht rückgängig gemacht werden.",
   "settings.deleteAccountType": 'Gib "delete" zur Bestätigung ein',
   "settings.deleteAccountPassword": "Aktuelles Passwort",
   "settings.deleteAccountWrongPassword": "Falsches Passwort.",
@@ -5019,7 +5027,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "div.chart.ariaLabel": "Gráfico de barras de ingresos por dividendos por periodo, {total} en total.",
 
   "settings.title": "Ajustes",
-  "settings.subtitle": "Tu perfil, idioma y seguridad.",
+  "settings.subtitle": "Tu perfil, hogar, impuestos y asistente de IA.",
   "settings.profileSection": "Perfil",
   "settings.tabGeneral": "General",
   "settings.tabFees": "Comisiones e impuestos",
@@ -5036,6 +5044,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.teilfreistellung": "Teilfreistellung",
   "settings.teilfreistellungHint": "Actívalo solo con fondos y ETFs mayoritariamente de renta variable.",
   "settings.changePassword": "Cambiar contraseña",
+  "settings.currentPassword": "Contraseña actual",
+  "settings.currentPasswordWrong": "La contraseña actual no es correcta.",
   "settings.newPassword": "Nueva contraseña",
   "settings.confirmPassword": "Confirmar contraseña",
   "settings.passwordTooShort": "La contraseña debe tener al menos {n} caracteres.",
@@ -5047,6 +5057,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.deleteAccount": "Eliminar cuenta",
   "settings.deleteAccountHint":
     "Elimina tu cuenta y todos tus datos de forma permanente: carteras, activos y transacciones. Esta acción no se puede deshacer.",
+  "settings.deleteAccountConfirm":
+    "Esto elimina de forma permanente tu cuenta y cada cartera, cuenta, transacción y ajuste, y te quita de cualquier hogar compartido. No se puede deshacer.",
   "settings.deleteAccountType": 'Escribe "delete" para confirmar',
   "settings.deleteAccountPassword": "Contraseña actual",
   "settings.deleteAccountWrongPassword": "Contraseña incorrecta.",
