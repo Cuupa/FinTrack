@@ -433,7 +433,8 @@ export function AssetDetail({
       confirmLabel: "Delete asset",
       action: async () => {
         await deleteAsset(asset!.id);
-        router.push("/");
+        // Back to the holdings list the asset came from, not the dashboard.
+        router.push("/portfolio");
       },
     });
   }
