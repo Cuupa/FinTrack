@@ -39,7 +39,7 @@ The long-form design notes live next to it, and every reference below resolves
 - Current live-url is https://fintrack-five-cyan.vercel.app/. supabase is configured
 - credentials are "demo@demo.com", password "demo". use this if necessary
 - Never use the formal adressing. Change as soon as you stumble upon a formal adressing
-- Always make every table sortable and highlight the row on mouseover
+- Tables are sortable when users genuinely need to switch between several sort orders, not by default. Always highlight the row on mouseover
 - When emulating desktop, use 1080p as screen resolution
 - Use skeleton loading instead of placeholders for eg. prices
 - I forbid you to use badges of any kind. if you need to display a badge, you fucked up big time and go back to drawing board
