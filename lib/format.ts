@@ -90,6 +90,15 @@ export function stripLeadingZero(s: string): string {
   return localized.replace(/^0+(?=\d)/, "");
 }
 
+/**
+ * Snap a value that rounds to zero at the displayed precision to positive zero,
+ * so a tiny negative (or a literal -0) never renders as "-0,00". Any value that
+ * still rounds to a nonzero figure is returned untouched.
+ */
+export function normalizeZero(value: number, decimals: number): number {
+  return Math.round(value * 10 ** decimals) === 0 ? 0 : value;
+}
+
 export function formatCurrency(value: number, currency = "EUR", digits?: number): string {
   return new Intl.NumberFormat(intlLocale(), {
     style: "currency",
@@ -99,7 +108,7 @@ export function formatCurrency(value: number, currency = "EUR", digits?: number)
     ...(digits != null
       ? { minimumFractionDigits: digits, maximumFractionDigits: digits }
       : { maximumFractionDigits: 2 }),
-  }).format(value);
+  }).format(normalizeZero(value, digits ?? 2));
 }
 
 /** Number of decimal places in `v` (capped), for aligning a set of axis ticks. */
@@ -137,6 +146,7 @@ export function compactUnitFor(maxAbs: number): CompactUnit {
  */
 export function formatCompactCurrency(value: number, currency = "EUR", unit?: CompactUnit): string {
   const { divisor, suffix } = unit ?? compactUnitFor(Math.abs(value));
+  const scaled = normalizeZero(value / divisor, 1);
   const parts = new Intl.NumberFormat(intlLocale(), {
     style: "currency",
     currency,
@@ -144,8 +154,8 @@ export function formatCompactCurrency(value: number, currency = "EUR", unit?: Co
     // to maximumFractionDigits and force a junk trailing ",0" onto whole values.
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  }).formatToParts(value / divisor);
-  if (!suffix || value === 0) return parts.map((p) => p.value).join("");
+  }).formatToParts(scaled);
+  if (!suffix || scaled === 0) return parts.map((p) => p.value).join("");
   // Inject the suffix right after the last numeric part so the currency
   // symbol keeps its locale position ("€25k" in en, "25k €" in de).
   const NUMERIC = new Set(["integer", "group", "decimal", "fraction"]);
@@ -162,7 +172,7 @@ export function formatPercent(fraction: number, digits = 2): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
     signDisplay: "exceptZero",
-  }).format(fraction);
+  }).format(normalizeZero(fraction, digits + 2));
 }
 
 /**
@@ -176,7 +186,7 @@ export function formatPercentPlain(fraction: number, digits = 1): string {
     style: "percent",
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(fraction);
+  }).format(normalizeZero(fraction, digits + 2));
 }
 
 export function formatNumber(value: number, digits = 2): string {
@@ -240,9 +250,9 @@ export function formatInstant(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** Tailwind text color class for a signed value. */
+/** Tailwind text color class for a signed value, on the semantic tokens. */
 export function plColor(value: number): string {
-  if (value > 0) return "text-emerald-600 dark:text-emerald-400";
-  if (value < 0) return "text-red-600 dark:text-red-400";
-  return "text-zinc-500";
+  if (value > 0) return "text-positive";
+  if (value < 0) return "text-negative";
+  return "text-tertiary";
 }

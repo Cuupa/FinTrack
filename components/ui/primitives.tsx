@@ -235,10 +235,12 @@ export function Section({
 // existing call sites keep working. Both render the same outline-red treatment.
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "destructive";
 
-// Brand-primary (§7.5): the mint brand carries dark text in dark mode, where
-// white on it fails contrast; the darker green in light mode carries white.
+// Primary action = neutral action-primary (Spec §5.2/5.3, Audit): near-black in
+// light, near-white in dark, with a per-theme foreground token so contrast
+// holds both ways. The brand stays reserved for nav/tabs/focus/selection, never
+// the CTA fill.
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand text-white hover:bg-brand-hover dark:text-zinc-950",
+  primary: "bg-action-primary text-action-primary-fg hover:bg-action-primary-hover",
   secondary:
     "border border-strong text-primary hover:bg-surface-hover",
   ghost: "text-secondary hover:bg-surface-hover",
