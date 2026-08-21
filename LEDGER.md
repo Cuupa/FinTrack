@@ -47,9 +47,9 @@ Root cause: `SupabaseStore` is client-side; browser read `llm_settings.api_key` 
 - SKIPPED (deliberate): `RadioCard` primitive — no consumer yet (Phase 3 KI storage picker). Not adding dead code.
 - [ ] STILL TODO: Light+Dark visual pass for the broad Button/palette swap (Phase 1 acceptance) — needs browser; not done to save cost. Recommend before Phase 2.
 
-### Blockers (need owner answers before Phase 3/4)
-- K5 Teilfreistellung: differentiate per instrument/AssetType, or keep the global assumption and only document it clearer? (calc stays until answered)
-- K6 Zielzählung: are sub-goals double-counted in count/target/progress? Label-only, or adjust aggregation? (display-only until answered)
+### Blockers — RESOLVED by owner (2026-08-21)
+- K5 Teilfreistellung: owner said "vorerst nicht anfassen" -> SKIPPED this pass. Global checkbox + calc unchanged. Do not touch.
+- K6 Zielzählung: owner wanted "the cleanest technical variant". VERIFIED in code: no double-count exists. `goalTotals` derives a composite parent from its children (parent's own amount ignored while it has children); the page summary (`goals-view.tsx:585`) reduces over TOP-LEVEL rows only, sub-goals nested under parents. Count/target/progress are already clean -> no code change (inventing one would alter correct logic). Left untouched.
 
 ### Rule
 No commits until each vertical slice is complete + verified. No mixed commits.
