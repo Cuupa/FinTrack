@@ -12,6 +12,7 @@ import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import {
   netWorthSeries,
+  nonCashAssets,
   summarizeAll,
   twrSeries,
   type ValuationContext,
@@ -33,13 +34,16 @@ export function buildShareSource(args: {
   portfolioIds: string[] | null;
 }): ShareSource {
   const { assets, transactions, valuation, histories, ownerName, currency, portfolioIds } = args;
+  // CASH lives in /accounts, not the depot (owner rule), so a shared snapshot
+  // leaves it out of every wealth line as well.
+  const depotAssets = nonCashAssets(assets);
   const holdings = summarizeAll(assets, transactions, valuation).filter(
     (h) => h.position.shares > 0,
   );
   const netWorth = holdings.reduce((s, h) => s + h.marketValue, 0);
-  const wealthSeries = netWorthSeries(assets, transactions, "MAX", valuation, histories).points;
-  const twr = twrSeries(assets, transactions, "MAX", valuation, histories);
-  const flows = netFlows(assets, transactions, valuation).map((f) => ({
+  const wealthSeries = netWorthSeries(depotAssets, transactions, "MAX", valuation, histories).points;
+  const twr = twrSeries(depotAssets, transactions, "MAX", valuation, histories);
+  const flows = netFlows(depotAssets, transactions, valuation).map((f) => ({
     date: f.date,
     amount: -f.amount,
   }));

@@ -13,6 +13,7 @@ import type { Timeframe } from "@/lib/finance/dates";
 import {
   netWorthBreakdownSeries,
   netWorthSeries,
+  nonCashAssets,
   portfolioTotals,
   summarizeAll,
   transactionsByAsset,
@@ -125,7 +126,7 @@ export function NetWorthHero({
   const { points: series, containsSynthetic } = useMemo(
     () =>
       netWorthSeries(
-        data.assets,
+        nonCashAssets(data.assets),
         data.transactions,
         timeframe,
         effectiveValuation,
@@ -154,7 +155,7 @@ export function NetWorthHero({
       investmentsOnly
         ? null
         : netWorthBreakdownSeries(
-            data.assets,
+            nonCashAssets(data.assets),
             data.transactions,
             timeframe,
             effectiveValuation,
@@ -183,7 +184,7 @@ export function NetWorthHero({
   // True time-weighted cumulative return (price-based, deposits never counted),
   // for "Return" mode — what brokers plot as TWROR.
   const returnSeries = useMemo(
-    () => twrSeries(data.assets, data.transactions, timeframe, effectiveValuation, histories),
+    () => twrSeries(nonCashAssets(data.assets), data.transactions, timeframe, effectiveValuation, histories),
     [data.assets, data.transactions, timeframe, effectiveValuation, histories],
   );
   // Risk metrics over the selected window (TWR, vol, drawdown, downside vol).

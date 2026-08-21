@@ -393,7 +393,11 @@ export function AddAssetForm({
           <div>
             <label className="text-sm font-medium">{tr("addAsset.type")}</label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {ASSET_TYPES.filter((t) => t !== "OTHER" || manualValuationEnabled).map((t) => {
+              {ASSET_TYPES.filter(
+                // CASH is covered by /accounts (owner rule) — no longer an
+                // addable depot type. Existing CASH holdings still render.
+                (t) => t !== "CASH" && (t !== "OTHER" || manualValuationEnabled),
+              ).map((t) => {
                 const disabled = t === "CASH" && cashTaken;
                 return (
                   <button
