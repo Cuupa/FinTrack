@@ -120,6 +120,15 @@ function corrcoef(a: number[], b: number[]): number {
   return cov / Math.sqrt(va * vb);
 }
 
+/** Correlation of two return series on the most-recent span they share. Slicing
+ *  both to the common tail keeps the means aligned to the elements compared and
+ *  lets holdings of different history lengths still correlate on their overlap. */
+function tailCorr(a: number[], b: number[]): number {
+  const m = Math.min(a.length, b.length);
+  if (m < 2) return 0;
+  return corrcoef(a.slice(a.length - m), b.slice(b.length - m));
+}
+
 // --- Return-series sourcing --------------------------------------------------
 
 /** Last `years` of daily synthetic returns for an asset (empty for cash). */
@@ -473,24 +482,45 @@ export function portfolioRiskStats(
 
   const lengths = series.filter((r) => r.rets.length).map((r) => r.rets.length);
   if (lengths.length === 0) return null;
-  const L = Math.min(...lengths);
-  const aligned = series.map((r) =>
-    r.rets.length >= L ? r.rets.slice(r.rets.length - L) : new Array<number>(L).fill(0),
-  );
 
+  // Covariance per PAIR, on the tail each pair actually shares — never a single
+  // global window. Truncating every series to the shortest one let one freshly
+  // listed holding (a single in-window return) collapse the whole matrix to
+  // zeros: corrcoef returns 0 for n < 2, including the diagonal, so variance,
+  // volatility, Sharpe and Sortino all died on an otherwise healthy portfolio.
+  // Each asset keeps its own measured vol; a self-pair is correlation 1; a pair
+  // with too little overlap simply contributes no covariance. When every series
+  // has the same length this is identical to the old alignment.
   const n = valued.length;
   let variance = 0;
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      variance += weights[i] * weights[j] * stats[i].vol * stats[j].vol * corrcoef(aligned[i], aligned[j]);
+      const rho = i === j ? 1 : tailCorr(series[i].rets, series[j].rets);
+      variance += weights[i] * weights[j] * stats[i].vol * stats[j].vol * rho;
     }
   }
   const volatility = Math.sqrt(Math.max(0, variance));
 
-  const port: number[] = [];
-  for (let t = 0; t < L; t++) port.push(weights.reduce((s, w, i) => s + w * aligned[i][t], 0));
-  const downVar = mean(port.map((r) => (r < 0 ? r * r : 0)));
-  const downsideDeviation = Math.sqrt(downVar) * Math.sqrt(ppy);
+  // Downside path for Sortino: the value-weighted return series over the common
+  // tail of the holdings that carry at least two returns (weights renormalised
+  // over them), so a history-less holding cannot flatten it to zero.
+  const pathIdx = series.map((_, i) => i).filter((i) => series[i].rets.length >= 2);
+  let downsideDeviation = 0;
+  if (pathIdx.length > 0) {
+    const Lp = Math.min(...pathIdx.map((i) => series[i].rets.length));
+    const wsum = pathIdx.reduce((s, i) => s + weights[i], 0) || 1;
+    const port: number[] = [];
+    for (let t = 0; t < Lp; t++) {
+      let v = 0;
+      for (const i of pathIdx) {
+        const r = series[i].rets;
+        v += (weights[i] / wsum) * r[r.length - Lp + t];
+      }
+      port.push(v);
+    }
+    const downVar = mean(port.map((r) => (r < 0 ? r * r : 0)));
+    downsideDeviation = Math.sqrt(downVar) * Math.sqrt(ppy);
+  }
 
   const sharpe = sharpeRatio(annualReturn, volatility, rf);
   const sortino = downsideDeviation > 0 ? (annualReturn - rf) / downsideDeviation : null;
@@ -501,7 +531,7 @@ export function portfolioRiskStats(
     downsideDeviation,
     sharpe,
     sortino,
-    sampleMonths: Math.round((L / ppy) * MONTHLY_PPY),
+    sampleMonths: Math.round((Math.max(...lengths) / ppy) * MONTHLY_PPY),
     real: series.some((s) => s.real),
   };
 }
