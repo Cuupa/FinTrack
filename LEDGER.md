@@ -94,6 +94,14 @@ Owner rule (absolute, 2026-08-21): nothing is "done" while a single test is red.
 - **pension.spec.ts:61/74/84/98/114/127/163** — Phase 4 moved the Renteninformation + year forms into `Modal`s; `addYear`/`addStatement` helpers now open the section's button first, scope to the dialog, submit, and assert close.
 - RESULT: full e2e **77 passed / 0 failed**; unit **1320 passed / 0 failed**. Committed separately (specs + this ledger only).
 
+### DONE — Phase 6 Responsive/a11y/Visual-Regression QA sweep (2026-08-21)
+Representative visual sweep of the redesigned surfaces via a throwaway Playwright screenshot script (guest mode on :3011, en-US, seeded 2 accounts + 1 loan + 1 OTHER asset through the real UI). Captured at desktop 1440x900, tablet 768x1024, mobile 390x844, plus a dark-mode pass (prefers-color-scheme: dark) on overview/accounts/analysis/settings. Scripts live in scratchpad only — no product/test code changed.
+- Desktop (overview, portfolio, accounts, spending, cashflow, goals, debt, rebalancing, analysis, retirement FIRE+pension, simulation, settings): all clean and consistent. Phase 5 rebalancing percent axis legible; Phase 4 goals/pension/budget triggers render as buttons (forms behind modals); analysis tab + sub-tab strips and donut correct; settings unified card width with the Phase 3 dirty-state Save correctly disabled.
+- Mobile: KPI heros reflow to 2-col, bottom nav present; multi-column tables (goals) scroll inside their own card — the app-wide `overflow-x:auto` pattern, page body does not scroll horizontally. Cramped but not a regression.
+- Dark mode: consistent palette, readable muted empty states ("Add holdings...", "No data"), correct disabled-button contrast. No token gaps found.
+- RESULT: **no P0/P1 visual regressions**. One P2 note (mobile wide-table density) is the existing app pattern; no change made without owner direction. Unit **1320/0** green; e2e unchanged from the last green run (**77/0** at 8dcea97) since this pass touched no code.
+- Not covered by the seed (deferred, lower value): debt payoff chart (needs a rate+min-payment on the loan) and a post-run simulation tile — both already pinned by their e2e specs.
+
 ### Rule
 No commits until each vertical slice is complete + verified. No mixed commits.
 NEW absolute rule (owner, 2026-08-21): a phase is NEVER "done" while any test is red. Run the FULL unit + e2e suite before reporting completion.
