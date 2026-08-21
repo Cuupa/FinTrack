@@ -29,6 +29,9 @@
   --text-tertiary: #6b7682;
   --brand: #087f63;
   --brand-hover: #066c54;
+  --action-primary: #18181b;
+  --action-primary-hover: #27272a;
+  --action-primary-fg: #ffffff;
   --positive: #177a45;
   --negative: #c9364a;
   --warning: #96620a;
@@ -57,6 +60,9 @@
   --text-tertiary: #8b95a3;
   --brand: #2ad1a3;
   --brand-hover: #35e0b0;
+  --action-primary: #f4f4f5;
+  --action-primary-hover: #e4e4e7;
+  --action-primary-fg: #18181b;
   --positive: #45d483;
   --negative: #ff6b7a;
   --warning: #f2b84b;
@@ -91,6 +97,9 @@
   --color-tertiary: var(--text-tertiary);
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
+  --color-action-primary: var(--action-primary);
+  --color-action-primary-hover: var(--action-primary-hover);
+  --color-action-primary-fg: var(--action-primary-fg);
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-warning: var(--warning);

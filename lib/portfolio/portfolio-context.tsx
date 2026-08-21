@@ -10,6 +10,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -59,6 +60,7 @@ import { useAuth } from "../auth/auth-context";
 import { readAccountSelection, writeAccountSelection } from "../accounts/selection-storage";
 import { useFeatureFlag } from "../flags/flags-context";
 import { setManualValuations } from "../finance/manual-valuation";
+import { allowanceAfterChange, AllowanceExceededError } from "../finance/tax";
 
 interface PortfolioContextValue {
   /** Portfolio data scoped to the currently-selected portfolios. */
@@ -180,6 +182,14 @@ function ownerPatch(target: OwnerTarget): { ownerId?: string | null; shared: boo
 export function PortfolioProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<PortfolioData>(emptyPortfolio());
+  // Latest data for imperative guards that run inside a mutation (not a render):
+  // the save-path Freistellungsauftrag check needs the current portfolios and
+  // global allowance, not a stale closure snapshot. Synced in an effect (never
+  // written during render) so it is current by the time any event handler runs.
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   // null = all portfolios selected; otherwise the explicit selection.
@@ -892,6 +902,19 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
   const updatePortfolio = useCallback(
     async (id: string, patch: PortfolioPatch) => {
+      // Freistellungsaufträge only distribute the one Sparerpauschbetrag — the
+      // save path enforces the cap too, so no other in-app caller can exceed it
+      // past the form's own check. Same domain function both sides.
+      if (patch.taxAllowance !== undefined) {
+        const d = dataRef.current;
+        const others = d.portfolios
+          .filter((p) => p.id !== id)
+          .map((p) => p.taxAllowance);
+        const alloc = allowanceAfterChange(d.profile.taxAllowance, others, patch.taxAllowance);
+        if (!alloc.ok) {
+          throw new AllowanceExceededError(alloc.distributed, alloc.available);
+        }
+      }
       await store.updatePortfolio(id, patch);
       setData((d) => ({
         ...d,

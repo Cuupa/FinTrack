@@ -1068,6 +1068,7 @@ create table if not exists public.llm_settings (
   provider text not null,
   model text not null,
   api_key text not null,
+  api_key_last4 text,
   updated_at timestamptz not null default now()
 );
 
@@ -1249,7 +1250,8 @@ insert into public.schema_migrations (version) values
   ('0125_household_stripe_seats'),
   ('0126_spending_booking_time'),
   ('0127_account_interest_bookings'),
-  ('0128_fix_household_member_limit')
+  ('0128_fix_household_member_limit'),
+  ('0132_llm_key_last4')
 on conflict (version) do nothing;
 
 -- Row-level security ---------------------------------------------------------
@@ -1508,6 +1510,14 @@ create policy "own asset tags" on public.asset_tags
 drop policy if exists "own llm settings" on public.llm_settings;
 create policy "own llm settings" on public.llm_settings
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- The browser (authenticated role) must never SELECT the stored api_key: it
+-- reads provider/model/api_key_last4 only, and /api/llm reads the full key
+-- server-side via the service role. Mirrors migration 0132. Idempotent.
+revoke select on public.llm_settings from authenticated;
+revoke select on public.llm_settings from anon;
+grant select (user_id, provider, model, api_key_last4, updated_at)
+  on public.llm_settings to authenticated;
 
 drop policy if exists "own simulations" on public.simulation_runs;
 create policy "own simulations" on public.simulation_runs

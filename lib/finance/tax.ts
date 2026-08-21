@@ -42,6 +42,64 @@ function rateOf(asset: Asset, v?: ValuationContext): number {
 const byDateAsc = (a: Transaction, b: Transaction) =>
   a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
 
+/**
+ * The Freistellungsaufträge a user registers across their brokers can only ever
+ * DISTRIBUTE the one Sparerpauschbetrag — their sum may not exceed it. This is
+ * the single source of truth for that rule, shared by the settings form and the
+ * store save path so the cap cannot be exceeded through either (a UI-only check
+ * is bypassable by any other in-app caller). Pure; amounts are base currency.
+ *
+ * A cent of floating-point slack is tolerated so a value that sums to exactly
+ * the cap does not read as "over".
+ */
+export interface AllowanceAllocation {
+  /** Sum of every registered per-broker Freistellungsauftrag. */
+  distributed: number;
+  /** The global Sparerpauschbetrag available to distribute. */
+  available: number;
+  /** How much the distribution exceeds the cap (0 when within it). */
+  over: number;
+  /** True when the distribution is within the cap. */
+  ok: boolean;
+}
+
+export function allowanceAllocation(
+  available: number,
+  perBroker: readonly (number | null | undefined)[],
+): AllowanceAllocation {
+  const distributed = perBroker.reduce<number>((sum, a) => sum + (a ?? 0), 0);
+  const over = Math.max(0, distributed - available);
+  return { distributed, available, over, ok: over <= 0.01 };
+}
+
+/**
+ * The allocation that WOULD result from setting one broker's Freistellungsauftrag
+ * to `proposed`, given the amounts already registered at the OTHER brokers.
+ * Used by both the form (to block over-allocation before saving) and the store
+ * save path (to reject it if it slips through another caller).
+ */
+export function allowanceAfterChange(
+  available: number,
+  otherBrokers: readonly (number | null | undefined)[],
+  proposed: number | null | undefined,
+): AllowanceAllocation {
+  return allowanceAllocation(available, [...otherBrokers, proposed]);
+}
+
+/** Thrown by the save path when a Freistellungsauftrag change would exceed the
+ *  Sparerpauschbetrag. Matched by name (never message text) so callers can
+ *  render their own localized line. */
+export class AllowanceExceededError extends Error {
+  distributed: number;
+  available: number;
+  constructor(distributed: number, available: number) {
+    super("Freistellungsauftrag allocation exceeds the Sparerpauschbetrag");
+    this.name = "AllowanceExceededError";
+    this.distributed = distributed;
+    this.available = available;
+  }
+}
+
 export interface TaxSettings {
   /** Sparerpauschbetrag, base currency (1000 single / 2000 joint filing). */
   allowance: number;

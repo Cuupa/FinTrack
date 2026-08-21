@@ -419,6 +419,7 @@ export function MonteCarloPanel() {
                 min={0}
                 max={Math.max(100000, Math.round((netWorth || 0) * 3))}
                 step={1000}
+                isPrivate
                 lockable={effectiveMode === "portfolio"}
                 locked={locked}
                 onToggleLock={() => {
@@ -450,7 +451,10 @@ export function MonteCarloPanel() {
                     <label className="text-sm font-medium">
                       {t("sim.monthlyContribution")}
                     </label>
-                    <div className="mt-1 text-sm font-semibold tabular-nums opacity-70">
+                    <div
+                      className="mt-1 text-sm font-semibold tabular-nums opacity-70"
+                      data-private
+                    >
                       {formatCurrency(monthlyFromPlans, currency)}
                     </div>
                   </div>
@@ -463,6 +467,7 @@ export function MonteCarloPanel() {
                     min={0}
                     max={5000}
                     step={50}
+                    isPrivate
                   />
                 )}
               </div>
@@ -1093,6 +1098,7 @@ function SliderField({
   lockable = false,
   locked = false,
   onToggleLock,
+  isPrivate = false,
 }: {
   label: string;
   value: number;
@@ -1106,6 +1112,8 @@ function SliderField({
   lockable?: boolean;
   locked?: boolean;
   onToggleLock?: () => void;
+  /** Blur the shown figure in Incognito mode (absolute money only). */
+  isPrivate?: boolean;
 }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(() => formatInputDecimal(value, digits));
@@ -1142,7 +1150,10 @@ function SliderField({
           <label className="text-sm font-medium">{label}</label>
           {lockBtn}
         </div>
-        <div className="mt-1 text-sm font-semibold tabular-nums opacity-70">
+        <div
+          className="mt-1 text-sm font-semibold tabular-nums opacity-70"
+          data-private={isPrivate || undefined}
+        >
           {display}
           {suffix ? <span className="ml-1 text-xs font-normal text-zinc-400">{suffix}</span> : null}
         </div>
@@ -1174,6 +1185,7 @@ function SliderField({
             onChange={(e) => handleManualChange(e.target.value)}
             onBlur={() => setDirty(false)}
             aria-label={label}
+            data-private={isPrivate || undefined}
             className="w-full min-w-0 rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-right text-sm font-medium tabular-nums outline-none transition-colors focus:border-zinc-900 dark:border-zinc-700 dark:focus:border-zinc-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           {suffix ? <span className="shrink-0 text-xs text-zinc-400">{suffix}</span> : null}

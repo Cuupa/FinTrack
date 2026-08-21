@@ -911,7 +911,17 @@ export type TagAssignments = Record<string, Record<string, string[]>>;
 export interface LlmConfig {
   provider: LlmProviderId;
   model: string;
+  /**
+   * The full API key. Empty for an account-scope config loaded from the DB:
+   * the browser never receives the stored key (only `lastFour`), `/api/llm`
+   * reads it server-side via the service role. A freshly typed key is present
+   * until it is saved. Guest/browser-scope keys stay fully client-side.
+   */
   key: string;
+  /** True when a key is stored server-side even though `key` is empty. */
+  hasKey?: boolean;
+  /** Last four characters of the stored key, for a masked display. */
+  lastFour?: string;
 }
 
 /** The complete persisted state for one user (or guest session). */

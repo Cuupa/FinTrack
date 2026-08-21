@@ -20,7 +20,7 @@ import { NotificationsCard } from "@/components/settings/notifications-card";
 import { HouseholdView } from "@/components/household/household-view";
 import { PageTour } from "@/components/onboarding/page-tours";
 import { HOUSEHOLD_TOUR_STEPS } from "@/lib/onboarding/tour-steps";
-import { useLlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
+import { useLlmConfig, type LlmConfig, type LlmConfigScope } from "@/lib/llm/llm-context";
 import { providerList, getProvider } from "@/lib/llm";
 import { isLlmErrorCode, llmErrorMessageKey } from "@/lib/llm/error-messages";
 import type { LlmProviderId } from "@/lib/llm/types";
@@ -31,7 +31,8 @@ import { Tabs } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { isStorageFullError } from "@/lib/store/errors";
-import { formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { allowanceAfterChange, AllowanceExceededError } from "@/lib/finance/tax";
 import type { Portfolio } from "@/lib/types";
 import type { OwnerTarget, PortfolioPatch } from "@/lib/store/types";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
@@ -476,6 +477,10 @@ export function SettingsView() {
                   key={feePortfolio.id}
                   portfolio={feePortfolio}
                   baseCurrency={data.profile.currency}
+                  globalAllowance={data.profile.taxAllowance}
+                  otherAllowances={portfolios
+                    .filter((p) => p.id !== feePortfolio.id)
+                    .map((p) => p.taxAllowance)}
                   onSave={updatePortfolio}
                   onSetOwner={setPortfolioOwner}
                 />
@@ -521,11 +526,17 @@ function Field({
 function PortfolioFeeRow({
   portfolio,
   baseCurrency,
+  globalAllowance,
+  otherAllowances,
   onSave,
   onSetOwner,
 }: {
   portfolio: Portfolio;
   baseCurrency: string;
+  /** The user's global Sparerpauschbetrag (`profile.taxAllowance`). */
+  globalAllowance: number;
+  /** Freistellungsaufträge registered at the OTHER brokers. */
+  otherAllowances: (number | null | undefined)[];
   onSave: (id: string, patch: PortfolioPatch) => Promise<void>;
   onSetOwner: (id: string, target: OwnerTarget) => Promise<void>;
 }) {
@@ -552,13 +563,26 @@ function PortfolioFeeRow({
       const freeFromNum = freeFrom.trim() ? parseDecimal(freeFrom) : null;
       const savingsPlanNum = parseDecimal(savingsPlan);
       const taxAllowanceNum = taxAllowance.trim() ? parseDecimal(taxAllowance) : null;
+      const nextAllowance =
+        taxAllowanceNum != null && Number.isFinite(taxAllowanceNum) ? taxAllowanceNum : null;
+      // Block over-allocation with the same domain check the save path enforces.
+      const alloc = allowanceAfterChange(globalAllowance, otherAllowances, nextAllowance);
+      if (!alloc.ok) {
+        setError(
+          t("settings.fees.allowanceOver", {
+            distributed: formatCurrency(alloc.distributed, baseCurrency),
+            available: formatCurrency(alloc.available, baseCurrency),
+          }),
+        );
+        setSaving(false);
+        return;
+      }
       await onSave(portfolio.id, {
         feeOrderFlat: Number.isFinite(flatNum) ? flatNum : 0,
         feeOrderFreeFrom:
           freeFromNum != null && Number.isFinite(freeFromNum) ? freeFromNum : null,
         feeSavingsPlan: Number.isFinite(savingsPlanNum) ? savingsPlanNum : 0,
-        taxAllowance:
-          taxAllowanceNum != null && Number.isFinite(taxAllowanceNum) ? taxAllowanceNum : null,
+        taxAllowance: nextAllowance,
       });
       // Owner reassignment is a distinct row change (user_id/household_id),
       // applied only when the picker was touched.
@@ -566,7 +590,16 @@ function PortfolioFeeRow({
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      setError(isStorageFullError(err) ? t("common.storageFull") : t("settings.fees.saveError"));
+      if (err instanceof AllowanceExceededError) {
+        setError(
+          t("settings.fees.allowanceOver", {
+            distributed: formatCurrency(err.distributed, baseCurrency),
+            available: formatCurrency(err.available, baseCurrency),
+          }),
+        );
+      } else {
+        setError(isStorageFullError(err) ? t("common.storageFull") : t("settings.fees.saveError"));
+      }
     } finally {
       setSaving(false);
     }
@@ -689,8 +722,13 @@ function AiAssistantSection() {
 
   const [provider, setProvider] = useState<LlmProviderId>(config?.provider ?? providerList[0].id);
   const [model, setModel] = useState(config?.model ?? providerList[0].defaultModel);
-  const [key, setKey] = useState(config?.key ?? "");
+  const [key, setKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  // A stored key never reaches the browser for account scope (only its last
+  // four chars); browser/guest scope keep the plaintext locally. Either way the
+  // input starts masked and read-only, and "replace" opens a fresh editable
+  // field — the stored key is never pre-filled.
+  const [replacing, setReplacing] = useState(false);
   // Registered users only; guests never render the control and always save
   // through the store seam regardless of this value. Seeded from the active
   // scope so an existing config's location is reflected, "account" by
@@ -708,6 +746,14 @@ function AiAssistantSection() {
 
   const selectedProvider = getProvider(provider) ?? providerList[0];
 
+  const hasStoredKey = !!config && (config.key !== "" || config.hasKey === true);
+  const storedLast4 = config?.lastFour ?? (config?.key ? config.key.slice(-4) : undefined);
+  // Show the editable input when replacing a stored key or when none is stored.
+  const editingKey = replacing || !hasStoredKey;
+  // The browser holds the plaintext only for browser/guest scope; account scope
+  // keeps it server-side, so moving it elsewhere needs a re-entry.
+  const havePlaintextKey = !!config?.key;
+
   function handleProviderChange(next: string) {
     const p = getProvider(next);
     if (!p) return;
@@ -716,10 +762,34 @@ function AiAssistantSection() {
   }
 
   async function save() {
+    const trimmed = key.trim();
+    // Keeping a stored key: send "" so the store preserves it (account scope
+    // updates only provider/model; browser scope re-sends its local plaintext).
+    // Moving a server-held key to another scope needs the actual key back.
+    const keepStored = hasStoredKey && !editingKey;
+    if (keepStored && user && scope !== activeScope && !havePlaintextKey) {
+      setError(t("settings.ai.replaceToMoveScope"));
+      return;
+    }
+    // Keeping a server-held key: carry `hasKey`/`lastFour` through so the
+    // optimistic in-memory config still reads as "a key is stored" and the
+    // masked display does not flip to the empty state after a model change.
+    const next: LlmConfig = editingKey
+      ? { provider, model, key: trimmed }
+      : {
+          provider,
+          model,
+          key: config?.key ?? "",
+          hasKey: config?.hasKey,
+          lastFour: config?.lastFour,
+        };
     setSaving(true);
     setError(null);
     try {
-      await setConfig({ provider, model, key: key.trim() }, user ? scope : undefined);
+      await setConfig(next, user ? scope : undefined);
+      setReplacing(false);
+      setKey("");
+      setShowKey(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -761,6 +831,8 @@ function AiAssistantSection() {
     try {
       await clearConfig();
       setKey("");
+      setReplacing(false);
+      setShowKey(false);
     } catch (err) {
       setError(isStorageFullError(err) ? t("common.storageFull") : t("settings.ai.saveError"));
     } finally {
@@ -792,23 +864,56 @@ function AiAssistantSection() {
         </Field>
 
         <Field label={t("settings.ai.apiKey")}>
-          <div className="relative">
-            <input
-              type={showKey ? "text" : "password"}
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              autoComplete="off"
-              placeholder={t("settings.ai.apiKeyPlaceholder")}
-              className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 pr-16 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
-            />
-            <button
-              type="button"
-              onClick={() => setShowKey((v) => !v)}
-              className="absolute inset-y-0 right-2 flex items-center px-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-            >
-              {showKey ? t("settings.ai.hideKey") : t("settings.ai.showKey")}
-            </button>
-          </div>
+          {editingKey ? (
+            <div className="relative">
+              <input
+                type={showKey ? "text" : "password"}
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                autoComplete="off"
+                placeholder={t("settings.ai.apiKeyPlaceholder")}
+                className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 pr-16 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                className="absolute inset-y-0 right-2 flex items-center px-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              >
+                {showKey ? t("settings.ai.hideKey") : t("settings.ai.showKey")}
+              </button>
+              {hasStoredKey && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplacing(false);
+                    setKey("");
+                    setShowKey(false);
+                  }}
+                  className="mt-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                >
+                  {t("common.cancel")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm dark:border-zinc-700">
+              <span className="font-mono text-zinc-600 dark:text-zinc-300">
+                {t("settings.ai.keyStored")}
+                {storedLast4 ? ` ••••${storedLast4}` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setReplacing(true);
+                  setKey("");
+                  setShowKey(false);
+                }}
+                className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              >
+                {t("settings.ai.replaceKey")}
+              </button>
+            </div>
+          )}
         </Field>
 
         {user && (
@@ -850,7 +955,11 @@ function AiAssistantSection() {
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={() => void save()} disabled={saving || !key.trim()}>
+          <Button
+            variant="primary"
+            onClick={() => void save()}
+            disabled={saving || (editingKey ? !key.trim() : !hasStoredKey)}
+          >
             {saving ? "…" : t("settings.save")}
           </Button>
           <Button

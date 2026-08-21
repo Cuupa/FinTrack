@@ -214,6 +214,8 @@ export const en = {
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
     "Leave empty without a registered allowance at this broker. The tax report in the analysis shields each broker's gains with this amount.",
+  "settings.fees.allowanceOver":
+    "That distributes {distributed} across your brokers, more than your {available} allowance. Lower it or the amount at another broker.",
   "settings.fees.saveError": "Could not save.",
 
   "settings.ai.title": "AI assistant",
@@ -231,6 +233,9 @@ export const en = {
   "settings.ai.removeKeyTitle": "Remove API key?",
   "settings.ai.removeKeyMsg": "Your stored API key is removed.",
   "settings.ai.removeKeyConfirm": "Remove",
+  "settings.ai.keyStored": "Key stored",
+  "settings.ai.replaceKey": "Replace key",
+  "settings.ai.replaceToMoveScope": "Enter the key again to store it somewhere else.",
   "settings.ai.scope.label": "Where your key is stored",
   "settings.ai.scope.account": "In your account (on every device)",
   "settings.ai.scope.browser": "Only in this browser",
@@ -2629,6 +2634,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
     "Ohne Freistellungsauftrag bei diesem Broker leer lassen. Der Steuer-Report in der Analyse rechnet je Broker mit diesem Betrag.",
+  "settings.fees.allowanceOver":
+    "Das verteilt {distributed} auf deine Broker, mehr als dein Freibetrag von {available}. Senke ihn oder den Betrag bei einem anderen Broker.",
   "settings.fees.saveError": "Konnte nicht gespeichert werden.",
 
   "settings.ai.title": "KI-Assistent",
@@ -2646,6 +2653,9 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.ai.removeKeyTitle": "API-Schlüssel entfernen?",
   "settings.ai.removeKeyMsg": "Dein gespeicherter API-Schlüssel wird entfernt.",
   "settings.ai.removeKeyConfirm": "Entfernen",
+  "settings.ai.keyStored": "Schlüssel gespeichert",
+  "settings.ai.replaceKey": "Schlüssel ersetzen",
+  "settings.ai.replaceToMoveScope": "Gib den Schlüssel erneut ein, um ihn woanders zu speichern.",
   "settings.ai.scope.label": "Wo dein Schlüssel gespeichert wird",
   "settings.ai.scope.account": "In deinem Konto (auf allen Geräten)",
   "settings.ai.scope.browser": "Nur in diesem Browser",
@@ -5048,6 +5058,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.fees.taxAllowance": "Freistellungsauftrag",
   "settings.fees.taxAllowanceHint":
     "Déjalo vacío sin una exención registrada en este bróker. El informe fiscal del análisis calcula por bróker con este importe.",
+  "settings.fees.allowanceOver":
+    "Eso reparte {distributed} entre tus brókeres, más que tu exención de {available}. Redúcelo o baja el importe en otro bróker.",
   "settings.fees.saveError": "No se ha podido guardar.",
 
   "settings.ai.title": "Asistente de IA",
@@ -5065,6 +5077,9 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.ai.removeKeyTitle": "¿Eliminar clave de API?",
   "settings.ai.removeKeyMsg": "Tu clave de API guardada se elimina.",
   "settings.ai.removeKeyConfirm": "Eliminar",
+  "settings.ai.keyStored": "Clave guardada",
+  "settings.ai.replaceKey": "Reemplazar clave",
+  "settings.ai.replaceToMoveScope": "Vuelve a introducir la clave para guardarla en otro lugar.",
   "settings.ai.scope.label": "Dónde se guarda tu clave",
   "settings.ai.scope.account": "En tu cuenta (en todos tus dispositivos)",
   "settings.ai.scope.browser": "Solo en este navegador",

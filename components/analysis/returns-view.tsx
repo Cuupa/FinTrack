@@ -19,7 +19,7 @@ import {
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { useCatalog } from "@/lib/catalog/catalog-context";
-import { netWorthSeries, summarizeAll } from "@/lib/finance/portfolio";
+import { netWorthSeries, nonCashAssets, summarizeAll } from "@/lib/finance/portfolio";
 import { quoteItemFor } from "@/lib/finance/prices";
 import { useHistory } from "@/lib/history/use-history";
 import { netFlows, periodReturns, type Period } from "@/lib/finance/returns";
@@ -93,8 +93,9 @@ export function ReturnsView() {
   // calls this with its own scope so they're fully independent.
   const returnsForScope = useCallback(
     (scope: string[], period: Period) => {
-      const a =
-        scope.length === 0 ? data.assets : data.assets.filter((x) => scope.includes(x.id));
+      const a = nonCashAssets(
+        scope.length === 0 ? data.assets : data.assets.filter((x) => scope.includes(x.id)),
+      );
       const t =
         scope.length === 0
           ? data.transactions

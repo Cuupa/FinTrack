@@ -286,12 +286,23 @@ export function transactionsByAsset(
   return txs.filter((t) => t.assetId === assetId);
 }
 
+/**
+ * CASH is covered by balance accounts (/accounts), not the depot (owner rule):
+ * it is excluded from every holdings aggregation so it counts neither in the
+ * depot list nor in net worth. Single-asset paths (`summarizeHolding`,
+ * `assetValueSeries`) stay CASH-aware, so an existing CASH position's own
+ * detail view still renders.
+ */
+export function nonCashAssets(assets: Asset[]): Asset[] {
+  return assets.filter((a) => a.type !== "CASH");
+}
+
 export function summarizeAll(
   assets: Asset[],
   txs: Transaction[],
   v?: ValuationContext,
 ): HoldingSummary[] {
-  return assets.map((a) =>
+  return nonCashAssets(assets).map((a) =>
     summarizeHolding(a, transactionsByAsset(a.id, txs), v),
   );
 }

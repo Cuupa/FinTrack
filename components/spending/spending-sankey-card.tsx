@@ -1,10 +1,10 @@
 "use client";
 
-// Cash-flow overview card. Two views of the same period: `Balken` (the default)
-// ranks income and expense category groups as horizontal bars, `Geldfluss`
-// draws the Sankey (income groups -> Total -> expense groups + a savings /
-// shortfall link). Bars lead because a ranked list answers "where does the
-// money go" at a glance; the Sankey stays available for the flow shape.
+// Cash-flow overview card. Two views of the same period: `Geldfluss` (the
+// default) draws the Sankey (income groups -> Total -> expense groups + a
+// savings / shortfall link); `Balken` ranks income and expense category groups
+// as horizontal bars. The flow leads because it shows the shape of the money
+// at a glance; the bars stay available for a ranked "where does it go" read.
 //
 // All graph-building lives in lib/finance/spending.ts (spendingSankeyData +
 // spendingGroupBreakdown) — this file only wires context, windowing and
@@ -38,7 +38,7 @@ export function SpendingSankeyCard({ month = null }: { month?: string | null }) 
   const { t } = useI18n();
   const base = data.profile.currency;
   const [timeframe, setTimeframe] = useState<Timeframe>("3M");
-  const [view, setView] = useState<FlowView>("bars");
+  const [view, setView] = useState<FlowView>("flow");
 
   const earliest = useMemo(
     () =>

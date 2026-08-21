@@ -213,7 +213,10 @@ function DatenschutzDE({
           ). Bist du registriert und angemeldet, kannst du in den Einstellungen wählen, wo dein
           Schlüssel gespeichert wird: entweder in deinem Konto in unserer Datenbank, geschützt durch
           nutzerspezifische Zugriffskontrollen (Row-Level Security), sodass er auf all deinen Geräten
-          verfügbar ist, oder ausschließlich lokal in diesem Browser. Eine Verschlüsselung im
+          verfügbar ist, oder ausschließlich lokal in diesem Browser. Ein in deinem Konto
+          gespeicherter Schlüssel wird nach dem Speichern nicht mehr an deinen Browser
+          zurückgegeben; dort siehst du nur noch die letzten vier Zeichen. Verwendet wird der
+          vollständige Schlüssel ausschließlich serverseitig, wenn du den Chat nutzt. Eine Verschlüsselung im
           Ruhezustand (encryption at rest) über die Standard-Datenbankverschlüsselung unseres Hosters
           hinaus bieten wir nicht an. Einen Schlüssel in diesem Browser entfernst du, indem du ihn in
           den Einstellungen löschst oder deine Browserdaten leerst; er wird außerdem automatisch beim
