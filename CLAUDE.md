@@ -42,7 +42,6 @@ The long-form design notes live next to it, and every reference below resolves
 - Tables are sortable when users genuinely need to switch between several sort orders, not by default. Always highlight the row on mouseover
 - When emulating desktop, use 1080p as screen resolution
 - Use skeleton loading instead of placeholders for eg. prices
-- I forbid you to use badges of any kind. if you need to display a badge, you fucked up big time and go back to drawing board
 - When changing or removing a feature, always check if feature flags became stale/depricated
 - When developing new features, create e2e tests if applicable
 
