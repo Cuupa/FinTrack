@@ -102,6 +102,14 @@ Representative visual sweep of the redesigned surfaces via a throwaway Playwrigh
 - RESULT: **no P0/P1 visual regressions**. One P2 note (mobile wide-table density) is the existing app pattern; no change made without owner direction. Unit **1320/0** green; e2e unchanged from the last green run (**77/0** at 8dcea97) since this pass touched no code.
 - Not covered by the seed (deferred, lower value): debt payoff chart (needs a rate+min-payment on the loan) and a post-run simulation tile — both already pinned by their e2e specs.
 
+### DONE — Phase 7 Stale-style/component cleanup (2026-08-21)
+Authoritative dead-export scan (ts-prune -p tsconfig, framework route exports filtered out). Removed only genuinely orphaned code left by the redesign; no behaviour change.
+- `components/ui/primitives.tsx`: removed a **duplicate** `SummaryStrip` (props `items: SummaryItem[]`) shadowed by the live `components/ui/summary-strip.tsx` (`metrics: SummaryMetric[]`) that every consumer (accounts-hero, debt-view) actually imports — a two-`SummaryStrip` footgun. Took its now-dead `SummaryItem` type + `SUMMARY_COLS` const with it. Also removed the unused `Section` primitive (spec §7.3, adopted by no page) and the unused `SECTION_STACK` constant (`PAGE_STACK` stays, widely used). `Stat` stays (used everywhere).
+- `lib/share/share.ts`: removed `decodeShare`, superseded by `decodeShareAny` (the `/shared` fragment page + Sankey generalization); `decodeShareAny` uses `decodeFragment`+`normalizeShare` directly, never `decodeShare`.
+- Deleted `lib/ui/use-collapsed.ts` (whole file, `lib/ui/` now gone): orphaned by commit 8d33c7a "recurring card no longer collapsible" — its last and only consumer.
+- Verified NOT stale (left untouched): the remaining `#ef4444`/`#059669` are all legit semantic uses (SELL markers, liabilities line, shortfall, over-budget, brand icon) — Phase 1 only dropped them from the categorical PALETTE. `TIMEFRAMES`/`timeframeStart` still used widely; Phase 2 only pulled them from debt-view. No stale feature flags: the redesign was IA-preserving and removed no feature.
+- RESULT: tsc + eslint clean; unit **1320/0**; e2e **77/0**. Committed (primitives + share + deleted hook + this ledger only; the pre-existing uncommitted FINTRACK_UX_UNIFICATION_SPEC.md left out).
+
 ### Rule
 No commits until each vertical slice is complete + verified. No mixed commits.
 NEW absolute rule (owner, 2026-08-21): a phase is NEVER "done" while any test is red. Run the FULL unit + e2e suite before reporting completion.
