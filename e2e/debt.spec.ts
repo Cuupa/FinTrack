@@ -84,10 +84,10 @@ test("a balance is read as repayment against the original loan sum", async ({ pa
   await page.locator("#account-edit-min-payment").fill("1400");
   await page.getByRole("button", { name: "Save", exact: true }).click();
 
-  // And the chart reaches back to when the debt started, on the depot's own
-  // timeframe strip, instead of starting at today.
+  // And the chart reaches back to when the debt started: the "Total" horizon
+  // shows the full measured past instead of starting at today.
   const chart = page.locator('[data-tour="debt-chart"]');
-  await chart.getByRole("button", { name: "MAX", exact: true }).click();
+  await chart.getByRole("button", { name: "Total", exact: true }).click();
   await expect(chart.getByText("2019")).toBeVisible();
 });
 

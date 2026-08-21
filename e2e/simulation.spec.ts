@@ -19,8 +19,8 @@ test.describe("simulation (Guest Mode)", () => {
 
     await page.getByRole("button", { name: "Run simulation" }).click();
 
-    // The worker takes a few seconds; the median-outcome tile appears on success.
-    await expect(page.getByText("Median outcome")).toBeVisible({ timeout: 30_000 });
+    // The worker takes a few seconds; the projected-final-wealth tile appears on success.
+    await expect(page.getByText("Projected final wealth")).toBeVisible({ timeout: 30_000 });
   });
 
   // There is exactly ONE Monte Carlo surface: the FIRE tab hands its horizon

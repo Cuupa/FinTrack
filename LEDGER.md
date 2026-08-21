@@ -86,5 +86,14 @@ Audit §5.5 deferred layout items. No new dictionary keys, no finance calc touch
 - K5 Teilfreistellung: owner said "vorerst nicht anfassen" -> SKIPPED this pass. Global checkbox + calc unchanged. Do not touch.
 - K6 Zielzählung: owner wanted "the cleanest technical variant". VERIFIED in code: no double-count exists. `goalTotals` derives a composite parent from its children (parent's own amount ignored while it has children); the page summary (`goals-view.tsx:585`) reduces over TOP-LEVEL rows only, sub-goals nested under parents. Count/target/progress are already clean -> no code change (inventing one would alter correct logic). Left untouched.
 
+### DONE — Phase 6 start: e2e specs realigned to the redesigned UI (2026-08-21)
+Owner rule (absolute, 2026-08-21): nothing is "done" while a single test is red. The full e2e suite had 14 reds — all from UI I changed in earlier phases without pulling the specs along. Root causes + fixes (specs only, no product code):
+- **debt.spec.ts:55** — Phase 2 replaced the debt-chart timeframe strip (1W..MAX) with a `Total/5y/10y` horizon; the test still clicked "MAX". Now clicks "Total" (shows the full measured past, so 2019 still visible).
+- **simulation.spec.ts:9** — Phase 2 renamed the final-wealth tile from `sim.median` ("Median outcome") to `sim.medianWealth` ("Projected final wealth (median)"); "Median outcome" now only appears in the withdrawal card. Test waits for "Projected final wealth".
+- **goals.spec.ts:40/89/122/153 + interest-goals.spec.ts:44** — Phase 4 moved the add-goal form into a `Modal`; specs filled `#goal-*` on a form that no longer sits in the page. Each now opens the modal via `[data-tour="goals-form"]` first, scopes fields + submit to the dialog (trigger and submit share the "Add goal" label), and waits for it to close. The "Part of" reopen uses two Escapes (the SelectMenu popover does not stop Escape, so one closes the whole modal).
+- **pension.spec.ts:61/74/84/98/114/127/163** — Phase 4 moved the Renteninformation + year forms into `Modal`s; `addYear`/`addStatement` helpers now open the section's button first, scope to the dialog, submit, and assert close.
+- RESULT: full e2e **77 passed / 0 failed**; unit **1320 passed / 0 failed**. Committed separately (specs + this ledger only).
+
 ### Rule
 No commits until each vertical slice is complete + verified. No mixed commits.
+NEW absolute rule (owner, 2026-08-21): a phase is NEVER "done" while any test is red. Run the FULL unit + e2e suite before reporting completion.
