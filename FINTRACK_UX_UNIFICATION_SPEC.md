@@ -1,6 +1,6 @@
 # FinTrack UX-Unification-Spec
 
-Stand: 19. August 2026
+Stand: 21. August 2026
 
 ## Auftrag an Claude Code
 
@@ -28,6 +28,31 @@ Arbeite zuerst repo-weit. Suche bestehende Layouts, Tokens, wiederkehrende Kompo
 - Finanzielle Kennzahlen brauchen konsistente Begriffe, Zeitbezüge und Zahlenformate.
 - Keine Feature-Erweiterung als Ersatz für saubere UX.
 - Keine Code-Kommentare hinzufügen.
+
+### Quellenhierarchie
+
+Bei widersprüchlichen Anweisungen gilt für diese Migration folgende Reihenfolge:
+
+1. Der aktuelle Nutzerauftrag definiert Umfang und Freigaben.
+2. Diese Spezifikation definiert Ziel-UX, Informationsarchitektur, Seitenhierarchie, Interaktionsmuster und visuelle Semantik.
+3. Der bestehende `styleguide`-Skill dokumentiert den aktuellen Implementierungsstand, vorhandene Primitives, Repositorypfade, Lokalisierung, Privacy-Verhalten und Paywall-Konventionen.
+4. Der aktuelle Quellcode ist Beleg des Ist-Zustands, aber nicht automatisch das gewünschte Zielbild.
+
+Der bestehende Styleguide darf eine Entscheidung dieser Spezifikation nicht still überschreiben. Ebenso darf eine konzeptionell anders benannte Zielkomponente nicht automatisch zur Neuerstellung führen, wenn ein vorhandenes Primitive sinnvoll erweitert werden kann.
+
+### Lifecycle des bisherigen Styleguide-Skills
+
+Der derzeitige Skill ist eine wertvolle Bestandsaufnahme, enthält aber auch Regeln, die den zu ersetzenden Zustand konservieren. Deshalb gilt:
+
+1. In Phase 0 den vollständigen bisherigen Skill lesen und seine Aussagen gegen den tatsächlichen Code prüfen.
+2. Eine Konfliktmatrix `UX-Spezifikation gegen bisherigen Styleguide` erstellen und jede Abweichung bewusst entscheiden.
+3. Wiederverwendbare technische Fakten in den Migrationsplan übernehmen.
+4. Nach abgeschlossenem Phase-0-Audit den alten Skill aus `.claude/skills/` entfernen oder außerhalb der aktiven Skill-Verzeichnisse als historische Referenz archivieren.
+5. Während der Implementierung darf der alte Skill nicht mehr automatisch geladen werden.
+6. Nach abgeschlossener Migration einen neuen, kompakten Styleguide-Skill aus dem tatsächlich implementierten und verifizierten Code generieren.
+7. Der neue Skill beschreibt ausschließlich den neuen Ist-Zustand. Er darf keine überholten Klassen, Pfade oder Primitives aus dem alten Skill übernehmen.
+
+Den alten Skill nicht vor Phase 0 löschen. Sonst gehen konkrete Hinweise auf vorhandene Helfer, Komponenten und Seiteneffekte verloren.
 
 ## 1. Zielbild des Produkts
 
@@ -169,35 +194,10 @@ flowchart TB
 
 ## 5. Design Tokens
 
-Implementiere semantische Tokens zentral. Die Namen können an den bestehenden Stack angepasst werden, die Trennung der Rollen ist verbindlich.
+Implementiere semantische Tokens zentral in der vorhandenen Tailwind-v4- und `app/globals.css`-Struktur. FinTrack schaltet Dark Mode über die Klasse `.dark` auf `<html>`. Behalte diesen Mechanismus bei. Keine Hex-Farben in JSX oder einzelnen Seiten. Die Werte sind Zielwerte, dürfen nach einer Kontrastprüfung geringfügig angepasst werden. Die Trennung der Rollen ist verbindlich.
 
 ```css
-:root[data-theme="dark"] {
-  --color-bg-app: #090b0e;
-  --color-bg-sidebar: #0d0f13;
-  --color-surface: #14171c;
-  --color-surface-elevated: #181c22;
-  --color-surface-hover: #1e232b;
-  --color-border-subtle: #2a3039;
-  --color-border-strong: #3a424d;
-  --color-text-primary: #f4f6f8;
-  --color-text-secondary: #a8b0bc;
-  --color-text-tertiary: #8b95a3;
-  --color-brand: #2ad1a3;
-  --color-brand-hover: #35e0b0;
-  --color-positive: #45d483;
-  --color-negative: #ff6b7a;
-  --color-warning: #f2b84b;
-  --color-info: #6ea8fe;
-  --color-chart-1: #6f7bf7;
-  --color-chart-2: #34b7d6;
-  --color-chart-3: #a87ff2;
-  --color-chart-4: #e7a94b;
-  --color-chart-5: #d874b6;
-  --color-chart-6: #8b97a8;
-}
-
-:root[data-theme="light"] {
+:root {
   --color-bg-app: #f5f7f8;
   --color-bg-sidebar: #f8fafb;
   --color-surface: #ffffff;
@@ -208,18 +208,47 @@ Implementiere semantische Tokens zentral. Die Namen können an den bestehenden S
   --color-text-primary: #14171a;
   --color-text-secondary: #4d5966;
   --color-text-tertiary: #6b7682;
-  --color-brand: #087f63;
-  --color-brand-hover: #066c54;
+  --color-brand: #087a73;
+  --color-brand-hover: #06665f;
   --color-positive: #177a45;
   --color-negative: #c9364a;
   --color-warning: #96620a;
   --color-info: #1d64b7;
+  --color-action-primary-bg: #18181b;
+  --color-action-primary-fg: #ffffff;
   --color-chart-1: #5364d8;
   --color-chart-2: #1689a5;
   --color-chart-3: #7b50c7;
   --color-chart-4: #a96b0b;
   --color-chart-5: #a64a82;
   --color-chart-6: #647286;
+}
+
+.dark {
+  --color-bg-app: #090b0e;
+  --color-bg-sidebar: #0d0f13;
+  --color-surface: #14171c;
+  --color-surface-elevated: #181c22;
+  --color-surface-hover: #1e232b;
+  --color-border-subtle: #2a3039;
+  --color-border-strong: #3a424d;
+  --color-text-primary: #f4f6f8;
+  --color-text-secondary: #a8b0bc;
+  --color-text-tertiary: #8b95a3;
+  --color-brand: #2fc7b5;
+  --color-brand-hover: #42d5c3;
+  --color-positive: #45d483;
+  --color-negative: #ff6b7a;
+  --color-warning: #f2b84b;
+  --color-info: #6ea8fe;
+  --color-action-primary-bg: #f4f4f5;
+  --color-action-primary-fg: #18181b;
+  --color-chart-1: #6f7bf7;
+  --color-chart-2: #34b7d6;
+  --color-chart-3: #a87ff2;
+  --color-chart-4: #e7a94b;
+  --color-chart-5: #d874b6;
+  --color-chart-6: #8b97a8;
 }
 ```
 
@@ -244,6 +273,8 @@ Implementiere semantische Tokens zentral. Die Namen können an den bestehenden S
 
 ### 5.2 Typografie
 
+Behalte `Geist Sans` als UI-Schrift und `Geist Mono` für technische Identifikatoren. Geldwerte verwenden tabellarische Ziffern in der UI-Schrift, nicht automatisch Monospace.
+
 | Rolle | Größe / Zeilenhöhe | Gewicht |
 | --- | --- | --- |
 | Page title | 24 / 32 px | 650 |
@@ -264,7 +295,8 @@ Implementiere semantische Tokens zentral. Die Namen können an den bestehenden S
 
 ### 6.1 Verbindliche Regeln
 
-- Brand-Farbe: aktiver Zustand, Fokus, primäre Auswahl, Links, primäre Aktion
+- Brand-Farbe: aktiver Zustand, Fokus, primäre Auswahl und Links
+- Primäraktion: neutrale, maximal kontrastreiche Fläche mit dem `action-primary`-Token
 - Positiv: tatsächliche Verbesserung oder bestätigter Zufluss
 - Negativ: tatsächliche Verschlechterung, Verlust, Überschreitung, Fehler oder destruktive Aktion
 - Warnung: Aufmerksamkeit erforderlich, aber kein Fehler
@@ -277,10 +309,13 @@ Implementiere semantische Tokens zentral. Die Namen können an den bestehenden S
 - Einnahmen können positivgrün sein, wenn Zufluss die Aussage ist.
 - Ausgaben werden nicht pauschal alarmrot. Normal geplante Ausgaben sind neutral oder als Chart-Serie codiert. Rot wird bei Budgetüberschreitung verwendet.
 - Rot und Grün dürfen nicht als beliebige Portfoliokategorien eingesetzt werden.
+- Brand-Teal und Positiv-Grün müssen als unterschiedliche semantische Rollen implementiert sein, auch wenn beide zur grün-blauen Farbfamilie gehören.
 
 ## 7. Gemeinsame Komponenten
 
 Claude soll vorhandene Komponenten zusammenführen oder folgende Primitives neu schaffen. Die Namen sind beispielhaft, die Rollen nicht.
+
+Vorhandene Primitives werden zuerst auf ihre Eignung geprüft. `PageHeader`, `SectionTitle`, `Stat`, `StatRow`, `Button`, `SegmentedControl`, `Tabs`, `SelectMenu`, `MonthPicker`, `FormActions`, die Tabellenprimitives, `Skeleton`, `EmptyState`, `LoadError`, `ConfirmDialog`, `Modal`, `InfoTip`, `Toggle`, `Slider`, `ProTeaser` und `ProGate` sind bekannte Ausgangspunkte. Ihre Existenz ist kein Beweis, dass ihre aktuelle Darstellung oder API unverändert bleiben muss.
 
 ### 7.1 `PageHeader`
 
@@ -326,6 +361,7 @@ Auf Mobile werden Titel und Beschreibung zuerst gezeigt, Controls darunter als u
 ### 7.5 `Button`
 
 - Primary: genau eine Hauptaktion pro sichtbarem Kontext
+- Primary bleibt neutral und maximal kontrastreich. Die Brand-Farbe wird nicht zusätzlich als CTA-Füllfarbe verwendet.
 - Secondary: normale Aktion mit Border
 - Ghost: Toolbar- und Zeilenaktion
 - Destructive: nur Löschen, Verlassen, Entfernen
@@ -338,14 +374,17 @@ Auf Mobile werden Titel und Beschreibung zuerst gezeigt, Controls darunter als u
 - Beschreibung oder Validierung direkt darunter
 - Einheitliche Höhe 36 px Desktop, 40 px Mobile
 - Einheitliche Focus-Ring-Farbe
+- Focus darf nicht nur durch eine geringfügig andere Border-Farbe sichtbar werden. Nutze einen klaren `focus-visible` Ring mit ausreichendem Kontrast.
 - Einheitliche Darstellung für Select, Datum, Betrag, Slider und Switch
 - Einheiten wie EUR oder % stehen als Suffix im Feld, nicht als zufälliger Text daneben
+- Pflichtfelder dürfen beim Tippen ruhig bleiben. Validiere nach Blur oder nach einem Submit-Versuch und zeige eine konkrete Meldung am Feld.
 
 ### 7.7 `DataTable`
 
 - Zeilenhöhe mindestens 44 px, bei zweizeiligem Inhalt 52 px
 - Name oder Primärinformation links, Zahlen rechts
-- Sortierbarkeit klar mit Icon und `aria-sort`
+- Sortierbare Spalten zeigen ein klares Icon und korrektes `aria-sort`
+- Nicht jede Tabelle muss sortierbar sein. Aktiviere Sortierung nur, wenn die Reihenfolge für die Nutzeraufgabe relevant ist.
 - Hover-Zustand über die komplette Zeile
 - Zeilenaktionen in einem Menü `Mehr`, wenn mehr als zwei Aktionen existieren
 - Wichtige Aktion darf direkt sichtbar bleiben, destruktive Aktion nie ohne Bestätigung
@@ -375,6 +414,21 @@ Nicht gleichzeitig ein dauerhaft sichtbares leeres Formular zeigen.
 ### 7.10 `InlineNotice`
 
 Für fachliche Hinweise, Annahmen und Warnungen. Varianten: info, success, warning, error. Keine frei erfundenen orangefarbenen Spezialboxen pro Seite.
+
+### 7.11 Statusmarker und Badges
+
+- Keine dekorativen, gefüllten Badges für beliebige Metadaten.
+- Semantisch notwendige Marker wie `geschätzt`, `überfällig`, `Pro` oder eine Benachrichtigungsanzahl sind erlaubt.
+- Marker verwenden Text plus Form oder Icon und verlassen sich nicht allein auf Farbe.
+- Prüfe den bestehenden `EstimatedBadge`. Behalte die Semantik, vereinheitliche aber Name und Darstellung mit dem neuen Statusmarker-Primitive.
+- `SegmentedControl` ist ein interaktives Control und kein Badge.
+
+### 7.12 Icons
+
+- Behalte die bestehende Inline-SVG-Strategie, wenn Icons zentral wiederverwendet werden.
+- Keine SVG-Pfade auf mehreren Seiten duplizieren. Gemeinsame Icons als Komponenten kapseln.
+- Icons verwenden `currentColor`, ein konsistentes Stroke-Gewicht und dieselben Größenstufen.
+- Keine neue Icon-Bibliothek ausschließlich für diese Migration einführen.
 
 ## 8. Einheitliches Seiten-Template
 
@@ -627,15 +681,105 @@ flowchart TB
 - Zielkarten zeigen Name, Zielbetrag, aktueller Betrag, Zieltermin, Fortschritt und Status in identischer Reihenfolge.
 - Fortschrittsfarbe ist Brand oder neutral. Warnung erst bei tatsächlicher Abweichung vom Plan.
 
-## 13. Einstellungen: Haushalt & Mitglieder
+## 13. Einstellungen
+
+Einstellungen sind ein eigener Verwaltungsbereich und keine schmale Nebenansicht. Sie verwenden dieselben Tokens, Tabs, Formfelder, Buttons und Zustände wie die fachlichen Seiten, benötigen aber keine Finanzkennzahlen.
+
+### 13.1 Informationsarchitektur und Layout
+
+- Zugriff über Profilmenü oder Avatar. Kein zusätzlicher permanenter Hauptnavigationseintrag nötig.
+- Tabs: `Allgemein`, `Haushalt`, `Steuern & Gebühren`, `KI-Assistent`.
+- Der Page Header beschreibt den gesamten Bereich, nicht nur Profil und Sprache. Geeignete Copy: `Verwalte dein Konto, deinen Haushalt und appweite Vorgaben.`
+- Settings verwenden einen mittleren Content-Container von ungefähr 720 bis 800 px. Die aktuelle sehr schmale Spalte wirkt im breiten App-Shell wie ein Fremdkörper.
+- Formulare bleiben gut scanbar. Ein Feld darf die volle Breite nutzen, verwandte kurze Felder können in zwei Spalten stehen.
+- Unter 720 px wechseln alle Formulargruppen kontrolliert in eine Spalte.
+- Keine künstliche zweite Spalte und keine leeren Karten zum Auffüllen kurzer Seiten.
+- Tabs sind auf Mobile horizontal scrollbar und behalten verständliche vollständige Labels.
+
+### 13.2 Gemeinsames Speichern-Muster
+
+Jede Settings-Fläche entscheidet sich bewusst für genau eines dieser Muster:
+
+1. explizites Speichern pro unabhängiger Karte
+2. automatisches Speichern mit sichtbarer Statusrückmeldung
+3. ein gemeinsamer Formularabschluss für einen zusammenhängenden Flow
+
+Verbindliche Regeln:
+
+- Kein Abschnitt darf unklar lassen, ob eine Änderung bereits übernommen wurde.
+- `Speichern` ist deaktiviert, solange sich nichts geändert hat oder das Formular ungültig ist.
+- Nach Erfolg erscheint eine unaufdringliche Rückmeldung `Gespeichert` am Abschnitt.
+- Fehler erscheinen direkt am betroffenen Feld und zusätzlich in einer kurzen Abschnittszusammenfassung, falls mehrere Felder betroffen sind.
+- Tabwechsel, Providerwechsel, Brokerwechsel und Navigation mit ungespeicherten Änderungen benötigen Bestätigung oder verlässliches Autosave.
+- Sprache darf sofort übernommen werden, muss dann aber einen klaren gespeicherten Zustand zeigen.
+- Buttons stehen an derselben Stelle, bevorzugt unten rechts innerhalb einer Formularfläche.
+
+### 13.3 Allgemein
+
+Ordne die Inhalte in nachvollziehbare Bereiche:
+
+- `Abo`
+- `Profil & Sprache`
+- `Benachrichtigungen`
+- `Sicherheit`
+- `Gefahrenzone`
+
+Regeln:
+
+- Vermeide eine lange Folge gleichgewichteter Einzelkarten für sehr kleine Einstellungen. Zusammengehörige Themen dürfen in einer Settings-Fläche mit internen Unterabschnitten stehen.
+- Die geführte Tour ist eine sekundäre Hilfeaktion und darf visuell nicht so viel Gewicht wie Profil oder Sicherheit erhalten.
+- Passwortänderung benötigt eine erneute Authentifizierung oder das aktuelle Passwort, sofern der Auth-Provider dies nicht bereits verlässlich erzwingt.
+- Fehlermeldungen für Passwortregeln stehen direkt am Feld. Bestätigung wird bereits während der Eingabe abgeglichen.
+- Die Gefahrenzone bleibt als eigene, klar abgesetzte Fläche am Ende.
+- Bestätigungstext für Kontolöschung wird lokalisiert. In Deutsch beispielsweise `KONTO LÖSCHEN`, nicht das englische `delete`.
+- Kontolöschung benötigt eine Zusammenfassung der Folgen, erneute Authentifizierung, exakten Bestätigungstext und einen finalen ConfirmDialog.
+- Benachrichtigungen zeigen den echten Gerätezustand: `Aktiv`, `Nicht aktiviert`, `Im Browser blockiert` oder `Nicht unterstützt`.
+- Eine Aktivierungsaktion fordert Browserberechtigung erst als direkte Folge einer Nutzeraktion an.
+- Benachrichtigungsarten und Geräteberechtigung werden visuell und fachlich getrennt. Kein doppelter verschachtelter Abschnittstitel.
+
+### 13.4 Haushalt & Mitglieder
 
 - Verschiebe die Seite aus der Finanznavigation in Einstellungen.
 - Verwende einen normalen Settings-Header ohne Finanzkennzahlen.
 - Eine Fläche `Haushalt` zeigt Name, Tarif oder Sitzplätze und die Mitgliederliste.
-- `Haushalt verlassen` und `Entfernen` sind destruktive Aktionen mit Bestätigung.
+- Rollen werden geschlechtsneutral und konsistent bezeichnet, beispielsweise `Eigentümer:in`, `Mitglied` oder `Verwaltet den Haushalt`.
+- `Haushalt verlassen` und `Entfernen` sind destruktive Aktionen mit Bestätigung und verständlicher Auswirkung auf Datenzugriff.
+- Eigentümer:innen dürfen einen Haushalt nicht verlassen, bevor Eigentum übertragen oder der Haushalt ordnungsgemäß aufgelöst wurde.
 - Einladung erfolgt über eine klar beschriftete Primäraktion. Das Eingabefeld darf inline bleiben, wenn dies im bestehenden Flow bewährt ist.
+- Ist das enthaltene Sitzplatzlimit erreicht, darf `Einladen` nicht still einen kostenpflichtigen Sitz erzeugen.
+- In diesem Zustand entweder Einladung deaktivieren und zuerst den Sitzplatzkauf verlangen oder vor der kostenpflichtigen Einladung Preis und Abrechnungsintervall ausdrücklich bestätigen lassen.
+- Offene Einladungen zählen nachvollziehbar gegen das Limit oder werden separat erklärt.
+- Preisangaben nennen immer das Intervall, beispielsweise `1,99 € pro Monat`.
 - Tarifhinweis und `Pro-Pläne ansehen` stehen als sekundäre Information unter der Sitzplatzanzeige.
 - Die Seite darf kurz sein. Keine zusätzlichen leeren Karten erzeugen.
+
+### 13.5 Steuern & Gebühren
+
+- `Sparer-Pauschbetrag` ist eine globale steuerliche Annahme. Der zugehörige Familien- oder Veranlagungsstatus muss aus Bezeichnung, Auswahl oder Erklärung hervorgehen.
+- `Freistellungsauftrag` ist brokerbezogen. Zeige zusätzlich den bereits verteilten und noch verfügbaren Betrag.
+- Die Summe der Freistellungsaufträge darf den globalen Betrag nicht unbemerkt überschreiten. Zeige Inline-Validierung mit konkretem Rest- oder Überschreitungsbetrag.
+- Geldfelder verwenden das gemeinsame CurrencyField mit Suffix und ohne sichtbare native Browser-Spinner.
+- Steuer- und Gebührenfelder besitzen sinnvolle Min-/Max-Werte sowie lokalisierte Dezimalverarbeitung.
+- Beim Wechsel des Brokers dürfen ungespeicherte Änderungen nicht verloren gehen.
+- `Kostenlos ab` erklärt eindeutig, welche Gebührenregel ab dem Schwellenwert entfällt.
+- `Inhaber:in` verwendet dieselben Haushaltsrollen wie Konten, Depots und Verträge.
+- Die globale Checkbox `Teilfreistellung` ist fachlich zu prüfen. Teilfreistellung hängt in Deutschland von der Fondsart und den Voraussetzungen des jeweiligen Wertpapiers ab. Keine globale Aktivierung auf alle Fonds anwenden, wenn die Berechnungslogik dies nicht korrekt differenziert.
+- Fachliche Steuerlogik nicht aufgrund dieser UX-Anforderung still ändern. Konflikt dokumentieren und vor Implementierung klären.
+
+### 13.6 KI-Assistent
+
+- Provider, Modell, API-Schlüssel und Speicherort bilden einen zusammenhängenden Einrichtungsflow.
+- Das Modellfeld hängt vom gewählten Provider ab. Bei Providerwechsel muss ein ungültiges Modell sichtbar zurückgesetzt oder neu gewählt werden.
+- Nach dem Speichern wird ein API-Schlüssel niemals vollständig wieder angezeigt. Zeige höchstens Maskierung und letzte vier Zeichen mit Aktion `Schlüssel ersetzen`.
+- `Anzeigen` darf nur den gerade eingegebenen, noch nicht gespeicherten Wert temporär sichtbar machen.
+- `In deinem Konto` und `Nur in diesem Browser` werden nicht als winzige Segmente mit langen Texten dargestellt. Verwende Radio Cards oder Radio Rows mit Titel und kurzer Konsequenz.
+- Beschreibe den Speicherort sachlich. `Nur in diesem Browser` ist gerätegebunden, aber nicht automatisch sicherer gegen kompromittierten Browsercode.
+- Kontospeicherung setzt serverseitige Verschlüsselung, Secret-Redaction in Logs und Zugriff nur über den vorgesehenen Backendpfad voraus.
+- `Verbindung testen` sendet nur die technisch minimal erforderliche Testanfrage und keine Portfolio- oder Haushaltsdaten.
+- Testergebnis erscheint inline mit Status, verständlichem Fehler und möglicher Lösung.
+- `Schlüssel entfernen` ist eine sekundär-destruktive Aktion mit Bestätigung. Das Entfernen des Schlüssels löscht keine Finanzdaten.
+- Erkläre vor Aktivierung, welche Daten an den Anbieter gesendet werden können, wann eine Anfrage ausgelöst wird und dass keine Anlageberatung erfolgt.
+- Datenschutzlink und Anbieterhinweis müssen per Tastatur erreichbar und ausreichend kontrastreich sein.
 
 ## 14. Zahlen, Begriffe und Microcopy
 
@@ -669,6 +813,14 @@ flowchart TB
 - Tooltips sind kurz und erklären Begriff oder Berechnung, nicht die komplette Funktion.
 - Fachliche Disclaimer erscheinen als ruhiger Hinweis, nicht als dominant umrandete Bannerfläche.
 
+### 14.4 Lokalisierung
+
+- Jede neue oder geänderte Copy muss in Deutsch, Englisch und Spanisch vorhanden sein.
+- Deutsch verwendet informelles `du`, Spanisch informelles `tú`.
+- Nutze die vorhandenen Formatierungsfunktionen statt lokaler Stringkonstruktion.
+- Prüfe insbesondere `lib/format.ts` und den vorhandenen `plColor`-Helper. Erweitere zentrale Helfer, statt Zahlen und Farben in Seitenkomponenten zu formatieren.
+- Keine Em-Dashes in nutzerseitiger Copy.
+
 ## 15. Diagrammsystem
 
 ### 15.1 Gemeinsame Chart-Konfiguration
@@ -680,6 +832,11 @@ flowchart TB
 - Keine mehrdeutigen Abkürzungen ohne Tooltip
 - Keine Animation länger als 200 ms
 - `prefers-reduced-motion` respektieren
+- Verwende die vorhandene Recharts-3-Infrastruktur.
+- Prüfe und bewahre geeignete Helfer aus `components/charts/axis.ts`, insbesondere dynamische Y-Achsenbreite und kompakte Währungsformatierung.
+- Prüfe `lib/colors.ts` und `colorForLabel()`. Die deterministische Zuordnung bleibt sinnvoll, muss aber auf die neue semantische Palette und die Trennung von Brand, positiv und negativ angepasst werden.
+- Charts besitzen `role="img"` und eine dynamische lokalisierte Textbeschreibung.
+- Privacy Mode maskiert sensible Werte ohne Layoutsprung. Tooltips dürfen maskierte Daten nicht offenlegen.
 
 ### 15.2 Auswahl des Diagrammtyps
 
@@ -720,6 +877,7 @@ Jede datenabhängige Komponente benötigt:
 - Partial data: Hinweis auf fehlende Quelle, ohne den restlichen Inhalt zu blockieren
 - Stale data: sichtbarer Zeitstempel oder Status
 - Privacy mode: Beträge werden maskiert, Layoutbreiten bleiben stabil
+- Pro state: gesperrte Funktionen bleiben über die vorhandenen `ProTeaser`- und `ProGate`-Mechanismen auffindbar, ohne sensible oder nicht freigegebene Daten zugänglich zu machen
 
 Formulare benötigen zusätzlich:
 
@@ -773,19 +931,26 @@ Formulare benötigen zusätzlich:
 
 ### Phase 0: Audit
 
-1. Liste alle Routen und ordne sie den vier Seitentemplates zu: Dashboard, Datenverwaltung, Planung, Einstellungen.
-2. Finde alle lokalen Farben, Abstände, Radien, Buttonvarianten, Tabellen- und Chart-Konfigurationen.
-3. Dokumentiere vorhandene wiederverwendbare Komponenten und Dubletten.
-4. Markiere fachliche Logik, die nicht durch das Redesign verändert werden darf.
-5. Erstelle eine kurze Migrationsliste pro Route.
+1. Lies diese Spezifikation und den bisherigen `styleguide`-Skill vollständig. Falls dessen Frontmatter fehlerhaft oder escaped ist, lies die Datei trotzdem explizit als Bestandsdokument.
+2. Prüfe jede konkrete Behauptung des bisherigen Skills gegen den aktuellen Quellcode.
+3. Liste alle Routen und ordne sie den vier Seitentemplates zu: Dashboard, Datenverwaltung, Planung, Einstellungen.
+4. Finde alle lokalen Farben, Abstände, Radien, Buttonvarianten, Tabellen- und Chart-Konfigurationen.
+5. Dokumentiere vorhandene wiederverwendbare Komponenten, Helfer und Dubletten.
+6. Erstelle eine Konfliktmatrix zwischen dieser Zielspezifikation und dem bisherigen Styleguide. Entscheide jeden Konflikt ausdrücklich nach der Quellenhierarchie.
+7. Markiere fachliche Logik, die nicht durch das Redesign verändert werden darf.
+8. Erstelle eine kurze Migrationsliste pro Route mit konkreten Dateien.
+9. Warte auf Freigabe. Noch keinen Code und keinen Skill ändern oder löschen.
+
+Nach Freigabe des Audits darf der alte Skill aus `.claude/skills/` entfernt werden. Falls eine historische Kopie gewünscht ist, speichere sie außerhalb aktiver Skill-Verzeichnisse. Während der Migration ist diese Spezifikation zusammen mit dem freigegebenen Audit die Arbeitsgrundlage.
 
 ### Phase 1: Foundations
 
-1. Semantische Tokens für Dark und Light Mode
+1. Semantische Tokens für Dark und Light Mode in der bestehenden Tailwind-v4- und `.dark`-Architektur
 2. Typografieskala und tabellarische Ziffern
 3. AppShell, PageContainer und Responsive Breakpoints
 4. Button, Field, Tabs, SummaryStrip, Section, DataTable, ChartCard, EmptyState, InlineNotice
-5. Gemeinsame Formatierung für Währung, Prozent, Datum und Dauer
+5. Gemeinsame Formatierung für Währung, Prozent, Datum und Dauer auf Basis der vorhandenen Helfer
+6. Vorhandene Primitives bewusst als `behalten`, `erweitern`, `ersetzen` oder `entfernen` klassifizieren
 
 ### Phase 2: Navigation und Header
 
@@ -817,8 +982,10 @@ Formulare benötigen zusätzlich:
 1. FIRE und Rente auf gemeinsames Planungsraster migrieren
 2. Simulation auf Parameter-Ergebnis-Template migrieren
 3. Ziele an dieselben Komponenten anbinden
-4. Haushalt als Settings-Seite umsetzen
-5. Gesundheit in Übersicht integrieren
+4. Settings-Shell mit mittlerer Breite, Tabs und gemeinsamen Speichern-Zuständen umsetzen
+5. Allgemein, Haushalt, Steuern & Gebühren und KI-Assistent migrieren
+6. Sicherheits-, Sitzplatz-, Steuer- und Secret-Flows fachlich prüfen
+7. Gesundheit in Übersicht integrieren
 
 ### Phase 6: QA und Bereinigung
 
@@ -829,6 +996,9 @@ Formulare benötigen zusätzlich:
 5. Dubletten und nicht mehr verwendete Styles entfernen
 6. Light Mode prüfen
 7. Lade-, Leer-, Fehler- und Privacy-Zustände prüfen
+8. Veralteten Styleguide und veraltete UI-Regeln aus aktiven Skill-Verzeichnissen entfernen
+9. Einen neuen kompakten `styleguide`-Skill aus dem finalen Code generieren
+10. Alle Aussagen des neuen Skills gegen reale Dateien, Exporte und Tests prüfen
 
 ## 21. Technische Arbeitsregeln für Claude
 
@@ -838,24 +1008,30 @@ Formulare benötigen zusätzlich:
 - Zweite Pilotroute: `Konten`, um dasselbe System im Haushaltskontext zu beweisen.
 - Erst danach die restlichen Seiten mechanisch migrieren.
 - Nutze vorhandene Komponentenbibliotheken und Patterns, sofern sie diese Spezifikation sauber erfüllen.
+- Verwende den bisherigen Styleguide während Phase 0 als überprüfbares Inventar, nicht als unveränderliche Designautorität.
+- Bewahre geeignete bestehende Helfer wie `plColor`, `colorForLabel`, Achsenformatierung, Privacy-Markierungen, Fokusfallen, Locale-Dictionaries und Pro-Gates.
 - Führe keine neue UI-Bibliothek ein, nur um bestehende Komponenten neu zu verpacken.
 - Entferne veraltete Varianten nach abgeschlossener Migration.
+- Keine lokalen Hex-Farben oder frei zusammengesetzten Ersatz-Primitives in JSX.
 - Verwende Feature Flags nur, wenn eine schrittweise Migration sonst reale Nutzerwege gefährdet.
 - Halte jeden Zwischenstand buildbar und testbar.
 
 ## 22. Erwartete Deliverables von Claude
 
-1. Kurzer Audit-Bericht mit Komponenten- und Routenmatrix
-2. Zentrale Tokens und gemeinsame UI-Primitives
-3. Aktualisierte Navigation und AppShell
-4. Migrierte Seiten entsprechend der Phasen
-5. Screenshots oder Visual-Regression-Ausgaben für:
+1. Audit-Bericht mit Komponenten-, Helfer- und Routenmatrix
+2. Konfliktmatrix zwischen bisherigem Styleguide und dieser Zielspezifikation
+3. Entscheidung `behalten`, `erweitern`, `ersetzen` oder `entfernen` für jedes gemeinsame Primitive
+4. Zentrale Tokens und gemeinsame UI-Primitives
+5. Aktualisierte Navigation und AppShell
+6. Migrierte Seiten entsprechend der Phasen
+7. Screenshots oder Visual-Regression-Ausgaben für:
    - 1440 × 900
    - 1280 × 800
    - 768 × 1024
    - 390 × 844
-6. Liste bewusst nicht geänderter fachlicher Logik
-7. Liste verbliebener Abweichungen mit Begründung
+8. Liste bewusst nicht geänderter fachlicher Logik
+9. Liste verbliebener Abweichungen mit Begründung
+10. Neuer, kompakter und gegen den finalen Code geprüfter `styleguide`-Skill
 
 ## 23. Definition of Done
 
@@ -867,7 +1043,11 @@ Formulare benötigen zusätzlich:
 - [ ] Es existiert nur ein Tabellenprimitive und eine zentrale Chart-Konfiguration.
 - [ ] Keine fachliche Seite besitzt lokale Hex-Farben oder lokale Standardabstände.
 - [ ] Brand, positiv, negativ, Warnung und Chartserien sind semantisch getrennt.
+- [ ] Primäraktionen sind neutral kontraststark, Brand-Teal und Positiv-Grün sind getrennte Rollen.
 - [ ] Light und Dark Mode sind vollständig lesbar.
+- [ ] Der Dark Mode nutzt weiterhin die bestehende `.dark`-Klasse auf `<html>`.
+- [ ] Der alte Styleguide wird nicht mehr als aktiver Skill geladen.
+- [ ] Der neue Styleguide beschreibt nachweislich den finalen Code und keine Übergangslösung.
 
 ### Navigation
 
@@ -905,6 +1085,21 @@ Formulare benötigen zusätzlich:
 - [ ] FIRE und Rente teilen Komponenten und visuelle Hierarchie.
 - [ ] Simulation besitzt vor und nach dem Start vollständige Zustände.
 
+### Einstellungen
+
+- [ ] Settings verwenden dieselben Tabs, Formfelder, Buttons und Zustände wie der Rest der Anwendung.
+- [ ] Der Settings-Container wirkt im Desktop-App-Shell nicht wie eine schmale Fremdansicht.
+- [ ] Jede Änderung besitzt einen eindeutigen gespeicherten, ungespeicherten, ladenden und fehlerhaften Zustand.
+- [ ] Passwortänderung und Kontolöschung verlangen angemessene erneute Authentifizierung.
+- [ ] Der Bestätigungstext der Kontolöschung ist vollständig lokalisiert.
+- [ ] Haushalt verlassen, Mitglied entfernen und kostenpflichtigen Sitz hinzufügen besitzen Bestätigungen mit konkreten Folgen.
+- [ ] Sitzplatzlimit, offene Einladungen, Preis und Abrechnungsintervall sind widerspruchsfrei.
+- [ ] Broker-Freistellungsaufträge zeigen verfügbaren beziehungsweise überschrittenen Gesamtbetrag.
+- [ ] Die fachliche Gültigkeit der globalen Teilfreistellung wurde geprüft und dokumentiert.
+- [ ] Gespeicherte API-Schlüssel sind nicht vollständig anzeigbar und erscheinen nicht in Logs oder Client-Antworten.
+- [ ] Verbindungstest des KI-Assistenten überträgt keine Portfolio- oder Haushaltsdaten.
+- [ ] Benachrichtigungen zeigen Berechtigungs- und Gerätezustand unabhängig von den ausgewählten Ereignistypen.
+
 ### Accessibility und Responsive
 
 - [ ] Alle Kernaufgaben funktionieren bei 390 px Breite ohne abgeschnittene Controls.
@@ -930,12 +1125,17 @@ Prüfe jede Route mindestens gegen diese Fragen:
 | Funktioniert die Seite bei 390 px? | Kein Clipping, Kernwerte priorisiert |
 | Ist der Empty State hilfreich? | Ursache, Nutzen und genau eine Aktion |
 | Wurde eine lokale Sonderlösung eingeführt? | Falls ja, refactoren |
+| Ist eine Einstellung wirklich gespeichert? | Dirty-, Lade-, Erfolgs- und Fehlerzustand sind eindeutig |
+| Ist die Aktion sicherheitskritisch oder kostenpflichtig? | Konsequenz, Authentifizierung und Bestätigung sind angemessen |
+| Wird ein Geheimnis verarbeitet? | Kein Klartext nach Speicherung, keine Logs, minimaler Datentransfer |
 
 ## 25. Abschlussanweisung
 
 Implementiere die Neugestaltung als Systemmigration. Zeige nach Phase 0 zuerst den Audit und die geplante Komponentenstruktur. Beginne danach mit `Depot` als vollständiger vertikaler Slice, verifiziere Desktop und Mobile und übertrage das bestätigte Muster auf `Konten`. Migriere erst dann die übrigen Routen.
 
 Wenn eine bestehende fachliche Funktion dieser Spezifikation widerspricht, ändere nicht still die Logik. Dokumentiere den Konflikt, schlage eine UX-Lösung vor und halte die bestehende Berechnung bis zur Klärung stabil.
+
+Generiere den neuen Styleguide-Skill erst, wenn Migration, Bereinigung und QA abgeschlossen sind. Leite ihn aus den finalen Tokens, Komponenten und Helfern ab. Verwende weder den alten Skill noch diese Spezifikation als alleinige Quelle für Aussagen über den dann tatsächlich vorhandenen Code.
 
 ## Anhang A: Zuordnung der gelieferten Screenshots
 
@@ -955,5 +1155,43 @@ Wenn eine bestehende fachliche Funktion dieser Spezifikation widerspricht, ände
 | `Bildschirmfoto am 2026-08-19 um 09.56.39.png` | Ruhestand, Rente |
 | `Bildschirmfoto am 2026-08-19 um 09.56.57.png` | Finanzielle Gesundheit |
 | `Bildschirmfoto am 2026-08-19 um 09.57.02.png` | Simulation |
+| `Bildschirmfoto am 2026-08-21 um 09.29.02.png` | Einstellungen, Allgemein |
+| `Bildschirmfoto am 2026-08-21 um 09.29.05.png` | Einstellungen, Haushalt |
+| `Bildschirmfoto am 2026-08-21 um 09.29.08.png` | Einstellungen, Steuern & Gebühren |
+| `Bildschirmfoto am 2026-08-21 um 09.29.11.png` | Einstellungen, KI-Assistent |
 
 Die Screenshots sind der Ist-Zustand und keine Pixelvorlage. Die Mockups und Regeln in dieser Datei definieren das Zielbild.
+
+## Anhang B: Bekannte Implementierungsanker aus dem bisherigen Styleguide
+
+Diese Einträge sind Hinweise für Phase 0 und müssen gegen den aktuellen Quellcode geprüft werden:
+
+| Bereich | Bekannter Anker | Umgang in der Migration |
+| --- | --- | --- |
+| Theme | Tailwind v4, `app/globals.css`, `.dark` auf `<html>` | Mechanismus behalten, Rollen auf semantische Tokens umstellen |
+| UI-Primitives | `components/ui/` | Inventarisieren, APIs konsolidieren, nicht blind neu bauen |
+| Layoutkonstanten | `PAGE_STACK`, `SECTION_STACK` in `primitives.tsx` | Als Ausgangspunkt für den neuen Rhythmus prüfen |
+| Zahlenfarben | `plColor` in `lib/format.ts` | Behalten und auf neue semantische Tokens ausrichten |
+| Chartfarben | `colorForLabel()` in `lib/colors.ts` | Determinismus behalten, semantische Palette korrigieren |
+| Chartachsen | `yAxisWidth()` und Currency Formatter in `components/charts/axis.ts` | Wiederverwenden und zentralisieren |
+| Formulare | `FormActions`, `useFormTouched`, `lib/forms/required.ts` | Footer behalten, Validierungszeitpunkt verbessern |
+| Tabellen | `Table`, `Thead`, `Tbody`, `Tr`, `Th`, `Td` | Gemeinsames Primitive behalten, Sortierung optional machen |
+| Zustände | `Skeleton`, `SkeletonText`, `EmptyState`, `LoadError` | Behalten und auf stabile Zielhöhen prüfen |
+| Sicherheit | `ConfirmDialog`, Fokusfalle | Behalten und Accessibility verifizieren |
+| Privacy | `data-private`, maskierte Chartachsen und Tooltips | Verhalten vollständig erhalten |
+| Paywall | `ProTeaser`, `ProGate` | Auffindbarkeit erhalten, zugänglichen Locked State prüfen |
+| Lokalisierung | Dictionaries für Englisch, Deutsch und Spanisch | Jede geänderte Copy in allen drei Sprachen liefern |
+| Typografie | Geist Sans, Geist Mono | Behalten, tabellarische Ziffern konsequent anwenden |
+| Icons | Inline SVG mit `currentColor` | Zentralisieren, keine neue Bibliothek nur für die Migration |
+
+### Bekannte Konflikte, die Phase 0 ausdrücklich prüfen muss
+
+| Bisherige Aussage | Zielentscheidung |
+| --- | --- |
+| Jede umrandete Fläche ist eine `Card` | Karten nur bei echter visueller oder interaktiver Abgrenzung |
+| Jede Tabelle ist sortierbar | Sortierung nur bei relevantem Nutzerbedarf |
+| Emerald ist zugleich Accent und Gain | Brand-Teal und Positiv-Grün trennen |
+| Focus bei Inputs nur über Border-Farbe | Sichtbaren `focus-visible` Ring verwenden |
+| Keine Badges, gleichzeitig `EstimatedBadge` | Dekorative Badges verbieten, semantische Statusmarker erlauben |
+| Inhaltsvalidierung erst beim Submit | Nach Blur oder Submit-Versuch konkret am Feld validieren |
+| Vorhandene Primitives dürfen nicht ersetzt werden | Eignung prüfen und bewusst behalten, erweitern, ersetzen oder entfernen |

@@ -41,16 +41,21 @@ test("a goal made of sub-goals is worth the sum of its parts", async ({ page }) 
   await page.goto("/goals");
   await dismissTour(page);
 
-  /** Fill the add-goal form, optionally filing the goal under a parent. */
+  /** Fill the add-goal form, optionally filing the goal under a parent. The
+   *  form opens on demand now (§5.4); the trigger and submit share the "Add
+   *  goal" label, so open first and scope the fields + submit to the dialog. */
   async function addGoal(name: string, target: string, parent?: string) {
-    await page.locator("#goal-name").fill(name);
-    await page.locator("#goal-target").fill(target);
+    await page.locator('[data-tour="goals-form"]').click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("#goal-name").fill(name);
+    await dialog.locator("#goal-target").fill(target);
     if (parent) {
-      await page.getByRole("button", { name: "Part of" }).click();
+      await dialog.getByRole("button", { name: "Part of" }).click();
       // Not exact: options carry an always-rendered check glyph (see addLoan).
       await page.getByRole("option", { name: parent }).click();
     }
-    await page.getByRole("button", { name: "Add goal", exact: true }).click();
+    await dialog.getByRole("button", { name: "Add goal", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
   }
 
   // The parent's own target (1) is deliberately nonsense: once it has parts,
@@ -65,9 +70,14 @@ test("a goal made of sub-goals is worth the sum of its parts", async ({ page }) 
   await expect(trip).toContainText("€1,400.00");
 
   // A sub-goal is offered as a part, never as a parent of its own.
-  await page.getByRole("button", { name: "Part of" }).click();
+  await page.locator('[data-tour="goals-form"]').click();
+  const partDialog = page.getByRole("dialog");
+  await partDialog.getByRole("button", { name: "Part of" }).click();
   await expect(page.getByRole("option", { name: "Flight" })).toHaveCount(0);
+  // Escape closes the picker and then the modal; nothing here is saved.
   await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(partDialog).toHaveCount(0);
 
   // Deleting the whole goal takes its parts with it (store + DB cascade).
   await trip.getByRole("button", { name: "Delete" }).click();
@@ -81,10 +91,13 @@ test("an existing goal's saved-up amount can be changed afterwards", async ({ pa
   await page.goto("/goals");
   await dismissTour(page);
 
-  await page.locator("#goal-name").fill("New bike");
-  await page.locator("#goal-target").fill("1000");
-  await page.locator("#goal-manual-current").fill("100");
-  await page.getByRole("button", { name: "Add goal", exact: true }).click();
+  await page.locator('[data-tour="goals-form"]').click();
+  const addDialog = page.getByRole("dialog");
+  await addDialog.locator("#goal-name").fill("New bike");
+  await addDialog.locator("#goal-target").fill("1000");
+  await addDialog.locator("#goal-manual-current").fill("100");
+  await addDialog.getByRole("button", { name: "Add goal", exact: true }).click();
+  await expect(addDialog).toHaveCount(0);
 
   const row = page.locator('[data-tour="goals-list"] tbody tr').filter({ hasText: "New bike" });
   // Current and target are separate columns now (spec §12.4), not one "x / y" cell.
@@ -113,19 +126,25 @@ test("a sub-goal on a liability does not swallow its derived payoff goal", async
   await page.goto("/goals");
   await dismissTour(page);
 
-  await page.locator("#goal-name").fill("Get debt-free");
-  await page.locator("#goal-target").fill("1");
-  await page.getByRole("button", { name: "Add goal", exact: true }).click();
+  await page.locator('[data-tour="goals-form"]').click();
+  let dialog = page.getByRole("dialog");
+  await dialog.locator("#goal-name").fill("Get debt-free");
+  await dialog.locator("#goal-target").fill("1");
+  await dialog.getByRole("button", { name: "Add goal", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 
   // A part of that plan tracks the loan itself. Its progress is summed into
   // the parent, so the loan must keep its own derived row as well.
-  await page.locator("#goal-name").fill("Boat repayment");
-  await page.locator("#goal-target").fill("5000");
-  await page.getByRole("button", { name: "Track progress with" }).click();
+  await page.locator('[data-tour="goals-form"]').click();
+  dialog = page.getByRole("dialog");
+  await dialog.locator("#goal-name").fill("Boat repayment");
+  await dialog.locator("#goal-target").fill("5000");
+  await dialog.getByRole("button", { name: "Track progress with" }).click();
   await page.getByRole("option", { name: "Boat loan — pay off" }).click();
-  await page.getByRole("button", { name: "Part of" }).click();
+  await dialog.getByRole("button", { name: "Part of" }).click();
   await page.getByRole("option", { name: "Get debt-free" }).click();
-  await page.getByRole("button", { name: "Add goal", exact: true }).click();
+  await dialog.getByRole("button", { name: "Add goal", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 
   const rows = page.locator('[data-tour="goals-list"] tbody tr');
   await expect(rows.filter({ hasText: "Boat repayment" })).toHaveCount(1);
@@ -136,10 +155,13 @@ test("a goal saves without a target date and reads as open-ended", async ({ page
   await page.goto("/goals");
   await dismissTour(page);
 
-  await page.locator("#goal-name").fill("Emergency fund");
-  await page.locator("#goal-target").fill("10000");
+  await page.locator('[data-tour="goals-form"]').click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#goal-name").fill("Emergency fund");
+  await dialog.locator("#goal-target").fill("10000");
   // Target date deliberately left empty.
-  await page.getByRole("button", { name: "Add goal", exact: true }).click();
+  await dialog.getByRole("button", { name: "Add goal", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 
   const row = page
     .locator('[data-tour="goals-list"] tbody tr')

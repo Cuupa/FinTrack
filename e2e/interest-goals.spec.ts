@@ -48,13 +48,17 @@ test("a goal can track a single position", async ({ page }) => {
 
   await page.goto("/goals");
   await dismissTour(page);
-  await page.getByRole("button", { name: /Track progress with/i }).click();
+  // The add form opens on demand now (§5.4), so open the modal first.
+  await page.locator('[data-tour="goals-form"]').click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: /Track progress with/i }).click();
   // The picker groups holdings under "Positions"; the option itself is the bare
   // asset name, while the saved goal row reads "Position: MetaTest".
   await page.getByRole("option", { name: "MetaTest", exact: true }).click();
-  await page.locator("#goal-name").fill("Meta 2k");
-  await page.locator("#goal-target").fill("2000");
-  await page.getByRole("button", { name: "Add goal", exact: true }).click();
+  await dialog.locator("#goal-name").fill("Meta 2k");
+  await dialog.locator("#goal-target").fill("2000");
+  await dialog.getByRole("button", { name: "Add goal", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 
   const row = page.locator("table tbody tr").first();
   await expect(row).toContainText("Position: MetaTest");

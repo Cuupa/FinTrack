@@ -116,10 +116,6 @@ function decodeFragment(fragment: string): unknown {
   }
 }
 
-export function decodeShare(fragment: string): SharePayload | null {
-  return normalizeShare(decodeFragment(fragment));
-}
-
 /** Decode a fragment into whichever share kind it holds (portfolio or Sankey). */
 export function decodeShareAny(fragment: string): SharePayload | SankeySharePayload | null {
   const raw = decodeFragment(fragment);

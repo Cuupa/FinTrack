@@ -138,99 +138,6 @@ const STAT_COLS: Record<2 | 3 | 4 | 5, string> = {
   5: "grid-cols-2 md:grid-cols-3 lg:grid-cols-5",
 };
 
-/**
- * A row of 2-5 headline figures as ONE divided surface (UX-Unification-Spec
- * §7.2), the canonical KPI readout. Unlike {@link StatRow} it draws no card
- * per figure: the cells share a single bordered surface, split by hairline
- * dividers — vertical on desktop, horizontal when the grid wraps. Semantic
- * tokens (bg-surface / border-subtle) so light and dark come from one place.
- */
-export type SummaryItem = {
-  label: string;
-  value: string;
-  sub?: string;
-  valueClassName?: string;
-  info?: string;
-  isPrivate?: boolean;
-};
-
-// Spelled out so Tailwind emits the classes: column count plus the matching
-// point at which vertical dividers replace the stacked horizontal ones.
-const SUMMARY_COLS: Record<2 | 3 | 4 | 5, string> = {
-  2: "sm:grid-cols-2 sm:divide-x sm:[&>*]:border-t-0",
-  3: "sm:grid-cols-3 sm:divide-x sm:[&>*]:border-t-0",
-  4: "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x",
-  5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x",
-};
-
-export function SummaryStrip({
-  items,
-  className = "",
-}: {
-  items: SummaryItem[];
-  className?: string;
-}) {
-  const cols = Math.min(5, Math.max(2, items.length)) as 2 | 3 | 4 | 5;
-  return (
-    <div
-      className={`grid overflow-hidden rounded-surface border border-subtle bg-surface divide-subtle ${SUMMARY_COLS[cols]} ${className}`}
-    >
-      {items.map((it, i) => (
-        <div key={i} className="min-h-[5.25rem] border-t border-subtle p-5 first:border-t-0">
-          <Stat
-            label={it.label}
-            value={it.value}
-            sub={it.sub}
-            valueClassName={it.valueClassName}
-            info={it.info}
-            isPrivate={it.isPrivate}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * A titled block of content (UX-Unification-Spec §7.3). Optional title,
- * description and an action slot on the right; content begins below with the
- * standard rhythm. `bordered` wraps it in a surface for blocks that need a
- * boundary; the default is frameless so a page is not a stack of nested cards.
- */
-export function Section({
-  title,
-  description,
-  actions,
-  bordered = false,
-  className = "",
-  children,
-}: {
-  title?: ReactNode;
-  description?: string;
-  actions?: ReactNode;
-  bordered?: boolean;
-  className?: string;
-  children: ReactNode;
-}) {
-  const frame = bordered
-    ? "rounded-surface border border-subtle bg-surface p-5"
-    : "";
-  return (
-    <section className={`${frame} ${className}`}>
-      {(title || actions) && (
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            {title && <h2 className="text-base font-semibold text-primary">{title}</h2>}
-            {description && <p className="mt-0.5 text-sm text-secondary">{description}</p>}
-          </div>
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-        </div>
-      )}
-      {children}
-    </section>
-  );
-}
-
 // "destructive" is the spec's name (§7.5); "danger" stays as an alias so the
 // existing call sites keep working. Both render the same outline-red treatment.
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "destructive";
@@ -278,9 +185,6 @@ export function Button({
 /** Vertical rhythm between the major blocks of a page (header, then cards).
     Exported rather than inlined so a page never quietly picks its own. */
 export const PAGE_STACK = "space-y-6";
-
-/** Rhythm between sections inside one card. */
-export const SECTION_STACK = "space-y-4";
 
 /**
  * The standard page header: title, optional one-line subtitle, optional

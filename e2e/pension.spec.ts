@@ -36,18 +36,25 @@ async function openPension(page: Page): Promise<void> {
 }
 
 async function addYear(page: Page, year: string, points: string): Promise<void> {
+  // The add form opens on demand now (§5.4): the trigger and the submit share
+  // the "Add year" label, so open first, then scope the fields to the dialog.
   const card = page.locator('[data-tour="pension-points"]');
-  // Exact: the card also carries the statement total's "As of year" field.
-  await card.getByLabel("Year", { exact: true }).fill(year);
-  await card.getByLabel("Points", { exact: true }).fill(points);
   await card.getByRole("button", { name: "Add year", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Year", { exact: true }).fill(year);
+  await dialog.getByLabel("Points", { exact: true }).fill(points);
+  await dialog.getByRole("button", { name: "Add year", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 }
 
 async function addStatement(page: Page, year: string, total: string): Promise<void> {
   const card = page.locator('[data-tour="pension-points"]');
-  await card.getByLabel("Statement year", { exact: true }).fill(year);
-  await card.getByLabel("Total points", { exact: true }).fill(total);
   await card.getByRole("button", { name: "Add statement", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Statement year", { exact: true }).fill(year);
+  await dialog.getByLabel("Total points", { exact: true }).fill(total);
+  await dialog.getByRole("button", { name: "Add statement", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 }
 
 function statementRow(page: Page, year: string) {
