@@ -110,6 +110,16 @@ Authoritative dead-export scan (ts-prune -p tsconfig, framework route exports fi
 - Verified NOT stale (left untouched): the remaining `#ef4444`/`#059669` are all legit semantic uses (SELL markers, liabilities line, shortfall, over-budget, brand icon) — Phase 1 only dropped them from the categorical PALETTE. `TIMEFRAMES`/`timeframeStart` still used widely; Phase 2 only pulled them from debt-view. No stale feature flags: the redesign was IA-preserving and removed no feature.
 - RESULT: tsc + eslint clean; unit **1320/0**; e2e **77/0**. Committed (primitives + share + deleted hook + this ledger only; the pre-existing uncommitted FINTRACK_UX_UNIFICATION_SPEC.md left out).
 
+### DONE — Phase 8 Styleguide skill regeneration (2026-08-21) — FINAL phase
+Regenerated `.claude/skills/styleguide/SKILL.md` from the final cleaned code. Every value cite-checked against source (`app/globals.css`, `primitives.tsx`, `summary-strip.tsx`, `format.ts` `plColor`, `colors.ts` `PALETTE`, `table.tsx`, `form-actions.tsx`, `notification-count.tsx`, `theme-context.tsx`). The prior skill predated the redesign and was materially wrong; corrected:
+- **Color model rewritten around the semantic tokens** (Spec §5): surfaces (`bg-app/-surface/-surface-hover`), borders (`border-subtle/-strong`), text (`text-primary/-secondary/-tertiary`), `brand` (teal-green `#087f63`→`#2ad1a3`, for nav/tabs/focus/selection, NOT the CTA), `action-primary` (near-black/near-white CTA fill), `positive/negative/warning/info`, and a **6-color** neutral chart palette `chart-1..6` (the old skill said "zinc/emerald throughout" + "12-color palette"). Documented class-based `.dark` theming + `.incognito` privacy.
+- **Buttons**: primary is now `bg-action-primary text-action-primary-fg` (was `bg-zinc-900 text-white`); noted the `destructive` alias.
+- **plColor** now `text-positive/-negative/-tertiary` tokens (was `text-emerald-600`/`text-red-600`); noted `normalizeZero`.
+- **Removed the `SECTION_STACK` citation** (deleted in Phase 7); added the live `SummaryStrip` (summary-strip.tsx) to the primitive catalog; added `NotificationCount`, `ProMenuItem`, geometry radii (`rounded-surface`/`rounded-control`).
+- **Honesty note kept**: the token migration is not total — tables, inputs, `Modal`/`ConfirmDialog`, `FormActions` border, the focus ring + `NotificationCount` ring still use raw `zinc`/`emerald`; skill flags exactly those and says new surfaces prefer tokens.
+- Docs-only change (no product/test code): unit **1320/0** green; e2e unchanged from the Phase 7 green run (**77/0**) since nothing the browser exercises was touched.
+- STABILIZATION PASS COMPLETE: P0 (API-key hardening, Freistellungsauftrag validator) + Phases 1-8 all done. Owner-deferred K5 Teilfreistellung untouched. Prod-only checks still open (see Phase 3): current-password reauth rejects wrong pw, delete-account dialog end-to-end, paid-seat confirm on demo, apply migration 0132_llm_key_last4.sql + verify the account-scope key path.
+
 ### Rule
 No commits until each vertical slice is complete + verified. No mixed commits.
 NEW absolute rule (owner, 2026-08-21): a phase is NEVER "done" while any test is red. Run the FULL unit + e2e suite before reporting completion.
