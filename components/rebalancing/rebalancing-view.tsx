@@ -12,8 +12,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
-import { formatCurrency, formatInputDecimal, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatInputDecimal, normalizeZero, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SectionTitle, SegmentedControl } from "@/components/ui/primitives";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Private } from "@/components/ui/private";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
@@ -286,11 +287,12 @@ export function RebalancingView() {
                 ]}
               />
               <span
-                className={`text-sm tabular-nums ${
+                className={`inline-flex items-center gap-1 text-sm tabular-nums ${
                   Math.abs(targetSum - 100) < 0.05 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
                 }`}
               >
-                {t("rebalance.total")}: {targetSum.toFixed(1)}%
+                {t("rebalance.total")}: {normalizeZero(targetSum, 1).toFixed(1)}%
+                {Math.abs(targetSum - 100) >= 0.05 && <InfoTip text={t("rebalance.total.hint")} />}
               </span>
               <Button variant="secondary" size="sm" onClick={normalize}>
                 {t("rebalance.normalise")}
@@ -517,8 +519,12 @@ function DeviationBars({
                 Math.abs(b.diff) < 0.05 ? "text-zinc-400" : plColor(b.diff)
               }`}
             >
-              {b.diff >= 0 ? "+" : ""}
-              {b.diff.toFixed(1)}%
+              {(() => {
+                // Normalize a rounds-to-zero diff so a tiny negative never
+                // renders as "-0,0 %"; a real zero shows unsigned.
+                const d = normalizeZero(b.diff, 1);
+                return `${d > 0 ? "+" : ""}${d.toFixed(1)}%`;
+              })()}
             </span>
           </div>
         );

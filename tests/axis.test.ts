@@ -71,4 +71,20 @@ describe("axisCurrencyFormatter", () => {
     expect(fmt(12_000)).toContain("k");
     expect(fmt(4_000)).not.toMatch(/000/); // not the full "4,000" form
   });
+
+  it("perTick lets each tick pick its own magnitude so small ones aren't crushed", () => {
+    // The log-scale simulation defect: a shared "M" unit rounds decade ticks
+    // like 10k and 100k both toward "0M". Per-tick, each keeps a distinct unit.
+    const shared = axisCurrencyFormatter([10_000, 100_000, 1_000_000, 10_000_000], "EUR");
+    const perTick = axisCurrencyFormatter([10_000, 100_000, 1_000_000, 10_000_000], "EUR", {
+      perTick: true,
+    });
+    // Shared unit is millions -> a 10k tick rounds to the same label as zero,
+    // so a nonzero value reads as "0" on the axis.
+    expect(shared(10_000)).toBe(shared(0));
+    // Per-tick keeps them apart: 10k stays a distinct "k" label, 1M becomes "M".
+    expect(perTick(10_000)).not.toBe(perTick(0));
+    expect(perTick(10_000)).toContain("k");
+    expect(perTick(1_000_000)).toContain("M");
+  });
 });

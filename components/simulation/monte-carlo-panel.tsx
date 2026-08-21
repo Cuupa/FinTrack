@@ -702,7 +702,7 @@ export function MonteCarloPanel() {
 
             <StatRow cols={3}>
               <Stat
-                label={t("sim.median")}
+                label={t("sim.medianWealth")}
                 value={formatCurrency(final.median, currency)}
                 sub={`${result.params.years} ${t("sim.years")}`}
                 info={t("sim.tipMedian")}

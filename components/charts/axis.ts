@@ -36,12 +36,22 @@ export function yAxisWidth(labels: readonly string[]): number {
  * is chosen once from the axis's largest tick, so every tick on the axis
  * shares the same unit rather than each abbreviating on its own.
  */
-export function axisCurrencyFormatter(ticks: readonly number[], currency: string): (v: number) => string {
+export function axisCurrencyFormatter(
+  ticks: readonly number[],
+  currency: string,
+  // `perTick` lets each tick pick its own k/M magnitude instead of sharing one
+  // chosen from the largest tick. A shared unit crushes small ticks on an axis
+  // that also carries far larger ones -- most visibly a log-scale projection,
+  // where decade ticks (10k, 100k) both collapse to "0M". Off by default so
+  // linear axes with uniform magnitudes stay visually consistent.
+  { perTick = false }: { perTick?: boolean } = {},
+): (v: number) => string {
   const maxAbs = ticks.length ? Math.max(...ticks.map((v) => Math.abs(v))) : 0;
   if (ticks.length > 0 && maxAbs < 10_000) {
     const digits = Math.max(0, ...ticks.map((v) => decimalPlaces(v)));
     return (v: number) => formatCurrency(v, currency, digits);
   }
+  if (perTick) return (v: number) => formatCompactCurrency(v, currency);
   const unit = compactUnitFor(maxAbs);
   return (v: number) => formatCompactCurrency(v, currency, unit);
 }

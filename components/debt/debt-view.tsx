@@ -20,13 +20,7 @@
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { useLivePrices } from "@/lib/live/live-prices-context";
-import {
-  today,
-  addMonthsToDate,
-  timeframeStart,
-  TIMEFRAMES,
-  type Timeframe,
-} from "@/lib/finance/dates";
+import { today, addMonthsToDate } from "@/lib/finance/dates";
 import { balanceSeries, currentAccountBalance, accountFxRate } from "@/lib/finance/accounts";
 import { useAccountMovements } from "@/lib/accounts/use-account-movements";
 import {
@@ -62,6 +56,11 @@ type SortKey = "order" | "name" | "balance" | "rate" | "term" | "interest";
 /** The scope selector's "everything at once" value; any other value is an
  *  account id. Not a valid uuid, so it can never collide with one. */
 const ALL = "*all*";
+
+/** How far of the payoff plan the balance chart draws. */
+type DebtHorizon = "all" | "5y" | "10y";
+const HORIZON_MONTHS: Record<Exclude<DebtHorizon, "all">, number> = { "5y": 60, "10y": 120 };
+const HORIZONS: DebtHorizon[] = ["all", "5y", "10y"];
 
 export function DebtView() {
   const { data } = usePortfolio();
@@ -130,10 +129,11 @@ export function DebtView() {
 
   const { sort, toggle: toggleSort, apply: applySort } = useSort<SortKey>("order");
   const [detailsFor, setDetailsFor] = useState<Account | null>(null);
-  // How far back the chart reaches. The same strip the depot chart uses, for
-  // the same reason: "from today" answers nothing about a debt you have been
-  // paying for eight years.
-  const [tf, setTf] = useState<Timeframe>("1Y");
+  // How far INTO THE PAYOFF the chart looks. A stock-exchange strip (1W..MAX)
+  // scoped only the short past and left the 24-year forecast untouched, so
+  // picking "1Y" changed nothing visible. The window trims the forecast to a
+  // repayment horizon instead; the measured past is always shown in full.
+  const [horizon, setHorizon] = useState<DebtHorizon>("all");
   const [strategy, setStrategy] = useState<DebtStrategy>("avalanche");
   const [extra, setExtra] = useState("");
   const [scope, setScope] = useState<string>(ALL);
@@ -239,7 +239,9 @@ export function DebtView() {
       (min, r) => (r.account.openedOn < min ? r.account.openedOn : min),
       scoped[0].account.openedOn,
     );
-    const from = timeframeStart(tf, todayIso, earliest);
+    // The measured past is real, finite data (usually a few balance readings),
+    // so it is always shown in full; the horizon scopes only the forecast.
+    const from = earliest;
     // Monthly, like the forecast: the chart's x-axis is categorical, so a
     // sparse past would compress seven years into the width of one plan month
     // and the whole repayment would read as a cliff at the left edge.
@@ -264,7 +266,28 @@ export function DebtView() {
       date,
       byDebt: Object.fromEntries(scoped.map((r) => [r.account.id, at(r, date)])),
     }));
-  }, [rows, scopeId, tf, todayIso]);
+  }, [rows, scopeId, todayIso]);
+
+  // The forecast, trimmed to the chosen horizon. "Gesamt" runs to payoff; a
+  // 5/10-year window caps the plan (and its minimum-payments baseline) at that
+  // many months from today, so the control finally scopes what fills the chart.
+  const horizonEnd = useMemo(
+    () => (horizon === "all" ? null : addMonthsToDate(todayIso, HORIZON_MONTHS[horizon])),
+    [horizon, todayIso],
+  );
+  const chartSeries = useMemo(
+    () => (horizonEnd ? plan.series.filter((p) => p.date <= horizonEnd) : plan.series),
+    [plan.series, horizonEnd],
+  );
+  const chartBaseline = useMemo(
+    () =>
+      extraVal <= 0
+        ? undefined
+        : horizonEnd
+          ? baseline.series.filter((p) => p.date <= horizonEnd)
+          : baseline.series,
+    [baseline.series, extraVal, horizonEnd],
+  );
   // A ReferenceLine on a categorical axis only draws when its x matches a
   // data point exactly, and the series lands on today's day-of-month -- so the
   // fixed-rate end date is snapped to the first plan month at or after it
@@ -418,17 +441,17 @@ export function DebtView() {
           <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-800" data-tour="debt-chart">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">{t("debt.chart.title")}</h3>
-              <SegmentedControl
+              <SegmentedControl<DebtHorizon>
                 size="sm"
-                value={tf}
-                onChange={setTf}
-                options={TIMEFRAMES.map((x) => ({ label: x, value: x }))}
+                value={horizon}
+                onChange={setHorizon}
+                options={HORIZONS.map((h) => ({ label: t(`debt.chart.horizon.${h}`), value: h }))}
               />
             </div>
             <DebtBalanceChart
-              series={plan.series}
+              series={chartSeries}
               history={historyRows}
-              baseline={extraVal > 0 ? baseline.series : undefined}
+              baseline={chartBaseline}
               debts={chartDebts}
               base={base}
               markers={markers}
