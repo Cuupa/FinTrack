@@ -8,14 +8,18 @@
 // (perpetuity vs. path simulation) stay separate, they just read the same
 // assumption.
 //
-// Only four strategies are first-class here (owner decision): `floorCeiling`
-// and `vpw` stay available in the underlying engine (`WithdrawalStrategyId`)
-// for backward compatibility, but are not offered through this model.
+// Five strategies are first-class here; `floorCeiling` and `vpw` stay
+// available in the underlying engine (`WithdrawalStrategyId`) for backward
+// compatibility, but are not offered through this model. `floorCeiling`'s
+// band never moves off year one -- `vanguard` below supersedes it for anyone
+// who wants a floor/ceiling that tracks what was actually spent last year.
 
 import {
   DEFAULT_GUARDRAIL_ADJUST,
   DEFAULT_GUARDRAIL_BAND,
   DEFAULT_INFLATION,
+  DEFAULT_VANGUARD_CEILING,
+  DEFAULT_VANGUARD_FLOOR,
   type StressScenario,
 } from "./withdrawal";
 import type { WithdrawalOptions } from "./monte-carlo";
@@ -28,18 +32,20 @@ export type WithdrawalRateBasis =
   /** % of the CURRENT portfolio value, re-evaluated every year. */
   | "currentValue";
 
-/** The four strategies with a reproducible, testable definition. */
+/** The five strategies with a reproducible, testable definition. */
 export type WithdrawalStrategyKind =
   | "fixedRealAmount"
   | "initialRate"
   | "currentPortfolioShare"
-  | "guardrails";
+  | "guardrails"
+  | "vanguard";
 
 export const WITHDRAWAL_STRATEGY_KINDS: readonly WithdrawalStrategyKind[] = [
   "fixedRealAmount",
   "initialRate",
   "currentPortfolioShare",
   "guardrails",
+  "vanguard",
 ];
 
 /** The rate basis each rate-based strategy implies -- not user-choosable,
@@ -52,6 +58,10 @@ export const STRATEGY_RATE_BASIS: Record<
   initialRate: "atRetirement",
   currentPortfolioShare: "currentValue",
   guardrails: "atRetirement",
+  // Vanguard's own base step re-reads the CURRENT portfolio every year (see
+  // withdrawal.ts) -- the floor/ceiling then clip how far that base may move,
+  // it does not change what the base is a percentage OF.
+  vanguard: "currentValue",
 };
 
 export interface WithdrawalPlan {
@@ -73,6 +83,10 @@ export interface WithdrawalPlan {
   /** `guardrails` only: the drift allowed before an adjustment fires, and
       the adjustment's size. Defaults apply when omitted. */
   guardrails?: { band: number; adjust: number };
+  /** `vanguard` only: the year-over-year ceiling/floor around last year's
+      actual spending. Defaults apply when omitted (Vanguard's own published
+      5% / 2.5%). */
+  vanguard?: { ceiling: number; floor: number };
   /** Other guaranteed income (statutory + private pension, combined into
       one bridge -- not per source). Reduces the portfolio's withdrawal need
       once it starts; absent when there is none. */
@@ -165,6 +179,14 @@ export function planToWithdrawalOptions(plan: WithdrawalPlan): WithdrawalOptions
         guardrailBand: plan.guardrails?.band ?? DEFAULT_GUARDRAIL_BAND,
         guardrailAdjust: plan.guardrails?.adjust ?? DEFAULT_GUARDRAIL_ADJUST,
       };
+    case "vanguard":
+      return {
+        ...base,
+        withdrawalStrategy: "vanguard",
+        withdrawalRate: rateOf(plan) ?? 0,
+        vanguardCeiling: plan.vanguard?.ceiling ?? DEFAULT_VANGUARD_CEILING,
+        vanguardFloor: plan.vanguard?.floor ?? DEFAULT_VANGUARD_FLOOR,
+      };
   }
 }
 
@@ -203,6 +225,8 @@ export function planToFireAssumption(plan: WithdrawalPlan): FireAssumption {
     // still returns a number (the first year happens to match it), but
     // later years diverge with the market. Every other strategy's target
     // genuinely means "this portfolio lasts forever at this assumption".
-    hasStableTarget: plan.strategy !== "currentPortfolioShare",
+    // `vanguard` shares this: its floor/ceiling clip how far the CURRENT-
+    // value base may move, they do not turn it into an equilibrium target.
+    hasStableTarget: plan.strategy !== "currentPortfolioShare" && plan.strategy !== "vanguard",
   };
 }

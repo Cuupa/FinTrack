@@ -33,6 +33,10 @@ export interface WithdrawalOptions {
   guardrailAdjust?: number;
   floor?: number;
   ceiling?: number;
+  /** `vanguard`: year-over-year bounds relative to last year's actual
+      withdrawal. Absent uses the engine's own published defaults. */
+  vanguardCeiling?: number;
+  vanguardFloor?: number;
   /** Forced sequence-of-returns stress. Absent = "none". */
   stress?: StressScenario;
   /** Annual inflation the withdrawals are indexed to (fraction). Absent uses
@@ -132,6 +136,8 @@ function planOf(
     adjust: params.guardrailAdjust,
     floor: params.floor,
     ceiling: params.ceiling,
+    vanguardCeiling: params.vanguardCeiling,
+    vanguardFloor: params.vanguardFloor,
     // The inflation shock raises what the same basket costs, so it lands on
     // the withdrawals as well as on the returns.
     inflation: (params.inflation ?? DEFAULT_INFLATION) + stressInflation(params.stress ?? "none"),

@@ -1385,12 +1385,17 @@ export const en = {
     "Keep last year's income up to a drift limit on the rate, then step it up or down. Few changes, and each one small.",
   "withdrawal.strategy.guardrails.example":
     "The rate is a TARGET, not the payout itself: a {rate} band-check compares it to the current rate and steps the income when it drifts too far, not every year.",
+  "withdrawal.strategy.vanguard": "Vanguard dynamic spending",
+  "withdrawal.strategy.vanguard.desc":
+    "Like floor and ceiling, but the band resets to LAST year's actual spending every year instead of staying fixed at year one -- Vanguard's own published rule.",
+  "withdrawal.strategy.vanguard.example":
+    "At {portfolio} and a {rate} rate, the first year pays {amount}. After that, spending can only move a set percentage up or down from what you actually paid last year.",
   "withdrawal.strategy.floorCeiling": "Floor and ceiling",
   "withdrawal.strategy.floorCeiling.desc":
     "Follows the portfolio, but never below a floor or above a ceiling. A compromise between a steady income and an adjusting one.",
   "withdrawal.strategy.initialRate": "Initial rate, then inflation-adjusted",
   "withdrawal.strategy.initialRate.desc":
-    "A percentage of the portfolio AT RETIREMENT sets the first year's amount. From then on that amount only rises with inflation -- it is never recalculated from the portfolio again. Steady income; it is also the only one of the four able to run the portfolio dry.",
+    "A percentage of the portfolio AT RETIREMENT sets the first year's amount. From then on that amount only rises with inflation -- it is never recalculated from the portfolio again. Steady income; it is also the only one of the five able to run the portfolio dry.",
   "withdrawal.strategy.initialRate.example":
     "At {portfolio} and a {rate} rate, the first year pays {amount}. After that the amount rises with inflation, not with the portfolio.",
   "withdrawal.strategy.currentPortfolioShare": "Share of the current portfolio",
@@ -1434,6 +1439,10 @@ export const en = {
     "Inside the band around your target rate, change nothing at all.",
   "withdrawal.steps.guardrails.3":
     "Outside it, move the income by one step: down for too high a rate, up for too low.",
+  "withdrawal.steps.vanguard.1": "Each year, take your rate times the CURRENT portfolio value.",
+  "withdrawal.steps.vanguard.2": "Compare it to last year's actual spending, not year one's.",
+  "withdrawal.steps.vanguard.3":
+    "Stay within the ceiling above it and the floor below it; draw the figure in between.",
   "withdrawal.steps.floorCeiling.1":
     "Work out your rate times the current portfolio, the same as the share-of-portfolio calculation.",
   "withdrawal.steps.floorCeiling.2":
@@ -1463,7 +1472,7 @@ export const en = {
     "Three points of extra inflation for the whole run: less real return, and faster-rising withdrawals.",
   "withdrawal.compareTitle": "Every strategy, same markets",
   "withdrawal.compareHint":
-    "All five run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with a moving income.",
+    "All six run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with a moving income.",
   "withdrawal.col.strategy": "Strategy",
   "withdrawal.col.success": "Lasts",
   "withdrawal.col.income": "Income / year",
@@ -1479,6 +1488,8 @@ export const en = {
   "withdrawal.field.rateGuardrails": "Target withdrawal rate",
   "withdrawal.field.guardrailBand": "Guardrail band",
   "withdrawal.field.guardrailAdjust": "Adjustment step",
+  "withdrawal.field.vanguardCeiling": "Ceiling (max increase)",
+  "withdrawal.field.vanguardFloor": "Floor (max decrease)",
 
   // Retirement (/retirement): the FIRE planner and the pension projection are
   // two answers to one question, so they are tabs of one page.
@@ -3897,12 +3908,17 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Du behältst das Einkommen des Vorjahres bis zu einer Drift-Grenze der Entnahmequote und passt es dann an. Wenige Änderungen, jede davon klein.",
   "withdrawal.strategy.guardrails.example":
     "Die Rate ist ein ZIELWERT, nicht die Auszahlung selbst: der {rate}-Bandabgleich vergleicht sie mit der aktuellen Quote und passt die Entnahme nur bei zu starker Abweichung an, nicht jedes Jahr.",
+  "withdrawal.strategy.vanguard": "Vanguard – dynamische Entnahme",
+  "withdrawal.strategy.vanguard.desc":
+    "Wie Unter- und Obergrenze, aber das Band setzt sich jedes Jahr neu an deiner TATSÄCHLICHEN Vorjahresentnahme an, statt für immer am ersten Jahr zu bleiben -- Vanguards eigene veröffentlichte Regel.",
+  "withdrawal.strategy.vanguard.example":
+    "Bei {portfolio} Depot und {rate} Entnahmerate zahlt das erste Jahr {amount}. Danach darf sich die Entnahme nur um einen festen Prozentsatz nach oben oder unten von dem bewegen, was du im Vorjahr tatsächlich entnommen hast.",
   "withdrawal.strategy.floorCeiling": "Unter- und Obergrenze",
   "withdrawal.strategy.floorCeiling.desc":
     "Folgt dem Depot, aber nie unter eine Untergrenze und nie über eine Obergrenze. Der Kompromiss zwischen stabilem und mitlaufendem Einkommen.",
   "withdrawal.strategy.initialRate": "Rate zu Rentenbeginn, dann Inflation",
   "withdrawal.strategy.initialRate.desc":
-    "Ein Prozentsatz des Depots ZU RENTENBEGINN legt den Betrag des ersten Jahres fest. Danach steigt nur noch dieser Geldbetrag mit der Inflation, nie wieder neu vom Depot berechnet. Stabiles Einkommen, aber die einzige der vier Strategien mit dem Risiko, das Depot leerlaufen zu lassen.",
+    "Ein Prozentsatz des Depots ZU RENTENBEGINN legt den Betrag des ersten Jahres fest. Danach steigt nur noch dieser Geldbetrag mit der Inflation, nie wieder neu vom Depot berechnet. Stabiles Einkommen, aber die einzige der fünf Strategien mit dem Risiko, das Depot leerlaufen zu lassen.",
   "withdrawal.strategy.initialRate.example":
     "Bei {portfolio} Depot und {rate} Entnahmerate zahlt das erste Jahr {amount}. Danach steigt dieser Betrag mit der Inflation, unabhängig vom Depotwert.",
   "withdrawal.strategy.currentPortfolioShare": "Anteil am aktuellen Depot",
@@ -3952,6 +3968,10 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Liegt das Ergebnis im Band um deine Zielrate, änderst du gar nichts.",
   "withdrawal.steps.guardrails.3":
     "Außerhalb der Grenzen gehst du einen Schritt: runter bei zu hoher Quote, rauf bei zu niedriger.",
+  "withdrawal.steps.vanguard.1": "Nimm jedes Jahr deine Rate mal den AKTUELLEN Depotwert.",
+  "withdrawal.steps.vanguard.2":
+    "Vergleiche das mit deiner tatsächlichen Entnahme im Vorjahr, nicht mit der aus Jahr eins.",
+  "withdrawal.steps.vanguard.3": "Bleib innerhalb der Ober- und Untergrenze; entnimm den Betrag dazwischen.",
   "withdrawal.steps.floorCeiling.1":
     "Rechne deine Rate mal dem aktuellen Depotwert, wie beim Anteil am Depot.",
   "withdrawal.steps.floorCeiling.2":
@@ -3982,7 +4002,7 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Drei Punkte mehr Inflation über den ganzen Lauf: weniger reale Rendite, und die Entnahme muss schneller steigen.",
   "withdrawal.compareTitle": "Alle Strategien, gleiche Märkte",
   "withdrawal.compareHint":
-    "Alle fünf laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem schwankenden Einkommen.",
+    "Alle sechs laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem schwankenden Einkommen.",
   "withdrawal.col.strategy": "Strategie",
   "withdrawal.col.success": "Reicht",
   "withdrawal.col.income": "Einkommen / Jahr",
@@ -3998,6 +4018,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "withdrawal.field.rateGuardrails": "Ziel-Entnahmerate",
   "withdrawal.field.guardrailBand": "Leitplanken-Abstand",
   "withdrawal.field.guardrailAdjust": "Anpassungsschritt",
+  "withdrawal.field.vanguardCeiling": "Obergrenze (max. Anstieg)",
+  "withdrawal.field.vanguardFloor": "Untergrenze (max. Rückgang)",
 
   // Ruhestand (/retirement): FIRE-Planer und Rentenhochrechnung sind zwei
   // Antworten auf dieselbe Frage und damit Reiter einer Seite.
@@ -6416,12 +6438,17 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Mantienes el ingreso del año anterior hasta un límite de desviación de la tasa, y entonces lo ajustas. Pocos cambios, y cada uno pequeño.",
   "withdrawal.strategy.guardrails.example":
     "La tasa es un OBJETIVO, no el pago en sí: la banda de {rate} la compara con la tasa actual y ajusta el ingreso solo si se desvía demasiado, no cada año.",
+  "withdrawal.strategy.vanguard": "Vanguard – gasto dinámico",
+  "withdrawal.strategy.vanguard.desc":
+    "Como suelo y techo, pero la banda se ancla cada año en tu gasto REAL del año anterior, en vez de quedarse fija en el primer año para siempre -- la regla que Vanguard publicó.",
+  "withdrawal.strategy.vanguard.example":
+    "Con {portfolio} de cartera y una tasa del {rate}, el primer año paga {amount}. Después, el gasto solo puede moverse un porcentaje fijo hacia arriba o hacia abajo respecto a lo que realmente retiraste el año anterior.",
   "withdrawal.strategy.floorCeiling": "Suelo y techo",
   "withdrawal.strategy.floorCeiling.desc":
     "Sigue a la cartera, pero nunca por debajo de un suelo ni por encima de un techo. El punto medio entre un ingreso estable y uno ajustable.",
   "withdrawal.strategy.initialRate": "Tasa al jubilarte, luego inflación",
   "withdrawal.strategy.initialRate.desc":
-    "Un porcentaje de la cartera AL JUBILARTE fija el importe del primer año. Después ese importe solo sube con la inflación, nunca se recalcula de nuevo con la cartera. Ingreso estable, pero la única de las cuatro con riesgo de agotar la cartera.",
+    "Un porcentaje de la cartera AL JUBILARTE fija el importe del primer año. Después ese importe solo sube con la inflación, nunca se recalcula de nuevo con la cartera. Ingreso estable, pero la única de las cinco con riesgo de agotar la cartera.",
   "withdrawal.strategy.initialRate.example":
     "Con {portfolio} de cartera y una tasa del {rate}, el primer año paga {amount}. Después ese importe sube con la inflación, no con el valor de la cartera.",
   "withdrawal.strategy.currentPortfolioShare": "Porcentaje de la cartera actual",
@@ -6469,6 +6496,10 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Dentro de la banda alrededor de tu tasa objetivo, no cambies nada.",
   "withdrawal.steps.guardrails.3":
     "Fuera de los límites, mueve el ingreso un paso: abajo con la tasa alta, arriba con la baja.",
+  "withdrawal.steps.vanguard.1": "Cada año, toma tu tasa multiplicada por el valor ACTUAL de la cartera.",
+  "withdrawal.steps.vanguard.2":
+    "Compáralo con lo que realmente retiraste el año anterior, no con el del primer año.",
+  "withdrawal.steps.vanguard.3": "Mantente dentro del techo y el suelo; retira la cifra intermedia.",
   "withdrawal.steps.floorCeiling.1":
     "Calcula tu tasa por el valor actual de la cartera, igual que en el porcentaje de la cartera.",
   "withdrawal.steps.floorCeiling.2":
@@ -6498,7 +6529,7 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Tres puntos más de inflación durante todo el recorrido: menos rentabilidad real y retiros de subida más rápida.",
   "withdrawal.compareTitle": "Todas las estrategias, los mismos mercados",
   "withdrawal.compareHint":
-    "Las cinco corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso variable.",
+    "Las seis corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso variable.",
   "withdrawal.col.strategy": "Estrategia",
   "withdrawal.col.success": "Aguanta",
   "withdrawal.col.income": "Ingreso / año",
@@ -6514,6 +6545,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "withdrawal.field.rateGuardrails": "Tasa de retiro objetivo",
   "withdrawal.field.guardrailBand": "Banda de las barreras",
   "withdrawal.field.guardrailAdjust": "Paso de ajuste",
+  "withdrawal.field.vanguardCeiling": "Techo (subida máxima)",
+  "withdrawal.field.vanguardFloor": "Suelo (bajada máxima)",
 
   // Jubilación (/retirement): el planificador FIRE y la proyección de pensión
   // responden a la misma pregunta, así que son pestañas de una sola página.
