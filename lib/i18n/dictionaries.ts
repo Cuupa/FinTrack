@@ -168,7 +168,7 @@ export const en = {
   "settings.subtitle": "Your profile, household, taxes and AI assistant.",
   "settings.profileSection": "Profile",
   "settings.tabGeneral": "General",
-  "settings.tabFees": "Fees & taxes",
+  "settings.tabFees": "Taxes & fees",
   "settings.tabAi": "AI assistant",
   "settings.name": "Name / nickname",
   "settings.namePlaceholder": "e.g. Simon",
@@ -197,7 +197,8 @@ export const en = {
     "Permanently deletes your account and all data: portfolios, assets, and transactions. This cannot be undone.",
   "settings.deleteAccountConfirm":
     "This permanently deletes your account and every portfolio, account, transaction and setting, and removes you from any shared household. It cannot be undone.",
-  "settings.deleteAccountType": 'Type "delete" to confirm',
+  "settings.deleteAccountPhrase": "DELETE ACCOUNT",
+  "settings.deleteAccountType": 'Type "{phrase}" to confirm',
   "settings.deleteAccountPassword": "Current password",
   "settings.deleteAccountWrongPassword": "Wrong password.",
   "settings.deleteAccountError": "Deletion failed.",
@@ -243,6 +244,7 @@ export const en = {
   "settings.ai.scope.label": "Where your key is stored",
   "settings.ai.scope.account": "In your account (on every device)",
   "settings.ai.scope.browser": "Only in this browser",
+  "settings.ai.scope.accountHint": "Kept after you sign out and available on every device.",
   "settings.ai.scope.browserHint": "Cleared when you sign out.",
   "settings.ai.privacyNote": "Account: on every device, kept there until removal. This browser only: cleared on sign-out. Chatting sends your portfolio data to your provider; we never store or log the conversation.",
   "settings.ai.privacyNoteGuest":
@@ -1010,6 +1012,26 @@ export const en = {
   "spending.form.add": "Add transaction",
   "spending.form.error": "Could not save the transaction. Please try again.",
   "spending.form.saved": "Booking saved.",
+  "spending.form.type.transfer": "Transfer",
+  "spending.form.amountLabelPlain": "Amount",
+  "spending.form.dateTimeLabel": "Date and time",
+  "spending.form.fromAccountLabel": "From account",
+  "spending.form.toAccountLabel": "To account",
+  "spending.form.toAccountPlaceholder": "Select account",
+  "spending.form.categorySelect": "Select category",
+  "spending.form.nextRun": "Next run: {date}",
+  "spending.form.add.expense": "Add expense",
+  "spending.form.add.income": "Add income",
+  "spending.form.add.transfer": "Create transfer",
+  "spending.form.addRecurring.expense": "Add recurring expense",
+  "spending.form.addRecurring.income": "Add recurring income",
+  "spending.form.addRecurring.transfer": "Add recurring transfer",
+  "spending.form.invalid.amountMissing": "Enter an amount.",
+  "spending.form.invalid.amountPositive": "Amount must be greater than 0.",
+  "spending.form.invalid.toAccountMissing": "Choose the account to transfer to.",
+  "spending.form.invalid.sameAccount": "Source and destination must be different.",
+  "spending.form.invalid.payeeMissing": "Enter the payee.",
+  "spending.form.invalid.payerMissing": "Enter the payer.",
   "spending.list.title": "Bookings",
   "spending.list.autoCategorize": "Auto-categorise",
   "spending.list.empty": "No transactions yet.",
@@ -1043,6 +1065,14 @@ export const en = {
   "spending.categories.deleteConfirm": "Delete \"{name}\"? Transactions in this category become uncategorised.",
   "spending.categories.deleteGroup": "Delete group",
   "spending.categories.deleteGroupConfirm": "Delete the group \"{name}\" and every category in it? Transactions in these categories become uncategorised.",
+  "spending.categories.search": "Search categories",
+  "spending.categories.rename": "Rename",
+  "spending.categories.uncategorized": "Uncategorised",
+  "spending.categories.usage": "{count} bookings",
+  "spending.categories.noMatch": "No categories match your search.",
+  "spending.categories.replacementLabel": "Replacement category",
+  "spending.categories.deleteUsedMsg": "{count} bookings use \"{name}\". Choose a replacement category to move them to.",
+  "spending.categories.deleteGroupImpact": "{categories} categories and {bookings} bookings are affected.",
   "spending.sankey.title": "Cash flow",
   "spending.sankey.totalNode": "Total",
   "spending.sankey.savingsNode": "Savings",
@@ -1344,28 +1374,60 @@ export const en = {
   // and the FIRE tab. The steps are deliberately imperative: a strategy you
   // cannot execute is a chart, not a plan.
   "withdrawal.strategyLabel": "Withdrawal strategy",
-  "withdrawal.strategy.fixed": "Fixed amount",
+  "withdrawal.strategy.fixed": "Rate at retirement",
   "withdrawal.strategy.fixed.desc":
-    "The classic rule: set the amount at retirement and keep drawing it. Steady income, and the only strategy able to run the portfolio dry.",
+    "A percentage of the portfolio at retirement sets the first year's amount. It then only rises with inflation, never recalculated from the portfolio again. Steady income, and the only strategy able to run the portfolio dry.",
   "withdrawal.strategy.percentOfPortfolio": "Share of the portfolio",
   "withdrawal.strategy.percentOfPortfolio.desc":
     "Always the same percentage of the remaining balance. It can never run out, but your income falls with the market.",
   "withdrawal.strategy.guardrails": "Guardrails",
   "withdrawal.strategy.guardrails.desc":
     "Keep last year's income up to a drift limit on the rate, then step it up or down. Few changes, and each one small.",
+  "withdrawal.strategy.guardrails.example":
+    "The rate is a TARGET, not the payout itself: a {rate} band-check compares it to the current rate and steps the income when it drifts too far, not every year.",
   "withdrawal.strategy.floorCeiling": "Floor and ceiling",
   "withdrawal.strategy.floorCeiling.desc":
     "Follows the portfolio, but never below a floor or above a ceiling. A compromise between a steady income and an adjusting one.",
+  "withdrawal.strategy.initialRate": "Initial rate, then inflation-adjusted",
+  "withdrawal.strategy.initialRate.desc":
+    "A percentage of the portfolio AT RETIREMENT sets the first year's amount. From then on that amount only rises with inflation -- it is never recalculated from the portfolio again. Steady income; it is also the only one of the four able to run the portfolio dry.",
+  "withdrawal.strategy.initialRate.example":
+    "At {portfolio} and a {rate} rate, the first year pays {amount}. After that the amount rises with inflation, not with the portfolio.",
+  "withdrawal.strategy.currentPortfolioShare": "Share of the current portfolio",
+  "withdrawal.strategy.currentPortfolioShare.desc":
+    "Every year takes the same percentage of the CURRENT portfolio value, re-evaluated from scratch. It can mathematically never run the portfolio dry, but the income moves with the market -- it is not a steady amount.",
+  "withdrawal.strategy.currentPortfolioShare.example":
+    "At {rate} of the current value: a falling portfolio pays less the following year, a rising one pays more. Income swings with the market.",
+  "withdrawal.strategy.fixedRealAmount": "Fixed real amount",
+  "withdrawal.strategy.fixedRealAmount.desc":
+    "You set a euro amount instead of a rate. It rises with inflation every year so its buying power stays the same, whatever the portfolio does. The most predictable income, and the one most likely to run the portfolio dry in a bad market.",
+  "withdrawal.strategy.fixedRealAmount.example":
+    "At {amount} a year, that leaves the portfolio in year one and then keeps rising with inflation, regardless of the portfolio's value.",
   "withdrawal.stepsTitle": "What you do",
   "withdrawal.steps.fixed.1": "At retirement, take your withdrawal rate times the portfolio.",
   "withdrawal.steps.fixed.2": "Transfer that same amount every year, regardless of market performance.",
   "withdrawal.steps.fixed.3":
+    "Check the balance once a year anyway: a continued fall means you need a different plan, not a smaller month.",
+  "withdrawal.steps.initialRate.1": "At retirement, take your rate times the portfolio.",
+  "withdrawal.steps.initialRate.2": "Transfer that same amount every year, raised with inflation.",
+  "withdrawal.steps.initialRate.3":
     "Check the balance once a year anyway: a continued fall means you need a different plan, not a smaller month.",
   "withdrawal.steps.percentOfPortfolio.1":
     "Pick one day a year and note the portfolio value on it.",
   "withdrawal.steps.percentOfPortfolio.2": "Multiply it by your rate. That is next year's income.",
   "withdrawal.steps.percentOfPortfolio.3":
     "Hold a cash buffer of one to two years. A bad year then cuts the calculation, not your groceries.",
+  "withdrawal.steps.currentPortfolioShare.1":
+    "Pick one day a year and note the portfolio value on it.",
+  "withdrawal.steps.currentPortfolioShare.2":
+    "Multiply it by your rate. That is next year's income.",
+  "withdrawal.steps.currentPortfolioShare.3":
+    "Hold a cash buffer of one to two years. A bad year then cuts the calculation, not your groceries.",
+  "withdrawal.steps.fixedRealAmount.1": "Decide the annual (or monthly) amount you need.",
+  "withdrawal.steps.fixedRealAmount.2":
+    "Transfer that amount every year, raised with inflation from the year before.",
+  "withdrawal.steps.fixedRealAmount.3":
+    "Check the balance once a year anyway: a continued fall means you need a different plan, not a smaller month.",
   "withdrawal.steps.guardrails.1":
     "Once a year, divide last year's income by the current portfolio value.",
   "withdrawal.steps.guardrails.2":
@@ -1401,12 +1463,22 @@ export const en = {
     "Three points of extra inflation for the whole run: less real return, and faster-rising withdrawals.",
   "withdrawal.compareTitle": "Every strategy, same markets",
   "withdrawal.compareHint":
-    "All four run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with a moving income.",
+    "All five run over identical simulated markets, so the rows differ only by the strategy. None of them is the right one: a higher success rate is paid for with a moving income.",
   "withdrawal.col.strategy": "Strategy",
   "withdrawal.col.success": "Lasts",
   "withdrawal.col.income": "Income / year",
   "withdrawal.col.worstYear": "Worst year",
   "withdrawal.col.leftOver": "Left over",
+  "withdrawal.field.annualAmount": "Initial withdrawal amount (per year)",
+  "withdrawal.field.inflationIndexed": "Rise with inflation",
+  "withdrawal.field.inflationIndexed.hint":
+    "Off means a flat, nominal amount -- its buying power shrinks every year.",
+  "withdrawal.field.inflation": "Inflation adjustment",
+  "withdrawal.field.rateAtRetirement": "Withdrawal rate at retirement",
+  "withdrawal.field.rateCurrentValue": "Annual share of current portfolio",
+  "withdrawal.field.rateGuardrails": "Target withdrawal rate",
+  "withdrawal.field.guardrailBand": "Guardrail band",
+  "withdrawal.field.guardrailAdjust": "Adjustment step",
 
   // Retirement (/retirement): the FIRE planner and the pension projection are
   // two answers to one question, so they are tabs of one page.
@@ -1419,12 +1491,16 @@ export const en = {
   // FIRE planner (ROADMAP #8)
   "fire.title": "Retirement / FIRE planner",
   "fire.subtitle": "The portfolio size covering your expenses, and the time to get there.",
-  "fire.withdrawalRate.label": "Withdrawal rate",
-  "fire.withdrawalRate.hint": "The classic \"4% rule\": a portfolio withdrawn at this rate lasts through retirement.",
+  "fire.summary.firstYear": "First-year withdrawal",
+  "fire.summary.perMonth": "{amount} a month",
+  "fire.summary.remainingNeed": "Remaining withdrawal need",
+  "fire.summary.guaranteedIncome": "{amount} already covered by guaranteed income",
+  "fire.summary.noStableTarget": "This strategy re-evaluates its rate against the portfolio every year, so the target above only matches the first year -- later years will differ with the market.",
   "fire.pension.count": "Count my pension",
   "fire.pension.hint": "{amount} a month from {year}.",
-  "fire.pension.saves":
-    "Your pension takes the target from {without} down to {with}: the portfolio only has to carry everything for the {years} years until pension start, and after that just the shortfall.",
+  "fire.pension.saves": "Your pension takes the target from {without} down to {with}.",
+  "fire.pension.bridge":
+    "The portfolio carries everything for the {years} years until your pension starts, and just the shortfall after that.",
   "fire.pension.missing":
     "No pension income recorded yet. Add your Entgeltpunkte or a policy on the Pension tab and this target drops.",
   "fire.annualExpenses.label": "Annual expenses",
@@ -1444,9 +1520,12 @@ export const en = {
     "The expense-covering capital at the withdrawal rate above. At 4% that is the familiar 25 times your annual expenses.",
   "fire.fat.label": "Fat FIRE",
   "fire.fat.info": "Financial independence with more headroom: {ratio} of your current spending.",
-  "fire.tile.risk": "{risk} of simulated {years}-year retirements run out at this rate.",
+  "fire.tile.riskShort": "{risk} depletion risk",
+  "fire.risk.shared":
+    "The status on each target shows how often, across {years} simulated retirement years, the portfolio runs dry at this withdrawal rate. Lower the rate or raise the target to shrink it.",
   "fire.tile.basis": "Funds {expenses} of expenses a year at {rate} withdrawal.",
   "fire.tile.basisRatio": "Funds {ratio} of your expenses ({expenses} a year) at {rate} withdrawal.",
+  "fire.tile.basisAmount": "Sustains a fixed {amount} a year, inflation-adjusted.",
   "fire.tile.pensionApplied": "Your pension from {year} is already deducted.",
   "fire.yearsToFi": "{years} years to go",
   "fire.alreadyThere": "Already there",
@@ -1938,6 +2017,8 @@ export const en = {
   "rebalance.total": "Total",
   "rebalance.total.hint": "Your target weights add up to less or more than 100%. Normalise scales them proportionally to exactly 100%.",
   "rebalance.normalise": "Normalise to 100%",
+  "rebalance.normalise.confirm":
+    "Your target weights add up to {sum}%. Normalising multiplies every weight by {factor} so they total exactly 100%.",
   "rebalance.colPosition": "Position",
   "rebalance.colTargetPct": "Target %",
   "rebalance.colTargetValue": "Target value",
@@ -1960,9 +2041,7 @@ export const en = {
   "sim.myPortfolio": "My portfolio",
   "sim.custom": "Custom",
   "sim.seededFromFire": "Horizon taken from your FIRE plan: {years} years until financial independence.",
-  "sim.inflation": "Inflation",
-  "sim.inflationHint":
-    "Withdrawals rise by this every year. Without it a safe-looking plan quietly halves your buying power.",
+  "sim.planDiffersFromFire": "Differs from your FIRE plan -- this run tests it as a what-if scenario.",
   "sim.modelPortfolioDesc":
     "Simulates each holding with its own volatility and the correlations between them.",
   "sim.modelCustomDesc": "Simulates a single blended return and volatility.",
@@ -1972,9 +2051,6 @@ export const en = {
   "sim.years": "years",
   "sim.withdrawalYears": "Withdrawal phase",
   "sim.monthlyWithdrawal": "Monthly withdrawal",
-  "sim.withdrawalRate": "Annual withdrawal rate",
-  "sim.withdrawalRateHint":
-    "Each year you draw this percentage of the portfolio's value at retirement (fixed thereafter). ~4% is the classic long-run safe rate; your actually drawable amount depends on your portfolio's growth.",
   "sim.withdrawalTitle": "Withdrawal income",
   "sim.withdrawalMetricsTip":
     "Your drawable amount under this plan during the withdrawal phase, from the pessimistic (10th pct) to optimistic (90th pct) outcomes.",
@@ -2604,7 +2680,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.subtitle": "Dein Profil, Haushalt, Steuern und KI-Assistent.",
   "settings.profileSection": "Profil",
   "settings.tabGeneral": "Allgemein",
-  "settings.tabFees": "Gebühren und Steuern",
+  "settings.tabFees": "Steuern & Gebühren",
   "settings.tabAi": "KI-Assistent",
   "settings.name": "Name / Spitzname",
   "settings.namePlaceholder": "z. B. Simon",
@@ -2633,7 +2709,8 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Löscht dein Konto und alle Daten dauerhaft: Portfolios, Wertpapiere und Transaktionen. Dies kann nicht rückgängig gemacht werden.",
   "settings.deleteAccountConfirm":
     "Das löscht dein Konto und jedes Portfolio, Konto, jede Transaktion und Einstellung dauerhaft und entfernt dich aus jedem geteilten Haushalt. Es kann nicht rückgängig gemacht werden.",
-  "settings.deleteAccountType": 'Gib "delete" zur Bestätigung ein',
+  "settings.deleteAccountPhrase": "KONTO LÖSCHEN",
+  "settings.deleteAccountType": 'Gib "{phrase}" zur Bestätigung ein',
   "settings.deleteAccountPassword": "Aktuelles Passwort",
   "settings.deleteAccountWrongPassword": "Falsches Passwort.",
   "settings.deleteAccountError": "Löschen fehlgeschlagen.",
@@ -2679,6 +2756,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "settings.ai.scope.label": "Wo dein Schlüssel gespeichert wird",
   "settings.ai.scope.account": "In deinem Konto (auf allen Geräten)",
   "settings.ai.scope.browser": "Nur in diesem Browser",
+  "settings.ai.scope.accountHint":
+    "Bleibt nach dem Abmelden erhalten und ist auf allen Geräten verfügbar.",
   "settings.ai.scope.browserHint": "Wird beim Abmelden gelöscht.",
   "settings.ai.privacyNote": "Konto: auf allen Geräten, bleibt dort bis zur Löschung. Nur dieser Browser: wird beim Abmelden gelöscht. Beim Chatten gehen deine Portfoliodaten an deinen Anbieter; wir speichern und protokollieren das Gespräch nie.",
   "settings.ai.privacyNoteGuest":
@@ -3444,6 +3523,26 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.form.add": "Buchung hinzufügen",
   "spending.form.error": "Die Buchung konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "spending.form.saved": "Buchung gespeichert.",
+  "spending.form.type.transfer": "Umbuchung",
+  "spending.form.amountLabelPlain": "Betrag",
+  "spending.form.dateTimeLabel": "Datum und Uhrzeit",
+  "spending.form.fromAccountLabel": "Von Konto",
+  "spending.form.toAccountLabel": "Auf Konto",
+  "spending.form.toAccountPlaceholder": "Konto auswählen",
+  "spending.form.categorySelect": "Kategorie auswählen",
+  "spending.form.nextRun": "Nächste Ausführung: {date}",
+  "spending.form.add.expense": "Ausgabe hinzufügen",
+  "spending.form.add.income": "Einnahme hinzufügen",
+  "spending.form.add.transfer": "Umbuchung erstellen",
+  "spending.form.addRecurring.expense": "Wiederkehrende Ausgabe anlegen",
+  "spending.form.addRecurring.income": "Wiederkehrende Einnahme anlegen",
+  "spending.form.addRecurring.transfer": "Wiederkehrende Umbuchung anlegen",
+  "spending.form.invalid.amountMissing": "Bitte gib einen Betrag ein.",
+  "spending.form.invalid.amountPositive": "Der Betrag muss größer als 0 sein.",
+  "spending.form.invalid.toAccountMissing": "Wähle das Konto, auf das umgebucht wird.",
+  "spending.form.invalid.sameAccount": "Quell- und Zielkonto müssen unterschiedlich sein.",
+  "spending.form.invalid.payeeMissing": "Bitte gib den Empfänger an.",
+  "spending.form.invalid.payerMissing": "Bitte gib den Zahler an.",
   "spending.list.title": "Buchungen",
   "spending.list.autoCategorize": "Automatisch kategorisieren",
   "spending.list.empty": "Noch keine Buchungen.",
@@ -3477,6 +3576,14 @@ export const de: Partial<Record<MessageKey, string>> = {
   "spending.categories.deleteConfirm": "\"{name}\" löschen? Buchungen in dieser Kategorie verlieren ihre Kategorie.",
   "spending.categories.deleteGroup": "Gruppe löschen",
   "spending.categories.deleteGroupConfirm": "Die Gruppe \"{name}\" mit allen ihren Kategorien löschen? Buchungen in diesen Kategorien verlieren ihre Kategorie.",
+  "spending.categories.search": "Kategorien suchen",
+  "spending.categories.rename": "Umbenennen",
+  "spending.categories.uncategorized": "Ohne Kategorie",
+  "spending.categories.usage": "{count} Buchungen",
+  "spending.categories.noMatch": "Keine Kategorie passt zur Suche.",
+  "spending.categories.replacementLabel": "Ersatzkategorie",
+  "spending.categories.deleteUsedMsg": "{count} Buchungen verwenden \"{name}\". Wähle eine Ersatzkategorie, in die sie verschoben werden.",
+  "spending.categories.deleteGroupImpact": "{categories} Kategorien und {bookings} Buchungen sind betroffen.",
   "spending.sankey.title": "Cashflow",
   "spending.sankey.totalNode": "Gesamt",
   "spending.sankey.savingsNode": "Ersparnisse",
@@ -3779,18 +3886,35 @@ export const de: Partial<Record<MessageKey, string>> = {
   // und dem FIRE-Reiter. Die Schritte sind bewusst Anweisungen: eine Strategie,
   // die du nicht ausführen kannst, ist ein Diagramm und kein Plan.
   "withdrawal.strategyLabel": "Entnahmestrategie",
-  "withdrawal.strategy.fixed": "Fester Betrag",
+  "withdrawal.strategy.fixed": "Rate zu Rentenbeginn",
   "withdrawal.strategy.fixed.desc":
-    "Die klassische Regel: Betrag am Tag des Ruhestands festlegen und immer weiter entnehmen. Stabiles Einkommen, und als einzige Strategie mit dem Risiko, das Depot leerlaufen zu lassen.",
+    "Ein Prozentsatz des Depots ZU RENTENBEGINN legt den Betrag des ersten Jahres fest. Danach steigt nur noch dieser Geldbetrag mit der Inflation, nie wieder neu vom Depot berechnet. Stabiles Einkommen, und als einzige Strategie mit dem Risiko, das Depot leerlaufen zu lassen.",
   "withdrawal.strategy.percentOfPortfolio": "Anteil am Depot",
   "withdrawal.strategy.percentOfPortfolio.desc":
     "Immer derselbe Prozentsatz vom tatsächlich verbleibenden Bestand. Kann nie ausgehen, dafür sinkt dein Einkommen mit dem Markt.",
   "withdrawal.strategy.guardrails": "Leitplanken",
   "withdrawal.strategy.guardrails.desc":
     "Du behältst das Einkommen des Vorjahres bis zu einer Drift-Grenze der Entnahmequote und passt es dann an. Wenige Änderungen, jede davon klein.",
+  "withdrawal.strategy.guardrails.example":
+    "Die Rate ist ein ZIELWERT, nicht die Auszahlung selbst: der {rate}-Bandabgleich vergleicht sie mit der aktuellen Quote und passt die Entnahme nur bei zu starker Abweichung an, nicht jedes Jahr.",
   "withdrawal.strategy.floorCeiling": "Unter- und Obergrenze",
   "withdrawal.strategy.floorCeiling.desc":
     "Folgt dem Depot, aber nie unter eine Untergrenze und nie über eine Obergrenze. Der Kompromiss zwischen stabilem und mitlaufendem Einkommen.",
+  "withdrawal.strategy.initialRate": "Rate zu Rentenbeginn, dann Inflation",
+  "withdrawal.strategy.initialRate.desc":
+    "Ein Prozentsatz des Depots ZU RENTENBEGINN legt den Betrag des ersten Jahres fest. Danach steigt nur noch dieser Geldbetrag mit der Inflation, nie wieder neu vom Depot berechnet. Stabiles Einkommen, aber die einzige der vier Strategien mit dem Risiko, das Depot leerlaufen zu lassen.",
+  "withdrawal.strategy.initialRate.example":
+    "Bei {portfolio} Depot und {rate} Entnahmerate zahlt das erste Jahr {amount}. Danach steigt dieser Betrag mit der Inflation, unabhängig vom Depotwert.",
+  "withdrawal.strategy.currentPortfolioShare": "Anteil am aktuellen Depot",
+  "withdrawal.strategy.currentPortfolioShare.desc":
+    "Jedes Jahr wird derselbe Prozentsatz des AKTUELLEN Depotwerts neu berechnet. Kann das Depot mathematisch nie leeren, dafür schwankt das Einkommen mit dem Markt -- kein stabiler Betrag.",
+  "withdrawal.strategy.currentPortfolioShare.example":
+    "Bei {rate} vom aktuellen Wert: ein fallendes Depot zahlt im Folgejahr weniger, ein steigendes mehr. Das Einkommen schwankt mit dem Markt.",
+  "withdrawal.strategy.fixedRealAmount": "Fester realer Betrag",
+  "withdrawal.strategy.fixedRealAmount.desc":
+    "Du legst einen Euro-Betrag statt einer Rate fest. Er steigt jedes Jahr mit der Inflation, damit die Kaufkraft gleich bleibt, egal was das Depot macht. Das planbarste Einkommen, und in einem schlechten Markt am ehesten mit dem Risiko, das Depot leerzufahren.",
+  "withdrawal.strategy.fixedRealAmount.example":
+    "Bei {amount} pro Jahr verlässt genau das im ersten Jahr das Depot und steigt danach mit der Inflation weiter, unabhängig vom Depotwert.",
   "withdrawal.stepsTitle": "Was du tust",
   "withdrawal.steps.fixed.1":
     "Zum Ruhestand nimmst du deine Entnahmerate mal dem Depotwert.",
@@ -3798,12 +3922,30 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Diesen Betrag überweist du dir jedes Jahr, egal was der Markt gemacht hat.",
   "withdrawal.steps.fixed.3":
     "Schau trotzdem einmal im Jahr auf den Stand: sinkt er dauerhaft, brauchst du einen anderen Plan und keinen knapperen Monat.",
+  "withdrawal.steps.initialRate.1":
+    "Zum Ruhestand nimmst du deine Rate mal dem Depotwert.",
+  "withdrawal.steps.initialRate.2":
+    "Diesen Betrag überweist du dir jedes Jahr, angehoben um die Inflation.",
+  "withdrawal.steps.initialRate.3":
+    "Schau trotzdem einmal im Jahr auf den Stand: sinkt er dauerhaft, brauchst du einen anderen Plan und keinen knapperen Monat.",
   "withdrawal.steps.percentOfPortfolio.1":
     "Such dir einen Stichtag im Jahr und notier den Depotwert an diesem Tag.",
   "withdrawal.steps.percentOfPortfolio.2":
     "Multiplizier ihn mit deiner Rate. Das ist dein Einkommen für das nächste Jahr.",
   "withdrawal.steps.percentOfPortfolio.3":
     "Halt einen Puffer von ein bis zwei Jahresausgaben in bar. So kürzt ein schlechtes Jahr die Rechnung, nicht deinen Einkauf.",
+  "withdrawal.steps.currentPortfolioShare.1":
+    "Such dir einen Stichtag im Jahr und notier den Depotwert an diesem Tag.",
+  "withdrawal.steps.currentPortfolioShare.2":
+    "Multiplizier ihn mit deiner Rate. Das ist dein Einkommen für das nächste Jahr.",
+  "withdrawal.steps.currentPortfolioShare.3":
+    "Halt einen Puffer von ein bis zwei Jahresausgaben in bar. So kürzt ein schlechtes Jahr die Rechnung, nicht deinen Einkauf.",
+  "withdrawal.steps.fixedRealAmount.1":
+    "Leg den jährlichen (oder monatlichen) Betrag fest, den du brauchst.",
+  "withdrawal.steps.fixedRealAmount.2":
+    "Diesen Betrag überweist du dir jedes Jahr, angehoben um die Inflation des Vorjahres.",
+  "withdrawal.steps.fixedRealAmount.3":
+    "Schau trotzdem einmal im Jahr auf den Stand: sinkt er dauerhaft, brauchst du einen anderen Plan und keinen knapperen Monat.",
   "withdrawal.steps.guardrails.1":
     "Einmal im Jahr teilst du das Einkommen des Vorjahres durch den aktuellen Depotwert.",
   "withdrawal.steps.guardrails.2":
@@ -3840,12 +3982,22 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Drei Punkte mehr Inflation über den ganzen Lauf: weniger reale Rendite, und die Entnahme muss schneller steigen.",
   "withdrawal.compareTitle": "Alle Strategien, gleiche Märkte",
   "withdrawal.compareHint":
-    "Alle vier laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem schwankenden Einkommen.",
+    "Alle fünf laufen über identische simulierte Märkte, die Zeilen unterscheiden sich also nur durch die Strategie. Keine davon ist die richtige: eine höhere Erfolgsquote bezahlst du mit einem schwankenden Einkommen.",
   "withdrawal.col.strategy": "Strategie",
   "withdrawal.col.success": "Reicht",
   "withdrawal.col.income": "Einkommen / Jahr",
   "withdrawal.col.worstYear": "Schlechtestes Jahr",
   "withdrawal.col.leftOver": "Rest",
+  "withdrawal.field.annualAmount": "Anfänglicher Entnahmebetrag (pro Jahr)",
+  "withdrawal.field.inflationIndexed": "Mit Inflation steigern",
+  "withdrawal.field.inflationIndexed.hint":
+    "Aus bedeutet ein fester nominaler Betrag -- seine Kaufkraft schrumpft jedes Jahr.",
+  "withdrawal.field.inflation": "Inflationsanpassung",
+  "withdrawal.field.rateAtRetirement": "Entnahmerate zu Rentenbeginn",
+  "withdrawal.field.rateCurrentValue": "Jährlicher Anteil des aktuellen Portfolios",
+  "withdrawal.field.rateGuardrails": "Ziel-Entnahmerate",
+  "withdrawal.field.guardrailBand": "Leitplanken-Abstand",
+  "withdrawal.field.guardrailAdjust": "Anpassungsschritt",
 
   // Ruhestand (/retirement): FIRE-Planer und Rentenhochrechnung sind zwei
   // Antworten auf dieselbe Frage und damit Reiter einer Seite.
@@ -3858,12 +4010,16 @@ export const de: Partial<Record<MessageKey, string>> = {
   // FIRE-Planer (ROADMAP #8)
   "fire.title": "Rente / FIRE-Planer",
   "fire.subtitle": "Die für deine Ausgaben nötige Portfoliogröße, und die Zeit bis dorthin.",
-  "fire.withdrawalRate.label": "Entnahmerate",
-  "fire.withdrawalRate.hint": "Die klassische \"4%-Regel\": Bei dieser Entnahmerate reicht ein Portfolio die ganze Rentenzeit über.",
+  "fire.summary.firstYear": "Entnahme im ersten Jahr",
+  "fire.summary.perMonth": "{amount} pro Monat",
+  "fire.summary.remainingNeed": "Verbleibender Entnahmebedarf",
+  "fire.summary.guaranteedIncome": "{amount} davon schon durch sichere Einkünfte gedeckt",
+  "fire.summary.noStableTarget": "Diese Strategie berechnet ihre Rate jedes Jahr neu vom Depot -- das Ziel oben passt nur zum ersten Jahr, spätere Jahre weichen mit dem Markt ab.",
   "fire.pension.count": "Rente einrechnen",
   "fire.pension.hint": "{amount} pro Monat ab {year}.",
-  "fire.pension.saves":
-    "Deine Rente senkt das Ziel von {without} auf {with}: das Depot muss nur die {years} Jahre bis zum Rentenbeginn komplett tragen, danach nur noch die Lücke.",
+  "fire.pension.saves": "Deine Rente senkt das Ziel von {without} auf {with}.",
+  "fire.pension.bridge":
+    "Das Depot trägt die {years} Jahre bis zum Rentenbeginn voll, danach nur noch die Lücke.",
   "fire.pension.missing":
     "Noch keine Rente erfasst. Trag im Reiter Rente deine Entgeltpunkte oder einen Vertrag ein, dann sinkt dieses Ziel.",
   "fire.annualExpenses.label": "Jährliche Ausgaben",
@@ -3884,9 +4040,12 @@ export const de: Partial<Record<MessageKey, string>> = {
     "Das ausgabendeckende Vermögen bei der Entnahmerate oben. Bei 4 % sind das die bekannten 25 Jahresausgaben.",
   "fire.fat.label": "Fat FIRE",
   "fire.fat.info": "Finanzielle Unabhängigkeit mit mehr Spielraum: {ratio} deiner heutigen Ausgaben.",
-  "fire.tile.risk": "{risk} der simulierten {years} Rentenjahre gehen bei dieser Rate leer aus.",
+  "fire.tile.riskShort": "{risk} Pleiterisiko",
+  "fire.risk.shared":
+    "Der Status je Ziel zeigt, in wie vielen der {years} simulierten Rentenjahre das Depot bei dieser Entnahmerate leer läuft. Senke die Rate oder erhöhe das Ziel, um es zu verringern.",
   "fire.tile.basis": "Deckt {expenses} Ausgaben im Jahr bei {rate} Entnahme.",
   "fire.tile.basisRatio": "Deckt {ratio} deiner Ausgaben ({expenses} im Jahr) bei {rate} Entnahme.",
+  "fire.tile.basisAmount": "Trägt einen festen Betrag von {amount} im Jahr, inflationsangepasst.",
   "fire.tile.pensionApplied": "Deine Rente ab {year} ist schon abgezogen.",
   "fire.yearsToFi": "Noch {years} Jahre",
   "fire.alreadyThere": "Schon erreicht",
@@ -4379,6 +4538,8 @@ export const de: Partial<Record<MessageKey, string>> = {
   "rebalance.total": "Gesamt",
   "rebalance.total.hint": "Deine Zielgewichte ergeben zusammen weniger oder mehr als 100 %. Normieren skaliert sie proportional auf genau 100 %.",
   "rebalance.normalise": "Auf 100 % normieren",
+  "rebalance.normalise.confirm":
+    "Deine Zielgewichte ergeben zusammen {sum} %. Beim Normieren wird jedes Gewicht mit {factor} multipliziert, sodass die Summe genau 100 % ergibt.",
   "rebalance.colPosition": "Position",
   "rebalance.colTargetPct": "Ziel %",
   "rebalance.colTargetValue": "Zielwert",
@@ -4401,9 +4562,7 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.myPortfolio": "Mein Portfolio",
   "sim.custom": "Benutzerdefiniert",
   "sim.seededFromFire": "Horizont aus deinem FIRE-Plan: {years} Jahre bis zur finanziellen Unabhängigkeit.",
-  "sim.inflation": "Inflation",
-  "sim.inflationHint":
-    "Um diesen Satz steigt deine Entnahme jedes Jahr. Ohne ihn sieht ein Plan sicher aus und halbiert still deine Kaufkraft.",
+  "sim.planDiffersFromFire": "Weicht von deinem FIRE-Plan ab -- dieser Lauf testet es als Was-wäre-wenn-Szenario.",
   "sim.modelPortfolioDesc":
     "Simuliert jede Position mit ihrer eigenen Volatilität und den Korrelationen untereinander.",
   "sim.modelCustomDesc": "Simuliert eine einzelne gemischte Rendite und Volatilität.",
@@ -4413,9 +4572,6 @@ export const de: Partial<Record<MessageKey, string>> = {
   "sim.years": "Jahre",
   "sim.withdrawalYears": "Entnahmephase",
   "sim.monthlyWithdrawal": "Monatliche Entnahme",
-  "sim.withdrawalRate": "Jährliche Entnahmerate",
-  "sim.withdrawalRateHint":
-    "Du entnimmst jährlich diesen Prozentsatz des Portfoliowerts zu Rentenbeginn (danach fest). ~4% gilt als klassische sichere Rate; der real entnehmbare Betrag hängt vom Portfoliowachstum ab.",
   "sim.withdrawalTitle": "Entnahme-Einkommen",
   "sim.withdrawalMetricsTip":
     "Der Ausschüttungsbetrag dieses Plans in der Entnahmephase: vom pessimistischen (10. Perzentil) bis zum optimistischen (90. Perzentil) Verlauf.",
@@ -5044,7 +5200,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.subtitle": "Tu perfil, hogar, impuestos y asistente de IA.",
   "settings.profileSection": "Perfil",
   "settings.tabGeneral": "General",
-  "settings.tabFees": "Comisiones e impuestos",
+  "settings.tabFees": "Impuestos y comisiones",
   "settings.tabAi": "Asistente de IA",
   "settings.name": "Nombre / apodo",
   "settings.namePlaceholder": "p. ej. Simón",
@@ -5073,7 +5229,8 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Elimina tu cuenta y todos tus datos de forma permanente: carteras, activos y transacciones. Esta acción no se puede deshacer.",
   "settings.deleteAccountConfirm":
     "Esto elimina de forma permanente tu cuenta y cada cartera, cuenta, transacción y ajuste, y te quita de cualquier hogar compartido. No se puede deshacer.",
-  "settings.deleteAccountType": 'Escribe "delete" para confirmar',
+  "settings.deleteAccountPhrase": "ELIMINAR CUENTA",
+  "settings.deleteAccountType": 'Escribe "{phrase}" para confirmar',
   "settings.deleteAccountPassword": "Contraseña actual",
   "settings.deleteAccountWrongPassword": "Contraseña incorrecta.",
   "settings.deleteAccountError": "Error al eliminar.",
@@ -5119,6 +5276,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "settings.ai.scope.label": "Dónde se guarda tu clave",
   "settings.ai.scope.account": "En tu cuenta (en todos tus dispositivos)",
   "settings.ai.scope.browser": "Solo en este navegador",
+  "settings.ai.scope.accountHint":
+    "Se conserva al cerrar sesión y está disponible en todos los dispositivos.",
   "settings.ai.scope.browserHint": "Se elimina al cerrar sesión.",
   "settings.ai.privacyNote": "Cuenta: en todos tus dispositivos, hasta su eliminación. Solo este navegador: se borra al cerrar sesión. Al chatear tus datos van a tu proveedor; nunca guardamos ni registramos la conversación.",
   "settings.ai.privacyNoteGuest":
@@ -5884,6 +6043,26 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.form.add": "Añadir movimiento",
   "spending.form.error": "No se pudo guardar el movimiento. Inténtalo de nuevo.",
   "spending.form.saved": "Movimiento guardado.",
+  "spending.form.type.transfer": "Transferencia",
+  "spending.form.amountLabelPlain": "Importe",
+  "spending.form.dateTimeLabel": "Fecha y hora",
+  "spending.form.fromAccountLabel": "Cuenta de origen",
+  "spending.form.toAccountLabel": "Cuenta de destino",
+  "spending.form.toAccountPlaceholder": "Elegir cuenta",
+  "spending.form.categorySelect": "Elegir categoría",
+  "spending.form.nextRun": "Próxima ejecución: {date}",
+  "spending.form.add.expense": "Añadir gasto",
+  "spending.form.add.income": "Añadir ingreso",
+  "spending.form.add.transfer": "Crear transferencia",
+  "spending.form.addRecurring.expense": "Añadir gasto recurrente",
+  "spending.form.addRecurring.income": "Añadir ingreso recurrente",
+  "spending.form.addRecurring.transfer": "Añadir transferencia recurrente",
+  "spending.form.invalid.amountMissing": "Introduce un importe.",
+  "spending.form.invalid.amountPositive": "El importe debe ser mayor que 0.",
+  "spending.form.invalid.toAccountMissing": "Elige la cuenta de destino.",
+  "spending.form.invalid.sameAccount": "El origen y el destino deben ser distintos.",
+  "spending.form.invalid.payeeMissing": "Introduce el beneficiario.",
+  "spending.form.invalid.payerMissing": "Introduce el pagador.",
   "spending.list.title": "Movimientos",
   "spending.list.autoCategorize": "Categorizar automáticamente",
   "spending.list.empty": "Todavía no hay movimientos.",
@@ -5917,6 +6096,14 @@ export const es: Partial<Record<MessageKey, string>> = {
   "spending.categories.deleteConfirm": "¿Eliminar \"{name}\"? Los movimientos de esta categoría se quedan sin categoría.",
   "spending.categories.deleteGroup": "Eliminar grupo",
   "spending.categories.deleteGroupConfirm": "¿Eliminar el grupo \"{name}\" con todas sus categorías? Los movimientos de estas categorías se quedan sin categoría.",
+  "spending.categories.search": "Buscar categorías",
+  "spending.categories.rename": "Renombrar",
+  "spending.categories.uncategorized": "Sin categoría",
+  "spending.categories.usage": "{count} movimientos",
+  "spending.categories.noMatch": "Ninguna categoría coincide con la búsqueda.",
+  "spending.categories.replacementLabel": "Categoría de reemplazo",
+  "spending.categories.deleteUsedMsg": "{count} movimientos usan \"{name}\". Elige una categoría de reemplazo a la que moverlos.",
+  "spending.categories.deleteGroupImpact": "{categories} categorías y {bookings} movimientos están afectados.",
   "spending.sankey.title": "Flujo de caja",
   "spending.sankey.totalNode": "Total",
   "spending.sankey.savingsNode": "Ahorros",
@@ -6218,23 +6405,45 @@ export const es: Partial<Record<MessageKey, string>> = {
   // por /simulation y la pestaña FIRE. Los pasos son imperativos a propósito:
   // una estrategia que no puedes ejecutar es un gráfico, no un plan.
   "withdrawal.strategyLabel": "Estrategia de retiro",
-  "withdrawal.strategy.fixed": "Importe fijo",
+  "withdrawal.strategy.fixed": "Tasa al jubilarte",
   "withdrawal.strategy.fixed.desc":
-    "La regla clásica: fijas el importe al jubilarte y lo retiras siempre. Ingreso estable, y como única estrategia con riesgo de agotar la cartera.",
+    "Un porcentaje de la cartera AL JUBILARTE fija el importe del primer año. Después ese importe solo sube con la inflación, nunca se recalcula de nuevo con la cartera. Ingreso estable, y como única estrategia con riesgo de agotar la cartera.",
   "withdrawal.strategy.percentOfPortfolio": "Porcentaje de la cartera",
   "withdrawal.strategy.percentOfPortfolio.desc":
     "Siempre el mismo porcentaje del saldo realmente restante. Nunca se agota, pero tu ingreso baja con el mercado.",
   "withdrawal.strategy.guardrails": "Barreras",
   "withdrawal.strategy.guardrails.desc":
     "Mantienes el ingreso del año anterior hasta un límite de desviación de la tasa, y entonces lo ajustas. Pocos cambios, y cada uno pequeño.",
+  "withdrawal.strategy.guardrails.example":
+    "La tasa es un OBJETIVO, no el pago en sí: la banda de {rate} la compara con la tasa actual y ajusta el ingreso solo si se desvía demasiado, no cada año.",
   "withdrawal.strategy.floorCeiling": "Suelo y techo",
   "withdrawal.strategy.floorCeiling.desc":
     "Sigue a la cartera, pero nunca por debajo de un suelo ni por encima de un techo. El punto medio entre un ingreso estable y uno ajustable.",
+  "withdrawal.strategy.initialRate": "Tasa al jubilarte, luego inflación",
+  "withdrawal.strategy.initialRate.desc":
+    "Un porcentaje de la cartera AL JUBILARTE fija el importe del primer año. Después ese importe solo sube con la inflación, nunca se recalcula de nuevo con la cartera. Ingreso estable, pero la única de las cuatro con riesgo de agotar la cartera.",
+  "withdrawal.strategy.initialRate.example":
+    "Con {portfolio} de cartera y una tasa del {rate}, el primer año paga {amount}. Después ese importe sube con la inflación, no con el valor de la cartera.",
+  "withdrawal.strategy.currentPortfolioShare": "Porcentaje de la cartera actual",
+  "withdrawal.strategy.currentPortfolioShare.desc":
+    "Cada año se recalcula el mismo porcentaje del valor ACTUAL de la cartera. Matemáticamente nunca puede agotarla, pero el ingreso varía con el mercado: no es un importe estable.",
+  "withdrawal.strategy.currentPortfolioShare.example":
+    "Con el {rate} del valor actual: una cartera que baja paga menos al año siguiente, una que sube paga más. El ingreso varía con el mercado.",
+  "withdrawal.strategy.fixedRealAmount": "Importe real fijo",
+  "withdrawal.strategy.fixedRealAmount.desc":
+    "Fijas un importe en euros en vez de una tasa. Sube cada año con la inflación para que su poder adquisitivo se mantenga, haga lo que haga la cartera. El ingreso más predecible, y el que más riesgo tiene de agotar la cartera en un mercado adverso.",
+  "withdrawal.strategy.fixedRealAmount.example":
+    "Con {amount} al año, eso es lo que sale de la cartera en el primer año y luego sigue subiendo con la inflación, sin importar el valor de la cartera.",
   "withdrawal.stepsTitle": "Qué haces",
   "withdrawal.steps.fixed.1": "Al jubilarte, toma tu tasa de retiro por el valor de la cartera.",
   "withdrawal.steps.fixed.2":
     "Transfiere ese mismo importe cada año, pase lo que pase en el mercado.",
   "withdrawal.steps.fixed.3":
+    "Aun así revisa el saldo una vez al año: si baja de forma sostenida, necesitas otro plan, no un mes más ajustado.",
+  "withdrawal.steps.initialRate.1": "Al jubilarte, toma tu tasa por el valor de la cartera.",
+  "withdrawal.steps.initialRate.2":
+    "Transfiere ese mismo importe cada año, aumentado con la inflación.",
+  "withdrawal.steps.initialRate.3":
     "Aun así revisa el saldo una vez al año: si baja de forma sostenida, necesitas otro plan, no un mes más ajustado.",
   "withdrawal.steps.percentOfPortfolio.1":
     "Elige un día fijo al año y anota el valor de la cartera ese día.",
@@ -6242,6 +6451,18 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Multiplícalo por tu tasa. Ese es tu ingreso del año siguiente.",
   "withdrawal.steps.percentOfPortfolio.3":
     "Mantén un colchón de uno o dos años de gastos en efectivo. Así un mal año recorta el cálculo, no tu compra.",
+  "withdrawal.steps.currentPortfolioShare.1":
+    "Elige un día fijo al año y anota el valor de la cartera ese día.",
+  "withdrawal.steps.currentPortfolioShare.2":
+    "Multiplícalo por tu tasa. Ese es tu ingreso del año siguiente.",
+  "withdrawal.steps.currentPortfolioShare.3":
+    "Mantén un colchón de uno o dos años de gastos en efectivo. Así un mal año recorta el cálculo, no tu compra.",
+  "withdrawal.steps.fixedRealAmount.1":
+    "Decide el importe anual (o mensual) que necesitas.",
+  "withdrawal.steps.fixedRealAmount.2":
+    "Transfiere ese importe cada año, aumentado con la inflación del año anterior.",
+  "withdrawal.steps.fixedRealAmount.3":
+    "Aun así revisa el saldo una vez al año: si baja de forma sostenida, necesitas otro plan, no un mes más ajustado.",
   "withdrawal.steps.guardrails.1":
     "Una vez al año, divide el ingreso del año pasado entre el valor actual de la cartera.",
   "withdrawal.steps.guardrails.2":
@@ -6277,12 +6498,22 @@ export const es: Partial<Record<MessageKey, string>> = {
     "Tres puntos más de inflación durante todo el recorrido: menos rentabilidad real y retiros de subida más rápida.",
   "withdrawal.compareTitle": "Todas las estrategias, los mismos mercados",
   "withdrawal.compareHint":
-    "Las cuatro corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso variable.",
+    "Las cinco corren sobre mercados simulados idénticos, así que las filas solo se diferencian por la estrategia. Ninguna es la correcta: una tasa de éxito más alta la pagas con un ingreso variable.",
   "withdrawal.col.strategy": "Estrategia",
   "withdrawal.col.success": "Aguanta",
   "withdrawal.col.income": "Ingreso / año",
   "withdrawal.col.worstYear": "Peor año",
   "withdrawal.col.leftOver": "Resto",
+  "withdrawal.field.annualAmount": "Importe inicial de retiro (anual)",
+  "withdrawal.field.inflationIndexed": "Subir con la inflación",
+  "withdrawal.field.inflationIndexed.hint":
+    "Desactivado significa un importe nominal fijo -- su poder adquisitivo se reduce cada año.",
+  "withdrawal.field.inflation": "Ajuste por inflación",
+  "withdrawal.field.rateAtRetirement": "Tasa de retiro al jubilarte",
+  "withdrawal.field.rateCurrentValue": "Porcentaje anual de la cartera actual",
+  "withdrawal.field.rateGuardrails": "Tasa de retiro objetivo",
+  "withdrawal.field.guardrailBand": "Banda de las barreras",
+  "withdrawal.field.guardrailAdjust": "Paso de ajuste",
 
   // Jubilación (/retirement): el planificador FIRE y la proyección de pensión
   // responden a la misma pregunta, así que son pestañas de una sola página.
@@ -6295,12 +6526,16 @@ export const es: Partial<Record<MessageKey, string>> = {
   // Planificador FIRE (ROADMAP #8)
   "fire.title": "Jubilación / planificador FIRE",
   "fire.subtitle": "El patrimonio necesario para cubrir tus gastos, y el tiempo para conseguirlo.",
-  "fire.withdrawalRate.label": "Tasa de retiro",
-  "fire.withdrawalRate.hint": "La clásica \"regla del 4%\": un patrimonio retirado a esta tasa dura toda la jubilación.",
+  "fire.summary.firstYear": "Retiro del primer año",
+  "fire.summary.perMonth": "{amount} al mes",
+  "fire.summary.remainingNeed": "Necesidad de retiro restante",
+  "fire.summary.guaranteedIncome": "{amount} ya cubierto por ingresos garantizados",
+  "fire.summary.noStableTarget": "Esta estrategia recalcula su tasa cada año con la cartera, así que el objetivo de arriba solo coincide con el primer año -- los años siguientes variarán con el mercado.",
   "fire.pension.count": "Contar mi pensión",
   "fire.pension.hint": "{amount} al mes desde {year}.",
-  "fire.pension.saves":
-    "Tu pensión baja el objetivo de {without} a {with}: la cartera solo tiene que cubrirlo todo durante los {years} años previos, y después únicamente la diferencia.",
+  "fire.pension.saves": "Tu pensión baja el objetivo de {without} a {with}.",
+  "fire.pension.bridge":
+    "La cartera cubre todo durante los {years} años previos a la pensión, y después únicamente la diferencia.",
   "fire.pension.missing":
     "Todavía no hay pensión registrada. Añade tus puntos o un plan en la pestaña Pensión y este objetivo bajará.",
   "fire.annualExpenses.label": "Gastos anuales",
@@ -6321,9 +6556,12 @@ export const es: Partial<Record<MessageKey, string>> = {
     "El capital necesario para cubrir tus gastos actuales con la tasa de retiro de arriba. Al 4% son las conocidas 25 veces tus gastos anuales.",
   "fire.fat.label": "Fat FIRE",
   "fire.fat.info": "Independencia financiera con más margen: {ratio} de tu gasto actual.",
-  "fire.tile.risk": "{risk} de las jubilaciones simuladas de {years} años se quedan sin dinero a esta tasa.",
+  "fire.tile.riskShort": "{risk} riesgo de agotamiento",
+  "fire.risk.shared":
+    "El estado de cada objetivo indica en cuántos de los {years} años de jubilación simulados la cartera se queda sin dinero a esta tasa de retiro. Baja la tasa o sube el objetivo para reducirlo.",
   "fire.tile.basis": "Cubre {expenses} de gastos al año con un retiro del {rate}.",
   "fire.tile.basisRatio": "Cubre {ratio} de tus gastos ({expenses} al año) con un retiro del {rate}.",
+  "fire.tile.basisAmount": "Sostiene un importe fijo de {amount} al año, ajustado por inflación.",
   "fire.tile.pensionApplied": "Tu pensión desde {year} ya está descontada.",
   "fire.yearsToFi": "Faltan {years} años",
   "fire.alreadyThere": "Ya lo lograste",
@@ -6815,6 +7053,8 @@ export const es: Partial<Record<MessageKey, string>> = {
   "rebalance.total": "Total",
   "rebalance.total.hint": "Tus pesos objetivo suman menos o más del 100%. Normalizar los escala proporcionalmente hasta exactamente el 100%.",
   "rebalance.normalise": "Normalizar al 100%",
+  "rebalance.normalise.confirm":
+    "Tus pesos objetivo suman {sum}%. Al normalizar se multiplica cada peso por {factor} para que sumen exactamente el 100%.",
   "rebalance.colPosition": "Posición",
   "rebalance.colTargetPct": "% objetivo",
   "rebalance.colTargetValue": "Valor objetivo",
@@ -6837,9 +7077,7 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.myPortfolio": "Mi cartera",
   "sim.custom": "Personalizado",
   "sim.seededFromFire": "Horizonte tomado de tu plan FIRE: {years} años hasta la independencia financiera.",
-  "sim.inflation": "Inflación",
-  "sim.inflationHint":
-    "Tus retiros suben esto cada año. Sin ello, un plan de apariencia segura reduce en silencio tu poder adquisitivo a la mitad.",
+  "sim.planDiffersFromFire": "Difiere de tu plan FIRE -- este análisis lo prueba como un escenario hipotético.",
   "sim.modelPortfolioDesc":
     "Simula cada posición con su propia volatilidad y las correlaciones entre ellas.",
   "sim.modelCustomDesc": "Simula una única rentabilidad y volatilidad combinadas.",
@@ -6849,9 +7087,6 @@ export const es: Partial<Record<MessageKey, string>> = {
   "sim.years": "años",
   "sim.withdrawalYears": "Fase de retirada",
   "sim.monthlyWithdrawal": "Retirada mensual",
-  "sim.withdrawalRate": "Tasa de retirada anual",
-  "sim.withdrawalRateHint":
-    "Cada año retiras este porcentaje del valor de la cartera en el momento de la jubilación (fijo a partir de entonces). ~4% es la tasa segura clásica a largo plazo; tu importe realmente retirable depende del crecimiento de tu cartera.",
   "sim.withdrawalTitle": "Ingresos en la retirada",
   "sim.withdrawalMetricsTip":
     "El importe retirable con este plan durante la fase de retirada, desde el resultado pesimista (percentil 10) hasta el optimista (percentil 90).",

@@ -8,7 +8,25 @@ import {
   trailingAnnualExpenses,
   yearsToFire,
 } from "@/lib/finance/fire";
+import type { WithdrawalPlan } from "@/lib/finance/withdrawal-plan";
 import type { SpendingTransaction } from "@/lib/types";
+
+/** An `initialRate` plan (today's default strategy), optionally with a
+    guaranteed-income bridge -- the shape every `computeFirePlan` test drives
+    the function with. */
+function ratePlan(
+  rate: number,
+  guaranteedIncome?: { annualAmount: number; yearsUntilStart: number },
+): WithdrawalPlan {
+  return {
+    strategy: "initialRate",
+    amount: { kind: "rate", value: rate },
+    paymentInterval: "annual",
+    inflation: { indexed: true, assumedRate: 0.02 },
+    stress: "none",
+    guaranteedIncome,
+  };
+}
 
 function tx(overrides: Partial<SpendingTransaction> = {}): SpendingTransaction {
   return {
@@ -112,8 +130,9 @@ describe("trailingAnnualExpenses", () => {
 
 describe("computeFirePlan", () => {
   it("wires net worth, expenses, contribution and return into a full plan", () => {
-    const plan = computeFirePlan(50000, 40000, 500, 0.06, 0.04);
+    const plan = computeFirePlan(50000, 40000, 500, 0.06, ratePlan(0.04));
     expect(plan.withdrawalRate).toBe(0.04);
+    expect(plan.hasStableTarget).toBe(true);
     expect(plan.regular).toBeCloseTo(1000000);
     expect(plan.lean).toBeCloseTo(700000);
     expect(plan.fat).toBeCloseTo(1300000);
@@ -126,16 +145,55 @@ describe("computeFirePlan", () => {
   });
 
   it("returns 0 years across the board once net worth already covers fat FIRE", () => {
-    const plan = computeFirePlan(2000000, 40000, 0, 0.05, 0.04);
+    const plan = computeFirePlan(2000000, 40000, 0, 0.05, ratePlan(0.04));
     expect(plan.yearsToLean).toBe(0);
     expect(plan.yearsToRegular).toBe(0);
     expect(plan.yearsToFat).toBe(0);
   });
 
   it("produces Infinity targets and null years-to-FI at a zero withdrawal rate", () => {
-    const plan = computeFirePlan(50000, 40000, 500, 0.06, 0);
+    const plan = computeFirePlan(50000, 40000, 500, 0.06, ratePlan(0));
     expect(plan.regular).toBe(Infinity);
     expect(plan.yearsToRegular).toBeNull();
+  });
+
+  it("flags currentPortfolioShare as not having a stable target", () => {
+    const plan = computeFirePlan(50000, 40000, 500, 0.06, {
+      strategy: "currentPortfolioShare",
+      amount: { kind: "rate", value: 0.04 },
+      paymentInterval: "annual",
+      inflation: { indexed: false, assumedRate: 0 },
+      stress: "none",
+    });
+    expect(plan.hasStableTarget).toBe(false);
+  });
+
+  it("sizes a fixedRealAmount plan off the amount, not the measured expenses", () => {
+    // A stated 20000/yr amount should size a DIFFERENT target than the
+    // 40000/yr measured expenses passed alongside it -- the plan states its
+    // own need (WITHDRAWAL_REFACTOR_PLAN.md §6.1).
+    const withStatedAmount = computeFirePlan(50000, 40000, 500, 0.06, {
+      strategy: "fixedRealAmount",
+      amount: { kind: "amount", value: 20000 },
+      paymentInterval: "annual",
+      inflation: { indexed: true, assumedRate: 0.02 },
+      stress: "none",
+    });
+    const realReturnRate = (1 + 0.06) / (1 + 0.02) - 1;
+    expect(withStatedAmount.regular).toBeCloseTo(20000 / realReturnRate, 2);
+    expect(withStatedAmount.withdrawalRate).toBe(0);
+    expect(withStatedAmount.hasStableTarget).toBe(true);
+  });
+
+  it("an unindexed fixedRealAmount plan divides by the plain nominal return", () => {
+    const plan = computeFirePlan(50000, 40000, 500, 0.06, {
+      strategy: "fixedRealAmount",
+      amount: { kind: "amount", value: 20000 },
+      paymentInterval: "annual",
+      inflation: { indexed: false, assumedRate: 0.02 },
+      stress: "none",
+    });
+    expect(plan.regular).toBeCloseTo(20000 / 0.06, 2);
   });
 });
 
@@ -149,11 +207,14 @@ describe("FIRE with a pension", () => {
 
   it("is identical to the pension-free number when there is none", () => {
     expect(fireNumberWithPension(EXPENSES, RATE, 0, 20)).toBe(fireNumber(EXPENSES, RATE));
-    const plain = computeFirePlan(100000, EXPENSES, 1000, 0.06, RATE);
-    const withNone = computeFirePlan(100000, EXPENSES, 1000, 0.06, RATE, {
-      annualIncome: 0,
-      yearsUntilStart: 20,
-    });
+    const plain = computeFirePlan(100000, EXPENSES, 1000, 0.06, ratePlan(RATE));
+    const withNone = computeFirePlan(
+      100000,
+      EXPENSES,
+      1000,
+      0.06,
+      ratePlan(RATE, { annualAmount: 0, yearsUntilStart: 20 }),
+    );
     expect(withNone.regular).toBe(plain.regular);
     expect(withNone.yearsToRegular).toBe(plain.yearsToRegular);
   });
@@ -185,10 +246,13 @@ describe("FIRE with a pension", () => {
   });
 
   it("reports what accounting for the pension was worth", () => {
-    const plan = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE, {
-      annualIncome: 18000,
-      yearsUntilStart: 30,
-    });
+    const plan = computeFirePlan(
+      200000,
+      EXPENSES,
+      1500,
+      0.06,
+      ratePlan(RATE, { annualAmount: 18000, yearsUntilStart: 30 }),
+    );
     expect(plan.regularWithoutPension).toBe(fireNumber(EXPENSES, RATE));
     expect(plan.regular).toBeLessThan(plan.regularWithoutPension);
     expect(plan.pensionAnnual).toBe(18000);
@@ -197,20 +261,26 @@ describe("FIRE with a pension", () => {
   });
 
   it("reaches FIRE no later once the pension is counted", () => {
-    const without = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE);
-    const with_ = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE, {
-      annualIncome: 18000,
-      yearsUntilStart: 30,
-    });
+    const without = computeFirePlan(200000, EXPENSES, 1500, 0.06, ratePlan(RATE));
+    const with_ = computeFirePlan(
+      200000,
+      EXPENSES,
+      1500,
+      0.06,
+      ratePlan(RATE, { annualAmount: 18000, yearsUntilStart: 30 }),
+    );
     expect(with_.yearsToRegular).not.toBeNull();
     expect(with_.yearsToRegular!).toBeLessThanOrEqual(without.yearsToRegular!);
   });
 
   it("nets the pension against each variant's own budget", () => {
-    const plan = computeFirePlan(200000, EXPENSES, 1500, 0.06, RATE, {
-      annualIncome: 18000,
-      yearsUntilStart: 30,
-    });
+    const plan = computeFirePlan(
+      200000,
+      EXPENSES,
+      1500,
+      0.06,
+      ratePlan(RATE, { annualAmount: 18000, yearsUntilStart: 30 }),
+    );
     // Lean still costs less than regular, which still costs less than fat.
     expect(plan.lean).toBeLessThan(plan.regular);
     expect(plan.regular).toBeLessThan(plan.fat);

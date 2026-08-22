@@ -28,18 +28,21 @@ import {
   RETIREMENT_YEARS,
 } from "@/lib/finance/fire";
 import { useFireInputs } from "@/lib/fire/use-fire-inputs";
+import {
+  annualAmountOf,
+  defaultWithdrawalPlan,
+  rateOf,
+  type WithdrawalPlan,
+} from "@/lib/finance/withdrawal-plan";
+import { WithdrawalStrategyPanel } from "@/components/simulation/withdrawal-strategy-panel";
 import { formatCurrency, formatInputDecimal, formatPercentPlain, parseDecimal, stripLeadingZero } from "@/lib/format";
 import { Card, SectionTitle, Stat, Toggle } from "@/components/ui/primitives";
 import { InlineNotice } from "@/components/ui/inline-notice";
 import { Private } from "@/components/ui/private";
-import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { MessageKey } from "@/lib/i18n/dictionaries";
 
 type T = (key: MessageKey, params?: Record<string, string | number>) => string;
-
-// Default withdrawal rate: the classic "4% rule".
-const DEFAULT_WITHDRAWAL_RATE = 4;
 
 function formatYears(years: number | null, t: T): string {
   if (years === null) return t("fire.never");
@@ -80,7 +83,10 @@ export function FireView() {
   const [countPension, setCountPension] = useState(true);
   const appliedPension = countPension ? fire.pensionBridge : undefined;
 
-  const [withdrawalRatePercent, setWithdrawalRatePercent] = useState(DEFAULT_WITHDRAWAL_RATE);
+  // The withdrawal assumption: FIRE sizes the target from it, and the same
+  // plan seeds the simulation on hand-off (§7.3) -- one assumption, not two
+  // independent sliders. Default reproduces the old 4% behaviour exactly.
+  const [withdrawalPlan, setWithdrawalPlan] = useState<WithdrawalPlan>(defaultWithdrawalPlan);
   // Editable overrides -- default to the measured/derived figures, user can
   // adjust any of them; recomputes live client-side, no worker involved.
   const [expensesOverride, setExpensesOverride] = useState<number | null>(null);
@@ -93,6 +99,19 @@ export function FireView() {
   const effectiveContribution = contributionOverride ?? fire.monthlyContribution;
   const effectiveReturnPercent = returnOverride ?? Math.round(fire.expectedReturn * 1000) / 10;
 
+  // The pension toggle layers onto the SAME plan object the strategy panel
+  // edits -- guaranteed income is part of the plan, not a second state next
+  // to it (WITHDRAWAL_REFACTOR_PLAN.md §10).
+  const planWithPension: WithdrawalPlan = useMemo(
+    () => ({
+      ...withdrawalPlan,
+      guaranteedIncome: appliedPension
+        ? { annualAmount: appliedPension.annualIncome, yearsUntilStart: appliedPension.yearsUntilStart }
+        : undefined,
+    }),
+    [withdrawalPlan, appliedPension],
+  );
+
   const plan = useMemo(
     () =>
       computeFirePlan(
@@ -100,59 +119,68 @@ export function FireView() {
         effectiveExpenses,
         effectiveContribution,
         effectiveReturnPercent / 100,
-        withdrawalRatePercent / 100,
-        appliedPension,
+        planWithPension,
       ),
-    [
-      netWorth,
-      effectiveExpenses,
-      effectiveContribution,
-      effectiveReturnPercent,
-      withdrawalRatePercent,
-      appliedPension,
-    ],
+    [netWorth, effectiveExpenses, effectiveContribution, effectiveReturnPercent, planWithPension],
   );
 
+  // What the portfolio actually has to fund: the full need until the pension
+  // starts (bridge years), only the shortfall once it is flowing.
+  const need =
+    withdrawalPlan.strategy === "fixedRealAmount"
+      ? (annualAmountOf(withdrawalPlan) ?? 0)
+      : effectiveExpenses;
+  const guaranteedAnnual = planWithPension.guaranteedIncome?.annualAmount ?? 0;
+  const remainingNeed = Math.max(0, need - guaranteedAnnual);
+  const firstYearWithdrawal = plan.bridgeYears > 0 ? need : remainingNeed;
+
   // Each tile says in words what its number IS: the budget it funds and the
-  // rate it funds it at. A bare euro amount is unreadable without them.
-  function basisFor(expenseRatio: number): string {
-    const rate = formatPercentPlain(withdrawalRatePercent / 100, 1);
-    if (expenseRatio === 1) {
+  // rate/amount it funds it at. A bare euro amount is unreadable without them.
+  function basisFor(ratio: number): string {
+    if (withdrawalPlan.strategy === "fixedRealAmount") {
+      return t("fire.tile.basisAmount", {
+        amount: formatCurrency((annualAmountOf(withdrawalPlan) ?? 0) * ratio, currency),
+      });
+    }
+    const rate = formatPercentPlain(rateOf(withdrawalPlan) ?? 0, 1);
+    if (ratio === 1) {
       return t("fire.tile.basis", { expenses: formatCurrency(effectiveExpenses, currency), rate });
     }
     return t("fire.tile.basisRatio", {
-      ratio: formatPercentPlain(expenseRatio, 0),
-      expenses: formatCurrency(effectiveExpenses * expenseRatio, currency),
+      ratio: formatPercentPlain(ratio, 0),
+      expenses: formatCurrency(effectiveExpenses * ratio, currency),
       rate,
     });
   }
 
   // With the pension counted the target is NOT expenses/rate any more, so the
   // basis line would otherwise describe arithmetic the number does not follow.
-  // What the chosen rate costs in risk. Raising the rate lowers every target,
-  // which reads as nonsense until the failure rate it buys sits next to it.
+  // What the chosen strategy costs in risk. A higher rate/lower amount lowers
+  // every target, which reads as nonsense until the failure rate it buys sits
+  // next to it. The risk sim must run the ACTUAL chosen strategy, not a
+  // strategy hardcoded independently of the user's choice (§3.11).
   const risk = useMemo(
     () => ({
       lean: shortfallRisk({
         target: plan.lean,
         expectedReturn: effectiveReturnPercent / 100,
         volatility: fire.volatility,
-        withdrawalRate: withdrawalRatePercent / 100,
+        plan: planWithPension,
       }),
       regular: shortfallRisk({
         target: plan.regular,
         expectedReturn: effectiveReturnPercent / 100,
         volatility: fire.volatility,
-        withdrawalRate: withdrawalRatePercent / 100,
+        plan: planWithPension,
       }),
       fat: shortfallRisk({
         target: plan.fat,
         expectedReturn: effectiveReturnPercent / 100,
         volatility: fire.volatility,
-        withdrawalRate: withdrawalRatePercent / 100,
+        plan: planWithPension,
       }),
     }),
-    [plan.lean, plan.regular, plan.fat, effectiveReturnPercent, fire.volatility, withdrawalRatePercent],
+    [plan.lean, plan.regular, plan.fat, effectiveReturnPercent, fire.volatility, planWithPension],
   );
 
   const pensionNote =
@@ -160,10 +188,23 @@ export function FireView() {
       ? t("fire.tile.pensionApplied", { year: String(fire.retirementYear) })
       : undefined;
 
+  // The plan hands over WHOLE: strategy, rate/amount, inflation -- not just
+  // the horizon and the pension flag it used to (§7.3/§3.8). The simulation
+  // treats every field as a startING point it can still edit.
   const simulationParams = new URLSearchParams({
     years: String(Math.max(1, Math.min(80, Math.ceil(plan.yearsToRegular ?? 30)))),
     withdrawal: "30",
+    strategy: withdrawalPlan.strategy,
+    inflation: String(withdrawalPlan.inflation.assumedRate),
   });
+  if (withdrawalPlan.amount.kind === "rate") {
+    simulationParams.set("rate", String(withdrawalPlan.amount.value));
+  } else {
+    simulationParams.set(
+      "amount",
+      String(annualAmountOf(withdrawalPlan) ?? 0),
+    );
+  }
   if (appliedPension) {
     simulationParams.set("pensionAnnual", String(appliedPension.annualIncome));
     simulationParams.set("pensionStart", String(appliedPension.yearsUntilStart));
@@ -172,27 +213,10 @@ export function FireView() {
   return (
     <div className="space-y-6">
       <Card data-tour="fire-inputs">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Stat label={t("fire.netWorth.label")} value={formatCurrency(netWorth, currency)} isPrivate />
-          <div>
-            <div className="flex items-baseline justify-between gap-2">
-              <label className="text-sm font-medium">{t("fire.withdrawalRate.label")}</label>
-              <span className="text-sm font-semibold tabular-nums">
-                {withdrawalRatePercent.toFixed(1)}%
-              </span>
-            </div>
-            <div className="mt-2">
-              <Slider
-                min={2}
-                max={8}
-                step={0.1}
-                value={withdrawalRatePercent}
-                onChange={setWithdrawalRatePercent}
-                aria-label={t("fire.withdrawalRate.label")}
-              />
-            </div>
-            <p className="mt-1 text-xs text-zinc-500">{t("fire.withdrawalRate.hint")}</p>
-          </div>
+        <Stat label={t("fire.netWorth.label")} value={formatCurrency(netWorth, currency)} isPrivate />
+
+        <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <WithdrawalStrategyPanel plan={withdrawalPlan} onPlanChange={setWithdrawalPlan} currency={currency} />
         </div>
 
         {/* What the pension is worth to this plan, in one line. A user who has
@@ -213,18 +237,48 @@ export function FireView() {
                   hintPrivate
                 />
                 {countPension && plan.regularWithoutPension > plan.regular && (
-                  <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400" data-private>
-                    {t("fire.pension.saves", {
-                      without: formatCurrency(plan.regularWithoutPension, currency),
-                      with: formatCurrency(plan.regular, currency),
-                      years: String(Math.round(plan.bridgeYears)),
-                    })}
-                  </p>
+                  <div className="mt-2 space-y-1" data-private>
+                    <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                      {t("fire.pension.saves", {
+                        without: formatCurrency(plan.regularWithoutPension, currency),
+                        with: formatCurrency(plan.regular, currency),
+                      })}
+                    </p>
+                    <p className="text-sm text-zinc-500">
+                      {t("fire.pension.bridge", { years: String(Math.round(plan.bridgeYears)) })}
+                    </p>
+                  </div>
                 )}
               </>
             ) : (
               <InlineNotice variant="info">{t("fire.pension.missing")}</InlineNotice>
             )}
+          </div>
+        )}
+
+        {/* What the plan means in figures the user can check against their
+            own budget: first year, monthly equivalent, what the pension
+            covers, and what is left for the portfolio
+            (WITHDRAWAL_REFACTOR_PLAN.md §9.4). */}
+        <div className="mt-6 grid grid-cols-1 gap-4 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-2" data-private>
+          <Stat
+            label={t("fire.summary.firstYear")}
+            value={formatCurrency(firstYearWithdrawal, currency)}
+            sub={t("fire.summary.perMonth", { amount: formatCurrency(firstYearWithdrawal / 12, currency) })}
+          />
+          {guaranteedAnnual > 0 ? (
+            <Stat
+              label={t("fire.summary.remainingNeed")}
+              value={formatCurrency(remainingNeed, currency)}
+              sub={t("fire.summary.guaranteedIncome", { amount: formatCurrency(guaranteedAnnual, currency) })}
+            />
+          ) : (
+            <Stat label={t("fire.summary.remainingNeed")} value={formatCurrency(need, currency)} />
+          )}
+        </div>
+        {!plan.hasStableTarget && (
+          <div className="mt-3">
+            <InlineNotice variant="info">{t("fire.summary.noStableTarget")}</InlineNotice>
           </div>
         )}
 
@@ -260,6 +314,13 @@ export function FireView() {
       <div data-tour="fire-targets">
         <SectionTitle>{t("fire.targets.title")}</SectionTitle>
         <p className="mt-1 text-sm text-zinc-500">{t("fire.targets.subtitle")}</p>
+        {(risk.lean !== null || risk.regular !== null || risk.fat !== null) && (
+          <div className="mt-3">
+            <InlineNotice variant="info">
+              {t("fire.risk.shared", { years: RETIREMENT_YEARS })}
+            </InlineNotice>
+          </div>
+        )}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <FireTile
             label={t("fire.lean.label")}
@@ -356,7 +417,8 @@ function FireTile({
         <Private>{basis}</Private>
         {pensionNote && <span className="block">{pensionNote}</span>}
       </p>
-      {/* The price of the rate, on the same card as the target it shrank. */}
+      {/* Status only: the shared notice above the cards explains what it means
+          and the lever, so the sentence is not repeated three times. */}
       {risk !== null && (
         <p
           className={`mt-2 text-xs font-medium ${
@@ -367,10 +429,7 @@ function FireTile({
                 : "text-emerald-700 dark:text-emerald-400"
           }`}
         >
-          {t("fire.tile.risk", {
-            risk: formatPercentPlain(risk, 0),
-            years: RETIREMENT_YEARS,
-          })}
+          {t("fire.tile.riskShort", { risk: formatPercentPlain(risk, 0) })}
         </p>
       )}
     </Card>

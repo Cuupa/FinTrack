@@ -45,6 +45,28 @@ export interface WithdrawalOptions {
   annualPensionIncome?: number;
   /** Years from the start of accumulation until the pension begins. */
   pensionYearsUntilStart?: number;
+  /** Monthly amount withdrawn during the decumulation phase (base currency),
+      flat and UNindexed -- the legacy path, kept for backward compatibility.
+      Lowest precedence of the three withdrawal inputs. */
+  monthlyWithdrawal?: number;
+  /**
+   * Annual withdrawal RATE (fraction, e.g. 0.04 for 4%). When set, each run
+   * withdraws a fixed nominal monthly amount of `rate × (that run's value at
+   * retirement) / 12` — so the withdrawn amount scales with how the portfolio
+   * actually grew. Takes precedence over `monthlyWithdrawal`.
+   */
+  withdrawalRate?: number;
+  /**
+   * A fixed ANNUAL amount (base currency, today's money) withdrawn in the
+   * first retirement year, then carried forward inflation-indexed exactly
+   * like `withdrawalStrategy: "fixed"`'s rate-derived amount -- the two
+   * differ only in how year one is seeded (a stated amount vs. rate ×
+   * portfolio value), not in how later years are indexed. Takes precedence
+   * over `withdrawalRate` when both are set (mutually exclusive: an amount
+   * plan states no rate). Distinct from `monthlyWithdrawal`, which stays a
+   * flat, UNindexed amount for backward compatibility.
+   */
+  fixedAnnualAmount?: number;
 }
 
 export interface MonteCarloParams extends WithdrawalOptions {
@@ -61,15 +83,6 @@ export interface MonteCarloParams extends WithdrawalOptions {
   seed: number;
   /** Optional decumulation phase after the `years` accumulation phase. */
   withdrawalYears?: number;
-  /** Monthly amount withdrawn during the decumulation phase (base currency). */
-  monthlyWithdrawal?: number;
-  /**
-   * Annual withdrawal RATE (fraction, e.g. 0.04 for 4%). When set, each run
-   * withdraws a fixed nominal monthly amount of `rate × (that run's value at
-   * retirement) / 12` — so the withdrawn amount scales with how the portfolio
-   * actually grew. Takes precedence over `monthlyWithdrawal`.
-   */
-  withdrawalRate?: number;
 }
 
 /** Distribution of the (per-run) annual withdrawal amount, when a rate is used. */
@@ -108,7 +121,7 @@ export interface MonteCarloResult {
 
 /** Reads the strategy knobs off the params, defaulting to today's behaviour. */
 function planOf(
-  params: WithdrawalOptions & { withdrawalRate?: number },
+  params: WithdrawalOptions,
   /** Return assumption for `vpw`'s annuity factor. */
   expectedReturn: number,
 ): WithdrawalPlan {
@@ -173,6 +186,10 @@ interface WalkOptions
   plan: WithdrawalPlan;
   flatWithdrawal: number;
   usesRate: boolean;
+  /** A stated first-year amount instead of a rate; see `fixedAnnualAmount`
+      on `WithdrawalOptions`. Mutually exclusive with `usesRate`. */
+  fixedAnnualAmount: number;
+  usesFixedAmount: boolean;
   stress: StressScenario;
   monthlyDrift: number;
   /** Retirement years the run funds, for `vpw`'s remaining-horizon rate. */
@@ -231,7 +248,11 @@ function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
   let value = o.initialCapital;
   const yearEnd: number[] = [];
   const annualIncomes: number[] = [];
-  let monthlyWithdrawal = o.usesRate ? 0 : o.flatWithdrawal;
+  // A stated amount and a rate are mutually exclusive ways to seed the
+  // strategy engine; either one means the flat, unindexed legacy path is
+  // NOT used this run.
+  const usesStrategy = o.usesRate || o.usesFixedAmount;
+  let monthlyWithdrawal = usesStrategy ? 0 : o.flatWithdrawal;
   let initialWithdrawal = 0;
   let previousAnnual = 0;
   let depleted = false;
@@ -242,8 +263,10 @@ function walkPath(path: readonly number[], o: WalkOptions): PathWalk {
 
     if (monthsIntoRetirement >= 0 && monthsIntoRetirement % 12 === 0) {
       const yearsIntoRetirement = monthsIntoRetirement / 12;
-      if (yearsIntoRetirement === 0) initialWithdrawal = o.plan.rate * value;
-      const grossAnnual = o.usesRate
+      if (yearsIntoRetirement === 0) {
+        initialWithdrawal = o.usesFixedAmount ? o.fixedAnnualAmount : o.plan.rate * value;
+      }
+      const grossAnnual = usesStrategy
         ? annualWithdrawal(o.plan, {
             initialWithdrawal,
             portfolioValue: value,
@@ -298,7 +321,12 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
   const accMonths = Math.max(1, Math.round(years * 12));
   const months = Math.max(1, Math.round(totalYears * 12));
   const flatWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
-  const withdrawalRate = Math.max(0, params.withdrawalRate ?? 0);
+  const fixedAnnualAmount = Math.max(0, params.fixedAnnualAmount ?? 0);
+  const usesFixedAmount = fixedAnnualAmount > 0 && wYears > 0;
+  // A stated amount takes precedence over a rate -- the two are mutually
+  // exclusive ways to seed the strategy engine (see `fixedAnnualAmount` on
+  // `WithdrawalOptions`).
+  const withdrawalRate = usesFixedAmount ? 0 : Math.max(0, params.withdrawalRate ?? 0);
   const usesRate = withdrawalRate > 0 && wYears > 0;
   const monthlyMean =
     Math.pow(1 + expectedReturn, 1 / 12) - 1; // geometric monthly drift
@@ -313,6 +341,8 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
     months,
     flatWithdrawal,
     usesRate,
+    fixedAnnualAmount,
+    usesFixedAmount,
     stress,
     monthlyDrift: monthlyMean,
     withdrawalYears: wYears,
@@ -340,7 +370,7 @@ export function runMonteCarlo(params: MonteCarloParams): MonteCarloResult {
       yearValues[y].push(walk.yearEnd[y - 1]);
     }
     finals.push(walk.final);
-    if (usesRate) withdrawals.push(walk.initialWithdrawal);
+    if (usesRate || usesFixedAmount) withdrawals.push(walk.initialWithdrawal);
 
     if (compare) {
       for (const strategy of WITHDRAWAL_STRATEGIES) {
@@ -439,14 +469,6 @@ export interface PortfolioMonteCarloParams extends WithdrawalOptions {
   seed: number;
   /** Optional decumulation phase after the `years` accumulation phase. */
   withdrawalYears?: number;
-  /** Monthly amount withdrawn during the decumulation phase (base currency). */
-  monthlyWithdrawal?: number;
-  /**
-   * Annual withdrawal RATE (fraction). When set, each run withdraws a fixed
-   * nominal monthly amount of `rate × (that run's value at retirement) / 12`.
-   * Takes precedence over `monthlyWithdrawal`.
-   */
-  withdrawalRate?: number;
   /** Rebalance back to target weights at each year boundary. */
   rebalanceYearly?: boolean;
 }
@@ -489,8 +511,11 @@ export function runPortfolioMonteCarlo(
   const accMonths = Math.max(1, Math.round(years * 12));
   const months = Math.max(1, Math.round(totalYears * 12));
   const flatWithdrawal = Math.max(0, params.monthlyWithdrawal ?? 0);
-  const withdrawalRate = Math.max(0, params.withdrawalRate ?? 0);
+  const fixedAnnualAmount = Math.max(0, params.fixedAnnualAmount ?? 0);
+  const usesFixedAmount = fixedAnnualAmount > 0 && wYears > 0;
+  const withdrawalRate = usesFixedAmount ? 0 : Math.max(0, params.withdrawalRate ?? 0);
   const usesRate = withdrawalRate > 0 && wYears > 0;
+  const usesStrategy = usesRate || usesFixedAmount;
   const rebalanceYearly = !!params.rebalanceYearly;
   const rng = mulberry32(params.seed >>> 0);
 
@@ -528,7 +553,7 @@ export function runPortfolioMonteCarlo(
     const values = weights.map((w) => initialCapital * w);
     const yearEnd: number[] = [];
     const annualIncomes: number[] = [];
-    let monthlyWithdrawal = usesRate ? 0 : flatWithdrawal;
+    let monthlyWithdrawal = usesStrategy ? 0 : flatWithdrawal;
     let initialWithdrawal = 0;
     let previousAnnual = 0;
     let depleted = false;
@@ -541,8 +566,10 @@ export function runPortfolioMonteCarlo(
 
       if (monthsIntoRetirement >= 0 && monthsIntoRetirement % 12 === 0) {
         const yearsIntoRetirement = monthsIntoRetirement / 12;
-        if (yearsIntoRetirement === 0) initialWithdrawal = p.rate * portValue;
-        const grossAnnual = usesRate
+        if (yearsIntoRetirement === 0) {
+          initialWithdrawal = usesFixedAmount ? fixedAnnualAmount : p.rate * portValue;
+        }
+        const grossAnnual = usesStrategy
           ? annualWithdrawal(p, {
               initialWithdrawal,
               portfolioValue: portValue,
@@ -608,7 +635,7 @@ export function runPortfolioMonteCarlo(
       yearValues[y].push(primary.yearEnd[y - 1]);
     }
     finals.push(primary.final);
-    if (usesRate) withdrawals.push(primary.initialWithdrawal);
+    if (usesStrategy) withdrawals.push(primary.initialWithdrawal);
 
     if (compare) {
       for (const strategy of WITHDRAWAL_STRATEGIES) {
@@ -634,6 +661,7 @@ export function runPortfolioMonteCarlo(
     withdrawalYears: params.withdrawalYears,
     monthlyWithdrawal: params.monthlyWithdrawal,
     withdrawalRate: params.withdrawalRate,
+    fixedAnnualAmount: params.fixedAnnualAmount,
     withdrawalStrategy: params.withdrawalStrategy,
     stress: params.stress,
     compareStrategies: params.compareStrategies,
