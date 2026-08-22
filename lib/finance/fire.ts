@@ -16,6 +16,11 @@ import type { SpendingTransaction } from "../types";
 import { byCategoryAndMonth, incomeExpenseSplit } from "./spending";
 import { shiftMonth } from "./dates";
 import { runMonteCarlo } from "./monte-carlo";
+import {
+  planToFireAssumption,
+  planToWithdrawalOptions,
+  type WithdrawalPlan,
+} from "./withdrawal-plan";
 
 /** Trailing window size for the expense average, in calendar months -- same
  *  convention as `computeFinancialHealth` (lib/finance/health.ts). */
@@ -140,6 +145,46 @@ export function fireNumberWithPension(
   );
 }
 
+/**
+ * The `fixedRealAmount` strategy's target: how large a portfolio, growing at
+ * `nominalReturn`, sustains a withdrawal of `annualAmount` forever, where
+ * that withdrawal itself rises with `inflation` each year (or stays flat
+ * when `inflation` is 0). This is the standard growing-perpetuity discount
+ * rate -- the rate at which the portfolio outgrows the withdrawal's own
+ * escalation -- not the withdrawal RATE `fireNumber` divides by, because a
+ * fixed-amount plan states no rate. A non-positive real return has no
+ * finite answer (the withdrawal grows at least as fast as the portfolio).
+ */
+export function realReturn(nominalReturn: number, inflation: number): number {
+  return (1 + nominalReturn) / (1 + Math.max(-0.99, inflation)) - 1;
+}
+
+/** `fireNumber`'s counterpart for a stated amount instead of a rate. */
+export function fixedAmountFireNumber(annualAmount: number, discountRate: number): number {
+  if (discountRate <= 0) return Infinity;
+  return Math.max(0, annualAmount) / discountRate;
+}
+
+/** `fireNumberWithPension`'s counterpart for a stated amount instead of a
+    rate, mirroring its bridge + perpetuity split exactly. */
+export function fixedAmountFireNumberWithPension(
+  annualAmount: number,
+  discountRate: number,
+  pensionAnnual: number,
+  bridgeYears: number,
+): number {
+  if (discountRate <= 0) return Infinity;
+  const amount = Math.max(0, annualAmount);
+  const pension = Math.max(0, pensionAnnual);
+  if (pension <= 0) return amount / discountRate;
+  const bridge = Math.max(0, bridgeYears);
+  const residual = Math.max(0, amount - pension);
+  const discount = Math.pow(1 + discountRate, -bridge);
+  return (
+    annuityPresentValue(amount, bridge, discountRate) + (residual / discountRate) * discount
+  );
+}
+
 /** Iteration cap for `yearsToFire` -- 100 years of monthly compounding, so the
  *  loop is always bounded rather than running unbounded when the target is
  *  never reached. */
@@ -207,13 +252,18 @@ export function shortfallRisk(input: {
   expectedReturn: number;
   /** Measured volatility, fraction. */
   volatility: number;
-  /** Annual withdrawal rate, fraction. */
-  withdrawalRate: number;
+  /** The user's actual chosen plan -- the risk shown must match the
+   *  strategy the plan is FOR, not a strategy hardcoded independently of
+   *  it (a `percentOfPortfolio` plan cannot deplete the same way a `fixed`
+   *  one can, and showing the `fixed` figure next to it would be wrong). */
+  plan: WithdrawalPlan;
   /** Retirement length to test, years. */
   years?: number;
 }): number | null {
   if (!Number.isFinite(input.target) || input.target <= 0) return null;
-  if (input.withdrawalRate <= 0) return null;
+  const options = planToWithdrawalOptions(input.plan);
+  const hasWithdrawal = (options.withdrawalRate ?? 0) > 0 || (options.fixedAnnualAmount ?? 0) > 0;
+  if (!hasWithdrawal) return null;
   const result = runMonteCarlo({
     initialCapital: input.target,
     monthlyContribution: 0,
@@ -225,8 +275,7 @@ export function shortfallRisk(input: {
     runs: RISK_RUNS,
     seed: RISK_SEED,
     withdrawalYears: input.years ?? RETIREMENT_YEARS,
-    withdrawalRate: input.withdrawalRate,
-    withdrawalStrategy: "fixed",
+    ...options,
   });
   const finals = result.finalDistribution;
   if (finals.length === 0) return null;
@@ -238,17 +287,25 @@ export function shortfallRisk(input: {
 export const RETIREMENT_YEARS = 30;
 
 export interface FirePlan {
-  /** Regular FIRE number: annualExpenses / withdrawalRate. */
+  /** Regular FIRE number: annualExpenses / withdrawalRate (rate strategies),
+   *  or the amount-based perpetuity target (`fixedRealAmount`). */
   regular: number;
-  /** Lean FIRE number: reduced-expense variant. */
+  /** Lean FIRE number: reduced-need variant. */
   lean: number;
-  /** Fat FIRE number: increased-expense variant. */
+  /** Fat FIRE number: increased-need variant. */
   fat: number;
   yearsToRegular: number | null;
   yearsToLean: number | null;
   yearsToFat: number | null;
-  /** The withdrawal rate (fraction) this plan was computed at, for display. */
+  /** The withdrawal rate (fraction) this plan was computed at, for display.
+   *  0 for an amount-based (`fixedRealAmount`) plan -- it states no rate. */
   withdrawalRate: number;
+  /** False when the target does not mean "this portfolio lasts forever" in
+   *  the classic sense -- only `currentPortfolioShare` today, whose rate is
+   *  re-evaluated against the CURRENT value every year rather than held to
+   *  this target. The UI must show a caveat instead of the usual framing
+   *  when this is false. */
+  hasStableTarget: boolean;
   /** Annual pension income folded in, or 0 when none was supplied. */
   pensionAnnual: number;
   /** Years the portfolio must carry the FULL expenses alone before the pension
@@ -271,16 +328,21 @@ const BRIDGE_ITERATIONS = 8;
  * portfolio has to carry the expenses alone, and that depends on when you stop
  * working, which depends on the capital needed. So this starts from the
  * pension-free target and iterates until the answer stops moving.
+ *
+ * `targetFor` computes the perpetuity target for a given bridge length and
+ * pension income -- callers supply either the rate-based formula
+ * (`fireNumberWithPension`) or the amount-based one
+ * (`fixedAmountFireNumberWithPension`), already closed over their own
+ * rate/amount. The bridge iteration itself does not care which.
  */
 function solveTarget(
   currentNetWorth: number,
-  annualExpenses: number,
   monthlyContribution: number,
   annualReturnRate: number,
-  withdrawalRate: number,
   pension: PensionBridge | undefined,
+  targetFor: (bridgeYears: number, pensionAnnual: number) => number,
 ): { target: number; years: number | null; bridgeYears: number } {
-  const plain = fireNumber(annualExpenses, withdrawalRate);
+  const plain = targetFor(0, 0);
   if (!pension || pension.annualIncome <= 0) {
     return {
       target: plain,
@@ -295,12 +357,7 @@ function solveTarget(
 
   for (let i = 0; i < BRIDGE_ITERATIONS; i++) {
     bridgeYears = Math.max(0, pension.yearsUntilStart - years);
-    target = fireNumberWithPension(
-      annualExpenses,
-      withdrawalRate,
-      pension.annualIncome,
-      bridgeYears,
-    );
+    target = targetFor(bridgeYears, pension.annualIncome);
     const next = yearsToFire(currentNetWorth, target, monthlyContribution, annualReturnRate);
     // Never reached: the bridge cannot be pinned down, so report the target
     // computed from the last usable estimate rather than a fabricated date.
@@ -314,39 +371,74 @@ function solveTarget(
   return { target, years, bridgeYears };
 }
 
+/** Picks the perpetuity formula for a plan's assumption, closed over the
+    return/inflation figures it needs -- the bridge iteration in
+    `solveTarget` then only ever calls `(need, bridgeYears, pensionAnnual)`,
+    unaware of which formula world it is in. */
+function targetFormula(
+  assumption: ReturnType<typeof planToFireAssumption>,
+  annualReturnRate: number,
+): (need: number, bridgeYears: number, pensionAnnual: number) => number {
+  if (assumption.kind === "amountPerpetuity") {
+    // Unindexed: a flat withdrawal is sustained by the plain nominal return.
+    // Indexed: the withdrawal itself grows with inflation, so only the
+    // REAL return (the growth ABOVE that escalation) funds it forever.
+    const discountRate = assumption.inflationIndexed
+      ? realReturn(annualReturnRate, assumption.assumedInflation)
+      : annualReturnRate;
+    return (need, bridgeYears, pensionAnnual) =>
+      fixedAmountFireNumberWithPension(need, discountRate, pensionAnnual, bridgeYears);
+  }
+  return (need, bridgeYears, pensionAnnual) =>
+    fireNumberWithPension(need, assumption.rate, pensionAnnual, bridgeYears);
+}
+
 /**
  * Single entry point mirroring `computeFinancialHealth`'s shape: takes the
  * primitives the UI already has in hand (current net worth, trailing annual
  * expenses from `trailingAnnualExpenses`, a monthly contribution estimate,
  * the measured annual return from `stats.ts`, and the chosen withdrawal
- * rate) and returns the three FIRE targets plus a deterministic years-to-FI
+ * plan) and returns the three FIRE targets plus a deterministic years-to-FI
  * for each.
+ *
+ * Guaranteed income rides on `plan.guaranteedIncome` (not a separate
+ * parameter): FIRE and the simulation must read the SAME plan for the SAME
+ * pension figure, and a second parameter next to it is exactly the kind of
+ * duplicate state that let the two pages drift before. Omitted (or zero)
+ * reproduces the pension-free numbers exactly, so a user with no pension
+ * record sees no change.
  */
 export function computeFirePlan(
   currentNetWorth: number,
   annualExpenses: number,
   monthlyContribution: number,
   annualReturnRate: number,
-  withdrawalRate: number,
-  /** Guaranteed later income. Omitted (or zero) reproduces the pension-free
-   *  numbers exactly, so a user with no pension record sees no change. */
-  pension?: PensionBridge,
+  plan: WithdrawalPlan,
 ): FirePlan {
-  const solve = (expenses: number) =>
-    solveTarget(
-      currentNetWorth,
-      expenses,
-      monthlyContribution,
-      annualReturnRate,
-      withdrawalRate,
-      pension,
+  const assumption = planToFireAssumption(plan);
+  const formula = targetFormula(assumption, annualReturnRate);
+  const pension: PensionBridge | undefined = plan.guaranteedIncome
+    ? {
+        annualIncome: plan.guaranteedIncome.annualAmount,
+        yearsUntilStart: plan.guaranteedIncome.yearsUntilStart,
+      }
+    : undefined;
+  // `fixedRealAmount` states its own need directly; every other strategy
+  // scales the measured expenses -- the plan's rate applies to whatever
+  // budget it is retiring into, lean/regular/fat included.
+  const baseNeed =
+    assumption.kind === "amountPerpetuity" ? assumption.annualAmount : annualExpenses;
+
+  const solve = (need: number) =>
+    solveTarget(currentNetWorth, monthlyContribution, annualReturnRate, pension, (bridgeYears, pensionAnnual) =>
+      formula(need, bridgeYears, pensionAnnual),
     );
-  // Lean and Fat scale the EXPENSES, not the target, so the pension is netted
+  // Lean and Fat scale the NEED, not the target, so the pension is netted
   // against the budget each variant actually assumes -- a leaner budget is
   // covered by the same pension to a greater extent, which is the whole point.
-  const regular = solve(annualExpenses);
-  const lean = solve(annualExpenses * LEAN_FIRE_EXPENSE_RATIO);
-  const fat = solve(annualExpenses * FAT_FIRE_EXPENSE_RATIO);
+  const regular = solve(baseNeed);
+  const lean = solve(baseNeed * LEAN_FIRE_EXPENSE_RATIO);
+  const fat = solve(baseNeed * FAT_FIRE_EXPENSE_RATIO);
 
   return {
     regular: regular.target,
@@ -355,9 +447,10 @@ export function computeFirePlan(
     yearsToRegular: regular.years,
     yearsToLean: lean.years,
     yearsToFat: fat.years,
-    withdrawalRate,
+    withdrawalRate: assumption.kind === "rate" ? assumption.rate : 0,
+    hasStableTarget: assumption.kind === "rate" ? assumption.hasStableTarget : true,
     pensionAnnual: pension?.annualIncome ?? 0,
     bridgeYears: regular.bridgeYears,
-    regularWithoutPension: fireNumber(annualExpenses, withdrawalRate),
+    regularWithoutPension: formula(baseNeed, 0, 0),
   };
 }

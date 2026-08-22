@@ -47,6 +47,7 @@ import { goalTotals, subGoals, topLevelGoals } from "@/lib/finance/goals";
 import { projectPension } from "@/lib/finance/pension";
 import { usePensionReference } from "@/lib/pension/use-pension-reference";
 import { computeFirePlan, trailingAnnualExpenses } from "@/lib/finance/fire";
+import { defaultWithdrawalPlan } from "@/lib/finance/withdrawal-plan";
 import { monthlyContributionOf } from "@/lib/finance/savings-plans";
 import { useFeatureFlag } from "@/lib/flags/flags-context";
 import { byAssetClass, byCountry, byCurrency } from "@/lib/finance/allocation";
@@ -96,10 +97,6 @@ const NO_BENCHMARKS: string[] = [];
 // Lookback for the history fetch, matching the 5-year default of
 // estimatePortfolioStats/portfolioRiskStats.
 const HISTORY_RANGE = "5Y";
-// The FIRE page's default withdrawal rate (the classic 4% rule). Its slider is
-// live what-if state that never leaves the component, so the snapshot reports
-// the plan at the default rather than at a position the user may have dragged.
-const DEFAULT_WITHDRAWAL_RATE = 0.04;
 
 /**
  * `active` arms the async context inputs (real histories + benchmark for
@@ -316,8 +313,9 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
 
     // The FIRE page's own defaults: trailing expenses, the savings plans'
     // monthly contribution and the measured expected return. The withdrawal
-    // rate is the page's 4% default, since a slider position is UI state that
-    // deliberately never leaves the component.
+    // plan is the page's default (classic 4% initial rate), since its
+    // strategy picker is UI state that deliberately never leaves the
+    // component.
     const annualExpenses = trailingAnnualExpenses(data.spendingTransactions, todayIso);
     const netWorth =
       holdings.reduce((s, h) => s + h.marketValue, 0) +
@@ -333,7 +331,7 @@ export function usePortfolioChat(active: boolean): PortfolioChat {
             annualExpenses,
             monthlyContributionOf(data.savingsPlans, data.assets, valuation),
             stats?.expectedReturn ?? 0,
-            DEFAULT_WITHDRAWAL_RATE,
+            defaultWithdrawalPlan(),
           )
         : null;
     const fire = plan

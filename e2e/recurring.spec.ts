@@ -44,7 +44,7 @@ async function addRecurring(
   await form.locator("#spending-payee").fill(name);
   // The date field is a datetime-local; a date-only value is malformed.
   if (startDate) await form.locator("#spending-date").fill(`${startDate}T09:00`);
-  await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+  await form.getByRole("button", { name: "Add recurring expense", exact: true }).click();
 }
 
 test("a recurring payment is added from the entry mask and deleted from the card", async ({
@@ -94,7 +94,7 @@ test("changing a booked recurring payment asks which payments it applies to", as
   await form.locator("#spending-amount").fill("30");
   await form.locator("#spending-payee").fill("Gym");
   await form.locator("#spending-date").fill("2026-01-05T09:00");
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await form.getByRole("button", { name: "Add expense", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   const ledger = page.locator('[data-tour="spending-table"]');

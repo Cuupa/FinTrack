@@ -1416,17 +1416,33 @@ Moved out of CLAUDE.md, which keeps the route table and the binding rules.
   flag is off outright loses its tab; with a single visible mode the strip
   disappears entirely.
   Once the withdrawal phase has a duration, the panel also carries the
-  **withdrawal strategy** and the **stress scenario** — see `lib/finance/
-  withdrawal.ts`. The rate says how MUCH; the strategy says how that amount is
-  decided again each year (`fixed` ignores the portfolio, `percentOfPortfolio`
-  can never deplete but swings, `guardrails` moves rarely and by a step,
-  `floorCeiling` tracks within bounds); the stress says what it is tested
-  against. Each strategy carries three imperative steps, because a strategy
-  nobody can execute is a chart and not a plan. `WithdrawalComparison` runs all
-  four over the SAME simulated paths and shows what it lasts, what it pays, the
-  worst year and what is left — deliberately without naming a winner, since a
-  higher success rate is bought with an income that moves. Identical panel on
-  the FIRE tab; identical runner (`useMonteCarloRun`) behind both.
+  **withdrawal plan** — see `lib/finance/withdrawal-plan.ts` (round: withdrawal
+  refactor). ONE `WithdrawalPlan` (strategy, rate/amount, inflation, stress) is
+  the single domain object FIRE and the simulation both read: FIRE translates
+  it via `planToFireAssumption` into the perpetuity target (`computeFirePlan`,
+  `lib/finance/fire.ts`), the simulation translates it via
+  `planToWithdrawalOptions` into what the path-wise engine
+  (`lib/finance/withdrawal.ts`/`monte-carlo.ts`, unchanged) needs. Only four
+  strategies are offered through the plan (`initialRate` ignores the portfolio
+  after the first year, `currentPortfolioShare` can never deplete but swings,
+  `guardrails` moves rarely and by a step, `fixedRealAmount` states a euro
+  amount instead of a rate); the underlying engine also still knows
+  `floorCeiling`/`vpw` for backward compatibility, but they are not offered as
+  a starting strategy. Each strategy shows a worked example and three
+  imperative steps, because a strategy nobody can execute is a chart and not a
+  plan. `WithdrawalComparison` runs all FIVE engine strategies over the SAME
+  simulated paths and shows what each lasts, pays, its worst year and what is
+  left — deliberately without naming a winner, since a higher success rate is
+  bought with an income that moves. Identical panel (`WithdrawalStrategyPanel`,
+  `components/simulation/withdrawal-strategy-panel.tsx`) on the FIRE tab, which
+  hands its plan to the simulator via the query string
+  (`strategy`/`rate`/`amount`/`inflation`, additive to the existing
+  `years`/`withdrawal`/`pensionAnnual`/`pensionStart`) — the simulator flags
+  when an edited field there has diverged from what FIRE sent. The two pages
+  do NOT share a runner: FIRE's risk tiles call `runMonteCarlo` directly with a
+  fixed seed (`shortfallRisk`, `lib/finance/fire.ts`), the simulator runs
+  through the worker + cache (`useMonteCarloRun`) — both call the same pure
+  engine function, only the orchestration around it differs.
 - `/login` — Supabase email/password + Google/GitHub OAuth
 - `/impressum`, `/datenschutz`, `/terms` — legal pages (EN+DE content blocks,
   linked via `LegalFooter` in the root layout). The privacy policy makes

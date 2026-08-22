@@ -152,19 +152,26 @@ export async function bookTransaction(
   },
 ): Promise<void> {
   const form = await openEntryMask(page);
-  if (opts.type === "Income") {
+  // Three explicit modes now (Audit §4.3): a transfer is its own mode, not a
+  // field bolted onto an expense. `transferTo` selects that mode.
+  const isTransfer = Boolean(opts.transferTo);
+  if (isTransfer) {
+    await form.getByRole("button", { name: "Transfer", exact: true }).click();
+  } else if (opts.type === "Income") {
     await form.getByRole("button", { name: "Income", exact: true }).click();
   }
   if (opts.account) {
-    await form.getByRole("button", { name: "Account", exact: true }).click();
+    await form.getByRole("button", { name: isTransfer ? "From account" : "Account", exact: true }).click();
     await page.getByRole("option", { name: opts.account }).click();
   }
-  await form.locator("#spending-amount").fill(opts.amount);
-  await form.locator("#spending-payee").fill(opts.payee);
-  if (opts.transferTo) {
-    await form.getByRole("button", { name: "Transfer to" }).click();
-    await page.getByRole("option", { name: opts.transferTo }).click();
+  if (isTransfer) {
+    await form.getByRole("button", { name: "To account", exact: true }).click();
+    await page.getByRole("option", { name: opts.transferTo! }).click();
   }
-  await form.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await form.locator("#spending-amount").fill(opts.amount);
+  // A transfer has no counterparty field; its label is the destination account.
+  if (!isTransfer) await form.locator("#spending-payee").fill(opts.payee);
+  const cta = isTransfer ? "Create transfer" : opts.type === "Income" ? "Add income" : "Add expense";
+  await form.getByRole("button", { name: cta, exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }

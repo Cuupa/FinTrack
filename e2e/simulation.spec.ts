@@ -38,10 +38,12 @@ test.describe("simulation (Guest Mode)", () => {
     await dismissTour(page);
 
     // The horizon arrives as the investment horizon, and the drawdown phase is
-    // switched on with it.
+    // switched on with it. The withdrawal PLAN (not just the horizon) hands
+    // over too: FIRE's default strategy (initial rate, 4%) is seeded here,
+    // not a bare, disconnected "Annual withdrawal rate" slider.
     await expect(page.getByText(/Horizon taken from your FIRE plan/)).toBeVisible();
-    await expect(page.getByText("Annual withdrawal rate")).toBeVisible();
     await expect(page.getByText("Withdrawal strategy")).toBeVisible();
+    await expect(page.getByText("Initial rate, then inflation-adjusted")).toBeVisible();
   });
 
   // The drawdown is not a bare rate on the depot: guaranteed income pays part

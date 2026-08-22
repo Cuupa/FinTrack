@@ -58,6 +58,7 @@ export function hashSimParams(message: SimulationMessage): string {
     runs: p.runs,
     withdrawalYears: p.withdrawalYears ?? 0,
     withdrawalRate: r(p.withdrawalRate ?? 0),
+    fixedAnnualAmount: r(p.fixedAnnualAmount ?? 0),
     withdrawalStrategy: p.withdrawalStrategy ?? "fixed",
     guardrailBand: p.guardrailBand ?? null,
     guardrailAdjust: p.guardrailAdjust ?? null,

@@ -1,6 +1,6 @@
 ---
 name: styleguide
-description: FinTrack's visual/UI conventions after the redesign — the semantic design tokens (surface/text/brand/action/positive-negative + 6-color chart palette), typography, spacing, the shared components/ui primitives, table/button/form/chart patterns, and the hard rules (no badges, tabular numbers, skeletons, informal du). Read before building or restyling any UI so it matches the app instead of re-deriving classes.
+description: FinTrack's visual/UI conventions after the redesign — the semantic design tokens (surface/text/brand/action/positive-negative + 6-color chart palette), typography, spacing, the shared components/ui primitives, table/button/form/chart patterns, and the hard rules (tabular numbers, skeletons, informal du). Read before building or restyling any UI so it matches the app instead of re-deriving classes.
 ---
 
 # FinTrack styleguide
@@ -21,9 +21,6 @@ but the tokens are the vocabulary of record. Migrate a surface by swapping
 
 ## Hard rules (non-negotiable)
 
-- **No badges of any kind.** Filled pills are forbidden. Counts use an *outline
-  ring* (`NotificationCount`: `rounded-full border border-emerald-600
-  text-emerald-600`, no fill). If you reach for a badge, redesign.
 - **Tabular numbers everywhere** a figure is shown: add `tabular-nums`. Currency,
   counts, percentages, table cells, KPIs.
 - **Skeletons, never placeholder text/spinners** for pending values. Use
@@ -134,7 +131,7 @@ All in `components/ui/`:
 | `CopyValue` | inline copy button for identifiers |
 | `Toggle` | on/off switch (`h-6 w-11 rounded-full`, not a checkbox) |
 | `Slider` | range input (`fin-slider`, CSS-driven, brand fill) |
-| `NotificationCount` | outline-ring count on a nav entry (never a filled badge) |
+| `NotificationCount` | outline-ring count on a nav entry (`rounded-full border border-emerald-600 text-emerald-600`, no fill) |
 | `EstimatedBadge` | amber "estimated data" marker on synthetic figures (globally flag-gated) |
 | `ProTeaser` / `ProGate` / `ProMenuItem` | wrap a locked feature's own view in a blur + subscribe CTA |
 

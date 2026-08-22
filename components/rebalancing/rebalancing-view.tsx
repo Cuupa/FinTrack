@@ -14,7 +14,7 @@ import { useLivePrices } from "@/lib/live/live-prices-context";
 import { summarizeAll } from "@/lib/finance/portfolio";
 import { formatCurrency, formatInputDecimal, formatNumber, normalizeZero, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { Button, Card, SectionTitle, SegmentedControl } from "@/components/ui/primitives";
-import { InfoTip } from "@/components/ui/info-tip";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Private } from "@/components/ui/private";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { useSort } from "@/components/ui/use-sort";
@@ -82,6 +82,7 @@ export function RebalancingView() {
   // The position highlighted across both donuts + the table row on hover.
   const [activeName, setActiveName] = useState<string | null>(null);
   const [tourReplay, setTourReplay] = useState(0);
+  const [confirmNormalise, setConfirmNormalise] = useState(false);
 
   // Persist the plan (debounced) whenever it changes from what's stored. Writing
   // goes through updateProfile like any other profile field; the local state is
@@ -292,9 +293,13 @@ export function RebalancingView() {
                 }`}
               >
                 {t("rebalance.total")}: {normalizeZero(targetSum, 1).toFixed(1)}%
-                {Math.abs(targetSum - 100) >= 0.05 && <InfoTip text={t("rebalance.total.hint")} />}
               </span>
-              <Button variant="secondary" size="sm" onClick={normalize}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setConfirmNormalise(true)}
+                disabled={targetSum <= 0 || Math.abs(targetSum - 100) < 0.05}
+              >
                 {t("rebalance.normalise")}
               </Button>
             </div>
@@ -303,6 +308,15 @@ export function RebalancingView() {
           {t("rebalance.targetAllocation")}
           <TourReplayButton onClick={() => setTourReplay((n) => n + 1)} />
         </SectionTitle>
+
+        {targetSum > 0 && Math.abs(targetSum - 100) >= 0.05 && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+            <span className="font-medium tabular-nums">
+              {t("rebalance.total")}: {normalizeZero(targetSum, 1).toFixed(1)}%
+            </span>
+            <span>{t("rebalance.total.hint")}</span>
+          </div>
+        )}
 
         <div data-tour="rebalance-table">
           <Table className="mt-4" ariaLabel={t("rebalance.targetAllocation")}>
@@ -379,13 +393,23 @@ export function RebalancingView() {
                   <Td
                     align="right"
                     className={`tabular-nums ${
-                      r.kept || Math.abs(r.delta) < 0.005 ? "text-zinc-400" : plColor(r.delta)
+                      r.kept || Math.abs(r.delta) < 0.005
+                        ? "text-zinc-400"
+                        : "text-zinc-700 dark:text-zinc-200"
                     }`}
                     data-private
                   >
-                    {r.kept || Math.abs(r.delta) < 0.005
-                      ? t("rebalance.keep")
-                      : `${r.delta >= 0 ? t("rebalance.buy") : t("rebalance.sell")} ${formatCurrency(Math.abs(r.delta), base)}`}
+                    {r.kept || Math.abs(r.delta) < 0.005 ? (
+                      t("rebalance.keep")
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <span aria-hidden className="text-zinc-400">
+                          {r.delta >= 0 ? "↑" : "↓"}
+                        </span>
+                        {r.delta >= 0 ? t("rebalance.buy") : t("rebalance.sell")}{" "}
+                        {formatCurrency(Math.abs(r.delta), base)}
+                      </span>
+                    )}
                   </Td>
                   <Td align="right">
                     {r.isCustom && (
@@ -426,6 +450,21 @@ export function RebalancingView() {
           </div>
         </div>
       </Card>
+
+      <ConfirmDialog
+        open={confirmNormalise}
+        title={t("rebalance.normalise")}
+        message={t("rebalance.normalise.confirm", {
+          sum: normalizeZero(targetSum, 1).toFixed(1),
+          factor: targetSum > 0 ? (100 / targetSum).toFixed(3) : "1",
+        })}
+        confirmLabel={t("rebalance.normalise")}
+        onConfirm={() => {
+          normalize();
+          setConfirmNormalise(false);
+        }}
+        onCancel={() => setConfirmNormalise(false)}
+      />
     </div>
   );
 }

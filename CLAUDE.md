@@ -42,7 +42,6 @@ The long-form design notes live next to it, and every reference below resolves
 - Tables are sortable when users genuinely need to switch between several sort orders, not by default. Always highlight the row on mouseover
 - When emulating desktop, use 1080p as screen resolution
 - Use skeleton loading instead of placeholders for eg. prices
-- I forbid you to use badges of any kind. if you need to display a badge, you fucked up big time and go back to drawing board
 - When changing or removing a feature, always check if feature flags became stale/depricated
 - When developing new features, create e2e tests if applicable
 
@@ -418,25 +417,44 @@ FX-convert) always beats a wrong instrument in the right currency.
   be subtracted again (a day-one portfolio once read −100%).
 - `monte-carlo.ts` — pure simulation, run off-thread via
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
-  Decumulation lives in `withdrawal.ts` (pure): four strategies (`fixed`,
-  `percentOfPortfolio`, `guardrails`, `floorCeiling`), asked once per
-  retirement YEAR, plus sequence-of-returns stress (`earlyCrash`,
-  `lostDecade`) that only bites once withdrawals start. **The comparison
-  replays every strategy over the SAME drawn market path** — comparing across
-  different draws would measure the draw, not the strategy. `compareStrategies`
-  is opt-in and the result section is omitted when it was not asked for.
-- **One Monte Carlo runner**: `useMonteCarloRun` (`lib/simulation/`) owns the
-  param hash, the seed, the cache read/write, the worker and the main-thread
-  fallback for BOTH /simulation and the FIRE tab. They used to carry two
-  copies with *different* hash field sets, so neither could reuse the other's
-  stored run and a new parameter silently returned a stale result. Any field
-  that changes the result must be in `hashSimParams`.
-- The strategy pickers, the per-strategy steps and the comparison table are
-  `WithdrawalStrategyPanel` / `WithdrawalComparison`
-  (`components/simulation/withdrawal-strategy-panel.tsx`), shared by both
-  surfaces. Pickers+steps sit with the parameters, the comparison with the
-  results. The table never crowns a winner: the strategies trade the same risk
-  against each other, so it shows both sides.
+  Decumulation lives in `withdrawal.ts` (pure): five ENGINE strategies
+  (`fixed`, `percentOfPortfolio`, `guardrails`, `floorCeiling`, `vpw`), asked
+  once per retirement YEAR, plus sequence-of-returns stress (`earlyCrash`,
+  `lostDecade`) that only bites once withdrawals start. A first-year amount
+  can be seeded either from a rate (`withdrawalRate x` portfolio value) or a
+  stated `fixedAnnualAmount` (mutually exclusive, the amount wins) — both then
+  carry forward through the SAME `fixed`-strategy inflation indexing, added
+  for the `fixedRealAmount` domain strategy below without touching the
+  five-strategy switch itself. **The comparison replays every strategy over
+  the SAME drawn market path** — comparing across different draws would
+  measure the draw, not the strategy. `compareStrategies` is opt-in (rate mode
+  only) and the result section is omitted when it was not asked for.
+- **One shared withdrawal ASSUMPTION, two runners** (round: withdrawal
+  refactor). `lib/finance/withdrawal-plan.ts` is the single `WithdrawalPlan`
+  FIRE and the simulation both read — only FOUR strategies are offered through
+  it (`initialRate`, `currentPortfolioShare`, `guardrails`, `fixedRealAmount`;
+  `floorCeiling`/`vpw` stay engine-only, dropped from the picker on owner
+  decision), translated by `planToFireAssumption` (perpetuity target,
+  `fire.ts`) or `planToWithdrawalOptions` (engine params) — never a rate typed
+  twice. The two pages do NOT share a runner, only the pure engine function:
+  `useMonteCarloRun` (`lib/simulation/`, param hash + seed + cache + worker +
+  main-thread fallback) is /simulation's alone; the FIRE tiles' `shortfallRisk`
+  calls `runMonteCarlo` directly and synchronously with a fixed seed, no
+  worker, no cache — cheap enough for a slider to recompute on every drag. Any
+  field that changes the simulator's result must be in `hashSimParams`
+  regardless.
+- The strategy picker, its strategy-specific fields, the per-strategy steps
+  and worked example are `WithdrawalStrategyPanel`
+  (`components/simulation/withdrawal-strategy-panel.tsx`, takes `plan`/
+  `onPlanChange`), shared by both surfaces; `WithdrawalComparison` (same file)
+  is the results-side table, keyed by the engine's five strategy ids since it
+  compares all of them regardless of which four the picker offers. The table
+  never crowns a winner: the strategies trade the same risk against each
+  other, so it shows both sides. FIRE hands its plan to the simulator via the
+  query string (`strategy`/`rate`/`amount`/`inflation`, additive to the
+  pre-existing `years`/`withdrawal`/`pensionAnnual`/`pensionStart`); the
+  simulator seeds its own editable copy from it and flags a field that has
+  since diverged.
 - `dividends.ts` — dividends from **real events** (`/api/dividends`, Yahoo)
   scaled by shares held on each pay date; accumulating funds show none. The
   hinted listing is **authoritative in `dividendsByQuery`**: if it resolves,

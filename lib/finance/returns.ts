@@ -357,6 +357,14 @@ export interface WeightedLevels {
  * so assets contribute by relative performance, not absolute price level.
  * Weights are renormalised over the assets that make it into the intersection.
  *
+ * A freshly listed holding with a two-point history would otherwise shrink the
+ * shared window below three dates and return an empty composite — killing the
+ * whole portfolio's beta/alpha over one tiny position. So when the full
+ * intersection is too short, the shortest-history holdings are dropped one at a
+ * time until the survivors share a usable window (their weight renormalises over
+ * the rest). A holding whose own table row already reads "—" for the same reason
+ * is simply absent here too.
+ *
  * With a single asset this reduces to that asset's own levels rescaled to
  * start at 1.0 — a pure scalar multiple of its raw levels. Since `betaAlpha`
  * measures returns (ratios), it is scale-invariant, so
@@ -368,22 +376,32 @@ export function compositeLevelSeries(items: WeightedLevels[]): SeriesPoint[] {
   const usable = items.filter((it) => it.levels.length > 0 && it.weight > 0);
   if (usable.length === 0) return [];
 
-  const dateSets = usable.map((it) => new Set(it.levels.map((p) => p.date)));
-  const common = [...dateSets[0]]
-    .filter((d) => dateSets.every((s) => s.has(d)))
-    .sort();
+  const intersect = (pool: WeightedLevels[]): string[] => {
+    const sets = pool.map((it) => new Set(it.levels.map((p) => p.date)));
+    return [...sets[0]].filter((d) => sets.every((s) => s.has(d))).sort();
+  };
+
+  // Most-covered first, so slicing off the tail drops the shortest history —
+  // the holding most likely to be blocking a shared window (same-source daily
+  // series are recent windows anchored to today, so longer ⊇ shorter).
+  let pool = [...usable].sort((a, b) => b.levels.length - a.levels.length);
+  let common = intersect(pool);
+  while (common.length < 3 && pool.length > 1) {
+    pool = pool.slice(0, -1);
+    common = intersect(pool);
+  }
   if (common.length < 3) return [];
 
-  const maps = usable.map((it) => new Map(it.levels.map((p) => [p.date, p.value])));
+  const maps = pool.map((it) => new Map(it.levels.map((p) => [p.date, p.value])));
   const bases = maps.map((m) => m.get(common[0])!);
   if (bases.some((b) => !(b > 0))) return [];
-  const totalWeight = usable.reduce((s, it) => s + it.weight, 0);
+  const totalWeight = pool.reduce((s, it) => s + it.weight, 0);
   if (!(totalWeight > 0)) return [];
 
   return common.map((d) => {
     let value = 0;
-    for (let i = 0; i < usable.length; i++) {
-      value += (usable[i].weight / totalWeight) * (maps[i].get(d)! / bases[i]);
+    for (let i = 0; i < pool.length; i++) {
+      value += (pool[i].weight / totalWeight) * (maps[i].get(d)! / bases[i]);
     }
     return { date: d, value };
   });

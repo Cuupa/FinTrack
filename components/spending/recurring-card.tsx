@@ -659,11 +659,7 @@ export function RecurringCard() {
                           }
                           aria-label={t("recurring.due.amountLabel")}
                           className={`${dueInputCls} ${
-                            amount === null
-                              ? "border-red-500 dark:border-red-500"
-                              : d.amount < 0
-                                ? "text-red-600 dark:text-red-400"
-                                : ""
+                            amount === null ? "border-red-500 dark:border-red-500" : ""
                           }`}
                           data-private
                         />
@@ -786,13 +782,10 @@ export function RecurringCard() {
                       </div>
                     )}
                   </Td>
-                  <Td
-                    align="right"
-                    className={`tabular-nums ${
-                      r.amount < 0 ? "text-red-600 dark:text-red-400" : ""
-                    }`}
-                    data-private
-                  >
+                  {/* Neutral: a recurring expense is not an error. Same rule as
+                      the booking list -- the sign and the target column carry
+                      direction (Audit §4.5). */}
+                  <Td align="right" className="tabular-nums" data-private>
                     {formatCurrency(r.amount, r.currency)}
                   </Td>
                   {/* Money moved to another of your own accounts keeps its

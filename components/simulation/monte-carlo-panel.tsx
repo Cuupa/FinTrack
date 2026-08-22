@@ -21,15 +21,17 @@ import type {
 import { formatCurrency, formatInputDecimal, formatPercent, parseDecimal, plColor, stripLeadingZero } from "@/lib/format";
 import { Button, Card, EmptyState, SectionTitle, Stat, StatRow, SegmentedControl, Toggle } from "@/components/ui/primitives";
 import { InlineNotice } from "@/components/ui/inline-notice";
-import { Slider } from "@/components/ui/slider";
+import { SliderField } from "@/components/ui/slider-field";
 import { Tabs } from "@/components/ui/tabs";
 import { randomSeed, useMonteCarloRun } from "@/lib/simulation/use-monte-carlo";
 import { usePensionBridge } from "@/lib/pension/use-pension-bridge";
 import {
-  DEFAULT_INFLATION,
-  type StressScenario,
-  type WithdrawalStrategyId,
-} from "@/lib/finance/withdrawal";
+  defaultWithdrawalPlan,
+  planToWithdrawalOptions,
+  WITHDRAWAL_STRATEGY_KINDS,
+  type WithdrawalPlan,
+  type WithdrawalStrategyKind,
+} from "@/lib/finance/withdrawal-plan";
 import {
   StressPicker,
   WithdrawalComparison,
@@ -49,9 +51,48 @@ type SimMode = "portfolio" | "custom";
 // holdings — a neutral world-equity baseline the user can override.
 const CUSTOM_RETURN_DEFAULT = 7;
 const CUSTOM_VOL_DEFAULT = 16;
-// Default annual withdrawal rate (percent) — the classic "4% rule".
-const WITHDRAWAL_RATE_DEFAULT = 4;
 const DEFAULT_ACCUMULATION_YEARS = 30;
+
+/**
+ * The withdrawal plan a link from FIRE hands over (`?strategy=&rate=` or
+ * `&amount=&inflation=`), or today's default when there is none -- so a
+ * bookmarked `/simulation?years=&withdrawal=` link from before this model
+ * existed still resolves to exactly the old behaviour.
+ */
+function planFromParams(params: URLSearchParams): WithdrawalPlan {
+  const base = defaultWithdrawalPlan();
+  const strategyParam = params.get("strategy");
+  const strategy: WithdrawalStrategyKind = (
+    WITHDRAWAL_STRATEGY_KINDS as readonly string[]
+  ).includes(strategyParam ?? "")
+    ? (strategyParam as WithdrawalStrategyKind)
+    : base.strategy;
+  const rateParam = Number(params.get("rate"));
+  const amountParam = Number(params.get("amount"));
+  const inflationParam = Number(params.get("inflation"));
+  const amount: WithdrawalPlan["amount"] =
+    strategy === "fixedRealAmount"
+      ? {
+          kind: "amount",
+          value: Number.isFinite(amountParam) && amountParam > 0 ? amountParam : 24000,
+        }
+      : {
+          kind: "rate",
+          value: Number.isFinite(rateParam) && rateParam > 0 ? rateParam : 0.04,
+        };
+  return {
+    ...base,
+    strategy,
+    amount,
+    inflation: {
+      indexed: base.inflation.indexed,
+      assumedRate:
+        Number.isFinite(inflationParam) && inflationParam >= 0
+          ? inflationParam
+          : base.inflation.assumedRate,
+    },
+  };
+}
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -111,17 +152,26 @@ export function MonteCarloPanel() {
     years: number | null;
     runs: number;
     withdrawalYears: number | null;
-    withdrawalRate: number | null;
-    inflation: number | null;
   }>({
     monthlyContribution: null,
     years: null,
     runs: 5000,
     withdrawalYears: null,
-    withdrawalRate: null,
-    inflation: null,
   });
   const [rebalanceYearly, setRebalanceYearly] = useState(false);
+
+  // The withdrawal assumption FIRE hands over (or today's default), and the
+  // user's own editable copy of it -- ONE plan for strategy, rate/amount,
+  // inflation and stress, not four independent sliders. `linkedPlan` never
+  // changes after mount; it is only the "what did FIRE actually say" the
+  // deviation note below compares against.
+  const [linkedPlan] = useState<WithdrawalPlan>(() => planFromParams(params));
+  const [plan, setPlan] = useState<WithdrawalPlan>(linkedPlan);
+  const planDiffersFromFire =
+    params.has("strategy") &&
+    (plan.strategy !== linkedPlan.strategy ||
+      plan.amount.value !== linkedPlan.amount.value ||
+      plan.inflation.assumedRate !== linkedPlan.inflation.assumedRate);
 
   // Fetch REAL historical prices for the holdings (longest available), used to
   // estimate returns/volatility; falls back to the synthetic series per asset.
@@ -197,9 +247,6 @@ export function MonteCarloPanel() {
   const volatility = volOverride ?? CUSTOM_VOL_DEFAULT;
   const usingEstimates = returnOverride === null && volOverride === null;
 
-  const withdrawalRate = form.withdrawalRate ?? WITHDRAWAL_RATE_DEFAULT;
-  const inflation = form.inflation ?? DEFAULT_INFLATION * 100;
-
   // Ruhestand seeds itself from the FIRE plan at the rate selected here: the
   // horizon is the time to financial independence, the capital is today's net
   // worth including accounts, and the contribution is what the savings plans
@@ -255,10 +302,6 @@ export function MonteCarloPanel() {
   const { result, running } = simulation;
   const [scale, setScale] = useState<ChartScale>("log");
   const [hover, setHover] = useState<string | null>(null);
-  // How the income is decided each year, and whether the losses are forced to
-  // the front. What-if levers: live state, never persisted.
-  const [withdrawalStrategy, setWithdrawalStrategy] = useState<WithdrawalStrategyId>("fixed");
-  const [stress, setStress] = useState<StressScenario>("none");
   // In "My portfolio" mode the parameters are auto-derived; the user must opt in
   // to editing them.
   const [editing, setEditing] = useState(false);
@@ -295,7 +338,9 @@ export function MonteCarloPanel() {
     // Clamp to [1,000, 25,000] paths.
     const runs = Math.min(25000, Math.max(1000, Math.round(form.runs)));
     const drawYears = withdrawalAllowed ? Math.max(0, Math.round(withdrawalYears)) : 0;
-    const drawRate = Math.max(0, withdrawalRate) / 100;
+    // Translates the ONE plan (strategy, rate/amount, inflation, stress) into
+    // what the engine needs -- the only place that mapping happens.
+    const withdrawalOptions = planToWithdrawalOptions(plan);
     // Seed the run's PRNG from Web Crypto (never Math.random), so the run is
     // reproducible and the seed can be persisted for auditing.
     const seed = randomSeed();
@@ -322,11 +367,8 @@ export function MonteCarloPanel() {
               corr: model.corr,
               seed,
               withdrawalYears: drawYears,
-              withdrawalRate: drawRate,
               rebalanceYearly,
-              withdrawalStrategy,
-              stress,
-              inflation: Math.max(0, inflation) / 100,
+              ...withdrawalOptions,
               // The comparison is what says what the strategy choice costs, so
               // it is computed alongside rather than behind a second button.
               compareStrategies: drawYears > 0,
@@ -344,10 +386,7 @@ export function MonteCarloPanel() {
               runs,
               seed,
               withdrawalYears: drawYears,
-              withdrawalRate: drawRate,
-              withdrawalStrategy,
-              stress,
-              inflation: Math.max(0, inflation) / 100,
+              ...withdrawalOptions,
               compareStrategies: drawYears > 0,
               ...(drawYears > 0 ? (appliedPension ?? {}) : {}),
             } satisfies MonteCarloParams,
@@ -501,23 +540,8 @@ export function MonteCarloPanel() {
                     max={40}
                     step={1}
                   />
-                  {withdrawalYears > 0 && (
-                    <div className="space-y-2">
-                      <SliderField
-                        label={t("sim.withdrawalRate")}
-                        suffix="%"
-                        value={withdrawalRate}
-                        onChange={(v) => update("withdrawalRate", v)}
-                        min={0}
-                        max={10}
-                        step={0.1}
-                        digits={1}
-                      />
-                      <p className="text-xs text-zinc-500">{t("sim.withdrawalRateHint")}</p>
-                    </div>
-                  )}
                   {/* Guaranteed income shrinks what the portfolio has to pay,
-                      so it belongs with the rate that decides the income. */}
+                      so it belongs with the strategy that decides the income. */}
                   {withdrawalYears > 0 && pension.bridge && (
                     <Toggle
                       checked={countPension}
@@ -530,26 +554,18 @@ export function MonteCarloPanel() {
                       hintPrivate
                     />
                   )}
-                  {/* The rate says how much; the strategy says how that amount
-                      is decided again each year, and the stress says what it is
-                      being tested against. Same panel as the FIRE tab. */}
+                  {/* ONE plan -- strategy, its own rate/amount field,
+                      inflation -- not a rate slider plus a strategy picker
+                      that could disagree with it. Identical panel on the
+                      FIRE tab, seeded from there via the query string. */}
                   {withdrawalYears > 0 && (
                     <>
-                      <SliderField
-                        label={t("sim.inflation")}
-                        suffix="%"
-                        value={inflation}
-                        onChange={(v) => update("inflation", v)}
-                        min={0}
-                        max={8}
-                        step={0.1}
-                        digits={1}
-                      />
-                      <p className="text-xs text-zinc-500">{t("sim.inflationHint")}</p>
-                      <WithdrawalStrategyPanel
-                        strategy={withdrawalStrategy}
-                        onStrategy={setWithdrawalStrategy}
-                      />
+                      {planDiffersFromFire && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          {t("sim.planDiffersFromFire")}
+                        </p>
+                      )}
+                      <WithdrawalStrategyPanel plan={plan} onPlanChange={setPlan} currency={currency} />
                     </>
                   )}
                 </div>
@@ -621,7 +637,10 @@ export function MonteCarloPanel() {
 
               {/* A forced bad sequence is a property of the market, so it
                   applies to every run, drawdown or not. */}
-              <StressPicker stress={stress} onStress={setStress} />
+              <StressPicker
+                stress={plan.stress}
+                onStress={(stress) => setPlan((p) => ({ ...p, stress }))}
+              />
 
               <SliderField
                 label={t("sim.runs")}
@@ -769,7 +788,7 @@ export function MonteCarloPanel() {
             {result.strategyComparison && (
               <WithdrawalComparison
                 comparison={result.strategyComparison}
-                strategy={withdrawalStrategy}
+                strategy={result.params.withdrawalStrategy ?? "fixed"}
                 currency={currency}
               />
             )}
@@ -872,7 +891,7 @@ function PortfolioModelNote({
             </div>
           )}
 
-          <ul className="mt-3 space-y-2.5">
+          <ul className="mt-3 max-h-72 space-y-2.5 overflow-y-auto pr-1">
             {model.assets.map((a) => {
               const o = overrides[a.name];
               const effMean = o?.mean != null ? o.mean / 100 : a.mean;
@@ -1075,120 +1094,6 @@ function SummaryRow({
         <div className="text-zinc-500">{t("sim.multiple")}</div>
         <div className="font-medium tabular-nums">
           {contributed > 0 ? `${(median / contributed).toFixed(2)}×` : "—"}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Dual-mode parameter control: a slider by default, with an "Enter value"
- * toggle that swaps in a precise numeric field (and back). Used for every
- * scalar simulation input.
- */
-function SliderField({
-  label,
-  value,
-  onChange,
-  suffix,
-  min = 0,
-  max = 100,
-  step = 1,
-  digits = 0,
-  lockable = false,
-  locked = false,
-  onToggleLock,
-  isPrivate = false,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  suffix?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  digits?: number;
-  /** Show a lock toggle (e.g. Initial capital, auto-set from net worth). */
-  lockable?: boolean;
-  locked?: boolean;
-  onToggleLock?: () => void;
-  /** Blur the shown figure in Incognito mode (absolute money only). */
-  isPrivate?: boolean;
-}) {
-  const { t } = useI18n();
-  const [draft, setDraft] = useState(() => formatInputDecimal(value, digits));
-  const [dirty, setDirty] = useState(false);
-  const display = formatInputDecimal(value, digits);
-
-  function handleManualChange(raw: string) {
-    const localized = stripLeadingZero(raw);
-    setDraft(localized);
-    setDirty(true);
-    const parsed = parseDecimal(localized);
-    if (Number.isFinite(parsed)) onChange(parsed);
-  }
-
-  const lockBtn = lockable ? (
-    <button
-      type="button"
-      onClick={onToggleLock}
-      title={locked ? t("sim.capitalLocked") : t("sim.capitalUnlocked")}
-      aria-label={locked ? t("sim.capitalLocked") : t("sim.capitalUnlocked")}
-      className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-        <rect x="5" y="11" width="14" height="10" rx="2" />
-        {locked ? <path d="M8 11V7a4 4 0 0 1 8 0v4" /> : <path d="M8 11V7a4 4 0 0 1 7.5-2" />}
-      </svg>
-    </button>
-  ) : null;
-
-  if (lockable && locked) {
-    return (
-      <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <label className="text-sm font-medium">{label}</label>
-          {lockBtn}
-        </div>
-        <div
-          className="mt-1 text-sm font-semibold tabular-nums opacity-70"
-          data-private={isPrivate || undefined}
-        >
-          {display}
-          {suffix ? <span className="ml-1 text-xs font-normal text-zinc-400">{suffix}</span> : null}
-        </div>
-      </div>
-    );
-  }
-
-  // The precise value is a numeric field wired to the same value as the
-  // slider (§12.3): drag the track or type an exact figure, both edit one
-  // state. No separate "enter value" mode to toggle.
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <label className="text-sm font-medium">{label}</label>
-        {lockBtn}
-      </div>
-      <div className="mt-2 flex items-center gap-3">
-        <div className="flex-1">
-          <Slider min={min} max={max} step={step} value={value} onChange={onChange} aria-label={label} />
-        </div>
-        <div className="flex w-28 shrink-0 items-center gap-1">
-          <input
-            type="text"
-            inputMode="decimal"
-            step={step}
-            min={min}
-            max={max}
-            value={dirty ? draft : display}
-            onChange={(e) => handleManualChange(e.target.value)}
-            onBlur={() => setDirty(false)}
-            aria-label={label}
-            data-private={isPrivate || undefined}
-            className="w-full min-w-0 rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 text-right text-sm font-medium tabular-nums outline-none transition-colors focus:border-zinc-900 dark:border-zinc-700 dark:focus:border-zinc-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          />
-          {suffix ? <span className="shrink-0 text-xs text-zinc-400">{suffix}</span> : null}
         </div>
       </div>
     </div>

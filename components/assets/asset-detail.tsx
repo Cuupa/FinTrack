@@ -147,6 +147,7 @@ export function AssetDetail({
   const { t } = useI18n();
   const currency = data.profile.currency;
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [addTxOpen, setAddTxOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SavingsPlan | null>(null);
   const planSort = useSort<AssetPlanSortKey>("next");
   const [reviewingSplits, setReviewingSplits] = useState(false);
@@ -969,10 +970,34 @@ export function AssetDetail({
           </div>
         )}
 
-        <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
-          <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
-          <TransactionForm asset={asset} ensureAsset={held ? undefined : ensureHeldAsset} />
-        </div>
+        {(() => {
+          // The history is the primary read case once transactions exist, so
+          // the add form collapses behind a toggle then; with no history yet it
+          // stays open, since adding the first booking is the whole point.
+          const open = addTxOpen || txs.length === 0;
+          return (
+            <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+              {txs.length === 0 ? (
+                <h3 className="mb-3 text-sm font-semibold">{t("asset.addTransaction")}</h3>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddTxOpen((v) => !v)}
+                  aria-expanded={open}
+                  className={`flex w-full items-center gap-1.5 text-sm font-semibold ${open ? "mb-3" : ""}`}
+                >
+                  <span className={`transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>
+                    ▸
+                  </span>
+                  {t("asset.addTransaction")}
+                </button>
+              )}
+              {open && (
+                <TransactionForm asset={asset} ensureAsset={held ? undefined : ensureHeldAsset} />
+              )}
+            </div>
+          );
+        })()}
 
         {txs.length === 0 ? (
           <p className="mt-4 text-sm text-zinc-500">{t("asset.noTransactions")}</p>
@@ -1211,19 +1236,7 @@ function TransactionsTable({
               <Tr key={t.id}>
                 <Td className="whitespace-nowrap">{formatDateTime(t.date)}</Td>
                 <Td>
-                  <span
-                    className={
-                      t.type === "BUY"
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : t.type === "BOOKING"
-                          ? "text-indigo-600 dark:text-indigo-400"
-                          : t.type === "INTEREST"
-                            ? "text-amber-600 dark:text-amber-400"
-                            : t.type === "SPLIT"
-                              ? "text-purple-600 dark:text-purple-400"
-                              : "text-red-600 dark:text-red-400"
-                    }
-                  >
+                  <span className="text-zinc-600 dark:text-zinc-300">
                     {isCash ? txTypeLabel(tr, t.type, true) : t.type}
                   </span>
                 </Td>
@@ -1254,13 +1267,7 @@ function TransactionsTable({
                 )}
                 <Td
                   align="right"
-                  className={`tabular-nums ${
-                    t.type === "SPLIT"
-                      ? "text-zinc-400"
-                      : t.type === "BUY"
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                  }`}
+                  className={`tabular-nums ${t.type === "SPLIT" ? "text-zinc-400" : ""}`}
                   data-private
                 >
                   {t.type === "SPLIT" ? (

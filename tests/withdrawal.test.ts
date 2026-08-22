@@ -219,6 +219,85 @@ describe("runMonteCarlo with withdrawal strategies", () => {
   });
 });
 
+// The `fixedRealAmount` domain strategy (WITHDRAWAL_REFACTOR_PLAN.md §6.1):
+// a stated first-year amount instead of a rate x portfolio, reusing the
+// SAME inflation-indexed carry-forward as `withdrawalStrategy: "fixed"`.
+describe("runMonteCarlo with fixedAnnualAmount", () => {
+  // years: 1 (not 0) so the accumulation phase is exactly 12 months --
+  // `Math.max(1, Math.round(years * 12))` floors it to 1 month even at
+  // years: 0, which would eat into the 3 decumulation years being tested.
+  const base: MonteCarloParams = {
+    initialCapital: 500_000,
+    monthlyContribution: 0,
+    years: 1,
+    expectedReturn: 0,
+    volatility: 0,
+    runs: 1,
+    seed: 42,
+    withdrawalYears: 3,
+    fixedAnnualAmount: 20_000,
+    withdrawalStrategy: "fixed",
+    inflation: 0.1,
+  };
+
+  it("seeds year one from the stated amount, not from rate x portfolio", () => {
+    const result = runMonteCarlo(base);
+    expect(result.withdrawal?.median).toBeCloseTo(20_000, 6);
+  });
+
+  it("takes precedence over withdrawalRate when both are set", () => {
+    const result = runMonteCarlo({ ...base, withdrawalRate: 0.1 });
+    // 0.1 x 500,000 would be 50,000 -- the amount must win, not the rate.
+    expect(result.withdrawal?.median).toBeCloseTo(20_000, 6);
+  });
+
+  it("indexes the amount with inflation from year two onward, at zero volatility", () => {
+    // Deterministic path (0% return, 0% volatility): year N's withdrawal is
+    // exactly amount x (1+inflation)^N, so the year-end value is exactly
+    // capital minus the sum of three indexed withdrawals.
+    const result = runMonteCarlo(base);
+    const year1 = 20_000;
+    const year2 = 20_000 * 1.1;
+    const year3 = 20_000 * 1.1 ** 2;
+    const finalValue = result.finalDistribution[0];
+    expect(finalValue).toBeCloseTo(500_000 - year1 - year2 - year3, 2);
+  });
+
+  it("with no inflation indexing, the amount stays flat every year", () => {
+    const result = runMonteCarlo({ ...base, inflation: 0 });
+    const finalValue = result.finalDistribution[0];
+    expect(finalValue).toBeCloseTo(500_000 - 20_000 * 3, 2);
+  });
+
+  it("can deplete the portfolio within a single year", () => {
+    const result = runMonteCarlo({
+      ...base,
+      initialCapital: 10_000,
+      fixedAnnualAmount: 50_000,
+      withdrawalYears: 1,
+    });
+    expect(result.finalDistribution[0]).toBe(0);
+  });
+
+  it("the portfolio engine seeds the same way", () => {
+    const portfolioResult = runPortfolioMonteCarlo({
+      initialCapital: 500_000,
+      monthlyContribution: 0,
+      years: 1,
+      runs: 1,
+      assets: [{ weight: 1, mean: 0, vol: 0 }],
+      corr: [[1]],
+      seed: 42,
+      withdrawalYears: 3,
+      fixedAnnualAmount: 20_000,
+      withdrawalStrategy: "fixed",
+      inflation: 0,
+    } satisfies PortfolioMonteCarloParams);
+    expect(portfolioResult.withdrawal?.median).toBeCloseTo(20_000, 6);
+    expect(portfolioResult.finalDistribution[0]).toBeCloseTo(500_000 - 20_000 * 3, 2);
+  });
+});
+
 describe("pension bridge during Monte Carlo withdrawals", () => {
   const scalar: MonteCarloParams = {
     initialCapital: 100_000,

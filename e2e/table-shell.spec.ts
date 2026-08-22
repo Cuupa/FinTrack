@@ -29,7 +29,7 @@ test("the recurring card's headers sort and announce it", async ({ page }) => {
   await form.locator("#spending-recurring").click();
   await form.locator("#spending-amount").fill("17.99");
   await form.locator("#spending-payee").fill("Netflix");
-  await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+  await form.getByRole("button", { name: "Add recurring expense", exact: true }).click();
 
   await openRecurring(page);
   const card = page.locator('[data-tour="recurring-card"]');

@@ -35,22 +35,32 @@ async function book(
   await bookTransaction(page, { type, payee, amount });
 }
 
-test("the entry mask changes when you switch to income", async ({ page }) => {
+test("the entry mask changes with the booking mode", async ({ page }) => {
   await seedAccount(page);
   await openBookings(page);
   const form = await openEntryMask(page);
 
-  // Expense: a recipient, and the transfer target is on offer.
+  // Expense: a recipient, a category, and no transfer field at all -- the
+  // transfer is its own mode now, not an option bolted onto an expense.
   await expect(form.getByText("Payee", { exact: true })).toBeVisible();
-  await expect(form.getByText("Transfer to", { exact: true })).toBeVisible();
+  await expect(form.getByText("Category", { exact: true })).toBeVisible();
+  await expect(form.getByText("Transfer to", { exact: true })).toHaveCount(0);
 
   await form.getByRole("button", { name: "Income", exact: true }).click();
 
-  // Income: a source, and no transfer target -- money is arriving, so
-  // "transfer TO another account" has no answer.
+  // Income: a source instead of a recipient.
   await expect(form.getByText("Payer", { exact: true })).toBeVisible();
   await expect(form.getByText("Payee", { exact: true })).toHaveCount(0);
-  await expect(form.getByText("Transfer to", { exact: true })).toHaveCount(0);
+
+  await form.getByRole("button", { name: "Transfer", exact: true }).click();
+
+  // Transfer: two accounts, and neither a counterparty nor a category -- moved
+  // money is not consumed, so a category would be misleading.
+  await expect(form.getByText("From account", { exact: true })).toBeVisible();
+  await expect(form.getByText("To account", { exact: true })).toBeVisible();
+  await expect(form.getByText("Payer", { exact: true })).toHaveCount(0);
+  await expect(form.getByText("Payee", { exact: true })).toHaveCount(0);
+  await expect(form.getByText("Category", { exact: true })).toHaveCount(0);
 });
 
 test("income can be promoted to a recurring entry, not just expenses", async ({ page }) => {
@@ -121,7 +131,7 @@ test("a recurring entry can be pinned to the last day of the month", async ({ pa
   // keep landing on the 15th. The field is a datetime-local, so it needs a time.
   await form.locator("#spending-date").fill("2026-01-15T09:00");
   await form.getByRole("switch", { name: /last day of the month/i }).click();
-  await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+  await form.getByRole("button", { name: "Add recurring expense", exact: true }).click();
 
   // The next due date is a month end, not the 15th it was started on.
   await openRecurring(page);
@@ -142,13 +152,15 @@ test("promoting a transfer keeps its target account", async ({ page }) => {
   await seedAccount(page, "Mortgage");
 
   await openBookings(page);
+  // A transfer takes no custom label now; its counterparty IS the destination
+  // account, so the row reads "Mortgage".
   await bookTransaction(page, {
-    payee: "Mortgage instalment",
+    payee: "Mortgage",
     amount: "1035",
     transferTo: "Mortgage",
   });
 
-  const row = page.locator("tbody tr").filter({ hasText: "Mortgage instalment" }).first();
+  const row = page.locator("tbody tr").filter({ hasText: "Mortgage" }).first();
   await row.getByRole("button", { name: "Add as recurring", exact: true }).click();
   await page
     .getByRole("alertdialog")
@@ -162,7 +174,7 @@ test("promoting a transfer keeps its target account", async ({ page }) => {
   const promoted = page
     .locator('[data-tour="recurring-card"]')
     .locator("tbody tr")
-    .filter({ hasText: "Mortgage instalment" });
+    .filter({ hasText: "Mortgage" });
   await expect(promoted).toContainText("Mortgage");
   await expect(promoted).not.toContainText("Spent");
 });
