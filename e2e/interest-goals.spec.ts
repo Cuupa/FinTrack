@@ -79,5 +79,5 @@ test("the recurring switch turns a booking into a recurring entry", async ({ pag
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await expect(form.getByRole("button", { name: /Add recurring entry/i })).toBeVisible();
+  await expect(form.getByRole("button", { name: /Add recurring expense/i })).toBeVisible();
 });

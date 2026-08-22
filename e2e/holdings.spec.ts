@@ -37,6 +37,9 @@ test.describe("asset detail (Guest Mode)", () => {
       .locator("xpath=following::table[1]");
     await expect(txTable.locator("tbody tr")).toHaveCount(1); // the opening tx
 
+    // With history present the add form is collapsed (§5.1); open it first.
+    await page.getByRole("button", { name: "Add transaction", exact: true }).click();
+
     // The transaction form defaults to BUY; fill quantity + price and submit.
     const form = page.locator("form").filter({ has: page.getByRole("button", { name: /^Add buy$/ }) });
     await form.getByRole("textbox").nth(0).fill("2"); // quantity (placeholder "0")

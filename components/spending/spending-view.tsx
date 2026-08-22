@@ -11,8 +11,10 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/lib/portfolio/portfolio-context";
 import { nowDateTimeLocal, timeframeStart, today, type Timeframe } from "@/lib/finance/dates";
 import { buildCategoryRules, suggestCategory, applyCategoryRules } from "@/lib/finance/categorize";
-import { formatCurrency, formatDateTime, parseDecimal, stripLeadingZero } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime, parseDecimal } from "@/lib/format";
 import { Button, Card, Field, Input, SegmentedControl, Toggle } from "@/components/ui/primitives";
+import { CurrencyField } from "@/components/ui/currency-field";
+import { validateBooking, type BookingMode } from "@/lib/finance/spending";
 import { inMonth } from "@/components/ui/month-picker";
 import { FormActions } from "@/components/ui/form-actions";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -46,6 +48,11 @@ import { useToast } from "@/lib/notifications/toast-context";
 
 type SortKey = "date" | "payee" | "payer" | "category" | "owner" | "amount";
 
+/** Sentinel for the explicit "Ohne Kategorie" option, distinct from the neutral
+ *  "Kategorie auswählen" initial state (Audit §4.3: no silent default). Both
+ *  persist as a null category. */
+const NONE_CATEGORY = "__none__";
+
 /** The two counterparty columns shrink to their content instead of taking an
  *  equal share of the row's width. */
 const counterpartyCls = "w-0 whitespace-nowrap";
@@ -56,7 +63,6 @@ function earliestBookingDate(txs: readonly { date: string }[]): string | null {
   for (const tx of txs) if (min === null || tx.date < min) min = tx.date;
   return min;
 }
-type TxType = "expense" | "income";
 
 /** Which of the two counterparty columns a booking belongs in. The sign is the
  *  only thing that says it: a negative amount left the account, so the
@@ -124,7 +130,7 @@ export function SpendingView({
   // setState inside one, and the page now creates accounts alongside this form,
   // so "there were none at mount" is the normal case rather than an edge one.
   const [pickedAccountId, setPickedAccountId] = useState("");
-  const [txType, setTxType] = useState<TxType>("expense");
+  const [mode, setMode] = useState<BookingMode>("expense");
   const [amount, setAmount] = useState("");
   const [payee, setPayee] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -144,6 +150,12 @@ export function SpendingView({
   const [monthEnd, setMonthEnd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which field the last submit attempt rejected, and why. Drives the concrete
+  // inline message + the amber field highlight, so the CTA never sits greyed
+  // out with no explanation (Audit §4.3).
+  const [validation, setValidation] = useState<
+    { field: "amount" | "toAccount" | "counterparty"; code: string } | null
+  >(null);
   const [adding, setAdding] = useState(false);
   const [managingCategories, setManagingCategories] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -165,8 +177,9 @@ export function SpendingView({
       : (scopeAccountIds[0] ?? data.accounts[0]?.id ?? "");
   const setAccountId = setPickedAccountId;
 
-  /** Money in reads differently from money out, so the form follows the tab. */
-  const isIncome = txType === "income";
+  /** Money in reads differently from money out, so the form follows the mode. */
+  const isIncome = mode === "income";
+  const isTransferMode = mode === "transfer";
   /** Month-end only has a meaning for the month-based cadences. */
   const monthEndApplies = interval !== "ONCE" && interval !== "WEEKLY";
 
@@ -278,32 +291,74 @@ export function SpendingView({
     if (suggestion) setCategoryId(suggestion);
   }
 
-  // A transfer onto the very account being booked is not a transfer.
-  const transfer =
-    transferAccountId && transferAccountId !== accountId ? transferAccountId : null;
-  // The transfer picker already names where the money went, so the payee is
-  // optional there and falls back to the target account. Demanding a recipient
-  // for "Umbuchung auf Hundekonto" asked a question the picker had answered.
-  const effectivePayee =
-    payee.trim() || (transfer ? (accountsById.get(transfer)?.name ?? "") : "");
+  /** A fresh booking starts clean: expense mode, no leftover amount/mode/toggle
+   *  from the last one (the mode drives the CTA now, so a stuck mode would offer
+   *  the wrong action). Account stays on the user's last pick. */
+  function openAdd() {
+    setMode("expense");
+    setRecurring(false);
+    setAmount("");
+    setPayee("");
+    setCategoryId("");
+    setNote("");
+    setTransferAccountId("");
+    setDateTime(nowDateTimeLocal());
+    setError(null);
+    setValidation(null);
+    setAdding(true);
+  }
+
+  /** Switch mode, discarding the fields that mode does not show so a value
+   *  typed under a previous mode is never submitted from a hidden field. */
+  function switchMode(next: BookingMode) {
+    setMode(next);
+    setValidation(null);
+    if (next === "transfer") {
+      setPayee("");
+      setCategoryId("");
+    } else {
+      setTransferAccountId("");
+    }
+  }
 
   async function submit() {
     const magnitude = parseDecimal(amount);
-    const date = dateTime.slice(0, 10);
-    if (!accountId || !effectivePayee || !dateTime || !Number.isFinite(magnitude) || magnitude <= 0)
+    const v = validateBooking(mode, {
+      amount: magnitude,
+      accountId,
+      toAccountId: transferAccountId || null,
+      counterparty: payee.trim(),
+    });
+    if (!v.ok) {
+      setValidation({ field: v.field, code: v.code });
       return;
+    }
+    setValidation(null);
+    const date = dateTime.slice(0, 10);
     setBusy(true);
     setError(null);
     try {
-      const signed = txType === "income" ? magnitude : -magnitude;
+      const signed = mode === "income" ? magnitude : -magnitude;
+      // Transfer: the destination account IS the counterparty, category has no
+      // meaning (it is not consumed), and the row carries transferAccountId so
+      // the existing ledger moves both accounts atomically from one row.
+      const finalTransfer = isTransferMode ? transferAccountId : null;
+      const finalPayee = isTransferMode
+        ? (accountsById.get(transferAccountId)?.name ?? "")
+        : payee.trim();
+      const finalCategory = isTransferMode
+        ? null
+        : categoryId && categoryId !== NONE_CATEGORY
+          ? categoryId
+          : null;
       if (recurring) {
         // Same inputs, different meaning: the date becomes the first
         // occurrence and the entry starts producing bookings from there,
         // which the review list on this page then offers for confirmation.
         await addPlannedCashflow({
-          name: effectivePayee,
+          name: finalPayee,
           accountId,
-          categoryId: categoryId || null,
+          categoryId: finalCategory,
           amount: signed,
           interval,
           startDate: date,
@@ -312,20 +367,20 @@ export function SpendingView({
           monthEnd: monthEndApplies && monthEnd,
           endDate: null,
           lastBookedDate: null,
-          transferAccountId: transfer,
+          transferAccountId: finalTransfer,
           note: note.trim() || null,
         });
       } else {
         await addSpendingTransaction({
           accountId,
-          categoryId: categoryId || null,
+          categoryId: finalCategory,
           date,
           bookedAt: dateTime,
           amount: signed,
-          payee: effectivePayee,
+          payee: finalPayee,
           note: note.trim() || null,
           recurringId: null,
-          transferAccountId: transfer,
+          transferAccountId: finalTransfer,
         });
       }
       setAmount("");
@@ -343,6 +398,17 @@ export function SpendingView({
     }
   }
 
+  /** Concrete inline message for the last rejected submit, mode-aware for the
+   *  counterparty wording. */
+  const validationText = validation
+    ? validation.code === "counterpartyMissing"
+      ? t(isIncome ? "spending.form.invalid.payerMissing" : "spending.form.invalid.payeeMissing")
+      : t(`spending.form.invalid.${validation.code}` as Parameters<typeof t>[0])
+    : null;
+  const ctaKey = (
+    recurring ? `spending.form.addRecurring.${mode}` : `spending.form.add.${mode}`
+  ) as Parameters<typeof t>[0];
+
   async function autoCategorize() {
     const updates = applyCategoryRules(data.spendingTransactions);
     for (const u of updates) {
@@ -357,6 +423,7 @@ export function SpendingView({
         onClose={() => {
           setAdding(false);
           setError(null);
+          setValidation(null);
         }}
         maxWidthClass="max-w-4xl"
       >
@@ -366,21 +433,17 @@ export function SpendingView({
           <p className="mt-2 text-sm text-zinc-500">{t("spending.form.noAccounts")}</p>
         ) : (
           <>
-            {/* The two controls that change what every field below means sit
-                in their own header row. */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+            {/* Three explicit modes: Ausgabe, Einnahme, Umbuchung. The mode
+                decides the sign and which fields exist -- a transfer is its own
+                vorgang, not a property bolted onto an expense (Audit §4.3). */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-subtle pb-4">
               <SegmentedControl
-                value={txType}
-                onChange={(v) => {
-                  setTxType(v);
-                  // The transfer picker is hidden on income; a value typed
-                  // before the switch would otherwise still be submitted from
-                  // a field the user can no longer see.
-                  if (v === "income") setTransferAccountId("");
-                }}
+                value={mode}
+                onChange={switchMode}
                 options={[
                   { value: "expense", label: t("spending.form.type.expense") },
                   { value: "income", label: t("spending.form.type.income") },
+                  { value: "transfer", label: t("spending.form.type.transfer") },
                 ]}
               />
               <Toggle
@@ -392,32 +455,52 @@ export function SpendingView({
               />
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label={t("spending.form.accountLabel")}>
+              <Field
+                label={t(isTransferMode ? "spending.form.fromAccountLabel" : "spending.form.accountLabel")}
+              >
                 <SelectMenu
                   className="mt-1 w-full"
-                  ariaLabel={t("spending.form.accountLabel")}
+                  ariaLabel={t(isTransferMode ? "spending.form.fromAccountLabel" : "spending.form.accountLabel")}
                   value={accountId}
                   onChange={setAccountId}
                   options={data.accounts.map((a) => ({ value: a.id, label: a.name }))}
                 />
               </Field>
+              {/* Destination account -- transfer only. Its own picker, so there
+                  is no "Umbuchung auf" bolted onto expense/income and no
+                  "Keine Umbuchung" value. */}
+              {isTransferMode && (
+                <Field label={t("spending.form.toAccountLabel")}>
+                  <SelectMenu
+                    className="mt-1 w-full"
+                    ariaLabel={t("spending.form.toAccountLabel")}
+                    value={transferAccountId}
+                    onChange={(v) => {
+                      setTransferAccountId(v);
+                      if (validation?.field === "toAccount") setValidation(null);
+                    }}
+                    options={[
+                      { value: "", label: t("spending.form.toAccountPlaceholder") },
+                      ...data.accounts
+                        .filter((a) => a.id !== accountId)
+                        .map((a) => ({ value: a.id, label: a.name })),
+                    ]}
+                  />
+                </Field>
+              )}
+              <CurrencyField
+                id="spending-amount"
+                label={t("spending.form.amountLabelPlain")}
+                currency={accountsById.get(accountId)?.currency || base}
+                value={amount}
+                onChange={(v) => {
+                  setAmount(v);
+                  if (validation?.field === "amount") setValidation(null);
+                }}
+                invalid={validation?.field === "amount"}
+              />
               <Field
-                label={t("spending.form.amountLabel", {
-                  currency: accountsById.get(accountId)?.currency || base,
-                })}
-                htmlFor="spending-amount"
-              >
-                <Input
-                  id="spending-amount"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(e) => setAmount(stripLeadingZero(e.target.value))}
-                  placeholder="0"
-                  data-private={amount !== "" ? "" : undefined}
-                />
-              </Field>
-              <Field
-                label={recurring ? t("contracts.form.startLabel") : t("spending.form.dateLabel")}
+                label={recurring ? t("contracts.form.startLabel") : t("spending.form.dateTimeLabel")}
                 htmlFor="spending-date"
               >
                 <Input
@@ -457,9 +540,10 @@ export function SpendingView({
                   )}
                 </Field>
               )}
-              {/* Money out has a recipient, money in has a source. One field,
-                  but calling a salary's employer the "payee" was backwards. */}
-              {!transfer ? (
+              {/* Counterparty and category -- expense/income only. A transfer
+                  has neither: the destination account is the counterparty, and
+                  moved money is not consumed, so a category would be misleading. */}
+              {!isTransferMode && (
                 <Field
                   label={t(isIncome ? "spending.form.payerLabel" : "spending.form.payeeLabel")}
                   htmlFor="spending-payee"
@@ -467,82 +551,56 @@ export function SpendingView({
                   <Input
                     id="spending-payee"
                     value={payee}
-                    onChange={(e) => setPayee(e.target.value)}
+                    onChange={(e) => {
+                      setPayee(e.target.value);
+                      if (validation?.field === "counterparty") setValidation(null);
+                    }}
                     onBlur={onPayeeBlur}
                     placeholder={t(
                       isIncome ? "spending.form.payerPlaceholder" : "spending.form.payeePlaceholder",
                     )}
                     data-private={payee !== "" ? "" : undefined}
+                    className={
+                      validation?.field === "counterparty"
+                        ? "!border-amber-400 dark:!border-amber-600"
+                        : ""
+                    }
                   />
                 </Field>
-              ) : (
-                <div className="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700">
-                  <span className="font-medium">{t("spending.edit.transferLabel")}</span>
-                  <p className="mt-1 text-zinc-500" data-private>
-                    {accountsById.get(transfer)?.name}
-                  </p>
-                </div>
               )}
-              <Field label={t("spending.form.categoryLabel")}>
-                <SelectMenu
-                  className="mt-1 w-full"
-                  ariaLabel={t("spending.form.categoryLabel")}
-                  value={categoryId}
-                  onChange={setCategoryId}
-                  searchable
-                  options={[
-                    { value: "", label: t("spending.form.categoryNone") },
-                    ...data.spendingCategories.map((c) => ({
-                      value: c.id,
-                      label: c.name,
-                      group: c.groupName,
-                    })),
-                  ]}
-                  footer={(close) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        close();
-                        setManagingCategories(true);
-                      }}
-                      className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-emerald-600 hover:bg-zinc-100 dark:text-emerald-400 dark:hover:bg-zinc-800"
-                    >
-                      {t("spending.categories.manage")}
-                    </button>
-                  )}
-                />
-              </Field>
-              {/* Same control and same words as the edit dialog: marking a
-                  booking as a transfer keeps it out of the expense figures and
-                  moves the other account instead, which is what makes a rate
-                  actually retire a debt.
-
-                  Expenses only. "Transfer TO" describes money leaving THIS
-                  account for another of your own; on an income booking the
-                  money is arriving, so the field asked a question with no
-                  answer. The same move is recorded as an expense from the
-                  account it actually leaves. */}
-              {!isIncome && (
-              <Field label={t("spending.edit.transferLabel")}>
-                <SelectMenu
-                  className="mt-1 w-full"
-                  ariaLabel={t("spending.edit.transferLabel")}
-                  value={transferAccountId}
-                  onChange={setTransferAccountId}
-                  options={[
-                    { value: "", label: t("spending.edit.transferNone") },
-                    ...data.accounts
-                      .filter((a) => a.id !== accountId)
-                      .map((a) => ({ value: a.id, label: a.name })),
-                  ]}
-                />
-                {/* text-sm hint kept as a child, not Field's text-xs hint prop. */}
-                <p className="mt-1 text-sm text-zinc-500">
-                  {transferAccountId
-                    ? t("spending.edit.transferHintOn")
-                    : t("spending.edit.transferHintOff")}
-                </p>
-              </Field>
+              {!isTransferMode && (
+                <Field label={t("spending.form.categoryLabel")}>
+                  <SelectMenu
+                    className="mt-1 w-full"
+                    ariaLabel={t("spending.form.categoryLabel")}
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    searchable
+                    options={[
+                      // Neutral initial state, then the explicit "Ohne
+                      // Kategorie" choice -- not a silent default (Audit §4.3).
+                      { value: "", label: t("spending.form.categorySelect") },
+                      { value: NONE_CATEGORY, label: t("spending.form.categoryNone") },
+                      ...data.spendingCategories.map((c) => ({
+                        value: c.id,
+                        label: c.name,
+                        group: c.groupName,
+                      })),
+                    ]}
+                    footer={(close) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          close();
+                          setManagingCategories(true);
+                        }}
+                        className="w-full rounded-sm px-2 py-1.5 text-left text-sm font-medium text-brand hover:bg-surface-hover"
+                      >
+                        {t("spending.categories.manage")}
+                      </button>
+                    )}
+                  />
+                </Field>
               )}
               <Field
                 label={t("spending.form.noteLabel")}
@@ -560,13 +618,17 @@ export function SpendingView({
                 />
               </Field>
             </div>
-            <FormActions error={error}>
-              <Button
-                variant="primary"
-                disabled={busy || !accountId || !effectivePayee || !amount.trim() || !dateTime}
-                onClick={() => void submit()}
-              >
-                {recurring ? t("spending.form.addRecurring") : t("spending.form.add")}
+            {/* Recurring shows its actual parameters before saving: the rhythm
+                and start sit in the grid above, the next run is spelled out
+                here (Audit §4.4). */}
+            {recurring && (
+              <p className="mt-3 text-sm text-secondary" data-private>
+                {t("spending.form.nextRun", { date: formatDate(dateTime.slice(0, 10)) })}
+              </p>
+            )}
+            <FormActions error={error ?? validationText}>
+              <Button variant="primary" disabled={busy} onClick={() => void submit()}>
+                {t(ctaKey)}
               </Button>
             </FormActions>
           </>
@@ -598,10 +660,7 @@ export function SpendingView({
             <Button
               size="sm"
               variant="primary"
-              onClick={() => {
-                setError(null);
-                setAdding(true);
-              }}
+              onClick={openAdd}
             >
               {t("spending.form.title")}
             </Button>
@@ -669,11 +728,11 @@ export function SpendingView({
                         {ownerLabel(account?.ownerId) ?? "—"}
                       </Td>
                     )}
-                    <Td
-                      align="right"
-                      className={`tabular-nums ${tx.amount < 0 ? "text-red-600 dark:text-red-400" : ""}`}
-                      data-private
-                    >
+                    {/* Neutral text: a normal expense is not an error. The
+                        minus sign carries direction, and the payer/payee
+                        columns already say which way the money went (Audit
+                        §4.5). Red is reserved for real failure states. */}
+                    <Td align="right" className="tabular-nums" data-private>
                       {formatCurrency(tx.amount, currency)}
                     </Td>
                     <Td>

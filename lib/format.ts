@@ -77,6 +77,31 @@ export function formatInputDecimal(value: number, digits = 6): string {
 }
 
 /**
+ * Grouped, two-decimal amount text for a money input's on-blur display, WITHOUT
+ * the currency symbol (that rides as a field adornment): "1.595,00" in de,
+ * "1,595.00" in en. Unlike {@link formatInputDecimal} grouping is ON, since this
+ * is the settled display a user reads back, not the value they are mid-typing.
+ */
+export function formatAmountInput(value: number, digits = 2): string {
+  if (!Number.isFinite(value)) return "";
+  return new Intl.NumberFormat(intlLocale(), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+/** The bare currency symbol for the active locale ("€", "$"), for a field
+ *  adornment where the number sits in the input itself. */
+export function currencySymbol(currency = "EUR"): string {
+  const parts = new Intl.NumberFormat(intlLocale(), {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).formatToParts(0);
+  return parts.find((p) => p.type === "currency")?.value ?? currency;
+}
+
+/**
  * Drop a leading zero a user typed in front of a real number, so a field
  * pre-filled with "0" doesn't turn "300" into "0300". Keeps a lone "0" and
  * decimals like "0.5" / "0,5" intact.

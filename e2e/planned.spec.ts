@@ -49,7 +49,9 @@ async function addRecurring(
   await form.locator("#spending-payee").fill(name);
   // datetime-local needs a time component; a date-only value is malformed.
   await form.locator("#spending-date").fill(`${date}T09:00`);
-  await form.getByRole("button", { name: "Add recurring entry", exact: true }).click();
+  await form
+    .getByRole("button", { name: income ? "Add recurring income" : "Add recurring expense", exact: true })
+    .click();
 }
 
 test("a planned salary books into the ledger after review", async ({ page }) => {

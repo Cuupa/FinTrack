@@ -154,7 +154,7 @@ export function SettingsView() {
 
   const saveTaxSettings = async () => {
     setSavingTax(true);
-    const allowance = Number(taxAllowance);
+    const allowance = parseDecimal(taxAllowance);
     await updateProfile({
       taxAllowance: Number.isFinite(allowance) ? allowance : data.profile.taxAllowance,
       churchTaxRate,
@@ -390,11 +390,15 @@ export function SettingsView() {
                     />
                   </Field>
                 )}
-                <Field label={t("settings.deleteAccountType")}>
+                <Field
+                  label={t("settings.deleteAccountType", {
+                    phrase: t("settings.deleteAccountPhrase"),
+                  })}
+                >
                   <input
                     value={deleteConfirm}
                     onChange={(e) => setDeleteConfirm(e.target.value)}
-                    placeholder="delete"
+                    placeholder={t("settings.deleteAccountPhrase")}
                     autoComplete="off"
                     className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700"
                   />
@@ -405,7 +409,8 @@ export function SettingsView() {
                     onClick={() => setConfirmDelete(true)}
                     disabled={
                       deleting ||
-                      deleteConfirm.trim().toLowerCase() !== "delete" ||
+                      deleteConfirm.trim().toLowerCase() !==
+                        t("settings.deleteAccountPhrase").toLowerCase() ||
                       (hasPassword && !deletePassword)
                     }
                   >
@@ -455,12 +460,11 @@ export function SettingsView() {
             <div className="mt-4 space-y-4">
               <Field label={t("settings.taxAllowance")} hint={t("settings.taxAllowanceHint")}>
                 <input
-                  type="number"
-                  min={0}
-                  step={1}
+                  type="text"
+                  inputMode="decimal"
                   value={taxAllowance}
                   onChange={(e) => setTaxAllowance(e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+                  className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm tabular-nums outline-none focus:border-zinc-500 dark:border-zinc-700"
                 />
               </Field>
 
@@ -964,31 +968,47 @@ function AiAssistantSection() {
         </Field>
 
         {user && (
-          <div>
-            <span className="mb-1 block text-xs font-medium text-zinc-500">
+          <fieldset>
+            <legend className="mb-1.5 block text-xs font-medium text-zinc-500">
               {t("settings.ai.scope.label")}
-            </span>
-            <div className="inline-flex flex-wrap gap-1 rounded-md bg-zinc-100 p-0.5 dark:bg-zinc-800/50">
-              {(["account", "browser"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setScope(s)}
-                  aria-pressed={scope === s}
-                  className={`rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
-                    scope === s
-                      ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                      : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                  }`}
-                >
-                  {t(s === "account" ? "settings.ai.scope.account" : "settings.ai.scope.browser")}
-                </button>
-              ))}
+            </legend>
+            <div role="radiogroup" className="space-y-2">
+              {(["account", "browser"] as const).map((s) => {
+                const selected = scope === s;
+                return (
+                  <label
+                    key={s}
+                    className={`flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5 transition-colors ${
+                      selected
+                        ? "border-zinc-900 bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-800/50"
+                        : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="llm-scope"
+                      value={s}
+                      checked={selected}
+                      onChange={() => setScope(s)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-zinc-900 dark:accent-zinc-300"
+                    />
+                    <span className="text-sm">
+                      <span className="block font-medium text-zinc-800 dark:text-zinc-100">
+                        {t(s === "account" ? "settings.ai.scope.account" : "settings.ai.scope.browser")}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-zinc-500">
+                        {t(
+                          s === "account"
+                            ? "settings.ai.scope.accountHint"
+                            : "settings.ai.scope.browserHint",
+                        )}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
-            {scope === "browser" && (
-              <p className="mt-1 text-xs text-zinc-500">{t("settings.ai.scope.browserHint")}</p>
-            )}
-          </div>
+          </fieldset>
         )}
 
         <p className="text-xs text-zinc-500">

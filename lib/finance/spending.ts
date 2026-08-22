@@ -32,6 +32,48 @@ export function isTransfer(t: SpendingTransaction): boolean {
 }
 
 /**
+ * The three explicit booking modes (Audit §4.3): an expense and an income are
+ * signed flows on one account; a transfer moves money between two of the user's
+ * own accounts and is neither. The mode decides the sign and which fields exist,
+ * so it replaces the old "expense/income + optional Umbuchung auf" model where a
+ * transfer was a property bolted onto an expense.
+ */
+export type BookingMode = "expense" | "income" | "transfer";
+
+export interface BookingDraft {
+  /** Parsed magnitude (positive); NaN for a blank/invalid amount. */
+  amount: number;
+  accountId: string;
+  /** Destination account, transfer mode only. */
+  toAccountId?: string | null;
+  /** Trimmed payee/payer, expense/income only. */
+  counterparty?: string;
+}
+
+export type BookingValidation =
+  | { ok: true }
+  | { ok: false; field: "amount" | "toAccount" | "counterparty"; code: string };
+
+/**
+ * Shared, pure validation for the booking modal (Audit §4.3): the UI calls it to
+ * render a concrete inline message and highlight the offending field, and the
+ * submit path calls the SAME function so a mode's hidden fields can never sneak
+ * an invalid value past a greyed-out button. `code` is a stable slug the UI
+ * localizes; the counterparty message picks payee vs payer wording by mode.
+ */
+export function validateBooking(mode: BookingMode, d: BookingDraft): BookingValidation {
+  if (!Number.isFinite(d.amount)) return { ok: false, field: "amount", code: "amountMissing" };
+  if (d.amount <= 0) return { ok: false, field: "amount", code: "amountPositive" };
+  if (mode === "transfer") {
+    if (!d.toAccountId) return { ok: false, field: "toAccount", code: "toAccountMissing" };
+    if (d.toAccountId === d.accountId) return { ok: false, field: "toAccount", code: "sameAccount" };
+    return { ok: true };
+  }
+  if (!d.counterparty) return { ok: false, field: "counterparty", code: "counterpartyMissing" };
+  return { ok: true };
+}
+
+/**
  * Account kinds that hold spendable cash. Shared with `lib/finance/health.ts`'s
  * emergency-fund gauge, which drew the same line first: `other_asset` (a car,
  * a flat) is real net worth but nothing you can pay a bill from.

@@ -80,15 +80,19 @@ export function AssetTags({ assetId }: { assetId: string }) {
             values.map((v) => (
               <span
                 key={`${group.id}:${v}`}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white"
-                style={{ backgroundColor: colorForLabel(v) }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-200"
               >
-                {group.name}: {v}
+                <span
+                  className="inline-block h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: colorForLabel(v) }}
+                  aria-hidden
+                />
+                <span className="text-zinc-500 dark:text-zinc-400">{group.name}:</span> {v}
                 <button
                   type="button"
                   onClick={() => removeValue(assetId, group.id, v).catch(reportError)}
                   aria-label={`Remove tag ${group.name}: ${v}`}
-                  className="text-white/80 hover:text-white"
+                  className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                 >
                   ✕
                 </button>
