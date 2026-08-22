@@ -25,6 +25,8 @@
 import {
   DEFAULT_GUARDRAIL_ADJUST,
   DEFAULT_GUARDRAIL_BAND,
+  DEFAULT_VANGUARD_CEILING,
+  DEFAULT_VANGUARD_FLOOR,
   STRESS_SCENARIOS,
   type StrategyOutcome,
   type StressScenario,
@@ -95,6 +97,7 @@ function withStrategy(plan: WithdrawalPlan, strategy: WithdrawalStrategyKind): W
       amount:
         plan.amount.kind === "amount" ? plan.amount : { kind: "amount", value: DEFAULT_FIXED_AMOUNT_ANNUAL },
       guardrails: undefined,
+      vanguard: undefined,
     };
   }
   return {
@@ -105,6 +108,10 @@ function withStrategy(plan: WithdrawalPlan, strategy: WithdrawalStrategyKind): W
     guardrails:
       strategy === "guardrails"
         ? (plan.guardrails ?? { band: DEFAULT_GUARDRAIL_BAND, adjust: DEFAULT_GUARDRAIL_ADJUST })
+        : undefined,
+    vanguard:
+      strategy === "vanguard"
+        ? (plan.vanguard ?? { ceiling: DEFAULT_VANGUARD_CEILING, floor: DEFAULT_VANGUARD_FLOOR })
         : undefined,
   };
 }
@@ -152,6 +159,16 @@ export function WithdrawalStrategyPanel({
       guardrails: {
         band: plan.guardrails?.band ?? DEFAULT_GUARDRAIL_BAND,
         adjust: plan.guardrails?.adjust ?? DEFAULT_GUARDRAIL_ADJUST,
+        ...patch,
+      },
+    });
+  }
+  function setVanguard(patch: Partial<{ ceiling: number; floor: number }>) {
+    onPlanChange({
+      ...plan,
+      vanguard: {
+        ceiling: plan.vanguard?.ceiling ?? DEFAULT_VANGUARD_CEILING,
+        floor: plan.vanguard?.floor ?? DEFAULT_VANGUARD_FLOOR,
         ...patch,
       },
     });
@@ -209,7 +226,7 @@ export function WithdrawalStrategyPanel({
               label={t(
                 plan.strategy === "initialRate"
                   ? "withdrawal.field.rateAtRetirement"
-                  : plan.strategy === "currentPortfolioShare"
+                  : plan.strategy === "currentPortfolioShare" || plan.strategy === "vanguard"
                     ? "withdrawal.field.rateCurrentValue"
                     : "withdrawal.field.rateGuardrails",
               )}
@@ -240,6 +257,30 @@ export function WithdrawalStrategyPanel({
                   min={1}
                   max={30}
                   step={1}
+                />
+              </>
+            )}
+            {plan.strategy === "vanguard" && (
+              <>
+                <SliderField
+                  label={t("withdrawal.field.vanguardCeiling")}
+                  suffix="%"
+                  value={(plan.vanguard?.ceiling ?? DEFAULT_VANGUARD_CEILING) * 100}
+                  onChange={(v) => setVanguard({ ceiling: Math.max(0, v) / 100 })}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  digits={1}
+                />
+                <SliderField
+                  label={t("withdrawal.field.vanguardFloor")}
+                  suffix="%"
+                  value={(plan.vanguard?.floor ?? DEFAULT_VANGUARD_FLOOR) * 100}
+                  onChange={(v) => setVanguard({ floor: Math.max(0, v) / 100 })}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  digits={1}
                 />
               </>
             )}
@@ -307,7 +348,7 @@ export function WithdrawalStrategyPanel({
  * Every strategy over the same simulated markets. A RESULT, so it belongs in
  * the results column beside the chart, not squeezed into the parameter form
  * where four currency columns have nowhere to go. Deliberately still keyed
- * by the engine's five `WithdrawalStrategyId`s (including `floorCeiling` and
+ * by the engine's six `WithdrawalStrategyId`s (including `floorCeiling` and
  * `vpw`, which stay engine-available for comparison even though the plan
  * picker above no longer offers them as a starting strategy).
  */

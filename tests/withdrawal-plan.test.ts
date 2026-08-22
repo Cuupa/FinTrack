@@ -8,7 +8,12 @@ import {
   rateOf,
   type WithdrawalPlan,
 } from "@/lib/finance/withdrawal-plan";
-import { DEFAULT_GUARDRAIL_ADJUST, DEFAULT_GUARDRAIL_BAND } from "@/lib/finance/withdrawal";
+import {
+  DEFAULT_GUARDRAIL_ADJUST,
+  DEFAULT_GUARDRAIL_BAND,
+  DEFAULT_VANGUARD_CEILING,
+  DEFAULT_VANGUARD_FLOOR,
+} from "@/lib/finance/withdrawal";
 
 describe("defaultWithdrawalPlan", () => {
   it("reproduces today's behaviour: 4% initial rate, 2% inflation, no stress", () => {
@@ -52,7 +57,7 @@ describe("rateOf / annualAmountOf / rateBasisOf", () => {
     expect(annualAmountOf(plan)).toBe(24000);
   });
 
-  it("rateBasisOf: atRetirement for initialRate/guardrails, currentValue for currentPortfolioShare", () => {
+  it("rateBasisOf: atRetirement for initialRate/guardrails, currentValue for currentPortfolioShare/vanguard", () => {
     expect(rateBasisOf({ ...defaultWithdrawalPlan(), strategy: "initialRate" })).toBe(
       "atRetirement",
     );
@@ -61,6 +66,9 @@ describe("rateOf / annualAmountOf / rateBasisOf", () => {
     ).toBe("currentValue");
     expect(rateBasisOf({ ...defaultWithdrawalPlan(), strategy: "guardrails" })).toBe(
       "atRetirement",
+    );
+    expect(rateBasisOf({ ...defaultWithdrawalPlan(), strategy: "vanguard" })).toBe(
+      "currentValue",
     );
   });
 });
@@ -140,6 +148,29 @@ describe("planToWithdrawalOptions", () => {
     expect(custom.guardrailAdjust).toBe(0.08);
   });
 
+  it("vanguard: maps ceiling/floor, falling back to Vanguard's own published defaults", () => {
+    const withDefaults: WithdrawalPlan = {
+      strategy: "vanguard",
+      amount: { kind: "rate", value: 0.04 },
+      paymentInterval: "annual",
+      inflation: { indexed: true, assumedRate: 0.02 },
+      stress: "none",
+    };
+    const defaults = planToWithdrawalOptions(withDefaults);
+    expect(defaults.withdrawalStrategy).toBe("vanguard");
+    expect(defaults.withdrawalRate).toBe(0.04);
+    expect(defaults.vanguardCeiling).toBe(DEFAULT_VANGUARD_CEILING);
+    expect(defaults.vanguardFloor).toBe(DEFAULT_VANGUARD_FLOOR);
+
+    const withCustom: WithdrawalPlan = {
+      ...withDefaults,
+      vanguard: { ceiling: 0.1, floor: 0.05 },
+    };
+    const custom = planToWithdrawalOptions(withCustom);
+    expect(custom.vanguardCeiling).toBe(0.1);
+    expect(custom.vanguardFloor).toBe(0.05);
+  });
+
   it("carries guaranteed income through without double-counting anything else", () => {
     const plan: WithdrawalPlan = {
       ...defaultWithdrawalPlan(),
@@ -172,6 +203,11 @@ describe("planToFireAssumption", () => {
     ).toEqual({ kind: "rate", rate: 0.04, hasStableTarget: true });
     expect(
       planToFireAssumption({ ...defaultWithdrawalPlan(), strategy: "currentPortfolioShare" }),
+    ).toEqual({ kind: "rate", rate: 0.04, hasStableTarget: false });
+    // Same reasoning as currentPortfolioShare: a floor/ceiling that clips the
+    // CURRENT-value base is not an equilibrium target either.
+    expect(
+      planToFireAssumption({ ...defaultWithdrawalPlan(), strategy: "vanguard" }),
     ).toEqual({ kind: "rate", rate: 0.04, hasStableTarget: false });
   });
 

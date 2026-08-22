@@ -417,26 +417,38 @@ FX-convert) always beats a wrong instrument in the right currency.
   be subtracted again (a day-one portfolio once read −100%).
 - `monte-carlo.ts` — pure simulation, run off-thread via
   `monte-carlo.worker.ts` (`new Worker(new URL(...), import.meta.url)`).
-  Decumulation lives in `withdrawal.ts` (pure): five ENGINE strategies
-  (`fixed`, `percentOfPortfolio`, `guardrails`, `floorCeiling`, `vpw`), asked
-  once per retirement YEAR, plus sequence-of-returns stress (`earlyCrash`,
-  `lostDecade`) that only bites once withdrawals start. A first-year amount
-  can be seeded either from a rate (`withdrawalRate x` portfolio value) or a
-  stated `fixedAnnualAmount` (mutually exclusive, the amount wins) — both then
-  carry forward through the SAME `fixed`-strategy inflation indexing, added
-  for the `fixedRealAmount` domain strategy below without touching the
-  five-strategy switch itself. **The comparison replays every strategy over
-  the SAME drawn market path** — comparing across different draws would
-  measure the draw, not the strategy. `compareStrategies` is opt-in (rate mode
-  only) and the result section is omitted when it was not asked for.
+  Decumulation lives in `withdrawal.ts` (pure): six ENGINE strategies
+  (`fixed`, `percentOfPortfolio`, `guardrails`, `floorCeiling`, `vpw`,
+  `vanguard`), asked once per retirement YEAR, plus sequence-of-returns stress
+  (`earlyCrash`, `lostDecade`) that only bites once withdrawals start. A
+  first-year amount can be seeded either from a rate (`withdrawalRate x`
+  portfolio value) or a stated `fixedAnnualAmount` (mutually exclusive, the
+  amount wins) — both then carry forward through the SAME `fixed`-strategy
+  inflation indexing, added for the `fixedRealAmount` domain strategy below
+  without touching the switch itself. `vanguard` is Vanguard's own published
+  dynamic spending rule (AAII, citing Vanguard's "Dynamic Spending" paper):
+  like `floorCeiling`, base = rate x CURRENT portfolio value, clipped to a
+  ceiling/floor (defaults 5%/2.5%) — but that band is measured off what was
+  actually paid LAST year, not off year one, and carries no separate inflation
+  step of its own (the cited worked example applies the percentages straight
+  to last year's nominal payout). `floorCeiling`'s band never moves off its
+  year-one anchor; `vanguard` resets it every year, so spending can drift far
+  from year one across a long retirement. **The comparison replays every
+  strategy over the SAME drawn market path** — comparing across different
+  draws would measure the draw, not the strategy. `compareStrategies` is
+  opt-in (rate mode only) and the result section is omitted when it was not
+  asked for.
 - **One shared withdrawal ASSUMPTION, two runners** (round: withdrawal
   refactor). `lib/finance/withdrawal-plan.ts` is the single `WithdrawalPlan`
-  FIRE and the simulation both read — only FOUR strategies are offered through
-  it (`initialRate`, `currentPortfolioShare`, `guardrails`, `fixedRealAmount`;
-  `floorCeiling`/`vpw` stay engine-only, dropped from the picker on owner
-  decision), translated by `planToFireAssumption` (perpetuity target,
+  FIRE and the simulation both read — FIVE strategies are offered through it
+  (`initialRate`, `currentPortfolioShare`, `guardrails`, `fixedRealAmount`,
+  `vanguard`; `floorCeiling`/`vpw` stay engine-only, dropped from the picker on
+  owner decision), translated by `planToFireAssumption` (perpetuity target,
   `fire.ts`) or `planToWithdrawalOptions` (engine params) — never a rate typed
-  twice. The two pages do NOT share a runner, only the pure engine function:
+  twice. `vanguard`, like `currentPortfolioShare`, re-reads the CURRENT
+  portfolio every year and so has no closed-form "holds forever" FIRE target
+  (`hasStableTarget: false`). The two pages do NOT share a runner, only the
+  pure engine function:
   `useMonteCarloRun` (`lib/simulation/`, param hash + seed + cache + worker +
   main-thread fallback) is /simulation's alone; the FIRE tiles' `shortfallRisk`
   calls `runMonteCarlo` directly and synchronously with a fixed seed, no

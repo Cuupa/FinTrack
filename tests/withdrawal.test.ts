@@ -32,7 +32,7 @@ describe("annualWithdrawal", () => {
   it("starts every strategy at the same first-year income", () => {
     // The strategies differ in what happens NEXT, so year one must not be a
     // difference between them -- otherwise the comparison is unreadable.
-    for (const strategy of ["fixed", "percentOfPortfolio", "guardrails", "floorCeiling"] as const) {
+    for (const strategy of ["fixed", "percentOfPortfolio", "guardrails", "floorCeiling", "vanguard"] as const) {
       const income = annualWithdrawal(plan({ strategy }), {
         initialWithdrawal: 40000,
         portfolioValue: 1_000_000,
@@ -45,7 +45,7 @@ describe("annualWithdrawal", () => {
   });
 
   it("pays nothing out of a depleted portfolio", () => {
-    for (const strategy of ["fixed", "percentOfPortfolio", "guardrails", "floorCeiling"] as const) {
+    for (const strategy of ["fixed", "percentOfPortfolio", "guardrails", "floorCeiling", "vanguard"] as const) {
       expect(
         annualWithdrawal(plan({ strategy }), {
           initialWithdrawal: 40000,
@@ -99,6 +99,60 @@ describe("annualWithdrawal", () => {
     expect(annualWithdrawal(p, { ...ctx, portfolioValue: 700_000 })).toBeCloseTo(36000, 6);
     // 2.7% — below the lower guardrail, so the income is raised by 10%.
     expect(annualWithdrawal(p, { ...ctx, portfolioValue: 1_500_000 })).toBeCloseTo(44000, 6);
+  });
+
+  // Source: AAII, citing Vanguard's own "Dynamic Spending" paper -- the
+  // published worked example, reproduced exactly so a wrong anchor or a
+  // stray inflation multiplier fails loudly.
+  it("vanguard reproduces the published worked example: $40,000 clamped to a $42,000 ceiling", () => {
+    const p = plan({ strategy: "vanguard" });
+    const income = annualWithdrawal(p, {
+      initialWithdrawal: 40000,
+      previousWithdrawal: 40000,
+      portfolioValue: 1_060_000, // 4% of this is $42,400, the paper's "base spending"
+      yearsIntoRetirement: 1,
+      yearsRemaining: 29,
+    });
+    expect(income).toBeCloseTo(42000, 6); // ceiling: 40,000 x 1.05
+  });
+
+  it("vanguard's floor clamps a falling portfolio the same way", () => {
+    const p = plan({ strategy: "vanguard" });
+    const income = annualWithdrawal(p, {
+      initialWithdrawal: 40000,
+      previousWithdrawal: 40000,
+      portfolioValue: 900_000, // 4% of this is $36,000, below the floor
+      yearsIntoRetirement: 1,
+      yearsRemaining: 29,
+    });
+    expect(income).toBeCloseTo(39000, 6); // floor: 40,000 x 0.975
+  });
+
+  it("vanguard passes the base through unclamped inside the band", () => {
+    const p = plan({ strategy: "vanguard" });
+    const income = annualWithdrawal(p, {
+      initialWithdrawal: 40000,
+      previousWithdrawal: 40000,
+      portfolioValue: 1_020_000, // 4% = 40,800, inside [39,000, 42,000]
+      yearsIntoRetirement: 1,
+      yearsRemaining: 29,
+    });
+    expect(income).toBeCloseTo(40800, 6);
+  });
+
+  it("vanguard's band re-anchors to what was ACTUALLY paid last year, unlike floorCeiling's fixed year-one anchor", () => {
+    const p = plan({ strategy: "vanguard" });
+    // Year one pays 40,000. A strong market pushes year two to its ceiling,
+    // 42,000 -- so year three's band must be measured from 42,000, not from
+    // the original 40,000, or this collapses into `floorCeiling`.
+    const yearThreeCeiling = annualWithdrawal(p, {
+      initialWithdrawal: 40000,
+      previousWithdrawal: 42000, // what year two actually paid
+      portfolioValue: 3_000_000, // wildly above the ceiling, forces the clamp
+      yearsIntoRetirement: 2,
+      yearsRemaining: 28,
+    });
+    expect(yearThreeCeiling).toBeCloseTo(42000 * 1.05, 6); // 44,100, NOT 40,000 x 1.05
   });
 });
 

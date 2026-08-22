@@ -26,7 +26,8 @@ export type WithdrawalStrategyId =
   | "percentOfPortfolio"
   | "guardrails"
   | "floorCeiling"
-  | "vpw";
+  | "vpw"
+  | "vanguard";
 
 export const WITHDRAWAL_STRATEGIES: WithdrawalStrategyId[] = [
   "fixed",
@@ -34,6 +35,7 @@ export const WITHDRAWAL_STRATEGIES: WithdrawalStrategyId[] = [
   "guardrails",
   "floorCeiling",
   "vpw",
+  "vanguard",
 ];
 
 /** Inflation assumed when the caller states none. Withdrawals that never rise
@@ -49,6 +51,15 @@ export const DEFAULT_GUARDRAIL_ADJUST = 0.1;
 export const DEFAULT_FLOOR = 0.85;
 export const DEFAULT_CEILING = 1.25;
 
+/** Vanguard's own published defaults for the dynamic spending rule (AAII,
+    citing Vanguard's "Dynamic Spending: A Better Way to Budget in
+    Retirement"): a 5% ceiling and a 2.5% floor gave an 85% portfolio survival
+    rate over a 35-year horizon in their study. Unlike `DEFAULT_FLOOR`/
+    `DEFAULT_CEILING` above, these are YEAR-OVER-YEAR deltas, not absolute
+    fractions of year one. */
+export const DEFAULT_VANGUARD_CEILING = 0.05;
+export const DEFAULT_VANGUARD_FLOOR = 0.025;
+
 export interface WithdrawalPlan {
   strategy: WithdrawalStrategyId;
   /** Target annual rate as a fraction (0.04 = 4%), applied to the portfolio's
@@ -61,6 +72,10 @@ export interface WithdrawalPlan {
   /** `floorCeiling`: bounds relative to the first year's income. */
   floor?: number;
   ceiling?: number;
+  /** `vanguard`: bounds relative to LAST year's actual withdrawal, as a
+      fraction (0.05 = 5%) -- see the strategy's own doc below. */
+  vanguardCeiling?: number;
+  vanguardFloor?: number;
   /** Annual inflation as a fraction. Every strategy that carries an amount
       forward raises it by this, because the 4% rule is an INFLATION-ADJUSTED
       rule: holding the first year's euros flat for 30 years quietly cuts the
@@ -120,6 +135,28 @@ export function annualWithdrawal(plan: WithdrawalPlan, ctx: WithdrawalContext): 
       const floor = (plan.floor ?? DEFAULT_FLOOR) * indexed(ctx.initialWithdrawal);
       const ceiling = (plan.ceiling ?? DEFAULT_CEILING) * indexed(ctx.initialWithdrawal);
       const target = plan.rate * ctx.portfolioValue;
+      return Math.max(0, Math.min(ceiling, Math.max(floor, target)));
+    }
+
+    // Vanguard's dynamic spending rule: the same percent-of-CURRENT-portfolio
+    // base as `floorCeiling`, but the band is anchored to what was actually
+    // paid LAST year, not to year one. A `floorCeiling` band never moves from
+    // its year-one anchor; this one resets every year, so spending can drift
+    // far from year one across a long retirement instead of snapping back
+    // toward it. No separate inflation step on the anchor -- the cited source
+    // applies the ceiling/floor percentages directly to last year's nominal
+    // payout, inflation reaches this strategy only through the portfolio's
+    // own (nominal) growth. Source: AAII, citing Vanguard's own paper --
+    // worked example: $1M portfolio, 4% -> $40,000 year one; year two at
+    // 4% x $1.06M = $42,400 base, but the ceiling ($40,000 x 1.05 = $42,000)
+    // clamps it to $42,000.
+    case "vanguard": {
+      const ceilingPct = plan.vanguardCeiling ?? DEFAULT_VANGUARD_CEILING;
+      const floorPct = plan.vanguardFloor ?? DEFAULT_VANGUARD_FLOOR;
+      const anchor = Math.max(0, ctx.previousWithdrawal);
+      const target = plan.rate * ctx.portfolioValue;
+      const ceiling = anchor * (1 + ceilingPct);
+      const floor = anchor * (1 - floorPct);
       return Math.max(0, Math.min(ceiling, Math.max(floor, target)));
     }
 

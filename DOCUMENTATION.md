@@ -1422,15 +1422,18 @@ Moved out of CLAUDE.md, which keeps the route table and the binding rules.
   it via `planToFireAssumption` into the perpetuity target (`computeFirePlan`,
   `lib/finance/fire.ts`), the simulation translates it via
   `planToWithdrawalOptions` into what the path-wise engine
-  (`lib/finance/withdrawal.ts`/`monte-carlo.ts`, unchanged) needs. Only four
+  (`lib/finance/withdrawal.ts`/`monte-carlo.ts`, unchanged) needs. Five
   strategies are offered through the plan (`initialRate` ignores the portfolio
   after the first year, `currentPortfolioShare` can never deplete but swings,
   `guardrails` moves rarely and by a step, `fixedRealAmount` states a euro
-  amount instead of a rate); the underlying engine also still knows
-  `floorCeiling`/`vpw` for backward compatibility, but they are not offered as
-  a starting strategy. Each strategy shows a worked example and three
-  imperative steps, because a strategy nobody can execute is a chart and not a
-  plan. `WithdrawalComparison` runs all FIVE engine strategies over the SAME
+  amount instead of a rate, `vanguard` clips the current-portfolio share to a
+  ceiling/floor measured off what was actually paid LAST year — Vanguard's own
+  published dynamic spending rule, distinct from `floorCeiling`'s fixed
+  year-one anchor); the underlying engine also still knows `floorCeiling`/`vpw`
+  for backward compatibility, but they are not offered as a starting strategy.
+  Each strategy shows a worked example and three imperative steps, because a
+  strategy nobody can execute is a chart and not a plan.
+  `WithdrawalComparison` runs all SIX engine strategies over the SAME
   simulated paths and shows what each lasts, pays, its worst year and what is
   left — deliberately without naming a winner, since a higher success rate is
   bought with an income that moves. Identical panel (`WithdrawalStrategyPanel`,
